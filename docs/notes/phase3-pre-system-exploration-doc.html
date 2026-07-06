@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Báo cáo Khảo sát Hệ thống — Phase 3</title>
+  <style>
+    /* =============================================================
+       DEFAULT DESIGN SYSTEM — tokens.css (Warm Amber / Navy)
+       ============================================================= */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+    :root {
+      /* ── Accent ── */
+      --accent:        #fe7624;
+      --accent-strong: #f59120;
+      --accent-soft:   #fbae42;
+      --accent-tint:   #fff2e6;
+
+      /* ── Ink ── */
+      --ink:    #1e293b;
+      --ink-2:  #24338a;
+
+      /* ── Trạng thái ── */
+      --info:    #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger:  #dc2626;
+
+      /* ── Phân loại ── */
+      --cat-1: #fe7624;  --cat-2: #2563eb;  --cat-3: #16a34a;
+      --cat-4: #9333ea;  --cat-5: #db2777;  --cat-6: #0891b2;
+
+      /* ── Văn bản ── */
+      --text-primary:   #1a1a1a;
+      --text-secondary: #4d4e4e;
+      --text-muted:     #6b7280;
+
+      /* ── Bề mặt ── */
+      --surface-page: #fafafa;
+      --surface-card: #ffffff;
+      --surface-code: #0f172a;
+      --surface-tint: #fff7ec;
+      --surface-warm: #f0eeed;
+      --border:       #d8dee3;
+      --border-light: #ebebeb;
+
+      /* ── Typography ── */
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+      --title: clamp(2rem, 5vw, 4rem);
+      --h2:    clamp(1.3rem, 2.5vw, 1.8rem);
+      --h3:    clamp(1.05rem, 1.8vw, 1.3rem);
+      --body:  clamp(0.85rem, 1.1vw, 1rem);
+      --small: clamp(0.75rem, 0.9vw, 0.85rem);
+      --mono:  clamp(0.72rem, 0.85vw, 0.82rem);
+
+      /* ── Không gian ── */
+      --gap-section: clamp(1.8rem, 4vw, 3rem);
+      --gap-content: clamp(0.7rem, 1.5vw, 1.5rem);
+      --gap-element: clamp(0.35rem, 0.8vw, 0.8rem);
+      --pad-block:   clamp(1.2rem, 3vw, 3rem);
+      --pad-inline:  clamp(0.8rem, 2vw, 2.5rem);
+
+      /* ── Shape ── */
+      --radius-sm: 8px;  --radius-md: 12px;  --radius-lg: 16px;
+      --radius-xl: 24px;  --radius-pill: 80px;
+
+      /* ── Shadow ── */
+      --shadow-card: 0 4px 12px rgba(29,29,29,0.04);
+      --shadow-lg:   0 12px 28px rgba(30,41,59,0.08);
+
+      /* ── Gradient ── */
+      --gradient-accent: linear-gradient(135deg, #ffc078 0%, #ff8800 100%);
+      --gradient-text:   linear-gradient(135deg, #fcd554 0%, #fe7624 60%, #f59120 100%);
+      --gradient-hero:   radial-gradient(ellipse at 85% 10%, #fcd55422 0%, transparent 55%),
+                         radial-gradient(ellipse at 10% 90%, #fe762411 0%, transparent 60%);
+      --gradient-cool:   linear-gradient(135deg, #007bc1 0%, #24338a 100%);
+
+      /* ── Motion ── */
+      --ease:       cubic-bezier(0.16, 1, 0.3, 1);
+      --dur-fast:   0.25s;
+      --dur-normal: 0.45s;
+      --dur-slow:   0.8s;
+
+      --scrim: linear-gradient(180deg,
+                color-mix(in srgb, var(--ink) 20%, transparent),
+                color-mix(in srgb, var(--ink) 60%, transparent));
+    }
+
+    /* Custom Styles for Inline SVG nodes */
+    .svg-node-bg { fill: var(--surface-card); stroke: var(--border); stroke-width: 1.5; }
+    .svg-node-accent { fill: var(--surface-tint); stroke: var(--accent); stroke-width: 2; }
+    .svg-node-info { fill: color-mix(in srgb, var(--info) 8%, transparent); stroke: var(--info); stroke-width: 1.5; }
+    .svg-node-success { fill: color-mix(in srgb, var(--success) 8%, transparent); stroke: var(--success); stroke-width: 1.5; }
+    .svg-node-dark { fill: var(--ink); stroke: var(--ink); }
+    .svg-line { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+    .svg-line-muted { stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 4; fill: none; }
+    .svg-text { fill: var(--ink); font-family: var(--font-sans); font-size: 11px; font-weight: 600; text-anchor: middle; }
+    .svg-text-white { fill: #ffffff; font-family: var(--font-sans); font-size: 11px; font-weight: 600; text-anchor: middle; }
+    .svg-text-small { fill: var(--text-muted); font-family: var(--font-sans); font-size: 9px; text-anchor: middle; }
+  </style>
+  <style>
+    /* =============================================================
+       ENGINE.CSS — Cấu trúc + component cho tài liệu HTML (Scroll mode)
+       ============================================================= */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0; font-family: var(--font-sans); color: var(--text-primary);
+      background: var(--surface-page); -webkit-font-smoothing: antialiased;
+      word-break: keep-all; overflow-wrap: break-word; line-height: 1.6;
+    }
+    img { display: block; max-width: 100%; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .gradient-text {
+      background: var(--gradient-text); -webkit-background-clip: text;
+      background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* Layout Shell */
+    .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+    
+    /* Navigation Sidebar */
+    .doc-nav {
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      border-right: 1px solid var(--border); padding: 32px 0 24px; background: var(--surface-card);
+    }
+    .doc-nav .nav-logo { padding: 0 24px 20px; border-bottom: 1px solid var(--border-light); margin-bottom: 12px; }
+    .doc-nav .nav-logo h1 { font-size: 1.15rem; margin: 0; color: var(--ink); font-weight: 800; }
+    .doc-nav .nav-logo p { font-size: var(--small); color: var(--text-muted); margin: 6px 0 0; font-weight: 500; }
+    .doc-nav .nav-group { padding: 16px 24px 6px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); font-weight: 800; }
+    .doc-nav a { display: block; padding: 10px 24px; font-size: 13.5px; color: var(--text-secondary); text-decoration: none; border-left: 3px solid transparent; transition: all .15s var(--ease); font-weight: 500; }
+    .doc-nav a:hover { color: var(--accent); background: var(--accent-tint); text-decoration: none; }
+    .doc-nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-tint); font-weight: 700; }
+    
+    /* Main Content Area */
+    .doc-main { padding: 48px var(--pad-inline) 80px; max-width: 1080px; }
+    .doc-main section { margin-bottom: var(--gap-section); scroll-margin-top: 32px; }
+    .doc-main section p { margin: 0 0 16px; font-size: var(--body); color: var(--text-secondary); }
+
+    /* Eyebrow & Section Header */
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: var(--small); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); padding: 6px 14px; background: var(--accent-tint); border-radius: var(--radius-pill); align-self: flex-start; margin-bottom: 16px; }
+    .eyebrow .dot, .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .section-header h2 { margin: 0; font-size: var(--h2); color: var(--ink); font-weight: 800; }
+    .section-icon { width: 42px; height: 42px; border-radius: var(--radius-sm); display: grid; place-items: center; font-size: 20px; flex-shrink: 0; background: var(--accent-tint); }
+    .section-icon.info { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); }
+    .section-icon.success { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+    .section-icon.danger { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+    .section-icon.warning { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+
+    /* Takeaway clause */
+    .takeaway { font-size: var(--body); font-weight: 600; color: var(--ink); border-left: 3px solid var(--accent); padding-left: 14px; margin-top: 20px; line-height: 1.5; }
+
+    /* Cards */
+    .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: clamp(1rem,1.5vw,1.6rem); box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: var(--gap-element); min-width: 0; margin-bottom: 20px; }
+    .card-title { font-weight: 700; font-size: var(--body); color: var(--ink); }
+    .card-desc { font-size: var(--small); color: var(--text-secondary); line-height: 1.55; }
+    .card-val { font-size: var(--h3); font-weight: 800; color: var(--accent); }
+    .card-accent { border-color: var(--accent-strong); background: linear-gradient(180deg, var(--surface-card) 0%, var(--surface-tint) 100%); }
+    .card-dark { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .card-dark .card-title { color: #fff; }
+    .card-dark .card-body { color: var(--border); font-size: var(--body); line-height: 1.55; }
+
+    /* Status Badges */
+    .badge { display: inline-block; padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: var(--accent-tint); color: var(--accent-strong); }
+    .badge-info    { background: color-mix(in srgb, var(--info) 12%, transparent);    color: var(--info); }
+    .badge-success { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+    .badge-warning { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+    .badge-danger  { background: color-mix(in srgb, var(--danger) 12%, transparent);  color: var(--danger); }
+
+    /* Code Block & Tokens */
+    .code-container { margin: 20px 0; }
+    .code-label { font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--ink); margin-bottom: 6px; display: block; }
+    .code-block { background: var(--surface-code); border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); border-radius: var(--radius-sm); padding: 16px 20px; font-family: var(--font-mono); font-size: var(--mono); color: #e2e8f0; line-height: 1.65; overflow-x: auto; white-space: pre; margin: 0; }
+    .code-block .cmt { color: var(--text-muted); }
+    .code-block .kw  { color: var(--accent-soft); font-weight: 600; }
+    .code-block .str { color: #86efac; }
+    .code-block .fn  { color: #60a5fa; }
+    .code-block .val { color: #f472b6; }
+    .code-block .out { color: #94a3b8; }
+    code { font-family: var(--font-mono); font-size: .88em; background: color-mix(in srgb, var(--ink) 6%, transparent); padding: 2px 6px; border-radius: 4px; color: var(--accent-strong); font-weight: 600; }
+
+    /* Callouts */
+    .callout { border-radius: var(--radius-sm); padding: 16px 20px; margin: 24px 0; font-size: var(--body); border-left: 4px solid var(--accent); background: var(--accent-tint); }
+    .callout p { margin: 0; line-height: 1.6; color: var(--text-primary); }
+    .callout-info    { border-color: var(--info);    background: color-mix(in srgb, var(--info) 6%, transparent); }
+    .callout-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 6%, transparent); }
+    .callout-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 6%, transparent); }
+    .callout-danger  { border-color: var(--danger);  background: color-mix(in srgb, var(--danger) 6%, transparent); }
+
+    /* Tables & Matrix */
+    table { width: 100%; border-collapse: collapse; font-size: var(--small); margin: 24px 0 32px; box-shadow: var(--shadow-card); border-radius: var(--radius-sm); overflow: hidden; }
+    th { text-align: left; padding: 12px 16px; background: var(--ink); color: #ffffff; font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--ink); }
+    td { padding: 12px 16px; border: 1px solid var(--border-light); color: var(--text-secondary); line-height: 1.5; background: var(--surface-card); }
+    tr:nth-child(even) td { background: var(--surface-page); }
+    tr:hover td { background: var(--accent-tint); }
+
+    /* Two-col layouts & comparison */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1rem,2vw,2rem); align-items: stretch; margin-bottom: 24px; }
+    .two-col > * { min-width: 0; }
+    .comparison-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; background: var(--surface-card); height: 100%; }
+    .comparison-header { font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--border-light); padding-bottom: 8px; margin-bottom: 14px; font-size: 15px; }
+    .comparison-list { padding-left: 18px; margin: 0; }
+    .comparison-list li { margin-bottom: 10px; font-size: var(--small); color: var(--text-secondary); line-height: 1.5; }
+
+    /* Stepper component */
+    .stepper { display: flex; flex-direction: column; margin: 24px 0; }
+    .step-item { display: flex; gap: 16px; }
+    .step-line { display: flex; flex-direction: column; align-items: center; width: 32px; flex-shrink: 0; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--gradient-accent); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; box-shadow: var(--shadow-card); }
+    .step-connector { width: 2px; flex: 1; min-height: 32px; background: var(--border); margin: 4px 0; }
+    .step-content { padding-bottom: 28px; flex: 1; }
+    .step-title { font-weight: 700; font-size: 14px; color: var(--ink); margin: 0 0 6px; }
+    .step-desc { font-size: var(--small); color: var(--text-secondary); line-height: 1.6; }
+
+    /* Definition List */
+    .def-list { display: flex; flex-direction: column; gap: 6px; margin: 20px 0; }
+    .def-row { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+    .def-row:last-child { border-bottom: none; }
+    .def-term { font-weight: 700; color: var(--ink); font-size: 14px; }
+    .def-desc { color: var(--text-secondary); font-size: var(--small); line-height: 1.5; }
+
+    /* Stat grid */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--gap-element); margin: 24px 0; }
+    .stat { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 6px; }
+    .stat .big-num { font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800; background: var(--gradient-text); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.1; }
+    .stat .stat-label { font-weight: 700; color: var(--ink); font-size: var(--small); }
+    .stat .stat-body { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    /* Media containment */
+    .media-contain { width: 100%; display: grid; place-items: center; overflow: hidden; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin: 24px 0; box-shadow: var(--shadow-card); }
+    
+    /* Animations */
+    .reveal { opacity: 0; transform: translateY(14px); }
+    .reveal.in { opacity: 1; transform: none; transition: opacity var(--dur-normal) var(--ease), transform var(--dur-normal) var(--ease); }
+    
+    .stagger > * { opacity: 0; transform: translateY(14px); }
+    .stagger.in > * { opacity: 1; transform: none; transition: opacity var(--dur-normal) var(--ease), transform var(--dur-normal) var(--ease); transition-delay: calc(var(--i, 0) * 80ms); }
+    
+    svg [data-animate="draw"] { stroke-dasharray: var(--len, 1000); stroke-dashoffset: var(--len, 1000); }
+    svg.in [data-animate="draw"] { animation: eng-draw var(--dur-slow) var(--ease) forwards; }
+    @keyframes eng-draw { to { stroke-dashoffset: 0; } }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
+      .doc-nav { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 20px 0; }
+      .doc-nav .nav-logo { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+      .doc-main { padding: 32px var(--pad-inline) 60px; }
+    }
+    @media (max-width: 767px) {
+      .two-col { grid-template-columns: 1fr; }
+      .def-row { grid-template-columns: 1fr; gap: 4px; padding: 10px 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .1s !important; }
+      html { scroll-behavior: auto; }
+      .reveal, .stagger > *, svg [data-animate] { opacity: 1 !important; transform: none !important; animation: none !important; stroke-dashoffset: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <!-- Navigation Sidebar -->
+  <nav class="doc-nav">
+    <div class="nav-logo">
+      <h1>Khảo sát Hệ thống</h1>
+      <p>TechX Corp Platform — Phase 3</p>
+    </div>
+    <div class="nav-group">Nội dung báo cáo</div>
+    <a href="#s1" class="active">1. Mục đích & Tóm tắt</a>
+    <a href="#s2">2. Bản đồ Repository</a>
+    <a href="#s3">3. Kiến trúc & Luồng nghiệp vụ</a>
+    <a href="#s4">4. Danh mục Dịch vụ</a>
+    <a href="#s5">5. Hạ tầng K8s & Deploy</a>
+    <a href="#s6">6. Observability & Đo lường</a>
+    <a href="#s7">7. Phân tích AI Assistant</a>
+    <a href="#s8">8. Năm Trụ Cột CDO</a>
+    <a href="#s9">9. Fault Injection (flagd)</a>
+    <a href="#s10">10. Kế hoạch Tuần 1</a>
+    <a href="#s11">11. Lộ trình Tuần 2 & 3</a>
+    <a href="#s12">12. Đề xuất Backlog</a>
+    <a href="#s13">13. Câu hỏi & Lệnh</a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="doc-main">
+    
+    <!-- Section 1 -->
+    <section id="s1" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Báo cáo chuyển giao</div>
+      <div class="section-header">
+        <div class="section-icon">🎯</div>
+        <h2>1. Mục đích tài liệu & Tóm tắt hệ thống</h2>
+      </div>
+      <p>Tài liệu này được biên soạn nhằm cung cấp cho đội ngũ tiếp quản (TF) một cái nhìn toàn cảnh, sâu sắc và thực tế về nền tảng thương mại điện tử <strong>TechX Corp Platform</strong> chạy trên Kubernetes trước khi bước vào Phase 3. Mọi thông tin ở đây được tổng hợp trực tiếp từ mã nguồn và các tệp cấu hình có sẵn trong hệ thống.</p>
+      
+      <h3>Mục tiêu chính của đợt khảo sát</h3>
+      <div class="def-list">
+        <div class="def-row">
+          <div class="def-term">Nhận diện cấu trúc</div>
+          <div class="def-desc">Liệt kê tất cả các microservices hiện hữu, giao thức truyền thông liên kết (gRPC, HTTP, Kafka) và kiến trúc dữ liệu nền tảng.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Bảo vệ SLO</div>
+          <div class="def-desc">Phân tích sâu luồng nghiệp vụ quan trọng (đặc biệt là checkout path) để khoanh vùng và tối ưu các điểm nghẽn ảnh hưởng SLO doanh thu.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Đánh giá rủi ro</div>
+          <div class="def-desc">Lập sổ đăng ký rủi ro (Risk Register) từ cấu hình baseline hiện tại (replicas: 1, in-cluster DBs) để chủ động phòng ngừa.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Thiết lập hành động</div>
+          <div class="def-desc">Đưa ra kế hoạch Tuần 1 rõ ràng với 10 nhiệm vụ ưu tiên (P0/P1) nhằm đưa baseline chạy ổn định và thu thập dữ liệu kiểm chứng.</div>
+        </div>
+      </div>
+
+      <h3>2.1 Các luồng nghiệp vụ cốt lõi và SLO</h3>
+      <p>TechX Corp Platform là hệ thống đa dịch vụ phức tạp. Việc phân loại luồng giúp phân phối tài nguyên giám sát và tối ưu hóa hợp lý:</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Luồng nghiệp vụ</th>
+            <th>Đường đi chính</th>
+            <th>Ý nghĩa vận hành</th>
+            <th>Hạn chế / Drawbacks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Duyệt và tìm sản phẩm</strong></td>
+            <td><code>frontend</code> &rarr; <code>product-catalog</code> &rarr; PostgreSQL</td>
+            <td>Trải nghiệm cửa hàng và khả năng tìm kiếm sản phẩm của khách hàng.</td>
+            <td>Truy vấn PostgreSQL dùng <code>LOWER LIKE</code> đồng bộ, dễ chậm khi dữ liệu phình to.</td>
+          </tr>
+          <tr>
+            <td><strong>Xem review và hỏi AI</strong></td>
+            <td><code>frontend</code> &rarr; <code>product-reviews</code> &rarr; PostgreSQL / LLM</td>
+            <td>Tính năng AI trọng tâm trên trang chi tiết sản phẩm giúp tăng tương tác.</td>
+            <td>Phụ thuộc hoàn toàn vào latency và chi phí tích hợp OpenAI API bên thứ ba.</td>
+          </tr>
+          <tr>
+            <td><strong>Giỏ hàng (Cart)</strong></td>
+            <td><code>frontend</code> / <code>checkout</code> &rarr; <code>cart</code> &rarr; Valkey</td>
+            <td>Lưu giữ trạng thái mua hàng hiện tại của khách hàng.</td>
+            <td>Valkey chạy in-cluster single-replica, có rủi ro mất giỏ hàng khi pod restart.</td>
+          </tr>
+          <tr>
+            <td><strong>Đặt hàng (Checkout)</strong></td>
+            <td><code>frontend</code> &rarr; <code>checkout</code> &rarr; cart, catalog, currency, shipping, payment, email &rarr; Kafka</td>
+            <td>Luồng tạo ra doanh thu trực tiếp cho TechX Corp (<strong>SLO &ge; 99,0%</strong>).</td>
+            <td>Luồng đồng bộ quá dài (chain dependencies), một node lỗi làm hỏng cả chuỗi.</td>
+          </tr>
+          <tr>
+            <td><strong>Xử lý sau đặt hàng</strong></td>
+            <td>Kafka &rarr; <code>accounting</code>, <code>fraud-detection</code></td>
+            <td>Ghi nhận sổ sách kế toán và phát hiện rủi ro đơn hàng bất đồng bộ.</td>
+            <td>Phụ thuộc vào Kafka queue, nếu Kafka lag sẽ làm chậm tiến trình audit kế toán.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 Những thành phần cần chú ý ngay</h3>
+      <p>Dựa trên cấu trúc hệ thống, đội ngũ vận hành cần đặc biệt lưu ý và giám sát chặt chẽ các thành phần cốt lõi sau:</p>
+      <ul>
+        <li><strong>frontend-proxy và frontend:</strong> Là entrypoint tiếp nhận toàn bộ request từ internet của khách hàng.</li>
+        <li><strong>Checkout path:</strong> Gồm <code>checkout</code>, <code>payment</code>, <code>cart</code>, <code>product-catalog</code>, <code>shipping</code> và <code>currency</code> cấu thành luồng đồng bộ tạo doanh thu.</li>
+        <li><strong>Hạ tầng dữ liệu:</strong> PostgreSQL, Valkey và Kafka là các dependency nền tảng quyết định độ bền vững thông tin và sự kiện.</li>
+        <li><strong>Observability stack:</strong> OTel Collector, Prometheus, Jaeger, OpenSearch và Grafana là nguồn đo SLO và phục vụ incident investigation (điều tra sự cố).</li>
+        <li><strong>flagd và hook OpenFeature:</strong> Cấu thành cơ chế fault-injection do Ban tổ chức quản lý; tuyệt đối không được gỡ bỏ, tắt hoặc đổi hướng.</li>
+      </ul>
+
+      <h3>2.3 Nhận định rủi ro ban đầu (Baseline)</h3>
+      <p>Khảo sát tĩnh (static code analysis) cho thấy cấu hình mặc định chứa nhiều điểm yếu chí tử cần củng cố gấp:</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Khu vực đánh giá</th>
+            <th>Hiện trạng baseline</th>
+            <th>Tác động cần theo dõi</th>
+            <th>Drawbacks / Điểm hạn chế</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Checkout Path</strong></td>
+            <td>Gọi chuỗi dependency đồng bộ dài liên tiếp</td>
+            <td>Một thành phần lỗi kéo theo checkout thất bại</td>
+            <td>Thiếu timeout ngắn, retry thông minh và cơ chế fallback an toàn.</td>
+          </tr>
+          <tr>
+            <td><strong>Availability</strong></td>
+            <td>Cấu hình mặc định <code>replicas: 1</code>, không HPA/PDB</td>
+            <td>Pod, node bị lỗi hoặc quá tải sẽ gây ngắt quãng dịch vụ</td>
+            <td>Không có tính dự phòng cao (High Availability) cho các node quan trọng.</td>
+          </tr>
+          <tr>
+            <td><strong>Data Layer</strong></td>
+            <td>PostgreSQL, Valkey, Kafka chạy single-replica in-cluster</td>
+            <td>Tạo ra Single Point of Failure (SPOF) cho toàn hệ thống dữ liệu</td>
+            <td>Không có cơ chế failover tự động và rủi ro mất mát dữ liệu cao.</td>
+          </tr>
+          <tr>
+            <td><strong>Observability</strong></td>
+            <td>Prometheus, OpenSearch, Jaeger chưa cấu hình persistence</td>
+            <td>Restart pod observability sẽ làm mất sạch dữ liệu lịch sử sự cố</td>
+            <td>Gây khó khăn lớn cho việc điều tra nguyên nhân gốc rễ (Root Cause Analysis).</td>
+          </tr>
+          <tr>
+            <td><strong>AI Reviews</strong></td>
+            <td>Mặc định dùng Mock LLM; có flagd tạo rate limit/accuracy fault</td>
+            <td>Chưa đánh giá được chất lượng, latency và chi phí model thật</td>
+            <td>Chưa có eval dataset chuẩn và fallback khi LLM sập.</td>
+          </tr>
+          <tr>
+            <td><strong>Security</strong></td>
+            <td>Grafana anonymous Admin, OpenSearch tắt security plugin</td>
+            <td>Bị xâm nhập thay đổi cấu hình alert hoặc rò rỉ thông tin log</td>
+            <td>Thiếu phân quyền và phơi bày giao diện quản trị ra internet.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Checkout là luồng nghiệp vụ quan trọng nhất tạo ra doanh thu trực tiếp; mọi nỗ lực củng cố hệ thống trong Phase 3 phải ưu tiên bảo vệ luồng này với mục tiêu SLO checkout &ge; 99,0%.</div>
+    </section>
+
+    <!-- Section 2 -->
+    <section id="s2" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Cấu trúc dự án</div>
+      <div class="section-header">
+        <div class="section-icon">🗺️</div>
+        <h2>2. Bản đồ Repository</h2>
+      </div>
+      <p>Repository của TechX Corp Platform được phân chia rõ ràng để phục vụ việc chuyển giao, bao gồm quy chế thi đấu, hướng dẫn chạy thử, mã nguồn dịch vụ và cấu hình Helm Kubernetes.</p>
+
+      <h3>3.1 Danh mục tài liệu và cấu trúc thư mục chính</h3>
+      <div class="def-list">
+        <div class="def-row">
+          <div class="def-term">RULES.md</div>
+          <div class="def-desc">Tài liệu tối quan trọng định nghĩa luật chơi, 5 trụ cột CDO, trụ AI, timeline, deliverables và luật disqualify.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">GETTING_STARTED.md</div>
+          <div class="def-desc">Hướng dẫn build Docker image, push lên Amazon ECR, deploy bằng Helm và các bước xác thực ứng dụng ban đầu.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">onboarding/</div>
+          <div class="def-desc">Thư mục chứa tài liệu kiến trúc kỹ thuật (ARCHITECTURE.md), mục tiêu SLO (SLO.md), trần ngân sách AWS (BUDGET.md - $300/tuần), lịch sử sự cố cũ (INCIDENT_HISTORY.md) và hướng dẫn chuẩn bị bài thuyết trình (PITCH_GUIDE.md).</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">mandates/</div>
+          <div class="def-desc">Thư mục chứa các directive (yêu cầu vận hành bắt buộc) do Ban tổ chức đưa ra định kỳ mà TF bắt buộc phải tuân thủ và chứng minh bằng ADR/Rollback test.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">techx-corp-platform/</div>
+          <div class="def-desc">Thư mục chứa toàn bộ mã nguồn của 17 microservices (Go, Python, .NET, Java, Next.js) kèm cấu hình Docker Compose để test local.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">techx-corp-chart/</div>
+          <div class="def-desc">Helm Chart dùng để triển khai toàn bộ ứng dụng và hạ tầng observability (Prometheus, Grafana, OpenSearch, Jaeger) lên cluster EKS.</div>
+        </div>
+      </div>
+
+      <h3>3.2 Các tài liệu và thư mục cần khai thác trước</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Đường dẫn / File</th>
+            <th>Nội dung nên khai thác</th>
+            <th>Ý nghĩa thực tiễn</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>onboarding/ARCHITECTURE.md</code></td>
+            <td>Bản đồ chi tiết các service, các liên kết dependency và luồng request của khách hàng.</td>
+            <td>Hiểu kiến trúc tổng thể trước khi thực hiện deploy hoặc code changes.</td>
+          </tr>
+          <tr>
+            <td><code>onboarding/SLO.md</code></td>
+            <td>Các chỉ tiêu đo lường dịch vụ (SLO) và ngân sách lỗi (error budget) cho phép.</td>
+            <td>Là thước đo duy nhất đánh giá sự thành bại của việc vận hành.</td>
+          </tr>
+          <tr>
+            <td><code>onboarding/BUDGET.md</code></td>
+            <td>Trần chi phí khoảng $300/tuần/TF và các phân tích đánh đổi tài nguyên.</td>
+            <td>Giúp định hướng tối ưu hóa chi phí hạ tầng AWS tối đa.</td>
+          </tr>
+          <tr>
+            <td><code>onboarding/INCIDENT_HISTORY.md</code></td>
+            <td>Các sự cố cũ: sập kết nối Postgres, Valkey mất dữ liệu giỏ hàng, rolling update thiếu probe.</td>
+            <td>Bài học thực tế để lập Risk Register và thiết kế kịch bản kiểm thử chịu lỗi.</td>
+          </tr>
+          <tr>
+            <td><code>onboarding/PITCH_GUIDE.md</code></td>
+            <td>Quy chuẩn xếp hạng backlog dựa trên Risk &times; Business Impact.</td>
+            <td>Hướng dẫn chuẩn bị bài Pitch thuyết phục Ban giám khảo ở cuối tuần.</td>
+          </tr>
+          <tr>
+            <td><code>GETTING_STARTED.md</code></td>
+            <td>Lệnh build Dockerx, cấu hình Helm values mặc định và commands đưa baseline lên EKS.</td>
+            <td>Tài liệu tham chiếu chuẩn cho quy trình triển khai baseline ban đầu.</td>
+          </tr>
+          <tr>
+            <td><code>techx-corp-chart/values.yaml</code></td>
+            <td>Cấu hình mặc định của resources, probes, replica count, ports và database credentials.</td>
+            <td>Là đích đến chính để điều chỉnh cấu hình hạ tầng của microservices.</td>
+          </tr>
+          <tr>
+            <td><code>deploy/values-flagd-sync.yaml</code></td>
+            <td>Tệp overlay bắt buộc đồng bộ feature flags từ Central source của BTC.</td>
+            <td>Cấu hình bắt buộc phải giữ nguyên, cấm can thiệp hoặc gỡ bỏ.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.3 Phân nhóm Microservices trong Platform</h3>
+      <p>17 microservices cấu thành nên hệ thống được quy hoạch thành 5 nhóm trách nhiệm nghiệp vụ:</p>
+      <div class="def-list">
+        <div class="def-row">
+          <div class="def-term">Storefront (Entrypoint)</div>
+          <div class="def-desc"><code>frontend-proxy</code> (Envoy Router), <code>frontend</code> (Next.js App), và <code>image-provider</code> (phục vụ ảnh tĩnh sản phẩm).</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Product & AI Assistant</div>
+          <div class="def-desc"><code>product-catalog</code> (danh mục), <code>product-reviews</code> (review), <code>recommendation</code> (gợi ý), <code>ad</code> (quảng cáo), và <code>llm</code> (mock OpenAI service).</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Order & checkout path</div>
+          <div class="def-desc"><code>cart</code> (giỏ hàng), <code>checkout</code> (điều phối đặt hàng), <code>payment</code> (thanh toán), <code>shipping</code> (vận chuyển), <code>quote</code> (báo giá ship), <code>currency</code> (tiền tệ), và <code>email</code> (gửi thư).</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Event Streams</div>
+          <div class="def-desc"><code>kafka</code> (hạ tầng tin nhắn), <code>accounting</code> (ghi sổ kế toán), và <code>fraud-detection</code> (phát hiện gian lận đơn hàng).</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Operations</div>
+          <div class="def-desc">OpenTelemetry Collector, Prometheus, Jaeger, OpenSearch, Grafana, <code>load-generator</code> (Locust), và <code>flagd</code> (cấu hình sự cố).</div>
+        </div>
+      </div>
+
+      <div class="takeaway">Hiểu rõ bản đồ repository giúp định vị chính xác file cấu hình và code cần chỉnh sửa.</div>
+    </section>
+
+    <!-- Section 3 -->
+    <section id="s3" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Luồng thiết kế</div>
+      <div class="section-header">
+        <div class="section-icon">🏗️</div>
+        <h2>3. Kiến trúc hệ thống & Luồng nghiệp vụ chính</h2>
+      </div>
+      <p>TechX Corp Platform kết hợp cả hai mô hình truyền thông: Đồng bộ hiệu năng cao qua gRPC cho các luồng tương tác khách hàng trực tiếp, và Bất đồng bộ qua Kafka cho xử lý ghi chép phía sau.</p>
+
+      <h3>4.1 Sơ đồ giao tiếp & luồng dữ liệu (Architecture Map)</h3>
+      <p>Mô hình dưới đây mô tả luồng request từ khách hàng đi vào hệ thống qua Envoy Proxy và chia về các microservice backend:</p>
+      
+      <div class="media-contain">
+        <svg viewBox="0 0 800 420" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" data-animate="draw">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent)" />
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 2 L 6 5 L 0 8 z" fill="var(--text-muted)" />
+            </marker>
+          </defs>
+          
+          <rect x="5" y="5" width="790" height="410" rx="12" fill="var(--surface-page)" stroke="var(--border)" stroke-width="1" />
+          
+          <rect x="20" y="180" width="100" height="50" rx="8" class="svg-node-bg" />
+          <text x="70" y="210" class="svg-text">Khách hàng</text>
+          
+          <rect x="150" y="180" width="110" height="50" rx="8" class="svg-node-accent" />
+          <text x="205" y="205" class="svg-text" style="fill: var(--accent);">frontend-proxy</text>
+          <text x="205" y="220" class="svg-text-small">(Envoy Port 8080)</text>
+          
+          <rect x="290" y="180" width="100" height="50" rx="8" class="svg-node-bg" />
+          <text x="340" y="205" class="svg-text">frontend</text>
+          <text x="340" y="220" class="svg-text-small">(Next.js Storefront)</text>
+
+          <rect x="440" y="30" width="110" height="40" rx="6" class="svg-node-info" />
+          <text x="495" y="55" class="svg-text">product-catalog</text>
+          
+          <rect x="440" y="90" width="110" height="40" rx="6" class="svg-node-info" />
+          <text x="495" y="115" class="svg-text">product-reviews</text>
+          
+          <rect x="440" y="150" width="110" height="40" rx="6" class="svg-node-info" />
+          <text x="495" y="175" class="svg-text">cart</text>
+
+          <rect x="440" y="210" width="110" height="45" rx="6" class="svg-node-accent" />
+          <text x="495" y="236" class="svg-text" style="fill: var(--accent); font-weight:700;">checkout</text>
+
+          <rect x="440" y="275" width="110" height="35" rx="6" class="svg-node-info" />
+          <text x="495" y="297" class="svg-text">payment/shipping</text>
+          
+          <rect x="440" y="330" width="110" height="35" rx="6" class="svg-node-info" />
+          <text x="495" y="352" class="svg-text">recommendation/ad</text>
+
+          <path d="M 640 45 C 640 35, 690 35, 690 45 L 690 75 C 690 85, 640 85, 640 75 Z" class="svg-node-bg" />
+          <line x1="640" y1="55" x2="690" y2="55" stroke="var(--border)" stroke-width="1.5" />
+          <line x1="640" y1="65" x2="690" y2="65" stroke="var(--border)" stroke-width="1.5" />
+          <text x="665" y="70" class="svg-text">Postgres</text>
+          
+          <path d="M 640 145 C 640 135, 690 135, 690 145 L 690 175 C 690 185, 640 185, 640 175 Z" class="svg-node-bg" />
+          <line x1="640" y1="155" x2="690" y2="155" stroke="var(--border)" stroke-width="1.5" />
+          <line x1="640" y1="165" x2="690" y2="165" stroke="var(--border)" stroke-width="1.5" />
+          <text x="665" y="170" class="svg-text">Valkey</text>
+
+          <rect x="620" y="220" width="90" height="85" rx="6" class="svg-node-bg" style="stroke-dasharray: 2;" />
+          <text x="665" y="240" class="svg-text" style="fill: var(--info);">Kafka Cluster</text>
+          <rect x="630" y="255" width="70" height="20" rx="4" class="svg-node-info" />
+          <text x="665" y="269" class="svg-text" style="font-size:9px;">order-topic</text>
+          <rect x="630" y="280" width="70" height="20" rx="4" class="svg-node-info" />
+          <text x="665" y="294" class="svg-text" style="font-size:9px;">accounting/fraud</text>
+
+          <rect x="630" y="95" width="80" height="35" rx="6" class="svg-node-success" />
+          <text x="670" y="116" class="svg-text" style="fill: var(--success);">llm (Mock)</text>
+
+          <path d="M 120 205 L 142 205" marker-end="url(#arrow)" class="svg-line" />
+          <path d="M 260 205 L 282 205" marker-end="url(#arrow)" class="svg-line" />
+          
+          <path d="M 390 185 L 432 60" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 390 195 L 432 115" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 390 205 L 432 170" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 390 210 L 432 225" marker-end="url(#arrow)" class="svg-line" />
+          <path d="M 390 220 L 432 340" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+
+          <path d="M 550 50 L 632 50" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 550 100 L 632 60" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 550 115 L 622 115" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 550 170 L 632 165" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <path d="M 495 255 L 495 267" marker-end="url(#arrow)" class="svg-line" />
+          <path d="M 550 230 L 612 245" marker-end="url(#arrow)" class="svg-line" />
+        </svg>
+      </div>
+
+      <h3>4.2 Sơ đồ trình tự Luồng Checkout (Sequence Diagram)</h3>
+      <p>Dưới đây là sơ đồ tương tác gRPC/HTTP đồng bộ giữa các microservices khi người dùng thực hiện thanh toán đơn hàng:</p>
+      
+      <div class="media-contain">
+        <svg viewBox="0 0 920 400" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" data-animate="draw">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent)" />
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 2 L 6 5 L 0 8 z" fill="var(--text-muted)" />
+            </marker>
+          </defs>
+          
+          <!-- Actor Nodes -->
+          <rect x="15" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="50" y="29" class="svg-text" style="font-size:10px;">frontend</text>
+          <line x1="50" y1="40" x2="50" y2="390" class="svg-line-muted" />
+          
+          <rect x="115" y="10" width="70" height="30" rx="4" class="svg-node-accent" />
+          <text x="150" y="29" class="svg-text" style="fill: var(--accent); font-size:10px;">checkout</text>
+          <line x1="150" y1="40" x2="150" y2="390" class="svg-line-muted" />
+          
+          <rect x="215" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="250" y="29" class="svg-text" style="font-size:10px;">cart</text>
+          <line x1="250" y1="40" x2="250" y2="390" class="svg-line-muted" />
+          
+          <rect x="315" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="350" y="29" class="svg-text" style="font-size:10px;">catalog</text>
+          <line x1="350" y1="40" x2="350" y2="390" class="svg-line-muted" />
+          
+          <rect x="415" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="450" y="29" class="svg-text" style="font-size:10px;">currency</text>
+          <line x1="450" y1="40" x2="450" y2="390" class="svg-line-muted" />
+          
+          <rect x="515" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="550" y="29" class="svg-text" style="font-size:10px;">shipping</text>
+          <line x1="550" y1="40" x2="550" y2="390" class="svg-line-muted" />
+          
+          <rect x="615" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="650" y="29" class="svg-text" style="font-size:10px;">payment</text>
+          <line x1="650" y1="40" x2="650" y2="390" class="svg-line-muted" />
+          
+          <rect x="715" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="750" y="29" class="svg-text" style="font-size:10px;">email</text>
+          <line x1="750" y1="40" x2="750" y2="390" class="svg-line-muted" />
+          
+          <rect x="815" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="850" y="29" class="svg-text" style="font-size:10px;">Kafka</text>
+          <line x1="850" y1="40" x2="850" y2="390" class="svg-line-muted" />
+
+          <!-- Sequence Arrows -->
+          <!-- 1. PlaceOrder -->
+          <path d="M 50 65 L 142 65" marker-end="url(#arrow)" class="svg-line" />
+          <text x="95" y="60" class="svg-text-small" style="text-anchor: middle;">gRPC PlaceOrder</text>
+          
+          <!-- 2. GetCart -->
+          <path d="M 150 90 L 242 90" marker-end="url(#arrow)" class="svg-line" />
+          <text x="195" y="85" class="svg-text-small">GetCart</text>
+          <path d="M 250 105 L 158 105" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 3. GetProduct -->
+          <path d="M 150 130 L 342 130" marker-end="url(#arrow)" class="svg-line" />
+          <text x="245" y="125" class="svg-text-small">GetProduct</text>
+          <path d="M 350 145 L 158 145" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 4. Convert -->
+          <path d="M 150 170 L 442 170" marker-end="url(#arrow)" class="svg-line" />
+          <text x="295" y="165" class="svg-text-small">Convert Currency</text>
+          <path d="M 450 185 L 158 185" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 5. Shipping Quote -->
+          <path d="M 150 210 L 542 210" marker-end="url(#arrow)" class="svg-line" />
+          <text x="345" y="205" class="svg-text-small">Get Shipping Quote</text>
+          <path d="M 550 225 L 158 225" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 6. Charge Payment -->
+          <path d="M 150 250 L 642 250" marker-end="url(#arrow)" class="svg-line" />
+          <text x="395" y="245" class="svg-text-small" style="fill: var(--danger); font-weight: 700;">Charge (Payment)</text>
+          <path d="M 650 265 L 158 265" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 7. Ship Order -->
+          <path d="M 150 290 L 542 290" marker-end="url(#arrow)" class="svg-line" />
+          <text x="345" y="285" class="svg-text-small">Ship Order</text>
+          <path d="M 550 305 L 158 305" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 8. EmptyCart -->
+          <path d="M 150 330 L 242 330" marker-end="url(#arrow)" class="svg-line" />
+          <text x="195" y="325" class="svg-text-small">EmptyCart</text>
+          
+          <!-- 9. Email Confirmation -->
+          <path d="M 150 350 L 742 350" marker-end="url(#arrow)" class="svg-line" />
+          <text x="445" y="345" class="svg-text-small">Send Confirmation</text>
+          
+          <!-- 10. Kafka Order Event -->
+          <path d="M 150 370 L 842 370" marker-end="url(#arrow)" class="svg-line" style="stroke-dasharray: 2;" />
+          <text x="495" y="365" class="svg-text-small" style="fill: var(--info);">Publish Order Event (Async)</text>
+          
+          <!-- 11. Return Response -->
+          <path d="M 150 385 L 58 385" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+        </svg>
+      </div>
+
+      <h3>4.3 Sơ đồ trình tự Luồng AI cho Review sản phẩm (Sequence Diagram)</h3>
+      <p>Mô tả luồng tích hợp AI để giải đáp thắc mắc và tổng hợp reviews trên giao diện storefront:</p>
+      
+      <div class="media-contain">
+        <svg viewBox="0 0 760 340" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" data-animate="draw">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent)" />
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 2 L 6 5 L 0 8 z" fill="var(--text-muted)" />
+            </marker>
+          </defs>
+          
+          <!-- Actor Nodes -->
+          <rect x="25" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="60" y="29" class="svg-text" style="font-size:10px;">frontend</text>
+          <line x1="60" y1="40" x2="60" y2="330" class="svg-line-muted" />
+          
+          <rect x="145" y="10" width="90" height="30" rx="4" class="svg-node-accent" />
+          <text x="190" y="29" class="svg-text" style="fill: var(--accent); font-size:10px;">product-reviews</text>
+          <line x1="190" y1="40" x2="190" y2="330" class="svg-line-muted" />
+          
+          <rect x="265" y="10" width="70" height="30" rx="4" class="svg-node-bg" />
+          <text x="300" y="29" class="svg-text" style="font-size:10px;">flagd</text>
+          <line x1="300" y1="40" x2="300" y2="330" class="svg-line-muted" />
+          
+          <rect x="375" y="10" width="90" height="30" rx="4" class="svg-node-success" />
+          <text x="420" y="29" class="svg-text" style="fill: var(--success); font-size:10px;">llm (Mock)</text>
+          <line x1="420" y1="40" x2="420" y2="330" class="svg-line-muted" />
+          
+          <rect x="495" y="10" width="90" height="30" rx="4" class="svg-node-bg" />
+          <text x="540" y="29" class="svg-text" style="font-size:10px;">PostgreSQL</text>
+          <line x1="540" y1="40" x2="540" y2="330" class="svg-line-muted" />
+          
+          <rect x="615" y="10" width="90" height="30" rx="4" class="svg-node-bg" />
+          <text x="660" y="29" class="svg-text" style="font-size:10px;">product-catalog</text>
+          <line x1="660" y1="40" x2="660" y2="330" class="svg-line-muted" />
+
+          <!-- Arrows -->
+          <!-- 1. Ask AI -->
+          <path d="M 60 65 L 182 65" marker-end="url(#arrow)" class="svg-line" />
+          <text x="120" y="60" class="svg-text-small">AskProductAIAssistant</text>
+          
+          <!-- 2. Check Flag -->
+          <path d="M 190 90 L 292 90" marker-end="url(#arrow)" class="svg-line" />
+          <text x="241" y="85" class="svg-text-small">Read feature flag</text>
+          <path d="M 300 105 L 198 105" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 3. LLM Call 1 -->
+          <path d="M 190 130 L 412 130" marker-end="url(#arrow)" class="svg-line" />
+          <text x="301" y="125" class="svg-text-small">Chat completion (intent detection)</text>
+          
+          <!-- 4. Tool Calls -->
+          <path d="M 420 155 L 198 155" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <text x="309" y="150" class="svg-text-small" style="fill: var(--info);">Tool calls: get_reviews</text>
+          
+          <!-- 5. Get DB Reviews -->
+          <path d="M 190 185 L 532 185" marker-end="url(#arrow)" class="svg-line" />
+          <text x="361" y="180" class="svg-text-small">Lấy reviews trong Postgres</text>
+          <path d="M 540 200 L 198 200" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 6. Get Catalog Info -->
+          <path d="M 190 230 L 652 230" marker-end="url(#arrow)" class="svg-line" />
+          <text x="421" y="225" class="svg-text-small">Lấy thông tin sản phẩm</text>
+          <path d="M 660 245 L 198 245" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 7. LLM Call 2 -->
+          <path d="M 190 275 L 412 275" marker-end="url(#arrow)" class="svg-line" />
+          <text x="301" y="270" class="svg-text-small">Tổng hợp context &amp; reviews</text>
+          <path d="M 420 295 L 198 295" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          
+          <!-- 8. Return Answer -->
+          <path d="M 190 315 L 68 315" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+        </svg>
+      </div>
+
+      <h3>4.4 Dữ liệu và luồng sự kiện</h3>
+      <p>Cấu hình baseline quy định các dịch vụ dữ liệu hoạt động như các dependency nền tảng:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Thành phần dữ liệu</th>
+            <th>Vai trò / Dùng cho</th>
+            <th>Chỉ số runtime cần theo dõi</th>
+            <th>Drawbacks / Điểm yếu baseline</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>PostgreSQL</strong></td>
+            <td>Lưu catalog sản phẩm, reviews khách hàng và order ghi sổ accounting.</td>
+            <td>Connection pool saturation, query latency, active connections.</td>
+            <td>In-cluster single instance, cạn connection pool sẽ làm nghẽn toàn bộ catalog/checkout.</td>
+          </tr>
+          <tr>
+            <td><strong>Valkey</strong></td>
+            <td>Lưu trữ tạm thời trạng thái giỏ hàng (Cart) của khách hàng.</td>
+            <td>Memory usage, read/write latency, restart count, eviction.</td>
+            <td>Chưa bật persistence mặc định, pod restart là bay sạch giỏ hàng của khách.</td>
+          </tr>
+          <tr>
+            <td><strong>Kafka</strong></td>
+            <td>Publisher-Subscriber chuyển giao event đơn hàng PlaceOrder bất đồng bộ.</td>
+            <td>Producer send errors, consumer group lag, topic throughput.</td>
+            <td>Chạy Kraft single broker, có rủi ro nghẽn queue và thất thoát tin nhắn nếu broker crash.</td>
+          </tr>
+          <tr>
+            <td><strong>OpenSearch</strong></td>
+            <td>Lưu trữ và phân tích logs tập trung của toàn microservices.</td>
+            <td>Disk space utilization, retention period, write latency.</td>
+            <td>Tắt security plugin trong baseline; cardial log phình to gây tràn đĩa in-cluster.</td>
+          </tr>
+          <tr>
+            <td><strong>Prometheus</strong></td>
+            <td>Lưu trữ và truy vấn metrics dạng time-series để đo SLO.</td>
+            <td>Scrape time, tsdb disk size, retention, cardinality.</td>
+            <td>Chưa có persistence volume, restart pod sẽ mất sạch biểu đồ xu hướng SLO cũ.</td>
+          </tr>
+          <tr>
+            <td><strong>Jaeger</strong></td>
+            <td>Distributed trace phục vụ incident investigation (điều tra sự cố).</td>
+            <td>Sampling rate, trace storage utilization, query speed.</td>
+            <td>Mặc định lưu memory, restart pod là mất lịch sử traces điều tra sự cố.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Mọi dependency trên checkout path đều đồng bộ và có tính quyết định; cần timeout ngắn và fallback an toàn.</div>
+    </section>
+
+    <!-- Section 4 -->
+    <section id="s4" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Chi tiết thành phần</div>
+      <div class="section-header">
+        <div class="section-icon">🗃️</div>
+        <h2>4. Danh mục Dịch vụ (Service Directory)</h2>
+      </div>
+      <p>Bảng danh mục dưới đây tổng hợp chi tiết vai trò, các dependency trực tiếp và rủi ro vận hành cần lưu ý đối với toàn bộ 17 service cấu thành hệ thống:</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tên Service</th>
+            <th>Nhóm & Chức năng chính</th>
+            <th>Dependency quan trọng</th>
+            <th>Lưu ý vận hành / Rủi ro chính</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>frontend-proxy</strong></td>
+            <td>Storefront Ingress Router (Envoy)</td>
+            <td>frontend, Grafana, Jaeger, flagd</td>
+            <td>Cổng vào duy nhất của người dùng; cần xác minh public exposure thực tế trên AWS.</td>
+          </tr>
+          <tr>
+            <td><strong>frontend</strong></td>
+            <td>Storefront Next.js App</td>
+            <td>Tất cả các backend gRPC</td>
+            <td>Đóng vai trò tổng hợp UI; là điểm đo lường SLO latency tốt nhất từ góc nhìn khách hàng.</td>
+          </tr>
+          <tr>
+            <td><strong>product-catalog</strong></td>
+            <td>Quản lý danh mục sản phẩm</td>
+            <td>PostgreSQL, flagd</td>
+            <td>Tính năng tìm kiếm dùng <code>LOWER LIKE</code>, dễ gây nghẽn PostgreSQL khi lượng sản phẩm lớn.</td>
+          </tr>
+          <tr>
+            <td><strong>product-reviews</strong></td>
+            <td>Quản lý reviews & AI Assistant</td>
+            <td>PostgreSQL, LLM, catalog, flagd</td>
+            <td>Gọi LLM API ngoài, cần theo dõi latency, cost per token và xử lý rate limit (429).</td>
+          </tr>
+          <tr>
+            <td><strong>llm</strong></td>
+            <td>Mock OpenAI service</td>
+            <td>flagd</td>
+            <td>Là endpoint giả lập phục vụ baseline; cần thay bằng API key thật qua Kubernetes Secret.</td>
+          </tr>
+          <tr>
+            <td><strong>cart</strong></td>
+            <td>Thao tác giỏ hàng</td>
+            <td>Valkey, flagd</td>
+            <td>Có sẵn cơ chế retry reconnect Valkey trong code nhưng cart vẫn phụ thuộc vào độ bền dữ liệu Valkey.</td>
+          </tr>
+          <tr>
+            <td><strong>checkout</strong></td>
+            <td>Điều phối thanh toán & đặt hàng</td>
+            <td>Các gRPC backend + Kafka</td>
+            <td><strong>Critical Path!</strong> Cần giám sát chặt chẽ traces, logs và thiết lập alert lập tức khi lỗi.</td>
+          </tr>
+          <tr>
+            <td><strong>payment</strong></td>
+            <td>Thanh toán thẻ giả lập</td>
+            <td>flagd</td>
+            <td>Sự cố INC-3 từng xảy ra do service khởi động chậm và thiếu cấu hình probe chính xác.</td>
+          </tr>
+          <tr>
+            <td><strong>shipping / quote</strong></td>
+            <td>Báo giá ship và tạo vận đơn</td>
+            <td>quote service</td>
+            <td>Nằm trên checkout path, một lỗi phát sinh từ shipping/quote sẽ làm checkout thất bại.</td>
+          </tr>
+          <tr>
+            <td><strong>currency</strong></td>
+            <td>Quy đổi đơn giá ngoại tệ</td>
+            <td>Không có</td>
+            <td>Service xử lý đồng bộ và không có cache cục bộ; cần HA để tránh single replica crash.</td>
+          </tr>
+          <tr>
+            <td><strong>email</strong></td>
+            <td>Gửi email xác nhận đặt hàng</td>
+            <td>flagd</td>
+            <td>Có fault-injection flag giả lập rò rỉ bộ nhớ (memory-leak), cần theo dõi kỹ RAM pod.</td>
+          </tr>
+          <tr>
+            <td><strong>recommendation</strong></td>
+            <td>Gợi ý sản phẩm tại trang chủ</td>
+            <td>product-catalog, flagd</td>
+            <td>Không chặn luồng mua hàng chính; cần kiểm tra cơ chế cache và fallback khi catalog lỗi.</td>
+          </tr>
+          <tr>
+            <td><strong>ad</strong></td>
+            <td>Hiển thị quảng cáo ngữ cảnh</td>
+            <td>flagd</td>
+            <td>Có fault-injection tăng tải CPU/GC/failure và lag quảng cáo.</td>
+          </tr>
+          <tr>
+            <td><strong>accounting</strong></td>
+            <td>Consume đơn hàng để ghi sổ DB</td>
+            <td>Kafka, PostgreSQL</td>
+            <td>Xử lý bất đồng bộ; cần đảm bảo dữ liệu đơn hàng được ghi nhận và persist bền vững vào Postgres.</td>
+          </tr>
+          <tr>
+            <td><strong>fraud-detection</strong></td>
+            <td>Consume đơn phát hiện gian lận</td>
+            <td>Kafka, flagd</td>
+            <td>Vị trí thích hợp nhất để đo lường consumer lag và alert khi Kafka bị tồn đọng tin nhắn.</td>
+          </tr>
+          <tr>
+            <td><strong>load-generator</strong></td>
+            <td>Locust sinh tải giả lập</td>
+            <td>frontend-proxy, flagd</td>
+            <td>Dùng để kiểm thử tải baseline hệ thống và xác thực tính ổn định sau khi củng cố.</td>
+          </tr>
+          <tr>
+            <td><strong>flagd</strong></td>
+            <td>Hạ tầng quản lý feature flags</td>
+            <td>Central flag source của BTC</td>
+            <td>Được bảo vệ bởi BTC, cấm vô hiệu hóa hoặc can thiệp cục bộ để né tránh sự cố giả lập.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">17 dịch vụ tạo nên mạng lưới chằng chịt, việc nắm rõ dependency giúp cô lập sự cố hiệu quả.</div>
+    </section>
+
+    <!-- Section 5 -->
+    <section id="s5" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Cấu hình hạ tầng</div>
+      <div class="section-header">
+        <div class="section-icon">☸️</div>
+        <h2>5. Hạ tầng Kubernetes & Deployment Baseline</h2>
+      </div>
+      <p>Cấu hình Helm chart mặc định của TechX Corp Platform chứa nhiều điểm chưa tối ưu về mặt High Availability (HA) và phân bổ tài nguyên. Đây là các khoảng trống kỹ thuật lớn cần khảo sát kỹ tại môi trường runtime.</p>
+
+      <h3>6.1 Quy trình triển khai và kiểm thử baseline</h3>
+      <div class="stepper">
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">1</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Xác thực môi trường</div>
+            <div class="step-desc">Kiểm tra AWS credentials, context Kubernetes, Helm chart, Docker buildx và quyền đăng nhập ECR registry của đội thi.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">2</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Build & Push Images</div>
+            <div class="step-desc">Build toàn bộ 17 container images của platform từ source code và push vào tài khoản ECR được chỉ định của TF.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">3</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Helm Dependency Build</div>
+            <div class="step-desc">Chạy lệnh build Helm subcharts cục bộ (Prometheus, OpenSearch, Jaeger subcharts) để sẵn sàng cho nâng cấp release.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">4</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Deploy Helm Release</div>
+            <div class="step-desc">Deploy chart với ECR repository của TF, kèm overlay files-observability và <strong>bắt buộc</strong> values-flagd-sync.yaml.</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">5</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Xác thực Runtime</div>
+            <div class="step-desc">Kiểm tra pod status, thực hiện port-forward frontend-proxy, đặt đơn hàng thử nghiệm và kiểm tra traces/metrics trên Grafana.</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>6.2 Đánh giá cấu hình Helm chart mặc định</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Hạng mục hạ tầng</th>
+            <th>Thiết lập mặc định từ Helm Values</th>
+            <th>Công việc xác minh tại runtime</th>
+            <th>Rủi ro tiềm ẩn & Hạn chế</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Replica Count</strong></td>
+            <td><code>replicas: 1</code> cho tất cả các service</td>
+            <td>Kiểm tra số pod thực tế chạy sau khi deploy Helm chart.</td>
+            <td>Không có dự phòng; bất kỳ pod nào crash cũng làm gián đoạn luồng nghiệp vụ.</td>
+          </tr>
+          <tr>
+            <td><strong>Autoscaling (HPA)</strong></td>
+            <td>Chưa được bật, không có file manifest HPA/PDB</td>
+            <td>Xác minh xem có HPA được tiêm tự động từ bên ngoài không.</td>
+            <td>Hệ thống không thể tự co giãn khi Locust tăng tải, dẫn đến nghẽn CPU/RAM.</td>
+          </tr>
+          <tr>
+            <td><strong>Liveness & Readiness Probes</strong></td>
+            <td>Có template hỗ trợ nhưng values rỗng hoặc thiếu probes</td>
+            <td>Xác minh config probes thực tế của payment, checkout và catalog.</td>
+            <td>Pod mới khởi động chưa kết nối được DB đã nhận traffic, gây lỗi 5xx cho khách (INC-3).</td>
+          </tr>
+          <tr>
+            <td><strong>Resource Requests & Limits</strong></td>
+            <td>Có cấu hình limit bộ nhớ nhưng requests thiết lập tùy tiện</td>
+            <td>Đo lượng CPU/Memory sử dụng thực tế khi Locust chạy tải cực đại.</td>
+            <td>Pod dễ bị rơi vào QoS Burstable/BestEffort, dẫn đến bị Kubernetes trục xuất (Eviction).</td>
+          </tr>
+          <tr>
+            <td><strong>Node Scheduling & AZs</strong></td>
+            <td><code>nodeSelector</code>, <code>affinity</code>, và <code>tolerations</code> mặc định rỗng</td>
+            <td>Kiểm tra xem pod được phân bố trên những Node Group và AZ nào.</td>
+            <td>Nhiều pod quan trọng nằm chung một node vật lý, sập node vật lý sẽ sập toàn storefront.</td>
+          </tr>
+          <tr>
+            <td><strong>Ingress & Network Boundary</strong></td>
+            <td>Template có hỗ trợ nhưng values mặc định chưa bật Ingress</td>
+            <td>Xác định xem frontend-proxy được expose ra ngoài bằng LoadBalancer hay Ingress.</td>
+            <td>Rủi ro phơi bày trực tiếp Grafana, OpenSearch, Jaeger và DB ra internet công cộng.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>6.3 Các Dependency chạy in-cluster dạng Single Replica</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Hạ tầng Dữ liệu</th>
+            <th>Thiết lập mặc định</th>
+            <th>Rủi ro vận hành chính</th>
+            <th>Giải pháp củng cố đề xuất</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>PostgreSQL</strong></td>
+            <td>Deployment in-cluster, 1 replica, PVC đơn lẻ</td>
+            <td>Mất pod Postgres gây sập catalog/accounting; cạn kết nối connection pool (INC-1).</td>
+            <td>Tuning connection pool tối đa, phân tích query log, cân nhắc cấu hình Persistence rõ ràng.</td>
+          </tr>
+          <tr>
+            <td><strong>Valkey</strong></td>
+            <td>Deployment in-cluster, 1 replica</td>
+            <td>Valkey restart hoặc sập node sẽ làm mất sạch giỏ hàng của khách hàng (INC-2).</td>
+            <td>Bật persistence (AOF/RDB), cấu hình Persistent Volume để lưu dữ liệu giỏ hàng qua restarts.</td>
+          </tr>
+          <tr>
+            <td><strong>Kafka Broker</strong></td>
+            <td>KRaft single broker, 1 replica in-cluster</td>
+            <td>Nếu broker sập, order event sẽ bị mất mát, accounting/fraud-detection bị ngắt kết nối.</td>
+            <td>Bật auto-recovery cho consumers; theo dõi consumer lag và alert kịp thời.</td>
+          </tr>
+          <tr>
+            <td><strong>flagd</strong></td>
+            <td>In-cluster pod sync read-only từ central BTC</td>
+            <td>flagd sync lỗi khiến app không đọc được cấu hình sự cố, vi phạm thể lệ cuộc thi.</td>
+            <td>Đảm bảo deploy đúng overlay <code>values-flagd-sync.yaml</code> bắt buộc; không sửa local flags.</td>
+          </tr>
+          <tr>
+            <td><strong>Observability Stack</strong></td>
+            <td>Prometheus/OpenSearch/Jaeger cài qua Helm subchart</td>
+            <td>Dữ liệu logs/traces phình to làm cạn kiệt ổ đĩa in-cluster; mất metric khi restart pod.</td>
+            <td>Cân nhắc cấu hình PVC cho Prometheus và OpenSearch, thiết lập retention policy hợp lý.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>6.4 Những phần chưa có trong repository</h3>
+      <p>Repository hiện tại không chứa các tệp mã nguồn cho hạ tầng AWS EKS vật lý:</p>
+      <ul>
+        <li>Không có mã nguồn IaC (Terraform/CDK) cho VPC, subnets, node groups, load balancers, IAM Roles/IRSA, NAT Gateways và Storage classes.</li>
+        <li>Thông tin về các thành phần hạ tầng này phải được thu thập thủ công thông qua CLI hoặc AWS Console trong Tuần 1.</li>
+        <li>Chỉ khi thu thập đủ dữ liệu này, TF mới có thể đưa ra đánh giá chính xác về security boundary, HA thực tế và tính toán cost.</li>
+      </ul>
+
+      <div class="takeaway">Baseline hạ tầng chạy dạng single instance không có High Availability là SPOF lớn nhất; việc củng cố cấu hình Kubernetes (HA, HPA, Probes, Resource Requests) là ưu tiên bắt buộc.</div>
+    </section>
+
+    <!-- Section 6 -->
+    <section id="s6" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Giám sát hệ thống</div>
+      <div class="section-header">
+        <div class="section-icon">📊</div>
+        <h2>6. Observability & Chỉ số đo lường</h2>
+      </div>
+      <p>TechX Corp Platform đã được tích hợp sẵn một observability stack đầy đủ. Tuy nhiên, việc khai thác dữ liệu này để phục vụ phát hiện sự cố chủ động vẫn còn nhiều khoảng trống.</p>
+
+      <h3>7.1 Luồng telemetry trong hệ thống</h3>
+      <p>Sơ đồ dưới đây mô tả đường đi của metrics, logs và traces từ ứng dụng qua Collector về lưu trữ và hiển thị:</p>
+
+      <div class="media-contain">
+        <svg viewBox="0 0 850 360" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" data-animate="draw">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent)" />
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 2 L 6 5 L 0 8 z" fill="var(--text-muted)" />
+            </marker>
+          </defs>
+
+          <!-- Nodes -->
+          <rect x="30" y="150" width="140" height="50" rx="6" class="svg-node-bg" />
+          <text x="100" y="175" class="svg-text">Ứng dụng &amp; Hạ tầng</text>
+
+          <rect x="230" y="150" width="130" height="50" rx="6" class="svg-node-accent" />
+          <text x="295" y="175" class="svg-text" style="fill: var(--accent); font-weight:700;">OTel Collector</text>
+
+          <rect x="420" y="50" width="120" height="45" rx="6" class="svg-node-info" />
+          <text x="480" y="77" class="svg-text">Prometheus</text>
+
+          <rect x="420" y="150" width="120" height="45" rx="6" class="svg-node-info" />
+          <text x="480" y="177" class="svg-text">Jaeger</text>
+
+          <rect x="420" y="250" width="120" height="45" rx="6" class="svg-node-info" />
+          <text x="480" y="277" class="svg-text">OpenSearch</text>
+
+          <rect x="610" y="150" width="100" height="50" rx="6" class="svg-node-success" />
+          <text x="660" y="179" class="svg-text" style="fill: var(--success); font-weight:700;">Grafana</text>
+
+          <rect x="750" y="155" width="80" height="40" rx="6" class="svg-node-bg" />
+          <text x="790" y="179" class="svg-text" style="font-size:10px;">Alerting</text>
+
+          <!-- Paths -->
+          <path d="M 170 175 L 222 175" marker-end="url(#arrow)" class="svg-line" />
+          <text x="196" y="170" class="svg-text-small">OTLP</text>
+
+          <path d="M 360 165 L 412 85" marker-end="url(#arrow)" class="svg-line" />
+          <text x="385" y="115" class="svg-text-small" style="text-anchor:start;">Metrics</text>
+
+          <path d="M 360 175 L 412 175" marker-end="url(#arrow)" class="svg-line" />
+          <text x="391" y="170" class="svg-text-small">Traces</text>
+
+          <path d="M 360 185 L 412 265" marker-end="url(#arrow)" class="svg-line" />
+          <text x="385" y="235" class="svg-text-small" style="text-anchor:start;">Logs</text>
+
+          <path d="M 540 80 L 610 155" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 540 172.5 L 602 172.5" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+          <path d="M 540 265 L 610 190" marker-end="url(#arrow-muted)" class="svg-line-muted" />
+
+          <path d="M 710 175 L 742 175" marker-end="url(#arrow)" class="svg-line" />
+        </svg>
+      </div>
+
+      <h3>7.2 So sánh hiện trạng & khoảng trống giám sát</h3>
+      <div class="two-col">
+        <div class="comparison-card">
+          <div class="comparison-header" style="color: var(--success);">Những gì đã có sẵn</div>
+          <ul class="comparison-list">
+            <li>Đầy đủ luồng đẩy telemetry (Metrics, Logs, Traces) tập trung về OpenTelemetry Collector.</li>
+            <li>Có sẵn Jaeger UI phục vụ truy vết trace end-to-end cho các request gRPC/HTTP của hệ thống.</li>
+            <li>Các dashboard Prometheus cơ bản cho APM, OTel Collector, PostgreSQL và Nginx.</li>
+            <li>Một alert mẫu thiết lập cho cart latency vượt ngưỡng.</li>
+            <li>Locust load-generator tích hợp sẵn để giả lập traffic người dùng.</li>
+          </ul>
+        </div>
+        <div class="comparison-card">
+          <div class="comparison-header" style="color: var(--danger);">Khoảng trống cần lấp đầy</div>
+          <ul class="comparison-list">
+            <li>Chưa có dashboard SLO chuyên biệt cho Storefront, Cart và Checkout path.</li>
+            <li>Thiếu alert quan trọng cho checkout errors, payment unreachable, DB saturation, Kafka lag.</li>
+            <li>Chưa xác minh được kênh nhận alert (email, Slack, Webhook) có hoạt động thực tế.</li>
+            <li>Chưa làm rõ cấu hình persistence và retention cho Prometheus, OpenSearch và Jaeger.</li>
+            <li>Chưa tối ưu hóa cardinality và query Prometheus để tránh quá tải Grafana dashboard.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>7.3 Các chỉ số baseline bắt buộc phải đo trong Tuần 1</h3>
+      <p>Đội ngũ TF cần ghi nhận các số liệu này ngay sau khi deploy baseline thành công để làm mốc so sánh hiệu quả cải tiến:</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Nhóm chỉ số</th>
+            <th>Metric cụ thể cần đo</th>
+            <th>Ý nghĩa vận hành / Mục tiêu đo lường</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Storefront</strong></td>
+            <td>Tỷ lệ thành công (non-5xx rate), p95 latency theo từng route chính</td>
+            <td>Đánh giá trải nghiệm lướt web của khách hàng (SLO browse/search p95 &lt; 1s).</td>
+          </tr>
+          <tr>
+            <td><strong>Cart</strong></td>
+            <td>Success rate & latency của các API Add/Get/Empty Cart</td>
+            <td>Bảo vệ mục tiêu SLO giỏ hàng hoạt động ổn định &ge; 99,5%.</td>
+          </tr>
+          <tr>
+            <td><strong>Checkout Path</strong></td>
+            <td>Success rate, p95/p99 latency, rate lỗi phân bổ theo dependency</td>
+            <td>Bảo vệ mục tiêu SLO checkout &ge; 99,0% và xác định dependency là bottleneck.</td>
+          </tr>
+          <tr>
+            <td><strong>PostgreSQL</strong></td>
+            <td>Active connections, query latency, CPU/Memory saturation, deadlock rate</td>
+            <td>Phòng ngừa sự cố sập DB do cạn kiệt connection pool (INC-1).</td>
+          </tr>
+          <tr>
+            <td><strong>Valkey</strong></td>
+            <td>Read/write latency, memory usage, eviction rate, restart count</td>
+            <td>Đảm bảo Valkey không bị quá tải bộ nhớ gây mất mát giỏ hàng (INC-2).</td>
+          </tr>
+          <tr>
+            <td><strong>Kafka Cluster</strong></td>
+            <td>Producer publish errors, consumer lag theo topic, throughput</td>
+            <td>Đảm bảo đơn hàng được accounting và fraud-detection ghi nhận đầy đủ, không lag.</td>
+          </tr>
+          <tr>
+            <td><strong>AI Reviews</strong></td>
+            <td>AI Request rate, rate lỗi (429/500), latency, token usage/cost</td>
+            <td>Giám sát chi phí API LLM bên thứ ba và chất lượng tóm tắt reviews sản phẩm.</td>
+          </tr>
+          <tr>
+            <td><strong>Business Cost</strong></td>
+            <td>AWS daily spend, cost per 1000 requests, cost per successful checkout</td>
+            <td>Tối ưu hóa tài nguyên hạ tầng nằm trong ngân sách cho phép ($300/tuần).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Số liệu đo lường thực tế (baseline) trong Tuần 1 là cơ sở duy nhất để chứng minh hiệu quả tối ưu hóa hệ thống cho Ban giám đốc trong bài pitch.</div>
+    </section>
+
+    <!-- Section 7 -->
+    <section id="s7" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Trí tuệ nhân tạo</div>
+      <div class="section-header">
+        <div class="section-icon">🤖</div>
+        <h2>7. Phân tích Tính năng AI (Product Review Assistant)</h2>
+      </div>
+      
+      <h3>8.1 Hiện trạng tính năng AI</h3>
+      <p>Tính năng hỗ trợ AI được tích hợp tại phần hiển thị reviews sản phẩm:</p>
+      <ul>
+        <li>UI cung cấp các quick prompts: Tóm tắt reviews, Gợi ý sản phẩm theo độ tuổi, Tìm phản hồi tiêu cực.</li>
+        <li>Dịch vụ backend <code>product-reviews</code> gọi OpenAI-compatible API bằng OpenAI SDK chính thức.</li>
+        <li>Sử dụng Tool-calling (Function calling) để tự động hóa việc truy vấn reviews sản phẩm từ PostgreSQL và thông tin catalog từ product-catalog.</li>
+        <li>Hệ thống baseline mặc định dùng service <code>llm</code> mock chạy local in-cluster. Để kết nối LLM thật (OpenAI/Anthropic), cần tiêm API keys thông qua Kubernetes Secret và sử dụng overlay values phù hợp.</li>
+      </ul>
+
+      <h3>8.2 Rủi ro của tính năng AI & Biện pháp kiểm chứng</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Rủi ro vận hành</th>
+            <th>Cách thức tác động hệ thống</th>
+            <th>Cách thức kiểm chứng & Giảm thiểu</th>
+            <th>Drawbacks / Đánh đổi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Hallucination (Ảo tưởng)</strong></td>
+            <td>Tóm tắt sai lệch review, tự chế thông số sản phẩm không tồn tại.</td>
+            <td>Xây dựng eval set từ reviews thực tế; so sánh đối chiếu facts sản phẩm tĩnh.</td>
+            <td>Đòi hỏi công sức dán nhãn thủ công và xây dựng bộ dữ liệu đánh giá ban đầu.</td>
+          </tr>
+          <tr>
+            <td><strong>Rate Limit (429) & Outage</strong></td>
+            <td>Cổng LLM sập kéo theo tính năng xem review của khách bị lỗi/sập.</td>
+            <td>Bật cờ fault-injection của flagd để kiểm thử timeout, retry và fallback an toàn.</td>
+            <td>Chuyển sang chế độ fallback có thể làm giảm trải nghiệm cá nhân hóa của khách hàng.</td>
+          </tr>
+          <tr>
+            <td><strong>High Latency (Trễ cao)</strong></td>
+            <td>LLM phản hồi chậm làm nghẽn gRPC reviews, kéo dài thời gian tải trang.</td>
+            <td>Tách riêng latency LLM trong distributed trace; áp dụng streaming hoặc model nhỏ.</td>
+            <td>Model nhỏ hơn (ví dụ: gpt-4o-mini) có thể cho chất lượng tóm tắt kém hơn.</td>
+          </tr>
+          <tr>
+            <td><strong>Cost Spike (Chi phí vọt)</strong></td>
+            <td>Người dùng spam câu hỏi dài làm tăng vọt chi phí token của hệ thống.</td>
+            <td>Ghi nhận token usage/cost per request; giới hạn ký tự nhập; cache câu trả lời chung.</td>
+            <td>Cache câu trả lời làm giảm tính cập nhật khi có review mới được thêm vào.</td>
+          </tr>
+          <tr>
+            <td><strong>Data Leakage (Rò rỉ dữ liệu)</strong></td>
+            <td>Gửi prompt chứa thông tin nhạy cảm hoặc PII của khách hàng lên LLM.</td>
+            <td>Review biến <code>OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</code> trước khi dùng dữ liệu thật; ẩn thông tin nhạy cảm trước khi gửi API.</td>
+            <td>Gây khó khăn cho việc debug chi tiết lỗi cụ thể của từng khách hàng.</td>
+          </tr>
+          <tr>
+            <td><strong>Quản lý Secret</strong></td>
+            <td>API key LLM bị lộ qua logs, hard-code trong source hoặc không tồn tại khi cần.</td>
+            <td>Xác minh Kubernetes Secret tồn tại và đúng tên; quét logs/traces xem có in ra key không; đảm bảo không hard-code key trong source code.</td>
+            <td>Rotate key gây downtime ngắn nếu không có cơ chế hot-reload; phải kiểm soát RBAC truy cập Secret.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">AI Reviews là tính năng bổ trợ (best-effort); tuyệt đối không để lỗi kết nối hoặc trễ của LLM làm đứt gãy luồng xem reviews sản phẩm truyền thống của khách hàng.</div>
+    </section>
+
+    <!-- Section 8 -->
+    <section id="s8" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Tiêu chuẩn vận hành</div>
+      <div class="section-header">
+        <div class="section-icon">🛡️</div>
+        <h2>8. Đánh giá hệ thống theo 5 trụ cột CDO & Sự cố cũ</h2>
+      </div>
+      <p>Việc đánh giá hệ thống dựa trên 5 trụ cột CDO (Security, Reliability, Performance, Cost, Auditability) giúp TF định hình rõ nét danh sách backlog cần ưu tiên củng cố trong Phase 3.</p>
+
+      <h3>8.1 Bảng đánh giá theo 5 trụ cột CDO</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Trụ cột CDO</th>
+            <th>Điểm mạnh hiện tại</th>
+            <th>Rủi ro / Khoảng trống</th>
+            <th>Ưu tiên hành động trong Tuần 1</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Security (Bảo mật)</strong></td>
+            <td>Một số service chạy non-root; API key LLM dùng K8s Secret.</td>
+            <td>Grafana anonymous Admin, OpenSearch tắt auth, thiếu NetworkPolicy và IRSA.</td>
+            <td>Xác minh public exposure của Grafana; quét log xem có leak dữ liệu nhạy cảm không.</td>
+          </tr>
+          <tr>
+            <td><strong>Reliability (Tin cậy)</strong></td>
+            <td>Có init container chờ dependency; health service nhiều service; cart có reconnect retry.</td>
+            <td>Workload chạy single replica, thiếu HPA/PDB, data layer in-cluster không HA, Kafka producer acknowledgment chưa kiểm chứng.</td>
+            <td>Kiểm tra rendered manifest; test node drain, rollout và dependency failure; cấu hình liveness/readiness probes.</td>
+          </tr>
+          <tr>
+            <td><strong>Performance (Hiệu năng)</strong></td>
+            <td>Tích hợp sẵn OTel spans, RED metrics và công cụ Locust.</td>
+            <td>Chưa right-size tài nguyên; search query chậm; không có autoscaling baseline.</td>
+            <td>Tạo baseline load test bằng Locust; trace bottleneck; đo CPU/Memory thực tế.</td>
+          </tr>
+          <tr>
+            <td><strong>Cost (Tối ưu chi phí)</strong></td>
+            <td>Cấu hình sẵn ResourceQuota trong thư mục deploy/ để tránh lãng phí.</td>
+            <td>Chưa có AWS Budget/Alert; chưa rõ chi phí NAT Gateway, LB và EBS Disk.</td>
+            <td>Bật AWS Budgets và Cost Anomaly Detection; ghi chép chi tiêu daily spend.</td>
+          </tr>
+          <tr>
+            <td><strong>Auditability (Ghi sổ)</strong></td>
+            <td>Rules yêu cầu ADR, decision log; logs/traces OTel sẵn sàng.</td>
+            <td>Triển khai thủ công bằng Helm; chưa có audit log Kubernetes/AWS.</td>
+            <td>Dựng sẵn cấu trúc lưu trữ ADR; lập lịch trực on-call và mẫu báo cáo Ops Review.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>8.2 Lịch sử các sự cố hệ thống cũ</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Sự cố lịch sử</th>
+            <th>Nguyên nhân gốc rễ</th>
+            <th>Biện pháp phòng ngừa chủ động</th>
+            <th>Hạn chế / Chi phí đánh đổi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>INC-1: Checkout chậm/lỗi do cạn DB connection</strong></td>
+            <td>Dịch vụ catalog và reviews kết nối PostgreSQL không giải phóng pool.</td>
+            <td>Tuning connection pool tối đa; cấu hình alert saturation DB; test tải baseline.</td>
+            <td>Đòi hỏi phải chạy test tải kỹ để tránh đặt giới hạn connection quá thấp gây nghẽn app.</td>
+          </tr>
+          <tr>
+            <td><strong>INC-2: Mất giỏ hàng khi node bị reschedule</strong></td>
+            <td>Valkey chạy in-cluster single replica, không persistence/volume.</td>
+            <td>Cấu hình Persistent Volume cho Valkey; bật AOF/RDB; cân nhắc managed DB.</td>
+            <td>Managed DB hoặc Volume persistence làm tăng chi phí hạ tầng AWS và latency ghi disk.</td>
+          </tr>
+          <tr>
+            <td><strong>INC-3: Lỗi payment khi deploy pod mới</strong></td>
+            <td>Deployment thay đổi cấu hình nhưng K8s đẩy traffic vào pod mới chưa khởi tạo xong.</td>
+            <td>Cài đặt cấu hình chuẩn xác liveness/readiness probes; RollingUpdate strategy.</td>
+            <td>Làm tăng thời gian deploy hoàn tất của một Helm release (deployment duration).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Lịch sử sự cố (INC-1, INC-2, INC-3) chỉ ra data layer và readiness probes là các điểm yếu thực tế nghiêm trọng nhất, cần được củng cố ngay lập tức.</div>
+    </section>
+
+    <!-- Section 9 -->
+    <section id="s9" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Kiểm thử chịu lỗi</div>
+      <div class="section-header">
+        <div class="section-icon">⚠️</div>
+        <h2>9. Cơ chế Fault Injection (flagd)</h2>
+      </div>
+      <p>Hạ tầng <code>flagd</code> và các OpenFeature hooks được Ban tổ chức (BTC) kiểm soát chặt chẽ để thử thách khả năng tự phục hồi của ứng dụng. TF bắt buộc phải duy trì kết nối này và không được tìm cách vô hiệu hóa.</p>
+
+      <div class="callout callout-danger">
+        <p><strong>Luật chơi nghiêm ngặt (10.1):</strong> Khi deploy ứng dụng lên EKS, bắt buộc phải kèm theo tệp cấu hình sync <code>phase3/deploy/values-flagd-sync.yaml</code> để flagd nhận cờ sự cố từ central source của BTC ở chế độ read-only. Mọi hành vi gỡ bỏ, tắt feature flag, đổi endpoint sync hoặc bypass cơ chế này đều bị coi là vi phạm luật chơi và dẫn đến disqualification.</p>
+      </div>
+
+      <h3>10.2 Danh sách các Fault-injection Flag có sẵn</h3>
+      <p>Bảng tổng hợp các flag sự cố mà BTC có thể kích hoạt tại central source và hướng xử lý đề xuất cho ứng dụng:</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Nhóm Fault</th>
+            <th>Feature Flag ID</th>
+            <th>Hành vi giả lập của sự cố</th>
+            <th>Ảnh hưởng & Hướng đối phó đề xuất</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>AI Reviews</strong></td>
+            <td><code>llmInaccurateResponse</code>, <code>llmRateLimitError</code></td>
+            <td>AI trả lời sai lệch thông tin hoặc trả về lỗi 429 liên tục.</td>
+            <td>Thiết lập UI hiển thị fallback rõ ràng, giới hạn spam, và đo lường token pass rate.</td>
+          </tr>
+          <tr>
+            <td><strong>Product Catalog</strong></td>
+            <td><code>productCatalogFailure</code>, <code>recommendationCacheFailure</code></td>
+            <td>Lỗi lấy danh mục sản phẩm hoặc lỗi cache gợi ý.</td>
+            <td>Cấu hình local cache; ẩn mục gợi ý một cách mềm mại thay vì làm sập cả trang chủ.</td>
+          </tr>
+          <tr>
+            <td><strong>Cart</strong></td>
+            <td><code>cartFailure</code>, <code>failedReadinessProbe</code></td>
+            <td>Lỗi thao tác giỏ hàng hoặc pod cart không sẵn sàng nhận traffic.</td>
+            <td>Cấu hình retry kết nối Valkey; thiết lập readiness probe chính xác; thông báo cho khách.</td>
+          </tr>
+          <tr>
+            <td><strong>Payment</strong></td>
+            <td><code>paymentFailure</code>, <code>paymentUnreachable</code></td>
+            <td>Lỗi cổng thanh toán hoặc không thể kết nối payment service.</td>
+            <td>Cấu hình timeout ngắn (gRPC deadline); hiển thị lỗi rõ ràng; lưu nháp giỏ hàng.</td>
+          </tr>
+          <tr>
+            <td><strong>Kafka Queue</strong></td>
+            <td><code>kafkaQueueProblems</code></td>
+            <td>Độ trễ và quá tải tin nhắn trên hàng đợi đơn hàng Kafka.</td>
+            <td>Giám sát chặt chẽ consumer lag; tối ưu hóa consumer throughput bất đồng bộ.</td>
+          </tr>
+          <tr>
+            <td><strong>Load & Edge</strong></td>
+            <td><code>loadGeneratorFloodHomepage</code>, <code>imageSlowLoad</code></td>
+            <td>Tải trang chủ tăng đột biến; ảnh sản phẩm tải cực kỳ chậm.</td>
+            <td>Cấu hình HPA cho frontend; tối ưu hóa cache static assets và nén ảnh.</td>
+          </tr>
+          <tr>
+            <td><strong>Degradation</strong></td>
+            <td><code>adManualGc</code> / <code>adHighCpu</code> / <code>adFailure</code>, <code>emailMemoryLeak</code></td>
+            <td>Dịch vụ ad kích hoạt GC thủ công, ngốn CPU; dịch vụ email rò rỉ RAM gây sập pod.</td>
+            <td>Giới hạn Resource Limits chặt chẽ để cô lập lỗi; cấu hình auto-restart pod khi quá ngưỡng.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Không được né tránh sự cố của flagd bằng cách cấu hình local; hãy xây dựng các giải pháp timeout, retry, circuit breaker để ứng dụng tự vượt qua sự cố một cách thông minh.</div>
+    </section>
+
+    <!-- Section 10 -->
+    <section id="s10" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Hành động tuần 1</div>
+      <div class="section-header">
+        <div class="section-icon">📅</div>
+        <h2>10. Kế hoạch Tuần 1</h2>
+      </div>
+      <p>Kế hoạch hành động Tuần 1 tập trung tối đa vào việc đưa hệ thống baseline chạy thành công trên tài khoản AWS của TF, thu thập số liệu nền và thiết lập quy trình vận hành tối thiểu.</p>
+
+      <h3>11.1 Mục tiêu bắt buộc vào cuối Tuần 1</h3>
+      <div class="def-list">
+        <div class="def-row">
+          <div class="def-term">Deploy baseline thành công</div>
+          <div class="def-desc">Triển khai thành công Helm chart TechX Corp Platform trên cluster EKS của TF kèm overlay values-flagd-sync.yaml.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Xác thực luồng nghiệp vụ</div>
+          <div class="def-desc">Chạy thử luồng đặt hàng hoàn chỉnh và chứng minh được trace, logs và Kafka consumer đã hoạt động thông suốt.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Số liệu baseline đầy đủ</div>
+          <div class="def-desc">Ghi nhận các thông số ban đầu về SLO (Checkout/Cart), tải Locust, tài nguyên CPU/Memory và chi phí AWS hàng ngày.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Sổ đăng ký rủi ro</div>
+          <div class="def-desc">Thiết lập Risk Register ban đầu và phân loại danh sách backlog cải tiến dựa trên ma trận rủi ro × tác động.</div>
+        </div>
+        <div class="def-row">
+          <div class="def-term">Hồ sơ Pitch củng cố</div>
+          <div class="def-desc">Chuẩn bị bài pitch trình bày cho Ban giám đốc, được bảo vệ bằng số liệu thực tế đo lường được thay vì giả định tĩnh.</div>
+        </div>
+      </div>
+
+      <h3>11.2 Danh sách ưu tiên công việc Tuần 1</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Công việc cụ thể</th>
+            <th>Kết quả đầu ra cần có</th>
+            <th>Mức độ ưu tiên</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Xác nhận quyền truy cập và workspace</td>
+            <td>AWS identity, EKS context, ECR registry, owners rõ ràng.</td>
+            <td><span class="badge badge-danger">P0 - Bắt buộc</span></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Build/push toàn bộ app image vào ECR</td>
+            <td>Danh sách ECR repositories, tags/digests, build logs.</td>
+            <td><span class="badge badge-danger">P0 - Bắt buộc</span></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Deploy baseline với flagd sync</td>
+            <td>Helm release trạng thái deployed, pods running ổn định.</td>
+            <td><span class="badge badge-danger">P0 - Bắt buộc</span></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Kiểm tra business flow E2E</td>
+            <td>Có bằng chứng trace/log chứng minh checkout và accounting chạy.</td>
+            <td><span class="badge badge-danger">P0 - Bắt buộc</span></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Tạo baseline SLO, performance và cost</td>
+            <td>Ghi nhận p95 latency, error rates, CPU/Mem, cost/ngày.</td>
+            <td><span class="badge badge-danger">P0 - Bắt buộc</span></td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>Khảo sát cấu hình runtime thực tế</td>
+            <td>Bảng khảo sát thực tế replicas, probes, requests/limits, QoS.</td>
+            <td><span class="badge badge-warning">P1 - Cần thiết</span></td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>Lập sổ đăng ký rủi ro (Risk Register)</td>
+            <td>Mã rủi ro, bằng chứng, mức nghiêm trọng, mitigation, rollback.</td>
+            <td><span class="badge badge-warning">P1 - Cần thiết</span></td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td>Lựa chọn backlog cho Tuần 2</td>
+            <td>Danh sách backlog xếp hạng theo ROI, lý do lựa chọn.</td>
+            <td><span class="badge badge-warning">P1 - Cần thiết</span></td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td>Dựng quy trình vận hành tối thiểu</td>
+            <td>Các file template ADR, decision log, runbook, postmortem.</td>
+            <td><span class="badge badge-warning">P1 - Cần thiết</span></td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>Chuẩn bị Pitch deck Tuần 1</td>
+            <td>Bài thuyết trình đầy đủ kiến trúc, rủi ro, backlog và trade-off.</td>
+            <td><span class="badge badge-warning">P1 - Cần thiết</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>11.3 Bảng số liệu baseline dùng cho bài Pitch</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Chỉ số</th>
+            <th>Baseline Tuần 1</th>
+            <th>Mục tiêu sau thay đổi</th>
+            <th>Nguồn dữ liệu kiểm chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Checkout success rate</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>&ge; 99,0%</td>
+            <td>Grafana / Prometheus metrics</td>
+          </tr>
+          <tr>
+            <td><strong>Storefront p95 latency</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>&lt; 1 giây</td>
+            <td>Grafana / Prometheus metrics</td>
+          </tr>
+          <tr>
+            <td><strong>Cart success rate</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>&ge; 99,5%</td>
+            <td>Grafana / Prometheus metrics</td>
+          </tr>
+          <tr>
+            <td><strong>Kafka lag dưới tải</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>Giới hạn biên &amp; có alerts</td>
+            <td>Prometheus metric exporter</td>
+          </tr>
+          <tr>
+            <td><strong>Cost / 1.000 requests</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>Giảm thiểu hoặc giữ ổn định</td>
+            <td>AWS Cost Explorer + Locust logs</td>
+          </tr>
+          <tr>
+            <td><strong>Cost / successful checkout</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>Giảm thiểu hoặc giữ ổn định</td>
+            <td>AWS Cost Explorer + DB order count</td>
+          </tr>
+          <tr>
+            <td><strong>CPU/Memory waste</strong></td>
+            <td>TBD (Đo thực tế)</td>
+            <td>Giảm over/under-provisioning</td>
+            <td><code>kubectl top pods</code> vs requests values</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Mọi kết luận và đề xuất cải tiến trong bài pitch Tuần 1 phải được hỗ trợ bằng bằng chứng đo lường thực tế từ cluster, không dùng giả thuyết tĩnh.</div>
+    </section>
+
+    <!-- Section 11 -->
+    <section id="s11" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Tương lai chuyển giao</div>
+      <div class="section-header">
+        <div class="section-icon">🚀</div>
+        <h2>11. Định hướng Tuần 2 & Tuần 3</h2>
+      </div>
+      <p>Lộ trình Phase 3 được phân bổ rõ ràng giữa thực thi tối ưu hóa ở Tuần 2 và nghiệm thu, đánh giá ở Tuần 3 để đảm bảo hệ thống chuyển đổi an toàn.</p>
+
+      <div class="two-col">
+        <div class="comparison-card">
+          <div class="comparison-header" style="color: var(--accent);">Tuần 2: Thực thi cải tiến & Chống chịu sự cố</div>
+          <ul class="comparison-list">
+            <li>Triển khai các backlog củng cố HA, probes và right-sizing đã được phê duyệt ở bài Pitch Tuần 1.</li>
+            <li><strong>Giữ nguyên flagd sync:</strong> Tập trung xây dựng cơ chế chịu lỗi trong code thay vì can thiệp tắt flagd sự cố.</li>
+            <li>Sau mỗi thay đổi lớn: thực hiện deploy Helm kèm rollback plan và chạy load test để verify SLO.</li>
+            <li>Bắt đầu nhịp trực on-call và handoff báo cáo vận hành hàng ngày (SLO, error budget, daily spend, deploy).</li>
+            <li>Bổ sung hoàn chỉnh dashboards và alerting cho checkout, payment, DB và Kafka.</li>
+          </ul>
+        </div>
+        <div class="comparison-card">
+          <div class="comparison-header" style="color: var(--info);">Tuần 3: Hoàn thiện tối ưu & Nghiệm thu bàn giao</div>
+          <ul class="comparison-list">
+            <li>Hoàn tất các hạng mục cải tiến tối ưu hóa tài nguyên và chi phí có ROI cao nhất.</li>
+            <li>Giải quyết triệt để các directive phát sinh trong thư mục <code>mandates/</code> của BTC bằng ADR ký tên.</li>
+            <li>Thực hiện test diễn tập rollback thực tế cho các thay đổi quan trọng để chứng minh tính an toàn.</li>
+            <li>Đo lường lại toàn bộ tập chỉ số baseline để đối chiếu trực tiếp tác động trước/sau cải tiến.</li>
+            <li>Chuẩn bị tài liệu Service Health Readout tổng kết chặng đường vận hành cho Ban giám đốc.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="takeaway">Kỷ luật vận hành hằng ngày và khả năng ứng phó sự cố theo quy trình là chìa khóa để bảo vệ error budget của TechX Corp Platform.</div>
+    </section>
+
+    <!-- Section 12 -->
+    <section id="s12" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Cải tiến hệ thống</div>
+      <div class="section-header">
+        <div class="section-icon">📋</div>
+        <h2>12. Đề xuất Backlog ban đầu</h2>
+      </div>
+      <p>Danh sách backlog đề xuất dưới đây được thiết lập dựa trên các khoảng trống kỹ thuật của baseline và bài học sự cố cũ. Thứ tự thực hiện thực tế sẽ do TF quyết định dựa trên mức độ ROI và trần chi phí.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item cải tiến đề xuất</th>
+            <th>Lý do ưu tiên & ROI</th>
+            <th>Điều kiện tiên quyết trước khi làm</th>
+            <th>Phương án Rollback an toàn</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Chuẩn hóa probes cho revenue path</strong></td>
+            <td>Ngăn ngừa sự cố INC-3 khi deploy pod mới; chart đã hỗ trợ probes sẵn.</td>
+            <td>Xác định health endpoint của payment/checkout service.</td>
+            <td>Revert Helm values về cấu hình cũ gần nhất.</td>
+          </tr>
+          <tr>
+            <td><strong>Dashboard và alert checkout SLO</strong></td>
+            <td>Không đo lường thì không thể bảo vệ; checkout là revenue-critical.</td>
+            <td>Xác nhận Prometheus metrics và labels thực tế tại runtime.</td>
+            <td>Revert các cấu hình dashboard/rules.</td>
+          </tr>
+          <tr>
+            <td><strong>Load test và trace bottleneck</strong></td>
+            <td>Thiết lập baseline tải trước khi tối ưu hiệu năng/chi phí.</td>
+            <td>Thiết lập guardrail tải để tránh làm sập cluster test.</td>
+            <td>Dừng ngay lập tức Locust load generator.</td>
+          </tr>
+          <tr>
+            <td><strong>Right-size requests/limits</strong></td>
+            <td>Giảm thiểu lãng phí chi phí EC2 và phòng tránh OOMKilled.</td>
+            <td>Có số liệu <code>kubectl top</code> dưới nền tải thực tế.</td>
+            <td>Revert Helm values cấu hình tài nguyên.</td>
+          </tr>
+          <tr>
+            <td><strong>Cấu hình HPA cho storefront/checkout</strong></td>
+            <td>Đảm bảo tự động co giãn pod khi chịu tải Locust lớn.</td>
+            <td>Cấu hình requests tài nguyên ổn định; verify metrics-server.</td>
+            <td>Xóa HPA manifest hoặc scale replica thủ công về baseline.</td>
+          </tr>
+          <tr>
+            <td><strong>Đánh giá Valkey HA & Durability</strong></td>
+            <td>Khắc phục triệt để rủi ro mất giỏ hàng khi node rescheduling (INC-2).</td>
+            <td>So sánh chi phí Persistent Volume với managed Valkey.</td>
+            <td>Trở về baseline, restore dữ liệu giỏ hàng từ snapshot gần nhất.</td>
+          </tr>
+          <tr>
+            <td><strong>Kafka lag monitoring & Alerting</strong></td>
+            <td>Bảo vệ luồng accounting và audit ghi sổ đơn hàng.</td>
+            <td>Xác định consumer group và topic metrics chuẩn.</td>
+            <td>Revert dashboard/alert rule Kafka.</td>
+          </tr>
+          <tr>
+            <td><strong>Verify Kafka producer ack</strong></td>
+            <td>Phòng tránh lỗi mất đơn hàng bị che giấu trong checkout.</td>
+            <td>Tạo môi trường test lỗi Kafka giả lập và đo latency.</td>
+            <td>Revert cấu hình producer trong mã nguồn/config.</td>
+          </tr>
+          <tr>
+            <td><strong>Kiểm soát public exposure Grafana</strong></td>
+            <td>Đảm bảo an toàn bảo mật, tránh leak dữ liệu giám sát hệ thống.</td>
+            <td>Xác minh ingress rules và cấu hình authentication phù hợp.</td>
+            <td>Revert ingress yaml cấu hình bảo mật.</td>
+          </tr>
+          <tr>
+            <td><strong>AWS Budgets & Cost Alerting</strong></td>
+            <td>Tránh vượt hạn mức chi phí $300/tuần.</td>
+            <td>Có quyền IAM truy cập AWS Billing.</td>
+            <td>Xóa hoặc điều chỉnh ngưỡng alert trên AWS console.</td>
+          </tr>
+          <tr>
+            <td><strong>Báo cáo chi phí theo đơn vị (Unit cost)</strong></td>
+            <td>Cần bằng chứng số liệu cụ thể cho pitch CFO về hiệu quả đầu tư hạ tầng.</td>
+            <td>Có dữ liệu AWS Cost Explorer và số lượng workload thực tế từ Locust.</td>
+            <td>Không áp dụng — đây là báo cáo phân tích, không có rollback.</td>
+          </tr>
+          <tr>
+            <td><strong>AI evaluation &amp; Fallback</strong></td>
+            <td>Bảo vệ uy tín thương hiệu khi AI trả lời bậy hoặc LLM bị sập.</td>
+            <td>Có bộ test set eval reviews; UX policy fallback cụ thể.</td>
+            <td>Revert code tích hợp fallback AI.</td>
+          </tr>
+          <tr>
+            <td><strong>Kiểm tra Kafka producer acknowledgment</strong></td>
+            <td>Có dấu hiệu event failure có thể bị che khuất — bảo vệ tính toàn vẹn dữ liệu đơn hàng.</td>
+            <td>Reproduce khi Kafka lỗi để quan sát behavior; đánh giá latency trade-off khi dùng <code>acks=all</code> vs <code>acks=1</code>.</td>
+            <td>Revert cấu hình producer trong mã nguồn hoặc Helm values.</td>
+          </tr>
+          <tr>
+            <td><strong>Chính sách telemetry GenAI</strong></td>
+            <td>Hạn chế rủi ro rò rỉ nội dung prompt và dữ liệu nhạy cảm qua OpenTelemetry tracing.</td>
+            <td>Xác định loại dữ liệu thực tế đang capture; tắt hoặc mask <code>OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</code> trước khi export.</td>
+            <td>Env/config rollback — tắt capture làm giảm khả năng debug AI chi tiết.</td>
+          </tr>
+          <tr>
+            <td><strong>ADR, runbook, postmortem template</strong></td>
+            <td>Bắt buộc cho Auditability (trụ CDO); chứng minh mọi quyết định có lý do và có người chịu trách nhiệm.</td>
+            <td>Thống nhất ownership trong TF; tạo cấu trúc thư mục <code>docs/adr/</code>, <code>docs/runbook/</code>, <code>docs/postmortem/</code> và template chuẩn.</td>
+            <td>Không áp dụng — tài liệu không rollback; cần duy trì kỷ luật cập nhật sau mỗi incident.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="takeaway">Tất cả các item cải tiến bắt buộc phải đi kèm phương án rollback chi tiết và được kiểm thử thành công trước khi áp dụng trên môi trường chính.</div>
+    </section>
+
+    <!-- Section 13 -->
+    <section id="s13" class="reveal">
+      <div class="eyebrow"><span class="dot"></span>Xác thực thực tế</div>
+      <div class="section-header">
+        <div class="section-icon">💻</div>
+        <h2>13. Câu hỏi kiểm chứng & Lệnh vận hành</h2>
+      </div>
+      
+      <h3>Các câu hỏi kỹ thuật cần trả lời bằng bằng chứng runtime</h3>
+      <p>Đội ngũ TF bắt buộc phải lấy dữ liệu từ cluster thực tế để trả lời các câu hỏi dưới đây trong tuần đầu tiên:</p>
+      <ul>
+        <li><strong>AWS & Cluster:</strong> Tài khoản, region, phiên bản EKS, cluster name, namespace và sơ đồ mạng VPC/subnet/NAT/LB thực tế là gì?</li>
+        <li><strong>Storage:</strong> Storage class, cấu hình EBS volume, chính sách backup/snapshot của PostgreSQL và Valkey là gì?</li>
+        <li><strong>Public Ingress:</strong> frontend-proxy và các giao diện observability (Grafana, Jaeger, OpenSearch) có đang bị expose ra ngoài internet công cộng mà không có mật khẩu hay không?</li>
+        <li><strong>Pod QoS & Probes:</strong> Những pod nào trên checkout path đang có replicas &gt; 1, liveness/readiness probes hoạt động và resource requests rõ ràng?</li>
+        <li><strong>Observability Source:</strong> Query PromQL và label nào là nguồn dữ liệu chuẩn cho các dashboard tính toán SLO?</li>
+        <li><strong>AWS Budgets:</strong> Chi phí hàng ngày phân bổ cụ thể cho EC2, EBS, NAT Gateway, Load Balancer là bao nhiêu? Có gắn tag đầy đủ theo workload?</li>
+        <li><strong>AI Model:</strong> Mô hình LLM thật sử dụng nhà cung cấp nào, giá token/triệu và giới hạn rate limit thực tế là bao nhiêu?</li>
+      </ul>
+
+      <h3>Appendix A: Lệnh thu thập thông tin hạ tầng Tuần 1</h3>
+      <p>Dưới đây là các lệnh vận hành thực tế đã được chuẩn hóa để TF chạy trong terminal nhằm thu thập bằng chứng kỹ thuật:</p>
+
+      <div class="code-container">
+        <span class="code-label">1. Kiểm tra tài khoản AWS, Region và Context Kubernetes</span>
+        <pre class="code-block"><span class="cmt"># Kiểm tra thông tin Identity đang dùng để thao tác AWS</span>
+<span class="fn">aws</span> sts get-caller-identity
+
+<span class="cmt"># Kiểm tra AWS Region hiện tại</span>
+<span class="fn">aws</span> configure get region
+
+<span class="cmt"># Xem Kubeconfig Context hiện hành</span>
+<span class="fn">kubectl</span> config current-context
+
+<span class="cmt"># Kiểm tra thông tin chung của Kubernetes Cluster</span>
+<span class="fn">kubectl</span> cluster-info
+
+<span class="cmt"># Kiểm tra phiên bản công cụ Helm và Docker</span>
+<span class="fn">helm</span> version
+<span class="fn">docker</span> buildx version</pre>
+      </div>
+
+      <div class="code-container">
+        <span class="code-label">2. Kiểm tra repositories và images trên ECR</span>
+        <pre class="code-block"><span class="cmt"># Liệt kê thông tin repositories trong AWS ECR</span>
+<span class="fn">aws</span> ecr describe-repositories --region <span class="str">&lt;REGION&gt;</span>
+
+<span class="cmt"># Xem danh sách các image và tag có trong repository techx-corp</span>
+<span class="fn">aws</span> ecr list-images --repository-name techx-corp --region <span class="str">&lt;REGION&gt;</span></pre>
+      </div>
+
+      <div class="code-container">
+        <span class="code-label">3. Deploy ứng dụng với flagd sync của BTC</span>
+        <pre class="code-block"><span class="cmt"># Xây dựng Helm dependencies cho chart cục bộ</span>
+<span class="fn">helm</span> dependency build ./phase3/techx-corp-chart
+
+<span class="cmt"># Nâng cấp/Cài đặt Helm Release kèm các tệp sync cờ sự cố bắt buộc của BTC</span>
+<span class="fn">helm</span> upgrade --install techx-corp ./phase3/techx-corp-chart -n <span class="str">&lt;NS&gt;</span> \
+  --create-namespace \
+  --set default.image.repository=<span class="str">&lt;REG&gt;</span> \
+  -f phase3/deploy/values-observability.yaml \
+  -f phase3/deploy/values-flagd-sync.yaml</pre>
+      </div>
+
+      <div class="code-container">
+        <span class="code-label">4. Theo dõi và Giám sát tài nguyên Pods</span>
+        <pre class="code-block"><span class="cmt"># Liệt kê chi tiết pods trong namespace kèm thông tin phân bổ node</span>
+<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> get pods -o wide
+
+<span class="cmt"># Kiểm tra các tài nguyên deploy, service, hpa, pdb hiện có</span>
+<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> get deploy,svc,hpa,pdb
+
+<span class="cmt"># Xem chi tiết cấu hình và sự kiện của một pod cụ thể</span>
+<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> describe pod <span class="str">&lt;POD_NAME&gt;</span>
+
+<span class="cmt"># Xem log truy cập của frontend-proxy để phân tích traffic</span>
+<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> logs deploy/frontend-proxy --tail=<span class="val">100</span>
+
+<span class="cmt"># Đo đạc CPU/Memory tiêu thụ thực tế của các pods đang chạy</span>
+<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> top pods
+
+<span class="cmt"># Port forward để truy cập storefront và các giao diện quản trị nội bộ</span>
+<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> port-forward svc/frontend-proxy <span class="val">8080</span>:<span class="val">8080</span></pre>
+      </div>
+
+      <p>Sau khi thiết lập port-forward thành công, TF có thể truy cập các đường dẫn cục bộ dưới đây để kiểm tra hệ thống:</p>
+      <ul>
+        <li>Storefront chính: <a href="http://localhost:8080/" target="_blank">http://localhost:8080/</a></li>
+        <li>Giao diện Grafana Dashboard: <a href="http://localhost:8080/grafana/" target="_blank">http://localhost:8080/grafana/</a></li>
+        <li>Giao diện Jaeger Distributed Trace: <a href="http://localhost:8080/jaeger/ui/" target="_blank">http://localhost:8080/jaeger/ui/</a></li>
+        <li>Giao diện Locust Load Generator: <a href="http://localhost:8080/loadgen/" target="_blank">http://localhost:8080/loadgen/</a></li>
+      </ul>
+
+      <h3>Nguồn tham chiếu chính</h3>
+      <ul>
+        <li><code>README.md</code>, <code>RULES.md</code>, <code>GETTING_STARTED.md</code></li>
+        <li><code>onboarding/ARCHITECTURE.md</code>, <code>onboarding/SLO.md</code>, <code>onboarding/BUDGET.md</code>, <code>onboarding/INCIDENT_HISTORY.md</code>, <code>onboarding/PITCH_GUIDE.md</code></li>
+        <li><code>techx-corp-platform/</code> (Microservices codebase), <code>techx-corp-chart/</code> (Helm configurations), <code>deploy/</code> (Resource sync configs).</li>
+      </ul>
+
+      <div class="takeaway">Việc nắm vững các lệnh này và tuân thủ nguyên tắc giữ values-flagd-sync.yaml giúp bảo đảm an toàn kỹ thuật tuyệt đối trong quá trình vận hành Tuần 1.</div>
+    </section>
+
+  </main>
+</div>
+
+<!-- =============================================================
+     PRESENTATION.JS — Xử lý scroll-spy cho Sidebar Navigation
+     ============================================================= -->
+<script>
+  (function () {
+    'use strict';
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---------- 1. Prep: stagger index ---------- */
+    function prepAnimations() {
+      document.querySelectorAll('.stagger').forEach(function (c) {
+        Array.prototype.forEach.call(c.children, function (ch, i) {
+          ch.style.setProperty('--i', i);
+        });
+      });
+      // Pre-compute stroke-dasharray for path-draw animations
+      document.querySelectorAll('svg [data-animate="draw"]').forEach(function (p) {
+        try {
+          var L = p.getTotalLength();
+          p.style.setProperty('--len', L);
+        } catch (e) {}
+      });
+    }
+
+    /* ---------- 2. Fire count-up ---------- */
+    function runCounters(scope) {
+      scope.querySelectorAll('[data-animate="count"]').forEach(function (el) {
+        if (el.dataset.done) return;
+        el.dataset.done = '1';
+        var to = parseFloat(el.dataset.to || el.textContent) || 0;
+        if (reduce) { el.textContent = to; return; }
+        var dur = 900, t0 = null;
+        function tick(t) {
+          if (!t0) t0 = t;
+          var p = Math.min((t - t0) / dur, 1);
+          var v = to * (1 - Math.pow(1 - p, 3));
+          el.textContent = (to % 1 === 0) ? Math.round(v) : v.toFixed(1);
+          if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+
+    /* ---------- 3. Doc mode: reveal on scroll + scroll-spy ---------- */
+    function setupDocReveal() {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          e.target.classList.add('in');
+          runCounters(e.target);
+          io.unobserve(e.target);
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.15 });
+
+      document.querySelectorAll('.reveal, .stagger, svg').forEach(function (el) {
+        io.observe(el);
+      });
+    }
+
+    function setupDocSpy() {
+      var sections = document.querySelectorAll('.doc-main section[id]');
+      var links = document.querySelectorAll('.doc-nav a[href^="#"]');
+      if (!sections.length || !links.length) return;
+      var spy = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          links.forEach(function (l) {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id);
+          });
+        });
+      }, { rootMargin: '-20% 0px -60% 0px' });
+      sections.forEach(function (s) { spy.observe(s); });
+    }
+
+    /* ---------- init ---------- */
+    document.addEventListener('DOMContentLoaded', function () {
+      prepAnimations();
+      setupDocReveal();
+      setupDocSpy();
+    });
+  })();
+</script>
+</body>
+</html>
