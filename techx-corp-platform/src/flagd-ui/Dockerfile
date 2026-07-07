@@ -15,7 +15,7 @@
 #   - Ex: docker.io/hexpm/elixir:1.18.4-erlang-27.3.4-debian-bookworm-20250610-slim
 #
 ARG ELIXIR_VERSION=1.19.3
-ARG OTP_VERSION=28.0.2
+ARG OTP_VERSION=27.3.4
 ARG DEBIAN_VERSION=bullseye-20251117-slim
 
 ARG BUILDER_IMAGE="docker.io/hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
@@ -57,13 +57,15 @@ COPY ./src/flagd-ui/lib lib
 
 COPY ./src/flagd-ui/assets assets
 
+# Tạo assets/vendor/heroicons từ deps (yêu cầu bởi @plugin "../vendor/heroicons" trong app.css)
+RUN mkdir -p assets/vendor && cp -r /app/deps/heroicons /app/assets/vendor/heroicons
+
 # compile assets
 RUN mix assets.deploy
 
 # Compile the release
 RUN mix compile
 
-COPY ./src/flagd-ui/rel rel
 RUN mix release
 
 # start a new build stage so that the final image will only contain

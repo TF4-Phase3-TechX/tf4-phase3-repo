@@ -92,3 +92,6 @@ logs/
 tmp/
 temp/
 .cache/
+
+# ── User Note ──
+note/

@@ -116,16 +116,16 @@ remove-multiplatform-builder:
 .PHONY: build-multiplatform
 build-multiplatform:
 	# Because buildx bake does not support --env-file yet, we need to load it into the environment first.
-	set -a; . ./.env.override; set +a && docker buildx bake -f docker-compose.yml --load --set "*.platform=linux/amd64,linux/arm64"
+	set -a; . ./.env.override; set +a && docker buildx bake -f docker-compose.yml --load --set "*.platform=linux/amd64"
 
 .PHONY: build-multiplatform-and-push
 build-multiplatform-and-push:
     # Because buildx bake does not support --env-file yet, we need to load it into the environment first.
-	set -a; . ./.env.override; set +a && docker buildx bake -f docker-compose.yml --push --set "*.platform=linux/amd64,linux/arm64"
+	set -a; . ./.env.override; set +a && docker buildx bake -f docker-compose.yml --push --set "*.platform=linux/amd64"
 
 .PHONY: clean-images
 clean-images:
-	@docker rmi $(shell docker images --filter=reference="nghiadaulau/techx-corp:1.0-*" -q); \
+	@docker rmi $(shell docker images --filter=reference="techx-corp:1.0-*" -q); \
     if [ $$? -ne 0 ]; \
     then \
     	echo; \

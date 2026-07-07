@@ -2,14 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM --platform=${BUILDPLATFORM} gradle:8-jdk17 AS builder
+FROM --platform=${BUILDPLATFORM} eclipse-temurin:17-jdk AS builder
 
 WORKDIR /usr/src/app/
 
 COPY ./src/fraud-detection/ ./
 COPY ./pb/ ./src/main/proto/
 
-RUN gradle shadowJar
+RUN chmod +x ./gradlew
+RUN ./gradlew shadowJar
 
 # -----------------------------------------------------------------------------
 
