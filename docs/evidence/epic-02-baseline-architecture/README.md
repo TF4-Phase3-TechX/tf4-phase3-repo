@@ -21,7 +21,7 @@ Các sơ đồ này dùng làm source of truth cho deployment, performance basel
 | External Services, Cost & Control Layer | `03-external-services-cost-control-layer.md` |
 | Architecture Assumptions | `04-architecture-assumptions.md` |
 | Architecture Risk Register | `05-architecture-risk-register.md` |
-| Architecture Review Notes | `06-architecture-review-notes.md` |
+
 
 ## Diagram exports
 
