@@ -6,7 +6,10 @@ module "eks" {
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
 
-  cluster_endpoint_public_access = true
+  # Private endpoint for cluster-internal access, public with CIDR restriction for kubectl
+  cluster_endpoint_private_access      = true
+  cluster_endpoint_public_access       = true
+  cluster_endpoint_public_access_cidrs = var.allowed_cluster_endpoint_cidrs
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -43,25 +46,19 @@ module "eks" {
 
       # Gắn thêm các IAM policy phổ biến cho worker nodes
       iam_role_additional_policies = {
-        AmazonEBSCSIDriverPolicy          = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-        AmazonEKS_CNI_Policy              = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-        AutoScalingFullAccess             = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
-        CloudWatchAgentServerPolicy       = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+        AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
       }
 
       labels = {
         role = "worker"
       }
 
-      tags = {
-        Environment = "Phase3"
-        Team        = "TF4"
-      }
+      tags = var.tags
     }
   }
 
-  tags = {
-    Environment = "Phase3"
-    Team        = "TF4"
-  }
+  tags = var.tags
 }

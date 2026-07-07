@@ -16,9 +16,8 @@ default:
   #  - name: OTEL_K8S_NODE_NAME
   #    value: "someConstantValue"
   image:
-    # SEED registry (image mẫu BTC cấp). Mỗi TF ĐỔI sang ECR của account mình:
-    #   helm ... --set default.image.repository=<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/techx-corp
-    repository: techx-corp
+    # ECR registry for this TF cluster.
+    repository: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp
     # Overrides the image tag whose default is the chart appVersion.
     # The service's name will be applied to the end of this value.
     tag: "1.0"
@@ -742,30 +741,32 @@ components:
     mountedEmptyDirs:
       - name: config-rw
         mountPath: /etc/flagd
-    # flagd-ui as a sidecar container in the same pod so the flag json file can be shared
-    sidecarContainers:
-      - name: flagd-ui
-        useDefault:
-          env: true
-        service:
-          port: 4000
-        env:
-          - name: FLAGD_METRICS_EXPORTER
-            value: otel
-          - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: http://$(OTEL_COLLECTOR_NAME):4318
-          - name: FLAGD_UI_PORT
-            value: "4000"
-          - name: SECRET_KEY_BASE
-            value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw
-          - name: PHX_HOST
-            value: localhost
-        resources:
-          limits:
-            memory: 250Mi
-        volumeMounts:
-          - name: config-rw
-            mountPath: /app/data
+    # flagd-ui sidecar disabled for current TF runtime: no ECR image exists yet.
+    sidecarContainers: []
+    # To restore flagd-ui later, build/push 1.0-flagd-ui then uncomment below.
+    # sidecarContainers:
+    #   - name: flagd-ui
+    #     useDefault:
+    #       env: true
+    #     service:
+    #       port: 4000
+    #     env:
+    #       - name: FLAGD_METRICS_EXPORTER
+    #         value: otel
+    #       - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    #         value: http://$(OTEL_COLLECTOR_NAME):4318
+    #       - name: FLAGD_UI_PORT
+    #         value: "4000"
+    #       - name: SECRET_KEY_BASE
+    #         value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw
+    #       - name: PHX_HOST
+    #         value: localhost
+    #     resources:
+    #       limits:
+    #         memory: 250Mi
+    #     volumeMounts:
+    #       - name: config-rw
+    #         mountPath: /app/data
     initContainers:
       - name: init-config
         image: busybox

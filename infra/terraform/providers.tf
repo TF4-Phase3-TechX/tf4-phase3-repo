@@ -8,6 +8,8 @@ terraform {
     }
   }
 
+  # Backend bucket/region must match bootstrap output.
+  # After bootstrap apply, uncomment and run: terraform init -reconfigure
   backend "s3" {
     bucket         = "tf4-phase3-state-bucket-511825856493"
     key            = "eks/terraform.tfstate"
@@ -19,12 +21,10 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
   default_tags {
-    tags = {
-      Owner       = "CDO_04"
-      Team        = "CDO_04"
-      Project     = "TF4"
-      Environment = "Phase3"
-    }
+    tags = var.tags
   }
 }
+
+data "aws_caller_identity" "current" {}

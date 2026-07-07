@@ -66,7 +66,6 @@ venv/
 
 # ── Helm / Kubernetes ──
 charts/*.tgz
-*.lock
 
 # ── Environment / Secrets ──
 .env
@@ -82,7 +81,6 @@ secrets.yml
 .terraform/
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
 
 # ── Logs ──
 *.log
@@ -95,3 +93,8 @@ temp/
 
 # ── User Note ──
 note/
+
+# ── Tracked lockfiles (allow specificity overrides above) ──
+!infra/bootstrap/.terraform.lock.hcl
+!infra/terraform/.terraform.lock.hcl
+!techx-corp-chart/Chart.lock

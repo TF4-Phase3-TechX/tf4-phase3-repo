@@ -4,11 +4,11 @@ module "vpc" {
   version = "~> 5.0"
 
   name = "techx-vpc"
-  cidr = "10.0.0.0/16"
+  cidr = var.vpc_cidr
 
   azs             = ["${var.aws_region}a", "${var.aws_region}b"]
-  private_subnets = ["10.0.10.0/24", "10.0.11.0/24"]
-  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnets = var.private_subnet_cidrs
+  public_subnets  = var.public_subnet_cidrs
 
   # Tiết kiệm chi phí: Chỉ dùng 1 NAT Gateway duy nhất cho cụm baseline (~$32/tuần)
   enable_nat_gateway     = true
@@ -19,18 +19,21 @@ module "vpc" {
   enable_dns_support   = true
 
   # Tag subnets cho EKS và ALB Controller tự động nhận diện
-  public_subnet_tags = {
-    "kubernetes.io/role/elb"                      = "1"
-    "kubernetes.io/cluster/${var.cluster_name}"   = "shared"
-  }
+  public_subnet_tags = merge(
+    {
+      "kubernetes.io/role/elb"                    = "1"
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    },
+    var.tags
+  )
 
-  private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"             = "1"
-    "kubernetes.io/cluster/${var.cluster_name}"   = "shared"
-  }
+  private_subnet_tags = merge(
+    {
+      "kubernetes.io/role/internal-elb"           = "1"
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    },
+    var.tags
+  )
 
-  tags = {
-    Environment = "Phase3"
-    Team        = "TF4"
-  }
+  tags = var.tags
 }

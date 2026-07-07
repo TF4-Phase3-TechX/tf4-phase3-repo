@@ -595,9 +595,9 @@ aws ecr list-images --repository-name techx-corp --region <REGION>
 ```
 
 ```sh
-helm dependency build ./phase3/techx-corp-chart
+helm dependency build ./techx-corp-chart
 
-helm upgrade --install techx-corp ./phase3/techx-corp-chart -n <NS> --create-namespace --set default.image.repository=<REG> -f phase3/deploy/values-observability.yaml -f phase3/deploy/values-flagd-sync.yaml
+helm upgrade --install techx-corp ./techx-corp-chart -n <NS> --create-namespace --set default.image.repository=<REG> -f deploy/values-observability.yaml -f deploy/values-flagd-sync.yaml
 ```
 
 ```sh
@@ -615,6 +615,73 @@ Sau khi port-forward, kiểm tra:
 - `http://localhost:8080/grafana/`
 - `http://localhost:8080/jaeger/ui/`
 - `http://localhost:8080/loadgen/`
+
+---
+
+## Phụ lục B -- Phase 3 Implementation Notes
+
+### Bootstrap init/apply order
+1. `cd infra/bootstrap && terraform init && terraform apply` -- creates S3 state bucket, DynamoDB lock table.
+2. The state bucket has `prevent_destroy = true` and `force_destroy = false`. To delete, first remove the lifecycle block via a targeted apply.
+3. Noncurrent state versions expire after 90 days; incomplete multipart uploads abort after 7 days.
+4. TLS is enforced on the state bucket via S3 bucket policy.
+
+
+### OpenSearch runtime baseline
+
+OpenSearch remains enabled in the observability overlay so logs and Grafana log panels keep working. Security plugin remains disabled for this runnable baseline. Harden OpenSearch auth/TLS later as a separate GitOps/security task.
+
+
+### Backend migration caveat
+- The main infra (`infra/terraform/`) uses an S3 backend. The bucket name and region are hard-coded in `providers.tf` because Terraform backends cannot use variables.
+- After bootstrap, the backend must match: `bucket = "tf4-phase3-state-bucket-511825856493"`, `region = "us-east-1"`, `dynamodb_table = "tf4-phase3-state-locks"`.
+
+
+### VPC CNI baseline
+
+AmazonEKS_CNI_Policy remains on the worker node role for the runnable baseline. Move it to IRSA later if security hardening becomes a separate goal.
+
+
+### ALB Controller baseline
+
+The repo keeps the existing Ingress flow and assumes AWS Load Balancer Controller/IAM setup is handled outside this Terraform baseline. Do not add LBC IRSA here unless cluster bootstrap from scratch becomes in scope.
+
+### Required Secrets before Helm install
+Create these secrets in the `techx-tf4` namespace before deploying the Helm chart:
+
+| Secret Name        | Key(s)                                                    | Purpose              |
+| ------------------ | --------------------------------------------------------- | -------------------- |
+| `flagd-sync`       | `token`                                                   | flagd bearer token   |
+| `grafana-admin`    | `admin-password`                                          | Grafana admin pass   |
+| `flagd-ui-secret`  | `secret-key-base`                                         | flagd-ui session key |
+| `postgresql-secret`| `password`, `connection-string-dotnet`, `connection-string-go`, `connection-string-python` | DB credentials       |
+
+Example:
+```sh
+kubectl -n techx-tf4 create secret generic flagd-sync --from-literal=token=<BTC_TOKEN>
+kubectl -n techx-tf4 create secret generic grafana-admin --from-literal=admin-password=<PASSWORD>
+kubectl -n techx-tf4 create secret generic flagd-ui-secret --from-literal=secret-key-base=<BASE64_KEY>
+kubectl -n techx-tf4 create secret generic postgresql-secret   --from-literal=password=otel   --from-literal=connection-string-dotnet='Host=postgresql;Username=otelu;Password=otelp;Database=otel'   --from-literal=connection-string-go='postgres://otelu:otelp@postgresql/otel?sslmode=disable'   --from-literal=connection-string-python='host=postgresql user=otelu password=otelp dbname=otel'
+```
+
+### Why NAT is single gateway for cost
+- `single_nat_gateway = true` reduces cost by approximately $32/week vs one NAT per AZ.
+- Acceptable for sandbox/demo; production workloads should use one NAT per AZ for AZ-level failure isolation.
+
+### How to set `allowed_cluster_endpoint_cidrs`
+- Set `allowed_cluster_endpoint_cidrs` in `infra/terraform/variables.tf` or via `-var`:
+  ```sh
+  terraform apply -var='allowed_cluster_endpoint_cidrs=["203.0.113.0/24"]'
+  ```
+- Default is `["127.0.0.1/32"]` (loopback only). Override with your VPN/office CIDR for `kubectl` access. Public endpoint remains enabled but restricted.
+
+### Cost controls deferred
+- AWS Budget and Cost Anomaly Detection are not implemented in Terraform yet.
+- Add them later when cost governance becomes in scope.
+
+### Ingress baseline
+- `deploy/ingress.yaml` keeps the existing ALB flow: `kubernetes.io/ingress.class: alb`, `scheme: internet-facing`, HTTP 80.
+- `frontend-proxy` keeps the original demo routes for Grafana, Jaeger, loadgen, flagd, OTLP, images, and frontend.
 
 ---
 
