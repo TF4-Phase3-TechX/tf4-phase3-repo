@@ -1,3 +1,4 @@
+# Owner: Huy Hoàng nhóm CDO_04
 # 1. Tạo S3 Bucket lưu trữ State File
 resource "aws_s3_bucket" "terraform_state" {
   bucket        = var.state_bucket_name

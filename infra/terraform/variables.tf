@@ -1,3 +1,4 @@
+# Owner: Huy Hoàng nhóm CDO_04
 variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string
