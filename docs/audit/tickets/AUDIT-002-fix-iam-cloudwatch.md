@@ -2,7 +2,7 @@
 
 **Trạng thái**: TO DO
 **Người yêu cầu (Reporter)**: Nhóm CDO07 (Audit)
-**Người thực hiện (Assignee)**: Nhóm CDO04 (Huy Hoàng / Admin SSO)
+**Người thực hiện (Assignee)**: Nhóm CDO08 (Admin SSO)
 **Độ ưu tiên (Priority)**: P0 (Blocker thao tác nghiệm thu của Audit)
 
 ## 1. Mô tả lỗi
