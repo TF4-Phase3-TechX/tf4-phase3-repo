@@ -76,6 +76,10 @@ jobs:
           EOF
           cat techx-corp-platform/.env.override
 
+      - name: Prepare currency proto build directory
+        working-directory: techx-corp-platform
+        run: mkdir -p src/currency/proto
+
       - name: Smoke build checkout image
         working-directory: techx-corp-platform
         run: docker compose --env-file .env --env-file .env.override build checkout
