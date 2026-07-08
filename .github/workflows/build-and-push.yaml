@@ -84,9 +84,8 @@ jobs:
         working-directory: techx-corp-platform
         run: docker compose --env-file .env --env-file .env.override build checkout
 
-      - name: Build and push all service images
-        working-directory: techx-corp-platform
-        run: make build-multiplatform-and-push
+      - name: Build and push service images
+        run: deploy/build-push-images.sh
 
       - name: Write build metadata
         shell: bash
