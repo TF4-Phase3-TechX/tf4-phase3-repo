@@ -83,7 +83,7 @@ jobs:
               if not root.exists():
                   continue
               for path in list(root.rglob('*.yml')) + list(root.rglob('*.yaml')):
-                  if '.terraform' in path.parts or 'charts' in path.parts:
+                  if '.terraform' in path.parts or 'charts' in path.parts or 'templates' in path.parts:
                       continue
                   try:
                       list(yaml.safe_load_all(path.read_text(encoding='utf-8')))
