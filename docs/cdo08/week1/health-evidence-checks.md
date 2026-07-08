@@ -70,3 +70,32 @@ Tài liệu này cung cấp các câu lệnh tiêu chuẩn để kiểm tra và 
   kubectl exec -it deploy/kafka -n <namespace> -- kafka-topics.sh --list --bootstrap-server localhost:9092
   ```
   * **Kỳ vọng:** Trả về danh sách topic, trong đó bắt buộc có topic `"orders"`.
+
+---
+
+## 3. Kiểm tra OpenTelemetry Collector (OTel Collector)
+*(Đảm bảo hạ tầng thu thập Telemetry hoạt động ổn định trên cụm)*
+
+* **Lệnh kiểm tra trạng thái DaemonSet và Pods:**
+  ```bash
+  kubectl get daemonset otel-collector-agent -n <namespace>
+  kubectl get pods -l app.kubernetes.io/name=opentelemetry-collector -n <namespace>
+  ```
+  * **Kỳ vọng:** Số lượng Pod chạy thực tế phải khớp với số lượng mong muốn (`DESIRED` = `CURRENT`), tất cả Pod ở trạng thái `Running` và cột `READY` là `1/1`.
+
+* **Lệnh kiểm tra Service của Collector:**
+  ```bash
+  kubectl get svc otel-collector -n <namespace>
+  ```
+  * **Kỳ vọng:** Trả về thông tin Service `otel-collector`, hiển thị rõ các cổng `4317/TCP` (gRPC) và `4318/TCP` (HTTP).
+
+* **Lệnh kiểm tra kết nối tới các cổng 4317 và 4318 từ một Pod bất kỳ trong namespace:**
+  * **Kiểm tra cổng gRPC (4317):**
+    ```bash
+    kubectl exec -it deploy/checkout -n <namespace> -- nc -z -v otel-collector 4317
+    ```
+  * **Kiểm tra cổng HTTP (4318):**
+    ```bash
+    kubectl exec -it deploy/checkout -n <namespace> -- nc -z -v otel-collector 4318
+    ```
+  * **Kỳ vọng:** Kết nối thành công, hiển thị kết quả dạng `otel-collector (IP:port) open` hoặc `Connection to otel-collector port [tcp/*] succeeded!`.

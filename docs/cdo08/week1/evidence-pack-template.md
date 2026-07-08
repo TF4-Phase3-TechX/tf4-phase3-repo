@@ -24,8 +24,8 @@
 * **Tên owner:** Nam
 * **Task liên quan:** Task 18 - Audit readiness và liveness probe coverage
 * **Vấn đề phát hiện:** Service `checkout` đang thiếu cấu hình liveness probe và readiness probe.
-* **File hoặc service liên quan:** `techx-corp-chart/templates/checkout-deployment.yaml`
-* **Lệnh đã chạy:** `kubectl get deployment checkout -n tf4 -o yaml | grep probe`
+* **File hoặc service liên quan:** Cấu hình service `checkout` trong [values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml) và generic template [component.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/templates/component.yaml)
+* **Lệnh đã chạy:** `kubectl get deployment checkout -n <namespace> -o yaml | grep -E "readinessProbe|livenessProbe"`
 * **Kết quả lệnh / Ảnh dashboard:** Lệnh không trả về kết quả (Blank output).
 * **Log hoặc trace:** N/A
 * **Cách hiểu bằng chứng:** Pod checkout thiếu liveness probe nên nếu app bị treo bên trong, Kubernetes sẽ không biết để tự restart. Thiếu readiness probe khiến pod có thể nhận traffic khi chưa khởi động xong, gây lỗi 5xx trực tiếp cho luồng doanh thu.
@@ -36,10 +36,10 @@
 ## 3. Ví dụ mẫu 2 (Mảng Checkout - Quân)
 * **Tên owner:** Quân
 * **Task liên quan:** Task 11 - Xác định timeout và retry gaps của checkout
-* **Vấn đề phát hiện:** Checkout service gọi sang Payment service nhưng không có cấu hình giới hạn thời gian chờ (timeout).
-* **File hoặc service liên quan:** `techx-corp-platform/src/checkout/...`
-* **Lệnh đã chạy:** Đọc source code tĩnh luồng gọi HTTP.
-* **Kết quả lệnh / Ảnh dashboard:** `http.Get("http://payment-service/charge")` đang sử dụng default HTTP client không set timeout.
+* **Vấn đề phát hiện:** Checkout service gọi sang Payment service (qua gRPC) và Shipping service (qua HTTP) nhưng không có cấu hình giới hạn thời gian chờ (timeout) cho request.
+* **File hoặc service liên quan:** Tệp [main.go](file:///d:/xbrain/tf4-phase3-repo/techx-corp-platform/src/checkout/main.go) của service `checkout`
+* **Lệnh đã chạy:** Khảo sát mã nguồn tĩnh.
+* **Kết quả lệnh / Ảnh dashboard:** `cs.paymentSvcClient.Charge(ctx, ...)` và `otelhttp.Post(ctx, cs.shippingSvcAddr+"/get-quote", ...)` đang sử dụng trực tiếp context từ request mà không thiết lập thêm thời gian chờ tối đa bằng `context.WithTimeout`.
 * **Log hoặc trace:** N/A
 * **Cách hiểu bằng chứng:** Nếu service Payment bị chậm hoặc treo, request checkout của khách hàng cũng sẽ bị treo theo vô thời hạn. Điều này làm hỏng SLO độ trễ (latency) và có thể gây cạn kiệt tài nguyên hệ thống.
 * **Link tới backlog:** `[Link Jira Task 11]`

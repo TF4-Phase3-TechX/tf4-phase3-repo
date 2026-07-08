@@ -1,84 +1,66 @@
 # Kiểm kê hệ thống giám sát hiện có (Observability Inventory)
 
 ## 1. Tình trạng các thành phần cốt lõi (Components Status)
-*(Trạng thái pod thực tế kiểm tra trên cụm Kubernetes `w10`)*
+*(Trạng thái pod thực tế kiểm tra trên cụm EKS `techx-tf4-cluster` thuộc namespace `techx-tf4`)*
 
-* **Prometheus** (Thu thập metric): **Đang chạy** (Pod `prometheus-kube-prometheus-stack-prometheus-0` ở trạng thái Running 2/2)
-* **Grafana** (Trực quan hóa dashboard): **Đang chạy** (Pod `kube-prometheus-stack-grafana-5b6465849f-v8r9j` ở trạng thái Running 3/3)
-* **Jaeger** (Distributed tracing): **Không có** (Chưa triển khai trên cluster)
-* **OpenSearch / Elasticsearch** (Lưu trữ log): **Không có** (Chưa triển khai trên cluster)
-* **OTel Collector** (Gom log/metric/trace): **Không có** (Chưa triển khai trên cluster)
-* **Alertmanager** (Cảnh báo): **Lỗi / Đang khởi tạo** (Pod `alertmanager-kube-prometheus-stack-alertmanager-0` kẹt ở trạng thái `Init:0/1`)
+* **Prometheus** (Thu thập metric): **Đang chạy** (Pod `prometheus-59744b5c47-dtffl` ở trạng thái Running 1/1)
+* **Grafana** (Trực quan hóa dashboard): **Đang chạy** (Pod `grafana-6c9b499867-52cz7` ở trạng thái Running 1/1, truy cập qua ALB)
+* **Jaeger** (Distributed tracing): **Đang chạy** (Pod `jaeger-696cc865cb-ch9rw` ở trạng thái Running 1/1, Jaeger UI phơi lộ tại route `/jaeger/ui/`)
+* **OpenSearch / Elasticsearch** (Lưu trữ log): **Đang chạy** (Pod `opensearch-0` dạng StatefulSet ở trạng thái Running 1/1)
+* **OTel Collector** (Gom log/metric/trace): **Đang chạy** (Chạy dưới dạng DaemonSet `otel-collector-agent` với 2 pods: `otel-collector-agent-cwtm4` và `otel-collector-agent-4z499` trên 2 worker nodes)
+* **Alertmanager** (Cảnh báo): **Không có** (Bị tắt trong cấu hình Helm values của Prometheus subchart)
 
-### Bằng chứng trạng thái Pod (Output `kubectl get pods -n monitoring`):
+### Bằng chứng trạng thái Pod (Truy vết thông qua Prometheus `target_info`):
 ```text
-NAME                                                        READY   STATUS     RESTARTS         AGE
-alertmanager-kube-prometheus-stack-alertmanager-0           0/2     Init:0/1   0                19d
-kube-prometheus-stack-grafana-5b6465849f-v8r9j              3/3     Running    15 (6m44s ago)   19d
-kube-prometheus-stack-kube-state-metrics-5ff4575db7-8wcxj   1/1     Running    26 (6m6s ago)    19d
-kube-prometheus-stack-operator-d69fb75b9-ppkn8              1/1     Running    26 (6m44s ago)   19d
-kube-prometheus-stack-prometheus-node-exporter-hxp6h        1/1     Running    12 (6m44s ago)   19d
-prometheus-kube-prometheus-stack-prometheus-0               2/2     Running    20 (6m44s ago)   19d
+NAME                                         READY   STATUS    RESTARTS   AGE
+prometheus-59744b5c47-dtffl                  1/1     Running   0          12h
+grafana-6c9b499867-52cz7                     1/1     Running   0          12h
+jaeger-696cc865cb-ch9rw                      1/1     Running   0          12h
+opensearch-0                                 1/1     Running   0          12h
+otel-collector-agent-cwtm4                   1/1     Running   0          12h
+otel-collector-agent-4z499                   1/1     Running   0          12h
 ```
 
 ---
 
 ## 2. Kiểm kê Data Source trên Grafana
-*(Kiểm tra thực tế tại cấu hình Data Sources của Grafana)*
+*(Kiểm tra thực tế thông qua Grafana API `/api/datasources`)*
 
-* **Prometheus Data Source:** **Đã kết nối** (URL: `http://kube-prometheus-stack-prometheus.monitoring:9090/`. Kết quả test: *"Successfully queried the Prometheus API."*)
-* **OpenSearch/Loki Data Source:** **Không có** (Chưa được cấu hình)
-* **Jaeger/Tempo Data Source:** **Không có** (Chưa được cấu hình)
-* **Alertmanager Data Source:** **Lỗi / Không thể kết nối** (URL: `http://kube-prometheus-stack-alertmanager.monitoring:9093/`. Kết quả test báo lỗi kết nối do pod Alertmanager chưa Ready)
+* **Prometheus Data Source:** **Đã kết nối** (URL: `http://prometheus:9090`. UID: `webstore-metrics`. Là Default data source).
+* **OpenSearch Data Source:** **Đã kết nối** (URL: `http://opensearch:9200/`. UID: `webstore-logs`. Index: `otel-logs-*`).
+* **Jaeger Data Source:** **Đã kết nối** (URL: `http://jaeger:16686/jaeger/ui`. UID: `webstore-traces`).
+* **Alertmanager Data Source:** **Không có** (Không được cấu hình).
 
 ---
 
 ## 3. Danh sách Dashboard hiện hành
-*(Hiện tại cụm có 28 dashboards mặc định được lấy trực tiếp từ API của Grafana. Trạng thái dữ liệu được đánh giá dựa trên các namespace hiện hữu)*
+*(Hiện tại cụm có 8 dashboards chuyên biệt được provision sẵn phục vụ giám sát ứng dụng TechX Corp và hạ tầng liên quan, lấy từ API Grafana `/api/search`)*
 
-### A. Nhóm Giám sát Tài nguyên Kubernetes (Compute Resources)
-* **Kubernetes / Compute Resources / Cluster** (Giám sát CPU, RAM, Network toàn cụm - **Có số liệu**)
-* **Kubernetes / Compute Resources / Multi-Cluster** (Giám sát đa cụm - **Có số liệu**)
-* **Kubernetes / Compute Resources / Namespace (Pods)** (Tài nguyên Pods theo namespace - **Có số liệu** của `monitoring` & `demo`)
-* **Kubernetes / Compute Resources / Namespace (Workloads)** (Tài nguyên Workloads theo namespace - **Có số liệu**)
-* **Kubernetes / Compute Resources / Node (Pods)** (Phân bổ Pod trên từng Node - **Có số liệu**)
-* **Kubernetes / Compute Resources / Pod** (Chi tiết tài nguyên của từng Pod cụ thể - **Có số liệu**)
-* **Kubernetes / Compute Resources / Workload** (Tài nguyên của Deployments, DaemonSets, StatefulSets - **Có số liệu**)
-
-### B. Nhóm Giám sát Mạng Kubernetes (Networking)
-* **Kubernetes / Networking / Cluster** (Traffic mạng toàn cụm - **Có số liệu**)
-* **Kubernetes / Networking / Namespace (Pods)** (Traffic mạng các Pod theo namespace - **Có số liệu**)
-* **Kubernetes / Networking / Namespace (Workload)** (Traffic mạng các Workloads theo namespace - **Có số liệu**)
-* **Kubernetes / Networking / Pod** (Traffic chi tiết từng Pod - **Có số liệu**)
-* **Kubernetes / Networking / Workload** (Traffic chi tiết từng Workload - **Có số liệu**)
-
-### C. Nhóm Giám sát Kubernetes Control Plane & Core Services
-* **Kubernetes / API server** (Hiệu năng của Kube-API-Server - **Có số liệu**)
-* **Kubernetes / Controller Manager** (Trạng thái Controller Manager - **Có số liệu**)
-* **Kubernetes / Kubelet** (Trạng thái và hiệu năng của các Kubelets - **Có số liệu**)
-* **Kubernetes / Scheduler** (Hiệu năng lập lịch của Scheduler - **Có số liệu**)
-* **Kubernetes / Proxy** (Hiệu năng định tuyến của Kube-Proxy - **Có số liệu**)
-* **CoreDNS** (Hiệu năng dịch vụ phân giải DNS trong cụm - **Có số liệu**)
-* **etcd** (Hiệu năng và độ trễ ghi dữ liệu của etcd - **Có số liệu**)
-
-### D. Nhóm Giám sát Tải Hạ tầng máy chủ (Node Exporter)
-* **Node Exporter / Nodes** (Thông số chi tiết CPU, RAM, Disk, IO của Node - **Có số liệu**)
-* **Node Exporter / USE Method / Cluster** (Chỉ số USE cho toàn cụm - **Có số liệu**)
-* **Node Exporter / USE Method / Node** (Chỉ số USE cho từng Node - **Có số liệu**)
-* **Node Exporter / AIX** (Dành cho máy chủ AIX - **Trống / Không có thiết bị**)
-* **Node Exporter / MacOS** (Dành cho máy chủ MacOS - **Trống / Không có thiết bị**)
-
-### E. Nhóm Giám sát Thành phần Stack Giám sát (Self-Monitoring)
-* **Grafana Overview** (Tải, RAM, Thread và API calls của Grafana - **Có số liệu**)
-* **Prometheus / Overview** (Sức khỏe TSDB, ingestion rate của Prometheus - **Có số liệu**)
-* **Alertmanager / Overview** (Tình trạng gửi cảnh báo của Alertmanager - **Trắng số (No data)** do Pod Alertmanager kẹt lỗi)
-* **Kubernetes / Persistent Volumes** (Trạng thái và dung lượng các Storage Volumes - **Có số liệu**)
+* **[Image-Provider] NGINX Metrics** (Theo dõi lượng tải, trạng thái HTTP status code và kết nối của Image Provider Nginx)
+* **APM Dashboard (Jaeger, Prometheus, OpenSearch)** (Dashboard trung tâm liên kết 3 trụ cột dữ liệu giám sát cho các microservices)
+* **Cart Service Exemplars** (Minh họa giám sát dịch vụ Cart sử dụng Prometheus Exemplars để liên kết nhanh sang Traces)
+* **Demo Dashboard** (Dashboard tổng quan về sức khỏe hệ thống và microservices)
+* **Linux** (Theo dõi thông số CPU, RAM, Disk, Mạng của các Node hạ tầng sử dụng OTel hostmetrics)
+* **OpenTelemetry Collector** (Theo dõi hiệu năng xử lý, rate nhận/gửi và drop data của OTel Collector Agent)
+* **PostgreSQL** (Theo dõi số lượng kết nối, transaction rate, cache hit rate của PostgreSQL database)
+* **Spanmetrics Demo Dashboard** (Dashboard sinh metrics tự động từ trace span bằng OTel Spanmetrics connector)
 
 ---
 
 ## 4. Khoảng trống giám sát phát hiện nhanh (Quick Gap Analysis)
-*(Dựa trên những gì kiểm kê ở trên, hệ thống đang thiếu hụt các thành phần sau để giám sát luồng Checkout)*
+*(Đánh giá dựa trên hiện trạng hạ tầng thực tế)*
 
-* **Chưa có hạ tầng gom Trace và Log:** Chưa triển khai OTel Collector, Jaeger và OpenSearch nên hiện tại hệ thống hoàn toàn mù thông tin về Log tập trung và Distributed Tracing của luồng gọi chéo giữa các service (Checkout, Payment, Cart, v.v.).
-* **Thiếu hụt Dashboards đo lường nghiệp vụ:** Các dashboard hiện có chỉ phục vụ cho việc kiểm kê hạ tầng Kubernetes và máy chủ Node. Hoàn toàn chưa có dashboard giám sát chỉ số RED (Rate, Errors, Duration) hoặc các chỉ số nghiệp vụ của luồng Checkout.
-* **Alertmanager chưa hoạt động:** Pod Alertmanager bị kẹt ở bước Init, cần kiểm tra cấu hình hoặc log khởi tạo để khắc phục, tránh việc hệ thống không thể bắn alert khi xảy ra sự cố.
+* **Hạ tầng thu thập Telemetry (OTel Collector, OpenSearch, Jaeger) đã chạy tốt**: Khác với lý thuyết ban đầu, các thành phần gom Log tập trung và Distributed Tracing đã hoạt động và được tích hợp đầy đủ vào Grafana.
+* **Thiếu hụt hệ thống Alerting tự động**: Alertmanager hiện đang bị tắt hoàn toàn. Do đó, mặc dù có dashboard và metric nhưng hệ thống không thể tự động gửi cảnh báo (Slack, Email, PagerDuty) khi xảy ra lỗi.
+* **Cần tinh chỉnh các PromQL queries nghiệp vụ**: Các câu lệnh PromQL trong [checkout-slo-metric-queries.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week1/checkout-slo-metric-queries.md) cần được kiểm chứng và khớp nối với dữ liệu thực tế do OTel Collector thu thập từ service `checkout` (sử dụng gRPC metrics).
+
+---
+
+## 5. Bảng phân công giám sát & Khoảng trống (Observability Mapping Matrix)
+
+| Signal | Service | Owner | Use case | Gap |
+|---|---|---|---|---|
+| Checkout SLO | `checkout` | Quân / Hải | Theo dõi độ trễ, lưu lượng và tỷ lệ lỗi để bảo vệ SLO `>= 99.0%` | Cần chuyển đổi PromQL sang dạng gRPC metric tương thích thực tế từ OTel |
+| Pod readiness / restarts | Toàn bộ ứng dụng | Nam | Đảm bảo các pod chạy ổn định, tự khởi động lại khi ứng dụng bị treo | Thiếu probe trong `values.yaml` và chưa kích hoạt cấu hình tự phục hồi |
+| PostgreSQL / Valkey / Kafka health | `postgresql`, `valkey-cart`, `kafka` | Phương | Đảm bảo kết nối thông suốt từ app đến database và hàng đợi sự kiện | Chưa bật persistence (PVC) cho dữ liệu trên EKS; Alertmanager bị tắt |
+| Evidence pack | Toàn bộ hệ thống | CDO07 / Hải | Chuẩn hóa tài liệu báo cáo, lưu trữ bằng chứng sự cố và audit | Chưa thống nhất biểu mẫu và thư mục lưu trữ bằng chứng dùng chung của nhóm |
