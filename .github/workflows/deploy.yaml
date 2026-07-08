@@ -107,6 +107,24 @@ jobs:
           kubectl create namespace "$OBS_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
           kubectl create namespace "$APP_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Detach legacy observability from app release
+        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if helm -n "$APP_NAMESPACE" status techx-corp >/dev/null 2>&1; then
+            echo "Existing app release found; disabling observability subcharts before installing shared observability release."
+            helm upgrade techx-corp ./techx-corp-chart \
+              --namespace "$APP_NAMESPACE" \
+              --set default.image.repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" \
+              --set default.image.tag="$IMAGE_TAG" \
+              -f deploy/values-app-stamp.yaml \
+              --wait \
+              --timeout 10m
+          else
+            echo "No existing app release found; no legacy observability resources to detach."
+          fi
+
       - name: Deploy observability
         if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
         run: |
