@@ -1,6 +1,21 @@
 # TF4 — TechX Corp Service Takeover
 
-**TF4:** AIO01 + CDO04, CDO07, CDO08.
+**TF4:** AIO-01 + CDO-04, CDO-07, CDO-08.
+
+## Phân công Pillar (Trụ)
+
+Mỗi nhóm chịu trách nhiệm chính (Primary owner) các pillar sau, theo RULES.md Section 4:
+
+
+| Nhóm       | Pillar(s) phụ trách                        | Trách nhiệm chính                                                                                                                            |
+| ---------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AIO-01** | AI Safety &amp; Quality                    | AI guardrails, eval, fallback, cost tracking, prompt/content safety                                                                          |
+| **CDO-04** | Performance Efficiency + Cost Optimization | Right-sizing, scaling, latency, bottleneck removal; Budget guardrails, spot instances, waste elimination                                     |
+| **CDO-07** | Auditability                               | K8s audit, CloudTrail, change management, log integrity, evidence collection — **backstop toàn bộ evidence của TF4**                         |
+| **CDO-08** | Security + Reliability                     | Hardening, least-privilege, credentials, access control, container security; Fault tolerance, self-healing, SLO enforcement, data durability |
+
+
+**Operational Excellence** (on-call, ADR, Ops Review) là trách nhiệm chung toàn TF4, không nhóm nào sở hữu riêng.
 
 ## Cấu trúc repo
 
