@@ -123,6 +123,8 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
+        env:
+          TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan

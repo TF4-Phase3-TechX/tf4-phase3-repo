@@ -86,3 +86,25 @@ variable "tags" {
     Environment = "Phase3"
   }
 }
+
+variable "budget_monthly_limit" {
+  description = "Monthly AWS cost budget limit in USD"
+  type        = string
+  default     = "300"
+
+  validation {
+    condition     = try(tonumber(var.budget_monthly_limit), 0) > 0
+    error_message = "budget_monthly_limit must be a positive number represented as a string."
+  }
+}
+
+variable "budget_notification_emails" {
+  description = "Email addresses that receive AWS Budget threshold notifications"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for email in var.budget_notification_emails : can(regex("^[^@\\s]+@[^@\\s]+[.][^@\\s]+$", email))])
+    error_message = "Each budget_notification_emails entry must be a valid email address."
+  }
+}
