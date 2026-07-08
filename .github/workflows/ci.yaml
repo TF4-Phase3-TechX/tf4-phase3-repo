@@ -28,7 +28,6 @@ jobs:
       chart: ${{ steps.filter.outputs.chart }}
       deploy: ${{ steps.filter.outputs.deploy }}
       terraform: ${{ steps.filter.outputs.terraform }}
-      bootstrap: ${{ steps.filter.outputs.bootstrap }}
       workflows: ${{ steps.filter.outputs.workflows }}
       docs: ${{ steps.filter.outputs.docs }}
     steps:
@@ -52,8 +51,6 @@ jobs:
               - '!deploy/build-push-images.sh'
             terraform:
               - 'infra/terraform/**'
-            bootstrap:
-              - 'infra/bootstrap/**'
             workflows:
               - '.github/workflows/**'
             docs:
@@ -64,7 +61,7 @@ jobs:
     name: YAML parse check
     runs-on: ubuntu-latest
     needs: [changes]
-    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.terraform == 'true' || needs.changes.outputs.bootstrap == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.terraform == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,48 +89,6 @@ jobs:
                       print(f'{path}: {exc}', file=sys.stderr)
           raise SystemExit(1 if failed else 0)
           PY
-
-  terraform-bootstrap-plan:
-    name: Terraform bootstrap plan
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.bootstrap == 'true'
-    defaults:
-      run:
-        working-directory: infra/bootstrap
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials for plan
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
-
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Terraform validate
-        run: terraform validate
-
-      - name: Terraform plan
-        run: terraform plan -lock=false -input=false -no-color -out=tfplan
-
-      - name: Upload bootstrap plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-bootstrap-plan
-          path: infra/bootstrap/tfplan
-          if-no-files-found: error
 
   terraform-infra-plan:
     name: Terraform infra plan

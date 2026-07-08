@@ -100,10 +100,13 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "eks:Describe*",
       "eks:List*",
       "ecr:Describe*",
+      "ecr:GetLifecyclePolicy",
       "ecr:List*",
       "iam:Get*",
       "iam:List*",
+      "kms:DescribeKey",
       "logs:Describe*",
+      "logs:ListTagsForResource",
       "autoscaling:Describe*",
       "elasticloadbalancing:Describe*"
     ]

@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'infra/bootstrap/**'
       - 'infra/terraform/**'
       - '.github/workflows/terraform-apply.yaml'
 
@@ -24,7 +23,6 @@ jobs:
     name: Detect Terraform changes
     runs-on: ubuntu-latest
     outputs:
-      bootstrap: ${{ steps.filter.outputs.bootstrap }}
       terraform: ${{ steps.filter.outputs.terraform }}
     steps:
       - name: Checkout
@@ -50,52 +48,13 @@ jobs:
           fi
 
           cat /tmp/changed.txt
-          grep -Eq '^infra/bootstrap/' /tmp/changed.txt && echo "bootstrap=true" >> "$GITHUB_OUTPUT" || echo "bootstrap=false" >> "$GITHUB_OUTPUT"
           grep -Eq '^infra/terraform/' /tmp/changed.txt && echo "terraform=true" >> "$GITHUB_OUTPUT" || echo "terraform=false" >> "$GITHUB_OUTPUT"
-
-  bootstrap-apply:
-    name: Terraform apply bootstrap
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.bootstrap == 'true'
-    defaults:
-      run:
-        working-directory: infra/bootstrap
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
-
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Terraform validate
-        run: terraform validate
-
-      - name: Terraform apply
-        run: terraform apply -input=false -auto-approve
-
-      - name: Show bootstrap outputs
-        run: terraform output
 
   infra-apply:
     name: Terraform apply infra
     runs-on: ubuntu-latest
-    needs: [changes, bootstrap-apply]
-    if: always() && needs.changes.outputs.terraform == 'true' && (needs.bootstrap-apply.result == 'success' || needs.bootstrap-apply.result == 'skipped')
+    needs: [changes]
+    if: needs.changes.outputs.terraform == 'true'
     defaults:
       run:
         working-directory: infra/terraform
