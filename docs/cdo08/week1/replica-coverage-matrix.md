@@ -2,18 +2,18 @@
 
 ## 0. Task metadata
 
-| Field            | Value                                                                     |
-| ---------------- | ------------------------------------------------------------------------- |
-| Jira task        | `[Runtime] Audit replica coverage cho service critical`                   |
-| Owner / Assignee | Hoàng Nam                                                                 |
-| Area / Ownership | Kubernetes Runtime Reliability                                            |
-| Pillar           | Reliability                                                               |
-| Priority         | P0                                                                        |
-| Reviewer         | Nguyên                                                                    |
-| Output artifact  | `docs/cdo08/week1/replica-coverage-matrix.md`                             |
-| Current status   | Static analysis completed; runtime verification pending                   |
-| Runtime blocker  | CDO08 chưa có EKS access/kubeconfig hợp lệ để chạy `kubectl` verification |
-| Last updated     | 2026-07-07                                                                |
+| Field            | Value                                                                        |
+| ---------------- | ---------------------------------------------------------------------------- |
+| Jira task        | `[Runtime] Audit replica coverage cho service critical`                      |
+| Owner / Assignee | Hoàng Nam                                                                    |
+| Area / Ownership | Kubernetes Runtime Reliability                                               |
+| Pillar           | Reliability                                                                  |
+| Priority         | P0                                                                           |
+| Reviewer         | Nguyên                                                                       |
+| Output artifact  | `docs/cdo08/week1/replica-coverage-matrix.md`                                |
+| Current status   | Static analysis completed; runtime replica verification completed            |
+| Runtime blocker  | N/A for replica coverage; runtime evidence captured in namespace `techx-tf4` |
+| Last updated     | 2026-07-08                                                                   |
 
 ## 1. Mục tiêu
 
@@ -118,24 +118,80 @@ Kết luận evidence: phần lớn app service **không khai báo `replicas` ri
 
 ## 8. Runtime verification
 
-Status hiện tại: **Blocked / Pending runtime verification**.
+Status hiện tại: **Completed for replica coverage**.
 
-Static analysis từ chart đã hoàn thành, nhưng chưa thể chạy runtime verification bằng `kubectl` vì chưa có quyền truy cập hợp lệ vào EKS cluster của Phase 3 / TF4.
+Runtime verification đã chạy được trong namespace `techx-tf4` sau khi SSO role được cấp quyền namespace-scope vào Kubernetes API. Lưu ý: `kubectl get ns` ở cluster-scope vẫn bị hạn chế RBAC, nhưng không chặn task này vì artifact chỉ cần evidence workload trong namespace deploy app.
 
-Blocker:
+### 8.1 Workload overview
 
-- Cần AWS account/role hoặc kubeconfig có quyền truy cập vào EKS cluster của TF4.
-- Cần biết EKS cluster name, region, namespace deploy app, hoặc nhận kubeconfig đã cấu hình sẵn từ team deploy.
-- Nếu CDO08 chưa được cấp quyền trực tiếp, có thể nhờ deploy owner chạy lệnh `kubectl` bên dưới và gửi output làm runtime evidence.
-
-Khi environment sẵn sàng, cần chạy lại verification trong vòng 24h:
+Command:
 
 ```bash
-kubectl -n <namespace> get deploy,sts
-kubectl -n <namespace> get deploy,sts -o custom-columns=KIND:.kind,NAME:.metadata.name,READY:.status.readyReplicas,DESIRED:.spec.replicas
+kubectl -n techx-tf4 get deploy,sts
 ```
 
-Kết quả cần được paste/chụp vào phần này hoặc evidence pack chung của CDO08.
+Evidence summary:
+
+| Workload kind | Runtime result                                                                            | Ý nghĩa                                                                |
+| ------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Deployments   | Tất cả deployment trong scope app/runtime đang `READY 1/1`, `UP-TO-DATE 1`, `AVAILABLE 1` | Runtime xác nhận các service critical hiện đều chạy single-replica     |
+| StatefulSets  | `opensearch` đang `READY 1/1`                                                             | StatefulSet duy nhất quan sát được trong namespace cũng single-replica |
+
+Các service stateful dependency trong scope CDO08 (`postgresql`, `valkey-cart`, `kafka`) đang được deploy dưới dạng **Deployment 1/1**, không phải StatefulSet.
+
+### 8.2 Deployment replica evidence
+
+Command:
+
+```bash
+kubectl -n techx-tf4 get deploy -o custom-columns=NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,AVAILABLE:.status.availableReplicas
+```
+
+Runtime result:
+
+| Deployment        | Desired | Ready | Available |
+| ----------------- | ------: | ----: | --------: |
+| `accounting`      |       1 |     1 |         1 |
+| `ad`              |       1 |     1 |         1 |
+| `cart`            |       1 |     1 |         1 |
+| `checkout`        |       1 |     1 |         1 |
+| `currency`        |       1 |     1 |         1 |
+| `email`           |       1 |     1 |         1 |
+| `flagd`           |       1 |     1 |         1 |
+| `fraud-detection` |       1 |     1 |         1 |
+| `frontend`        |       1 |     1 |         1 |
+| `frontend-proxy`  |       1 |     1 |         1 |
+| `grafana`         |       1 |     1 |         1 |
+| `image-provider`  |       1 |     1 |         1 |
+| `jaeger`          |       1 |     1 |         1 |
+| `kafka`           |       1 |     1 |         1 |
+| `llm`             |       1 |     1 |         1 |
+| `load-generator`  |       1 |     1 |         1 |
+| `payment`         |       1 |     1 |         1 |
+| `postgresql`      |       1 |     1 |         1 |
+| `product-catalog` |       1 |     1 |         1 |
+| `product-reviews` |       1 |     1 |         1 |
+| `prometheus`      |       1 |     1 |         1 |
+| `quote`           |       1 |     1 |         1 |
+| `recommendation`  |       1 |     1 |         1 |
+| `shipping`        |       1 |     1 |         1 |
+| `valkey-cart`     |       1 |     1 |         1 |
+
+### 8.3 StatefulSet replica evidence
+
+Command:
+
+```bash
+kubectl -n techx-tf4 get sts -o custom-columns=NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas
+```
+
+Runtime result:
+
+| StatefulSet  | Desired | Ready |
+| ------------ | ------: | ----: |
+| `opensearch` |       1 |     1 |
+
+Runtime conclusion: static finding được xác nhận trên cluster. Các service critical trong revenue path và stateful dependencies đang chạy single-replica tại runtime, nên follow-up tuần 2-3 về availability hardening vẫn hợp lệ.
 
 ## 9. Definition of Done checklist
 
@@ -144,4 +200,4 @@ Kết quả cần được paste/chụp vào phần này hoặc evidence pack ch
 - [x] P0/P1 single-replica risks ranked.
 - [x] Cost/perf note included.
 - [x] Affected service/file/evidence/proposed follow-up có trong matrix.
-- [ ] Runtime verification bằng `kubectl` sau khi có kubeconfig/context EKS TF4 hợp lệ.
+- [x] Runtime verification bằng `kubectl` trong namespace `techx-tf4`.
