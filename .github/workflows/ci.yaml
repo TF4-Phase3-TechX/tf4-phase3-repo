@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID || '511825856493' }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'techx-corp' }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
 jobs:
   changes:
