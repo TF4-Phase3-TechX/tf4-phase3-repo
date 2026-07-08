@@ -50,7 +50,13 @@ Thay vì commit trực tiếp token vào hệ thống quản lý phiên bản (G
     - "--ofrep-port"
     - "8016"
     - "--sources"
-    - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer <TOKEN>"}]'
+    - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer $(FLAGD_SYNC_TOKEN)"}]'
+  env:
+    - name: FLAGD_SYNC_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: flagd-sync
+          key: token
   ```
 
 ### 3. Áp dụng đúng các Helm Flag
