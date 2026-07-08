@@ -6,6 +6,7 @@
 **Priority:** P1
 **Ngày:** 2026-07-08
 **Thời điểm kiểm tra runtime:** 2026-07-08 20:30 UTC+7
+**Namespace:** `techx-tf4`
 
 ---
 
@@ -631,6 +632,3 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | Runtime check | 2026-07-08 20:30 UTC+7 |
 
 ---
-
-*Reviewed by: [chờ Nguyên review]*
-*Status: Draft*
