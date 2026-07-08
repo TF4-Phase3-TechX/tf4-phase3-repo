@@ -1,135 +1,135 @@
-# Secrets and Sensitive Configuration Inventory
+# Báo cáo Thống kê Secrets và Cấu hình Nhạy cảm
 
-This inventory documents all hardcoded passwords, API keys, tokens, connection strings, and sensitive configurations discovered in the static analysis of the `techx-corp-chart`, `deploy`, and `techx-corp-platform/src` directories.
+Tài liệu này thống kê tất cả các mật khẩu cứng (hardcoded), API keys, tokens, chuỗi kết nối cơ sở dữ liệu (connection strings), và cấu hình nhạy cảm được phát hiện thông qua phân tích tĩnh trong các thư mục `techx-corp-chart`, `deploy`, và `techx-corp-platform/src`.
 
 ## Review Gate & Sign-off
 
 * **Reviewer**: Nguyên
-* **Reviewer Status**: Defer (Pending Initial Review)
+* **Reviewer Status**: Defer (Đang chờ đánh giá ban đầu)
 * **Status Options**: `Approved` / `Needs Info` / `Defer`
-* **Target Date**: End of Week 1 before pitch dry-run
+* **Target Date**: Cuối Tuần 1 trước buổi pitch dry-run
 
 ---
 
-## Runtime Verification / Blocker Status
+## Trạng thái Xác minh Runtime / Blocker Status
 
-* **Status**: `BLOCKED-BY: TF4 deployment readiness`
-* **Details**: EKS cluster environment is not yet accessible locally (target cluster connection refused). Static analysis from source files, charts, and deploy configuration has been fully completed. Runtime verification will be re-run within 24 hours of the environment becoming available.
+* **Trạng thái**: `BLOCKED-BY: TF4 deployment readiness`
+* **Chi tiết**: Môi trường EKS cluster chưa thể truy cập được từ máy cục bộ (kết nối đến cluster bị từ chối). Quá trình phân tích tĩnh đối với các file mã nguồn, Helm chart, và cấu hình deploy đã hoàn tất 100%. Việc xác minh runtime sẽ được thực hiện lại trong vòng 24 giờ sau khi môi trường sẵn sàng.
 
 ---
 
-## Search Commands & Patterns Used (Evidence)
+## Các Lệnh & Mẫu Tìm Kiếm Đã Dùng (Bằng chứng)
 
-The inventory was compiled using ripgrep (`rg`) searches for key sensitive configuration patterns:
+Bảng thống kê này được tổng hợp bằng cách sử dụng công cụ ripgrep (`rg`) để tìm kiếm các mẫu cấu hình nhạy cảm chính:
 ```bash
-# PASSWORD pattern search
+# Tìm kiếm mẫu PASSWORD
 rg -i "PASSWORD" techx-corp-chart/ deploy/ techx-corp-platform/src/
 
-# SECRET pattern search
+# Tìm kiếm mẫu SECRET
 rg -i "SECRET" techx-corp-chart/ deploy/ techx-corp-platform/src/
 
-# API_KEY pattern search
+# Tìm kiếm mẫu API_KEY
 rg -i "API_KEY" techx-corp-chart/ deploy/ techx-corp-platform/src/
 
-# TOKEN pattern search
+# Tìm kiếm mẫu TOKEN
 rg -i "TOKEN" techx-corp-chart/ deploy/ techx-corp-platform/src/
 
-# DB_CONNECTION_STRING pattern search
+# Tìm kiếm mẫu DB_CONNECTION_STRING
 rg -i "DB_CONNECTION_STRING" techx-corp-chart/ deploy/ techx-corp-platform/src/
 
-# OPENAI_API_KEY pattern search
+# Tìm kiếm mẫu OPENAI_API_KEY
 rg -i "OPENAI_API_KEY" techx-corp-chart/ deploy/ techx-corp-platform/src/
 
-# SECRET_KEY_BASE pattern search
+# Tìm kiếm mẫu SECRET_KEY_BASE
 rg -i "SECRET_KEY_BASE" techx-corp-chart/ deploy/ techx-corp-platform/src/
 ```
 
 ---
 
-## Inventory Table
+## Bảng Thống Kê Secrets (Inventory Table)
 
-| File Path | Line/Context | Key/Config Name | Service | Is Secret? | Risk Level | Recommended Handling | Protected Path? |
+| Đường dẫn File | Dòng/Ngữ cảnh | Tên Key/Cấu hình | Dịch vụ | Có phải Secret? | Mức độ rủi ro | Đề xuất xử lý | Đường dẫn được bảo vệ? |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L184) | L184 | `DB_CONNECTION_STRING` | `accounting` | Yes | P1 | Move to Secret | No |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L583) | L583 | `DB_CONNECTION_STRING` | `product-catalog` | Yes | P1 | Move to Secret | No |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L620) | L620 | `DB_CONNECTION_STRING` | `product-reviews` | Yes | P1 | Move to Secret | No |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L760) | L760 | `SECRET_KEY_BASE` | `flagd` / `flagd-ui` | Yes | P1 | Move to Secret / Protected flagd config | Yes |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L846) | L846 | `password` (OTEL metrics) | `postgresql` | Yes | P1 | Needs discussion / Move to Secret | No |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L869) | L869 | `POSTGRES_PASSWORD` | `postgresql` | Yes | P1 | Move to Secret | No |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L1196) | L1196 | `adminPassword` | `grafana` | Yes | P1 | Move to Secret | No |
-| [techx-corp-chart/postgresql/init.sql](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/postgresql/init.sql#L4) | L4 | `PASSWORD` | `postgresql` | Yes | P1 | Needs discussion / Move to Secret | No |
-| [techx-corp-platform/src/postgresql/init.sql](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-platform/src/postgresql/init.sql#L4) | L4 | `PASSWORD` | `postgresql` | Yes | P1 | Needs discussion / Move to Secret | No |
-| [techx-corp-platform/src/flagd-ui/config/dev.exs](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-platform/src/flagd-ui/config/dev.exs#L20) | L20 | `secret_key_base` | `flagd-ui` | False Positive (Dev Key) | Low | Keep | Yes |
-| [techx-corp-platform/src/flagd-ui/config/test.exs](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-platform/src/flagd-ui/config/test.exs#L11) | L11 | `secret_key_base` | `flagd-ui` | False Positive (Test Key) | Low | Keep | Yes |
-| [techx-corp-chart/values.yaml](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L602) | L602 | `OPENAI_API_KEY` | `product-reviews` | False Positive (Dummy) | None | Keep | No |
-| [techx-corp-platform/src/product-reviews/README.md](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/README.md#L30) | L30 | `OPENAI_API_KEY` | `product-reviews` | False Positive (Doc Placeholder) | None | Keep | No |
-| [deploy/values-flagd-sync.yaml](file:///d:/xbrain/xbrain-learners/phase3/deploy/values-flagd-sync.yaml#L18) | L18 | `Bearer <TOKEN>` | `flagd` | False Positive (Placeholder) | Low | Keep / Needs discussion | Yes |
-| [deploy/values-aio-llm.yaml](file:///d:/xbrain/xbrain-learners/phase3/deploy/values-aio-llm.yaml#L10) | L10-11 | `OPENAI_API_KEY` | `product-reviews` | No (Secret Reference) | None | Keep (Best Practice) | No |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L183) | L183 | `DB_CONNECTION_STRING` | `accounting` | Có | P1 | Di chuyển vào Secret | Không |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L582) | L582 | `DB_CONNECTION_STRING` | `product-catalog` | Có | P1 | Di chuyển vào Secret | Không |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L619) | L619 | `DB_CONNECTION_STRING` | `product-reviews` | Có | P1 | Di chuyển vào Secret | Không |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L761) | L761 | `SECRET_KEY_BASE` | `flagd` / `flagd-ui` | Có | P1 | Di chuyển vào Secret / Cấu hình flagd được bảo vệ | Có |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L847) | L847 | `password` (OTEL metrics) | `postgresql` | Có | P1 | Cần thảo luận / Di chuyển vào Secret | Không |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L870) | L870 | `POSTGRES_PASSWORD` | `postgresql` | Có | P1 | Di chuyển vào Secret | Không |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L1197) | L1197 | `adminPassword` | `grafana` | Có | P1 | Di chuyển vào Secret | Không |
+| [techx-corp-chart/postgresql/init.sql](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/postgresql/init.sql#L4) | L4 | `PASSWORD` | `postgresql` | Có | P1 | Cần thảo luận / Di chuyển vào Secret | Không |
+| [techx-corp-platform/src/postgresql/init.sql](file:///d:/xbrain/tf4-phase3-repo/techx-corp-platform/src/postgresql/init.sql#L4) | L4 | `PASSWORD` | `postgresql` | Có | P1 | Cần thảo luận / Di chuyển vào Secret | Không |
+| [techx-corp-platform/src/flagd-ui/config/dev.exs](file:///d:/xbrain/tf4-phase3-repo/techx-corp-platform/src/flagd-ui/config/dev.exs#L20) | L20 | `secret_key_base` | `flagd-ui` | Phát hiện giả (Dev Key) | Thấp | Giữ nguyên | Có |
+| [techx-corp-platform/src/flagd-ui/config/test.exs](file:///d:/xbrain/tf4-phase3-repo/techx-corp-platform/src/flagd-ui/config/test.exs#L11) | L11 | `secret_key_base` | `flagd-ui` | Phát hiện giả (Test Key) | Thấp | Giữ nguyên | Có |
+| [techx-corp-chart/values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L601) | L601 | `OPENAI_API_KEY` | `product-reviews` | Phát hiện giả (Dummy Key) | Không có | Giữ nguyên | Không |
+| [techx-corp-platform/src/product-reviews/README.md](file:///d:/xbrain/tf4-phase3-repo/techx-corp-platform/src/product-reviews/README.md#L30) | L30 | `OPENAI_API_KEY` | `product-reviews` | Phát hiện giả (Tài liệu) | Không có | Giữ nguyên | Không |
+| [deploy/values-flagd-sync.yaml](file:///d:/xbrain/tf4-phase3-repo/deploy/values-flagd-sync.yaml#L17) | L17 | `Bearer <TOKEN>` | `flagd` | Phát hiện giả (Chỗ trống) | Thấp | Giữ nguyên / Cần thảo luận | Có |
+| [deploy/values-aio-llm.yaml](file:///d:/xbrain/tf4-phase3-repo/deploy/values-aio-llm.yaml#L11) | L11 | `OPENAI_API_KEY` | `product-reviews` | Không (Tham chiếu Secret) | Không có | Giữ nguyên (Thực hành tốt) | Không |
 
 ---
 
-## Detailed P0/P1 Findings & Proposed Follow-ups
+## Chi tiết các Phát Hiện P0/P1 & Đề Xuất Hành Động Tiếp Theo
 
-### 1. DB_CONNECTION_STRING in Accounting Service
-* **Risk Level**: P1
-* **Risk Description**: Hardcoded database credentials (Username/Password) in Helm `values.yaml` exposed in version control. If an attacker gains access to the source code repository, they immediately obtain database access to the accounting schema.
-* **Affected Service/File**: `accounting` / [techx-corp-chart/values.yaml:L184](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L184)
-* **Evidence**: `value: Host=postgresql;Username=otelu;Password=otelp;Database=otel`
-* **Proposed Follow-up (Week 2-3)**: Move the database credentials to a Kubernetes Secret (e.g. `accounting-db-secrets`). In `values.yaml`, override the environment variable to fetch the database connection string from this secret.
-* **Priority Draft**: P1
+### 1. DB_CONNECTION_STRING trong Dịch vụ Accounting
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Thông tin đăng nhập cơ sở dữ liệu (Username/Password) bị ghi cứng trong Helm `values.yaml` và đẩy lên hệ thống quản lý mã nguồn (VCS). Nếu kẻ tấn công có quyền truy cập kho lưu trữ mã nguồn, họ sẽ ngay lập tức có quyền truy cập vào schema cơ sở dữ liệu accounting.
+* **Dịch vụ/File ảnh hưởng**: `accounting` / [techx-corp-chart/values.yaml:L183](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L183)
+* **Bằng chứng**: `value: Host=postgresql;Username=otelu;Password=otelp;Database=otel`
+* **Đề xuất xử lý (Tuần 2-3)**: Di chuyển thông tin đăng nhập cơ sở dữ liệu vào một Kubernetes Secret (ví dụ: `accounting-db-secrets`). Trong file `values.yaml`, ghi đè biến môi trường để tham chiếu giá trị từ secret này.
+* **Dự thảo ưu tiên**: P1
 
-### 2. DB_CONNECTION_STRING in Product-Catalog Service
-* **Risk Level**: P1
-* **Risk Description**: Hardcoded database password in database connection URL inside `values.yaml`.
-* **Affected Service/File**: `product-catalog` / [techx-corp-chart/values.yaml:L583](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L583)
-* **Evidence**: `value: postgres://otelu:otelp@postgresql/otel?sslmode=disable`
-* **Proposed Follow-up (Week 2-3)**: Store the full connection string in a Kubernetes Secret, or configure the app to read user/password from environment variables sourced via `secretKeyRef` and build the connection string dynamically.
-* **Priority Draft**: P1
+### 2. DB_CONNECTION_STRING trong Dịch vụ Product-Catalog
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Mật khẩu cơ sở dữ liệu bị ghi cứng trực tiếp bên trong URL kết nối trong file `values.yaml`.
+* **Dịch vụ/File ảnh hưởng**: `product-catalog` / [techx-corp-chart/values.yaml:L582](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L582)
+* **Bằng chứng**: `value: postgres://otelu:otelp@postgresql/otel?sslmode=disable`
+* **Đề xuất xử lý (Tuần 2-3)**: Lưu trữ toàn bộ chuỗi kết nối vào một Kubernetes Secret, hoặc cấu hình ứng dụng để đọc các biến môi trường user/password từ secret qua `secretKeyRef` và dựng chuỗi kết nối động tại runtime.
+* **Dự thảo ưu tiên**: P1
 
-### 3. DB_CONNECTION_STRING in Product-Reviews Service
-* **Risk Level**: P1
-* **Risk Description**: Hardcoded database password (`password=otelp`) directly committed to VCS.
-* **Affected Service/File**: `product-reviews` / [techx-corp-chart/values.yaml:L620](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L620)
-* **Evidence**: `value: host=postgresql user=otelu password=otelp dbname=otel`
-* **Proposed Follow-up (Week 2-3)**: Extract the database connection string configuration to a Kubernetes Secret and reference it using `valueFrom.secretKeyRef`.
-* **Priority Draft**: P1
+### 3. DB_CONNECTION_STRING trong Dịch vụ Product-Reviews
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Mật khẩu kết nối cơ sở dữ liệu (`password=otelp`) bị ghi cứng trực tiếp và commit lên hệ thống kiểm soát phiên bản.
+* **Dịch vụ/File ảnh hưởng**: `product-reviews` / [techx-corp-chart/values.yaml:L619](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L619)
+* **Bằng chứng**: `value: host=postgresql user=otelu password=otelp dbname=otel`
+* **Đề xuất xử lý (Tuần 2-3)**: Tách cấu hình kết nối cơ sở dữ liệu ra một Kubernetes Secret và tham chiếu bằng `valueFrom.secretKeyRef`.
+* **Dự thảo ưu tiên**: P1
 
-### 4. SECRET_KEY_BASE in Flagd-UI (Flagd Sidecar)
-* **Risk Level**: P1
-* **Risk Description**: Phoenix session signing base key is hardcoded. Hardcoded keys can lead to cookie tampering, session hijacking, or decryption of sensitive state managed by the Elixir flagd-ui application.
-* **Affected Service/File**: `flagd` / `flagd-ui` / [techx-corp-chart/values.yaml:L760](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L760)
-* **Evidence**: `value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw`
-* **Proposed Follow-up (Week 2-3)**: Move `SECRET_KEY_BASE` to a Kubernetes Secret, e.g. `flagd-ui-secrets`. Reference it in `values.yaml` using a `secretKeyRef`.
-* **Priority Draft**: P1
+### 4. SECRET_KEY_BASE trong Flagd-UI (Flagd Sidecar)
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Khóa ký phiên (Phoenix session signing base key) bị ghi cứng. Các khóa ghi cứng này có thể dẫn đến rủi ro giả mạo cookie, chiếm đoạt phiên làm việc (session hijacking), hoặc giải mã dữ liệu trạng thái nhạy cảm của ứng dụng Elixir flagd-ui.
+* **Dịch vụ/File ảnh hưởng**: `flagd` / `flagd-ui` / [techx-corp-chart/values.yaml:L761](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L761)
+* **Bằng chứng**: `value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw`
+* **Đề xuất xử lý (Tuần 2-3)**: Di chuyển `SECRET_KEY_BASE` vào một Kubernetes Secret (ví dụ: `flagd-ui-secrets`) và tham chiếu trong `values.yaml` sử dụng `secretKeyRef`.
+* **Dự thảo ưu tiên**: P1
 
-### 5. POSTGRES_PASSWORD in PostgreSQL Component
-* **Risk Level**: P1
-* **Risk Description**: Hardcoded database admin password `otel` configured directly in `values.yaml`.
-* **Affected Service/File**: `postgresql` / [techx-corp-chart/values.yaml:L869](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L869)
-* **Evidence**: `value: otel`
-* **Proposed Follow-up (Week 2-3)**: Move the password to a Kubernetes Secret and inject it to the database deployment using `valueFrom.secretKeyRef`.
-* **Priority Draft**: P1
+### 5. POSTGRES_PASSWORD trong Thành phần PostgreSQL
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Mật khẩu quản trị cơ sở dữ liệu admin `otel` bị ghi cứng trực tiếp trong cấu hình `values.yaml`.
+* **Dịch vụ/File ảnh hưởng**: `postgresql` / [techx-corp-chart/values.yaml:L870](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L870)
+* **Bằng chứng**: `value: otel`
+* **Đề xuất xử lý (Tuần 2-3)**: Chuyển mật khẩu vào một Kubernetes Secret và tiêm vào deployment cơ sở dữ liệu bằng `valueFrom.secretKeyRef`.
+* **Dự thảo ưu tiên**: P1
 
-### 6. Scraper Password in PostgreSQL Component
-* **Risk Level**: P1
-* **Risk Description**: Hardcoded metrics collector scraper credentials in Pod annotations metadata inside `values.yaml`.
-* **Affected Service/File**: `postgresql` / [techx-corp-chart/values.yaml:L846](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L846)
-* **Evidence**: `password: otel` under `io.opentelemetry.discovery.metrics/config` annotation.
-* **Proposed Follow-up (Week 2-3)**: Review metrics scraper credentials handling; credentials should be stored in the OpenTelemetry Collector's configuration secrets or fetched dynamically instead of exposing them in pod annotations which are visible to anyone queryable in the cluster.
-* **Priority Draft**: P1
+### 6. Mật khẩu Scraper trong Thành phần PostgreSQL
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Thông tin xác thực của bộ thu thập số liệu metrics collector scraper bị ghi cứng trực tiếp trong metadata annotations của Pod trong `values.yaml`.
+* **Dịch vụ/File ảnh hưởng**: `postgresql` / [techx-corp-chart/values.yaml:L847](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L847)
+* **Bằng chứng**: `password: otel` nằm dưới annotation `io.opentelemetry.discovery.metrics/config`.
+* **Đề xuất xử lý (Tuần 2-3)**: Đánh giá lại việc xử lý thông tin xác thực scraper; thông tin đăng nhập nên được lưu trong các secret cấu hình của OpenTelemetry Collector hoặc lấy động thay vì hiển thị trực tiếp trong pod annotations (nơi bất kỳ ai truy vấn tài nguyên trong cụm đều có thể thấy).
+* **Dự thảo ưu tiên**: P1
 
-### 7. adminPassword in Grafana Component
-* **Risk Level**: P1
-* **Risk Description**: Default administrator credentials `admin` for the Grafana dashboard are hardcoded.
-* **Affected Service/File**: `grafana` / [techx-corp-chart/values.yaml:L1196](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/values.yaml#L1196)
-* **Evidence**: `adminPassword: admin`
-* **Proposed Follow-up (Week 2-3)**: Configure the Grafana subchart to read the administrator password from a Kubernetes Secret, or disable default form login/credentials since anonymous administrator access is already enabled in this environment.
-* **Priority Draft**: P1
+### 7. adminPassword trong Thành phần Grafana
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: Thông tin đăng nhập mặc định của quản trị viên Grafana (`admin`) bị ghi cứng.
+* **Dịch vụ/File ảnh hưởng**: `grafana` / [techx-corp-chart/values.yaml:L1197](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml#L1197)
+* **Bằng chứng**: `adminPassword: admin`
+* **Đề xuất xử lý (Tuần 2-3)**: Cấu hình subchart Grafana để đọc mật khẩu quản trị viên từ một Kubernetes Secret, hoặc vô hiệu hóa cấu hình đăng nhập mặc định vì quyền truy cập admin vô danh (anonymous admin) đã được bật trong môi trường này.
+* **Dự thảo ưu tiên**: P1
 
-### 8. Hardcoded Database User Password in init.sql Scripts
-* **Risk Level**: P1
-* **Risk Description**: Static credential initialization script `CREATE USER otelu WITH PASSWORD 'otelp';` stored in source control.
-* **Affected Service/File**: `postgresql` / [techx-corp-chart/postgresql/init.sql:L4](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-chart/postgresql/init.sql#L4) & [techx-corp-platform/src/postgresql/init.sql:L4](file:///d:/xbrain/xbrain-learners/phase3/techx-corp-platform/src/postgresql/init.sql#L4)
-* **Evidence**: `CREATE USER otelu WITH PASSWORD 'otelp';`
-* **Proposed Follow-up (Week 2-3)**: Refactor PostgreSQL database initialization to dynamically set the password using environment variables injected from secrets at deploy time, or mount a database initialization script template that has passwords dynamically rendered.
-* **Priority Draft**: P1
+### 8. Mật khẩu Khởi Tạo Cơ Sở Dữ Liệu trong file init.sql
+* **Mức độ rủi ro**: P1
+* **Mô tả rủi ro**: File kịch bản khởi tạo thông tin đăng nhập tĩnh `CREATE USER otelu WITH PASSWORD 'otelp';` được lưu trữ trực tiếp trong VCS.
+* **Dịch vụ/File ảnh hưởng**: `postgresql` / [techx-corp-chart/postgresql/init.sql:L4](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/postgresql/init.sql#L4) & [techx-corp-platform/src/postgresql/init.sql:L4](file:///d:/xbrain/tf4-phase3-repo/techx-corp-platform/src/postgresql/init.sql#L4)
+* **Bằng chứng**: `CREATE USER otelu WITH PASSWORD 'otelp';`
+* **Đề xuất xử lý (Tuần 2-3)**: Tối ưu hóa quá trình khởi tạo cơ sở dữ liệu PostgreSQL để thiết lập mật khẩu động từ các biến môi trường tiêm qua secrets khi deploy, hoặc mount template kịch bản khởi tạo đã được render mật khẩu tự động.
+* **Dự thảo ưu tiên**: P1
