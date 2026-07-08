@@ -6,7 +6,7 @@ Goal: fix or mitigate highest-risk TechX baseline gaps from `docs/PHASE3-IMPLEME
 
 Evidence folder for completed fixes:
 
-`C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/docs/evidence/epic-01`
+`./docs/evidence/epic-01`
 
 File numbering rule:
 
@@ -147,7 +147,7 @@ Done rule:
 
 Copy this into each numbered evidence file under:
 
-`C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/docs/evidence/epic-01`
+`./docs/evidence/epic-01`
 
 ```markdown
 # EPIC-01 Evidence — <TASK ID>: <Task title>
@@ -171,7 +171,7 @@ EVIDENCE UPDATE
 - Screenshot: <path/link hoặc N/A>
 - Command output/log nếu có: <path/link hoặc inline summary>
 - PR/commit/link nếu có: <link hoặc N/A>
-- Folder lưu evidence: `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/docs/evidence/epic-01`
+- Folder lưu evidence: `./docs/evidence/epic-01`
 
 ## Ghi chú / Follow-up
 
