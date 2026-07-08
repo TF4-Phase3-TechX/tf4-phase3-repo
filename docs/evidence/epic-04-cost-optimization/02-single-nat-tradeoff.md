@@ -311,38 +311,6 @@ docs/architecture/01-techx-tf4-aws-high-level-architecture.jpg
 
 ## 16. Jira Evidence Comment
 
-```txt
-EVIDENCE UPDATE
-
-1. Đã làm gì?
-
-Đã document trade-off giữa Single NAT Gateway và NAT Gateway per AZ cho Week 1 baseline architecture.
-
-2. Kết quả hiện tại
-
-Team thống nhất Week 1 sử dụng Single NAT Gateway để kiểm soát chi phí. Quyết định này phù hợp với baseline/demo scope, nhưng đã ghi rõ đây là network dependency risk và không được claim là full network high availability.
-
-NAT Gateway per AZ được ghi nhận là future hardening option nếu hệ thống cần reliability cao hơn hoặc nếu outbound traffic trở thành critical dependency.
-
-3. Bằng chứng nằm ở đâu?
-
-- Trade-off note:
-docs/evidence/epic-04-cost-optimization/02-single-nat-tradeoff.md
-
-- Related architecture evidence:
-docs/evidence/epic-02-baseline-architecture/01-aws-high-level-architecture.md
-docs/evidence/epic-02-baseline-architecture/04-architecture-assumptions.md
-docs/evidence/epic-02-baseline-architecture/05-architecture-risk-register.md
-
-- Related diagram:
-docs/architecture/01-techx-tf4-aws-high-level-architecture.png
-
----
-
-## 17. Kết luận
-
-Trong Week 1, lựa chọn **Single NAT Gateway** là phù hợp vì team đang ưu tiên cost control và baseline validation. Tuy nhiên, đây không phải thiết kế network HA hoàn chỉnh.
-
 Team cần ghi rõ trong architecture và Week 1 Pitch rằng:
 
 - Multi-AZ hiện tại chỉ áp dụng cho EKS compute layer.
