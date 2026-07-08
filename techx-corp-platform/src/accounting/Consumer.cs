@@ -134,7 +134,10 @@ internal class Consumer : IDisposable
             // and commit offset without re-inserting.
             if (OrderAlreadyPersisted(dbContext, order))
             {
-                _logger.LogInformation("Order {OrderId} already persisted (duplicate delivery), committing offset", order.OrderId);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Order {OrderId} already persisted (duplicate delivery), committing offset", order.OrderId);
+                }
                 CommitOffset(consumeResult);
                 return;
             }
