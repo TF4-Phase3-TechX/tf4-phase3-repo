@@ -1,0 +1,130 @@
+name: terraform-apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/bootstrap/**'
+      - 'infra/terraform/**'
+      - '.github/workflows/terraform-apply.yaml'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-apply-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  changes:
+    name: Detect Terraform changes
+    runs-on: ubuntu-latest
+    outputs:
+      bootstrap: ${{ steps.filter.outputs.bootstrap }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Filter changed paths
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.before }}"
+          HEAD="${{ github.sha }}"
+          if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git rev-parse "${HEAD}^" 2>/dev/null || true)"
+          fi
+
+          if [[ -n "${BASE:-}" ]]; then
+            git diff --name-only "$BASE" "$HEAD" > /tmp/changed.txt
+          else
+            git ls-tree -r --name-only "$HEAD" > /tmp/changed.txt
+          fi
+
+          cat /tmp/changed.txt
+          grep -Eq '^infra/bootstrap/' /tmp/changed.txt && echo "bootstrap=true" >> "$GITHUB_OUTPUT" || echo "bootstrap=false" >> "$GITHUB_OUTPUT"
+          grep -Eq '^infra/terraform/' /tmp/changed.txt && echo "terraform=true" >> "$GITHUB_OUTPUT" || echo "terraform=false" >> "$GITHUB_OUTPUT"
+
+  bootstrap-apply:
+    name: Terraform apply bootstrap
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.bootstrap == 'true'
+    defaults:
+      run:
+        working-directory: infra/bootstrap
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve
+
+      - name: Show bootstrap outputs
+        run: terraform output
+
+  infra-apply:
+    name: Terraform apply infra
+    runs-on: ubuntu-latest
+    needs: [changes, bootstrap-apply]
+    if: always() && needs.changes.outputs.terraform == 'true' && (needs.bootstrap-apply.result == 'success' || needs.bootstrap-apply.result == 'skipped')
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve
+
+      - name: Show infra outputs
+        run: terraform output
