@@ -1,3 +1,4 @@
+# Owner: Huy Hoàng nhóm CDO_04
 # Resume push to ECR - 3 services con lai (kafka, opensearch, llm)
 # ECR da co 17/21: accounting, ad, cart, checkout, currency, email,
 #   fraud-detection, frontend, frontend-proxy, image-provider, load-generator,

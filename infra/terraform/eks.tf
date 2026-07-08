@@ -1,3 +1,4 @@
+# Owner: Huy Hoàng nhóm CDO_04
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"

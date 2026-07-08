@@ -1,3 +1,4 @@
+# Owner: Huy Hoàng nhóm CDO_04
 # Khai báo ECR Repository
 resource "aws_ecr_repository" "techx_corp" {
   name                 = "techx-corp"
