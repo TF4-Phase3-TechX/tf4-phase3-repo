@@ -22,7 +22,7 @@ resource "aws_ecr_lifecycle_policy" "techx_corp_policy" {
   "rules": [
     {
       "rulePriority": 1,
-      "description": "Expire untagged images after 7 days",
+      "description": "Xóa ảnh không có tag (untagged) sau 7 ngày",
       "selection": {
         "tagStatus": "untagged",
         "countType": "sinceImagePushed",
@@ -35,7 +35,7 @@ resource "aws_ecr_lifecycle_policy" "techx_corp_policy" {
     },
     {
       "rulePriority": 2,
-      "description": "Keep the 30 most recent tagged images",
+      "description": "Giữ tối đa 30 ảnh có tag gần nhất",
       "selection": {
         "tagStatus": "any",
         "countType": "imageCountMoreThan",
