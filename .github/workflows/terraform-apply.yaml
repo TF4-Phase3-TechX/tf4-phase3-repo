@@ -1,0 +1,89 @@
+name: terraform-apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/terraform/**'
+      - '.github/workflows/terraform-apply.yaml'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-apply-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+  changes:
+    name: Detect Terraform changes
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Filter changed paths
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.before }}"
+          HEAD="${{ github.sha }}"
+          if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git rev-parse "${HEAD}^" 2>/dev/null || true)"
+          fi
+
+          if [[ -n "${BASE:-}" ]]; then
+            git diff --name-only "$BASE" "$HEAD" > /tmp/changed.txt
+          else
+            git ls-tree -r --name-only "$HEAD" > /tmp/changed.txt
+          fi
+
+          cat /tmp/changed.txt
+          grep -Eq '^infra/terraform/' /tmp/changed.txt && echo "terraform=true" >> "$GITHUB_OUTPUT" || echo "terraform=false" >> "$GITHUB_OUTPUT"
+
+  infra-apply:
+    name: Terraform apply infra
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.terraform == 'true'
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve
+
+      - name: Show infra outputs
+        run: terraform output

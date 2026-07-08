@@ -1,0 +1,178 @@
+name: deploy
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Image tag to deploy. Required when called by build workflow.
+        required: true
+        type: string
+      deploy_observability:
+        required: false
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Optional image tag. Empty = keep current deployed image tag.
+        required: false
+        type: string
+      deploy_observability:
+        description: Deploy observability release first.
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'techx-corp-chart/**'
+      - 'deploy/**'
+      - '!deploy/build-push-images.sh'
+      - '.github/workflows/deploy.yaml'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  APP_NAMESPACE: ${{ vars.APP_NAMESPACE }}
+  OBS_NAMESPACE: ${{ vars.OBS_NAMESPACE }}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Helm deploy and smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Add Helm repos
+        run: |
+          helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana-community https://grafana-community.github.io/helm-charts
+          helm repo add opensearch https://opensearch-project.github.io/helm-charts
+          helm repo update
+          helm dependency build ./techx-corp-chart
+
+      - name: Resolve image tag
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_TAG="${{ inputs.image_tag }}"
+
+          if [[ -n "$INPUT_TAG" ]]; then
+            IMAGE_TAG="$INPUT_TAG"
+          else
+            IMAGE_TAG="$(helm -n "$APP_NAMESPACE" get values techx-corp -o json 2>/dev/null | jq -r '.default.image.tag // empty')"
+          fi
+
+          : "${IMAGE_TAG:?cannot determine image tag}"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
+          echo "Resolved image tag: ${IMAGE_TAG}"
+
+      - name: Create namespaces
+        run: |
+          kubectl create namespace "$OBS_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace "$APP_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy observability
+        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        run: |
+          helm upgrade --install techx-observability ./techx-corp-chart \
+            --namespace "$OBS_NAMESPACE" \
+            --create-namespace \
+            -f deploy/values-observability.yaml \
+            --wait \
+            --timeout 10m
+
+      - name: Deploy app
+        run: |
+          helm upgrade --install techx-corp ./techx-corp-chart \
+            --namespace "$APP_NAMESPACE" \
+            --create-namespace \
+            --set default.image.repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" \
+            --set default.image.tag="$IMAGE_TAG" \
+            -f deploy/values-app-stamp.yaml \
+            --wait \
+            --timeout 10m
+
+      - name: Smoke Kubernetes rollouts
+        run: |
+          set -euo pipefail
+          kubectl -n "$OBS_NAMESPACE" get pods
+          kubectl -n "$APP_NAMESPACE" get pods
+
+          for deploy in frontend frontend-proxy product-catalog cart checkout payment flagd kafka; do
+            kubectl -n "$APP_NAMESPACE" rollout status "deploy/${deploy}" --timeout=180s
+          done
+
+      - name: Smoke HTTP routes through frontend-proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$APP_NAMESPACE" port-forward svc/frontend-proxy 8080:8080 >/tmp/frontend-proxy-pf.log 2>&1 &
+          PF_PID=$!
+          trap 'kill $PF_PID || true' EXIT
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8080/ >/tmp/home.html; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -fsS http://127.0.0.1:8080/ >/tmp/home.html
+          curl -fsSI http://127.0.0.1:8080/images/ >/dev/null
+          curl -fsSI http://127.0.0.1:8080/grafana/ >/dev/null
+          curl -fsSI http://127.0.0.1:8080/jaeger/ >/dev/null
+          curl -fsSI http://127.0.0.1:8080/loadgen/ >/dev/null
+          curl -fsSI http://127.0.0.1:8080/feature/ >/dev/null
+
+      - name: Write deploy evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          kubectl -n "$APP_NAMESPACE" get deploy,svc,pods -o wide > evidence/app-resources.txt || true
+          kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
+          helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
+          helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true
+          cp /tmp/frontend-proxy-pf.log evidence/frontend-proxy-pf.log 2>/dev/null || true
+
+      - name: Upload deploy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-evidence-${{ steps.image.outputs.image_tag }}
+          path: evidence/
+          if-no-files-found: ignore
