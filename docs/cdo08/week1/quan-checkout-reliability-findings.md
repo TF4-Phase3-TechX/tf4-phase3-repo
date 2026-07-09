@@ -159,14 +159,14 @@ Thời điểm kiểm tra: 2026-07-09 09:10 UTC+7 — namespace `techx-tf4`
 | valkey-cart | 1/1 | Running | 0 | |
 | postgresql | 1/1 | Running | 0 | |
 | flagd | 1/1 | Running | 0 | |
-| accounting | 0/1 | CrashLoopBackOff | 39 | cần debug |
+| accounting | 1/1 | Running | 0 | |
 | fraud-detection | 1/1 | Running | 0 | |
 | jaeger | — | — | — | **BLOCKED** — không có quyền get pod detail |
 | grafana | — | — | — | **BLOCKED** — không có quyền get pod detail |
 
-**Kết luận:** 21/22 pod Running. Accounting đang CrashLoopBackOff (39 restarts) — cần debug. Jaeger/Grafana detail không verify được do RBAC hạn chế.
+**Kết luận:** 22/22 pod Running. Jaeger/Grafana detail không verify được do RBAC hạn chế.
 
-**Runtime verification status:** ✅ Có thể tiến hành smoke test (accounting là consumer, không block checkout path). Log access: ✅ có quyền `get logs`. Port-forward: ❌ **BLOCKED** (không có quyền `pods/portforward`).
+**Runtime verification status:** ✅ Có thể tiến hành smoke test. Log access: ✅ có quyền `get logs`. Port-forward: ❌ **BLOCKED** (không có quyền `pods/portforward`).
 
 ---
 
@@ -486,7 +486,7 @@ Thời điểm kiểm tra: 2026-07-09 09:10 UTC+7 — namespace `techx-tf4`
 |---|---|---|
 | P1-P5 | ✅ Pass | Tất cả core pod Running (xem mục 1.7) |
 | U1-U9 | ✅ Pass | Trace xác nhận checkout flow hoạt động đầy đủ |
-| V1-V5 | ✅ Pass | Trace + fraud-detection log xác nhận Kafka publish + consume. Accounting gặp CrashLoopBackOff — cần debug riêng |
+| V1-V5 | ✅ Pass | Trace + fraud-detection log xác nhận Kafka publish + consume |
 
 ### 4.6 Coverage map
 
@@ -557,7 +557,7 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | Loại | Trạng thái | Chi tiết |
 |---|---|---|
 | Static analysis | ✅ Hoàn thành | Source code, config, Helm values — tất cả timeout/retry/fallback config đã được inspect |
-| Runtime verification | ✅ Có thể tiến hành | 21/22 pod Running. Accounting CrashLoopBackOff — cần debug. Log access: ✅. Port-forward: ❌ **BLOCKED** (RBAC). |
+| Runtime verification | ✅ Có thể tiến hành | 22/22 pod Running. Log access: ✅. Port-forward: ❌ **BLOCKED** (RBAC). |
 | Trace evidence | ✅ Có | Trace ID `0a7495c125a14b8911ea597d3564c835` (từ lần chạy trước) |
 | Re-run window | 24h sau khi environment sẵn sàng | Re-run sẽ verify timeout behavior bằng cách inject fault (flagd) và check trace span duration |
 
@@ -607,7 +607,7 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | BC07 | Làm kafka optional tại startup | Kafka down → checkout không start được | Helm `values.yaml` | Source: init container block chờ kafka | Quân / Nam |
 | BC08 | Implement idempotent Kafka producer | Duplicate order event | `checkout/kafka/producer.go` | Source: idempotent deferred | Quân |
 | BC09 | Config max.poll.interval cho fraud-detection consumer | Consumer bị kick khỏi group | `fraud-detection/main.kt` | Source: default config | Quân |
-| BC10 | Debug accounting CrashLoopBackOff | Accounting không start được (39 restarts) — ảnh hưởng downstream order processing | accounting log + source | Runtime: accounting CrashLoopBackOff | Quyết / DevOps |
+| BC10 | Monitor accounting consumer health | Accounting consumer cần theo dõi offset/lag | accounting log + source | Runtime: 22/22 pod Running | Quyết / DevOps |
 
 ### P2 — Tuần 3+
 
@@ -631,7 +631,6 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | Blocking (direct checkout fail) | 1 (F07) |
 | Non-fatal (post-order) | 4 (F06, F08, F09, F11) |
 | Smoke test steps | 19 ✅ Pass |
-| Accounting | ⚠️ CrashLoopBackOff — cần debug |
-| Runtime check | 2026-07-09 09:10 UTC+7 — 21/22 pod Running |
+| Runtime check | 2026-07-09 09:10 UTC+7 — 22/22 pod Running |
 
 ---
