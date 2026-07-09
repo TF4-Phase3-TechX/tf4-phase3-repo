@@ -1,64 +1,64 @@
-# Postmortem / COE: <Incident Title>
+# Postmortem / COE: <Tiêu đề sự cố>
 
-Status: Draft | Reviewed | Closed
-Date: YYYY-MM-DD
-Incident commander: <name>
-Authors: <names>
-Related Jira: <SCRUM-xxx or N/A>
-Related PR/rollback: <link or N/A>
+Trạng thái: Nháp | Đã review | Đã đóng
+Ngày: YYYY-MM-DD
+Chỉ huy xử lý sự cố: <tên>
+Người viết: <tên>
+Jira liên quan: <SCRUM-xxx hoặc N/A>
+PR/rollback liên quan: <link hoặc N/A>
 
-## Summary
+## Tóm tắt
 
-<Briefly summarize what happened and the impact.>
+<Tóm tắt ngắn gọn sự cố đã xảy ra và phạm vi ảnh hưởng.>
 
-## Customer / Business Impact
+## Ảnh hưởng tới khách hàng / nghiệp vụ
 
-- Affected flow: <checkout/cart/browse/AI/etc.>
-- Duration: <start-end>
-- SLO impact: <error budget/latency/error rate>
-- Revenue/customer impact: <known or unknown>
+- Luồng bị ảnh hưởng: <checkout/cart/browse/AI/etc.>
+- Thời lượng: <thời điểm bắt đầu-kết thúc>
+- Ảnh hưởng SLO: <error budget/latency/error rate>
+- Ảnh hưởng doanh thu/khách hàng: <đã biết hoặc chưa xác định>
 
 ## Timeline
 
-| Time | Event | Evidence |
+| Thời gian | Sự kiện | Evidence |
 | --- | --- | --- |
-| YYYY-MM-DD HH:mm TZ | <event> | <link/path> |
+| YYYY-MM-DD HH:mm TZ | <sự kiện> | <link/đường dẫn> |
 
-## Root Cause
+## Nguyên nhân gốc
 
-<State the technical/system root cause. Avoid personal blame.>
+<Nêu nguyên nhân kỹ thuật/hệ thống. Tránh quy trách nhiệm cá nhân.>
 
-## Detection
+## Phát hiện
 
-- How detected: <alert/customer/manual>
-- Detection gap: <gap or N/A>
+- Cách phát hiện: <alert/khách hàng/manual>
+- Khoảng trống phát hiện: <gap hoặc N/A>
 
-## Response
+## Phản ứng xử lý
 
-<Summarize key response actions and decisions.>
+<Tóm tắt các hành động xử lý chính và các quyết định quan trọng.>
 
-## What Went Well
+## Điều đã làm tốt
 
-- <What worked>
+- <Điểm đã hoạt động tốt>
 
-## What Went Wrong
+## Điều chưa tốt
 
-- <What failed or slowed response>
+- <Điểm thất bại hoặc làm chậm quá trình xử lý>
 
-## Action Items
+## Hạng mục hành động
 
-| Action | Owner | Due date | Jira/PR | Status |
+| Hành động | Người phụ trách | Hạn hoàn thành | Jira/PR | Trạng thái |
 | --- | --- | --- | --- | --- |
-| <action> | <owner> | <date> | <link> | Open |
+| <hành động> | <người phụ trách> | <ngày> | <link> | Đang mở |
 
 ## Evidence
 
-- Logs/traces/metrics: <link/path>
-- Screenshots: <link/path>
-- Commands: <summary/path>
+- Logs/traces/metrics: <link/đường dẫn>
+- Screenshots: <link/đường dẫn>
+- Commands: <tóm tắt/đường dẫn>
 
-## Sign-off
+## Xác nhận
 
-- Owner:
+- Người phụ trách:
 - Reviewer:
-- Date:
+- Ngày:
