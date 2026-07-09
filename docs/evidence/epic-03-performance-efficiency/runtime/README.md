@@ -17,10 +17,10 @@ Namespace under test:
 | Subtask | Owner | Status | Evidence |
 |---|---|---|---|
 | PERF-04.1: Capture pod status and node placement | Tuấn | Done | `kubectl/pods-wide-2026-07-09.md`, `kubectl/nodes-zones-2026-07-09.md` |
-| PERF-04.2: Capture CPU/memory usage | Huy | Blocked | `kubectl/top-metrics-blocker-2026-07-09.md` |
-| PERF-04.3: Capture Grafana dashboard screenshot | Ninh | Partially done | `grafana/http-check-2026-07-09.md`; screenshots still need browser capture |
-| PERF-04.4: Capture Jaeger trace if available | Huy | Partially done | `jaeger/http-check-2026-07-09.md`; trace screenshots still need browser capture |
-| PERF-04.5: Summarize runtime performance evidence | Huy | Done | This summary |
+| PERF-04.2: Capture CPU/memory usage | Huy | Done (Workaround) | PromQL queries via Prometheus/Grafana Explore. Screenshots: `grafana-pods-cpu.png`, `grafana-pods-memory.png` |
+| PERF-04.3: Capture Grafana dashboard screenshot | Ninh | Done | Screenshots: `grafana-latency.png`, `grafana-error-rate.png`, `grafana-request-rate.png` |
+| PERF-04.4: Capture Jaeger trace if available | Huy | Done | Trace screenshots in `screenshots/` directory, Services dropdown: `jaeger-services-dropdown.png` |
+| PERF-04.5: Summarize runtime performance evidence | Huy | Done | This summary and `04-runtime-performance-evidence.md` |
 
 ## Findings
 
@@ -32,28 +32,23 @@ Namespace under test:
 4. Webstore public endpoint returns `HTTP 200 OK`.
 5. Grafana public route `/grafana/` returns `HTTP 200 OK`.
 6. Jaeger public route `/jaeger/ui/` returns `HTTP 200 OK`.
-7. CPU/memory evidence could not be collected because the Kubernetes Metrics API is not installed or unavailable:
-   - `kubectl top pods` returns `error: Metrics API not available`
-   - `kubectl top nodes` returns `error: Metrics API not available`
-   - `v1beta1.metrics.k8s.io` APIService is not found
+7. CPU/memory evidence has been successfully collected via Prometheus/Grafana PromQL queries as a workaround for the missing Kubernetes Metrics API blocker.
 8. Runtime warning events should be watched:
    - `accounting` pod has repeated restarts and current BackOff warning.
    - Grafana had a previous readiness probe failure but is currently `4/4 Running`.
 
 ## Screenshot status
 
-Screenshot capture is still pending for:
+All screenshots have been successfully captured and saved in `/screenshots/` directory:
+- `grafana-pods-cpu.png` (Pod CPU usage PromQL)
+- `grafana-pods-memory.png` (Pod Memory usage PromQL)
+- `grafana-latency.png` (Grafana latency dashboard)
+- `grafana-error-rate.png` (Grafana error rate dashboard)
+- `grafana-request-rate.png` (Grafana request rate dashboard)
+- `jaeger-services-dropdown.png` (Jaeger services dropdown)
+- Jaeger waterfall traces for critical flows
 
-- Grafana latency dashboard
-- Grafana error rate dashboard
-- Grafana request rate dashboard
-- Jaeger checkout trace
-- Jaeger product flow trace
-
-The public UI routes are reachable, so screenshot collection is now unblocked from an application availability perspective. A team member with browser access should capture screenshots into:
-
-- `runtime/grafana/screenshots/`
-- `runtime/jaeger/screenshots/`
+All public UI routes are reachable and verified.
 
 ## Jira evidence comment
 
