@@ -2,6 +2,8 @@
 
 EVIDENCE UPDATE
 
+Owner group: CDO-07 Auditability
+
 ## What Changed
 
 - Updated `.github/CODEOWNERS` to make ownership explicit for auditability artifacts.
