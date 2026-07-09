@@ -135,8 +135,9 @@ Done rule:
 
 - [ ] `OBS-03` Restore repo auditability artifacts.
   - Target: CODEOWNERS path mismatch fixed or documented; ADR/runbook/postmortem templates added if allowed.
-  - Evidence file: `019-obs-03-repo-auditability-artifacts.md`
+  - Evidence file: `003-obs-03-repo-auditability-artifacts.md`
   - Validation: file links and GitHub branch protection/CODEOWNERS check if available.
+  - Status: implemented locally with templates and destination folders, pending PR link and GitHub CODEOWNERS check.
 
 - [ ] `PERF-01` / `PERF-02` Fix or baseline browse/search performance.
   - Target: avoid N currency fan-out where safe and bound search with pagination/index plan.
