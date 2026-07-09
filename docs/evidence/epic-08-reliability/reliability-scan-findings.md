@@ -15,6 +15,9 @@ Scan này tập trung vào các rủi ro reliability có evidence từ runtime, 
 - Stateful reliability cho PostgreSQL, Valkey, Kafka.
 - Alerting.
 - Checkout consistency/availability risk.
+- flagd central sync/control-plane risk.
+- Timeout/deadline/retry gaps trên checkout path.
+- Backup/restore proof và PDB candidates.
 
 ## Runtime Context
 
@@ -31,7 +34,9 @@ Kết quả chính:
 - Toàn bộ app pods trong `techx-tf4` đang `Running 1/1`.
 - Toàn bộ deployments trong `techx-tf4` đang `READY 1/1`, `AVAILABLE 1`.
 - Không có PVC trong namespace `techx-tf4`.
+- Không có PodDisruptionBudget trong namespace `techx-tf4`.
 - Frontend public ALB trả `HTTP/1.1 200 OK`.
+- `flagd` đang chạy, nhưng evidence của Thuỷ cho thấy runtime đọc local flag file thay vì central sync.
 
 ## Findings
 
@@ -43,6 +48,11 @@ Kết quả chính:
 | REL-05 | Prometheus/OpenSearch persistence disabled | `techx-corp-chart/values.yaml:1174-1175` Prometheus PV disabled; `techx-corp-chart/values.yaml:1222-1223` OpenSearch persistence disabled | Metric/log/trace có thể mất sau restart; khó điều tra incident và chứng minh reliability | P1/P2 | Bổ sung persistence hoặc xác định retention/evidence strategy |
 | REL-06 | Alertmanager disabled | `techx-corp-chart/values.yaml:1118-1121` có `alertmanager.enabled: false` | Có dashboard nhưng thiếu cảnh báo tự động cho checkout/runtime/data; phát hiện sự cố phụ thuộc manual check | P1 | Bật alerting cho checkout error rate/latency và runtime health |
 | REL-07 | Checkout trả lỗi nếu Kafka publish fail sau payment/shipping | `techx-corp-platform/src/checkout/main.go:331-347` payment/shipping xảy ra trước; `387-392` Kafka publish fail thì return `codes.Unavailable` | Khách có thể thấy checkout fail dù payment/shipping đã xảy ra; rủi ro consistency và support | P1 | Thiết kế lại post-payment event handling hoặc compensation strategy |
+| REL-08 | `flagd` central sync đang bị vô hiệu hóa và runtime đọc flag local | `deploy/values-flagd-sync.yaml:10-23` sync command/token đang comment; log flagd đọc `./etc/flagd/demo.flagd.json`; Secret `flagd-sync` là `placeholder` | Fault-injection/control flags từ BTC có thể không đồng bộ; vi phạm rule flagd và làm sai evidence incident | P0 | Sửa flagd sync command/token, deploy với `values-flagd-sync.yaml`, verify logs sync central provider |
+| REL-09 | Checkout path thiếu timeout/deadline/retry cho nhiều dependency sync | Quân F01-F04/G1-G7/G10: gRPC/HTTP calls không có per-call timeout; `shipping/quote.rs` dùng `awc::Client::new()` | Dependency chậm có thể kéo dài checkout request, tăng p95 latency hoặc làm cạn worker/goroutine | P1 | Thiết kế timeout budget và fault test cho cart/product-catalog/currency/payment/shipping/quote |
+| REL-10 | Payment khởi tạo OpenFeature provider trong mỗi request thanh toán | Nguyên CDO08-REL-03; `payment/charge.js` gọi `OpenFeature.setProviderAndWait(flagProvider)` trong `charge` | Tạo lại provider/kết nối flagd trên hot path có thể làm tăng latency và bottleneck payment | P1 | Di chuyển provider init sang startup, giữ per-request chỉ đọc flag value |
+| REL-11 | Chưa có backup/restore proof cho PostgreSQL, Valkey, Kafka | Phương DR-003/DR-010; namespace không có PVC; chưa thấy restore runbook/evidence | Khi data/stateful component lỗi, team chưa chứng minh được RPO/RTO hoặc cách khôi phục cart/order/event data | P1 | Tạo backup/restore baseline và test restore tối thiểu hoặc ghi rõ blocker |
+| REL-12 | Revenue path chưa có PodDisruptionBudget | `kubectl -n techx-tf4 get pdb` trả `No resources found`; Nam `NAM-RUNTIME-007` | Voluntary disruption như node drain/maintenance chưa có policy bảo vệ service critical | P2 | Tạo PDB candidates sau khi có >=2 replicas và readiness đúng |
 
 ## Evidence Details
 
@@ -158,6 +168,85 @@ Việc cần làm tuần sau:
 - Nguyên review design tradeoff: consistency vs availability.
 - Đề xuất hướng xử lý: outbox pattern, retry queue, compensation, hoặc user-facing response strategy.
 
+### REL-08 - flagd central sync disabled/local-only
+
+Evidence:
+
+- `deploy/values-flagd-sync.yaml:10-23` giữ central sync command/token ở trạng thái comment.
+- Command cũ dùng shell wrapper `/bin/sh -c`, trong khi image flagd hiện tại không có shell, nên bật lại nguyên trạng có thể làm container crash.
+- Runtime log của Thuỷ cho thấy `flagd` đang watch `./etc/flagd/demo.flagd.json`.
+- Secret `flagd-sync` trong runtime chứa value placeholder.
+
+Service impact:
+
+- Runtime có `FLAGD_HOST=flagd`, `FLAGD_PORT=8013` ở các service: `ad`, `cart`, `checkout`, `email`, `fraud-detection`, `frontend`, `frontend-proxy`, `llm`, `load-generator`, `payment`, `product-catalog`, `product-reviews`, `recommendation`.
+- Các flag quan trọng gồm `cartFailure`, `paymentFailure`, `paymentUnreachable`, `productCatalogFailure`, `kafkaQueueProblems`, `failedReadinessProbe`.
+
+Việc cần làm tuần sau:
+
+- Sửa command sync theo dạng exec trực tiếp, không dùng shell wrapper.
+- Xác nhận token thật và owner được phép deploy.
+- Verify bằng `kubectl logs` rằng flagd sync từ central provider thành công, không chỉ đọc local file.
+
+### REL-09 - Checkout dependency timeout/deadline gaps
+
+Evidence:
+
+- Quân F01-F04/G1-G7/G10 ghi nhận checkout gọi `cart`, `product-catalog`, `currency`, `payment`, `shipping` mà chưa có per-call deadline/timeout rõ.
+- `shipping` gọi `quote` qua `awc::Client::new()` default.
+- Baseline trace cho thấy happy path chạy được, nhưng chưa có fault-injection evidence khi dependency chậm/lỗi.
+
+Việc cần làm tuần sau:
+
+- Thiết kế timeout budget theo dependency.
+- Thêm fault test: dependency delay 10s thì checkout phải fail bounded theo timeout, không treo request.
+- Không nâng P0 nếu chưa có runtime evidence outage hoặc fault test chứng minh impact.
+
+### REL-10 - Payment OpenFeature provider per request
+
+Evidence:
+
+- Nguyên finding CDO08-REL-03 chỉ ra `payment/charge.js` gọi `OpenFeature.setProviderAndWait(flagProvider)` bên trong request handler `charge`.
+- Đây là hot path của checkout vì checkout gọi payment trước khi ship order và publish event.
+
+Việc cần làm tuần sau:
+
+- Di chuyển provider initialization sang startup.
+- Giữ request path chỉ đọc giá trị flag `paymentFailure`.
+- Load/smoke test payment để verify latency không tăng và flag vẫn hoạt động.
+
+### REL-11 - Backup/restore proof missing
+
+Evidence:
+
+- Phương DR-003/DR-010 ghi nhận PostgreSQL, Valkey, Kafka chưa có evidence backup/restore đầy đủ.
+- Runtime `kubectl -n techx-tf4 get pvc` không thấy PVC.
+- Data path liên quan cart/order/event, nên cần RPO/RTO hoặc ít nhất documented gap.
+
+Việc cần làm tuần sau:
+
+- Tạo runbook backup/restore cho PostgreSQL, Valkey, Kafka.
+- Nếu chưa thể test restore, ghi rõ blocker, quyền cần có, storage cần có, và owner phối hợp.
+- Nếu đề xuất HA/managed service, phối hợp CDO04 vì có cost impact.
+
+### REL-12 - PodDisruptionBudget missing
+
+Evidence:
+
+```bash
+kubectl -n techx-tf4 get pdb
+```
+
+Kết quả:
+
+- `No resources found in techx-tf4 namespace`.
+
+Việc cần làm tuần sau:
+
+- Chỉ tạo PDB sau khi service có >=2 replicas và readiness đúng.
+- Ưu tiên candidates cho `frontend-proxy`, `frontend`, `checkout`, `cart`, `payment`, `product-catalog`.
+- Không tạo PDB cho single-replica workload theo cách làm kẹt node drain.
+
 ## Suggested Backlog Items
 
 | Backlog ID | Title | Suggested Owner | Priority |
@@ -167,7 +256,11 @@ Việc cần làm tuần sau:
 | REL-BL-03 | Define persistence/backup/restore baseline for PostgreSQL, Valkey, Kafka | Phương + CDO04 | P1 |
 | REL-BL-05 | Enable minimum alerting for checkout/runtime/data health | Quyết + Nam + Phương | P1 |
 | REL-BL-06 | Review checkout Kafka post-payment failure behavior | Quân + Nguyên | P1 |
+| REL-BL-07 | Restore flagd central sync and verify protected flag control path | Thuỷ + Nam + Nguyên | P0 |
+| REL-BL-08 | Add checkout timeout/deadline budget and fault tests | Quân + Nguyên + Quyết | P1 |
+| REL-BL-09 | Move Payment OpenFeature provider initialization to startup | Nguyên + Quân | P1 |
+| REL-BL-10 | Add PDB candidates after replicas/readiness are fixed | Nam + CDO04 | P2 |
 
 ## Notes For Jira Epic
 
-Reliability Week 1 scan đã xác nhận hệ thống app hiện đang chạy, nhưng resilience baseline còn yếu: single replica, thiếu probes, stateful components chưa có PVC/evidence backup, alerting chưa ổn định, và checkout có consistency risk khi Kafka publish fail sau payment/shipping. Các issue này phù hợp để đưa vào backlog tuần sau theo priority P1/P2.
+Reliability Week 1 scan đã xác nhận hệ thống app hiện đang chạy, nhưng resilience baseline còn yếu: flagd central sync đang local-only, single replica, thiếu probes, stateful components chưa có PVC/evidence backup, alerting chưa ổn định, checkout thiếu timeout/deadline, payment init flag provider trên request path, và checkout có consistency risk khi Kafka publish fail sau payment/shipping. Các issue này phù hợp để đưa vào backlog tuần sau, trong đó flagd sync là P0 vì liên quan trực tiếp tới protected control path/rule.
