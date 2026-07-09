@@ -1,141 +1,154 @@
-# AIOPS-02: AIOps MVP Incident Type Selection
+# AIOPS-02: Lựa chọn Loại Incident cho AIOps MVP
 
-**Related Epic:** EPIC-AIOPS-01 — AIOps Discovery & Data Foundation  
-**Output owner:** AIO01  
-**Status:** Done — MVP types selected
+**Epic liên quan:** EPIC-AIOPS-01 — AIOps Discovery & Data Foundation  
+**Chủ sở hữu đầu ra:** AIO01  
+**Trạng thái:** Done — Đã chọn xong các loại incident cho MVP
 
 ---
 
-## 1. Selection Methodology
+## 1. Phương pháp lựa chọn
 
-Each candidate is scored across 4 dimensions on a 1–3 scale (3 = best):
+Mỗi ứng viên được chấm điểm theo 4 chiều, thang 1–3 (3 = tốt nhất):
 
-| Dimension | Definition |
+| Chiều đánh giá | Định nghĩa |
 |---|---|
-| **Signal Readiness** | Are the required metrics/logs/traces already emitted by the system without code changes? |
-| **Evidence Quality** | Can AIOps demonstrate detection with a concrete, reproducible evidence artifact (trace ID, log line, metric graph)? |
-| **Demo Value** | Does the incident type map directly to a business-critical path (SLO, revenue, AI safety)? |
-| **Trigger Feasibility** | Can we reliably reproduce this incident in a controlled way (flag, load-gen, chaos) to validate the detector? |
+| **Sẵn sàng tín hiệu** | Các metric/log/trace cần thiết đã được hệ thống phát ra mà không cần thay đổi code? |
+| **Chất lượng bằng chứng** | AIOps có thể chứng minh phát hiện bằng artifact cụ thể, có thể tái tạo (trace ID, dòng log, đồ thị metric)? |
+| **Giá trị demo** | Loại incident có ánh xạ trực tiếp vào luồng nghiệp vụ quan trọng (SLO, doanh thu, an toàn AI)? |
+| **Khả năng kích hoạt** | Có thể tái tạo incident này theo cách có kiểm soát (feature flag, load-gen, chaos) để xác thực detector? |
 
 ---
 
-## 2. Candidate Comparison
+## 2. So sánh các ứng viên
 
-### Candidate A — LLM Timeout / Error
+### Ứng viên A — LLM Timeout / Lỗi
 
-**Incident pattern:** `product-reviews` calls `llm` over HTTP; LLM returns 429, raises exception, or hangs indefinitely causing gRPC thread exhaustion.
+**Mô hình incident:** `product-reviews` gọi `llm` qua HTTP; LLM trả về 429, ném exception, hoặc treo vô thời hạn gây cạn kiệt gRPC thread.
 
-| Dimension | Score | Evidence |
+| Chiều đánh giá | Điểm | Bằng chứng |
 |---|---|---|
-| Signal Readiness | **3** | `span.record_exception(e)` and `span.set_status(ERROR)` already in [`product_reviews_server.py:L194-L200`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/product_reviews_server.py#L194-L200). Metric `app_ai_assistant_counter` already emitted. OTLP log includes "Caught Exception" string. |
-| Evidence Quality | **3** | BTC-controlled `llmRateLimitError` feature flag ([`product_reviews_server.py:L164`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/product_reviews_server.py#L164)) can trigger a reproducible 429 path on demand — guaranteed test signal, no load needed. |
-| Demo Value | **3** | Directly maps to AI Safety SLO: *"không được hiển thị tóm tắt sai lệch"* ([`SLO.md`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/onboarding/SLO.md#L13)). Also triggers the `gRPC ThreadPoolExecutor` exhaustion risk (`max_workers=10`, [`L361`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/product_reviews_server.py#L361)). Tells the PM story: *"AI broke, here's how we caught it."* |
-| Trigger Feasibility | **3** | BTC owns the flag. AIO triggers it by querying the endpoint; flag flips the behaviour with 50% probability. Fully controllable, no cluster changes needed. |
-| **Total** | **12 / 12** | |
+| Sẵn sàng tín hiệu | **3** | `span.record_exception(e)` và `span.set_status(ERROR)` đã có trong [`product_reviews_server.py:L194-L200`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/product_reviews_server.py#L194-L200). Metric `app_ai_assistant_counter` đã được phát ra. OTLP log có chuỗi "Caught Exception". |
+| Chất lượng bằng chứng | **3** | Feature flag `llmRateLimitError` do BTC kiểm soát ([`product_reviews_server.py:L164`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/product_reviews_server.py#L164)) có thể kích hoạt luồng 429 theo yêu cầu — tín hiệu test đảm bảo, không cần tải. |
+| Giá trị demo | **3** | Ánh xạ trực tiếp vào AI Safety SLO: *"không được hiển thị tóm tắt sai lệch"* ([`SLO.md`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/onboarding/SLO.md#L13)). Cũng kích hoạt rủi ro cạn kiệt `gRPC ThreadPoolExecutor` (`max_workers=10`, [`L361`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-platform/src/product-reviews/product_reviews_server.py#L361)). Câu chuyện cho PM: *"AI hỏng, đây là cách chúng ta phát hiện."* |
+| Khả năng kích hoạt | **3** | BTC nắm flag. AIO kích hoạt bằng cách query endpoint; flag đảo hành vi với xác suất 50%. Hoàn toàn có thể kiểm soát, không cần thay đổi cluster. |
+| **Tổng** | **12 / 12** | |
 
 ---
 
-### Candidate B — Service Latency Spike
+### Ứng viên B — Latency Spike (Đột biến độ trễ)
 
-**Incident pattern:** A microservice (e.g. `product-reviews`, `checkout`) shows elevated p95/p99 latency. Most likely triggers: DB connection pool exhaustion (INC-1 pattern) or downstream call waiting.
+**Mô hình incident:** Một microservice (ví dụ `product-reviews`, `checkout`) cho thấy độ trễ p95/p99 tăng cao. Nguyên nhân phổ biến nhất: cạn kiệt connection pool DB (mô hình INC-1) hoặc downstream call bị chờ.
 
-| Dimension | Score | Evidence |
+| Chiều đánh giá | Điểm | Bằng chứng |
 |---|---|---|
-| Signal Readiness | **3** | `grpc_server_handling_seconds_bucket` and `http_server_duration_milliseconds_bucket` are collected by OTel Collector and stored in Prometheus. No instrumentation changes required. Histogram buckets already configured ([`values.yaml:L1016-L1019`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-chart/values.yaml#L1016-L1019)). |
-| Evidence Quality | **2** | Readable from Prometheus via PromQL (e.g. `histogram_quantile(0.95, rate(grpc_server_handling_seconds_bucket[5m]))`). Span-level breakdown visible in Jaeger. Requires `load-generator` to be running, which is included in chart ([`ARCHITECTURE.md:L32`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/onboarding/ARCHITECTURE.md#L32)). Score -1 because latency spike detection needs a baseline window first. |
-| Demo Value | **3** | INC-1 ([`INCIDENT_HISTORY.md:L9-L15`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/onboarding/INCIDENT_HISTORY.md#L9-L15)) shows this pattern already happened: checkout latency caused 95% success rate (below 99% SLO). SRE lead and CFO both care: "can we see it coming before SLO burns?" |
-| Trigger Feasibility | **2** | `load-generator` provides continuous traffic signal. Artificial spike requires temporarily raising load-gen concurrency or running a targeted locust script. CDO coordination needed to avoid unintended SLO burn during test. Score -1 for coordination dependency. |
-| **Total** | **10 / 12** | |
+| Sẵn sàng tín hiệu | **3** | `rpc_server_duration_milliseconds_bucket` (gRPC) và `http_server_request_duration_seconds_bucket` (HTTP) được OTel Collector thu thập và lưu vào Prometheus thông qua OTel Auto-Instrumentation (`opentelemetry-instrument` trong [`Dockerfile`](file:///d:/DevopsAndCloud/tf4-phase3-repo/techx-corp-platform/src/product-reviews/Dockerfile#L31)). Không cần thay đổi instrumentation. Histogram bucket đã được cấu hình ([`values.yaml:L1016-L1019`](file:///d:/DevopsAndCloud/tf4-phase3-repo/techx-corp-chart/values.yaml#L1016-L1019)). |
+| Chất lượng bằng chứng | **2** | Đọc được từ Prometheus qua PromQL (ví dụ: `histogram_quantile(0.95, sum by (le) (rate(rpc_server_duration_milliseconds_bucket{service_name="product-reviews"}[5m])))`). Chi tiết cấp span hiển thị trong Jaeger UI. Yêu cầu `load-generator` đang chạy, đã có trong chart ([`ARCHITECTURE.md:L32`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/onboarding/ARCHITECTURE.md#L32)). Điểm -1 vì phát hiện latency spike cần một baseline window trước. |
+| Giá trị demo | **3** | INC-1 ([`INCIDENT_HISTORY.md:L9-L15`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/onboarding/INCIDENT_HISTORY.md#L9-L15)) cho thấy mô hình này đã xảy ra: latency checkout khiến success rate xuống 95% (dưới SLO 99%). SRE lead và CFO đều quan tâm: "Chúng ta có thể thấy trước khi SLO burn không?" |
+| Khả năng kích hoạt | **2** | `load-generator` cung cấp tín hiệu traffic liên tục. Để tạo đột biến nhân tạo cần tạm thời tăng concurrency của load-gen hoặc chạy locust script. Cần phối hợp với CDO để tránh SLO burn ngoài ý muốn. Điểm -1 do phụ thuộc vào phối hợp. |
+| **Tổng** | **10 / 12** | |
 
 ---
 
-### Candidate C — Error Rate Spike
+### Ứng viên C — Error Rate Spike (Đột biến tỷ lệ lỗi)
 
-**Incident pattern:** A service returns a sustained burst of 4xx/5xx HTTP or non-OK gRPC status codes.
+**Mô hình incident:** Một service trả về liên tục các HTTP 4xx/5xx hoặc gRPC status code không phải OK.
 
-| Dimension | Score | Evidence |
+| Chiều đánh giá | Điểm | Bằng chứng |
 |---|---|---|
-| Signal Readiness | **2** | `grpc_server_handling_seconds_count{rpc_grpc_status_code!="0"}` available in Prometheus. However, several services use HTTP-level routing through Envoy (`frontend-proxy`) so HTTP 5xx detection also requires `http_server_duration_milliseconds_count{http_status_code=~"5.."}` which may need label verification in the live cluster. |
-| Evidence Quality | **2** | In steady-state baseline with load-gen running, error rate is near-zero, making the signal very clean. But *generating* a controlled error burst (without touching flagd) requires either deliberate misconfiguration or killing a pod — more disruptive than the LLM flag path. |
-| Demo Value | **2** | While important, error rate spikes are a *consequence* of latency or LLM failures — not an independent incident type at MVP scale. It largely duplicates what Candidate A (LLM error) and Candidate B (latency → timeout → error) already cover. Adds marginal AIOps value as a standalone detector. |
-| Trigger Feasibility | **1** | Controlled error generation without using BTC flags is risky (could burn SLO budget). Relying on BTC to trigger errors is valid but then it overlaps with Candidate A (LLM path). No clean independent trigger exists at MVP scope without flag access. |
-| **Total** | **7 / 12** | |
+| Sẵn sàng tín hiệu | **2** | `rpc_server_duration_milliseconds_count{rpc_grpc_status_code!="0"}` có sẵn trong Prometheus. Tuy nhiên, một số service dùng HTTP routing qua Envoy (`frontend-proxy`) nên phát hiện HTTP 5xx cũng cần `http_server_request_duration_seconds_count{http_response_status_code=~"5.."}` — cần xác minh label trong live cluster. |
+| Chất lượng bằng chứng | **2** | Trong baseline ổn định với load-gen chạy, error rate gần bằng không, tín hiệu rất rõ ràng. Nhưng để *tạo ra* một error burst có kiểm soát (mà không dùng flag) cần cấu hình sai có chủ đích hoặc kill pod — gây rối hơn nhiều so với luồng LLM flag. |
+| Giá trị demo | **2** | Dù quan trọng, error rate spike là *hệ quả* của latency hoặc LLM failure — không phải loại incident độc lập ở tầm MVP. Nó phần lớn trùng lặp với Ứng viên A (LLM error) và Ứng viên B (latency → timeout → error). Giá trị AIOps bổ sung thêm là nhỏ nếu đứng độc lập. |
+| Khả năng kích hoạt | **1** | Tạo lỗi có kiểm soát mà không dùng BTC flag là rủi ro (có thể burn SLO budget). Dựa vào BTC để trigger error thì lại trùng lặp với Ứng viên A (luồng LLM). Không có trigger độc lập sạch nào ở phạm vi MVP mà không cần quyền truy cập flag. |
+| **Tổng** | **7 / 12** | |
 
 ---
 
-## 3. MVP Selection Decision
+## 3. Quyết định lựa chọn MVP
 
-| Rank | Incident Type | Score | Decision | Rationale |
+| Hạng | Loại incident | Điểm | Quyết định | Lý do |
 |---|---|---|---|---|
-| 🥇 1 | **LLM Timeout / Error** | 12/12 | ✅ **MVP — Week 2** | Highest signal readiness. BTC flag provides a repeatable trigger with zero risk to production SLO. Directly demonstrates AI Safety monitoring — the highest-value story for AIO01. |
-| 🥈 2 | **Service Latency Spike** | 10/12 | ✅ **MVP — Week 2** | Covers the INC-1 historical pattern. Prometheus histograms are already in place. Ties latency detection directly to checkout SLO ($revenue-critical path). Requires load-gen baseline but that is already deployed. |
-| — | **Error Rate Spike** | 7/12 | ⛔ **Deferred to Week 3** | Overlaps with both selected types. Trigger mechanism is high-risk. Will be incorporated as an *output signal* of the Latency Spike detector (high latency → timeout → 5xx), not as a standalone MVP detector. |
+| 1 | **LLM Timeout / Lỗi** | 12/12 | **MVP — Tuần 2** | Sẵn sàng tín hiệu cao nhất. BTC flag cung cấp trigger có thể lặp lại với zero rủi ro cho production SLO. Thể hiện trực tiếp AI Safety monitoring — câu chuyện có giá trị nhất của AIO01. |
+| 2 | **Latency Spike** | 10/12 | **MVP — Tuần 2** | Bao phủ mô hình lịch sử INC-1. Prometheus histogram đã sẵn sàng. Gắn latency detection trực tiếp với checkout SLO (luồng critical doanh thu). Yêu cầu load-gen baseline nhưng đã được deploy. |
+| — | **Error Rate Spike** | 7/12 | **Hoãn đến Tuần 3** | Trùng lặp với cả hai loại đã chọn. Trigger mechanism rủi ro cao. Sẽ được tích hợp như một *tín hiệu đầu ra* của detector Latency Spike (high latency → timeout → 5xx), không phải detector MVP độc lập. |
 
 ---
 
-## 4. Required Signals per Selected Incident Type
+## 4. Tín hiệu cần thiết cho từng loại incident đã chọn
 
-### MVP-1: LLM Timeout / Error
+### MVP-1: LLM Timeout / Lỗi
 
-**Detection goal:** Alert when `product-reviews` fails to get a valid LLM response, either due to a 429 (rate-limit), unhandled exception, or future timeout (missing today — see Risk R2/R3 in baseline findings).
+**Mục tiêu phát hiện:** Cảnh báo khi `product-reviews` không lấy được response LLM hợp lệ, do 429 (rate-limit), exception chưa xử lý, hoặc timeout trong tương lai (chưa có hôm nay — xem Risk R2/R3 trong baseline findings).
 
-| Signal | Source | Query / Filter | Threshold |
+> [!NOTE]
+> **Kênh dữ liệu:** Traces/spans được kiểm tra trực tiếp qua **Jaeger UI/API** (lưu trữ in-memory theo cấu hình [`values.yaml:L1095`](file:///d:/DevopsAndCloud/tf4-phase3-repo/techx-corp-chart/values.yaml#L1095)). OpenSearch (`otel-logs-*`) chỉ dùng để truy vấn có cấu trúc đối với **logs**.
+
+| Tín hiệu | Nguồn | Query / Filter | Ngưỡng |
 |---|---|---|---|
-| **LLM Error Span** | Jaeger (via OpenSearch) | `service.name = "product-reviews" AND status.code = "ERROR"` in `otel-logs-*` | Any occurrence = alert candidate |
-| **LLM Exception Log** | OpenSearch (`otel-logs-*`) | `body: "Caught Exception"` AND `resource.attributes.service.name: "product-reviews"` | Any log in rolling 2-min window |
-| **AI Counter Rate Drop** | Prometheus | `rate(app_ai_assistant_counter[5m])` near zero while traffic continues (`rate(grpc_server_handling_seconds_count{rpc_service=~".*ProductReview.*"}[5m]) > 0`) | Counter rate drops > 90% vs baseline |
-| **gRPC Error Rate (AI path)** | Prometheus | `rate(grpc_server_handling_seconds_count{service_name="product-reviews", rpc_grpc_status_code!="0"}[5m])` | > 0.5 errors/sec sustained for 2m |
-| **LLM 429 Log** | OpenSearch | `body: "Returning a rate limit error"` AND `resource.attributes.service.name: "llm"` | Any match = trigger |
+| **LLM Error Span** | Jaeger UI/API | `service.name = "product-reviews"` AND `status = "ERROR"` trong Jaeger trace search | Bất kỳ occurrence nào = ứng viên alert |
+| **LLM Exception Log** | OpenSearch (`otel-logs-*`) | `body: "Caught Exception"` AND `resource.attributes.service.name: "product-reviews"` | Bất kỳ log nào trong rolling 2-min window |
+| **AI Counter Rate Drop** | Prometheus | `rate(app_ai_assistant_counter[5m])` gần bằng không trong khi traffic vẫn tiếp tục (`rate(rpc_server_duration_milliseconds_count{service_name="product-reviews"}[5m]) > 0`) | Counter rate giảm > 90% so với baseline |
+| **gRPC Error Rate (luồng AI)** | Prometheus | `rate(rpc_server_duration_milliseconds_count{service_name="product-reviews", rpc_grpc_status_code!="0"}[5m])` | > 0.5 errors/sec kéo dài 2 phút |
+| **LLM 429 Log** | OpenSearch | `body: "Returning a rate limit error"` AND `resource.attributes.service.name: "llm"` | Bất kỳ match nào = trigger |
 
-**Controlled trigger:** Set `llmRateLimitError` flag to `true` via BTC flagd → 50% of `AskProductAIAssistant` calls will return 429 path. Evidence: OpenSearch log `"Returning a rate limit error"` + Jaeger span status `ERROR` on `get_ai_assistant_response`.
+**Trigger có kiểm soát:** Đặt flag `llmRateLimitError` thành `true` qua BTC flagd → 50% các lần gọi `AskProductAIAssistant` sẽ đi theo luồng 429. Bằng chứng: OpenSearch log `"Returning a rate limit error"` + Jaeger span status `ERROR` trên `get_ai_assistant_response`.
 
 ---
 
-### MVP-2: Service Latency Spike
+### MVP-2: Latency Spike (Đột biến độ trễ dịch vụ)
 
-**Detection goal:** Alert when p95 latency on a critical-path service exceeds the SLO threshold (>1s for browse, implicit SLO for checkout derived from INC-1 pattern at ~2-3s).
+**Mục tiêu phát hiện:** Cảnh báo khi p95 latency trên service thuộc critical path vượt ngưỡng SLO (> 1s cho browse, SLO ngầm định cho checkout dẫn xuất từ mô hình INC-1 ở ~2–3s).
 
-| Signal | Source | Query / Filter | Threshold |
+> [!NOTE]
+> **Kênh dữ liệu:** Traces/spans với span duration bất thường được kiểm tra trực tiếp qua **Jaeger UI/API** (không phải OpenSearch). OpenSearch (`otel-logs-*`) chỉ dùng để tìm kiếm logs liên quan (timeout, connection error). Jaeger dùng `memory_backend` — dữ liệu không bền vững qua restart.
+
+| Tín hiệu | Nguồn | Query / Filter | Ngưỡng |
 |---|---|---|---|
-| **p95 gRPC Latency** | Prometheus | `histogram_quantile(0.95, sum by(le, service_name) (rate(grpc_server_handling_seconds_bucket{service_name=~"product-reviews|checkout|cart"}[5m])))` | > 1.0 second sustained for 3 minutes |
-| **DB Connection Wait** | OpenSearch (Logs) | `body: "timeout"` OR `body: "connection"` AND `resource.attributes.service.name: "product-reviews"` | Any match correlated with latency spike |
-| **Span Duration Outlier** | Jaeger | Spans on `get_product_reviews` or `get_ai_assistant_response` with duration > 2000ms | Manual correlation during incident window |
-| **gRPC Request Queue Buildup** | Prometheus | `sum(grpc_server_started_total) - sum(grpc_server_handled_total)` for target service | > 20 in-flight requests sustained for 2m |
-| **Load Generator Throughput Drop** | Prometheus | `rate(http_server_duration_milliseconds_count{service_name="frontend"}[5m])` | > 30% drop from rolling 10m baseline |
+| **p95 gRPC Latency** | Prometheus | `histogram_quantile(0.95, sum by (le, service_name) (rate(rpc_server_duration_milliseconds_bucket{service_name=~"product-reviews\|checkout\|cart"}[5m])))` | > 1000 ms kéo dài 3 phút |
+| **DB Connection Wait** | OpenSearch (Logs) | `body: "timeout"` OR `body: "connection"` AND `resource.attributes.service.name: "product-reviews"` | Bất kỳ match nào tương quan với latency spike |
+| **Span Duration Outlier** | Jaeger UI/API | Spans trên `get_product_reviews` hoặc `get_ai_assistant_response` với duration > 2000ms | Tương quan thủ công trong incident window |
+| **gRPC Queue Buildup (ước tính)** | Prometheus | `histogram_quantile(0.95, sum by (le) (rate(rpc_client_duration_milliseconds_bucket{rpc_service="oteldemo.ProductReviewService"}[5m]))) - histogram_quantile(0.95, sum by (le) (rate(rpc_server_duration_milliseconds_bucket{rpc_service="oteldemo.ProductReviewService"}[5m])))` | > 200ms kéo dài 2 phút |
+| **Load Generator Throughput Drop** | Prometheus | `rate(http_server_request_duration_seconds_count{service_name="frontend"}[5m])` | Giảm > 30% so với rolling 10m baseline |
 
-**Controlled trigger:** Increase `load-generator` concurrency temporarily (edit locust users) OR use DB connection exhaustion simulation (multiple concurrent requests to `product-reviews`). Coordinate with CDO to avoid SLO burn. Prefer testing against `product-reviews` first (isolated to AI path) before touching `checkout` (revenue-critical).
+> [!NOTE]
+> **Queue Buildup — Phương pháp đo:** OTel gRPC instrumentation mặc định không phát ra `grpc_server_started_total` / `grpc_server_handled_total`. Thay vào đó, **thời gian xếp hàng chờ thread pool** được tính gián tiếp theo công thức SRE chuẩn:
+>
+> **Queue Time = Client Latency − Server Latency**
+>
+> Trong đó: Client Latency = latency đo tại phía gọi (frontend/checkout gọi đến `product-reviews`, metric `rpc_client_duration_milliseconds_bucket`); Server Latency = latency xử lý thực tế tại `product-reviews` (`rpc_server_duration_milliseconds_bucket`). Chênh lệch dương cho thấy request đang nằm trong queue trước khi được xử lý.
+
+**Trigger có kiểm soát:** Tăng concurrency của `load-generator` tạm thời (chỉnh locust users) HOẶC mô phỏng cạn kiệt DB connection (nhiều concurrent request đến `product-reviews`). Phối hợp với CDO để tránh SLO burn. Ưu tiên test với `product-reviews` trước (tách biệt với AI path) trước khi chạm vào `checkout` (critical doanh thu).
 
 ---
 
-## 5. Deferred Incident Types
+## 5. Các loại incident hoãn lại
 
-| Incident Type | Defer Reason | Re-evaluate When |
+| Loại incident | Lý do hoãn | Xem xét lại khi nào |
 |---|---|---|
-| **Error Rate Spike (standalone)** | Overlaps with MVP-1 and MVP-2 outcomes. No clean independent trigger. Will be detected as a downstream signal of the two selected types. | Week 3: after Latency and LLM detectors are validated; wire in as a composite rule. |
-| **Pod Crash / CrashLoopBackOff** | Requires K8s Events API integration (not in Prometheus; needs separate watcher). Trigger requires killing pods (disruptive). | Week 3: add K8s event watcher as a secondary detection channel. |
-| **Kafka Consumer Lag** | `otelcol_kafkametrics_consumer_offset_lag` metric is available ([`values.yaml:L944-L951`](file:///d:/DevopsAndCloud/xbrain-docs/xbrain-learners/phase3/techx-corp-chart/values.yaml#L944-L951)), but the Kafka path (`accounting`, `fraud-detection`) is not on the critical SLO path. Lower business impact at MVP scope. | Week 3: add as monitoring-only panel, not an alerting detector. |
-| **DB Saturation** | No direct DB metrics in Prometheus yet (PostgreSQL receiver not configured). Would require adding `postgresqlreceiver` to OTel Collector config. Scope creep for Week 2. | Week 3: add PostgreSQL receiver to OTel Collector if DB incidents surface. |
+| **Error Rate Spike (độc lập)** | Trùng lặp với kết quả của MVP-1 và MVP-2. Không có trigger độc lập sạch. Sẽ được phát hiện như tín hiệu downstream của hai loại đã chọn. | Tuần 3: sau khi validator Latency và LLM đã được xác thực; nối vào như composite rule. |
+| **Pod Crash / CrashLoopBackOff** | Yêu cầu tích hợp K8s Events API (không có trong Prometheus; cần watcher riêng). Trigger yêu cầu kill pod (disruptive). | Tuần 3: thêm K8s event watcher như secondary detection channel. |
+| **Kafka Consumer Lag** | Metric `otelcol_kafkametrics_consumer_offset_lag` có sẵn ([`values.yaml:L944-L951`](file:///d:/DevopsAndCloud/tf4-phase3-repo/techx-corp-chart/values.yaml#L944-L951)), nhưng Kafka path (`accounting`, `fraud-detection`) không nằm trên critical SLO path. Tác động nghiệp vụ thấp hơn ở phạm vi MVP. | Tuần 3: thêm như monitoring-only panel, không phải alerting detector. |
+| **DB Saturation** | Chưa có DB metric trực tiếp trong Prometheus (PostgreSQL receiver chưa được cấu hình). Cần thêm `postgresqlreceiver` vào OTel Collector config. Scope creep cho Tuần 2. | Tuần 3: thêm PostgreSQL receiver vào OTel Collector nếu các incident DB xuất hiện. |
 
 ---
 
-## 6. Summary
+## 6. Tóm tắt
 
 ```
-AIOps MVP Scope — Week 2:
+Phạm vi AIOps MVP — Tuần 2:
 
-  ✅ MVP-1: LLM Timeout / Error
+  MVP-1: LLM Timeout / Lỗi
      Trigger: BTC flagd (llmRateLimitError)
-     Signals: OpenSearch error logs + Jaeger ERROR spans + Prometheus AI counter drop
+     Tín hiệu: OpenSearch error logs + Jaeger ERROR spans (qua Jaeger UI/API) + Prometheus AI counter drop
 
-  ✅ MVP-2: Service Latency Spike
+  MVP-2: Latency Spike
      Trigger: load-generator ramp + DB connection pressure
-     Signals: Prometheus p95 histogram + gRPC queue buildup + Jaeger span duration
+     Tín hiệu: Prometheus p95 histogram + gRPC queue time estimate + Jaeger span duration (qua Jaeger UI/API)
 
-  ⛔ Deferred: Error Rate Spike (Week 3 composite rule)
-  ⛔ Deferred: Pod Crash / CrashLoopBackOff (Week 3 K8s watcher)
-  ⛔ Deferred: Kafka Consumer Lag (Week 3 monitoring panel)
-  ⛔ Deferred: DB Saturation (Week 3, requires OTel receiver addition)
+  Hoãn: Error Rate Spike (Tuần 3 composite rule)
+  Hoãn: Pod Crash / CrashLoopBackOff (Tuần 3 K8s watcher)
+  Hoãn: Kafka Consumer Lag (Tuần 3 monitoring panel)
+  Hoãn: DB Saturation (Tuần 3, cần thêm OTel receiver)
 ```
 
 > [!NOTE]
-> The two selected MVP types cover **both sides of the AI reliability surface**: internal AI feature degradation (MVP-1) and infrastructure-level degradation affecting the AI path (MVP-2). Together they allow AIO01 to demonstrate a full detect-correlate-recommend loop at the Week 2 Ops Review without requiring infrastructure changes or risking the production SLO error budget.
+> Hai loại MVP đã chọn bao phủ **cả hai mặt của bề mặt độ tin cậy AI**: suy giảm tính năng AI nội bộ (MVP-1) và suy giảm cơ sở hạ tầng ảnh hưởng đến AI path (MVP-2). Kết hợp lại, chúng cho phép AIO01 chứng minh vòng lặp detect-correlate-recommend hoàn chỉnh tại Ops Review Tuần 2 mà không cần thay đổi hạ tầng hay rủi ro SLO error budget của production.
