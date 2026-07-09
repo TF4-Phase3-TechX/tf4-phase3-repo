@@ -68,7 +68,7 @@ docker stats --no-stream
 | **Grafana** | 136.7 MiB | 175 MiB | ~78.13% | 🟡 Sát giới hạn, cần theo dõi |'
 
 # Evidence: 
-![Kiểm tra Observability Stack](./runtime/screenshots/kiem-tra-resource-observability-stack.png)
+![Kiểm tra Observability Stack](./runtime/screenshots/Kiem-tra-resource-observability-stack.png)
 
 ### 2.3 Phân tích chi tiết
 
