@@ -1,24 +1,24 @@
 # Audit ADRs
 
-This folder stores real Architecture Decision Records for auditability and governance work.
+Thư mục này dùng để lưu các Architecture Decision Record thật cho các quyết định liên quan đến auditability và governance.
 
-Use `../templates/ADR_TEMPLATE.md` when creating a new ADR.
+Khi tạo ADR mới, hãy copy mẫu từ `../templates/ADR_TEMPLATE.md`.
 
-## Naming
+## Quy ước đặt tên
 
 - `001-<short-slug>.md`
-- Keep numbers increasing and do not reuse numbers.
+- Số thứ tự tăng dần và không tái sử dụng số đã dùng.
 
-## When To Create An ADR
+## Khi nào cần tạo ADR
 
-- A decision changes audit, compliance, ownership, evidence flow, observability governance, or architecture.
-- The team accepts a trade-off that should be visible later.
-- The team rejects a serious option and wants to preserve the reason.
+- Quyết định làm thay đổi audit, compliance, ownership, evidence flow, observability governance, hoặc kiến trúc.
+- Team chấp nhận một trade-off cần được truy vết lại sau này.
+- Team từ chối một phương án quan trọng và cần lưu lại lý do.
 
-## Minimum Content
+## Nội dung tối thiểu
 
-- Status
-- Context
-- Decision
-- Consequences
-- Links to Jira, PRs, and evidence
+- Trạng thái
+- Bối cảnh
+- Quyết định
+- Hệ quả
+- Link tới Jira, PR, và evidence
