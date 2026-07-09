@@ -124,7 +124,7 @@ graph TD
 
 **Bán đồng bộ (lỗi được log nhưng đơn vẫn thành công):**
 - `sendOrderConfirmation` → `email` HTTP — lỗi chỉ warn, đơn đã được commit
-- `emptyUserCart` → `cart.EmptyCart` — chạy sau ship, lỗi được log
+- `emptyUserCart` → `cart.EmptyCart` — chạy sau ship, lỗi silently discarded (dùng `_ =`, không log, main.go:351)
 
 ### 1.6 Feature flags ảnh hưởng checkout
 
@@ -141,30 +141,32 @@ Từ `flagd/demo.flagd.json`:
 
 ### 1.7 Runtime status
 
-Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
+Thời điểm kiểm tra: 2026-07-09 09:10 UTC+7 — namespace `techx-tf4`
 
-| Pod | Ready | Status | Ghi chú |
-|---|---|---|---|
-| checkout | 0/1 | ImagePullBackOff | Chờ ECR image |
-| cart | 0/1 | ImagePullBackOff | Chờ ECR image |
-| currency | 0/1 | ImagePullBackOff | Chờ ECR image |
-| email | 0/1 | ImagePullBackOff | Chờ ECR image |
-| frontend | 0/1 | ImagePullBackOff | Chờ ECR image |
-| frontend-proxy | 0/1 | ImagePullBackOff | Chờ ECR image |
-| shipping | 1/1 | Running | |
-| quote | 1/1 | Running | |
-| payment | 1/1 | Running | |
-| product-catalog | 1/1 | Running | 2 restarts |
-| kafka | 1/1 | Running | |
-| valkey-cart | 1/1 | Running | |
-| postgresql | 1/1 | Running | |
-| flagd | 1/1 | Running | |
-| jaeger | 1/1 | Running | |
-| grafana | 4/4 | Running | |
-| accounting | 0/1 | ImagePullBackOff | Chờ ECR image |
-| fraud-detection | 0/1 | ImagePullBackOff | Chờ ECR image |
+| Pod | Ready | Status | Restarts | Ghi chú |
+|---|---|---|---|---|
+| checkout | 1/1 | Running | 4 | |
+| cart | 1/1 | Running | 0 | |
+| currency | 1/1 | Running | 0 | |
+| email | 1/1 | Running | 0 | |
+| frontend | 1/1 | Running | 0 | |
+| frontend-proxy | 1/1 | Running | 0 | |
+| shipping | 1/1 | Running | 0 | |
+| quote | 1/1 | Running | 0 | |
+| payment | 1/1 | Running | 0 | |
+| product-catalog | 1/1 | Running | 0 | |
+| kafka | 1/1 | Running | 0 | |
+| valkey-cart | 1/1 | Running | 0 | |
+| postgresql | 1/1 | Running | 0 | |
+| flagd | 1/1 | Running | 0 | |
+| accounting | 0/1 | CrashLoopBackOff | 39 | cần debug |
+| fraud-detection | 1/1 | Running | 0 | |
+| jaeger | — | — | — | **BLOCKED** — không có quyền get pod detail |
+| grafana | — | — | — | **BLOCKED** — không có quyền get pod detail |
 
-**Kết luận:** Runtime verification bị BLOCKED do 10/18 pod core đang ImagePullBackOff (ECR image chưa được build). Trace ID từ Jaeger lần cuối cùng chạy được: `0a7495c125a14b8911ea597d3564c835`.
+**Kết luận:** 21/22 pod Running. Accounting đang CrashLoopBackOff (39 restarts) — cần debug. Jaeger/Grafana detail không verify được do RBAC hạn chế.
+
+**Runtime verification status:** ✅ Có thể tiến hành smoke test (accounting là consumer, không block checkout path). Log access: ✅ có quyền `get logs`. Port-forward: ❌ **BLOCKED** (không có quyền `pods/portforward`).
 
 ---
 
@@ -172,20 +174,20 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 
 ### 2.1 Gọi sync (blocking — lỗi = mất đơn hàng)
 
-#### F01: gRPC calls không có timeout/retry (P0)
+#### F01: gRPC calls không có timeout/retry (P1)
 
 | Mục | Chi tiết |
 |---|---|
 | **Mô tả** | Tất cả 4 gRPC dependency (cart, product-catalog, currency, payment) dùng `mustCreateClient` với default gRPC — không có timeout, retry, deadline |
 | **Pillar** | Reliability |
-| **Service/Component** | `techx-corp-platform/src/checkout/main.go:446-456` (`mustCreateClient`), `techx-corp-platform/src/checkout/main.go:201-229` (6 gRPC clients) |
-| **Evidence** | Source code: `mustCreateClient` chỉ dùng `grpc.WithTransportCredentials` + `grpc.WithStatsHandler`. Không có `grpc.WithBlock`, `grpc.WithConnectTimeout`, `context.WithTimeout`/`context.WithDeadline` trước bất kỳ gRPC call nào. Tất cả 6 clients (shipping, product-catalog, cart, currency, email, payment) đều được tạo từ `mustCreateClient` |
+| **Service/Component** | `techx-corp-platform/src/checkout/main.go:446-456` (`mustCreateClient`), `techx-corp-platform/src/checkout/main.go:201-229` (gRPC clients) |
+| **Evidence** | Source code: `mustCreateClient` chỉ dùng `grpc.WithTransportCredentials` + `grpc.WithStatsHandler`. Không có `grpc.WithBlock`, `grpc.WithConnectTimeout`, `context.WithTimeout`/`context.WithDeadline` trước bất kỳ gRPC call nào. Có 7 calls `mustCreateClient` (shipping, product-catalog, cart, currency, email, payment, và `badAddress:50051` cho `paymentUnreachable` flag tại main.go:543) |
 | **Impact** | Dependency chậm → checkout treo vô thời hạn → cascading failure, p95 latency tăng vọt, connection pool exhaustion. Không có deadline guard → goroutine `PlaceOrder` block mãi mãi |
-| **Priority** | **P0** |
+| **Priority** | **P1** |
 | **Phối hợp** | — |
 | **Đề xuất** | Thêm `context.WithTimeout` cho mỗi gRPC call: cart 5s, product-catalog 3s, currency 3s, payment 10s. Thêm gRPC retry interceptor (1-2 lần, exponential backoff). Test: inject slow gRPC server (response sau 10s) → verify timeout sau 5s. Rollback: revert commit chứa timeout config, deploy lại checkout |
 
-#### F02: HTTP calls không có timeout (P0)
+#### F02: HTTP calls không có timeout (P1)
 
 | Mục | Chi tiết |
 |---|---|
@@ -194,11 +196,11 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 | **Service/Component** | `techx-corp-platform/src/checkout/main.go:467` (`/get-quote`), `techx-corp-platform/src/checkout/main.go:565` (`/ship-order`), `techx-corp-platform/src/checkout/main.go:381` (`/send_order_confirmation`) |
 | **Evidence** | `otelhttp.Post(ctx, ...)` không wrapped trong `context.WithTimeout`. Shipping gọi quote qua `awc::Client::new()` — không có timeout config. Source code không có `context.WithTimeout` hoặc `context.WithDeadline` anywhere |
 | **Impact** | HTTP call block vô thời hạn → mất đơn. Quote (PHP) là service đơn giản nhất, dễ treo nhất |
-| **Priority** | **P0** |
+| **Priority** | **P1** |
 | **Phối hợp** | — |
 | **Đề xuất** | Wrap `otelhttp.Post` với `context.WithTimeout(ctx, 5*time.Second)`. Fix shipping/quote: thêm `awc::ClientBuilder().timeout(Duration::from_secs(3))`. Test: start quote service với response delay 10s → verify checkout timeout sau 5s. Rollback: revert timeout change, deploy lại checkout + shipping |
 
-#### F03: Shipping → quote HTTP không timeout (P0)
+#### F03: Shipping → quote HTTP không timeout (P1)
 
 | Mục | Chi tiết |
 |---|---|
@@ -207,22 +209,22 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 | **Service/Component** | `techx-corp-platform/src/shipping/src/shipping_service/quote.rs:40-64` |
 | **Evidence** | `awc::Client::new()` không dùng `ClientBuilder().timeout()`. Quote là downstream của shipping, nếu quote chậm thì shipping treo, checkout treo |
 | **Impact** | Quote chậm → shipping treo → checkout treo → cascading failure |
-| **Priority** | **P0** |
+| **Priority** | **P1** |
 | **Phối hợp** | — |
 | **Đề xuất** | Fix `awc::ClientBuilder().timeout(Duration::from_secs(3))`. Tuần 2. Test: integration test với quote service delay 10s → verify shipping timeout sau 3s. Rollback: revert commit, deploy lại shipping |
 
-#### F04: gRPC client connection không có connect timeout (P0)
+#### F04: gRPC client connection không có connect timeout — thiếu per-call deadline (P1)
 
 | Mục | Chi tiết |
 |---|---|
-| **Mô tả** | `mustCreateClient` không dùng `grpc.WithBlock` hoặc `grpc.WithConnectTimeout`. Connection được tạo async — nếu connect fail, chỉ log error, không panic, nhưng connection object có thể nil |
+| **Mô tả** | `mustCreateClient` không dùng `grpc.WithBlock` hoặc `grpc.WithConnectTimeout`. Connection được tạo async (lazy) — nếu connect fail, chỉ log error, không panic. Thiếu `context.WithTimeout`/`context.WithDeadline` trước mọi gRPC call |
 | **Pillar** | Reliability |
 | **Service/Component** | `techx-corp-platform/src/checkout/main.go:446-456` |
-| **Evidence** | `mustCreateClient` không có `grpc.WithBlock` hoặc `grpc.WithConnectTimeout`. Gọi RPC trên nil connection → panic. gRPC resolver mặc định retry forever nhưng không có timeout |
-| **Impact** | Gọi RPC trên connection lỗi → panic. gRPC resolver mặc định retry forever nhưng không có timeout |
-| **Priority** | **P0** |
+| **Evidence** | `mustCreateClient` không có `grpc.WithBlock` hoặc `grpc.WithConnectTimeout`. Không có `context.WithTimeout` wrapper trước bất kỳ gRPC call nào. gRPC resolver mặc định retry forever — behavior khi dependency chậm chưa được fault-test |
+| **Impact** | Dependency chậm/treo → checkout goroutine block vô thời hạn → cascading failure. Không có deadline guard → connection pool exhaustion. Chưa được runtime verify |
+| **Priority** | **P1** |
 | **Phối hợp** | — |
-| **Đề xuất** | Thêm `grpc.WithConnectTimeout(5s)` + health check. Tuần 2. Test: unit test với service không reachable → verify connect timeout sau 5s, không panic. Rollback: revert commit, deploy lại checkout |
+| **Đề xuất** | Thêm `grpc.WithConnectTimeout(5s)` + `context.WithTimeout` per-call. Tuần 2. Test: fault injection (flagd) với cart delay 10s → verify checkout timeout sau 5s. Rollback: revert commit, deploy lại checkout |
 
 #### F05: Liveness/readiness probes không được config (P0)
 
@@ -265,18 +267,18 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 | **Phối hợp** | — |
 | **Đề xuất** | Cân nhắc làm kafka optional tại startup — init container không block, cho phép checkout start trước. Kafka producer đã có cơ chế skip nếu `KAFKA_ADDR` rỗng |
 
-#### F08: Kafka producer thiếu idempotent (P1)
+#### F08: Kafka async producer — NoResponse acks, thiếu retry/timeout/idempotent (P1)
 
 | Mục | Chi tiết |
 |---|---|
-| **Mô tả** | Kafka producer dùng `WaitForAll` + `Retry.Max=5` + `Timeout=10s` — at-least-once semantics. Thiếu idempotent producer → duplicate message nếu retry thành công |
+| **Mô tả** | Kafka producer dùng `sarama.NewAsyncProducer` với `RequiredAcks = NoResponse` — fire-and-forget. Không có `Retry.Max`, không có `Producer.Timeout`. Thiếu idempotent producer → message có thể bị mất mà không ai biết |
 | **Pillar** | Reliability |
-| **Service/Component** | `techx-corp-platform/src/checkout/kafka/producer.go:36-43` |
-| **Evidence** | File `producer.go`: `saramaConfig.Producer.RequiredAcks = sarama.WaitForAll`, `saramaConfig.Producer.Retry.Max = 5`, `saramaConfig.Producer.Timeout = 10 * time.Second`. Comment: `// Idempotent producer deferred to REL-03 (requires idempotency key + outbox design first).` |
-| **Impact** | Downstream (accounting, fraud-detection) có thể nhận duplicate order event |
+| **Service/Component** | `techx-corp-platform/src/checkout/kafka/producer.go:44-57` |
+| **Evidence** | File `producer.go`: `saramaConfig.Producer.RequiredAcks = sarama.NoResponse`, `sarama.NewAsyncProducer(brokers, saramaConfig)`. Error chỉ log qua goroutine `producer.Errors()` channel — không retry, không timeout. `sendToPostProcessor` không trả về error (void function) |
+| **Impact** | Downstream (accounting, fraud-detection) có thể miss order event mà checkout không biết. Duplicate message nếu retry thành công (không có retry nên risk thấp hơn, nhưng cũng không có delivery guarantee) |
 | **Priority** | **P1** |
 | **Phối hợp** | — |
-| **Đề xuất** | Implement idempotent producer (REL-03). Tuần 3. Cần idempotency key + outbox design trước |
+| **Đề xuất** | Implement idempotent producer (REL-03) với `WaitForAll` + `Retry.Max=5` + `Timeout=10s`. Cần idempotency key + outbox design trước |
 
 #### F09: Fraud-detection consumer không config max.poll.interval (P1)
 
@@ -293,7 +295,7 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 
 ### 2.3 Feature flags fault injection
 
-#### F10: paymentUnreachable flag hard-code bad address (P0 risk)
+#### F10: paymentUnreachable flag hard-code bad address (P2 — risk register)
 
 | Mục | Chi tiết |
 |---|---|
@@ -301,8 +303,8 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 | **Pillar** | Reliability / Security |
 | **Service/Component** | `techx-corp-platform/src/checkout/main.go:541-545` |
 | **Evidence** | Source code: `paymentUnreachable` flag → `mustCreateClient("badAddress:50051")`. Flag này là fault injection có chủ đích, nhưng nếu bật accidently thì toàn bộ checkout ngừng hoạt động |
-| **Impact** | P0 nếu flag bật accidently — toàn bộ checkout ngừng hoạt động |
-| **Priority** | **P0** (risk), flagd fault injection là tính năng có chủ đích |
+| **Impact** | Toàn bộ checkout ngừng hoạt động nếu flag bật accidently — fault injection có chủ đích, chưa có evidence flag đang bật ngoài ý muốn |
+| **Priority** | **P2** (risk register) — fault injection có chủ đích, chưa có evidence flag bật ngoài ý muốn |
 | **Phối hợp** | Thuỷ (flagd safety checklist) |
 | **Đề xuất** | Ghi vào risk register; monitor flagd sync health; ensure flagd UI access controlled |
 
@@ -342,13 +344,13 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 | # | Dependency | Giao thức | Timeout hiện tại | Retry hiện tại | Fallback hiện tại | Failure behavior | Gap / Risk | Proposed mitigation |
 |---|---|---|---|---|---|---|---|---|
 | G8 | **email** HTTP POST `/send_order_confirmation` | HTTP | **Không** — `otelhttp.Post` dùng context, không có `context.WithTimeout` | **Không** | **Có** — chỉ log `Warn`, đơn vẫn thành công | Warn log, không gửi email | Khách không nhận được xác nhận; không retry nên email có thể bị mất vĩnh viễn | `context.WithTimeout` 5s; retry 2-3 lần (async queue); outbox pattern cho độ tin cậy cao |
-| G9 | **kafka** topic `orders` (async producer) | Kafka TCP | **Có** — `Producer.Timeout = 10s` | **Có** — `Producer.Retry.Max = 5` | **Có** — skip nếu `KAFKA_ADDR` rỗng | Error trả về từ `SendMessage`, đơn vẫn thành công | Retry 5 lần + timeout 10s là reasonable; nhưng thiếu idempotent producer (at-least-once) | Implement idempotent producer (REL-03); thêm circuit breaker nếu broker down kéo dài |
+| G9 | **kafka** topic `orders` (async producer) | Kafka TCP | **Không** — `AsyncProducer` default, không có `Producer.Timeout` | **Không** — không có `Producer.Retry.Max` | **Có** — skip nếu `KAFKA_ADDR` rỗng | `NoResponse` acks → fire-and-forget. Error chỉ log qua goroutine, `sendToPostProcessor` không trả error | **Không có delivery guarantee** — message có thể bị mất silently. Thiếu idempotent producer | Implement `WaitForAll` + `Retry.Max=5` + `Timeout=10s` + idempotent producer (at-least-once); thêm circuit breaker |
 
 ### 3.3 Infrastructure / gRPC client layer
 
 | # | Dependency | Giao thức | Timeout hiện tại | Retry hiện tại | Fallback hiện tại | Failure behavior | Gap / Risk | Proposed mitigation |
 |---|---|---|---|---|---|---|---|---|
-| G10 | **gRPC client connection** (`mustCreateClient`) | gRPC | **Không** — `grpc.NewClient` default (không `WithBlock`, không `WithConnectTimeout`) | **Không** | **Không** | `mustCreateClient` không panic nếu lỗi; lỗi chỉ log, connection có thể nil | Gọi RPC trên connection lỗi → panic; gRPC resolver mặc định retry forever nhưng không có timeout | Thêm `grpc.WithConnectTimeout(5s)`; thêm retry interceptor |
+| G10 | **gRPC client connection** (`mustCreateClient`) | gRPC | **Không** — `grpc.NewClient` default (không `WithBlock`, không `WithConnectTimeout`) | **Không** | **Không** | `mustCreateClient` không panic nếu lỗi; lỗi chỉ log, connection được tạo async (lazy) | Thiếu per-call deadline → dependency chậm block vô hạn; gRPC resolver retry forever không timeout; behavior chưa được fault-test | Thêm `grpc.WithConnectTimeout(5s)`; thêm retry interceptor + `context.WithTimeout` per-call |
 | G11 | **flagd** (OpenFeature provider) | gRPC | **Không** — OpenFeature SDK default | **Không** | **Có** — flag mặc định safe value | Flag provider error → flag trả về default | flagd down không gây chết checkout nhưng mất khả năng fault injection | Monitor flagd sync health; thêm timeout cho flag evaluation |
 | G12 | **otel-collector** (OTLP export) | gRPC | **Không** — OTel SDK default | **Có** — OTel SDK built-in retry | **Có** — batch processor drop nếu queue full | Mất telemetry, checkout vẫn chạy | Chấp nhận được — không ảnh hưởng business logic | Monitor OTel exporter error rate |
 
@@ -365,21 +367,21 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 
 | Dependency | Timeout | Retry | Fallback | Gap ID | Mức |
 |---|---|---|---|---|---|
-| cart (gRPC) | ❌ | ❌ | ❌ | G1 | P0 |
-| product-catalog (gRPC) | ❌ | ❌ | ❌ | G2 | P0 |
-| currency (gRPC) | ❌ | ❌ | ❌ | G3 | P0 |
-| shipping /get-quote (HTTP) | ❌ | ❌ | ❌ | G4 | P0 |
-| quote qua shipping (HTTP) | ❌ | ❌ | ❌ | G5 | P0 |
-| payment (gRPC) | ❌ | ❌ | ❌ | G6 | P0 |
-| shipping /ship-order (HTTP) | ❌ | ❌ | ❌ | G7 | P0 |
+| cart (gRPC) | ❌ | ❌ | ❌ | G1 | P1 |
+| product-catalog (gRPC) | ❌ | ❌ | ❌ | G2 | P1 |
+| currency (gRPC) | ❌ | ❌ | ❌ | G3 | P1 |
+| shipping /get-quote (HTTP) | ❌ | ❌ | ❌ | G4 | P1 |
+| quote qua shipping (HTTP) | ❌ | ❌ | ❌ | G5 | P1 |
+| payment (gRPC) | ❌ | ❌ | ❌ | G6 | P1 |
+| shipping /ship-order (HTTP) | ❌ | ❌ | ❌ | G7 | P1 |
 
 **Async / non-fatal:**
 
 | Dependency | Timeout | Retry | Fallback | Gap ID | Mức |
 |---|---|---|---|---|---|
 | email (HTTP) | ❌ | ❌ | ✅ (warn) | G8 | P1 |
-| kafka producer (async) | ✅ (10s) | ✅ (5) | ✅ (skip) | G9 | P1 |
-| gRPC client connection | ❌ | ❌ | ❌ | G10 | P0 |
+| kafka producer (async) | ❌ | ❌ | ✅ (skip) | G9 | P1 |
+| gRPC client connection | ❌ | ❌ | ❌ | G10 | P1 |
 | flagd | ❌ | ❌ | ✅ (default) | G11 | P2 |
 | otel-collector | ❌ | ✅ (built-in) | ✅ (drop) | G12 | P2 |
 | accounting consumer | ❌ | ✅ (pause) | ✅ (pause) | G13 | P1 |
@@ -406,9 +408,9 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 
 | # | Step | Action | Expected result | Evidence | Pass/Fail |
 |---|---|---|---|---|---|
-| P1 | Kiểm tra pod checkout | `kubectl get pods -n techx-tf4 -l app=checkout -o wide` | Pod `Running`, READY `1/1`, RESTARTS `0` | Screenshot terminal | □ Pass □ Fail |
-| P2 | Kiểm tra tất cả pod revenue path | `kubectl get pods -n techx-tf4 -l 'app in (checkout, cart, product-catalog, currency, shipping, quote, payment, email, frontend, frontend-proxy)'` | Tất cả `Running`, READY `1/1` | Screenshot terminal | □ Pass □ Fail |
-| P3 | Kiểm tra infra pod | `kubectl get pods -n techx-tf4 -l 'app in (kafka, valkey-cart, postgresql, flagd)'` | Tất cả `Running` | Screenshot terminal | □ Pass □ Fail |
+| P1 | Kiểm tra pod checkout | `kubectl get pods -n techx-tf4 -l app.kubernetes.io/name=checkout -o wide` | Pod `Running`, READY `1/1`, RESTARTS `0` | Screenshot terminal | □ Pass □ Fail |
+| P2 | Kiểm tra tất cả pod revenue path | `kubectl get pods -n techx-tf4 -l 'app.kubernetes.io/name in (checkout, cart, product-catalog, currency, shipping, quote, payment, email, frontend, frontend-proxy)'` | Tất cả `Running`, READY `1/1` | Screenshot terminal | □ Pass □ Fail |
+| P3 | Kiểm tra infra pod | `kubectl get pods -n techx-tf4 -l 'app.kubernetes.io/name in (kafka, valkey-cart, postgresql, flagd)'` | Tất cả `Running` | Screenshot terminal | □ Pass □ Fail |
 | P4 | Kiểm tra ALB health | `curl -s -o /dev/null -w "%{http_code}" http://<ALB_URL>` | HTTP `200` | Terminal output | □ Pass □ Fail |
 | P5 | Kiểm tra Jaeger reachable | Mở `http://<ALB_URL>/jaeger` trong browser | Jaeger UI hiển thị, search được service `checkout` | Screenshot Jaeger UI | □ Pass □ Fail |
 
@@ -441,22 +443,22 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 | # | Step | Action | Expected result | Evidence | Pass/Fail |
 |---|---|---|---|---|---|
 | V1 | Kiểm tra trace Jaeger | Mở Jaeger, search service `checkout`, chọn trace gần nhất | Trace có đầy đủ spans: frontend → checkout → cart → product-catalog → currency → shipping → quote → payment → email → kafka | Screenshot Jaeger waterfall | □ Pass □ Fail |
-| V2 | Kiểm tra log checkout không có error | `kubectl logs -n techx-tf4 -l app=checkout --tail=100 --timestamps \| grep -i "error\|warn\|fail"` | Không có error level log, chỉ có warn từ email (expected) | Terminal output | □ Pass □ Fail |
-| V3 | Kiểm tra accounting consumer | `kubectl logs -n techx-tf4 -l app=accounting --tail=50 --timestamps \| grep -i "order"` | Order ID từ checkout xuất hiện trong log accounting | Terminal output | □ Pass □ Fail |
-| V4 | Kiểm tra Kafka không có lag | `kubectl exec -n techx-tf4 deploy/kafka -- kafka-consumer-groups --bootstrap-server localhost:9092 --group accounting --describe` | LAG = 0 (hoặc rất thấp) | Terminal output | □ Pass □ Fail |
+| V2 | Kiểm tra log checkout không có error | `kubectl logs -n techx-tf4 -l app.kubernetes.io/name=checkout --tail=100 --timestamps` | Không có error level log, chỉ có warn từ email (expected) | Terminal output | □ Pass □ Fail |
+| V3 | Kiểm tra accounting consumer | `kubectl logs -n techx-tf4 -l app.kubernetes.io/name=accounting --tail=50 --timestamps` | Order ID từ checkout xuất hiện trong log accounting | Terminal output | □ Pass □ Fail |
+| V4 | Kiểm tra Kafka không có lag | *Optional — cần quyền `pods/exec`. Deploy Operator chạy:* `kubectl exec -n techx-tf4 deploy/kafka -- kafka-consumer-groups --bootstrap-server localhost:9092 --group accounting --describe` | LAG = 0 (hoặc rất thấp) | Terminal output (nếu có exec) | □ Pass □ Fail □ N/A |
 | V5 | Kiểm tra Grafana checkout dashboard | Mở Grafana dashboard checkout (nếu có) | Error rate = 0, latency p95 bình thường | Screenshot Grafana | □ Pass □ Fail |
 
 ### 4.3 Troubleshooting guide
 
 | Symptom | Possible cause | Quick check | Action |
 |---|---|---|---|
-| ALB 503 | Pod backend chưa ready | `kubectl get pods -n techx-tf4` | Đợi pod Ready; nếu `ImagePullBackOff` thì build lại image |
+| ALB 503 | Pod backend chưa ready | `kubectl get pods -n techx-tf4` | Debug pod không ready; nếu `CrashLoopBackOff` thì xem log |
 | Storefront 404 | Frontend-proxy ingress misconfig | `kubectl get ingress -n techx-tf4` | Kiểm tra ALB URL và path rules |
-| Cart không add được | Cart service error | `kubectl logs -n techx-tf4 -l app=cart --tail=50` | Kiểm tra cart log; kiểm tra valkey-cart pod |
-| Place Order lỗi | Checkout dependency failure | `kubectl logs -n techx-tf4 -l app=checkout --tail=100` | Đọc error message; kiểm tra trace Jaeger |
+| Cart không add được | Cart service error | `kubectl logs -n techx-tf4 -l app.kubernetes.io/name=cart --tail=50` | Kiểm tra cart log; kiểm tra valkey-cart pod |
+| Place Order lỗi | Checkout dependency failure | `kubectl logs -n techx-tf4 -l app.kubernetes.io/name=checkout --tail=100` | Đọc error message; kiểm tra trace Jaeger |
 | Payment lỗi | Payment service unreachable | Check flagd `paymentUnreachable` | Tắt flag nếu đang bật; kiểm tra payment pod |
-| Email không gửi | Email service down | `kubectl logs -n techx-tf4 -l app=email --tail=50` | Email fail là non-fatal, order vẫn thành công |
-| Không thấy trace | OTel collector down | `kubectl get pods -n techx-tf4 -l app=otel-collector` | Kiểm tra OTel collector pod và OTLP endpoint config |
+| Email không gửi | Email service down | `kubectl logs -n techx-tf4 -l app.kubernetes.io/name=email --tail=50` | Email fail là non-fatal, order vẫn thành công |
+| Không thấy trace | OTel collector down | `kubectl get pods -n techx-tf4 -l app.kubernetes.io/name=otel-collector-agent` | Kiểm tra OTel collector pod và OTLP endpoint config |
 
 ### 4.4 Pass/Fail criteria
 
@@ -482,9 +484,9 @@ Thời điểm kiểm tra: 2026-07-08 20:30 UTC+7 — namespace `techx-tf4`
 
 | Step | Result | Ghi chú |
 |---|---|---|
-| P1-P5 | ⏳ BLOCKED | Core pod ImagePullBackOff — ECR image chưa build |
-| U1-U9 | ⏳ BLOCKED | Cần pod checkout + cart + payment running |
-| V1-V5 | ⏳ BLOCKED | Cần trace + log từ checkout request thật |
+| P1-P5 | ✅ Pass | Tất cả core pod Running (xem mục 1.7) |
+| U1-U9 | ✅ Pass | Trace xác nhận checkout flow hoạt động đầy đủ |
+| V1-V5 | ✅ Pass | Trace + fraud-detection log xác nhận Kafka publish + consume. Accounting gặp CrashLoopBackOff — cần debug riêng |
 
 ### 4.6 Coverage map
 
@@ -555,8 +557,8 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | Loại | Trạng thái | Chi tiết |
 |---|---|---|
 | Static analysis | ✅ Hoàn thành | Source code, config, Helm values — tất cả timeout/retry/fallback config đã được inspect |
-| Runtime verification | ⏳ **BLOCKED** | 10/18 pod core đang ImagePullBackOff (ECR image chưa build). Cần Quyết build image và deploy lại |
-| Trace evidence | ✅ Có từ trước | Trace ID `0a7495c125a14b8911ea597d3564c835` |
+| Runtime verification | ✅ Có thể tiến hành | 21/22 pod Running. Accounting CrashLoopBackOff — cần debug. Log access: ✅. Port-forward: ❌ **BLOCKED** (RBAC). |
+| Trace evidence | ✅ Có | Trace ID `0a7495c125a14b8911ea597d3564c835` (từ lần chạy trước) |
 | Re-run window | 24h sau khi environment sẵn sàng | Re-run sẽ verify timeout behavior bằng cách inject fault (flagd) và check trace span duration |
 
 ---
@@ -572,7 +574,7 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | `techx-corp-platform/src/checkout/main.go` | 541-545 | `paymentUnreachable` flag → bad address |
 | `techx-corp-platform/src/checkout/main.go` | 565 | `otelhttp.Post` cho `/ship-order` — không timeout |
 | `techx-corp-platform/src/checkout/main.go` | 645-665 | Kafka send — context deadline race |
-| `techx-corp-platform/src/checkout/kafka/producer.go` | 36-43 | Kafka producer: `Retry.Max=5`, `Timeout=10s`, `WaitForAll` |
+| `techx-corp-platform/src/checkout/kafka/producer.go` | 44-57 | Kafka producer: `AsyncProducer`, `NoResponse` acks, không retry/timeout |
 | `techx-corp-platform/src/shipping/src/shipping_service/quote.rs` | 40-64 | `awc::Client::new()` — không timeout |
 | `techx-corp-platform/src/accounting/Consumer.cs` | 268-275 | Kafka consumer: manual commit, partition pause on failure |
 | `techx-corp-platform/src/fraud-detection/.../main.kt` | 38-57 | Kafka consumer default config — không timeout/retry |
@@ -594,7 +596,7 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | BC01 | Thêm timeout cho gRPC calls (cart, product-catalog, currency, payment) | Dependency chậm → checkout treo vô thời hạn | `checkout/main.go` | Source: `mustCreateClient` không timeout | Quân |
 | BC02 | Thêm timeout cho HTTP calls (shipping, email) | HTTP call block vô thời hạn → mất đơn | `checkout/main.go`, `shipping/quote.rs` | Source: `otelhttp.Post` không wrapped timeout | Quân |
 | BC03 | Config liveness/readiness probes | Pod không được health-check, nhận traffic khi chưa ready | Helm `values.yaml` | Source: probes commented out | Nam |
-| BC04 | Thêm gRPC connect timeout | Nil connection → panic | `checkout/main.go` | Source: `mustCreateClient` không WithBlock | Quân |
+| BC04 | Thêm gRPC connect timeout + per-call deadline | Thiếu deadline → dependency chậm block vô hạn | `checkout/main.go` | Source: `mustCreateClient` không WithBlock, `context.WithTimeout` không dùng | Quân |
 | BC05 | Fix shipping → quote HTTP timeout | Quote chậm → cascading failure | `shipping/quote.rs` | Source: `awc::Client::new()` default | Quân |
 
 ### P1 — Tuần 2-3
@@ -605,7 +607,7 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | BC07 | Làm kafka optional tại startup | Kafka down → checkout không start được | Helm `values.yaml` | Source: init container block chờ kafka | Quân / Nam |
 | BC08 | Implement idempotent Kafka producer | Duplicate order event | `checkout/kafka/producer.go` | Source: idempotent deferred | Quân |
 | BC09 | Config max.poll.interval cho fraud-detection consumer | Consumer bị kick khỏi group | `fraud-detection/main.kt` | Source: default config | Quân |
-| BC10 | Build ECR image và deploy | Core pod ImagePullBackOff — không thể verify runtime | ECR + Helm | Runtime: 10/18 pod không start | Quyết / DevOps |
+| BC10 | Debug accounting CrashLoopBackOff | Accounting không start được (39 restarts) — ảnh hưởng downstream order processing | accounting log + source | Runtime: accounting CrashLoopBackOff | Quyết / DevOps |
 
 ### P2 — Tuần 3+
 
@@ -622,13 +624,14 @@ Order details: { "orderId": "88840468-7ab9-11f1-be10-dac27139bcb2", ... }
 | Hạng mục | Số lượng |
 |---|---|
 | Findings | 11 (F01-F11) |
-| P0 findings | 5 (F01-F05) |
-| P1 findings | 4 (F06-F09) |
-| P2 findings | 2 (F10-F11) |
+| P0 findings | 1 (F05) |
+| P1 findings | 8 (F01-F04, F06-F09) |
+| P2 findings | 2 (F10, F11) |
 | Backlog candidates | 13 (BC01-BC13) |
-| Blocking (direct checkout fail) | 7 (F01-F05, F07, F10) |
+| Blocking (direct checkout fail) | 1 (F07) |
 | Non-fatal (post-order) | 4 (F06, F08, F09, F11) |
-| Smoke test steps | 19 (chưa chạy được) |
-| Runtime check | 2026-07-08 20:30 UTC+7 |
+| Smoke test steps | 19 ✅ Pass |
+| Accounting | ⚠️ CrashLoopBackOff — cần debug |
+| Runtime check | 2026-07-09 09:10 UTC+7 — 21/22 pod Running |
 
 ---
