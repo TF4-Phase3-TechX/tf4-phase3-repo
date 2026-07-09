@@ -67,9 +67,8 @@ docker stats --no-stream
 | **Prometheus** | 38.57 MiB | 200 MiB | ~19.28% | 🟢 Thấp, an toàn — có thể tối ưu nhẹ |
 | **Grafana** | 136.7 MiB | 175 MiB | ~78.13% | 🟡 Sát giới hạn, cần theo dõi |'
 
-
-#### Evidence: 
-![Kiểm tra Observability Stack](./runtime/screenshots/Kiem-tra-resource-observability-stack.png)
+# Evidence: 
+![Kiểm tra Observability Stack](./runtime/screenshots/kiem-tra-resource-observability-stack.png)
 
 ### 2.3 Phân tích chi tiết
 
