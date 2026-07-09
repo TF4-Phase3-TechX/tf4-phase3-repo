@@ -38,3 +38,13 @@ output "eks_oidc_issuer_url" {
   description = "EKS OIDC issuer URL"
   value       = module.eks.cluster_oidc_issuer_url
 }
+
+output "budget_name" {
+  description = "Name of the AWS Budget for monthly cost guardrails"
+  value       = aws_budgets_budget.monthly_cost.name
+}
+
+output "budget_monthly_limit" {
+  description = "Monthly AWS Budget limit in USD"
+  value       = var.budget_monthly_limit
+}
