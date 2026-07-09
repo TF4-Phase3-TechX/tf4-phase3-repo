@@ -1,48 +1,48 @@
 # CDO07 Static Audit Scan - Phase 3 v2
 
-Scope: static scan tren repository Phase 3 cho nhom CDO07 Auditability.
-Scan mode: scan toan bo repo theo 4 tru de lay context audit, chi ghi nhan finding va evidence.
-Repo state: scan tren branch `cdo07/docs/update-phase3-audit-scan-v2`.
-Runtime limitation: bao cao nay chi dua tren source code, IaC va tai lieu trong repo. Cac ket luan runtime can xac nhan them bang AWS CLI, AWS Console hoac `kubectl`.
+Phạm vi: scan tĩnh trên repository Phase 3 cho nhóm CDO07 Auditability.
+Chế độ scan: scan toàn bộ repo theo 4 trụ để lấy ngữ cảnh audit, chỉ ghi nhận finding và evidence.
+Trạng thái repo: scan trên branch `cdo07/docs/update-phase3-audit-scan-v2`.
+Giới hạn: báo cáo này chỉ dựa trên source code, IaC và tài liệu trong repo. Các kết luận runtime cần xác nhận thêm bằng AWS CLI, AWS Console hoặc `kubectl`.
 
-## 1. Nguyen tac phan loai
+## 1. Nguyên tắc phân loại
 
-Nguyen tac cua ban scan v2:
+Nguyên tắc của bản scan v2:
 
-- CDO07 co the scan toan bo 4 tru de phat hien risk lien quan audit.
-- Finding duoc ghi theo evidence co trong repo, kem impact va recommendation.
-- Finding thuoc Security, Reliability, Cost/Performance hoac AI duoc ghi nhan la cross-pillar observation.
-- File nay chi la static scan report, khong phai danh sach task.
+- CDO07 scan toàn bộ 4 trụ để phát hiện rủi ro có liên quan đến audit.
+- Finding được ghi theo evidence có trong repo, kèm impact và recommendation.
+- Finding thuộc Security, Reliability, Cost/Performance hoặc AI được ghi nhận như cross-pillar observation.
+- File này chỉ là static scan report, không phải danh sách task.
 
-## 2. Tong hop theo 4 tru scan
+## 2. Tổng hợp theo 4 trụ scan
 
-| Tru scan | So finding | Priority chinh | Ghi chu |
+| Trụ scan | Số finding | Priority chính | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| Auditability / Evidence | 10 | P1/P2 | Trong scope chinh cua CDO07 scan |
-| Security | 6 | P1/P2 | Cross-pillar observation, anh huong audit/evidence neu lien quan |
-| Reliability | 8 | P1/P2 | Cross-pillar observation, dung lam context evidence |
-| Operational Excellence | 2 | P2 | Cross-pillar observation, lien quan traceability/supply chain |
+| Auditability / Evidence | 10 | P1/P2 | Trong scope chính của CDO07 scan |
+| Security | 6 | P1/P2 | Cross-pillar observation, có thể ảnh hưởng audit/evidence |
+| Reliability | 8 | P1/P2 | Cross-pillar observation, dùng làm ngữ cảnh evidence |
+| Operational Excellence | 2 | P2 | Cross-pillar observation, liên quan traceability/supply chain |
 
-## 3. CDO07 Auditability control status
+## 3. Trạng thái control Auditability của CDO07
 
-| Control | Status | Evidence trong repo | Nhan xet |
+| Control | Status | Evidence trong repo | Nhận xét |
 | :--- | :--- | :--- | :--- |
-| CODEOWNERS | PASS | `.github/CODEOWNERS` | Co owner review cho repo, docs audit/evidence va workflow |
-| ADR template | PASS | `docs/audit/templates/ADR_TEMPLATE.md` | Co template, can dung cho cac trade-off audit |
-| Runbook template | PASS | `docs/audit/templates/RUNBOOK_TEMPLATE.md` | Co template, can bo sung runbook evidence collection |
-| Postmortem template | PASS | `docs/audit/templates/POSTMORTEM_TEMPLATE.md` | Co template phuc vu incident review |
-| Evidence folder | PASS | `docs/evidence/*` | Co evidence theo epic |
-| CloudTrail basic | PARTIAL | `infra/terraform/cloudtrail.tf` | Co multi-region trail va S3 versioning |
-| CloudTrail hardening | PARTIAL/FAIL | `infra/terraform/cloudtrail.tf` | Thieu log file validation, KMS, CloudWatch Logs integration |
-| AWS Config | FAIL | `infra/terraform/*` | Chua thay recorder, delivery channel, config rules |
-| IAM Access Analyzer | PASS/PENDING RUNTIME | `infra/terraform/iam.tf` | Co IaC, can runtime evidence de dong ticket stale |
-| EKS audit logs | PARTIAL | `infra/terraform/eks.tf` | Co `api`, `audit`, `authenticator`; thieu `controllerManager`, `scheduler` |
-| Secret handling evidence | FAIL | `techx-corp-chart/values.yaml` | Co static credential/secret-like values can duoc review boi security owner |
-| Weekly audit report | FAIL | Chua thay file weekly report rieng | Can tao output hang tuan cho Evidence Collector |
+| CODEOWNERS | PASS | `.github/CODEOWNERS` | Có owner review cho repo, docs audit/evidence và workflow |
+| ADR template | PASS | `docs/audit/templates/ADR_TEMPLATE.md` | Có template, cần dùng cho các trade-off audit |
+| Runbook template | PASS | `docs/audit/templates/RUNBOOK_TEMPLATE.md` | Có template, cần bổ sung runbook evidence collection |
+| Postmortem template | PASS | `docs/audit/templates/POSTMORTEM_TEMPLATE.md` | Có template phục vụ incident review |
+| Evidence folder | PASS | `docs/evidence/*` | Có evidence theo epic |
+| CloudTrail basic | PARTIAL | `infra/terraform/cloudtrail.tf` | Có multi-region trail và S3 versioning |
+| CloudTrail hardening | PARTIAL/FAIL | `infra/terraform/cloudtrail.tf` | Thiếu log file validation, KMS, CloudWatch Logs integration |
+| AWS Config | FAIL | `infra/terraform/*` | Chưa thấy recorder, delivery channel, config rules |
+| IAM Access Analyzer | PASS/PENDING RUNTIME | `infra/terraform/iam.tf` | Có IaC, cần runtime evidence để đóng ticket stale |
+| EKS audit logs | PARTIAL | `infra/terraform/eks.tf` | Có `api`, `audit`, `authenticator`; thiếu `controllerManager`, `scheduler` |
+| Secret handling evidence | FAIL | `techx-corp-chart/values.yaml` | Có static credential/secret-like values cần được security owner review |
+| Weekly audit report | FAIL | Chưa thấy file weekly report riêng | Cần tạo output hằng tuần cho Evidence Collector |
 
 ## 4. Auditability findings
 
-### AUD-01 - CloudTrail log bucket cho phep force destroy
+### AUD-01 - CloudTrail log bucket cho phép force destroy
 
 Priority: P1
 Status: Open
@@ -50,70 +50,70 @@ Evidence:
 
 - `infra/terraform/cloudtrail.tf`
 - Resource `aws_s3_bucket.cloudtrail_logs`
-- Co `force_destroy = true`
+- Có `force_destroy = true`
 
 Impact:
 
-- Audit log bucket co the bi xoa cung object khi destroy ha tang.
-- Lam yeu tinh bao toan evidence.
+- Audit log bucket có thể bị xóa cùng object khi destroy hạ tầng.
+- Làm yếu tính bảo toàn evidence.
 
 Recommendation:
 
-- Doi sang `force_destroy = false`.
-- Neu giu vi lab/cost, can ADR ghi ro ly do va thoi han chap nhan rui ro.
-- Can nhac S3 Object Lock/retention neu yeu cau audit cao.
+- Đổi sang `force_destroy = false`.
+- Nếu giữ vì lab/cost, cần ADR ghi rõ lý do và thời hạn chấp nhận rủi ro.
+- Cân nhắc S3 Object Lock/retention nếu yêu cầu audit cao.
 
-### AUD-02 - CloudTrail chua du hardening
+### AUD-02 - CloudTrail chưa đủ hardening
 
 Priority: P1
 Status: Open
 Evidence:
 
 - `infra/terraform/cloudtrail.tf`
-- Co `is_multi_region_trail = true`
-- Co `include_global_service_events = true`
-- Chua thay `enable_log_file_validation`
-- Chua thay `kms_key_id`
-- Chua thay CloudWatch Logs integration
-- Chua thay data event selector
+- Có `is_multi_region_trail = true`
+- Có `include_global_service_events = true`
+- Chưa thấy `enable_log_file_validation`
+- Chưa thấy `kms_key_id`
+- Chưa thấy CloudWatch Logs integration
+- Chưa thấy data event selector
 
 Impact:
 
-- Kho chung minh log integrity.
-- Chua co customer-managed KMS cho audit log.
-- Thieu CloudWatch Logs integration lam giam kha nang alert gan realtime.
-- Neu chi log management events thi mot so data-plane actions co the khong duoc capture.
+- Khó chứng minh log integrity.
+- Chưa có customer-managed KMS cho audit log.
+- Thiếu CloudWatch Logs integration làm giảm khả năng alert gần realtime.
+- Nếu chỉ log management events thì một số data-plane actions có thể không được capture.
 
 Recommendation:
 
-- Bat `enable_log_file_validation = true`.
-- Them KMS CMK cho CloudTrail.
-- Tich hop CloudWatch Logs neu can alert.
-- Xem xet data events cho S3 bucket quan trong.
+- Bật `enable_log_file_validation = true`.
+- Thêm KMS CMK cho CloudTrail.
+- Tích hợp CloudWatch Logs nếu cần alert.
+- Xem xét data events cho S3 bucket quan trọng.
 
-### AUD-03 - AWS Config chua thay trong Terraform
+### AUD-03 - AWS Config chưa thấy trong Terraform
 
 Priority: P1
 Status: Open
 Evidence:
 
-- Scan static trong `infra/terraform` chua thay:
+- Scan static trong `infra/terraform` chưa thấy:
   - `aws_config_configuration_recorder`
   - `aws_config_delivery_channel`
   - `aws_config_config_rule`
 
 Impact:
 
-- Thieu change history va drift evidence cho AWS resources.
-- Kho chung minh compliance tu dong theo thoi gian.
+- Thiếu change history và drift evidence cho AWS resources.
+- Khó chứng minh compliance tự động theo thời gian.
 
 Recommendation:
 
-- Them AWS Config recorder va delivery channel.
-- Them managed rules toi thieu cho CloudTrail, S3 public access, EBS encryption, IAM policy.
-- Neu da bat thu cong tren AWS, can them runtime evidence vao `docs/evidence`.
+- Thêm AWS Config recorder và delivery channel.
+- Thêm managed rules tối thiểu cho CloudTrail, S3 public access, EBS encryption, IAM policy.
+- Nếu đã bật thủ công trên AWS, cần thêm runtime evidence vào `docs/evidence`.
 
-### AUD-04 - IAM Access Analyzer co IaC nhung can runtime evidence
+### AUD-04 - IAM Access Analyzer có IaC nhưng cần runtime evidence
 
 Priority: P1
 Status: Pending runtime evidence
@@ -121,39 +121,39 @@ Evidence:
 
 - `infra/terraform/iam.tf`
 - Resource `aws_accessanalyzer_analyzer.main`
-- `docs/audit/tickets/AUDIT-007-fix-security-findings.md` van co dau hieu stale khi noi analyzer chua created
+- `docs/audit/tickets/AUDIT-007-fix-security-findings.md` vẫn có dấu hiệu stale khi nói analyzer chưa created
 
 Impact:
 
-- IaC da co control, nhung ticket/evidence chua dong bo co the gay sai lech khi nghiem thu.
+- IaC đã có control, nhưng ticket/evidence chưa đồng bộ có thể gây sai lệch khi nghiệm thu.
 
 Recommendation:
 
-- Chay `aws accessanalyzer list-analyzers`.
-- Luu output vao `docs/evidence/epic-06-audit`.
-- Cap nhat ticket stale theo trang thai moi.
+- Chạy `aws accessanalyzer list-analyzers`.
+- Lưu output vào `docs/evidence/epic-06-audit`.
+- Cập nhật ticket stale theo trạng thái mới.
 
-### AUD-05 - EKS endpoint CIDR mac dinh mo rong
+### AUD-05 - EKS endpoint CIDR mặc định mở rộng
 
 Priority: P1/P2
 Status: Open
 Evidence:
 
 - `infra/terraform/variables.tf`
-- `allowed_cluster_endpoint_cidrs` default la `["0.0.0.0/0"]`
-- `infra/terraform/eks.tf` bat public endpoint
+- `allowed_cluster_endpoint_cidrs` default là `["0.0.0.0/0"]`
+- `infra/terraform/eks.tf` bật public endpoint
 
 Impact:
 
-- EKS API endpoint co be mat truy cap rong.
-- Can giai thich ro bang ADR neu day la trade-off cho lab.
+- EKS API endpoint có bề mặt truy cập rộng.
+- Cần giải thích rõ bằng ADR nếu đây là trade-off cho lab.
 
 Recommendation:
 
-- Thu hep CIDR theo IP/VPN thuc te.
-- Neu giu public, tao ADR ghi ly do, thoi han va compensating controls.
+- Thu hẹp CIDR theo IP/VPN thực tế.
+- Nếu giữ public, tạo ADR ghi lý do, thời hạn và compensating controls.
 
-### AUD-06 - EKS audit log chua bat du full control-plane logs
+### AUD-06 - EKS audit log chưa bật đủ full control-plane logs
 
 Priority: P2
 Status: Open
@@ -161,19 +161,19 @@ Evidence:
 
 - `infra/terraform/eks.tf`
 - `cluster_enabled_log_types = ["api", "audit", "authenticator"]`
-- Chua thay `controllerManager`, `scheduler`
+- Chưa thấy `controllerManager`, `scheduler`
 
 Impact:
 
-- Da co log quan trong cho audit, nhung chua co full visibility cho control plane.
-- Incident lien quan scheduling/controller co the thieu evidence.
+- Đã có log quan trọng cho audit, nhưng chưa có full visibility cho control plane.
+- Incident liên quan scheduling/controller có thể thiếu evidence.
 
 Recommendation:
 
-- Can nhac bat du `api`, `audit`, `authenticator`, `controllerManager`, `scheduler`.
-- Neu khong bat vi cost/noise, can ADR.
+- Cân nhắc bật đủ `api`, `audit`, `authenticator`, `controllerManager`, `scheduler`.
+- Nếu không bật vì cost/noise, cần ADR.
 
-### AUD-07 - ECR image tag mutable lam giam deployment traceability
+### AUD-07 - ECR image tag mutable làm giảm deployment traceability
 
 Priority: P2
 Status: Observed
@@ -184,35 +184,35 @@ Evidence:
 
 Impact:
 
-- Mot tag image co the tro den digest khac theo thoi gian.
-- Kho truy vet artifact nao da duoc deploy tai thoi diem incident.
+- Một tag image có thể trỏ đến digest khác theo thời gian.
+- Khó truy vết artifact nào đã được deploy tại thời điểm incident.
 
 Recommendation:
 
-- Nen chuyen sang `IMMUTABLE`.
-- Nen deploy theo version tag hoac digest de tang audit traceability.
+- Nên chuyển sang `IMMUTABLE`.
+- Nên deploy theo version tag hoặc digest để tăng audit traceability.
 
-### AUD-08 - Weekly Audit Report chua co file rieng
+### AUD-08 - Weekly Audit Report chưa có file riêng
 
 Priority: P2
 Status: Open
 Evidence:
 
-- Co `docs/audit` va `docs/evidence`
-- Chua thay file weekly audit report rieng
-- `docs/audit/TEAM_ASSIGNMENT.md` ghi Member 4 la Evidence Collector
+- Có `docs/audit` và `docs/evidence`
+- Chưa thấy file weekly audit report riêng
+- `docs/audit/TEAM_ASSIGNMENT.md` ghi Member 4 là Evidence Collector
 
 Impact:
 
-- Evidence bi phan tan.
-- Chua co output dung vai tro Member 4.
+- Evidence bị phân tán.
+- Chưa có output đúng vai trò Member 4.
 
 Recommendation:
 
-- Tao `docs/audit/weekly/weekly-audit-report-YYYY-MM-DD.md`.
-- Moi finding can co owner, status, evidence link, priority va next action.
+- Tạo `docs/audit/weekly/weekly-audit-report-YYYY-MM-DD.md`.
+- Mỗi finding cần có owner, status, evidence link, priority và next action.
 
-### AUD-09 - Audit tickets can update status theo evidence moi
+### AUD-09 - Audit tickets cần cập nhật status theo evidence mới
 
 Priority: P2
 Status: Open
@@ -224,70 +224,70 @@ Evidence:
 
 Impact:
 
-- Ticket stale lam audit report khong phan anh dung hien trang.
-- Kho tracking giua fixed, pending evidence va still open.
+- Ticket stale làm audit report không phản ánh đúng hiện trạng.
+- Khó tracking giữa fixed, pending evidence và still open.
 
 Recommendation:
 
-- Cap nhat ticket theo 3 trang thai: Done, Pending runtime evidence, Still open.
-- Gan link evidence tu AWS CLI/kubectl/screenshot.
+- Cập nhật ticket theo 3 trạng thái: Done, Pending runtime evidence, Still open.
+- Gắn link evidence từ AWS CLI/kubectl/screenshot.
 
-### AUD-10 - Evidence collection runbook chua du cu the
+### AUD-10 - Evidence collection runbook chưa đủ cụ thể
 
 Priority: P2
 Status: Open
 Evidence:
 
-- Co `docs/audit/templates/RUNBOOK_TEMPLATE.md`
-- Co `docs/audit/runbooks/README.md`
-- Chua thay runbook cu the cho weekly evidence collection
+- Có `docs/audit/templates/RUNBOOK_TEMPLATE.md`
+- Có `docs/audit/runbooks/README.md`
+- Chưa thấy runbook cụ thể cho weekly evidence collection
 
 Impact:
 
-- Member khac co the thu evidence khong dong nhat.
-- Weekly report kho lap lai va kho audit lai.
+- Thành viên khác có thể thu evidence không đồng nhất.
+- Weekly report khó lặp lại và khó audit lại.
 
 Recommendation:
 
-- Tao runbook cho CloudTrail, AWS Config, IAM Access Analyzer, EKS audit/RBAC, Grafana/OpenSearch evidence.
-- Dinh nghia command, expected output, noi luu file va owner.
+- Tạo runbook cho CloudTrail, AWS Config, IAM Access Analyzer, EKS audit/RBAC, Grafana/OpenSearch evidence.
+- Định nghĩa command, expected output, nơi lưu file và owner.
 
 ## 5. Cross-pillar observations
 
-Nhung finding duoi day duoc scan de lay tong quan. Day la observation ngoai scope chinh cua CDO07 Auditability, nhung co the anh huong audit evidence hoac forensic readiness.
+Những finding dưới đây được scan để lấy tổng quan. Đây là observation ngoài scope chính của CDO07 Auditability, nhưng có thể ảnh hưởng audit evidence hoặc forensic readiness.
 
 ### Security observations
 
 | ID | Finding | Evidence | Priority | Audit note |
 | :--- | :--- | :--- | :--- | :--- |
-| SEC-01 | Hardcoded credentials/API keys/secret material trong Helm values | `techx-corp-chart/values.yaml` co DB password, `OPENAI_API_KEY`, `SECRET_KEY_BASE`, `POSTGRES_PASSWORD` | P1 | Anh huong secret evidence va audit readiness |
-| SEC-02 | Grafana anonymous Admin va admin password mac dinh | `auth.anonymous.enabled`, `org_role: Admin`, `adminPassword: admin` | P1/P0 neu public | Can runtime exposure evidence |
-| SEC-03 | OpenSearch security plugin bi disable | `DISABLE_SECURITY_PLUGIN=true` | P1/P2 | Anh huong neu OpenSearch dung lam evidence store |
-| SEC-04 | Default container securityContext rong | `default.securityContext: {}` | P2 | Security hardening observation |
-| SEC-05 | Chua thay NetworkPolicy, OTel CORS wildcard | Khong thay `NetworkPolicy`; CORS `http://*`, `https://*` | P2 | Network isolation observation |
-| SEC-06 | Inter-service gRPC dung insecure transport | `grpc.WithTransportCredentials(insecure.NewCredentials())` | P2 | Service-to-service security observation |
+| SEC-01 | Hardcoded credentials/API keys/secret material trong Helm values | `techx-corp-chart/values.yaml` có DB password, `OPENAI_API_KEY`, `SECRET_KEY_BASE`, `POSTGRES_PASSWORD` | P1 | Ảnh hưởng secret evidence và audit readiness |
+| SEC-02 | Grafana anonymous Admin và admin password mặc định | `auth.anonymous.enabled`, `org_role: Admin`, `adminPassword: admin` | P1/P0 nếu public | Cần runtime exposure evidence |
+| SEC-03 | OpenSearch security plugin bị disable | `DISABLE_SECURITY_PLUGIN=true` | P1/P2 | Ảnh hưởng nếu OpenSearch dùng làm evidence store |
+| SEC-04 | Default container securityContext rỗng | `default.securityContext: {}` | P2 | Security hardening observation |
+| SEC-05 | Chưa thấy NetworkPolicy, OTel CORS wildcard | Không thấy `NetworkPolicy`; CORS `http://*`, `https://*` | P2 | Network isolation observation |
+| SEC-06 | Inter-service gRPC dùng insecure transport | `grpc.WithTransportCredentials(insecure.NewCredentials())` | P2 | Service-to-service security observation |
 
 ### Reliability observations
 
 | ID | Finding | Evidence | Priority | Audit note |
 | :--- | :--- | :--- | :--- | :--- |
-| REL-01 | Default app deployment chi co 1 replica | `techx-corp-chart/values.yaml`, `_objects.tpl` | P1 | Co the anh huong availability cua evidence source |
-| REL-02 | App pods chua co readiness/liveness probe mac dinh | `values.yaml`, `_objects.tpl` | P1 | Workload reliability observation |
-| REL-03 | Chua thay HPA/PDB/topology spread | Negative scan in chart/deploy | P1/P2 | Workload resilience observation |
-| REL-04 | PostgreSQL/Valkey/Kafka chua thay PVC/persistence trong chart | `values.yaml`, `_objects.tpl` | P1 | Persistence observation |
-| REL-05 | Observability data/alerting chua san sang forensic dai han | Alertmanager disabled, PV disabled, Jaeger memory, OpenSearch persistence off | P1 | Anh huong forensic readiness |
-| REL-06 | Checkout side effects khong atomic | `techx-corp-platform/src/checkout/main.go` | P1 | Application consistency observation |
-| REL-07 | Kafka producer khong doi broker ack | `producer.go` dung `sarama.NoResponse` | P1/P2 | Event reliability observation |
-| REL-08 | Nhieu service thieu CPU/request | `values.yaml`, `deploy/quota.yaml` | P2 | Capacity/scheduling observation |
+| REL-01 | Default app deployment chỉ có 1 replica | `techx-corp-chart/values.yaml`, `_objects.tpl` | P1 | Có thể ảnh hưởng availability của evidence source |
+| REL-02 | App pods chưa có readiness/liveness probe mặc định | `values.yaml`, `_objects.tpl` | P1 | Workload reliability observation |
+| REL-03 | Chưa thấy HPA/PDB/topology spread | Negative scan in chart/deploy | P1/P2 | Workload resilience observation |
+| REL-04 | PostgreSQL/Valkey/Kafka chưa thấy PVC/persistence trong chart | `values.yaml`, `_objects.tpl` | P1 | Persistence observation |
+| REL-05 | Observability data/alerting chưa sẵn sàng cho forensic dài hạn | Alertmanager disabled, PV disabled, Jaeger memory, OpenSearch persistence off | P1 | Ảnh hưởng forensic readiness |
+| REL-06 | Checkout side effects không atomic | `techx-corp-platform/src/checkout/main.go` | P1 | Application consistency observation |
+| REL-07 | Kafka producer không đợi broker ack | `producer.go` dùng `sarama.NoResponse` | P1/P2 | Event reliability observation |
+| REL-08 | Nhiều service thiếu CPU/request | `values.yaml`, `deploy/quota.yaml` | P2 | Capacity/scheduling observation |
 
 ### Operational Excellence observations
 
 | ID | Finding | Evidence | Priority | Audit note |
 | :--- | :--- | :--- | :--- | :--- |
-| OPS-01 | Image `latest` va remote artifact download trong Dockerfile | `frontend-proxy`, `ad`, `fraud-detection`, `kafka` Dockerfile | P2 | Anh huong supply-chain traceability |
-| OPS-02 | ECR mutable tags | `infra/terraform/ecr.tf` | P2 | Anh huong deployment audit evidence |
+| OPS-01 | Image `latest` và remote artifact download trong Dockerfile | `frontend-proxy`, `ad`, `fraud-detection`, `kafka` Dockerfile | P2 | Ảnh hưởng supply-chain traceability |
+| OPS-02 | ECR mutable tags | `infra/terraform/ecr.tf` | P2 | Ảnh hưởng deployment audit evidence |
 
-## 6. Runtime evidence can bo sung
+## 6. Runtime evidence cần bổ sung
 
 AWS:
 
@@ -312,10 +312,10 @@ kubectl auth can-i --list -n techx
 kubectl auth can-i --list -n techx-observability
 ```
 
-## 7. Ket luan
+## 7. Kết luận
 
-Trang thai hien tai cua phan CDO07 Auditability: PARTIAL PASS.
+Trạng thái hiện tại của phần CDO07 Auditability: PARTIAL PASS.
 
-Repo da co nen tang audit tot: CODEOWNERS, audit checklist, evidence folder, ADR/runbook/postmortem template, CloudTrail basic va IAM Access Analyzer IaC. Tuy nhien, cac control chua du de nghiem thu hoan chinh vi con thieu CloudTrail hardening, AWS Config, runtime evidence, weekly audit report va runbook evidence collection.
+Repo đã có nền tảng audit tốt: CODEOWNERS, audit checklist, evidence folder, ADR/runbook/postmortem template, CloudTrail basic và IAM Access Analyzer IaC. Tuy nhiên, các control chưa đủ để nghiệm thu hoàn chỉnh vì còn thiếu CloudTrail hardening, AWS Config, runtime evidence, weekly audit report và runbook evidence collection.
 
-Day la ban static scan report. Cac finding Security/Reliability/Operational Excellence duoc ghi nhan nhu observation ngoai scope chinh cua CDO07 Auditability.
+Đây là bản static scan report. Các finding Security/Reliability/Operational Excellence được ghi nhận như observation ngoài scope chính của CDO07 Auditability.
