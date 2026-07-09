@@ -69,7 +69,7 @@ docker stats --no-stream
 
 
 #### Evidence: 
-![Kiểm tra Observability Stack](./runtime/screenshots/Ki%E1%BB%83m%20tra%20resource%20c%E1%BB%A7a%20observability%20stack.png)
+![Kiểm tra Observability Stack](./runtime/screenshots/Kiem-tra-resource-observability-stack.png)
 
 ### 2.3 Phân tích chi tiết
 
