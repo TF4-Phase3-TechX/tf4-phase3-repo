@@ -63,7 +63,9 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
             ],
             "Resource": [
                 "arn:aws:s3:::tf4-evidence-log-bucket",
-                "arn:aws:s3:::tf4-evidence-log-bucket/*"
+                "arn:aws:s3:::tf4-evidence-log-bucket/*",
+                "arn:aws:s3:::tf4-cloudtrail-logs-bucket-*",
+                "arn:aws:s3:::tf4-cloudtrail-logs-bucket-*/*"
             ]
         },
         {
@@ -71,7 +73,11 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
             "Effect": "Allow",
             "Action": [
                 "s3:GetBucketVersioning",
-                "s3:GetBucketObjectLockConfiguration"
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:ListAllMyBuckets",
+                "s3:GetBucketLocation",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetBucketPublicAccessBlock"
             ],
             "Resource": "*"
         },
@@ -95,6 +101,18 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
                 "kms:GetKeyRotationStatus"
             ],
             "Resource": "arn:aws:kms:us-east-1:511825856493:key/*"
+        },
+        {
+            "Sid": "ExtendedAuditReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "budgets:ViewBudget",
+                "eks:DescribeCluster",
+                "rds:DescribeDBInstances",
+                "guardduty:ListDetectors",
+                "securityhub:DescribeHub"
+            ],
+            "Resource": "*"
         }
     ]
 }
@@ -142,6 +160,11 @@ Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa 
 * **Tài nguyên**: Giới hạn trong các KMS Key thuộc tài khoản `511825856493` tại vùng `us-east-1` (`arn:aws:kms:us-east-1:511825856493:key/*`).
 * **Mô tả**: Cho phép kiểm tra chính sách của khóa (Key Policy), trạng thái tự động xoay vòng khóa (Key Rotation). Đặc biệt cho phép hành động `kms:Decrypt` (Giải mã) nhằm cho phép các kiểm toán viên giải mã các tệp tin bằng chứng được mã hóa bằng các KMS Key này.
 * **Mục đích**: Cho phép đọc các log hoặc tài liệu nén đã được mã hóa ở mức lưu trữ (Rest Encryption) khi tiến hành audit.
+
+### 8. `ExtendedAuditReadOnly` (Kiểm toán Bổ sung & Bảo mật)
+* **Hành động**: `budgets:ViewBudget`, `eks:DescribeCluster`, `rds:DescribeDBInstances`, `guardduty:ListDetectors`, `securityhub:DescribeHub`
+* **Mô tả**: Cho phép đọc thông tin cấu hình và ngân sách (Budget), kiểm tra cụm EKS, RDS DB instances, cũng như đọc kết quả dò quét bảo mật từ GuardDuty và Security Hub.
+* **Mục đích**: Bổ sung quyền giúp Audit Team (CDO07) có thể nghiệm thu đầy đủ các bằng chứng liên quan đến chi phí, workload Kubernetes, Database và an toàn bảo mật chung của tài khoản.
 
 ---
 [⬅️ Quay lại nhóm CDO07](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)
