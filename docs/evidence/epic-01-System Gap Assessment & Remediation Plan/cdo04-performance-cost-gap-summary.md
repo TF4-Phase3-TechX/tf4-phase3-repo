@@ -164,7 +164,8 @@ Evidence:
 - Ảnh bằng chứng Grafana overkill: 
 ![Grafana overkill](../epic-04-cost-optimization/runtime/screenshots/Grafana%20overkill.jpg)
 - Ảnh bằng chứng Jaeger overkill:
-![Jaeger overkill](../epic-04-cost-optimization/runtime/screenshots/Grafana%20overkill.jpg)
+![Jaeger overkill](../epic-04-cost-optimization/runtime/screenshots/Jaeger%20overkill.jpg)
+
 - Source evidence của limit RAM nằm trong `techx-corp-chart/values.yaml`: Jaeger bật memory storage và `MEMORY_MAX_TRACES=25000` ở dòng `1037-1045`, đặt `resources.limits.memory: 600Mi` ở dòng `1056-1058`, user config dùng `memory.max_traces: ${env:MEMORY_MAX_TRACES}` ở dòng `1095-1097`; Grafana đặt `resources.limits.memory: 300Mi` ở dòng `1211-1213`.
 - Source config Jaeger tương ứng cũng có trong `techx-corp-platform/src/jaeger/config.yml:34-41`, nơi Jaeger query trỏ trace storage về `memory_backend` và dùng `max_traces: ${env:MEMORY_MAX_TRACES}`.
 - Kết luận gap: Observability stack đang vừa nặng cho baseline/demo, vừa chưa được right-size theo dữ liệu runtime. Grafana/Jaeger không chỉ tiêu thụ capacity thường trực mà đã có bằng chứng bị OOMKilled, làm tăng rủi ro mất trace/dashboards đúng thời điểm cần evidence để phân tích performance hoặc incident.
