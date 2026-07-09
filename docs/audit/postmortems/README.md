@@ -1,23 +1,23 @@
 # Audit Postmortems
 
-This folder stores real postmortem/COE documents for incidents and compliance findings.
+Thư mục này dùng để lưu các postmortem/COE thật cho sự cố và finding compliance.
 
-Use `../templates/POSTMORTEM_TEMPLATE.md` when creating a postmortem.
+Khi tạo postmortem mới, hãy copy mẫu từ `../templates/POSTMORTEM_TEMPLATE.md`.
 
-## Naming
+## Quy ước đặt tên
 
 - `YYYY-MM-DD-<incident-or-finding-slug>.md`
 
-## When To Create A Postmortem
+## Khi nào cần tạo postmortem
 
-- An incident affects auditability, observability, security evidence, or release confidence.
-- A compliance gap is found during review.
-- The team needs a shared timeline and action items.
+- Sự cố ảnh hưởng đến auditability, observability, security evidence, hoặc độ tin cậy khi release.
+- Review phát hiện compliance gap cần phân tích nguyên nhân và follow-up.
+- Team cần timeline chung và action items có owner rõ ràng.
 
-## Minimum Content
+## Nội dung tối thiểu
 
-- Impact
+- Phạm vi ảnh hưởng
 - Timeline
-- Root cause or contributing factors
-- What went well and what did not
-- Action items with owners
+- Nguyên nhân gốc hoặc yếu tố góp phần
+- Điều đã làm tốt và điều chưa tốt
+- Action items có owner

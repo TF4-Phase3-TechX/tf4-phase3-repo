@@ -1,59 +1,59 @@
-# Runbook: <Service/Scenario>
+# Runbook: <Dịch vụ/Kịch bản>
 
-Owner: <team/person>
-Last updated: YYYY-MM-DD
-Related SLO: <SLO or N/A>
-Related dashboard: <link or path>
-Related Jira: <SCRUM-xxx or N/A>
+Người phụ trách: <team/người phụ trách>
+Cập nhật lần cuối: YYYY-MM-DD
+SLO liên quan: <SLO hoặc N/A>
+Dashboard liên quan: <link hoặc đường dẫn>
+Jira liên quan: <SCRUM-xxx hoặc N/A>
 
-## Purpose
+## Mục đích
 
-<Describe when to use this runbook.>
+<Mô tả khi nào cần dùng runbook này.>
 
-## Symptoms
+## Triệu chứng
 
-- <Observable symptom>
-- <Alert/log/metric signal>
-- <Customer or business impact>
+- <Triệu chứng quan sát được>
+- <Tín hiệu alert/log/metric>
+- <Ảnh hưởng tới khách hàng hoặc nghiệp vụ>
 
-## First Checks
+## Kiểm tra ban đầu
 
 ```powershell
 <command 1>
 <command 2>
 ```
 
-## Investigation Steps
+## Các bước điều tra
 
-1. <Check current status and scope.>
-2. <Confirm impact with metrics/logs/traces.>
-3. <Collect evidence before making changes.>
-4. <Identify likely owner/escalation path.>
+1. <Kiểm tra trạng thái hiện tại và phạm vi ảnh hưởng.>
+2. <Xác nhận ảnh hưởng bằng metric/log/trace.>
+3. <Thu thập evidence trước khi thay đổi cấu hình hoặc thao tác xử lý.>
+4. <Xác định owner hoặc hướng escalation phù hợp.>
 
-## Mitigation
+## Giảm thiểu ảnh hưởng
 
-<Describe safe mitigation steps. Do not bypass protected flagd/OpenFeature incident mechanisms.>
+<Mô tả các bước giảm thiểu an toàn. Không bypass các cơ chế incident đã được bảo vệ như flagd/OpenFeature nếu chưa có phê duyệt.>
 
-## Escalation
+## Chuyển tuyến xử lý
 
-- Primary owner: <team/person>
-- Backup: <team/person>
-- Escalate when: <condition>
+- Người phụ trách chính: <team/người phụ trách>
+- Người dự phòng: <team/người phụ trách>
+- Escalate khi: <điều kiện>
 
-## Evidence To Capture
+## Evidence cần thu thập
 
-- Timestamp and timezone.
-- Commands and output summary.
+- Thời điểm và timezone.
+- Command đã chạy và tóm tắt output.
 - Screenshot/log/query link.
-- Affected services/users/SLO.
-- Related PR/Jira/ADR links.
+- Service/user/SLO bị ảnh hưởng.
+- Link PR/Jira/ADR liên quan.
 
 ## Rollback
 
-<Describe rollback for any config/deploy change.>
+<Mô tả cách rollback nếu có thay đổi cấu hình hoặc deploy.>
 
 ## Follow-up
 
 - <Action item>
-- <Owner>
-- <Due date>
+- <Người phụ trách>
+- <Hạn hoàn thành>
