@@ -22,20 +22,44 @@ Tài liệu này dùng làm evidence cho Epic Performance Efficiency và làm in
 
 ---
 
-## 3. Metrics cần đo
+## 3. Phân loại Metrics theo mức độ ưu tiên (P0/P1/P2)
 
-| Metric | Ý nghĩa | Cách hiểu |
-|---|---|---|
-| p95 latency | 95% request hoàn thành dưới ngưỡng này | Dùng để đánh giá trải nghiệm phần lớn user |
-| p99 latency | 99% request hoàn thành dưới ngưỡng này | Dùng để phát hiện tail latency, request chậm bất thường |
-| Request rate | Số request trên giây/phút | Dùng để biết flow nào có tải cao |
-| Error rate | Tỷ lệ request lỗi | Bao gồm HTTP 5xx, timeout, business error quan trọng |
-| CPU usage | Mức sử dụng CPU của service | Dùng để phát hiện bottleneck xử lý |
-| Memory usage | Mức sử dụng RAM của service | Dùng để phát hiện memory leak hoặc quá tải |
-| DB latency | Thời gian query database | Quan trọng với product, cart, checkout, payment |
-| External dependency latency | Thời gian gọi service ngoài | Quan trọng với payment gateway và AI provider |
-| Kafka producer error | Lỗi khi publish event | Quan trọng với order event |
-| Kafka consumer lag | Số lượng message chưa xử lý | Dùng để đánh giá async processing có bị backlog không |
+Để tránh dashboard và report load test bị loãng thông tin, các metric được chia thành 3 nhóm ưu tiên:
+
+### P0 - Dùng cho Week 1 Pitch & Dashboard tổng quan
+*Các metric quan trọng nhất thể hiện sức khỏe tổng thể và trải nghiệm người dùng.*
+
+| Metric | Ý nghĩa / Mục đích |
+|---|---|
+| **p95/p99 latency** | Đánh giá độ trễ của phần lớn request và tail latency (request chậm bất thường) |
+| **Request rate** | Số request trên giây/phút (RPS/RPM) để đánh giá mức tải |
+| **Error rate** | Tỷ lệ request lỗi (HTTP 5xx, timeout, business error) |
+| **Success rate** | Tỷ lệ request thành công (SLO) |
+| **Pod restart count** | Số lần pod bị restart (dấu hiệu crash, OOM) |
+| **Kafka lag** | Số lượng message chưa xử lý bị ứ đọng |
+| **DLQ (Dead Letter Queue)**| Số lượng event/message lỗi đẩy vào DLQ |
+
+### P1 - Dùng cho Root Cause Analysis (RCA)
+*Phục vụ việc debug, tìm nguyên nhân sâu xa khi P0 có vấn đề.*
+
+| Metric | Ý nghĩa / Mục đích |
+|---|---|
+| **CPU usage** | Mức sử dụng CPU để phát hiện bottleneck xử lý |
+| **Memory usage** | Mức sử dụng RAM để phát hiện memory leak hoặc quá tải |
+| **DB latency** | Thời gian query database (ảnh hưởng product, cart, checkout) |
+| **External dependency latency** | Thời gian gọi service ngoài (Payment gateway, AI provider) |
+| **ALB target response time** | Thời gian phản hồi từ Load Balancer đến service |
+
+### P2 - Dùng cho Follow-up / Production Hardening
+*Các metric chi tiết dùng để tuning và tối ưu hệ thống dài hạn.*
+
+| Metric | Ý nghĩa / Mục đích |
+|---|---|
+| **DB connections** | Số lượng connection hiện tại đến database |
+| **Valkey eviction** | Số lượng key bị đẩy khỏi cache (Valkey/Redis) khi bộ nhớ đầy |
+| **AI token usage** | Số lượng token sử dụng cho AI (kiểm soát quota) |
+| **AI cost per request** | Chi phí ước tính cho mỗi request gọi AI |
+| **Message processing time** | Thời gian xử lý chi tiết từng event/message trong Kafka |
 
 ---
 
@@ -126,6 +150,7 @@ Tài liệu này dùng làm evidence cho Epic Performance Efficiency và làm in
 | Có external dependency metric cho Payment và AI | Done |
 | Có Kafka lag / DLQ / processing time | Done |
 | Có priority P0/P1/P2 cho performance test | Done |
+| Đã phân loại metric thành P0, P1, P2 theo feedback | Done |
 | Cần TechLead confirm threshold cuối cùng | Pending Review |
 
 ---
@@ -144,15 +169,12 @@ Các flow critical nhất cần ưu tiên đo trước:
 6. Cart Flow
 7. AI Review / Summary Flow
 
-Các metric bắt buộc cần có trong performance report:
+Các metric bắt buộc báo cáo trong Week 1 Pitch (Nhóm P0):
 
-- p95 latency
-- p99 latency
+- p95/p99 latency
 - request rate
-- error rate
-- CPU usage
-- memory usage
-- DB latency
-- external dependency latency
-- Kafka consumer lag
-- DLQ count
+- error rate & success rate
+- pod restart count
+- Kafka lag & DLQ count
+
+Các metric nhóm P1 và P2 sẽ được cấu hình trong Dashboard chi tiết để phục vụ RCA và Production Hardening.

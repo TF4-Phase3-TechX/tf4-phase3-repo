@@ -96,12 +96,20 @@ data "aws_iam_policy_document" "github_actions_plan" {
     effect = "Allow"
 
     actions = [
+      "autoscaling:Describe*",
+      "budgets:ViewBudget",
+      "cloudtrail:DescribeTrails",
+      "cloudtrail:GetEventSelectors",
+      "cloudtrail:GetTrail",
+      "cloudtrail:GetTrailStatus",
+      "cloudtrail:ListTags",
       "ec2:Describe*",
-      "eks:Describe*",
-      "eks:List*",
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
       "ecr:List*",
+      "eks:Describe*",
+      "eks:List*",
+      "elasticloadbalancing:Describe*",
       "iam:Get*",
       "iam:List*",
       "kms:DescribeKey",
@@ -111,8 +119,12 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kms:ListResourceTags",
       "logs:Describe*",
       "logs:ListTagsForResource",
-      "autoscaling:Describe*",
-      "elasticloadbalancing:Describe*"
+      "s3:GetAccelerateConfiguration",
+      "s3:GetBucket*",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetReplicationConfiguration",
+      "s3:ListBucket"
     ]
 
     resources = ["*"]
