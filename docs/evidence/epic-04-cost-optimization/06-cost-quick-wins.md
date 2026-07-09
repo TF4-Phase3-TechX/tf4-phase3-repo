@@ -30,8 +30,9 @@ Quá trình rà soát cấu hình `docker-compose.yml` và số liệu `docker s
 | RAM Limit | 1500 MiB | `techx-corp-platform/docker-compose.yml` → `deploy.resources.limits.memory` |
 | Trạng thái vận hành | Chạy nền liên tục (24/7) | — |
 
-# Evidence: 
-![Kiểm tra Load Generator](docs/evidence/epic-04-cost-optimization/runtime/screenshots/Kiểm%20tra%20resource%20của%20observability%20stack.png)
+#### Evidence: 
+![Kiểm tra Load Generator](./runtime/screenshots/Kiểm%20tra%20load-generator%20autostart.png)
+
 
 ### 1.2 Đánh giá rủi ro
 
@@ -67,7 +68,7 @@ docker stats --no-stream
 | **Grafana** | 136.7 MiB | 175 MiB | ~78.13% | 🟡 Sát giới hạn, cần theo dõi |'
 
 
-# Evidence: 
+#### Evidence: 
 ![Kiểm tra Observability Stack ](./runtime/screenshots/Kiểm%20tra%20resource%20của%20observability%20stack.png)
 
 ### 2.3 Phân tích chi tiết
