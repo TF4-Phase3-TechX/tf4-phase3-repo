@@ -31,7 +31,7 @@ Quá trình rà soát cấu hình `docker-compose.yml` và số liệu `docker s
 | Trạng thái vận hành | Chạy nền liên tục (24/7) | — |
 
 # Evidence: 
-![Kiểm tra Load Generator](./runtime/screenshots/Kiểm%20tra%20load-generator%20autostart.png)
+![Kiểm tra Load Generator](docs/evidence/epic-04-cost-optimization/runtime/screenshots/Kiểm%20tra%20resource%20của%20observability%20stack.png)
 
 ### 1.2 Đánh giá rủi ro
 
