@@ -36,7 +36,6 @@ Kết quả runtime chính:
 - Finding cũ về nhiều service `ImagePullBackOff` không còn là current finding.
 - Observability services như `grafana`, `prometheus`, `jaeger`, `opensearch`, `otel-collector` không còn thấy trong namespace `techx-tf4` tại thời điểm scan.
 - Namespace `techx-tf4` không có PVC.
-- CDO08 hiện chưa đủ quyền để list `roles`, `rolebindings`, và namespace cluster-scope.
 
 ## Backlog Items
 
@@ -52,7 +51,6 @@ Kết quả runtime chính:
 | CDO08-SEC-01 | Epic 07 | Security | P1 | Thủy | Hardcoded DB credentials/API key trong Helm values | Secret/config nhạy cảm nằm trong repo; dễ lộ qua Git/diff/PR; khó rotate an toàn | `techx-corp-chart/values.yaml:182-183`, `581-582`, `618-619`, `600-601`, `870-871` | Phân loại secret thật vs demo/dummy; chọn migration candidates | Secret không còn hardcoded trong values; service vẫn start sau deploy | Rollback về values cũ nếu service không đọc được secret mới | Nhân review security; Deploy Operator hỗ trợ deploy |
 | CDO08-SEC-02 | Epic 07 | Security | P1; P0 nếu public expose | Nhân / Quyết | Grafana anonymous user có quyền Admin nếu Grafana được expose lại | Nếu Grafana expose qua ALB/path, người ngoài có thể có quyền admin dashboard/datasource | `techx-corp-chart/values.yaml:1190-1193` anonymous enabled và `org_role: Admin`; `1197` admin password `admin` | Xác nhận Grafana đang ở namespace nào và có public route không; tắt anonymous Admin | Grafana không còn anonymous Admin; login/access policy rõ ràng | Rollback access config nếu team mất access, nhưng không rollback về anonymous Admin nếu public | Quyết xác nhận observability; Deploy Operator nếu cần deploy |
 | CDO08-SEC-03 | Epic 07 | Security | P1/P2 | Nhân / Quyết | OpenSearch security plugin disabled | Logs/traces có thể không được bảo vệ ở layer OpenSearch; rủi ro tăng nếu network exposure sai | `techx-corp-chart/values.yaml:1227-1230` có `DISABLE_SECURITY_PLUGIN=true` | Xác nhận OpenSearch chỉ internal hay có access path khác; đề xuất hardening phù hợp | OpenSearch access path được kiểm chứng; security plugin/network policy được review | Không bật security plugin trực tiếp nếu có nguy cơ làm ingestion/query lỗi | Quyết review log pipeline; Nguyên review technical risk |
-| CDO08-SEC-04 | Epic 07 | Security / Evidence | P2 | Nhân | CDO08 chưa đủ quyền audit RBAC/cluster-scope resources | Nhân không thể hoàn tất RBAC baseline nếu không có exported manifest hoặc quyền bổ sung | `kubectl -n techx-tf4 get sa,role,rolebinding` list được SA nhưng `roles/rolebindings` forbidden; `kubectl get ns` forbidden | Request read-only RBAC cho Role/RoleBinding hoặc yêu cầu platform export manifest | `kubectl auth can-i list rolebindings -n techx-tf4` trả `yes`, hoặc có exported manifests | Chỉ cấp read-only; không cấp patch/delete/exec theo default CDO08 | AWS/EKS Admin hoặc Deploy Operator |
 
 ## Suggested Week 2-3 Priority
 
@@ -60,7 +58,7 @@ Kết quả runtime chính:
 |---|---|---|
 | Do first | `CDO08-REL-01`, `CDO08-REL-02`, `CDO08-REL-04`, `CDO08-SEC-01`, `CDO08-SEC-02` | Impact trực tiếp tới availability/evidence/security exposure; có evidence rõ |
 | Do next | `CDO08-REL-03`, `CDO08-REL-06`, `CDO08-REL-07` | Quan trọng nhưng cần thêm design review hoặc phối hợp owner khác |
-| Track / verify | `CDO08-REL-05`, `CDO08-SEC-03`, `CDO08-SEC-04` | Cần thêm context về retention, exposure hoặc permission model trước khi triển khai |
+| Track / verify | `CDO08-REL-05`, `CDO08-SEC-03` | Cần thêm context về retention hoặc exposure trước khi triển khai |
 
 ## Items Not Treated As Current Backlog
 
