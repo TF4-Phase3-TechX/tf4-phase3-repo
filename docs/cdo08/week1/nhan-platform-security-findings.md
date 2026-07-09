@@ -98,6 +98,18 @@ Evidence:
 
 ## 2. Findings
 
+### 2.1 Cách Xếp Priority
+
+Priority trong báo cáo này được xếp theo rủi ro thực tế, khả năng bị khai thác qua exposure hiện có, blast radius nếu bị compromise, và mức độ cần xử lý sớm trong Week 1/Week 2.
+
+| Priority | Cách hiểu trong audit này | Finding áp dụng | Lý do |
+|---|---|---|---|
+| P1 | Gap có exposure hoặc blast radius rõ, nên đưa vào backlog xử lý sớm | `SEC-PLAT-001`, `SEC-PLAT-002`, `SEC-PLAT-003`, `SEC-PLAT-004` | Thiếu hardening trên nhiều workload, internet-facing ALB/HTTP route qua `frontend-proxy`, Grafana anonymous Admin/OpenSearch disabled security, và Grafana ClusterRole đọc Secrets toàn cluster đều có tác động security trực tiếp |
+| P2 | Gap có rủi ro thật nhưng cần thêm điều kiện khai thác, hoặc nên xử lý theo hardening batch có test | `SEC-PLAT-005`, `SEC-PLAT-006` | Shared ServiceAccount hiện chưa thấy RBAC rộng nhưng sẽ tăng blast radius nếu sau này bind quyền; OTLP CORS rộng chỉ trở thành rủi ro cao hơn nếu OTLP HTTP endpoint bị expose |
+| P3 | Theo dõi hoặc cleanup sau, chưa thấy ảnh hưởng security đáng kể trong baseline hiện tại | Chưa dùng cho finding chính | Không có finding nào trong scan này đủ thấp để chỉ ghi nhận P3 |
+
+Không có finding P0 vì chưa quan sát thấy bằng chứng runtime về secret leakage, public admin endpoint đang truy cập thành công, hoặc quyền cluster-admin bị cấp nhầm cho app workload.
+
 ### SEC-PLAT-001 - Container hardening chưa đồng đều và phần lớn còn thiếu
 
 Pillar: Security / Reliability
