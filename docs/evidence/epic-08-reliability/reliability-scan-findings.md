@@ -18,8 +18,6 @@ Scan này tập trung vào các rủi ro reliability có evidence từ runtime, 
 
 ## Runtime Context
 
-Finding cũ về nhiều service `ImagePullBackOff` không còn đúng ở thời điểm scan này.
-
 Commands đã kiểm tra:
 
 ```bash
@@ -159,27 +157,6 @@ Việc cần làm tuần sau:
 - Quân xác nhận behavior bằng smoke/fault evidence nếu có thể.
 - Nguyên review design tradeoff: consistency vs availability.
 - Đề xuất hướng xử lý: outbox pattern, retry queue, compensation, hoặc user-facing response strategy.
-
-## Findings Không Còn Đúng Ở Thời Điểm Scan
-
-### Historical REL-X - Nhiều service critical `ImagePullBackOff`
-
-Finding này từng xuất hiện trong screenshot/evidence trước đó, nhưng không còn là current finding tại thời điểm scan.
-
-Evidence hiện tại:
-
-```bash
-kubectl -n techx-tf4 get pods -o wide
-```
-
-Kết quả:
-
-- Tất cả app pods trong `techx-tf4` đều `Running 1/1`.
-
-Khuyến nghị:
-
-- Không đưa vào backlog như lỗi hiện tại.
-- Nếu cần giữ làm incident evidence, yêu cầu bổ sung timeline, nguyên nhân, commit/deploy đã fix.
 
 ## Suggested Backlog Items
 
