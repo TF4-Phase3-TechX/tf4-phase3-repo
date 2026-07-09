@@ -48,7 +48,7 @@ Task ownership rule:
 
 | Jira | Task | Owner | Note |
 | --- | --- | --- | --- |
-| `TF4AIO-21` | Prepare AIO Week 1 pitch notes | Done, no reassignment | Pitch notes đã có trên Jira |
+| None currently from latest Jira scan | - | - | Keep closed/done tasks unassigned if they appear later |
 
 ### In Review
 
@@ -58,26 +58,28 @@ Các task này đã có evidence hoặc review note, nên không assign lại.
 | --- | --- | --- |
 | `TF4AIO-9` | Review current AI source and document AI flow | Source/AI flow review |
 | `TF4AIO-11` | Record AI baseline findings and gaps | Linked to PR #34 evidence |
-| `TF4AIO-12` | Define AIOps data sources and incident taxonomy | AIOps foundation review |
 | `TF4AIO-13` | Confirm observability access for AIOps | Grafana/Jaeger access evidence |
+| `TF4AIO-14` | Select AIOps MVP incident types | Needs conservative evidence wording; see Jira audit |
+| `TF4AIO-15` | Define initial AI eval rubric and cases | Rubric/cases only; no automated eval report yet |
 | `TF4AIO-17` | Prepare AIO Week 1 evidence package and Ops Review notes | Evidence package |
 | `TF4AIO-18` | Record AIO Week 1 decisions | Decision log |
+| `TF4AIO-19` | Prepare AIO incident/postmortem readiness note | Incident readiness note |
+| `TF4AIO-20` | Monitor mandates and reserve capacity | Mandate/capacity note |
+| `TF4AIO-21` | Prepare AIO Week 1 pitch notes | Needs correction before reuse; see Jira audit |
 
 ### In Progress
 
 | Jira | Task | Suggested owner | Track | Reason |
 | --- | --- | --- | --- | --- |
-| `TF4AIO-10` | Run AI smoke test on TF4 EKS baseline | Văn | AIE | Smoke test and runtime evidence |
-| `TF4AIO-14` | Select AIOps MVP incident types | Hòa | AIO | AIOps incident taxonomy and MVP scope |
-| `TF4AIO-15` | Define initial AI eval rubric and cases | Vũ | AIE | Eval rubric/cases |
+| `TF4AIO-10` | Run AI smoke test on TF4 EKS baseline | Văn | AIE | Jira comments conflict: completed evidence vs blocked note |
+| `TF4AIO-12` | Define AIOps data sources and incident taxonomy | Hòa | AIO | Needs repo-backed Jira comment if owner wants to close review |
 | `TF4AIO-16` | Audit AI telemetry gaps | Thông | AIE / PM | Telemetry gap and follow-up planning |
 
 ### To Do
 
 | Jira | Task | Suggested owner | Track | Reason |
 | --- | --- | --- | --- | --- |
-| `TF4AIO-19` | Prepare AIO incident/postmortem readiness note | Thông | PM / AIE | Operational readiness and postmortem format |
-| `TF4AIO-20` | Monitor mandates and reserve capacity | Thông | PM | PM-owned tracking/capacity buffer |
+| None currently from latest Jira scan | - | - | - |
 
 ## 5. Evidence currently on PR
 
@@ -102,11 +104,11 @@ Evidence files in PR:
 | Priority | Action | Owner |
 | --- | --- | --- |
 | P0 | Merge PR #34 so Jira evidence links point to repo instead of local files | Nam -> reviewer |
-| P1 | Add/confirm PR evidence links on any Jira comments that still mention local paths | Nam -> Thông |
-| P1 | Finish `TF4AIO-14`: choose AIOps MVP incidents | Hòa |
-| P1 | Finish `TF4AIO-19`: incident/postmortem readiness note | Thông |
-| P1 | Finish `TF4AIO-20`: mandate monitoring note | Thông |
-| P2 | Move eligible tasks to `In Review` after owner comments evidence | Thông -> Nam |
+| P1 | Add/confirm PR evidence links on Jira comments that still mention local paths | Nam -> Thông |
+| P1 | Fix `TF4AIO-10` status/comment conflict: completed public-route smoke evidence vs blocked kubeconfig note | Văn -> Nam |
+| P1 | Supersede `TF4AIO-21` pitch note overclaims with conservative wording from the Jira audit | Thông -> Nam |
+| P1 | Add repo-backed Jira comment for `TF4AIO-12` if owner wants it moved to In Review | Hòa -> Nam |
+| P2 | Keep `w01/` as supplemental raw evidence; use `docs/evidence/aio1-week1/` as canonical evidence folder | Nam |
 
 ## 7. Full project task plan
 
@@ -121,7 +123,7 @@ Goal: make AI feature measurable, safer, more reliable, and ready for real LLM /
 | W1 | Review current AI source and document flow | Văn -> Nam | Current AI flow + mock LLM behavior documented | `TF4AIO-9` In Review |
 | W1 | Run AI smoke test on TF4 baseline | Văn | UI response, mock LLM status, Grafana/Jaeger evidence | `TF4AIO-10` In Progress |
 | W1 | Record AI findings/gaps | Nam -> Thông | AI-01, AI-02, real LLM gap, eval/fallback/cost gap | `TF4AIO-11` In Review |
-| W1-W2 | Define eval rubric and initial cases | Vũ | Faithfulness/relevance/safety rubric + 5-10 cases | `TF4AIO-15` In Progress |
+| W1-W2 | Define eval rubric and initial cases | Vũ | Faithfulness/relevance/safety rubric + 5-10 cases | `TF4AIO-15` In Review; no automated eval report yet |
 | W1-W2 | Audit AI telemetry gaps | Thông | Missing latency/token/cost/error/fallback metrics identified | `TF4AIO-16` In Progress |
 | W2 | Run eval on mock/current LLM | Vũ | Pass/fail report, limitation clearly stated | New Jira task needed |
 | W2 | Add/test safe fallback for LLM failure | Văn | Timeout/rate-limit/unavailable returns safe fallback | New Jira task needed |
@@ -150,9 +152,9 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 
 | Phase | Task | Owner | Output / Done Criteria | Jira status |
 | --- | --- | --- | --- | --- |
-| W1 | Define AIOps data sources and incident taxonomy | Hòa -> Nam | Data source mapping + incident taxonomy | `TF4AIO-12` In Review |
+| W1 | Define AIOps data sources and incident taxonomy | Hòa -> Nam | Data source mapping + incident taxonomy | `TF4AIO-12` In Progress |
 | W1 | Confirm observability access | Nam -> Hòa | Grafana/Jaeger access evidence | `TF4AIO-13` In Review |
-| W1-W2 | Select MVP incident types | Hòa | Choose 2-3 MVP incidents, likely latency spike, error spike, LLM timeout/error | `TF4AIO-14` In Progress |
+| W1-W2 | Select MVP incident types | Hòa | Choose 2-3 MVP incidents, likely latency spike, error spike, LLM timeout/error | `TF4AIO-14` In Review; runtime signal proof still W2 |
 | W2 | Verify Prometheus/OpenSearch query access from AIOps agent | Hòa -> Hậu | PromQL/OpenSearch query returns real data; code snippet or screenshot captured | New Jira task needed |
 | W2 | Define detection rules/thresholds | Hòa -> Hậu | Rule spec for selected incidents | New Jira task needed |
 | W2-W3 | Build rule-based detector prototype | Hậu -> Tâm | Detector runs on sample/live metrics | New Jira task needed |
@@ -175,9 +177,9 @@ Goal: keep project defensible with evidence, PRs, decision logs, readiness notes
 | --- | --- | --- | --- | --- |
 | W1 | Prepare evidence package | Nam -> Thông | Repo-backed PR evidence, no local-only paths | `TF4AIO-17` In Review |
 | W1 | Record Week 1 decisions | Thông -> Nam | Decision log: mock LLM W1, defer real LLM, defer full Copilot/AIOps | `TF4AIO-18` In Review |
-| W1 | Prepare pitch notes | Thông -> Nam | Week 1 pitch notes | `TF4AIO-21` Done |
-| W1-W2 | Prepare incident/postmortem readiness note | Thông | AI incident categories + evidence required + postmortem format | `TF4AIO-19` To Do |
-| W1-W3 | Monitor mandates and reserve capacity | Thông | Mandate check note; update backlog if new requirements appear | `TF4AIO-20` To Do |
+| W1 | Prepare pitch notes | Thông -> Nam | Week 1 pitch notes; needs overclaim cleanup before reuse | `TF4AIO-21` In Review |
+| W1-W2 | Prepare incident/postmortem readiness note | Thông | AI incident categories + evidence required + postmortem format | `TF4AIO-19` In Review |
+| W1-W3 | Monitor mandates and reserve capacity | Thông | Mandate check note; update backlog if new requirements appear | `TF4AIO-20` In Review |
 | W2 | Create implementation PR plan | Nam -> Thông | PR list by AIE/AIOps/OPS | New Jira task needed |
 | W2-W3 | Weekly Ops Review AIO section | Thông | AI status/risk/evidence/incident/next action | New Jira task needed |
 | W2-W3 | Track LLM/API budget guard | Thông -> Nam | Weekly cost note and alert threshold | New Jira task needed |

@@ -5,6 +5,11 @@ This folder contains AIO1 Week 1 baseline evidence for the TF4 Phase 3 capstone.
 ## Main evidence
 
 - [AIO1 Week 1 AI baseline evidence](./evidence.md)
+- [Jira task evidence audit](./jira-task-evidence-audit.md)
+- [Initial AI eval rubric baseline](./ai-eval-rubric-baseline.md)
+- [AIOps data sources, taxonomy, and MVP selection](./aiops-data-sources-taxonomy.md)
+- [AI incident and postmortem readiness](./ai-incident-postmortem-readiness.md)
+- [Mandate and capacity review](./mandate-capacity-review.md)
 
 ## Screenshots
 

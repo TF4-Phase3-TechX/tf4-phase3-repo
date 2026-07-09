@@ -208,3 +208,46 @@ However, the response matches the mock LLM fixture in src/llm/product-review-sum
 
 Next priorities are eval, fallback/timeout handling, guardrails, and AI-specific observability before enabling or claiming real LLM integration.
 ```
+
+---
+
+## 11. Source-verified gap notes
+
+These notes were added after scanning the current repo and Jira task comments.
+
+### Confirmed by current source
+
+| Evidence | Source |
+| --- | --- |
+| Mock LLM reads product-review fixture data | `techx-corp-platform/src/llm/app.py:21`, `techx-corp-platform/src/llm/product-review-summaries/product-review-summaries.json` |
+| Product reviews service uses OpenAI-compatible client pointed at `LLM_BASE_URL` | `techx-corp-platform/src/product-reviews/product_reviews_server.py:204-223` |
+| Normal LLM call has no explicit call-site timeout/circuit breaker | `techx-corp-platform/src/product-reviews/product_reviews_server.py:218-223`, `:292-295` |
+| Rate-limit and inaccurate-response feature flags exist | `techx-corp-platform/src/product-reviews/product_reviews_server.py:164-200`, `:269-278`; `techx-corp-platform/src/llm/app.py:63-64` |
+| Full user question is recorded in trace attributes | `techx-corp-platform/src/product-reviews/product_reviews_server.py:162` |
+| Prompt/message content can be logged | `techx-corp-platform/src/product-reviews/product_reviews_server.py:228`, `:290-301` |
+| Current AI metric is only an AI assistant request counter | `techx-corp-platform/src/product-reviews/metrics.py:13-16`, `techx-corp-platform/src/product-reviews/product_reviews_server.py:307-308` |
+| DB access opens direct psycopg2 connections per call path | `techx-corp-platform/src/product-reviews/database.py:33`, `:60` |
+| gRPC server worker pool is fixed at 10 workers | `techx-corp-platform/src/product-reviews/product_reviews_server.py:361` |
+
+### Not confirmed by current source scan
+
+The following claims appeared in Jira comments or review material but were not found in the current repo scan:
+
+- `ai_safety.py`
+- `evals/aio_ai_eval.py`
+- `evals/aio_copilot_eval.py`
+- `src/aiops/`
+- `make aio-eval`
+- "8/8 safety checks PASS"
+- "30/30 copilot intent checks PASS"
+- "17 unit tests PASS"
+- "8 OTel AI metrics"
+- "guardrail 5 layers"
+
+Do not use those claims in the Week 1 pitch unless separate evidence is added.
+
+Detailed Jira/task audit:
+
+```txt
+docs/evidence/aio1-week1/jira-task-evidence-audit.md
+```
