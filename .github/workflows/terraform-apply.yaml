@@ -83,6 +83,8 @@ jobs:
         run: terraform validate
 
       - name: Terraform apply
+        env:
+          TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
         run: terraform apply -input=false -auto-approve
 
       - name: Show infra outputs

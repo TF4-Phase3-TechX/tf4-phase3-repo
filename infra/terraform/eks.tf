@@ -14,11 +14,19 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  # Bật Control Plane Logging
+  cluster_enabled_log_types = ["api", "audit", "authenticator"]
+
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true
 
-  # Cấp quyền admin EKS cho tài khoản/IAM Principal tạo cụm (để kubectl get nodes hoạt động)
-  enable_cluster_creator_admin_permissions = true
+  # EKS access entries are managed explicitly in eks-access-entries.tf.
+  enable_cluster_creator_admin_permissions = false
+
+  # Keep KMS key administration stable across local and CI Terraform runs.
+  kms_key_administrators = [
+    "arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply",
+  ]
 
   # Định nghĩa Managed Node Group chạy trong Private Subnets
   eks_managed_node_groups = {
