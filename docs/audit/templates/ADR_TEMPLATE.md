@@ -1,45 +1,45 @@
-# ADR-<NNN>: <Decision Title>
+# ADR-<NNN>: <Tiêu đề quyết định>
 
-Status: Proposed | Accepted | Superseded
-Date: YYYY-MM-DD
-Owner: <name/team>
-Related Jira: <SCRUM-xxx or N/A>
-Related PR: <link or N/A>
+Trạng thái: Đề xuất | Đã chấp nhận | Đã thay thế
+Ngày: YYYY-MM-DD
+Người phụ trách: <tên/team>
+Jira liên quan: <SCRUM-xxx hoặc N/A>
+PR liên quan: <link hoặc N/A>
 
-## Context
+## Bối cảnh
 
-<Describe the problem, business/SLO/cost/security/audit constraints, and why a decision is needed.>
+<Mô tả vấn đề, ràng buộc nghiệp vụ/SLO/chi phí/bảo mật/audit, và lý do cần ra quyết định.>
 
-## Decision
+## Quyết định
 
-<State the chosen decision clearly.>
+<Ghi rõ quyết định đã chọn.>
 
-## Options Considered
+## Các phương án đã cân nhắc
 
-| Option | Pros | Cons | Decision |
+| Phương án | Ưu điểm | Nhược điểm | Kết luận |
 | --- | --- | --- | --- |
-| <option A> | <pros> | <cons> | Accepted/Rejected |
-| <option B> | <pros> | <cons> | Accepted/Rejected |
+| <phương án A> | <ưu điểm> | <nhược điểm> | Chấp nhận/Từ chối |
+| <phương án B> | <ưu điểm> | <nhược điểm> | Chấp nhận/Từ chối |
 
-## Consequences
+## Hệ quả
 
-- Positive impact: <expected benefit>
-- Trade-off: <cost, risk, operational burden, or limitation>
-- Remaining risk: <known residual risk>
+- Tác động tích cực: <lợi ích kỳ vọng>
+- Đánh đổi: <chi phí, rủi ro, gánh nặng vận hành, hoặc giới hạn>
+- Rủi ro còn lại: <rủi ro tồn dư đã biết>
 
-## Validation / Evidence
+## Kiểm chứng / Evidence
 
-- Evidence file: <path or N/A>
-- Commands/logs/screenshots: <path/link or summary>
-- Runtime verified: Yes/No
-- If not runtime verified, reason: <reason>
+- File evidence: <đường dẫn hoặc N/A>
+- Command/log/screenshot: <đường dẫn/link hoặc tóm tắt>
+- Đã kiểm chứng runtime: Có/Không
+- Nếu chưa kiểm chứng runtime, lý do: <lý do>
 
-## Rollback / Revisit
+## Rollback / Xem xét lại
 
-<Describe rollback path, revisit trigger, or expiry condition for this decision.>
+<Mô tả cách rollback, điều kiện cần xem xét lại, hoặc thời điểm hết hiệu lực của quyết định.>
 
-## Sign-off
+## Xác nhận
 
-- Owner:
+- Người phụ trách:
 - Reviewer:
-- Date:
+- Ngày:

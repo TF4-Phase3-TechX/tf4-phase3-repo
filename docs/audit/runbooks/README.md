@@ -1,23 +1,23 @@
 # Audit Runbooks
 
-This folder stores real operational runbooks for auditability workflows.
+Thư mục này dùng để lưu các runbook vận hành thật cho các workflow liên quan đến auditability.
 
-Use `../templates/RUNBOOK_TEMPLATE.md` when creating a runbook.
+Khi tạo runbook mới, hãy copy mẫu từ `../templates/RUNBOOK_TEMPLATE.md`.
 
-## Naming
+## Quy ước đặt tên
 
 - `<system-or-process>-<action>.md`
 
-## When To Create A Runbook
+## Khi nào cần tạo runbook
 
-- The action is repeatable and operational.
-- A reviewer or on-call person must follow the same process later.
-- The process captures evidence, verifies logs, checks alerts, or responds to an auditability incident.
+- Thao tác có tính lặp lại và mang tính vận hành.
+- Reviewer hoặc người trực cần làm theo cùng một quy trình trong tương lai.
+- Quy trình cần thu thập evidence, xác minh log, kiểm tra alert, hoặc phản ứng với sự cố auditability.
 
-## Minimum Content
+## Nội dung tối thiểu
 
-- Owner and escalation path
-- Prerequisites
-- Step-by-step procedure
-- Rollback or stop conditions
-- Evidence to capture
+- Owner và hướng escalation
+- Điều kiện tiên quyết
+- Quy trình từng bước
+- Điều kiện rollback hoặc dừng thao tác
+- Evidence cần thu thập
