@@ -1,0 +1,318 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,20955,(e,t,r)=>{var n={229:function(e){var t,r,n,o=e.exports={};function i(){throw Error("setTimeout has not been defined")}function s(){throw Error("clearTimeout has not been defined")}try{t="function"==typeof setTimeout?setTimeout:i}catch(e){t=i}try{r="function"==typeof clearTimeout?clearTimeout:s}catch(e){r=s}function a(e){if(t===setTimeout)return setTimeout(e,0);if((t===i||!t)&&setTimeout)return t=setTimeout,setTimeout(e,0);try{return t(e,0)}catch(r){try{return t.call(null,e,0)}catch(r){return t.call(this,e,0)}}}var c=[],l=!1,d=-1;function u(){l&&n&&(l=!1,n.length?c=n.concat(c):d=-1,c.length&&f())}function f(){if(!l){var e=a(u);l=!0;for(var t=c.length;t;){for(n=c,c=[];++d<t;)n&&n[d].run();d=-1,t=c.length}n=null,l=!1,function(e){if(r===clearTimeout)return clearTimeout(e);if((r===s||!r)&&clearTimeout)return r=clearTimeout,clearTimeout(e);try{r(e)}catch(t){try{return r.call(null,e)}catch(t){return r.call(this,e)}}}(e)}}function p(e,t){this.fun=e,this.array=t}function y(){}o.nextTick=function(e){var t=Array(arguments.length-1);if(arguments.length>1)for(var r=1;r<arguments.length;r++)t[r-1]=arguments[r];c.push(new p(e,t)),1!==c.length||l||a(f)},p.prototype.run=function(){this.fun.apply(null,this.array)},o.title="browser",o.browser=!0,o.env={},o.argv=[],o.version="",o.versions={},o.on=y,o.addListener=y,o.once=y,o.off=y,o.removeListener=y,o.removeAllListeners=y,o.emit=y,o.prependListener=y,o.prependOnceListener=y,o.listeners=function(e){return[]},o.binding=function(e){throw Error("process.binding is not supported")},o.cwd=function(){return"/"},o.chdir=function(e){throw Error("process.chdir is not supported")},o.umask=function(){return 0}}},o={};function i(e){var t=o[e];if(void 0!==t)return t.exports;var r=o[e]={exports:{}},s=!0;try{n[e](r,r.exports,i),s=!1}finally{s&&delete o[e]}return r.exports}i.ab="/ROOT/node_modules/next/dist/compiled/process/",t.exports=i(229)},50461,(e,t,r)=>{"use strict";var n,o;t.exports=(null==(n=e.g.process)?void 0:n.env)&&"object"==typeof(null==(o=e.g.process)?void 0:o.env)?e.g.process:e.r(20955)},41705,(e,t,r)=>{"use strict";r._=function(e){return e&&e.__esModule?e:{default:e}}},8481,(e,t,r)=>{"use strict";var n=Symbol.for("react.transitional.element");function o(e,t,r){var o=null;if(void 0!==r&&(o=""+r),void 0!==t.key&&(o=""+t.key),"key"in t)for(var i in r={},t)"key"!==i&&(r[i]=t[i]);else r=t;return{$$typeof:n,type:e,key:o,ref:void 0!==(t=r.ref)?t:null,props:r}}r.Fragment=Symbol.for("react.fragment"),r.jsx=o,r.jsxs=o},91398,(e,t,r)=>{"use strict";t.exports=e.r(8481)},61556,(e,t,r)=>{"use strict";var n=e.i(50461),o=Symbol.for("react.transitional.element"),i=Symbol.for("react.portal"),s=Symbol.for("react.fragment"),a=Symbol.for("react.strict_mode"),c=Symbol.for("react.profiler"),l=Symbol.for("react.consumer"),d=Symbol.for("react.context"),u=Symbol.for("react.forward_ref"),f=Symbol.for("react.suspense"),p=Symbol.for("react.memo"),y=Symbol.for("react.lazy"),m=Symbol.for("react.activity"),h=Symbol.iterator,g={isMounted:function(){return!1},enqueueForceUpdate:function(){},enqueueReplaceState:function(){},enqueueSetState:function(){}},x=Object.assign,v={};function w(e,t,r){this.props=e,this.context=t,this.refs=v,this.updater=r||g}function _(){}function b(e,t,r){this.props=e,this.context=t,this.refs=v,this.updater=r||g}w.prototype.isReactComponent={},w.prototype.setState=function(e,t){if("object"!=typeof e&&"function"!=typeof e&&null!=e)throw Error("takes an object of state variables to update or a function which returns an object of state variables.");this.updater.enqueueSetState(this,e,t,"setState")},w.prototype.forceUpdate=function(e){this.updater.enqueueForceUpdate(this,e,"forceUpdate")},_.prototype=w.prototype;var C=b.prototype=new _;C.constructor=b,x(C,w.prototype),C.isPureReactComponent=!0;var j=Array.isArray;function k(){}var P={H:null,A:null,T:null,S:null},$=Object.prototype.hasOwnProperty;function I(e,t,r){var n=r.ref;return{$$typeof:o,type:e,key:t,ref:void 0!==n?n:null,props:r}}function A(e){return"object"==typeof e&&null!==e&&e.$$typeof===o}var S=/\/+/g;function R(e,t){var r,n;return"object"==typeof e&&null!==e&&null!=e.key?(r=""+e.key,n={"=":"=0",":":"=2"},"$"+r.replace(/[=:]/g,function(e){return n[e]})):t.toString(36)}function N(e,t,r){if(null==e)return e;var n=[],s=0;return!function e(t,r,n,s,a){var c,l,d,u=typeof t;("undefined"===u||"boolean"===u)&&(t=null);var f=!1;if(null===t)f=!0;else switch(u){case"bigint":case"string":case"number":f=!0;break;case"object":switch(t.$$typeof){case o:case i:f=!0;break;case y:return e((f=t._init)(t._payload),r,n,s,a)}}if(f)return a=a(t),f=""===s?"."+R(t,0):s,j(a)?(n="",null!=f&&(n=f.replace(S,"$&/")+"/"),e(a,r,n,"",function(e){return e})):null!=a&&(A(a)&&(c=a,l=n+(null==a.key||t&&t.key===a.key?"":(""+a.key).replace(S,"$&/")+"/")+f,a=I(c.type,l,c.props)),r.push(a)),1;f=0;var p=""===s?".":s+":";if(j(t))for(var m=0;m<t.length;m++)u=p+R(s=t[m],m),f+=e(s,r,n,u,a);else if("function"==typeof(m=null===(d=t)||"object"!=typeof d?null:"function"==typeof(d=h&&d[h]||d["@@iterator"])?d:null))for(t=m.call(t),m=0;!(s=t.next()).done;)u=p+R(s=s.value,m++),f+=e(s,r,n,u,a);else if("object"===u){if("function"==typeof t.then)return e(function(e){switch(e.status){case"fulfilled":return e.value;case"rejected":throw e.reason;default:switch("string"==typeof e.status?e.then(k,k):(e.status="pending",e.then(function(t){"pending"===e.status&&(e.status="fulfilled",e.value=t)},function(t){"pending"===e.status&&(e.status="rejected",e.reason=t)})),e.status){case"fulfilled":return e.value;case"rejected":throw e.reason}}throw e}(t),r,n,s,a);throw Error("Objects are not valid as a React child (found: "+("[object Object]"===(r=String(t))?"object with keys {"+Object.keys(t).join(", ")+"}":r)+"). If you meant to render a collection of children, use an array instead.")}return f}(e,n,"","",function(e){return t.call(r,e,s++)}),n}function E(e){if(-1===e._status){var t=e._result;(t=t()).then(function(t){(0===e._status||-1===e._status)&&(e._status=1,e._result=t)},function(t){(0===e._status||-1===e._status)&&(e._status=2,e._result=t)}),-1===e._status&&(e._status=0,e._result=t)}if(1===e._status)return e._result.default;throw e._result}var T="function"==typeof reportError?reportError:function(e){if("object"==typeof window&&"function"==typeof window.ErrorEvent){var t=new window.ErrorEvent("error",{bubbles:!0,cancelable:!0,message:"object"==typeof e&&null!==e&&"string"==typeof e.message?String(e.message):String(e),error:e});if(!window.dispatchEvent(t))return}else if("object"==typeof n.default&&"function"==typeof n.default.emit)return void n.default.emit("uncaughtException",e);console.error(e)};r.Activity=m,r.Children={map:N,forEach:function(e,t,r){N(e,function(){t.apply(this,arguments)},r)},count:function(e){var t=0;return N(e,function(){t++}),t},toArray:function(e){return N(e,function(e){return e})||[]},only:function(e){if(!A(e))throw Error("React.Children.only expected to receive a single React element child.");return e}},r.Component=w,r.Fragment=s,r.Profiler=c,r.PureComponent=b,r.StrictMode=a,r.Suspense=f,r.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE=P,r.__COMPILER_RUNTIME={__proto__:null,c:function(e){return P.H.useMemoCache(e)}},r.cache=function(e){return function(){return e.apply(null,arguments)}},r.cacheSignal=function(){return null},r.cloneElement=function(e,t,r){if(null==e)throw Error("The argument must be a React element, but you passed "+e+".");var n=x({},e.props),o=e.key;if(null!=t)for(i in void 0!==t.key&&(o=""+t.key),t)$.call(t,i)&&"key"!==i&&"__self"!==i&&"__source"!==i&&("ref"!==i||void 0!==t.ref)&&(n[i]=t[i]);var i=arguments.length-2;if(1===i)n.children=r;else if(1<i){for(var s=Array(i),a=0;a<i;a++)s[a]=arguments[a+2];n.children=s}return I(e.type,o,n)},r.createContext=function(e){return(e={$$typeof:d,_currentValue:e,_currentValue2:e,_threadCount:0,Provider:null,Consumer:null}).Provider=e,e.Consumer={$$typeof:l,_context:e},e},r.createElement=function(e,t,r){var n,o={},i=null;if(null!=t)for(n in void 0!==t.key&&(i=""+t.key),t)$.call(t,n)&&"key"!==n&&"__self"!==n&&"__source"!==n&&(o[n]=t[n]);var s=arguments.length-2;if(1===s)o.children=r;else if(1<s){for(var a=Array(s),c=0;c<s;c++)a[c]=arguments[c+2];o.children=a}if(e&&e.defaultProps)for(n in s=e.defaultProps)void 0===o[n]&&(o[n]=s[n]);return I(e,i,o)},r.createRef=function(){return{current:null}},r.forwardRef=function(e){return{$$typeof:u,render:e}},r.isValidElement=A,r.lazy=function(e){return{$$typeof:y,_payload:{_status:-1,_result:e},_init:E}},r.memo=function(e,t){return{$$typeof:p,type:e,compare:void 0===t?null:t}},r.startTransition=function(e){var t=P.T,r={};P.T=r;try{var n=e(),o=P.S;null!==o&&o(r,n),"object"==typeof n&&null!==n&&"function"==typeof n.then&&n.then(k,T)}catch(e){T(e)}finally{null!==t&&null!==r.types&&(t.types=r.types),P.T=t}},r.unstable_useCacheRefresh=function(){return P.H.useCacheRefresh()},r.use=function(e){return P.H.use(e)},r.useActionState=function(e,t,r){return P.H.useActionState(e,t,r)},r.useCallback=function(e,t){return P.H.useCallback(e,t)},r.useContext=function(e){return P.H.useContext(e)},r.useDebugValue=function(){},r.useDeferredValue=function(e,t){return P.H.useDeferredValue(e,t)},r.useEffect=function(e,t){return P.H.useEffect(e,t)},r.useEffectEvent=function(e){return P.H.useEffectEvent(e)},r.useId=function(){return P.H.useId()},r.useImperativeHandle=function(e,t,r){return P.H.useImperativeHandle(e,t,r)},r.useInsertionEffect=function(e,t){return P.H.useInsertionEffect(e,t)},r.useLayoutEffect=function(e,t){return P.H.useLayoutEffect(e,t)},r.useMemo=function(e,t){return P.H.useMemo(e,t)},r.useOptimistic=function(e,t){return P.H.useOptimistic(e,t)},r.useReducer=function(e,t,r){return P.H.useReducer(e,t,r)},r.useRef=function(e){return P.H.useRef(e)},r.useState=function(e){return P.H.useState(e)},r.useSyncExternalStore=function(e,t,r){return P.H.useSyncExternalStore(e,t,r)},r.useTransition=function(){return P.H.useTransition()},r.version="19.2.3"},91788,(e,t,r)=>{"use strict";t.exports=e.r(61556)},13584,(e,t,r)=>{"use strict";Object.defineProperty(r,"__esModule",{value:!0}),Object.defineProperty(r,"HeadManagerContext",{enumerable:!0,get:function(){return n}});let n=e.r(41705)._(e.r(91788)).default.createContext({})},94470,(e,t,r)=>{"use strict";Object.defineProperty(r,"__esModule",{value:!0}),Object.defineProperty(r,"warnOnce",{enumerable:!0,get:function(){return n}});let n=e=>{}},52456,(e,t,r)=>{"use strict";function n(e){if("function"!=typeof WeakMap)return null;var t=new WeakMap,r=new WeakMap;return(n=function(e){return e?r:t})(e)}r._=function(e,t){if(!t&&e&&e.__esModule)return e;if(null===e||"object"!=typeof e&&"function"!=typeof e)return{default:e};var r=n(t);if(r&&r.has(e))return r.get(e);var o={__proto__:null},i=Object.defineProperty&&Object.getOwnPropertyDescriptor;for(var s in e)if("default"!==s&&Object.prototype.hasOwnProperty.call(e,s)){var a=i?Object.getOwnPropertyDescriptor(e,s):null;a&&(a.get||a.set)?Object.defineProperty(o,s,a):o[s]=e[s]}return o.default=e,r&&r.set(e,o),o}},94941,(e,t,r)=>{"use strict";Object.defineProperty(r,"__esModule",{value:!0}),Object.defineProperty(r,"default",{enumerable:!0,get:function(){return a}});let n=e.r(91788),o="undefined"==typeof window,i=o?()=>{}:n.useLayoutEffect,s=o?()=>{}:n.useEffect;function a(e){let{headManager:t,reduceComponentsToState:r}=e;function a(){if(t&&t.mountedInstances){let e=n.Children.toArray(Array.from(t.mountedInstances).filter(Boolean));t.updateHead(r(e))}}return o&&(t?.mountedInstances?.add(e.children),a()),i(()=>(t?.mountedInstances?.add(e.children),()=>{t?.mountedInstances?.delete(e.children)})),i(()=>(t&&(t._pendingUpdate=a),()=>{t&&(t._pendingUpdate=a)})),s(()=>(t&&t._pendingUpdate&&(t._pendingUpdate(),t._pendingUpdate=null),()=>{t&&t._pendingUpdate&&(t._pendingUpdate(),t._pendingUpdate=null)})),null}},80963,(e,t,r)=>{"use strict";Object.defineProperty(r,"__esModule",{value:!0});var n={default:function(){return m},defaultHead:function(){return u}};for(var o in n)Object.defineProperty(r,o,{enumerable:!0,get:n[o]});let i=e.r(41705),s=e.r(52456),a=e.r(91398),c=s._(e.r(91788)),l=i._(e.r(94941)),d=e.r(13584);function u(){return[(0,a.jsx)("meta",{charSet:"utf-8"},"charset"),(0,a.jsx)("meta",{name:"viewport",content:"width=device-width"},"viewport")]}function f(e,t){return"string"==typeof t||"number"==typeof t?e:t.type===c.default.Fragment?e.concat(c.default.Children.toArray(t.props.children).reduce((e,t)=>"string"==typeof t||"number"==typeof t?e:e.concat(t),[])):e.concat(t)}e.r(94470);let p=["name","httpEquiv","charSet","itemProp"];function y(e){let t,r,n,o;return e.reduce(f,[]).reverse().concat(u().reverse()).filter((t=new Set,r=new Set,n=new Set,o={},e=>{let i=!0,s=!1;if(e.key&&"number"!=typeof e.key&&e.key.indexOf("$")>0){s=!0;let r=e.key.slice(e.key.indexOf("$")+1);t.has(r)?i=!1:t.add(r)}switch(e.type){case"title":case"base":r.has(e.type)?i=!1:r.add(e.type);break;case"meta":for(let t=0,r=p.length;t<r;t++){let r=p[t];if(e.props.hasOwnProperty(r))if("charSet"===r)n.has(r)?i=!1:n.add(r);else{let t=e.props[r],n=o[r]||new Set;("name"!==r||!s)&&n.has(t)?i=!1:(n.add(t),o[r]=n)}}}return i})).reverse().map((e,t)=>{let r=e.key||t;return c.default.cloneElement(e,{key:r})})}let m=function({children:e}){let t=(0,c.useContext)(d.HeadManagerContext);return(0,a.jsx)(l.default,{reduceComponentsToState:y,headManager:t,children:e})};("function"==typeof r.default||"object"==typeof r.default&&null!==r.default)&&void 0===r.default.__esModule&&(Object.defineProperty(r.default,"__esModule",{value:!0}),Object.assign(r.default,r),t.exports=r.default)},89129,(e,t,r)=>{"use strict";Object.defineProperty(r,"__esModule",{value:!0});var n={DecodeError:function(){return g},MiddlewareNotFoundError:function(){return _},MissingStaticPage:function(){return w},NormalizeError:function(){return x},PageNotFoundError:function(){return v},SP:function(){return m},ST:function(){return h},WEB_VITALS:function(){return i},execOnce:function(){return s},getDisplayName:function(){return u},getLocationOrigin:function(){return l},getURL:function(){return d},isAbsoluteUrl:function(){return c},isResSent:function(){return f},loadGetInitialProps:function(){return y},normalizeRepeatedSlashes:function(){return p},stringifyError:function(){return b}};for(var o in n)Object.defineProperty(r,o,{enumerable:!0,get:n[o]});let i=["CLS","FCP","FID","INP","LCP","TTFB"];function s(e){let t,r=!1;return(...n)=>(r||(r=!0,t=e(...n)),t)}let a=/^[a-zA-Z][a-zA-Z\d+\-.]*?:/,c=e=>a.test(e);function l(){let{protocol:e,hostname:t,port:r}=window.location;return`${e}//${t}${r?":"+r:""}`}function d(){let{href:e}=window.location,t=l();return e.substring(t.length)}function u(e){return"string"==typeof e?e:e.displayName||e.name||"Unknown"}function f(e){return e.finished||e.headersSent}function p(e){let t=e.split("?");return t[0].replace(/\\/g,"/").replace(/\/\/+/g,"/")+(t[1]?`?${t.slice(1).join("?")}`:"")}async function y(e,t){let r=t.res||t.ctx&&t.ctx.res;if(!e.getInitialProps)return t.ctx&&t.Component?{pageProps:await y(t.Component,t.ctx)}:{};let n=await e.getInitialProps(t);if(r&&f(r))return n;if(!n)throw Object.defineProperty(Error(`"${u(e)}.getInitialProps()" should resolve to an object. But found "${n}" instead.`),"__NEXT_ERROR_CODE",{value:"E394",enumerable:!1,configurable:!0});return n}let m="undefined"!=typeof performance,h=m&&["mark","measure","getEntriesByName"].every(e=>"function"==typeof performance[e]);class g extends Error{}class x extends Error{}class v extends Error{constructor(e){super(),this.code="ENOENT",this.name="PageNotFoundError",this.message=`Cannot find module for page: ${e}`}}class w extends Error{constructor(e,t){super(),this.message=`Failed to load static file for page: ${e} ${t}`}}class _ extends Error{constructor(){super(),this.code="ENOENT",this.message="Cannot find the middleware module"}}function b(e){return JSON.stringify({message:e.message,stack:e.stack})}},53583,e=>{"use strict";function t(e){return Symbol.for(e)}var r=new function e(t){var r=this;r._currentContext=t?new Map(t):new Map,r.getValue=function(e){return r._currentContext.get(e)},r.setValue=function(t,n){var o=new e(r._currentContext);return o._currentContext.set(t,n),o},r.deleteValue=function(t){var n=new e(r._currentContext);return n._currentContext.delete(t),n}};e.s(["ROOT_CONTEXT",()=>r,"createContextKey",()=>t])},3828,(e,t,r)=>{t.exports=e.r(26990)},39464,97086,47294,e=>{"use strict";var t=e.i(91398),r=e.i(80176),n=e.i(91788),o=e.i(93930),i=e.i(71762),s=e.i(73547);let a=(0,n.createContext)({recommendedProductList:[],adList:[]}),c=()=>(0,n.useContext)(a);e.s(["default",0,({children:e,productIds:r,contextKeys:c})=>{let{selectedCurrency:l}=(0,s.useCurrency)(),{data:d=[]}=(0,o.useQuery)({queryKey:["ads",c],queryFn:async()=>0===c.length?[]:i.default.listAds(c),refetchOnWindowFocus:!1}),{data:u=[]}=(0,o.useQuery)({queryKey:["recommendations",r,"selectedCurrency",l],queryFn:()=>i.default.listRecommendations(r,l),refetchOnWindowFocus:!1}),f=(0,n.useMemo)(()=>({adList:d,recommendedProductList:u}),[d,u]);return(0,t.jsx)(a.Provider,{value:f,children:e})},"useAd",0,c],97086),e.i(11308);var l=e.i(93220),d=e.i(60814);let u=d.default.section.withConfig({displayName:"Recommendations.styled__Recommendations",componentId:"sc-92bc04bb-0"})`
+  display: flex;
+  margin: 40px 0;
+  align-items: center;
+  flex-direction: column;
+`,f=d.default.div.withConfig({displayName:"Recommendations.styled__ProductList",componentId:"sc-92bc04bb-1"})`
+  display: flex;
+  width: 100%;
+  padding: 0 20px;
+  flex-direction: column;
+  gap: 24px;
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+`,p=d.default.div.withConfig({displayName:"Recommendations.styled__TitleContainer",componentId:"sc-92bc04bb-2"})`
+  border-top: 1px dashed;
+  padding: 40px 0;
+  text-align: center;
+  width: 100%;
+`,y=d.default.h3.withConfig({displayName:"Recommendations.styled__Title",componentId:"sc-92bc04bb-3"})`
+  font-size: ${({theme:e})=>e.sizes.mLarge};
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dLarge};
+  }
+`;e.s(["default",0,()=>{let{recommendedProductList:e}=c();return e&&0!==e.length?(0,t.jsxs)(u,{"data-cy":r.CypressFields.RecommendationList,children:[(0,t.jsx)(p,{children:(0,t.jsx)(y,{children:"You May Also Like"})}),(0,t.jsx)(f,{children:e.map(e=>(0,t.jsx)(l.default,{product:e},e.id))})]}):null}],47294),e.s([],39464)},43626,17240,e=>{"use strict";var t=e.i(91398),r=e.i(80176),n=e.i(97086),o=e.i(60814),i=e.i(41158);let s=o.default.section.withConfig({displayName:"Ad.styled__Ad",componentId:"sc-d0a39ae4-0"})`
+  position: relative;
+  background-color: ${({theme:e})=>e.colors.otelYellow};
+  font-size: ${({theme:e})=>e.sizes.dMedium};
+  text-align: center;
+  padding: 48px;
+
+  * {
+    color: ${({theme:e})=>e.colors.white};
+    margin: 0;
+    cursor: pointer;
+  }
+`,a=(0,o.default)(i.default).withConfig({displayName:"Ad.styled__Link",componentId:"sc-d0a39ae4-1"})`
+  color: black;
+  text-decoration: none;
+`;e.s(["default",0,()=>{let{adList:e}=(0,n.useAd)(),{text:o,redirectUrl:i}=e[Math.floor(Math.random()*e.length)]||{text:"",redirectUrl:""};return(0,t.jsx)(s,{"data-cy":r.CypressFields.Ad,children:(0,t.jsx)(a,{href:i,children:(0,t.jsx)("p",{children:o})})})}],17240),e.s([],43626)},9325,e=>{"use strict";var t=e.i(91398),r=e.i(58678),n=e.i(26019),o=e.i(3828),i=e.i(91788),s=e.i(93930);e.i(43626);var a=e.i(17240);e.i(20894);var c=e.i(38555);e.i(47024);var l=e.i(67359);e.i(39464);var d=e.i(47294),u=e.i(60814);let f=u.default.section.withConfig({displayName:"ProductReviews.styled__ProductReviews",componentId:"sc-c61121d7-0"})`
+  display: flex;
+  margin: 40px 0;
+  align-items: center;
+  flex-direction: column;
+`,p=u.default.div.withConfig({displayName:"ProductReviews.styled__TitleContainer",componentId:"sc-c61121d7-1"})`
+  border-top: 1px dashed;
+  padding: 40px 0;
+  text-align: center;
+  width: 100%;
+`,y=u.default.h3.withConfig({displayName:"ProductReviews.styled__Title",componentId:"sc-c61121d7-2"})`
+  font-size: ${({theme:e})=>e.sizes.mLarge};
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dLarge};
+  }
+`,m=u.default.section.withConfig({displayName:"ProductReviews.styled__SummaryCard",componentId:"sc-c61121d7-3"})`
+  width: 100%;
+  padding: 20px;
+  margin: 0 20px 24px;
+  border: 1px solid ${({theme:e})=>e.colors.borderGray};
+  border-radius: 8px;
+  background: ${({theme:e})=>e.colors.white};
+  display: grid;
+  gap: 16px;
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    grid-template-columns: 280px 1fr;
+    align-items: center;
+  }
+`,h=u.default.div.withConfig({displayName:"ProductReviews.styled__AverageBlock",componentId:"sc-c61121d7-4"})`
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+`,g=u.default.div.withConfig({displayName:"ProductReviews.styled__AverageScoreBadge",componentId:"sc-c61121d7-5"})`
+  min-width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: ${({theme:e})=>e.colors.otelBlue};
+  color: ${({theme:e})=>e.colors.white};
+  font-weight: 700;
+  font-size: 24px;
+  display: grid;
+  place-items: center;
+`,x=u.default.span.withConfig({displayName:"ProductReviews.styled__StarRating",componentId:"sc-c61121d7-6"})`
+  color: ${({theme:e})=>e.colors.otelYellow};
+  font-size: 18px;
+`,v=u.default.span.withConfig({displayName:"ProductReviews.styled__ScoreCount",componentId:"sc-c61121d7-7"})`
+  grid-column: 1 / -1;
+  color: ${({theme:e})=>e.colors.textLightGray};
+  font-size: 14px;
+`,w=u.default.div.withConfig({displayName:"ProductReviews.styled__ScoreDistribution",componentId:"sc-c61121d7-8"})`
+  display: grid;
+  gap: 8px;
+`,_=u.default.div.withConfig({displayName:"ProductReviews.styled__ScoreRow",componentId:"sc-c61121d7-9"})`
+  display: grid;
+  grid-template-columns: 80px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+`,b=u.default.span.withConfig({displayName:"ProductReviews.styled__ScoreLabel",componentId:"sc-c61121d7-10"})`
+  font-size: 14px;
+  color: ${({theme:e})=>e.colors.textLightGray};
+`,C=u.default.div.withConfig({displayName:"ProductReviews.styled__ScoreBar",componentId:"sc-c61121d7-11"})`
+  position: relative;
+  height: 10px;
+  border-radius: 6px;
+  background: ${({theme:e})=>e.colors.lightBorderGray};
+  overflow: hidden;
+`,j=u.default.div.withConfig({displayName:"ProductReviews.styled__ScoreBarFill",componentId:"sc-c61121d7-12"})`
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: ${({theme:e})=>e.colors.otelBlue};
+`,k=u.default.span.withConfig({displayName:"ProductReviews.styled__ScorePct",componentId:"sc-c61121d7-13"})`
+  font-size: 12px;
+  color: ${({theme:e})=>e.colors.otelGray};
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+`;u.default.p.withConfig({displayName:"ProductReviews.styled__SummaryText",componentId:"sc-c61121d7-14"})`
+  margin: 0;
+  line-height: 1.5;
+`;let P=u.default.ul.withConfig({displayName:"ProductReviews.styled__ReviewsGrid",componentId:"sc-c61121d7-15"})`
+  display: grid;
+  width: 100%;
+  padding: 0 20px;
+  margin: 0;
+  list-style: none;
+  gap: 24px;
+  grid-template-columns: 1fr;
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    grid-template-columns: repeat(5, 1fr);
+  }
+`,$=u.default.li.withConfig({displayName:"ProductReviews.styled__ReviewCard",componentId:"sc-c61121d7-16"})`
+  border: 1px solid ${({theme:e})=>e.colors.borderGray};
+  border-radius: 8px;
+  background: ${({theme:e})=>e.colors.white};
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+`,I=u.default.div.withConfig({displayName:"ProductReviews.styled__ReviewHeader",componentId:"sc-c61121d7-17"})`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`,A=u.default.strong.withConfig({displayName:"ProductReviews.styled__ReviewerName",componentId:"sc-c61121d7-18"})`
+  font-weight: 600;
+`,S=u.default.p.withConfig({displayName:"ProductReviews.styled__ReviewBody",componentId:"sc-c61121d7-19"})`
+  margin: 0;
+  line-height: 1.6;
+`,R=u.default.section.withConfig({displayName:"ProductReviews.styled__AskAISection",componentId:"sc-c61121d7-20"})`
+  width: 100%;
+  padding: 20px;
+  margin: 0 20px 24px;
+  border: 1px solid ${({theme:e})=>e.colors.borderGray};
+  border-radius: 8px;
+  background: ${({theme:e})=>e.colors.white};
+  display: grid;
+  gap: 12px;
+`,N=u.default.h4.withConfig({displayName:"ProductReviews.styled__AskAIHeader",componentId:"sc-c61121d7-21"})`
+  margin: 0;
+  font-size: ${({theme:e})=>e.sizes.mLarge};
+  color: ${({theme:e})=>e.colors.otelGray};
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dMedium};
+  }
+`,E=u.default.div.withConfig({displayName:"ProductReviews.styled__AskAIInputRow",componentId:"sc-c61121d7-22"})`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+`,T=u.default.input.withConfig({displayName:"ProductReviews.styled__AskAIInput",componentId:"sc-c61121d7-23"})`
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid ${({theme:e})=>e.colors.borderGray};
+  border-radius: 6px;
+  font-size: 16px;
+  outline: none;
+  background: ${({theme:e})=>e.colors.white};
+  color: ${({theme:e})=>e.colors.otelGray};
+
+  &:focus {
+    border-color: ${({theme:e})=>e.colors.otelBlue};
+    box-shadow: 0 0 0 3px rgba(0, 112, 201, 0.15);
+  }
+`,O=u.default.div.withConfig({displayName:"ProductReviews.styled__AskAIControls",componentId:"sc-c61121d7-24"})`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+`,M=u.default.button.withConfig({displayName:"ProductReviews.styled__QuickPromptButton",componentId:"sc-c61121d7-25"})`
+  padding: 8px 12px;
+  border: 1px solid ${({theme:e})=>e.colors.borderGray};
+  border-radius: 6px;
+  background: ${({theme:e})=>e.colors.white};
+  color: ${({theme:e})=>e.colors.otelGray};
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${({theme:e})=>e.colors.otelBlue};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`,z=u.default.button.withConfig({displayName:"ProductReviews.styled__AskAIButton",componentId:"sc-c61121d7-26"})`
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: ${({theme:e})=>e.colors.otelBlue};
+  color: ${({theme:e})=>e.colors.white};
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.05);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`,L=u.default.p.withConfig({displayName:"ProductReviews.styled__AIMessage",componentId:"sc-c61121d7-27"})`
+  margin: 0;
+  line-height: 1.5;
+  color: ${({theme:e})=>e.colors.otelGray};
+`;var F=e.i(71762);let H=(0,i.createContext)({productReviews:null,loading:!1,error:null,averageScore:null}),D=({children:e,productId:r})=>{let{data:n,isLoading:o,isFetching:a,isError:c,error:l,isSuccess:d}=(0,s.useQuery)({queryKey:["productReviews",r],queryFn:()=>F.default.getProductReviews(r),refetchOnWindowFocus:!1}),u=d?Array.isArray(n)?n:[]:null,f=o||a,p=c?l instanceof Error?l:Error("Unknown error"):null,{data:y=""}=(0,s.useQuery)({queryKey:["productReviewAvgScore",r],queryFn:()=>F.default.getAverageProductReviewScore(r)}),m=(0,i.useMemo)(()=>({productReviews:u,loading:f,error:p,averageScore:y}),[u,f,p,y]);return(0,t.jsx)(H.Provider,{value:m,children:e})};var U=e.i(92905);let B=(0,i.createContext)({aiResponse:null,aiLoading:!1,aiError:null,sendAiRequest:()=>{},reset:()=>{}}),q=({children:e,productId:r})=>{let n=(0,U.useMutation)({mutationFn:({question:e})=>F.default.askProductAIAssistant(r,e)});(0,i.useEffect)(()=>{n.reset()},[r]);let o=(0,i.useMemo)(()=>({aiResponse:n.data??null,aiLoading:n.isPending,aiError:n.error??null,sendAiRequest:(e,t)=>{n.mutate(e,t)},reset:()=>n.reset()}),[n.data,n.isPending,n.error]);return(0,t.jsx)(B.Provider,{value:o,children:e})};var G=e.i(80176);let Q=(e,t=0,r=5)=>Math.max(t,Math.min(r,e)),W=({value:e,max:r=5})=>{let n=Q(Math.round(e),0,r),o=Array.from({length:r},(e,t)=>t<n?"★":"☆").join(" ");return(0,t.jsx)(x,{"aria-label":`${e.toFixed(1)} out of ${r} stars`,children:o})},K=()=>{let{productReviews:e,loading:r,error:n,averageScore:o}=(0,i.useContext)(H),s=(0,i.useMemo)(()=>o?Q(Number(o)):null,[o]),a=(0,i.useMemo)(()=>{if(!Array.isArray(e))return[0,0,0,0,0];let t=[0,0,0,0,0];for(let r of e){let e=Q(Math.round(Number(r.score)),1,5);t[e-1]+=1}return t},[e]),c=(0,i.useMemo)(()=>{if(!Array.isArray(e)||0===e.length)return[0,0,0,0,0];let t=a.map(t=>t/e.length*100),r=t.map(e=>Math.floor(e)),n=100-r.reduce((e,t)=>e+t,0),o=t.map((e,t)=>({i:t,frac:e-Math.floor(e)})).sort((e,t)=>t.frac-e.frac),i=r.slice();for(let e=0;e<n;e++)i[o[e].i]+=1;return i},[a,e]),[l,d]=(0,i.useState)(""),{sendAiRequest:u,aiResponse:x,aiLoading:F,aiError:D,reset:U}=(0,i.useContext)(B),q=e=>{let t=(e??l).trim();t&&(U(),u({question:t}))},K=e=>{d(e),q(e)};return(0,t.jsxs)(f,{"aria-live":"polite","data-cy":G.CypressFields.ProductReviews,children:[(0,t.jsxs)(R,{"aria-label":"Ask AI about this product","data-cy":"AskAISection",children:[(0,t.jsx)(N,{children:"Ask AI About This Product"}),(0,t.jsxs)(E,{children:[(0,t.jsx)(T,{id:"ask-ai-input",type:"text",placeholder:"Type a question about the product…",value:l,onChange:e=>d(e.target.value),onKeyDown:e=>{"Enter"===e.key&&!F&&l.trim()&&q()},"aria-label":"Question to AI","data-cy":"AskAIInput"}),(0,t.jsx)(z,{type:"button",onClick:()=>q(),disabled:F||!l.trim(),"aria-busy":F?"true":"false","data-cy":"AskAIButton",children:F?"Asking AI…":"Ask"})]}),(0,t.jsxs)(O,{children:[(0,t.jsx)(M,{type:"button",onClick:()=>K("Can you summarize the product reviews?"),"data-cy":"QuickPromptSummarize",children:"Can you summarize the product reviews?"}),(0,t.jsx)(M,{type:"button",onClick:()=>K("What age(s) is this recommended for?"),"data-cy":"QuickPromptAges",children:"What age(s) is this recommended for?"}),(0,t.jsx)(M,{type:"button",onClick:()=>K("Were there any negative reviews?"),"data-cy":"QuickPromptNegative",children:"Were there any negative reviews?"})]}),D&&(0,t.jsx)(L,{role:"alert","data-cy":"AIError",children:D.message??"Sorry, something went wrong while asking AI."}),x&&(0,t.jsxs)(L,{"aria-live":"polite","data-cy":"AIAnswer",children:[(0,t.jsx)("strong",{children:"AI Response:"})," ","string"==typeof x?x:x.text]})]}),(0,t.jsx)(p,{children:(0,t.jsx)(y,{children:"Customer Reviews"})}),r&&(0,t.jsx)("p",{children:"Loading product reviews…"}),!r&&n&&(0,t.jsx)("p",{children:"Could not load product reviews."}),!r&&!n&&Array.isArray(e)&&0===e.length&&(0,t.jsx)("p",{children:"No reviews yet."}),!r&&!n&&(0,t.jsxs)(t.Fragment,{children:[null!=s&&(0,t.jsx)(m,{children:null!=s&&(0,t.jsxs)(t.Fragment,{children:[(0,t.jsxs)(h,{children:[(0,t.jsx)(g,{children:s.toFixed(1)}),(0,t.jsx)(W,{value:s}),(0,t.jsx)(v,{children:Array.isArray(e)?`${e.length} reviews`:""})]}),Array.isArray(e)&&e.length>0&&(0,t.jsx)(w,{children:[1,2,3,4,5].map((e,r)=>{let n=c[r];return(0,t.jsxs)(_,{children:[(0,t.jsxs)(b,{children:[e," star",e>1?"s":""]}),(0,t.jsx)(C,{"aria-label":`${e} stars: ${n}%`,children:(0,t.jsx)(j,{style:{width:`${n}%`}})}),(0,t.jsxs)(k,{children:[n,"%"]})]},`score-${e}`)})})]})}),Array.isArray(e)&&e.length>0&&(0,t.jsx)(P,{as:"ul",children:e.map((e,r)=>(0,t.jsxs)($,{as:"li",children:[(0,t.jsxs)(I,{children:[(0,t.jsx)(A,{children:e.username}),(0,t.jsx)(W,{value:Number(e.score)||0})]}),(0,t.jsx)(S,{children:e.description||"No description provided."})]},`${e.username}-${e.score}-${r}`))})]})]})},V=u.default.select.withConfig({displayName:"Select.styled__Select",componentId:"sc-2a79bd5d-0"})`
+  width: 100%;
+  height: 45px;
+  border: 1px solid ${({theme:e})=>e.colors.borderGray};
+  padding: 10px 16px;
+  border-radius: 8px;
+  position: relative;
+  width: 100px;
+  cursor: pointer;
+`,X=u.default.div.withConfig({displayName:"Select.styled__SelectContainer",componentId:"sc-2a79bd5d-1"})`
+  position: relative;
+  width: min-content;
+`,Y=u.default.img.attrs({src:"/icons/Chevron.svg",alt:"select"}).withConfig({displayName:"Select.styled__Arrow",componentId:"sc-2a79bd5d-2"})`
+  position: absolute;
+  right: 25px;
+  top: 20px;
+  width: 10px;
+  height: 5px;
+`,Z=({children:e,...r})=>(0,t.jsxs)(X,{children:[(0,t.jsx)(V,{...r,children:e}),(0,t.jsx)(Y,{})]});var J=e.i(97086),ee=e.i(95235);e.i(29448);var et=e.i(69301);let er=u.default.div.withConfig({displayName:"ProductDetail.styled__ProductDetail",componentId:"sc-fdc3469c-0"})`
+  ${({theme:e})=>e.breakpoints.desktop} {
+    padding: 100px;
+  }
+`,en=u.default.div.withConfig({displayName:"ProductDetail.styled__Container",componentId:"sc-fdc3469c-1"})`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    grid-template-columns: 40% 60%;
+  }
+`,eo=u.default.div.withConfig({displayName:"ProductDetail.styled__Image",componentId:"sc-fdc3469c-2"})`
+  width: 100%;
+  height: 150px;
+
+  background: url(${({$src:e})=>e}) no-repeat center;
+  background-size: contain;
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    height: 500px;
+    background-position: top;
+  }
+`,ei=u.default.div.withConfig({displayName:"ProductDetail.styled__Details",componentId:"sc-fdc3469c-3"})`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 20px;
+`,es=(0,u.default)(et.default).withConfig({displayName:"ProductDetail.styled__AddToCart",componentId:"sc-fdc3469c-4"})`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  font-size: ${({theme:e})=>e.sizes.dSmall};
+  font-weight: ${({theme:e})=>e.fonts.regular};
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dMedium};
+    width: 220px;
+  }
+`,ea=u.default.h5.withConfig({displayName:"ProductDetail.styled__Name",componentId:"sc-fdc3469c-5"})`
+  font-size: ${({theme:e})=>e.sizes.dMedium};
+  margin: 0;
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dLarge};
+  }
+`,ec=u.default.p.withConfig({displayName:"ProductDetail.styled__Text",componentId:"sc-fdc3469c-6"})`
+  margin: 0;
+`,el=(0,u.default)(ec).withConfig({displayName:"ProductDetail.styled__Description",componentId:"sc-fdc3469c-7"})`
+  margin: 0;
+  color: ${({theme:e})=>e.colors.textLightGray};
+  font-weight: ${({theme:e})=>e.fonts.regular};
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dMedium};
+  }
+`,ed=(0,u.default)(ec).withConfig({displayName:"ProductDetail.styled__ProductPrice",componentId:"sc-fdc3469c-8"})`
+  font-weight: ${({theme:e})=>e.fonts.bold};
+
+  ${({theme:e})=>e.breakpoints.desktop} {
+    font-size: ${({theme:e})=>e.sizes.dLarge};
+  }
+`;var eu=e.i(73547);let ef=Array(10).fill(0).map((e,t)=>t+1);e.s(["default",0,()=>{let{push:e,query:u}=(0,o.useRouter)(),[f,p]=(0,i.useState)(1),{addItem:y,cart:{items:m}}=(0,ee.useCart)(),{selectedCurrency:h}=(0,eu.useCurrency)(),g=u.productId;(0,i.useEffect)(()=>{p(1)},[g]);let{data:{name:x,picture:v,description:w,priceUsd:_={units:0,currencyCode:"USD",nanos:0},categories:b}={}}=(0,s.useQuery)({queryKey:["product",g,"selectedCurrency",h],queryFn:()=>F.default.getProduct(g,h),enabled:!!g}),C=(0,i.useCallback)(async()=>{await y({productId:g,quantity:f}),e("/cart")},[y,g,f,e]);return(0,t.jsxs)(J.default,{productIds:[g,...m.map(({productId:e})=>e)],contextKeys:[...new Set(b)],children:[(0,t.jsx)(r.default,{children:(0,t.jsx)("title",{children:"Otel Demo - Product"})}),(0,t.jsxs)(c.default,{children:[(0,t.jsxs)(er,{"data-cy":G.CypressFields.ProductDetail,children:[(0,t.jsxs)(en,{children:[(0,t.jsx)(eo,{$src:"/images/products/"+v,"data-cy":G.CypressFields.ProductPicture}),(0,t.jsxs)(ei,{children:[(0,t.jsx)(ea,{"data-cy":G.CypressFields.ProductName,children:x}),(0,t.jsx)(el,{"data-cy":G.CypressFields.ProductDescription,children:w}),(0,t.jsx)(ed,{children:(0,t.jsx)(l.default,{price:_})}),(0,t.jsx)(ec,{children:"Quantity"}),(0,t.jsx)(Z,{"data-cy":G.CypressFields.ProductQuantity,onChange:e=>p(+e.target.value),value:f,children:ef.map(e=>(0,t.jsx)("option",{value:e,children:e},e))}),(0,t.jsxs)(es,{"data-cy":G.CypressFields.ProductAddToCart,onClick:C,children:[(0,t.jsx)(n.default,{src:"/icons/Cart.svg",height:"15",width:"15",alt:"cart"})," Add To Cart"]})]})]}),g&&(0,t.jsx)(q,{productId:g,children:(0,t.jsx)(D,{productId:g,children:(0,t.jsx)(K,{})})}),(0,t.jsx)(d.default,{})]}),(0,t.jsx)(a.default,{})]})]})}],9325)},73495,(e,t,r)=>{let n="/product/[productId]";(window.__NEXT_P=window.__NEXT_P||[]).push([n,()=>e.r(9325)]),t.hot&&t.hot.dispose(function(){window.__NEXT_P.push([n])})},48761,e=>{e.v(t=>Promise.all(["static/chunks/f4fe8aeb8343dcd3.js"].map(t=>e.l(t))).then(()=>t(93594)))},28805,e=>{e.v(t=>Promise.all(["static/chunks/3dcc93bb4829c1ba.js"].map(t=>e.l(t))).then(()=>t(79466)))}]);

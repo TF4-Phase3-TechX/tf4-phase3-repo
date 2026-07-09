@@ -1,0 +1,41 @@
+self.__BUILD_MANIFEST = {
+  "/": [
+    "static/chunks/7e781cce95e4091a.js"
+  ],
+  "/_error": [
+    "static/chunks/42b86f0273b73a97.js"
+  ],
+  "/cart": [
+    "static/chunks/ecfa116f572d4eee.js"
+  ],
+  "/cart/checkout/[orderId]": [
+    "static/chunks/29657717d1e9f79a.js"
+  ],
+  "/product/[productId]": [
+    "static/chunks/f626720a9c80ae00.js"
+  ],
+  "__rewrites": {
+    "afterFiles": [],
+    "beforeFiles": [],
+    "fallback": []
+  },
+  "sortedPages": [
+    "/",
+    "/_app",
+    "/_error",
+    "/api/cart",
+    "/api/checkout",
+    "/api/currency",
+    "/api/data",
+    "/api/product-ask-ai-assistant/[productId]",
+    "/api/product-reviews/[productId]",
+    "/api/product-reviews-avg-score/[productId]",
+    "/api/products",
+    "/api/products/[productId]",
+    "/api/recommendations",
+    "/api/shipping",
+    "/cart",
+    "/cart/checkout/[orderId]",
+    "/product/[productId]"
+  ]
+};self.__BUILD_MANIFEST_CB && self.__BUILD_MANIFEST_CB()
