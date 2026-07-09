@@ -77,14 +77,14 @@ Runtime findings từ `runtime/` evidence:
 | `runtime/kubectl/deployments-2026-07-09.md` | 22 application deployments are `READY 1/1` | Baseline app deployable và available |
 | `runtime/kubectl/pods-wide-2026-07-09.md` | All app pods are `Running`; `accounting` có 31 restarts, `checkout` có 4, `load-generator` có 1 | Không giảm resource một cách mù quáng; cần điều tra các pod có restart cao trước |
 | `runtime/kubectl/nodes-zones-2026-07-09.md` | 2 ready nodes across `us-east-1a` and `us-east-1b` | Không giảm node count xuống dưới 2 nếu chưa chấp nhận lower HA |
-| `runtime/kubectl/top-metrics-blocker-2026-07-09.md` | `kubectl top` unavailable; Metrics API not installed | Node/pod CPU-memory right-sizing đang bị block cho đến khi có metrics-server hoặc Prometheus evidence đầy đủ |
+| Grafana/Prometheus resource dashboards | CPU-memory trend được lấy từ Prometheus/Grafana thay vì lệnh Kubernetes resource snapshot | Node/pod right-sizing cần dựa trên 48-72h metrics window, không dựa vào một snapshot ngắn |
 | `runtime/kubectl/warning-events-2026-07-09.md` | `accounting` BackOff warning; Grafana previous readiness warning | Đang có runtime stability issues trước khi cost cuts |
 | `runtime/grafana/grafana-resource-evidence-2026-07-09.md` | Grafana main container had `OOMKilled`, exit code 137, restart count 7, memory request/limit 300Mi | Không giảm Grafana; tăng lên 512Mi/768Mi là reliability fix |
 | `04-runtime-performance-evidence.md` | Grafana/APM traces exist; checkout/payment/product-catalog và các service khác có trace coverage | Dùng traces này để bảo vệ performance trong quá trình tối ưu cost |
 
 Known gaps:
 
-- Metrics API chưa available, nên chưa dùng được `kubectl top pods` và `kubectl top nodes`.
+- Prometheus/Grafana là source metrics chính cho CPU/RAM, nhưng vẫn cần một cửa sổ quan sát 48-72 giờ trước khi right-sizing.
 - Kafka runtime metrics chưa đủ hoàn chỉnh để tuning cost/performance.
 - Jaeger self-metrics cần follow-up, đặc biệt vì đã quan sát được OOMKilled.
 - Grafana memory/restart risk đã được xác nhận; tránh mọi đề xuất giảm memory cho Grafana.
@@ -99,7 +99,7 @@ Known gaps:
 | P0 | Disable `load-generator` autostart | Do now | Giảm synthetic traffic, log/trace noise và indirect resource pressure | Low |
 | P0 | Không giảm Jaeger/Grafana memory | Do now | Bảo vệ observability reliability | Low |
 | P0 | Điều tra các pod có restart cao trước khi right-sizing | Do now | Tránh cost changes che khuất reliability bugs | Medium |
-| P1 | Cài đặt/fix Metrics API hoặc thu thập CPU/memory data tương đương từ Prometheus | Do next | Cho phép resource/node right-sizing dựa trên evidence | Low |
+| P1 | Chuẩn hóa Prometheus/Grafana CPU-memory dashboards và PromQL queries | Do next | Cho phép resource/node right-sizing dựa trên evidence | Low |
 | P1 | Set CloudWatch log retention cho non-critical log groups | Do next | Ngăn log storage cost tăng không kiểm soát | Low |
 | P1 | Thêm ECR lifecycle policy | Do next | Ngăn image storage tăng không kiểm soát | Low |
 | P2 | Review node group size/type sau 48–72h metrics | Conditional | Có khả năng tiết kiệm EC2 nếu workload underutilized | Medium/High |
@@ -158,7 +158,7 @@ Rationale:
 
 - Current 2-node layout cung cấp basic spread across `us-east-1a` và `us-east-1b`.
 - Runtime evidence cho thấy tất cả pods đang Running, nhưng vẫn có restarts và warning events.
-- Metrics API chưa available, nên chưa đủ CPU/memory data để chuyển sang smaller instances hoặc fewer nodes một cách an toàn.
+- Cần thêm 48-72 giờ CPU/memory trend từ Prometheus/Grafana trước khi chuyển sang smaller instances hoặc fewer nodes một cách an toàn.
 - Observability components đang có memory risk, nên giảm node capacity lúc này sẽ làm tăng operational risk.
 
 Do not do now:
@@ -183,7 +183,7 @@ Rationale:
 
 - COST-06 đã flag Jaeger OOMKilled risk.
 - PERF runtime evidence xác nhận Grafana từng bị `OOMKilled`, exit code 137 và restart count 7 ở mức 300Mi.
-- Metrics API chưa available, nên memory usage trend và peak data vẫn chưa đầy đủ.
+- Memory usage trend và peak data cần được chốt lại bằng Prometheus/Grafana trong cửa sổ 48-72 giờ.
 - Observability stack cần thiết để tạo performance evidence cho PERF-04 và các right-sizing work sau này.
 
 Specific decisions:
@@ -211,24 +211,16 @@ Cost note:
 - Tăng Grafana memory tự nó không phải là cost saving.
 - Tuy nhiên, đây vẫn là một cost optimization decision vì observability ổn định giúp tránh right-sizing sai và tránh repeated restarts làm méo metrics/traces.
 
-### 4.4. Action 4 — Fix metrics evidence path before compute right-sizing
+### 4.4. Action 4 — Chuẩn hóa metrics evidence path trước khi compute right-sizing
 
 Decision: cần hoàn thành trước khi EC2/node right-sizing.
 
-Current blocker:
-
-```text
-error: Metrics API not available
-```
-
 Required evidence:
 
-- `kubectl top pods -n techx-tf4`
-- `kubectl top pods -n techx-observability`
-- `kubectl top nodes`
-- Prometheus/Grafana pod CPU và memory trong 48–72 giờ
-- Restart count và OOMKilled history của app pods và observability pods
-- Load-test window với `load-generator` được bật thủ công rồi tắt lại sau test
+- Prometheus/Grafana pod CPU và memory trong 48-72 giờ.
+- Node CPU/memory dashboard hoặc PromQL tương đương cho cùng cửa sổ đo.
+- Restart count và OOMKilled history của app pods và observability pods.
+- Load-test window với `load-generator` được bật thủ công rồi tắt lại sau test.
 
 Acceptance criteria before changing node size/type:
 
@@ -292,7 +284,7 @@ Các thay đổi dưới đây không được khuyến nghị trong cycle này:
 | Reduce Jaeger memory | Jaeger có OOMKilled evidence |
 | Reduce Grafana memory | Grafana có OOMKilled, exit 137 và restart count 7 |
 | Reduce Prometheus/OpenSearch memory without long-window runtime metrics | Chưa có đủ evidence |
-| Downsize from `t3.large` immediately | Metrics API unavailable và runtime restarts vẫn tồn tại |
+| Downsize from `t3.large` immediately | Chưa có đủ 48-72h Prometheus/Grafana trend và runtime restarts vẫn tồn tại |
 | Scale node group min/desired from 2 to 1 by default | Sẽ làm giảm HA và có thể overload remaining node |
 | Remove NAT Gateway | Private subnet outbound traffic đang phụ thuộc NAT; cần architecture change |
 | Remove ALB | ALB là public entry point cho Webstore/Grafana/Jaeger routes |
@@ -336,8 +328,8 @@ Các thay đổi dưới đây không được khuyến nghị trong cycle này:
 
 ### Phase 2 — Runtime evidence window
 
-1. Install hoặc restore Metrics API / metrics-server, hoặc formalize Prometheus là source of truth.
-2. Collect 48–72h CPU/memory data cho app pods và observability pods.
+1. Chuẩn hóa Prometheus/Grafana dashboard và PromQL query làm source of truth cho CPU/RAM.
+2. Collect 48-72h CPU/memory data cho app pods và observability pods.
 3. Track restart count và OOMKilled history.
 4. Run một controlled load test với load-generator được bật thủ công.
 5. Compare Grafana/APM traces cho checkout, payment, product-catalog, recommendation, product-reviews và frontend flows trước/sau quick wins.
@@ -384,7 +376,7 @@ Recommendation được approve cho Week 1:
 - Add ECR lifecycle cleanup after confirming image retention policy.
 
 Recommendation KHÔNG nên làm ngay:
-- Không downsize t3.large khi Metrics API chưa available.
+- Không downsize t3.large khi chưa có đủ 48-72h Prometheus/Grafana CPU-memory trend.
 - Không giảm node count về 1 nếu chưa chấp nhận mất HA.
 - Không giảm Jaeger/Grafana memory vì đã có OOM/restart risk.
 - Không giảm Prometheus/OpenSearch khi chưa có 48–72h runtime evidence.
@@ -403,5 +395,5 @@ docs/evidence/epic-03-performance-efficiency/runtime/
 
 4. Follow-up
 
-Cần cài đặt/khắc phục Metrics API hoặc chốt Prometheus/Grafana là source of truth để thu thập CPU/memory trong 48–72h. Sau đó mới thực hiện compute right-sizing như đổi instance type, giảm max node group hoặc scheduled scale-down.
+Cần chốt Prometheus/Grafana là source of truth để thu thập CPU/memory trong 48-72h. Sau đó mới thực hiện compute right-sizing như đổi instance type, giảm max node group hoặc scheduled scale-down.
 ```

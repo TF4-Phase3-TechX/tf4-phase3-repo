@@ -1,4 +1,4 @@
-# Presentation Script: TechX TF4 - Performance & Cost Optimization
+# Presentation Script: TechX TF4 - Performance &amp; Cost Optimization
 
 Thời lượng gợi ý: 10-15 phút  
 Phạm vi: Week 1 evidence cho hệ thống TechX TF4 trên AWS EKS  
@@ -32,9 +32,9 @@ Các nhóm service chính gồm:
 
 - **Entry layer**: `frontend-proxy`, nhận traffic từ ALB.
 - **Storefront layer**: `frontend`, `image-provider`, phục vụ giao diện và hình ảnh sản phẩm.
-- **Product & AI layer**: `product-catalog`, `product-reviews`, `llm`, `recommendation`, `ad`.
+- **Product &amp; AI layer**: `product-catalog`, `product-reviews`, `llm`, `recommendation`, `ad`.
 - **Checkout revenue path**: `cart`, `checkout`, `payment`, `email`, `currency`, `shipping`, `quote`.
-- **Data & messaging layer**: `postgresql`, `valkey-cart`, `kafka`.
+- **Data &amp; messaging layer**: `postgresql`, `valkey-cart`, `kafka`.
 - **Async consumers**: `accounting`, `fraud-detection`.
 - **Observability layer**: `prometheus`, `jaeger`, `grafana`, `otel-collector`, `opensearch`.
 - **Control and test layer**: `flagd`, `load-generator`.
@@ -52,7 +52,7 @@ Trong tuần này, team tập trung vào việc hiểu hệ thống dưới góc
 
 ### 3.1. AWS High-Level Architecture
 
-![AWS High-Level Architecture](../epic-02-baseline-architecture/architecture/01-techx-tf4-aws-high-level-architecture.jpg)
+![AWS High-Level Architecture](./slide-assets/01-techx-tf4-aws-high-level-architecture.jpg)
 
 Ở sơ đồ đầu tiên, hệ thống được triển khai trong AWS Cloud, region `us-east-1`.
 
@@ -82,7 +82,7 @@ Về cost, team chọn **Single NAT Gateway** cho Week 1 để kiểm soát chi 
 
 ### 3.2. EKS Namespace Application Architecture
 
-![EKS Namespace Application Architecture](../epic-02-baseline-architecture/architecture/02-techx-tf4-eks-namespace-architecture.jpg)
+![EKS Namespace Application Architecture](./slide-assets/02-techx-tf4-eks-namespace-architecture.jpg)
 
 Sơ đồ thứ hai đi sâu vào bên trong namespace `techx-tf4`.
 
@@ -109,9 +109,9 @@ Sau khi order được tạo, Kafka publish event cho `accounting` và `fraud-de
 
 Observability layer gồm Prometheus, Jaeger, Grafana, OTel Collector và OpenSearch. Đây là nền tảng để team đo performance và cũng là một cost driver gián tiếp vì nó tiêu thụ CPU/RAM trên worker nodes.
 
-### 3.3. External Services, Cost & Control Layer
+### 3.3. External Services, Cost &amp; Control Layer
 
-![External Services Cost Control Layer](../epic-02-baseline-architecture/architecture/03-techx-tf4-external-services-cost-control-layer.jpg)
+![External Services Cost Control Layer](./slide-assets/03-techx-tf4-external-services-cost-control-layer.jpg)
 
 Sơ đồ thứ ba thể hiện các thành phần nằm ngoài runtime path chính nhưng rất quan trọng cho vận hành và cost control.
 
@@ -156,15 +156,15 @@ Trong evidence runtime, team đã xác nhận:
 - Application pods đang `Running`.
 - Worker nodes phân bố ở 2 AZ: `us-east-1a` và `us-east-1b`.
 
-Tuy nhiên, runtime cũng ghi nhận một số cảnh báo:
+Tuy nhiên, runtime cũng ghi nhận một số cảnh báo cần xử lý trước khi right-sizing:
 
-- `accounting` có repeated restarts và BackOff warning.
-- `checkout` từng có restart.
-- `load-generator` từng có restart.
-- Grafana từng có OOMKilled/restart risk.
-- Metrics API chưa available, nên `kubectl top pods` và `kubectl top nodes` chưa dùng được.
+- `accounting` đang CrashLoopBackOff do `OOMKilled`, restart hơn 118 lần trong khoảng 15 giờ, memory request/limit hiện là `120Mi`.
+- `checkout` từng restart 4 lần lúc startup vì Kafka broker chưa sẵn sàng, log báo `connection refused`; sau khi Kafka sẵn sàng thì pod ổn định.
+- `load-generator` từng bị `OOMKilled` 1 lần, củng cố quyết định tắt `LOCUST_AUTOSTART` và chỉ bật khi load test có kiểm soát.
+- `checkout` có memory limit `20Mi` và `GOMEMLIMIT=16MiB`, headroom chỉ khoảng `4Mi`. Đây là risk estimate dựa trên cấu hình, chưa phải confirmed OOM.
+- CPU/RAM runtime được theo dõi bằng Prometheus/Grafana dashboard và PromQL.
 
-Những điểm này ảnh hưởng trực tiếp đến quyết định right-sizing: team chưa thể giảm tài nguyên một cách vội vàng khi vẫn còn restart/OOM và thiếu metrics CPU/RAM đầy đủ.
+Những điểm này ảnh hưởng trực tiếp đến quyết định right-sizing: team chưa thể giảm tài nguyên vội khi vẫn còn OOM/restart thật và một số service có memory buffer quá mỏng.
 
 ---
 
@@ -195,17 +195,17 @@ Vì vậy hướng làm của team là cân bằng:
 
 ### 6.1. Runtime performance evidence
 
-Team thu thập evidence từ Grafana, Jaeger và kubectl.
+Team thu thập evidence từ Grafana, Prometheus, Jaeger và kubectl.
 
 Các kết quả chính:
 
 - Hệ thống có trace trên Jaeger cho nhiều flow quan trọng.
 - Các service như `checkout`, `payment`, `product-catalog`, `frontend`, `recommendation`, `product-reviews` đều có trace coverage.
-- Grafana có dashboard latency, error rate và request rate.
-- Pod status và node placement đã được capture.
-- Metrics API chưa available, nên CPU/RAM qua `kubectl top` đang bị block.
+- Grafana có dashboard latency, error rate, request rate, CPU và memory theo pod.
+- Pod status, restart reason và node placement đã được capture bằng kubectl.
+- CPU/RAM runtime dùng Prometheus/Grafana làm source metrics chính.
 
-Điều này cho team đủ cơ sở để nhìn performance ở mức trace và request flow, nhưng chưa đủ để kết luận sâu về CPU/memory right-sizing.
+Điều này cho team đủ cơ sở để nhìn performance ở mức trace, request flow và resource trend. Với các quyết định right-sizing lớn, team vẫn cần quan sát thêm 48-72 giờ để tránh cắt tài nguyên khi còn OOM/restart bất thường.
 
 #### Evidence để chiếu khi nói phần metric Performance
 
@@ -213,15 +213,15 @@ Khi trình bày phần này, có thể chiếu lần lượt các ảnh evidence
 
 **Grafana - Pod CPU usage**
 
-![Grafana Pod CPU Usage](../epic-03-performance-efficiency/screenshots/grafana-pods-cpu.png)
+![Grafana Pod CPU Usage](./slide-assets/grafana-pods-cpu.png)
 
 Lời dẫn:
 
-Ở ảnh này, team dùng Grafana/Prometheus để thay thế cho `kubectl top pods` vì Metrics API trong cluster chưa available. Đây là evidence cho CPU usage theo pod trong namespace `techx-tf4`, giúp xác định workload nào đang tạo áp lực CPU.
+Ở ảnh này, team dùng Grafana/Prometheus làm nguồn metrics runtime chính. Đây là evidence cho CPU usage theo pod trong namespace `techx-tf4`, giúp xác định workload nào đang tạo áp lực CPU.
 
 **Grafana - Pod Memory usage**
 
-![Grafana Pod Memory Usage](../epic-03-performance-efficiency/screenshots/grafana-pods-memory.png)
+![Grafana Pod Memory Usage](./slide-assets/grafana-pods-memory.png)
 
 Lời dẫn:
 
@@ -229,7 +229,7 @@ Lời dẫn:
 
 **Grafana - Resource idle**
 
-![Grafana Resources Idle](../epic-03-performance-efficiency/screenshots/grafana-resources-idle.png)
+![Grafana Resources Idle](./slide-assets/grafana-resources-idle.png)
 
 Lời dẫn:
 
@@ -237,7 +237,7 @@ Lời dẫn:
 
 **Grafana - Resource under load**
 
-![Grafana Resources Under Load](../epic-03-performance-efficiency/screenshots/grafana-resources-load.png)
+![Grafana Resources Under Load](./slide-assets/grafana-resources-load.png)
 
 Lời dẫn:
 
@@ -245,7 +245,7 @@ Lời dẫn:
 
 **Grafana - Latency dashboard**
 
-![Grafana Latency](../epic-03-performance-efficiency/screenshots/grafana-latency.png)
+![Grafana Latency](./slide-assets/grafana-latency.png)
 
 Lời dẫn:
 
@@ -253,7 +253,7 @@ Latency dashboard dùng để kiểm tra p95/p99 và phát hiện service nào l
 
 **Grafana - Error rate dashboard**
 
-![Grafana Error Rate](../epic-03-performance-efficiency/screenshots/grafana-error-rate.png)
+![Grafana Error Rate](./slide-assets/grafana-error-rate.png)
 
 Lời dẫn:
 
@@ -261,7 +261,7 @@ Error rate giúp team tránh tối ưu sai hướng. Nếu sau một thay đổi
 
 **Grafana - Request rate dashboard**
 
-![Grafana Request Rate](../epic-03-performance-efficiency/screenshots/grafana-request-rate.png)
+![Grafana Request Rate](./slide-assets/grafana-request-rate.png)
 
 Lời dẫn:
 
@@ -269,7 +269,7 @@ Request rate cho biết traffic thực tế vào hệ thống. Ảnh này cũng 
 
 **Jaeger - Service coverage**
 
-![Jaeger Services Dropdown](../epic-03-performance-efficiency/screenshots/jaeger-services-dropdown.png)
+![Jaeger Services Dropdown](./slide-assets/jaeger-services-dropdown.png)
 
 Lời dẫn:
 
@@ -277,9 +277,9 @@ Lời dẫn:
 
 **Jaeger - Checkout flow evidence**
 
-![Checkout Flow Trace 1](../epic-03-performance-efficiency/screenshots/checkout-flow-1-1.png)
+![Checkout Flow Trace 1](./slide-assets/checkout-flow-1-1.png)
 
-![Checkout Flow Trace 2](../epic-03-performance-efficiency/screenshots/checkout-flow-1-2.png)
+![Checkout Flow Trace 2](./slide-assets/checkout-flow-1-2.png)
 
 Lời dẫn:
 
@@ -287,7 +287,7 @@ Checkout là revenue-critical path. Trace này cho thấy request phải đi qua
 
 **Jaeger - Browse product flow**
 
-![Browse Product Flow](../epic-03-performance-efficiency/screenshots/browse-product-flow.png)
+![Browse Product Flow](./slide-assets/browse-product-flow.png)
 
 Lời dẫn:
 
@@ -295,7 +295,7 @@ Lời dẫn:
 
 **Jaeger - Product AI Assistant flow**
 
-![Product AI Assistant Flow](../epic-03-performance-efficiency/screenshots/product-ai-assistant-flow.png)
+![Product AI Assistant Flow](./slide-assets/product-ai-assistant-flow.png)
 
 Lời dẫn:
 
@@ -303,7 +303,7 @@ Flow AI Assistant đi qua `product-reviews` và mock `llm`. Hiện tại mock LL
 
 **Jaeger - Recommendation flow**
 
-![Get Product Recommendations Flow](../epic-03-performance-efficiency/screenshots/get-product-recommendations-flow.png)
+![Get Product Recommendations Flow](./slide-assets/get-product-recommendations-flow.png)
 
 Lời dẫn:
 
@@ -313,17 +313,17 @@ Trace recommendation cho thấy frontend có thể gọi nhiều lần sang `pro
 
 Team đã chỉ ra một số bottleneck quan trọng.
 
-Thứ nhất là **N+1 Currency Conversion**.
+Thứ nhất là **N+1 currency conversion khi list nhiều sản phẩm**.
 
-Khi frontend list products với currency khác USD, mỗi sản phẩm có thể phát sinh một gRPC call sang `currency`. Nếu số lượng sản phẩm tăng, số call tăng theo N. Giải pháp đề xuất là caching exchange rate hoặc batch conversion.
+Khi frontend list products với currency khác USD, mỗi sản phẩm có thể phát sinh một gRPC call sang `currency`. Nếu số lượng sản phẩm tăng, số call tăng theo N. Giải pháp nhanh nhất là cache exchange rate ngắn hạn theo cặp tiền, ví dụ `USD -> VND`, để nhiều product dùng chung một tỷ giá trong một khoảng thời gian ngắn. Cách này giảm call lặp lại, không thêm hạ tầng mới, và phù hợp cả Performance Efficiency lẫn Cost Optimization.
 
-Thứ hai là **Catalog Search Full Scan**.
+Thứ hai là **catalog search dùng `LIKE %query%` nên có nguy cơ full scan khi data tăng**.
 
-Search trong `product-catalog` dùng `LOWER()` và `LIKE %query%`, không tận dụng được index thường. Nếu data lớn hơn, PostgreSQL có thể bị full table scan. Giải pháp là thêm `LIMIT`, dùng trigram index hoặc chuyển sang OpenSearch cho search chuyên dụng.
+Search trong `product-catalog` dùng `LOWER()` và `LIKE %query%`, không tận dụng được index thường. Nếu data lớn hơn, PostgreSQL có thể phải scan nhiều row hơn. Giải pháp nhanh và rẻ nhất ở giai đoạn này là thêm `LIMIT` hợp lý cho search result, ví dụ giới hạn số product trả về cho mỗi request. Cách này giữ latency ổn định hơn, tránh trả quá nhiều dữ liệu cho UI, và chưa cần thêm OpenSearch nên không phát sinh compute/storage cost mới.
 
-Thứ ba là **Checkout Sequential Dependency**.
+Thứ ba là **checkout còn nhiều dependency chạy tuần tự trên revenue path**.
 
-Checkout hiện gọi nhiều service theo chuỗi: cart, product-catalog, currency, payment, shipping, email, Kafka. Nếu một service downstream chậm, latency checkout bị cộng dồn. Giải pháp là timeout budget, tách các bước không cần blocking sang async, và dùng idempotency/outbox pattern cho order/payment.
+Checkout hiện gọi nhiều service theo chuỗi: cart, product-catalog, currency, payment, shipping, email, Kafka. Nếu một service downstream chậm, latency checkout bị cộng dồn. Giải pháp ưu tiên là async hóa phần không cần chặn response chính, trước mắt là email/post-processing sau khi order đã được ghi nhận. Cách này giảm latency người dùng cảm nhận được và tận dụng Kafka/event flow hiện có, không cần thêm managed service mới. Với payment/order, cần thêm idempotency key và outbox pattern, tức là retry không tạo double charge/double order và event được publish nhất quán với trạng thái order.
 
 ### 6.3. Scaling và right-sizing recommendation
 
@@ -332,13 +332,13 @@ Team cũng review resource config và thấy:
 - Nhiều service thiếu CPU requests/limits.
 - Nhiều service chỉ có memory limit nhưng thiếu memory request.
 - `llm` mock thiếu resource config rõ ràng.
-- `checkout` memory limit quá sát, có rủi ro OOM.
+- `checkout` memory limit quá sát: limit `20Mi`, `GOMEMLIMIT=16MiB`, headroom chỉ khoảng `4Mi`. Đây là risk estimate dựa trên cấu hình; restart hiện có của checkout đến từ Kafka startup race, chưa phải OOM.
 
 Khuyến nghị performance là:
 
 - Bổ sung CPU/memory requests cho các service chính.
-- Tăng buffer memory cho `checkout`.
-- Đặt HPA cho `frontend` và `checkout` sau khi Metrics API hoặc source metrics ổn định.
+- Tăng buffer memory cho `checkout`, ví dụ limit `64Mi` và `GOMEMLIMIT` khoảng 80% limit, rồi verify lại bằng Grafana/Prometheus.
+- Đặt HPA cho `frontend` và `checkout` sau khi Prometheus/Grafana metrics ổn định đủ 48-72 giờ.
 - Theo dõi p95/p99 latency và restart/OOM sau mỗi lần thay đổi.
 
 ---
@@ -359,6 +359,23 @@ Team đã xác định các cost driver chính của hệ thống:
 - ECR.
 - CloudWatch Logs.
 - Observability stack chạy trong cluster.
+
+Baseline estimate breakdown:
+
+| Thành phần | Số lượng / Giả định | Ước tính theo tháng | Ước tính theo tuần | Ghi chú |
+|---|---:|---:|---:|---|
+| EKS Cluster Control Plane | 1 cluster, Kubernetes `1.34` standard support | `$73.00` | `$16.80` | Phí EKS cố định |
+| EC2 Worker Nodes | 2 x `t3.large` | `$121.47` | `$27.96` | Compute cost cố định chính |
+| Kịch bản EC2 scale tối đa | 4 x `t3.large` | `$242.94` | `$55.91` | Chỉ là scenario nếu node group scale lên maxSize=4 |
+| EBS Root Volumes | 40 GiB gp3 | `$3.20` | `$0.74` | 2 volumes x 20 GiB |
+| NAT Gateway | 1 NAT Gateway | `$32.85` | `$7.56` | Chưa bao gồm data processing `$0.045/GB` |
+| ALB base hourly | 1 ALB | `$16.43` | `$3.78` | Chưa bao gồm LCU usage |
+| Ví dụ ALB LCU | Trung bình 1 LCU | `$5.84` | `$1.34` | Chỉ là ví dụ, actual phụ thuộc traffic |
+| ECR Storage | 1 repo `techx-corp` | `Pending` | `Pending` | Cần kiểm tra image size/count |
+| CloudWatch Logs | 8 log groups | `Pending / hiện tại thấp` | `Pending / hiện tại thấp` | Cần theo dõi ingestion trend |
+| PVC Storage | Không tìm thấy PVC | `$0.00` | `$0.00` | Ít storage cost hiện tại, nhưng có persistence risk |
+| Observability Stack | Workloads chạy trong cluster | Đã bao gồm trong EC2 nodes | Đã bao gồm trong EC2 nodes | Là indirect cost vì tiêu thụ CPU/RAM worker nodes |
+| Data Transfer | NAT/ALB/cross-AZ tùy traffic | `Pending` | `Pending` | Cần Cost Explorer / traffic data |
 
 Estimate hiện tại:
 
@@ -402,7 +419,7 @@ Budget guardrail có:
 
 Điểm cần nói rõ là có khác biệt giữa một số tài liệu nói target `$300/week` và Terraform guardrail default `$300/month`. Đây là gap governance cần chốt lại: team sẽ giữ monthly guardrail chặt hơn, hay đổi limit theo weekly-equivalent.
 
-### 7.4. Right-sizing & cost saving recommendation
+### 7.4. Right-sizing &amp; cost saving recommendation
 
 Ở COST-05, team không đề xuất giảm tài nguyên bừa.
 
@@ -430,14 +447,14 @@ Lý do:
 
 Backlog Performance gồm:
 
-1. Fix Metrics API hoặc chốt Prometheus/Grafana là source of truth cho CPU/RAM.
+1. Chuẩn hóa Prometheus/Grafana dashboard và PromQL làm source of truth cho CPU/RAM.
 2. Thu thập CPU/memory pod và node trong 48-72 giờ.
-3. Điều tra `accounting` restart/BackOff.
-4. Điều tra `checkout` restart và memory headroom.
-5. Hoàn thiện HPA cho `frontend` và `checkout`.
-6. Tối ưu N+1 currency conversion bằng cache hoặc batch API.
-7. Thêm `LIMIT` và index/search strategy cho product catalog search.
-8. Cải tiến checkout flow bằng timeout budget, async processing, idempotency và outbox pattern.
+3. Fix `accounting` OOMKilled CrashLoop bằng cách tăng memory và verify restart count về 0 trong 24h.
+4. Tăng buffer memory cho `checkout` vì limit `20Mi` và `GOMEMLIMIT=16MiB` chỉ còn khoảng `4Mi` headroom.
+5. Hoàn thiện HPA cho `frontend` và `checkout` sau khi metrics ổn định.
+6. Tối ưu N+1 currency conversion bằng cache exchange rate ngắn hạn.
+7. Thêm `LIMIT` cho product catalog search để bảo vệ latency và tránh thêm hạ tầng search mới quá sớm.
+8. Async hóa email/post-processing trong checkout flow; với payment/order thì thêm idempotency key và outbox pattern.
 9. Theo dõi p95/p99 latency, error rate, request rate sau mỗi thay đổi.
 
 ---
@@ -463,57 +480,107 @@ Backlog Cost gồm:
 
 ### 10.1. Lỗ hổng Performance
 
-Lỗ hổng 1: Metrics API chưa available.
+Lỗ hổng 1: `accounting` đang CrashLoopBackOff do OOMKilled.
+
+Bằng chứng:
+
+```bash
+kubectl get pod accounting-6696f5bdb8-7wvkg -n techx-tf4
+kubectl describe pod accounting-6696f5bdb8-7wvkg -n techx-tf4 | grep -E 'Restart Count|State:|Reason:|BackOff'
+kubectl logs accounting-6696f5bdb8-7wvkg -n techx-tf4 --previous --tail=50
+```
+
+Output quan trọng:
+
+```text
+State:          Waiting
+Last State:     Terminated
+  Reason:       OOMKilled
+  Exit Code:    137
+Restart Count:  118
+Limits:
+  memory:  120Mi
+Warning  BackOff  x689 over 15h
+```
 
 Tác động:
 
-- Không dùng được `kubectl top pods`.
-- Không dùng được `kubectl top nodes`.
-- Chưa đủ dữ liệu CPU/memory để right-size node hoặc pod an toàn.
+- `accounting` là .NET app có OpenTelemetry auto-instrumentation và Kafka consumer.
+- Memory request/limit `120Mi` không đủ cho workload hiện tại, nên pod bị OOMKilled liên tục.
+- Nếu cắt tài nguyên lúc này, async accounting pipeline sẽ kém ổn định hơn.
 
 Hướng xử lý:
 
-- Cài metrics-server hoặc formalize Prometheus/Grafana làm source of truth.
-- Thu thập dữ liệu trong 48-72 giờ trước khi thay đổi resource.
+- Tăng memory cho `accounting` lên tối thiểu khoảng `200-256Mi`.
+- Sau khi chỉnh, verify restart count không tăng trong 24h.
+- Dùng Grafana/Prometheus để kiểm tra memory trend trước khi chốt limit cuối cùng.
 
-Lỗ hổng 2: Một số pod có restart/BackOff.
+Lỗ hổng 2: `checkout` có startup race với Kafka và memory buffer quá mỏng.
+
+Bằng chứng restart:
+
+```bash
+kubectl describe pod checkout-87c785988-dz7w4 -n techx-tf4 | grep -E 'Restart Count|State:|Reason:|Exit Code|GOMEMLIMIT|memory'
+kubectl logs checkout-87c785988-dz7w4 -n techx-tf4 --previous
+```
+
+Log root cause:
+
+```text
+panic: KAFKA_ADDR is set but producer creation failed: kafka: client has run out of available brokers to talk to: dial tcp 172.20.180.83:9092: connect: connection refused
+```
 
 Tác động:
 
-- `accounting` có restart cao.
-- `checkout` có restart.
-- Nếu giảm tài nguyên lúc này, team có thể làm lỗi nặng hơn.
+- `checkout` restart 4 lần lúc startup vì Kafka broker chưa sẵn sàng. Đây là startup ordering issue, không phải OOM.
+- Cấu hình memory vẫn quá sát: limit `20Mi`, `GOMEMLIMIT=16MiB`, headroom chỉ khoảng `4Mi`.
+- Nếu traffic tăng, Go runtime, HTTP/gRPC clients, Kafka producer và OTEL instrumentation có ít buffer để hấp thụ spike.
 
 Hướng xử lý:
 
-- Điều tra log, event, OOMKilled, readiness/liveness.
-- Fix root cause trước khi right-size.
+- Thêm retry/backoff khi checkout tạo Kafka producer lúc startup.
+- Tăng memory limit checkout lên khoảng `64Mi` và đặt `GOMEMLIMIT` khoảng 80% limit.
+- Ghi rõ đây là config-based risk estimate cho OOM, chưa phải confirmed OOM event của checkout.
 
-Lỗ hổng 3: Checkout flow còn sequential.
+Lỗ hổng 3: Checkout flow còn nhiều dependency chạy tuần tự trên revenue path.
 
 Tác động:
 
-- Latency cộng dồn.
+- Latency bị cộng dồn qua cart, product-catalog, currency, payment, shipping, email và Kafka.
 - Downstream chậm có thể kéo chậm toàn bộ checkout.
-- Có rủi ro lỗi dây chuyền trong payment/order.
+- Payment/order cần tránh double charge hoặc double order khi có retry.
 
 Hướng xử lý:
 
-- Timeout budget.
-- Async cho email/empty cart/post-processing.
-- Idempotency key và outbox pattern.
+- Ưu tiên async hóa email/post-processing, vì các bước này không cần chặn response checkout chính.
+- Với payment/order, thêm idempotency key và outbox pattern để retry an toàn và publish event nhất quán.
+- Chọn hướng này vì dùng Kafka/event flow hiện có, giảm latency user thấy được, và không thêm chi phí hạ tầng mới.
 
-Lỗ hổng 4: Search và currency conversion chưa tối ưu.
+Lỗ hổng 4: Catalog search có nguy cơ full scan khi data tăng.
 
 Tác động:
 
-- Product listing có thể tạo nhiều gRPC call.
-- Search có nguy cơ full table scan khi dữ liệu tăng.
+- Search trong `product-catalog` dùng `LOWER()` và `LIKE %query%`, nên index thường khó phát huy tác dụng.
+- Khi dữ liệu sản phẩm tăng, query có thể scan nhiều row và làm latency browse/search tăng.
 
 Hướng xử lý:
 
-- Cache/batch currency conversion.
-- LIMIT, trigram index hoặc OpenSearch cho search.
+- Chọn giải pháp nhanh là thêm `LIMIT` hợp lý cho search result.
+- Lý do Performance Efficiency: giới hạn số row/result phải xử lý và trả về cho UI.
+- Lý do Cost Optimization: chưa thêm OpenSearch hoặc index phức tạp ở Week 1, nên không tăng compute/storage cost.
+
+Lỗ hổng 5: Currency conversion có rủi ro N+1 gRPC call khi list nhiều sản phẩm.
+
+Tác động:
+
+- Product listing với currency khác USD có thể gọi `currency` theo từng sản phẩm.
+- Số call tăng theo số product hiển thị, làm tăng latency và noise trong trace.
+
+Hướng xử lý:
+
+- Chọn cache exchange rate ngắn hạn theo cặp tiền, ví dụ `USD -> VND`.
+- Lý do Performance Efficiency: nhiều product dùng chung một tỷ giá nên giảm call lặp lại.
+- Lý do Cost Optimization: không thêm service hoặc hạ tầng mới, chỉ giảm work lặp trong runtime.
 
 ### 10.2. Lỗ hổng Cost
 
@@ -570,6 +637,7 @@ Hướng xử lý:
 - Không giảm memory Jaeger/Grafana trong Week 1.
 - Với Grafana, cân nhắc tăng request/limit theo evidence OOMKilled.
 - Theo dõi OOMKilled/restart count sau khi giảm synthetic traffic.
+- Hiện tại đang tạm thời tăng memory limit của cả 2 bằng live kubectl để tránh OOMKilled tạm thời để testing, sẽ điều chỉnh theo right-sizing với cost phù hợp sau.
 
 Lỗ hổng 5: CloudWatch retention và ECR lifecycle chưa hoàn chỉnh.
 
@@ -599,7 +667,7 @@ Về Performance:
 
 - Team đã có trace, dashboard và runtime evidence.
 - Đã xác định các bottleneck chính: N+1 currency conversion, catalog search full scan, checkout sequential dependency.
-- Đã có hướng scaling/right-sizing nhưng cần Metrics API và thêm runtime data trước khi áp dụng mạnh.
+- Đã có hướng scaling/right-sizing nhưng cần thêm 48-72 giờ runtime data từ Prometheus/Grafana và cần xử lý OOM/restart bất thường trước khi áp dụng mạnh.
 
 Về Cost:
 
