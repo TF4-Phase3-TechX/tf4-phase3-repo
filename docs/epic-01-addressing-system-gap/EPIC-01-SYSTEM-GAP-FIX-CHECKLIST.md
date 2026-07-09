@@ -137,7 +137,7 @@ Done rule:
   - Target: CODEOWNERS path mismatch fixed or documented; ADR/runbook/postmortem templates added if allowed.
   - Evidence file: `003-obs-03-repo-auditability-artifacts.md`
   - Validation: file links and GitHub branch protection/CODEOWNERS check if available.
-  - Status: implemented locally with templates and destination folders, pending PR link and GitHub CODEOWNERS check.
+  - Status: PR opened with templates and destination folders, pending GitHub CODEOWNERS check and merge.
 
 - [ ] `PERF-01` / `PERF-02` Fix or baseline browse/search performance.
   - Target: avoid N currency fan-out where safe and bound search with pagination/index plan.

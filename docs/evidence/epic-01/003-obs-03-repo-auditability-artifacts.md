@@ -19,7 +19,7 @@ EVIDENCE UPDATE
 - CODEOWNERS now has explicit ownership paths for `docs/audit/**`, `docs/evidence/**`, and `.github/**`.
 - OBS-03 locally meets the docs/governance target: CODEOWNERS path coverage exists and ADR/runbook/postmortem artifacts are available.
 - Runtime verification: N/A because this is a docs/governance-only change.
-- Live verification: not live-verified yet; GitHub CODEOWNERS check must be confirmed after opening the PR.
+- Live verification: not live-verified yet; GitHub CODEOWNERS check is pending on PR #44.
 
 ## Evidence Location
 
@@ -30,7 +30,7 @@ EVIDENCE UPDATE
 - ADR destination folder: `docs/audit/adr/README.md`
 - Runbook destination folder: `docs/audit/runbooks/README.md`
 - Postmortem/COE destination folder: `docs/audit/postmortems/README.md`
-- PR: TBD - update this evidence after opening the PR.
+- PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/44
 - Evidence folder: `docs/evidence/epic-01`
 
 ## Verification
