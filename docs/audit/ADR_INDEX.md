@@ -21,6 +21,8 @@ Sổ ghi nhận các quyết định liên quan đến kiến trúc, bảo mật
 | ADR-009 | 2026-07-09 | Grafana anonymous Admin + OpenSearch security disabled | Demo environment baseline — fix trước khi public expose | Accepted — Fix Week 1 P0/P1 | CDO-08 | [ADR-009](./adr/009-grafana-anonymous-admin-opensearch-security-disabled.md) |
 | ADR-010 | 2026-07-09 | Alertmanager disabled — SLO alert gap | Chưa config alert channel — CDO-07 owns OBS-01 | Accepted — Fix Week 1 P1 | CDO-07 | [ADR-010](./adr/010-alertmanager-disabled-slo-alerts-gap.md) |
 | ADR-011 | 2026-07-09 | Checkout partial-success sau payment, không có idempotency | Complexity cao — deferred Week 2-3 | Accepted — Deferred | CDO-08 | [ADR-011](./adr/011-checkout-partial-success-post-payment.md) |
+| ADR-012 | 2026-07-09 | flagd Central Flag Sync bị deferred — risk ghi nhận | flagd image v0.12.9 crash khi dùng /bin/sh wrapper | **URGENT — Fix ngay** | CDO-04 | [ADR-012](./adr/012-flagd-central-sync-deferred.md) |
+| ADR-013 | 2026-07-09 | Multi-AZ chỉ áp dụng cho EKS compute layer | Cost control — stateful workload HA chưa claim | Accepted | CDO-04 | [ADR-013](./adr/013-multi-az-eks-compute-layer-only.md) |
 
 ---
 
@@ -28,12 +30,11 @@ Sổ ghi nhận các quyết định liên quan đến kiến trúc, bảo mật
 
 | Quyết định cần ghi | Pillar | Owner | Chờ gì |
 |---|---|---|---|
-| flagd central sync deferred — risk ghi nhận | Auditability | CDO-04 | Confirm timeline fix từ CDO-04 |
-| OpenSearch persistence disabled — retention decision | Auditability/Cost | CDO-04 | Runtime cost data từ CDO-04 |
-| Prometheus persistence disabled — metrics retention | Auditability | CDO-04 | Runtime cost data |
+| OpenSearch/Prometheus persistence disabled — retention decision | Auditability/Cost | CDO-04 | Runtime cost data |
 | Load-generator autostart — explicit profile per env | Cost | CDO-04 | CDO-04 implement COST-01 |
 | Cart 60-minute TTL — retention decision | Reliability | CDO-08 | CDO-08 durability decision |
 | Container hardening — runAsNonRoot baseline | Security | CDO-08 | CDO-08 implement SEC-03 |
+| ALB → frontend-proxy ingress design | Architecture | CDO-04 | Verify runtime ingress config |
 
 ---
 
