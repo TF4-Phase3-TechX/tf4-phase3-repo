@@ -18,3 +18,33 @@ output "vpc_id" {
   description = "The ID of the VPC"
   value       = module.vpc.vpc_id
 }
+
+output "aws_account_id" {
+  description = "AWS account ID"
+  value       = data.aws_caller_identity.current.account_id
+}
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for TechX images"
+  value       = aws_ecr_repository.techx_corp.repository_url
+}
+
+output "eks_oidc_provider_arn" {
+  description = "EKS OIDC provider ARN"
+  value       = module.eks.oidc_provider_arn
+}
+
+output "eks_oidc_issuer_url" {
+  description = "EKS OIDC issuer URL"
+  value       = module.eks.cluster_oidc_issuer_url
+}
+
+output "budget_name" {
+  description = "Name of the AWS Budget for monthly cost guardrails"
+  value       = aws_budgets_budget.monthly_cost.name
+}
+
+output "budget_monthly_limit" {
+  description = "Monthly AWS Budget limit in USD"
+  value       = var.budget_monthly_limit
+}

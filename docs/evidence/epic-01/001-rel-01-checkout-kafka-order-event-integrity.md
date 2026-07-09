@@ -39,16 +39,16 @@ EVIDENCE UPDATE
 ## Bằng chứng nằm ở đâu?
 
 - Link/file diagram: N/A
-- Source code:
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/kafka/producer.go:31` — `CreateKafkaProducer` returns `SyncProducer`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/kafka/producer.go:38` — `RequiredAcks = sarama.WaitForAll`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/kafka/producer.go:39` — `Retry.Max = 5`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/kafka/producer.go:40` — `Producer.Timeout = 10s`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/main.go:143` — struct field `sarama.SyncProducer`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/main.go:234-238` — fail-fast panic + `defer Close()`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/main.go:388-391` — `PlaceOrder` returns `Unavailable` on publish fail
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/main.go:645-655` — context-bounded `SendMessage` via goroutine + select
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/checkout/main.go:689-694` — async `kafkaQueueProblems` goroutines
+- Source code (paths relative to repo root):
+  - `techx-corp-platform/src/checkout/kafka/producer.go:31` — `CreateKafkaProducer` returns `SyncProducer`
+  - `techx-corp-platform/src/checkout/kafka/producer.go:38` — `RequiredAcks = sarama.WaitForAll`
+  - `techx-corp-platform/src/checkout/kafka/producer.go:39` — `Retry.Max = 5`
+  - `techx-corp-platform/src/checkout/kafka/producer.go:40` — `Producer.Timeout = 10s`
+  - `techx-corp-platform/src/checkout/main.go:143` — struct field `sarama.SyncProducer`
+  - `techx-corp-platform/src/checkout/main.go:234-238` — fail-fast panic + `defer Close()`
+  - `techx-corp-platform/src/checkout/main.go:388-391` — `PlaceOrder` returns `Unavailable` on publish fail
+  - `techx-corp-platform/src/checkout/main.go:645-655` — context-bounded `SendMessage` via goroutine + select
+  - `techx-corp-platform/src/checkout/main.go:689-694` — async `kafkaQueueProblems` goroutines
 - QA report (Opus): inline trong session transcript — 7 findings, 4 fixed, 2 deferred, 1 pre-existing
 - Screenshot: N/A
 - Command output/log:
@@ -57,7 +57,7 @@ EVIDENCE UPDATE
   - `go test ./...`: pass (`ok github.com/open-telemetry/techx-corp/src/checkout/money`)
   - Pre-existing vet warning `main.go:316` fixed: `err.Error()` → `"%s", err.Error()`
 - PR/commit/link nếu có: N/A
-- Folder lưu evidence: `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/docs/evidence/epic-01`
+- Folder lưu evidence: `docs/evidence/epic-01`
 
 ## Ghi chú / Follow-up
 

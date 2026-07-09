@@ -31,7 +31,8 @@ SERVICES=(
   quote
   recommendation
   shipping
-  flagd-ui
+  # flagd-ui is intentionally skipped: it is not used by the current Helm release.
+  # flagd-ui
   kafka
   opensearch
   llm

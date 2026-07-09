@@ -24,21 +24,21 @@ EVIDENCE UPDATE
 
 ## Bằng chứng nằm ở đâu?
 
-- Source code:
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:270` — `EnableAutoCommit = false`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:271` — `EnableAutoOffsetStore = false`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:129` — per-message `using var dbContext`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:142` — explicit `BeginTransaction()`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:183` — `CommitOffset()` after `SaveChanges` + `transaction.Commit()`
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:208` — `OrderAlreadyPersisted()` idempotency check
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:246` — `PausePartition()` with return bool
-  - `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/techx-corp-platform/src/accounting/Consumer.cs:111,195,234` — `_isListening = false` khi pause fail
+- Source code (paths relative to repo root):
+  - `techx-corp-platform/src/accounting/Consumer.cs:270` — `EnableAutoCommit = false`
+  - `techx-corp-platform/src/accounting/Consumer.cs:271` — `EnableAutoOffsetStore = false`
+  - `techx-corp-platform/src/accounting/Consumer.cs:129` — per-message `using var dbContext`
+  - `techx-corp-platform/src/accounting/Consumer.cs:142` — explicit `BeginTransaction()`
+  - `techx-corp-platform/src/accounting/Consumer.cs:183` — `CommitOffset()` after `SaveChanges` + `transaction.Commit()`
+  - `techx-corp-platform/src/accounting/Consumer.cs:208` — `OrderAlreadyPersisted()` idempotency check
+  - `techx-corp-platform/src/accounting/Consumer.cs:246` — `PausePartition()` with return bool
+  - `techx-corp-platform/src/accounting/Consumer.cs:111,195,234` — `_isListening = false` khi pause fail
 - Screenshot: N/A
 - Command output/log:
   - `dotnet build`: failed — No .NET SDK installed (Runtime 8.0.28 only, project targets net10.0)
   - Grep confirmed all key symbols present: `EnableAutoCommit=false`, `EnableAutoOffsetStore=false`, `PausePartition`, `OrderAlreadyPersisted`, `CommitOffset`, `BeginTransaction`, `using var dbContext`
 - PR/commit/link nếu có: N/A
-- Folder lưu evidence: `C:/Users/thanh/Desktop/workspace/FINAL-PHASE/tf4-phase3-repo/docs/evidence/epic-01`
+- Folder lưu evidence: `docs/evidence/epic-01`
 
 ## Ghi chú / Follow-up
 
