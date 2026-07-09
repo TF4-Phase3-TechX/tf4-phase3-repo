@@ -1,9 +1,9 @@
 # CDO07 Static Audit Scan - Phase 3 v2
 
-Phạm vi: scan tĩnh trên repository Phase 3 cho nhóm CDO07 Auditability.
+Phạm vi: scan tĩnh trên repository Phase 3 cho nhóm CDO07 Auditability, có bổ sung runtime verification bằng AWS CLI và `kubectl`.
 Chế độ scan: scan toàn bộ repo theo 4 trụ để lấy ngữ cảnh audit, chỉ ghi nhận finding và evidence.
 Trạng thái repo: scan trên branch `cdo07/docs/update-phase3-audit-scan-v2`.
-Giới hạn: báo cáo này chỉ dựa trên source code, IaC và tài liệu trong repo. Các kết luận runtime cần xác nhận thêm bằng AWS CLI, AWS Console hoặc `kubectl`.
+Giới hạn: static findings dựa trên source code, IaC và tài liệu trong repo. Runtime findings bên dưới đã được xác nhận bằng AWS CLI hoặc `kubectl` tại thời điểm scan.
 
 ## 1. Nguyên tắc phân loại
 
@@ -23,7 +23,38 @@ Nguyên tắc của bản scan v2:
 | Reliability | 8 | P1/P2 | Cross-pillar observation, dùng làm ngữ cảnh evidence |
 | Operational Excellence | 2 | P2 | Cross-pillar observation, liên quan traceability/supply chain |
 
-## 3. Trạng thái control Auditability của CDO07
+## 3. Runtime verification đã thực hiện
+
+Runtime profile/context đã dùng:
+
+- AWS profile chính: `TF4-AuditReadOnlyAndAnalyze`
+- AWS fallback profile: default `TF4-BaseReadOnly`
+- AWS account: `511825856493`
+- Kubernetes context: `techx-tf4-base`
+- Namespace xác nhận: `techx-tf4`, `techx-observability`
+
+Kết quả runtime chính:
+
+| Hạng mục | Runtime result | Ghi chú |
+| :--- | :--- | :--- |
+| STS audit profile | PASS | Role `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze`, user session `truc.le` |
+| STS default profile | PASS | Role `AWSReservedSSO_TF4-BaseReadOnly`, user session `truc.le` |
+| CloudTrail trail | PASS/PARTIAL | `tf4-general-cloudtrail` tồn tại, multi-region, đang logging |
+| CloudTrail log validation | FAIL CONFIRMED | `LogFileValidationEnabled=false` |
+| CloudTrail event selectors | PARTIAL | Chỉ có management events, `DataResources=[]` |
+| CloudTrail S3 versioning | PASS | Bucket `tf4-cloudtrail-logs-bucket-511825856493` có versioning `Enabled` |
+| S3 public access/encryption metadata | BLOCKED | Audit profile bị deny `s3:GetBucketPublicAccessBlock` và `s3:GetEncryptionConfiguration` |
+| AWS Config | FAIL CONFIRMED | `ConfigurationRecorders=[]`, `DeliveryChannels=[]` |
+| IAM Access Analyzer | PASS | Analyzer `tf4-iam-analyzer` status `ACTIVE` |
+| Access Analyzer findings | OBSERVED | Có nhiều active findings cho IAM roles, cần review riêng |
+| EKS describe cluster bằng audit profile | BLOCKED | Audit profile bị deny `eks:DescribeCluster` |
+| EKS describe cluster bằng default profile | PASS | Cluster `techx-tf4-cluster` ACTIVE, version `1.34` |
+| EKS endpoint | FAIL/PARTIAL | Public endpoint enabled, CIDR `0.0.0.0/0`; private endpoint enabled |
+| EKS control-plane logs | PARTIAL | `api`, `audit`, `authenticator` enabled; `controllerManager`, `scheduler` disabled |
+| Kubernetes namespaces | PASS | Thấy `techx-tf4` và `techx-observability` |
+| Kubernetes workload runtime | PARTIAL | Workloads mostly Running, nhưng `accounting` restart cao và Grafana có restart/readiness/backoff events |
+
+## 4. Trạng thái control Auditability của CDO07
 
 | Control | Status | Evidence trong repo | Nhận xét |
 | :--- | :--- | :--- | :--- |
@@ -32,25 +63,27 @@ Nguyên tắc của bản scan v2:
 | Runbook template | PASS | `docs/audit/templates/RUNBOOK_TEMPLATE.md` | Có template, cần bổ sung runbook evidence collection |
 | Postmortem template | PASS | `docs/audit/templates/POSTMORTEM_TEMPLATE.md` | Có template phục vụ incident review |
 | Evidence folder | PASS | `docs/evidence/*` | Có evidence theo epic |
-| CloudTrail basic | PARTIAL | `infra/terraform/cloudtrail.tf` | Có multi-region trail và S3 versioning |
-| CloudTrail hardening | PARTIAL/FAIL | `infra/terraform/cloudtrail.tf` | Thiếu log file validation, KMS, CloudWatch Logs integration |
-| AWS Config | FAIL | `infra/terraform/*` | Chưa thấy recorder, delivery channel, config rules |
-| IAM Access Analyzer | PASS/PENDING RUNTIME | `infra/terraform/iam.tf` | Có IaC, cần runtime evidence để đóng ticket stale |
-| EKS audit logs | PARTIAL | `infra/terraform/eks.tf` | Có `api`, `audit`, `authenticator`; thiếu `controllerManager`, `scheduler` |
+| CloudTrail basic | PASS RUNTIME | `infra/terraform/cloudtrail.tf`, AWS CLI | Có multi-region trail, đang logging, S3 versioning enabled |
+| CloudTrail hardening | FAIL CONFIRMED | `infra/terraform/cloudtrail.tf`, AWS CLI | Log file validation disabled, chưa thấy data events; KMS/CWL vẫn cần xác nhận/cấu hình |
+| AWS Config | FAIL CONFIRMED | `infra/terraform/*`, AWS CLI | Runtime không có recorder, delivery channel, config rules |
+| IAM Access Analyzer | PASS RUNTIME | `infra/terraform/iam.tf`, AWS CLI | Analyzer `tf4-iam-analyzer` ACTIVE |
+| EKS audit logs | PARTIAL RUNTIME | `infra/terraform/eks.tf`, AWS CLI | Có `api`, `audit`, `authenticator`; `controllerManager`, `scheduler` disabled |
 | Secret handling evidence | FAIL | `techx-corp-chart/values.yaml` | Có static credential/secret-like values cần được security owner review |
 | Weekly audit report | FAIL | Chưa thấy file weekly report riêng | Cần tạo output hằng tuần cho Evidence Collector |
 
-## 4. Auditability findings
+## 5. Auditability findings
 
 ### AUD-01 - CloudTrail log bucket cho phép force destroy
 
 Priority: P1
-Status: Open
+Status: Open - runtime risk confirmed
 Evidence:
 
 - `infra/terraform/cloudtrail.tf`
 - Resource `aws_s3_bucket.cloudtrail_logs`
 - Có `force_destroy = true`
+- Runtime đã xác nhận CloudTrail bucket là `tf4-cloudtrail-logs-bucket-511825856493`
+- Runtime đã xác nhận S3 versioning `Enabled`
 
 Impact:
 
@@ -66,7 +99,7 @@ Recommendation:
 ### AUD-02 - CloudTrail chưa đủ hardening
 
 Priority: P1
-Status: Open
+Status: Open - runtime gap confirmed
 Evidence:
 
 - `infra/terraform/cloudtrail.tf`
@@ -76,6 +109,9 @@ Evidence:
 - Chưa thấy `kms_key_id`
 - Chưa thấy CloudWatch Logs integration
 - Chưa thấy data event selector
+- Runtime `describe-trails`: `LogFileValidationEnabled=false`
+- Runtime `get-trail-status`: `IsLogging=true`
+- Runtime `get-event-selectors`: `IncludeManagementEvents=true`, `DataResources=[]`
 
 Impact:
 
@@ -94,13 +130,17 @@ Recommendation:
 ### AUD-03 - AWS Config chưa thấy trong Terraform
 
 Priority: P1
-Status: Open
+Status: Open - runtime gap confirmed
 Evidence:
 
 - Scan static trong `infra/terraform` chưa thấy:
   - `aws_config_configuration_recorder`
   - `aws_config_delivery_channel`
   - `aws_config_config_rule`
+- Runtime AWS CLI:
+  - `ConfigurationRecorders=[]`
+  - `ConfigurationRecordersStatus=[]`
+  - `DeliveryChannels=[]`
 
 Impact:
 
@@ -116,32 +156,41 @@ Recommendation:
 ### AUD-04 - IAM Access Analyzer có IaC nhưng cần runtime evidence
 
 Priority: P1
-Status: Pending runtime evidence
+Status: Runtime confirmed, ticket cleanup pending
 Evidence:
 
 - `infra/terraform/iam.tf`
 - Resource `aws_accessanalyzer_analyzer.main`
 - `docs/audit/tickets/AUDIT-007-fix-security-findings.md` vẫn có dấu hiệu stale khi nói analyzer chưa created
+- Runtime `aws accessanalyzer list-analyzers`: analyzer `tf4-iam-analyzer` status `ACTIVE`
+- Runtime analyzer type: `ACCOUNT`
+- Runtime findings: có nhiều active findings cho IAM roles, cần review riêng
 
 Impact:
 
-- IaC đã có control, nhưng ticket/evidence chưa đồng bộ có thể gây sai lệch khi nghiệm thu.
+- Control đã tồn tại ở runtime, nhưng ticket/evidence chưa đồng bộ có thể gây sai lệch khi nghiệm thu.
+- Active findings của Access Analyzer cần được review để biết finding nào là expected access và finding nào cần xử lý.
 
 Recommendation:
 
-- Chạy `aws accessanalyzer list-analyzers`.
-- Lưu output vào `docs/evidence/epic-06-audit`.
+- Lưu output Access Analyzer vào `docs/evidence/epic-06-audit`.
 - Cập nhật ticket stale theo trạng thái mới.
+- Review danh sách active findings và phân loại expected/needs-action.
 
 ### AUD-05 - EKS endpoint CIDR mặc định mở rộng
 
 Priority: P1/P2
-Status: Open
+Status: Runtime confirmed
 Evidence:
 
 - `infra/terraform/variables.tf`
 - `allowed_cluster_endpoint_cidrs` default là `["0.0.0.0/0"]`
 - `infra/terraform/eks.tf` bật public endpoint
+- Runtime `aws eks describe-cluster` bằng default profile:
+  - `endpointPublicAccess=true`
+  - `endpointPrivateAccess=true`
+  - `publicAccessCidrs=["0.0.0.0/0"]`
+- Audit profile `TF4-AuditReadOnlyAndAnalyze` bị deny `eks:DescribeCluster`
 
 Impact:
 
@@ -156,12 +205,15 @@ Recommendation:
 ### AUD-06 - EKS audit log chưa bật đủ full control-plane logs
 
 Priority: P2
-Status: Open
+Status: Runtime confirmed
 Evidence:
 
 - `infra/terraform/eks.tf`
 - `cluster_enabled_log_types = ["api", "audit", "authenticator"]`
 - Chưa thấy `controllerManager`, `scheduler`
+- Runtime EKS logging:
+  - `api`, `audit`, `authenticator` enabled
+  - `controllerManager`, `scheduler` disabled
 
 Impact:
 
@@ -195,12 +247,13 @@ Recommendation:
 ### AUD-08 - Weekly Audit Report chưa có file riêng
 
 Priority: P2
-Status: Open
+Status: Static gap, runtime context available
 Evidence:
 
 - Có `docs/audit` và `docs/evidence`
 - Chưa thấy file weekly audit report riêng
 - `docs/audit/TEAM_ASSIGNMENT.md` ghi Member 4 là Evidence Collector
+- Runtime evidence hiện đã có thể đưa vào weekly report: CloudTrail, AWS Config, Access Analyzer, EKS, Kubernetes workload status
 
 Impact:
 
@@ -215,12 +268,14 @@ Recommendation:
 ### AUD-09 - Audit tickets cần cập nhật status theo evidence mới
 
 Priority: P2
-Status: Open
+Status: Open - runtime status changed
 Evidence:
 
 - `docs/audit/tickets/AUDIT-007-fix-security-findings.md`
 - `docs/audit/tickets/AUDIT-006-request-missing-iam-permissions.md`
 - `docs/audit/tickets/AUDIT-005-enable-access-analyzer.md`
+- Runtime đã xác nhận Access Analyzer ACTIVE, nên ticket nào ghi analyzer chưa created cần cập nhật
+- Runtime cũng xác nhận audit profile vẫn thiếu `eks:DescribeCluster`, `s3:GetBucketPublicAccessBlock`, `s3:GetEncryptionConfiguration`
 
 Impact:
 
@@ -252,7 +307,7 @@ Recommendation:
 - Tạo runbook cho CloudTrail, AWS Config, IAM Access Analyzer, EKS audit/RBAC, Grafana/OpenSearch evidence.
 - Định nghĩa command, expected output, nơi lưu file và owner.
 
-## 5. Cross-pillar observations
+## 6. Cross-pillar observations
 
 Những finding dưới đây được scan để lấy tổng quan. Đây là observation ngoài scope chính của CDO07 Auditability, nhưng có thể ảnh hưởng audit evidence hoặc forensic readiness.
 
@@ -287,35 +342,54 @@ Những finding dưới đây được scan để lấy tổng quan. Đây là o
 | OPS-01 | Image `latest` và remote artifact download trong Dockerfile | `frontend-proxy`, `ad`, `fraud-detection`, `kafka` Dockerfile | P2 | Ảnh hưởng supply-chain traceability |
 | OPS-02 | ECR mutable tags | `infra/terraform/ecr.tf` | P2 | Ảnh hưởng deployment audit evidence |
 
-## 6. Runtime evidence cần bổ sung
+Runtime Kubernetes observation bổ sung:
 
-AWS:
+- Namespace `techx-tf4`: tất cả deployments `1/1`, nhưng pod `accounting` có restart cao và event `BackOff`.
+- Namespace `techx-observability`: Grafana/Jaeger/Prometheus deployments `1/1`; pod Grafana `4/4 Running` nhưng có restart và event readiness/backoff trước đó.
+- Service Grafana/OpenSearch/Prometheus trong `techx-observability` hiện là `ClusterIP`, chưa thấy external service trực tiếp trong output runtime.
+- `techx-observability` có `poddisruptionbudget.policy/opensearch-pdb`; `techx-tf4` không thấy HPA/PDB/NetworkPolicy trong command đã chạy.
+
+## 7. Runtime evidence còn cần bổ sung
+
+Đã xác nhận bằng AWS CLI:
+
+- `aws sts get-caller-identity --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws cloudtrail describe-trails --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws cloudtrail get-trail-status --name tf4-general-cloudtrail --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws cloudtrail get-event-selectors --trail-name tf4-general-cloudtrail --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws accessanalyzer list-analyzers --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws configservice describe-configuration-recorders --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws configservice describe-configuration-recorder-status --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws configservice describe-delivery-channels --profile TF4-AuditReadOnlyAndAnalyze`
+- `aws eks describe-cluster --name techx-tf4-cluster` bằng default profile
+
+Đã xác nhận bằng `kubectl`:
+
+- `kubectl get ns`
+- `kubectl -n techx-tf4 get deploy,pod,svc,pvc,events`
+- `kubectl -n techx-observability get deploy,pod,svc,pvc,events`
+- `kubectl -n techx-tf4 get hpa,pdb,networkpolicy`
+- `kubectl -n techx-observability get hpa,pdb,networkpolicy`
+- `kubectl auth can-i --list -n techx-tf4`
+- `kubectl auth can-i --list -n techx-observability`
+
+Còn cần bổ sung hoặc đang bị blocker:
 
 ```bash
-aws sts get-caller-identity --profile TF4-AuditReadOnlyAndAnalyze
-aws cloudtrail describe-trails --profile TF4-AuditReadOnlyAndAnalyze
-aws cloudtrail get-trail-status --name tf4-general-cloudtrail --profile TF4-AuditReadOnlyAndAnalyze
-aws accessanalyzer list-analyzers --profile TF4-AuditReadOnlyAndAnalyze
-aws configservice describe-configuration-recorders --profile TF4-AuditReadOnlyAndAnalyze
-aws configservice describe-delivery-channels --profile TF4-AuditReadOnlyAndAnalyze
+aws s3api get-public-access-block --bucket tf4-cloudtrail-logs-bucket-511825856493 --profile TF4-AuditReadOnlyAndAnalyze
+aws s3api get-bucket-encryption --bucket tf4-cloudtrail-logs-bucket-511825856493 --profile TF4-AuditReadOnlyAndAnalyze
+aws eks describe-cluster --name techx-tf4-cluster --profile TF4-AuditReadOnlyAndAnalyze
 aws budgets describe-budgets --account-id <account-id> --profile TF4-AuditReadOnlyAndAnalyze
 ```
 
-Kubernetes:
+Các lệnh S3/EKS ở trên đang bị AccessDenied với audit profile và cần bổ sung permission nếu CDO07 phải tự thu evidence bằng profile audit.
 
-```bash
-kubectl get ns
-kubectl -n techx get deploy,pod,svc,pvc,events
-kubectl -n techx-observability get deploy,pod,svc,pvc,events
-kubectl -n techx-observability get hpa,pdb,networkpolicy
-kubectl auth can-i --list -n techx
-kubectl auth can-i --list -n techx-observability
-```
-
-## 7. Kết luận
+## 8. Kết luận
 
 Trạng thái hiện tại của phần CDO07 Auditability: PARTIAL PASS.
 
-Repo đã có nền tảng audit tốt: CODEOWNERS, audit checklist, evidence folder, ADR/runbook/postmortem template, CloudTrail basic và IAM Access Analyzer IaC. Tuy nhiên, các control chưa đủ để nghiệm thu hoàn chỉnh vì còn thiếu CloudTrail hardening, AWS Config, runtime evidence, weekly audit report và runbook evidence collection.
+Repo đã có nền tảng audit tốt: CODEOWNERS, audit checklist, evidence folder, ADR/runbook/postmortem template, CloudTrail basic và IAM Access Analyzer IaC. Runtime verification xác nhận CloudTrail đang logging, S3 versioning đã bật và Access Analyzer đang ACTIVE.
+
+Các gap P1 vẫn còn rõ sau runtime verification: CloudTrail log validation đang disabled, CloudTrail chưa có data event selector, AWS Config chưa có recorder/delivery channel, EKS API endpoint đang public `0.0.0.0/0`, EKS chưa bật `controllerManager`/`scheduler` logs, và audit profile vẫn thiếu một số quyền đọc evidence quan trọng.
 
 Đây là bản static scan report. Các finding Security/Reliability/Operational Excellence được ghi nhận như observation ngoài scope chính của CDO07 Auditability.
