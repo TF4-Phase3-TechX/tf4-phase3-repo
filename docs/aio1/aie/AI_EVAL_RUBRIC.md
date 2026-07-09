@@ -42,9 +42,25 @@ Chúng tôi đánh giá các phản hồi do AI tạo ra trên bốn trụ cột
 
 ## 2. Các Test Case Đánh Giá Ban Đầu (Initial Test Cases)
 
-Các test case được thiết lập dựa trên dữ liệu thực tế từ database PostgreSQL và lưu trữ tại [eval_dataset.json](file://tests/eval/eval_dataset.json). Mỗi test case bao gồm:
+Các test case được thiết lập dựa trên dữ liệu thực tế từ database PostgreSQL và lưu trữ tại [eval_dataset.json](../../../tests/eval/eval_dataset.json). Dataset hiện có 12 seed cases và có thể tái sử dụng khi chuyển từ Mock LLM sang Real LLM. Mỗi test case bao gồm:
 - **ID & Product ID**: Mã định danh của test case và sản phẩm mục tiêu trong database.
 - **Query / Prompt**: Câu hỏi đầu vào của người dùng hoặc yêu cầu tóm tắt.
 - **Context (Reviews)**: Các đánh giá thực tế của người dùng được trích xuất từ database PostgreSQL để làm ngữ cảnh.
 - **Expected Key Points**: Các từ khóa/ý kiến bắt buộc phải có trong câu trả lời của AI để đảm bảo tính đầy đủ và chính xác.
 - **Negative Indicators**: Các lỗi/hallucinations cụ thể cần kiểm tra để đảm bảo AI không mắc phải.
+
+## 3. Done Criteria cho Week 1 vs Week 2
+
+Week 1 scope:
+
+- Define rubric.
+- Create/review seed eval cases.
+- Confirm dataset format is reusable.
+- State clearly that Mock LLM results are integration/eval-pipeline evidence only.
+
+Week 2 scope:
+
+- Add an eval runner/report if not already present.
+- Run the same dataset against controlled Real LLM mode.
+- Compare Real LLM answers against the rubric.
+- Attach pass/fail report and limitations before claiming model quality.

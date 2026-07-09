@@ -108,6 +108,10 @@ Evidence files in PR:
 | P1 | Fix `TF4AIO-10` status/comment conflict: completed public-route smoke evidence vs blocked kubeconfig note | Văn -> Nam |
 | P1 | Supersede `TF4AIO-21` pitch note overclaims with conservative wording from the Jira audit | Thông -> Nam |
 | P1 | Add repo-backed Jira comment for `TF4AIO-12` if owner wants it moved to In Review | Hòa -> Nam |
+| P1 | Add W2 task for controlled real LLM enable/cutover; current plan has readiness but not explicit enablement | Văn -> Nam |
+| P1 | Clarify mock eval task as eval-pipeline validation, not model-quality measurement | Vũ -> Thông |
+| P1 | Add AIOps detector output/notification channel task | Hòa -> Thông |
+| P1 | Add W2 priority/de-scope rule and PM backup owner | Nam -> Thông |
 | P2 | Keep `w01/` as supplemental raw evidence; use `docs/evidence/aio1-week1/` as canonical evidence folder | Nam |
 
 ## 7. Full project task plan
@@ -125,10 +129,11 @@ Goal: make AI feature measurable, safer, more reliable, and ready for real LLM /
 | W1 | Record AI findings/gaps | Nam -> Thông | AI-01, AI-02, real LLM gap, eval/fallback/cost gap | `TF4AIO-11` In Review |
 | W1-W2 | Define eval rubric and initial cases | Vũ | Faithfulness/relevance/safety rubric + 5-10 cases | `TF4AIO-15` In Review; no automated eval report yet |
 | W1-W2 | Audit AI telemetry gaps | Thông | Missing latency/token/cost/error/fallback metrics identified | `TF4AIO-16` In Progress |
-| W2 | Run eval on mock/current LLM | Vũ | Pass/fail report, limitation clearly stated | New Jira task needed |
+| W2 | Run eval on mock/current LLM | Vũ | Validate eval pipeline end-to-end using mock/current LLM; output deterministic report; explicitly state this is not real model-quality evidence | New Jira task needed |
 | W2 | Add/test safe fallback for LLM failure | Văn | Timeout/rate-limit/unavailable returns safe fallback | New Jira task needed |
 | W2 | Test incident flags `llmRateLimitError` and `llmInaccurateResponse` | Văn | Flags still work and are not bypassed | New Jira task needed |
 | W2 | Add real LLM readiness checklist | Thông -> Nam | Secret/config/eval/fallback/cost gate checklist | New Jira task needed |
+| W2 | Enable real LLM in controlled mode | Văn -> Nam | Select provider/model; configure `LLM_BASE_URL`, `LLM_MODEL`, secret path; smoke test 1-2 products; compare with eval rubric; document rollback to mock LLM; do not claim production readiness until eval/fallback/cost telemetry pass | New Jira task needed |
 | W2 | Implement prompt injection guardrail for review content | Văn -> Vũ | Injection from review content cannot override summarization intent | New Jira task needed |
 | W2 | Implement PII and system prompt output filter | Văn -> Vũ | Output does not expose PII or system prompt content | New Jira task needed |
 | W2 | Fix DB connection pooling in `product-reviews` | Văn -> Nam | No new DB connection per request under load | New Jira task needed |
@@ -143,6 +148,22 @@ Goal: make AI feature measurable, safer, more reliable, and ready for real LLM /
 | W2-W3 | Implement agent loop limit and tool audit log | Văn -> Vũ | Max loop limit enforced; tool arguments logged | New Jira task needed |
 | W3 | Cart action with confirmation gate | Văn -> Vũ | No cart mutation without explicit confirmation | New Jira task needed |
 | W3 | Copilot task-success eval | Vũ | Task success/failure report for core intents | New Jira task needed |
+
+#### 7.1.1 W2 AIE priority and de-scope rule
+
+Mentor review note: W2 AIE has many tasks for 3 people, while Thông also acts as PM and the team must reserve 20% capacity. Use this priority rule if BTC injects incidents or new mandatory work.
+
+| Priority | Work | De-scope rule |
+| --- | --- | --- |
+| P0 — do not defer | Real LLM readiness checklist; controlled real LLM enable/cutover; eval pipeline + seed dataset; safe fallback/timeout; token/cost/latency telemetry baseline | Keep even if incident work appears, because these unblock all W2/W3 AI work and prevent unsafe real LLM claims. |
+| P1 — do after P0 | Prompt injection guardrail; PII/system prompt output filter; `llmRateLimitError` / `llmInaccurateResponse` tests | Can be split across W2/W3 if incident load is high, but must be finished before real LLM is treated as production-like. |
+| P2 — defer first | Frontend E2E AI latency metric; GitHub Actions eval gate; extended Copilot intents | Defer if BTC incident, mentor directive, or CDO dependency consumes buffer. |
+
+Mock eval clarification:
+
+```txt
+Run eval on mock/current LLM validates that the eval dataset, rubric, runner, and report format work end-to-end. It is not a claim that the mock response measures real model quality.
+```
 
 ### 7.2 AIOps track — AI for Operations
 
@@ -159,6 +180,7 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W2 | Define detection rules/thresholds | Hòa -> Hậu | Rule spec for selected incidents | New Jira task needed |
 | W2-W3 | Build rule-based detector prototype | Hậu -> Tâm | Detector runs on sample/live metrics | New Jira task needed |
 | W2-W3 | Deploy detector as continuous K8s workload | Hậu -> Tâm | Detector runs automatically every 1-2 minutes as CronJob/Pod or equivalent | New Jira task needed |
+| W2-W3 | Define AIOps detector notification/output channel | Hòa -> Thông | Decide first output channel; W2 minimum is structured detector output to logs/OpenSearch with incident type, severity, evidence query/link, affected service, confidence, and runbook hint; W3 can upgrade to Slack/webhook/Grafana alert | New Jira task needed |
 | W2-W3 | Detect AI-specific LLM timeout/error | Hậu -> Tâm | Detector identifies AI path issue when signal exists | New Jira task needed |
 | W2-W3 | Define incident summary format | Nam -> Hòa | Summary template with symptoms/evidence/impact | New Jira task needed |
 | W2-W3 | Build incident summary MVP | Tâm -> Hậu | Summary generated from detector signals | New Jira task needed |
@@ -167,11 +189,20 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W3 | Validate LLM timeout/error signal | Hậu -> Tâm | AIOps recognizes AI path issue; AIE dependency noted | New Jira task needed |
 | W3 | Write AIOps validation report | Hòa -> Nam | What worked, what failed, false positives/limitations | New Jira task needed |
 
+#### 7.2.1 AIOps deployment constraints
+
+- Detector must be lightweight. It must not consume enough CPU/memory/network to degrade core service SLOs or budget.
+- Detector must read telemetry only. It must not modify incident flags, flagd config, service traffic, or BTC-owned failure-injection paths.
+- W2 output can be log/OpenSearch based. Alert/webhook/Grafana integration can be W3 if W2 capacity is constrained.
+- Detection without an output channel is not operationally useful; every detector result must be visible to the on-call/reviewer through at least one agreed channel.
+
 ### 7.3 Operational / PM track
 
 Owner group: Nam, Thông.
 
 Goal: keep project defensible with evidence, PRs, decision logs, readiness notes, budget awareness, and review material.
+
+PM backup rule: Thông is the PM owner, but Nam backs up evidence/status/reporting if W2 incident load makes PM a bottleneck.
 
 | Phase | Task | Owner | Output / Done Criteria | Jira status |
 | --- | --- | --- | --- | --- |
@@ -196,6 +227,7 @@ The current Jira board has Week 1 tasks plus high-level epics. The following tas
 - `[W2][AIE] Implement/test safe fallback for LLM failure`
 - `[W2][AIE] Test LLM incident flags`
 - `[W2][AIE] Add real LLM readiness checklist`
+- `[W2][AIE] Enable real LLM in controlled mode`
 - `[W2][AIE] Implement prompt injection guardrail for review content`
 - `[W2][AIE] Implement PII and system prompt output filter`
 - `[W2][AIE] Fix DB connection pooling in product-reviews`
@@ -220,6 +252,7 @@ The current Jira board has Week 1 tasks plus high-level epics. The following tas
 - `[W2][AIOPS] Define detection rules and thresholds`
 - `[W2-W3][AIOPS] Build rule-based detector prototype`
 - `[W2-W3][AIOPS] Deploy detector as continuous K8s workload`
+- `[W2-W3][AIOPS] Define AIOps detector notification/output channel`
 - `[W2-W3][AIOPS] Detect AI-specific LLM timeout/error`
 - `[W2-W3][AIOPS] Define incident summary format`
 - `[W2-W3][AIOPS] Build incident summary MVP`
@@ -251,6 +284,9 @@ Before entering W2, the remaining planning actions are:
 - Create the missing W2/W3 Jira tickets listed in Section 8.
 - Keep 20% capacity unassigned for BTC directive and incident response.
 - Use `Primary -> Reviewer` ownership for all new tasks.
+- Add controlled real LLM enable/cutover as an explicit W2 task, not only a readiness checklist.
+- Treat mock eval as eval-pipeline validation only; real model-quality evidence starts after controlled real LLM is enabled.
+- Define where AIOps detector output goes before claiming operational detector readiness.
 
 ## 10. AI gap reasoning to defend backlog
 
