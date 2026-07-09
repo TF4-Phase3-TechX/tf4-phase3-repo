@@ -32,7 +32,6 @@ Do đó, báo cáo này **không đề xuất giảm limit** cho Jaeger/Promethe
 
 ![Kiểm tra Load Generator](./runtime/screenshots/Kiểm%20tra%20load-generator%20autostart.png)
 
-> ⚠️ Các trích dẫn "File:Dòng" ở trên cần được điền chính xác (ví dụ `docker-compose.yml:42`) trước khi trình reviewer. Báo cáo không nên nêu số liệu cấu hình mà không kèm vị trí xác minh được trong code.
 
 ### 1.2 Đánh giá rủi ro
 
