@@ -34,76 +34,48 @@ Cụm hiện có 8 dashboards được provision sẵn, kiểm tra qua API `/api
 
 | Tên Dashboard | Mục tiêu giám sát | Ảnh minh chứng |
 | :--- | :--- | :--- |
-| **APM Dashboard (Jaeger, Prometheus, OpenSearch)** | Dashboard trung tâm liên kết Metrics, Logs, Traces cho microservices | ![APM Dashboard](./apm-dashboard.png) |
-| **Cart Service Exemplars** | Giám sát dịch vụ Cart sử dụng Prometheus Exemplars để trace nhanh | ![Cart Service Exemplars](./cart-service-exemplars.png) |
-| **Demo Dashboard** | Tổng quan về sức khỏe hệ thống và các microservices | ![Demo Dashboard](./demo-dashboard.png) |
-| **Linux** | Theo dõi thông số CPU, RAM, Disk, Network của Node qua hostmetrics | ![Linux](./linux.png) |
-| **OpenTelemetry Collector** | Theo dõi hiệu năng xử lý, rate nhận/gửi và drop data của OTel Collector | ![OpenTelemetry Collector](./opentelemetry-collector.png) |
-| **PostgreSQL** | Theo dõi connections, transaction rate, cache hit rate của Postgres DB | ![PostgreSQL](./postgresql.png) |
-| **Spanmetrics Demo Dashboard** | Dashboard sinh metrics tự động từ trace span bằng OTel Spanmetrics | ![Spanmetrics Demo Dashboard](./spanmetrics-demo-dashboard.png) |
-| **[Image-Provider] NGINX Metrics** | Theo dõi tải, HTTP status code và connections của Image Provider Nginx | ![NGINX Metrics](./nginx-metrics.png) |
+| **APM Dashboard (Jaeger, Prometheus, OpenSearch)** | Dashboard trung tâm liên kết Metrics, Logs, Traces cho microservices | ![APM Dashboard](./screenshots/apm-dashboard.png) |
+| **Cart Service Exemplars** | Giám sát dịch vụ Cart sử dụng Prometheus Exemplars để trace nhanh | ![Cart Service Exemplars](./screenshots/cart-service-exemplars.png) |
+| **Demo Dashboard** | Tổng quan về sức khỏe hệ thống và các microservices | ![Demo Dashboard](./screenshots/demo-dashboard.png) |
+| **Linux** | Theo dõi thông số CPU, RAM, Disk, Network của Node qua hostmetrics | ![Linux](./screenshots/linux.png) |
+| **OpenTelemetry Collector** | Theo dõi hiệu năng xử lý, rate nhận/gửi và drop data của OTel Collector | ![OpenTelemetry Collector](./screenshots/opentelemetry-collector.png) |
+| **PostgreSQL** | Theo dõi connections, transaction rate, cache hit rate của Postgres DB | ![PostgreSQL](./screenshots/postgresql.png) |
+| **Spanmetrics Demo Dashboard** | Dashboard sinh metrics tự động từ trace span bằng OTel Spanmetrics | ![Spanmetrics Demo Dashboard](./screenshots/spanmetrics-demo-dashboard.png) |
+| **[Image-Provider] NGINX Metrics** | Theo dõi tải, HTTP status code và connections của Image Provider Nginx | ![NGINX Metrics](./screenshots/nginx-metrics.png) |
 
 ---
 
 ## 2. Findings (Các lỗi và khoảng trống giám sát phát hiện)
 
-### 2.1 Finding 1: Thiếu hụt Alertmanager (Alerting Gap)
-* **Finding ID:** OBS-01
-* **Mô tả lỗi/gap:** Hệ thống hoàn toàn không có khả năng tự động gửi cảnh báo (Alert) khi xảy ra sự cố nghiêm trọng hoặc vi phạm SLO.
-* **Pillar liên quan:** Reliability
-* **Service/Component ảnh hưởng:** Toàn cụm EKS (Namespace `techx-tf4`), file cấu hình Helm [deploy/values-observability.yaml](../../../deploy/values-observability.yaml).
-* **Evidence:**
-  * Kiểm tra lúc `2026-07-09 08:15:00`: Truy vấn Prometheus `target_info{k8s_pod_name=~".*alertmanager.*"}` trả về kết quả trống (`result: []`).
-  * Grafana API `/api/datasources` không cấu hình bất kỳ Alertmanager data source nào.
-  * Tệp đánh giá [PHASE3-IMPLEMENTATION-GAP-ASSESSMENT.md](../../../PHASE3-IMPLEMENTATION-GAP-ASSESSMENT.md) ghi nhận: `prometheus: persistence disabled, alertmanager disabled`.
-* **Impact (Tác động):** Khi tỷ lệ lỗi Checkout vượt quá ngưỡng SLO 1% hoặc xảy ra sự cố nghẽn mạng, đội ngũ SRE và vận hành sẽ hoàn toàn bị động, không nhận được cảnh báo tức thời qua Slack/Email. MTTD kéo dài làm tăng trực tiếp thiệt hại doanh thu của luồng thanh toán.
-* **Đề xuất xử lý:**
-  1. Bật Alertmanager trong cấu hình Helm values của subchart Prometheus (`alertmanager.enabled = true`).
-  2. Định nghĩa Alerting Rules cho luồng Checkout dựa trên các câu lệnh PromQL gRPC đã chuẩn hóa.
-  3. Cấu hình Alertmanager Config để đẩy cảnh báo về Slack webhook của nhóm CDO08.
-* **Priority đề xuất:** P0 (Yêu cầu xử lý gấp để bảo vệ SLO)
-* **Owner phối hợp:** Quyết / Hải (AIO / Slack Integration)
+### 2.1 Finding 1: Các khoảng trống quan trọng về Độ tin cậy (Reliability) và Bảo mật (Security) của hệ thống Observability
+* **Finding ID:** OBS-SEC-01
+* **Mô tả lỗi/gap:** Hệ thống giám sát hiện tại tồn tại các khoảng trống lớn về tính sẵn sàng, khả năng lưu trữ, cơ chế cảnh báo tự động và bảo mật thông tin trace.
+* **Pillar liên quan:** Reliability & Security
+* **Service/Component ảnh hưởng:** Toàn bộ stack Observability (Prometheus, Grafana, Jaeger, OTel Collector) trong namespace `techx-observability`.
+* **Chi tiết các gap được phát hiện:**
 
-### 2.2 Finding 2: Prometheus Server không có ổ đĩa lưu trữ vĩnh viễn (Storage Persistence Gap)
-* **Finding ID:** OBS-02
-* **Mô tả lỗi/gap:** Mất toàn bộ dữ liệu lịch sử giám sát (Metrics) khi Pod Prometheus bị khởi động lại hoặc Node bị bảo trì (drain/maintenance).
-* **Pillar liên quan:** Reliability
-* **Service/Component ảnh hưởng:** Pod `prometheus-59744b5c47-dtffl`, file cấu hình Helm [deploy/values-observability.yaml](../../../deploy/values-observability.yaml).
-* **Evidence:**
-  * Kiểm tra lúc `2026-07-09 08:15:00`: Cấu hình lưu trữ của Prometheus Server trên EKS hiện đang sử dụng `emptyDir` (tạm thời) thay vì `PersistentVolumeClaim` (PVC).
-  * Tài liệu [PHASE3-IMPLEMENTATION-GAP-ASSESSMENT.md](../../../PHASE3-IMPLEMENTATION-GAP-ASSESSMENT.md) xác nhận: `prometheus: persistence disabled`.
-* **Impact (Tác động):** Khi Pod Prometheus bị OOM-Killed hoặc khi cụm thực hiện cập nhật node, toàn bộ lịch sử chỉ số dùng để tính toán SLO/Error Budget trong 30 ngày qua sẽ bị xóa sạch. Không thể vẽ biểu đồ xu hướng dài hạn, gây mất dấu vết audit hoạt động của hệ thống.
-* **Đề xuất xử lý:**
-  * Bật cấu hình `server.persistentVolume.enabled = true` trong cấu hình Prometheus subchart, chỉ định StorageClass `gp3` (EBS) để tự động cấp phát ổ đĩa lưu trữ an toàn trên AWS.
-* **Priority đề xuất:** P1
-* **Owner phối hợp:** Quyết / Nam (CDO08 Infrastructure)
+  1. **Thiếu hụt Alertmanager (P0 - Critical):** 
+     * *Hiện trạng:* Không chạy Pod Alertmanager (`result: []` khi quét API) và không có data source cảnh báo trên Grafana.
+     * *Tác động:* Không thể gửi cảnh báo tự động khi vi phạm SLO Checkout (lỗi > 1% hoặc latency > 2s). SRE hoàn toàn bị động khi có sự cố.
+     * *Đề xuất:* Kích hoạt `alertmanager.enabled = true` trong Helm và cấu hình Alerting Rules gửi về Slack.
 
-### 2.3 Finding 3: Jaeger UI phơi lộ công cộng không có cơ chế xác thực (Security/Observability Exposure Gap)
-* **Finding ID:** SEC-01
-* **Mô tả lỗi/gap:** Giao diện điều khiển Jaeger UI (`/jaeger/ui/`) truy cập được tự do từ Internet công cộng mà không yêu cầu mật khẩu hay tường lửa.
-* **Pillar liên quan:** Security
-* **Service/Component ảnh hưởng:** `jaeger` service, file cấu hình [deploy/ingress.yaml](../../../deploy/ingress.yaml).
-* **Evidence:**
-  * Kiểm tra lúc `2026-07-09 08:15:00`: Endpoint `http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com/jaeger/ui/` trả về mã trạng thái `HTTP 200 OK` trực tiếp cho bất kỳ ai truy cập từ ngoài Internet mà không cần xác thực.
-* **Impact (Tác động):** Kẻ tấn công có thể khai thác và xem toàn bộ Trace hệ thống. Các trace chứa thông tin cực kỳ nhạy cảm như cấu trúc API, payload giao dịch của khách hàng (user ID, order details), tham số kết nối, và luồng gọi nội bộ giữa các service. Rò rỉ thông tin này tạo điều kiện cho các cuộc tấn công khai thác sâu hơn.
-* **Đề xuất xử lý:**
-  * Cấu hình Basic Authentication (htpasswd) hoặc tích hợp OAuth Proxy vào phần Ingress Controller (ALB Ingress annotations) hoặc cấu hình chỉ cho phép IP từ VPN nội bộ.
-* **Priority đề xuất:** P1
-* **Owner phối hợp:** Quyết / Nam (CDO08 Security)
+  2. **Prometheus Server thiếu lưu trữ vĩnh viễn PVC (P1 - High):**
+     * *Hiện trạng:* Prometheus đang dùng `emptyDir` tạm thời thay vì `PersistentVolumeClaim` (PVC).
+     * *Tác động:* Mất sạch dữ liệu metrics lịch sử 30 ngày qua để tính toán SLO/Error Budget mỗi khi Pod bị restart hoặc Node bảo trì.
+     * *Đề xuất:* Bật `server.persistentVolume.enabled = true` trỏ về StorageClass `gp3` (AWS EBS).
 
-### 2.4 Finding 4: Log tập trung chưa được liên kết tự động vào Trace (Trace-to-Log Gap)
-* **Finding ID:** OBS-03
-* **Mô tả lỗi/gap:** Khó khăn và mất nhiều thời gian trong việc gỡ lỗi (debug) giao dịch do Log trong OpenSearch chưa tự động ánh xạ với Trace ID trên Jaeger.
-* **Pillar liên quan:** Reliability / Operational Excellence
-* **Service/Component ảnh hưởng:** `opensearch-0`, `otel-collector-agent` DaemonSet.
-* **Evidence:**
-  * Kiểm tra lúc `2026-07-09 08:15:00`: Kiểm tra cấu hình log pipeline của OTel Collector: Log từ các service Go (như `checkout`) đẩy về dạng text thô, các trường `trace_id` và `span_id` không được chuẩn hóa thành Attributes có cấu trúc trong OpenSearch index `otel-logs-*`.
-  * Tính năng "Traces to Logs" trên Grafana trả về kết quả rỗng do không tìm thấy log khớp `traceId`.
-* **Impact (Tác động):** Khi xảy ra sự cố thanh toán bị lỗi, kỹ sư tìm thấy Trace ID bị lỗi nhưng khi click "View Logs" để xem chi tiết lý do thì không hiển thị log liên quan. Kỹ sư buộc phải tìm kiếm thủ công bằng text trên OpenSearch, làm tăng đáng kể thời gian khôi phục dịch vụ (MTTR).
-* **Đề xuất xử lý:**
-  * Cấu hình lại `processors` trong OTel Collector (sử dụng processor `logstransform` hoặc `slog` định dạng JSON từ phía ứng dụng) để tự động bóc tách và chèn `trace_id` / `span_id` vào trường dữ liệu có cấu trúc của log trước khi lưu trữ vào OpenSearch.
-* **Priority đề xuất:** P1
-* **Owner phối hợp:** Quyết / Hải (AIO / Logs Pipeline)
+  3. **Jaeger UI phơi lộ công cộng không xác thực (P1 - High):**
+     * *Hiện trạng:* Giao diện Jaeger UI truy cập tự do từ Internet tại link ALB mà không yêu cầu username/password.
+     * *Tác động:* Rò rỉ dữ liệu giao dịch nhạy cảm của khách hàng, cấu trúc API và luồng kết nối microservices ra ngoài.
+     * *Đề xuất:* Thêm Basic Authentication (htpasswd) hoặc tích hợp OAuth Proxy vào cấu hình Ingress ALB.
+
+  4. **Thiếu liên kết tự động Trace-to-Log (P1 - High):**
+     * *Hiện trạng:* Log của các service trong OpenSearch chưa được bóc tách và gán trường `trace_id` có cấu trúc.
+     * *Tác động:* Tính năng "View Logs" từ Trace ID trên Jaeger trả về rỗng, kỹ sư phải tìm tay trên OpenSearch, làm tăng MTTR gỡ lỗi.
+     * *Đề xuất:* Cấu hình `processors` của OTel Collector để tự động ánh xạ Trace ID vào Log attributes trước khi lưu vào OpenSearch.
+
+* **Priority tổng thể đề xuất:** **P0**
+* **Owner phối hợp:** Quyết / Hải (AIO) / Nam (Infra)
 
 ---
 
@@ -204,6 +176,35 @@ Các lệnh kiểm tra này yêu cầu thực thi lệnh bên trong container (`
   # Kỳ vọng: Trả về kết quả "open" hoặc "Connection succeeded!"
   ```
 
+### 4.3 Nhóm 3: Kiểm tra và Vận hành Helm Releases (Yêu cầu Deploy Operator thực hiện)
+Do CLI `helm` không được cài đặt trên máy local của CDO08 và các bản cài Helm chạy chéo các namespace bảo mật, Deploy Operator cần thực hiện các lệnh sau để hỗ trợ kiểm tra trạng thái và đồng bộ cấu hình:
+
+* **Liệt kê toàn bộ Helm releases trên EKS Cluster (Xác định các stack đang chạy):**
+  ```bash
+  helm list -A
+  ```
+* **Kiểm tra trạng thái deploy chi tiết của ứng dụng (App release):**
+  ```bash
+  helm status techx-corp -n techx-tf4
+  ```
+* **Kiểm tra trạng thái deploy chi tiết của hệ thống giám sát (Observability release):**
+  ```bash
+  helm status techx-observability -n techx-observability
+  ```
+* **Lệnh deploy cập nhật App-only (Đã tách observability):**
+  ```bash
+  helm upgrade --install techx-corp ./techx-corp-chart \
+    -n techx-tf4 \
+    -f deploy/values-app-stamp.yaml \
+    -f deploy/values-flagd-sync.yaml
+  ```
+* **Lệnh deploy cập nhật Observability (Độc lập):**
+  ```bash
+  helm upgrade --install techx-observability ./techx-corp-chart \
+    -n techx-observability \
+    -f deploy/values-observability.yaml
+  ```
+
 ---
 
 ## 5. Backlog Candidates ( PM Backlog Input )
@@ -212,9 +213,9 @@ Danh sách các issues được đề xuất đưa vào `cdo08-week1-backlog.md`
 
 | Issue ID | Tên công việc (Work Item) | Gaps/Findings liên quan | Pillar | Tác động Business / SLO | Độ phức tạp | Đề xuất Priority | Owner chính |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **SLO-ALERT-01** | Bật Alertmanager và cấu hình Alerting Rules cho Checkout SLO | OBS-01 | Reliability | Giảm MTTD từ vô hạn xuống dưới 5 phút; bảo vệ Error Budget của Checkout SLO khỏi bị cháy âm thầm. | Medium | **P0** | Quyết / Hải |
+| **SLO-ALERT-01** | Bật Alertmanager và cấu hình Alerting Rules cho Checkout SLO | OBS-SEC-01 | Reliability | Giảm MTTD từ vô hạn xuống dưới 5 phút; bảo vệ Error Budget của Checkout SLO khỏi bị cháy âm thầm. | Medium | **P0** | Quyết / Hải |
 | **K8S-PROBE-01** | Cấu hình Liveness/Readiness Probes hệ thống microservices | K8S-01 | Reliability | Ngăn chặn traffic đi vào các Pod chưa khởi động xong hoặc bị treo (lỗi 5xx cho khách hàng). | Easy | **P0** | Nam |
-| **OBS-PERSIST-01**| Cấu hình Persistent Volume (PVC) cho Prometheus Server | OBS-02 | Reliability | Giữ lại dữ liệu metrics lịch sử khi Prometheus Pod bị restart; đảm bảo tính liên tục của báo cáo SLO. | Medium | **P1** | Quyết / Nam |
-| **SEC-JAEGER-01** | Cấu hình Basic Authentication / Ingress Hardening cho Jaeger UI | SEC-01 | Security | Ngăn chặn rò rỉ dữ liệu nhạy cảm của khách hàng và cấu trúc hệ thống ra Internet công cộng. | Medium | **P1** | Quyết / Nam |
-| **OBS-LINK-01** | Thiết lập liên kết Trace-to-Log tự động qua OpenTelemetry Collector | OBS-03 | Reliability | Giảm MTTR khi xử lý sự cố. SRE có thể click xem ngay log của một request bị lỗi từ Jaeger Trace. | Medium | **P1** | Quyết / Hải |
+| **OBS-PERSIST-01**| Cấu hình Persistent Volume (PVC) cho Prometheus Server | OBS-SEC-01 | Reliability | Giữ lại dữ liệu metrics lịch sử khi Prometheus Pod bị restart; đảm bảo tính liên tục của báo cáo SLO. | Medium | **P1** | Quyết / Nam |
+| **SEC-JAEGER-01** | Cấu hình Basic Authentication / Ingress Hardening cho Jaeger UI | OBS-SEC-01 | Security | Ngăn chặn rò rỉ dữ liệu nhạy cảm của khách hàng và cấu trúc hệ thống ra Internet công cộng. | Medium | **P1** | Quyết / Nam |
+| **OBS-LINK-01** | Thiết lập liên kết Trace-to-Log tự động qua OpenTelemetry Collector | OBS-SEC-01 | Reliability | Giảm MTTR khi xử lý sự cố. SRE có thể click xem ngay log của một request bị lỗi từ Jaeger Trace. | Medium | **P1** | Quyết / Hải |
 | **DB-PERSIST-01** | Thiết lập StatefulSet & PVC cho PostgreSQL, Valkey, Kafka | K8S-04, REL-06 | Reliability | Ngăn chặn mất mát dữ liệu giỏ hàng, thông tin đơn hàng và lịch sử event khi Pod DB/Queue bị restart. | High | **P1** | Phương |
