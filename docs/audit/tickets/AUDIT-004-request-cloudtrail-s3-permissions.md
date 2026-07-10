@@ -1,4 +1,4 @@
-# [AUDIT-003] [Task] Yêu cầu triển khai CloudTrail/S3 Log Bucket và cấp quyền Read-Only cho nhóm Audit CDO07
+# [AUDIT-004] [Task] Yêu cầu triển khai CloudTrail/S3 Log Bucket và cấp quyền Read-Only cho nhóm Audit CDO07
 
 **Trạng thái**: TO DO
 **Người yêu cầu (Reporter)**: Nhóm CDO07 (Audit)

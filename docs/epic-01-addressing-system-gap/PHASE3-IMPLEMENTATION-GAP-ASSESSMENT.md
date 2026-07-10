@@ -252,7 +252,7 @@ Required Opus subagent review was run after initial scan. Its top findings were 
 - Failure or abuse scenario: Team applies sample quota, Helm deploy fails for missing CPU requests/limits; or CPU-heavy flag path starves revenue services.
 - Business and SLO impact: Bad deploy baseline or noisy-neighbor CPU contention affects checkout/browse.
 - Why this matters in Phase 3: Budget and scaling decisions need real resource baselines.
-- Recommended remediation direction: Measure `kubectl top` under baseline load, then set conservative requests/limits for revenue services first; add LimitRange or adjust quota plan.
+- Recommended remediation direction: Measure CPU/memory through Prometheus/Grafana under baseline load, then set conservative requests/limits for revenue services first; add LimitRange or adjust quota plan.
 - Runtime validation: Apply quota in test namespace and run Helm dry-run/apply; inspect effective pod QoS and throttling.
 - Rollback or safety constraint: Too-low limits cause OOM/throttling; change one tier at a time.
 - Complexity: M
@@ -672,7 +672,7 @@ Required Opus subagent review was run after initial scan. Its top findings were 
 | P1 | Redact AI/prompt/payment/customer telemetry | AI-01, OBS-02, SEC-01 | Fast privacy risk reduction before real LLM | no prompt/payment/email content in logs/traces | S | Yes | submit marker and search logs/traces | debug-only overlay restores capture |
 | P1 | Add AI fallback/eval/cost baseline before real model | AI-02 | SLO says no misleading AI; AIO overlay currently only swaps model/key | eval checklist, fallback UX, token/cost metrics | M | Yes | 429/timeout/inaccurate flag tests | revert to mock LLM |
 | P2 | Fix cart API ownership/quantity validation | SEC-04, REL-03 | Prevents cart abuse and bad order quantities | server-side session validation and quantity bounds | S | No | negative quantity/cross-cart tests | revert API handler |
-| P2 | Right-size resources and load-generator behavior | K8S-03, COST-01 | Cost/perf needs data; load-generator can skew baseline | measured requests/limits and explicit load profile | M | Yes | `kubectl top`, quota admission test | revert values |
+| P2 | Right-size resources and load-generator behavior | K8S-03, COST-01 | Cost/perf needs data; load-generator can skew baseline | measured requests/limits and explicit load profile | M | Yes | Prometheus/Grafana resource metrics, quota admission test | revert values |
 | P2 | Search/browse performance improvements | PERF-01, PERF-02 | Meaningful but after revenue/integrity controls | fewer fan-out calls, bounded search | M | Yes | trace fan-out, EXPLAIN ANALYZE | revert code/index migration |
 | P2 | Restore repo auditability artifacts | OBS-03 | Required for deliverables, low runtime risk | CODEOWNERS/templates/decision log | S | No | GitHub branch protection/CODEOWNERS check | revert docs/config |
 
