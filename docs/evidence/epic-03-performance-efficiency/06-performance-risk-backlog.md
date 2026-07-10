@@ -12,7 +12,7 @@ Tài liệu này tổng hợp các rủi ro hiệu năng còn lại của hệ t
 | **2** | **Nghẽn/Sập Node do thiếu giới hạn CPU** | Trung bình / Cao | Hầu hết các service chưa có CPU requests/limits. Một service bị loop hoặc tải cao có thể chiếm dụng toàn bộ CPU của Node, gây ảnh hưởng đến các service chạy chung Node. | Áp dụng cấu hình CPU Requests & Limits đã đề xuất trong tài liệu [Right-sizing](file:///D:/tf4-phase3-repo/docs/evidence/epic-03-performance-efficiency/05-scaling-right-sizing-recommendation.md). |
 | **3** | **Lỗi OOM-Killed khi chạy tải cao ở dịch vụ Go** | Trung bình / Trung bình | Cấu hình `checkout` hiện tại quá sát (`limit 20Mi` và `GOMEMLIMIT 16MiB`). Khi lượng order tăng đột biến, GC không giải phóng kịp RAM sẽ làm pod bị restart liên tục. | Nâng giới hạn RAM lên `60Mi` và `GOMEMLIMIT` lên `48MiB` như đề xuất. |
 | **4** | **PostgreSQL bị nghẽn (Database Saturation)** | Thấp / Trung bình | Các truy vấn search catalog và review sản phẩm thiếu LIMIT và INDEX, khi lượng dữ liệu lớn có thể gây full scan bảng và nghẽn CPU database. | Thực hiện tạo INDEX cho khóa ngoại `product_id` và thêm phân trang (pagination) cho API. |
-| **5** | **Thiếu thông tin realtime do lỗi Metrics Server** | Đã xảy ra / Thấp | Kubernetes metrics API bị lỗi `Metrics API not available` khiến lệnh `kubectl top` không hoạt động. | Phối hợp với đội infra (CDO04) để cài đặt metrics-server trên cụm EKS. |
+
 
 ---
 
