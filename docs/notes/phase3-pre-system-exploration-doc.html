@@ -1708,7 +1708,7 @@
             <td><strong>CPU/Memory waste</strong></td>
             <td>TBD (Đo thực tế)</td>
             <td>Giảm over/under-provisioning</td>
-            <td><code>kubectl top pods</code> vs requests values</td>
+            <td>Prometheus/Grafana resource metrics vs requests values</td>
           </tr>
         </tbody>
       </table>
@@ -1791,13 +1791,13 @@
           <tr>
             <td><strong>Right-size requests/limits</strong></td>
             <td>Giảm thiểu lãng phí chi phí EC2 và phòng tránh OOMKilled.</td>
-            <td>Có số liệu <code>kubectl top</code> dưới nền tải thực tế.</td>
+            <td>Có Prometheus/Grafana resource evidence dưới nền tải thực tế.</td>
             <td>Revert Helm values cấu hình tài nguyên.</td>
           </tr>
           <tr>
             <td><strong>Cấu hình HPA cho storefront/checkout</strong></td>
             <td>Đảm bảo tự động co giãn pod khi chịu tải Locust lớn.</td>
-            <td>Cấu hình requests tài nguyên ổn định; verify metrics-server.</td>
+            <td>Cấu hình requests tài nguyên ổn định; Prometheus/Grafana evidence ổn định.</td>
             <td>Xóa HPA manifest hoặc scale replica thủ công về baseline.</td>
           </tr>
           <tr>
@@ -1944,8 +1944,8 @@
 <span class="cmt"># Xem log truy cập của frontend-proxy để phân tích traffic</span>
 <span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> logs deploy/frontend-proxy --tail=<span class="val">100</span>
 
-<span class="cmt"># Đo đạc CPU/Memory tiêu thụ thực tế của các pods đang chạy</span>
-<span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> top pods
+<span class="cmt"># Thu thập CPU/Memory tiêu thụ thực tế qua Prometheus/Grafana</span>
+<span class="cmt"># Lưu PromQL result hoặc Grafana dashboard screenshot cho namespace &lt;NS&gt;.</span>
 
 <span class="cmt"># Port forward để truy cập storefront và các giao diện quản trị nội bộ</span>
 <span class="fn">kubectl</span> -n <span class="str">&lt;NS&gt;</span> port-forward svc/frontend-proxy <span class="val">8080</span>:<span class="val">8080</span></pre>
