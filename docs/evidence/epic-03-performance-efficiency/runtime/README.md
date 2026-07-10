@@ -17,7 +17,7 @@ Namespace under test:
 | Subtask | Owner | Status | Evidence |
 |---|---|---|---|
 | PERF-04.1: Capture pod status and node placement | Tuấn | Done | `kubectl/pods-wide-2026-07-09.md`, `kubectl/nodes-zones-2026-07-09.md` |
-| PERF-04.2: Capture CPU/memory usage | Huy | Done (Workaround) | PromQL queries via Prometheus/Grafana Explore. Screenshots: `grafana-pods-cpu.png`, `grafana-pods-memory.png` |
+| PERF-04.2: Capture CPU/memory usage | Huy | Done | PromQL queries via Prometheus/Grafana Explore. Screenshots: `grafana-pods-cpu.png`, `grafana-pods-memory.png` |
 | PERF-04.3: Capture Grafana dashboard screenshot | Ninh | Done | Screenshots: `grafana-latency.png`, `grafana-error-rate.png`, `grafana-request-rate.png` |
 | PERF-04.4: Capture Jaeger trace if available | Huy | Done | Trace screenshots in `screenshots/` directory, Services dropdown: `jaeger-services-dropdown.png` |
 | PERF-04.5: Summarize runtime performance evidence | Huy | Done | This summary and `04-runtime-performance-evidence.md` |
@@ -32,7 +32,7 @@ Namespace under test:
 4. Webstore public endpoint returns `HTTP 200 OK`.
 5. Grafana public route `/grafana/` returns `HTTP 200 OK`.
 6. Jaeger public route `/jaeger/ui/` returns `HTTP 200 OK`.
-7. CPU/memory evidence has been successfully collected via Prometheus/Grafana PromQL queries as a workaround for the missing Kubernetes Metrics API blocker.
+7. CPU/memory evidence has been successfully collected via Prometheus/Grafana PromQL queries.
 8. Runtime warning events should be watched:
    - `accounting` pod has repeated restarts and current BackOff warning.
    - Grafana had a previous readiness probe failure but is currently `4/4 Running`.
@@ -60,12 +60,12 @@ Completed:
 - Captured EKS node zone placement across `us-east-1a` and `us-east-1b`.
 - Verified all application deployments are currently `1/1` available.
 - Verified Webstore, Grafana and Jaeger public routes return `HTTP 200 OK`.
-- Recorded CPU/memory blocker: Metrics API is not available, so `kubectl top pods` and `kubectl top nodes` cannot currently produce usage data.
+- Captured CPU/memory evidence via Prometheus/Grafana PromQL queries and Grafana screenshots.
 
 Key runtime risks:
 
 - `accounting` pod shows repeated restarts and BackOff warning.
-- Metrics-server / Metrics API is missing, blocking CPU and memory evidence required for performance right-sizing.
+- CPU/memory trend still needs the planned 48-72 hour evidence window before performance right-sizing.
 
 Evidence folder:
 
