@@ -8,10 +8,10 @@ Tài liệu này tổng hợp các rủi ro hiệu năng còn lại của hệ t
 
 | STT | Rủi Ro (Risk) | Khả năng xảy ra / Ảnh hưởng | Mô Tả Chi Tiết | Giải Pháp Giảm Thiểu (Mitigation) |
 | :--- | :--- | :--- | :--- | :--- |
-| **1** | **Giảm hiệu năng khi swap sang LLM thật** | Cao / Nghiêm trọng | Hiện tại đang dùng Mock LLM phản hồi trong ~98ms. Khi chuyển sang OpenAI/Gemini thật ở Week 2, latency sẽ tăng vọt lên **1.5s - 3s**, làm chậm API hỏi đáp sản phẩm. | - Áp dụng Valkey/Redis cache câu hỏi phổ biến.<br>- Cấu hình Streaming Response (Server-Sent Events) gRPC để hiển thị text dần dần cho user. |
-| **2** | **Nghẽn/Sập Node do thiếu giới hạn CPU** | Trung bình / Cao | Hầu hết các service chưa có CPU requests/limits. Một service bị loop hoặc tải cao có thể chiếm dụng toàn bộ CPU của Node, gây ảnh hưởng đến các service chạy chung Node. | Áp dụng cấu hình CPU Requests & Limits đã đề xuất trong tài liệu [Right-sizing](file:///D:/tf4-phase3-repo/docs/evidence/epic-03-performance-efficiency/05-scaling-right-sizing-recommendation.md). |
-| **3** | **Lỗi OOM-Killed khi chạy tải cao ở dịch vụ Go** | Trung bình / Trung bình | Cấu hình `checkout` hiện tại quá sát (`limit 20Mi` và `GOMEMLIMIT 16MiB`). Khi lượng order tăng đột biến, GC không giải phóng kịp RAM sẽ làm pod bị restart liên tục. | Nâng giới hạn RAM lên `60Mi` và `GOMEMLIMIT` lên `48MiB` như đề xuất. |
-| **4** | **PostgreSQL bị nghẽn (Database Saturation)** | Thấp / Trung bình | Các truy vấn search catalog và review sản phẩm thiếu LIMIT và INDEX, khi lượng dữ liệu lớn có thể gây full scan bảng và nghẽn CPU database. | Thực hiện tạo INDEX cho khóa ngoại `product_id` và thêm phân trang (pagination) cho API. |
+| **1** | **`accounting` OOMKilled / CrashLoopBackOff** | Cao / Cao | Runtime evidence xác nhận `accounting` từng `OOMKilled`, exit code `137`, restart hơn 118 lần trong khoảng 15 giờ với memory limit `120Mi`. Đây là blocker P0 trước compute right-sizing vì async accounting pipeline vẫn không ổn định. | Điều tra .NET runtime, Kafka consumer workload và telemetry; thử memory request/limit theo measured trial, ví dụ `200Mi` đến `256Mi`, rồi xác nhận restart count không tăng trong ít nhất 24 giờ. |
+| **2** | **Thiếu CPU request và resource baseline** | Trung bình / Cao | Hầu hết service chưa có CPU request/limit. Thiếu CPU request làm scheduling, CPU share khi contention và HPA CPU utilization thiếu cơ sở; effective memory request cần kiểm tra trên rendered/live manifest. | Thu Prometheus/Grafana CPU-memory trend trong 48 đến 72 giờ, rồi đặt requests/limits theo từng service. HPA chỉ là P2 có điều kiện sau khi có CPU requests, Metrics API và controlled load test. |
+| **3** | **Rủi ro memory của `checkout` khi tải cao** | Trung bình / Trung bình | `checkout` có limit `20Mi` và `GOMEMLIMIT=16MiB`, headroom khoảng `4Mi`. Đây là config-based risk estimate, chưa phải `OOMKilled` đã xác nhận; restart hiện có liên quan Kafka startup race. | Sau khi có metrics, thử limit `64Mi` và `GOMEMLIMIT` khoảng 80% limit, sau đó xác nhận lại bằng Grafana/Prometheus, p95/p99, error rate và restart count. |
+| **4** | **PostgreSQL bị nghẽn (Database Saturation)** | Thấp / Trung bình | Search catalog dùng `LOWER()` với `LIKE %query%`, chưa có `LIMIT` hoặc pagination. Khi dữ liệu lớn, query có thể full scan, trả response lớn và làm tăng CPU database. | Thêm `LIMIT`/pagination trước; chạy `EXPLAIN ANALYZE` với dữ liệu thực tế. Chỉ cân nhắc trigram hoặc full-text index nếu evidence cho thấy cần thiết. |
 
 
 ---
@@ -20,26 +20,26 @@ Tài liệu này tổng hợp các rủi ro hiệu năng còn lại của hệ t
 
 Dưới đây là các task cần đưa vào backlog để giải quyết triệt để trong Week 2:
 
-### Task 1: Triển khai cấu hình Right-sizing & HPA
-* **Mô tả**: Cập nhật file `values.yaml` để thêm CPU/Memory requests & limits cho toàn bộ 17 services, đồng thời deploy Helm chart của Horizontal Pod Autoscaler (HPA) cho `frontend` và `checkout`.
-* **Người thực hiện**: Huy (Owner)
-* **Độ ưu tiên**: High
-* **Tiêu chí hoàn thành**: Áp dụng thành công lên EKS, kiểm tra pod chạy bình thường với config mới.
+### Task 1: Xử lý `accounting` OOMKilled trước right-sizing
+* **Mô tả**: Điều tra root cause của `accounting` OOM/restart, triển khai measured memory trial có rollback và xác nhận async accounting pipeline ổn định trước mọi compute right-sizing.
+* **Người thực hiện**: CDO-04 / Dev Team
+* **Độ ưu tiên**: P0, vì `accounting` đã có `OOMKilled` và restart cao; tiếp tục right-sizing khi async accounting pipeline chưa ổn định có thể che khuất reliability failure.
+* **Tiêu chí hoàn thành**: Không có `OOMKilled` mới, restart count không tăng trong ít nhất 24 giờ và Kafka consumer vẫn xử lý bình thường.
 
-### Task 2: Fix lỗi Metrics Server trên EKS
-* **Mô tả**: Liên hệ và theo dõi đội CDO04 hoàn tất việc deploy `metrics-server` để lệnh `kubectl top nodes/pods` hoạt động bình thường.
-* **Người thực hiện**: Huy (Owner) / Ninh (Support)
-* **Độ ưu tiên**: Medium
-* **Tiêu chí hoàn thành**: Chạy lệnh `kubectl top nodes` trả về chỉ số CPU/RAM thực tế.
+### Task 2: Hoàn thiện metrics baseline và Metrics API
+* **Mô tả**: Dùng Prometheus/Grafana làm source of truth trong 48 đến 72 giờ; cài hoặc xác nhận Metrics API tương thích để `kubectl top nodes/pods` hoạt động nếu team cần HPA CPU-based.
+* **Người thực hiện**: CDO-04
+* **Độ ưu tiên**: P1, vì đây là prerequisite cho measured right-sizing và HPA, nhưng không tự khắc phục một runtime failure đã xác nhận như Task 1.
+* **Tiêu chí hoàn thành**: Có CPU/memory trend, restart/OOM history cho app và observability; `kubectl top` hoạt động hoặc team có adapter metrics đã được xác nhận.
 
-### Task 3: Tối ưu hóa Database queries (INDEX & LIMIT)
-* **Mô tả**: Viết migration script tạo index trên PostgreSQL và cập nhật câu query trong `product-catalog` và `product-reviews` để áp dụng LIMIT/OFFSET hoặc phân trang.
-* **Người thực hiện**: Dev Team
-* **Độ ưu tiên**: Medium
-* **Tiêu chí hoàn thành**: Query running time giảm, EXPLAIN ANALYZE không còn Table Scan.
+### Task 3: Thiết lập measured resources, quota và search guardrail
+* **Mô tả**: Đề xuất CPU/memory requests/limits theo từng service từ metrics, render manifest và chạy ResourceQuota server-side dry-run. Đồng thời thêm `LIMIT`/pagination cho search, rồi xác nhận bằng `EXPLAIN ANALYZE` và search p95/p99.
+* **Người thực hiện**: CDO-04 / Dev Team
+* **Độ ưu tiên**: P1, vì quota incompatibility có thể chặn rollout và search có thể làm bão hòa database, nhưng cả hai cần metrics và query evidence để chọn cấu hình an toàn.
+* **Tiêu chí hoàn thành**: Rendered manifest và quota dry-run thành công; search query có bounded result; evidence ghi rõ query plan và latency trước/sau.
 
-### Task 4: Tích hợp LLM thật & Cấu hình Caching/Streaming
-* **Mô tả**: Thay thế Mock LLM bằng API LLM thật, triển khai Valkey/Redis cache cho các câu hỏi trùng lặp và chuyển API trả về dạng stream.
-* **Người thực hiện**: Dev Team
-* **Độ ưu tiên**: High
-* **Tiêu chí hoàn thành**: Trải nghiệm người dùng mượt mà, thời gian phản hồi từ lúc click đến khi xuất hiện chữ đầu tiên < 300ms.
+### Task 4: Hoàn thiện cost guardrail trước conditional scaling
+* **Mô tả**: Xác nhận ownership trước khi đặt CloudWatch retention cho non-critical log groups; verify ECR lifecycle policy đã khai báo trong Terraform, review lifecycle preview và bảo vệ release/rollback tags. HPA chỉ được đánh giá sau CPU requests, Metrics API, probes ổn định và controlled load test.
+* **Người thực hiện**: CDO-04
+* **Độ ưu tiên**: P1, vì retention và ECR policy là cost guardrail ít rủi ro nhưng cần owner/AWS verification. HPA là P2 có điều kiện vì thiếu CPU requests, Metrics API, probes ổn định và controlled load-test evidence.
+* **Tiêu chí hoàn thành**: Retention và ECR policy có evidence runtime/AWS; HPA chỉ có proposal hoặc rollout evidence sau khi hoàn tất toàn bộ prerequisite.
