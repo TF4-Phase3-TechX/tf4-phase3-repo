@@ -193,7 +193,58 @@ Vì vậy hướng làm của team là cân bằng:
 
 Ở trụ Performance, team đã làm các nhóm việc chính.
 
-### 6.1. Runtime performance evidence
+### 6.1. Critical flows và phạm vi đo Week 1
+
+Trước khi đọc dashboard, team chốt **7 flow cần đo** để metric luôn gắn với trải nghiệm người dùng hoặc một bước xử lý nghiệp vụ cụ thể:
+
+| Flow ID | Critical flow | Endpoint / component chính | Priority performance test |
+|---|---|---|---|
+| F01 | Browse Product | `GET /products` — search, filter, sort, pagination | P1 |
+| F02 | Product Detail | `GET /products/:id` — giá, tồn kho, review | P1 |
+| F03 | Cart | `GET /cart`, `POST/PATCH/DELETE /cart/items...` | P1 |
+| F04 | Checkout | `POST /checkout/preview`, `POST /orders` | **P0** |
+| F05 | Payment | `POST /payments`, `POST /payments/webhook` | **P0** |
+| F06 | AI Review / Summary | `GET /products/:id/review-summary`, `POST /ai/reviews/summary` | P2 |
+| F07 | Kafka Async Order Event | `order.created`, `payment.succeeded`, `order.completed` | **P0** |
+
+Ba flow phải ưu tiên trong performance test là **Checkout, Payment và Kafka Async Order Event**. Checkout và Payment nằm trên revenue path; Kafka quyết định các bước hậu xử lý như inventory, notification, audit và fulfillment có theo kịp sau khi đơn hàng thành công hay không.
+
+Các flow Browse Product, Product Detail và Cart vẫn cần coverage vì có traffic cao hoặc ảnh hưởng conversion trước checkout. AI Review / Summary được theo dõi riêng vì phụ thuộc provider bên ngoài, có timeout và cost profile khác với API thông thường.
+
+### 6.2. P0 metrics dùng cho Week 1 Pitch
+
+Ở đây cần phân biệt hai khái niệm:
+
+- **P0 flow** là mức ưu tiên performance test: Checkout, Payment, Kafka async order event.
+- **P0 metric** là bộ chỉ số bắt buộc trên Week 1 Pitch và dashboard tổng quan, áp dụng theo flow phù hợp.
+
+Bộ P0 metric gồm:
+
+1. **p95/p99 latency** — p95 cho trải nghiệm của phần lớn request; p99 để phát hiện tail latency.
+2. **Request rate** — RPS/RPM hoặc message/second, để mọi kết quả latency/error có ngữ cảnh tải.
+3. **Error rate** — HTTP 5xx, timeout, business error hoặc publish/consume error.
+4. **Success rate** — tỷ lệ request thành công dùng để đối chiếu SLO.
+5. **Pod restart count** — tín hiệu crash hoặc OOM; Week 1 đã có evidence trực tiếp ở `accounting`, `checkout` và `load-generator`.
+6. **Kafka lag** — backlog message chưa được consumer xử lý.
+7. **DLQ count** — event lỗi bị đẩy vào Dead Letter Queue; happy-path test phải bằng 0.
+
+Ngưỡng ban đầu dùng để test và review:
+
+| Flow | p95 target | p99 target | Error target | Metric bổ sung |
+|---|---:|---:|---:|---|
+| Browse Product | ≤ 300 ms | ≤ 800 ms | ≤ 1% | Product/pagination query latency |
+| Product Detail | ≤ 350 ms | ≤ 900 ms | ≤ 1% | Product/review query latency |
+| Cart | ≤ 400 ms | ≤ 1,000 ms | ≤ 1% | Cart read/write latency |
+| **Checkout** | **≤ 800 ms** | **≤ 1,500 ms** | **≤ 2%** | Order transaction, inventory check, event publish |
+| **Payment** | **≤ 1,200 ms** | **≤ 2,500 ms** | **≤ 2%** | Gateway latency, webhook latency, event publish |
+| AI Review / Summary | ≤ 3,000 ms | ≤ 5,000 ms | ≤ 3% | Provider latency, timeout và fallback |
+| **Kafka Async Order Event** | **≤ 500 ms publish** | **≤ 1,000 ms publish** | **≤ 1% publish/consume** | Consumer lag, processing time, DLQ |
+
+Các guardrail tổng hợp đi kèm là API availability `≥ 99.5%`, AI timeout sau `5,000 ms` và phải fallback, Kafka backlog không vượt `60 giây` trong điều kiện tải bình thường, DLQ bằng `0` trong happy path. CPU và memory là metric P1 dùng cho root-cause analysis; AI token usage và cost/request là P2 dùng cho production hardening.
+
+Các threshold trên là **đề xuất ban đầu từ PERF-01 và vẫn cần Tech Lead xác nhận trước khi trở thành SLO chính thức**. Week 1 Pitch phải phân biệt rõ target với actual: nếu chưa có controlled load-test result theo từng flow, team trình bày đây là measurement contract và baseline cần validate, không gọi là kết quả đã đạt.
+
+### 6.3. Runtime performance evidence
 
 Team thu thập evidence từ Grafana, Prometheus, Jaeger và kubectl.
 
@@ -309,7 +360,7 @@ Lời dẫn:
 
 Trace recommendation cho thấy frontend có thể gọi nhiều lần sang `product-catalog` để lấy chi tiết sản phẩm. Đây là evidence cho hướng tối ưu batch hoặc parallel call ở Week 2.
 
-### 6.2. Bottleneck analysis
+### 6.4. Bottleneck analysis
 
 Team đã chỉ ra một số bottleneck quan trọng.
 
@@ -325,7 +376,7 @@ Thứ ba là **checkout còn nhiều dependency chạy tuần tự trên revenue
 
 Checkout hiện gọi nhiều service theo chuỗi: cart, product-catalog, currency, payment, shipping, email, Kafka. Nếu một service downstream chậm, latency checkout bị cộng dồn. Giải pháp ưu tiên là async hóa phần không cần chặn response chính, trước mắt là email/post-processing sau khi order đã được ghi nhận. Cách này giảm latency người dùng cảm nhận được và tận dụng Kafka/event flow hiện có, không cần thêm managed service mới. Với payment/order, cần thêm idempotency key và outbox pattern, tức là retry không tạo double charge/double order và event được publish nhất quán với trạng thái order.
 
-### 6.3. Scaling và right-sizing recommendation
+### 6.5. Scaling và right-sizing recommendation
 
 Team cũng review resource config và thấy:
 
@@ -666,6 +717,9 @@ Về architecture:
 Về Performance:
 
 - Team đã có trace, dashboard và runtime evidence.
+- Đã chốt 7 critical flows; P0 performance-test scope là Checkout, Payment và Kafka Async Order Event.
+- Đã chốt bộ P0 metric cho Week 1 Pitch: p95/p99 latency, request rate, error/success rate, pod restart count, Kafka lag và DLQ.
+- Đã có initial threshold theo từng flow; đây là measurement contract cần controlled load test và Tech Lead xác nhận, chưa phải tuyên bố mọi flow đã đạt target.
 - Đã xác định các bottleneck chính: N+1 currency conversion, catalog search full scan, checkout sequential dependency.
 - Đã có hướng scaling/right-sizing nhưng cần thêm 48-72 giờ runtime data từ Prometheus/Grafana và cần xử lý OOM/restart bất thường trước khi áp dụng mạnh.
 
@@ -686,6 +740,7 @@ Thông điệp chính của phần trình bày là: team không chỉ tìm cách
 - `docs/evidence/epic-02-baseline-architecture/01-aws-high-level-architecture.md`
 - `docs/evidence/epic-02-baseline-architecture/02-eks-namespace-application-architecture.md`
 - `docs/evidence/epic-02-baseline-architecture/03-external-services-cost-control-layer.md`
+- `docs/evidence/epic-03-performance-efficiency/01-critical-flows-and-metrics.md`
 - `docs/evidence/epic-03-performance-efficiency/03-bottleneck-analysis.md`
 - `docs/evidence/epic-03-performance-efficiency/04-runtime-performance-evidence.md`
 - `docs/evidence/epic-03-performance-efficiency/05-scaling-right-sizing-recommendation.md`

@@ -1,6 +1,6 @@
 # COST-05: Right-sizing & Cost Saving Recommendation
 
-Capture date: 2026-07-09
+Capture date: 2026-07-10
 
 ## 1. Mục tiêu
 
@@ -31,7 +31,7 @@ Baseline hiện tại:
 | NAT Gateway | 1 NAT Gateway | Fixed cost driver đã được tối ưu theo hướng Single NAT cho Week 1 |
 | ALB | 1 internet-facing ALB | Entry point cần thiết; có hourly cost và LCU cost |
 | EBS | 2 x 20 GiB gp3 root volumes, total 40 GiB | Storage cost cố định ở mức thấp/trung bình |
-| ECR | 1 repo `techx-corp` | Cần lifecycle cleanup nếu số lượng image tăng |
+| ECR | 1 repo `techx-corp`; lifecycle policy đã khai báo trong Terraform | Cần verify policy đã apply và harden retention cho release/rollback tags |
 | CloudWatch Logs | 8 log groups, một số group chưa set retention | Cost risk nếu log ingestion/storage tăng |
 | PVC | Không có PVC trong `techx-tf4` | Chi phí PVC hiện tại thấp, nhưng có persistence risk cho stateful workload |
 
@@ -39,16 +39,16 @@ Current estimate:
 
 | Scenario | Monthly estimate | Weekly estimate | Budget comparison |
 |---|---:|---:|---|
-| Fixed baseline current | `$246.95/month` | `$56.83/week` | Below `$300/week` |
-| Fixed baseline + average 1 ALB LCU | `$252.79/month` | `$58.18/week` | Below `$300/week` |
-| Node group max scenario, 4 x `t3.large` | `$368.42/month` | `$84.79/week` | Still below `$300/week`, but compute nearly doubles |
+| Fixed baseline current | `$246.95/month` | `$56.83/week` | Below `$300/month` by `$53.05/month` |
+| Fixed baseline + average 1 ALB LCU | `$252.79/month` | `$58.18/week` | Below `$300/month` by `$47.21/month` |
+| Node group max scenario, 4 x `t3.large` | `$368.42/month` | `$84.79/week` | Above `$300/month` by `$68.42/month`; EBS scenario needs review |
 
 Kết luận từ COST-01:
 
-- Baseline hiện tại vẫn nằm dưới budget `$300/week`.
+- Terraform AWS Budget guardrail hiện là `$300/month`, không phải `$300/week`; baseline hiện tại nằm dưới guardrail này.
 - Cost driver cố định lớn nhất có thể kiểm soát là EC2 worker nodes.
 - NAT Gateway và ALB là fixed cost đáng chú ý, nhưng hiện tại đều gắn với quyết định kiến trúc cần thiết.
-- Cost risk quan trọng nhất hiện tại không phải là overspend ngay lập tức, mà là uncontrolled runtime behavior có thể làm tăng compute, logs, traces, NAT data processing, ALB LCU và future node scaling.
+- Cost risk quan trọng nhất hiện tại không phải là overspend ngay lập tức, mà là uncontrolled runtime behavior có thể làm tăng compute, logs, traces và future node scaling. NAT data processing và ALB LCU cần được đối chiếu bằng Cost Explorer cùng usage metrics, không suy luận trực tiếp từ internal Locust traffic.
 
 ### 2.2. COST-06 — Quick wins
 
@@ -101,9 +101,15 @@ Known gaps:
 | P0 | Điều tra các pod có restart cao trước khi right-sizing | Do now | Tránh cost changes che khuất reliability bugs | Medium |
 | P1 | Chuẩn hóa Prometheus/Grafana CPU-memory dashboards và PromQL queries | Do next | Cho phép resource/node right-sizing dựa trên evidence | Low |
 | P1 | Set CloudWatch log retention cho non-critical log groups | Do next | Ngăn log storage cost tăng không kiểm soát | Low |
-| P1 | Thêm ECR lifecycle policy | Do next | Ngăn image storage tăng không kiểm soát | Low |
+| P1 | Verify và harden ECR lifecycle policy | Do next | Xác nhận policy Terraform đã apply, ngăn image storage tăng và bảo vệ release/rollback tags | Low |
 | P2 | Review node group size/type sau 48–72h metrics | Conditional | Có khả năng tiết kiệm EC2 nếu workload underutilized | Medium/High |
 | P2 | Review ALB/NAT data processing sau khi có Cost Explorer data | Conditional | Giảm usage-based cost nếu traffic pattern phù hợp | Medium |
+
+Lý do phân loại priority:
+
+- **P0**: xử lý runtime failure đã xác nhận hoặc loại bỏ ngay dữ liệu nhiễu khỏi baseline. `accounting` restart/OOM và observability OOM khiến việc cắt resource lúc này có thể che khuất reliability issue; tắt autostart là thay đổi cấu hình ít rủi ro.
+- **P1**: tạo evidence và cost guardrail cần thiết trước rollout lớn. Metrics window, CloudWatch ownership/retention và ECR policy verification đều quan trọng, nhưng cần runtime data, owner sign-off hoặc AWS validation.
+- **P2**: thay đổi compute/traffic-cost có blast radius cao hoặc phụ thuộc dữ liệu chưa có. Node right-sizing và ALB/NAT optimization chỉ an toàn sau P0/P1, Cost Explorer, load test và rollback evidence.
 
 ---
 
@@ -116,7 +122,7 @@ Decision: implement.
 Rationale:
 
 - `load-generator` hữu ích cho controlled performance tests, nhưng không nên liên tục tạo synthetic traffic.
-- Synthetic traffic liên tục có thể làm tăng application CPU, memory, traces, logs, ALB LCU, NAT data processing và observability workload pressure.
+- Synthetic traffic liên tục có thể làm tăng application CPU, memory, traces, logs và observability workload pressure. Theo flow mặc định, Locust gọi `frontend-proxy` nội bộ nên không được xem là bằng chứng trực tiếp cho ALB LCU hoặc NAT data processing tăng.
 - Nó cũng làm nhiễu SLO/SLI dashboards và khiến performance/cost analysis kém tin cậy hơn.
 
 Recommended config change:
@@ -253,14 +259,15 @@ Validation:
 - Confirm retention chỉ được set cho approved log groups.
 - Verify không rút ngắn nhầm các log cần cho audit.
 
-### 4.6. Action 6 — Add ECR lifecycle cleanup
+### 4.6. Action 6 — Verify và harden ECR lifecycle policy
 
-Decision: implement sau khi confirm image promotion policy.
+Decision: review policy hiện có sau khi confirm image promotion policy.
 
 Rationale:
 
+- `infra/terraform/ecr.tf` đã khai báo lifecycle policy: xóa untagged image sau 7 ngày và giữ tối đa 30 tagged image.
 - ECR storage hiện chưa phải main cost driver, nhưng có thể tăng âm thầm khi build image tích lũy.
-- Lifecycle policy có rủi ro thấp nếu release tags được bảo vệ.
+- Rule `tagStatus: any` có thể expire tagged image cũ, kể cả release tag cần rollback; cần harden thay vì tạo policy mới.
 
 Recommended policy:
 
@@ -270,6 +277,7 @@ Recommended policy:
 
 Validation:
 
+- Dùng `aws ecr get-lifecycle-policy` và lifecycle preview để xác nhận policy Terraform đã apply.
 - Confirm rollback image tags được giữ lại.
 - Confirm production release tags không match cleanup rule.
 
@@ -322,7 +330,7 @@ Các thay đổi dưới đây không được khuyến nghị trong cycle này:
 1. Disable `LOCUST_AUTOSTART`.
 2. Confirm load-generator chỉ được dùng thủ công trong planned tests.
 3. Set CloudWatch retention cho approved non-critical log groups.
-4. Add ECR lifecycle policy cho untagged/dev images.
+4. Verify ECR lifecycle policy đã khai báo trong Terraform, sau đó harden retention cho untagged/dev images và release/rollback tags.
 5. Giữ current node group ở 2 x `t3.large`.
 6. Giữ observability limits ổn định; không giảm Jaeger/Grafana/Prometheus/OpenSearch.
 
@@ -356,10 +364,10 @@ EVIDENCE UPDATE - COST-05 Right-sizing & Cost Saving Recommendation
 
 2. Kết quả chính
 
-Baseline hiện tại vẫn nằm dưới budget $300/week:
-- Fixed baseline current: ~$56.83/week
-- Fixed baseline + average 1 ALB LCU: ~$58.18/week
-- Node group max scenario 4 x t3.large: ~$84.79/week
+Terraform AWS Budget guardrail hiện là $300/month, không phải $300/week:
+- Fixed baseline current: ~$246.95/month, thấp hơn guardrail ~$53.05/month
+- Fixed baseline + average 1 ALB LCU: ~$252.79/month, thấp hơn guardrail ~$47.21/month
+- Node group max scenario 4 x t3.large: ~$368.42/month, vượt guardrail ~$68.42/month
 
 Main cost driver:
 - EC2 worker nodes: 2 x t3.large
@@ -373,7 +381,7 @@ Recommendation được approve cho Week 1:
 - Do not reduce Jaeger/Grafana/Prometheus/OpenSearch memory limits yet.
 - Investigate accounting restarts and observability OOM/restart evidence before resource cuts.
 - Add CloudWatch log retention for approved non-critical log groups.
-- Add ECR lifecycle cleanup after confirming image retention policy.
+- Verify ECR lifecycle policy đã khai báo trong Terraform, review lifecycle preview và harden image retention policy.
 
 Recommendation KHÔNG nên làm ngay:
 - Không downsize t3.large khi chưa có đủ 48-72h Prometheus/Grafana CPU-memory trend.

@@ -131,7 +131,7 @@ Done rule:
 - [ ] `K8S-03` Add measured resource baseline or quota compatibility note.
   - Target: requests/limits plan based on runtime data; quota admission status clear.
   - Evidence file: `018-k8s-03-resource-quota-baseline.md`
-  - Validation: `kubectl top`, server dry-run/apply result, rendered resources.
+  - Validation: Prometheus/Grafana resource metrics, server dry-run/apply result, rendered resources.
 
 - [ ] `OBS-03` Restore repo auditability artifacts.
   - Target: CODEOWNERS path mismatch fixed or documented; ADR/runbook/postmortem templates added if allowed.
