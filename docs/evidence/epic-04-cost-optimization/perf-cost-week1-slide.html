@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html class="slides" lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TechX TF4 — Performance &amp; Cost Optimization · Week 1</title>
+<style>
+/* ============================================================
+   DEFAULT TOKENS
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+:root {
+  --accent:#fe7624; --accent-strong:#f59120; --accent-soft:#fbae42; --accent-tint:#fff2e6;
+  --ink:#1e293b; --ink-2:#24338a;
+  --info:#2563eb; --success:#16a34a; --warning:#d97706; --danger:#dc2626;
+  --cat-1:#fe7624; --cat-2:#2563eb; --cat-3:#16a34a; --cat-4:#9333ea; --cat-5:#db2777; --cat-6:#0891b2;
+  --text-primary:#1a1a1a; --text-secondary:#4d4e4e; --text-muted:#6b7280;
+  --surface-page:#fafafa; --surface-card:#ffffff; --surface-code:#0f172a;
+  --surface-tint:#fff7ec; --surface-warm:#f0eeed; --border:#d8dee3; --border-light:#ebebeb;
+  --font-sans:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'Fira Code',monospace;
+  --title:clamp(2.2rem,6vw,5rem); --h2:clamp(1.3rem,3vw,2.2rem);
+  --h3:clamp(1rem,2vw,1.5rem); --body:clamp(0.8rem,1.1vw,1rem);
+  --small:clamp(0.68rem,0.85vw,0.82rem); --mono:clamp(0.65rem,0.85vw,0.8rem);
+  --gap-section:clamp(2rem,5vw,3.5rem); --gap-content:clamp(0.65rem,1.5vw,1.5rem);
+  --gap-element:clamp(0.35rem,0.9vw,0.85rem); --pad-block:clamp(1.2rem,3.5vw,3.5rem);
+  --pad-inline:clamp(1rem,3vw,3.5rem);
+  --radius-sm:10px; --radius-md:16px; --radius-lg:20px; --radius-xl:32px; --radius-pill:80px;
+  --shadow-card:0 8px 17px rgba(29,29,29,0.05); --shadow-lg:0 20px 40px rgba(30,41,59,0.12);
+  --gradient-accent:linear-gradient(135deg,#ffc078 0%,#ff8800 100%);
+  --gradient-text:linear-gradient(135deg,#fcd554 0%,#fe7624 60%,#f59120 100%);
+  --gradient-hero:radial-gradient(ellipse at 85% 10%,#fcd55455 0%,transparent 55%),radial-gradient(ellipse at 10% 90%,#fe762422 0%,transparent 60%);
+  --gradient-cool:linear-gradient(135deg,#007bc1 0%,#24338a 100%);
+  --ease:cubic-bezier(0.16,1,0.3,1); --dur-fast:0.35s; --dur-normal:0.65s; --dur-slow:1.1s;
+  --scrim:linear-gradient(180deg,color-mix(in srgb,var(--ink) 25%,transparent),color-mix(in srgb,var(--ink) 70%,transparent));
+}
+
+/* ============================================================
+   ENGINE CSS
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--font-sans);color:var(--text-primary);background:var(--surface-page);-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word;line-height:1.5}
+img{display:block;max-width:100%}
+a{color:var(--accent)}
+.gradient-text{background:var(--gradient-text);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* SLIDE SHELL */
+html.slides{scroll-snap-type:y mandatory;scroll-behavior:smooth;height:100%}
+html.slides body{height:100%;overflow-x:hidden}
+.slide{width:100vw;height:100vh;height:100dvh;overflow:hidden;scroll-snap-align:start;display:flex;flex-direction:column;position:relative;padding:var(--pad-block);background:var(--surface-card)}
+.slide-content{flex:1;display:flex;flex-direction:column;justify-content:center;gap:var(--gap-content);max-width:1440px;width:100%;margin:0 auto;max-height:100%;overflow:hidden;min-height:0}
+.slide-content-body{gap:var(--gap-content)}
+.slide-header{display:flex;flex-direction:column;gap:.45rem}
+.slide-header h2{font-size:var(--h2);color:var(--ink);line-height:1.25;margin:0;padding:.05em 0}
+.slide-header .lead{font-size:var(--body);color:var(--text-secondary);max-width:900px;line-height:1.5;margin:0}
+.slide-footer{display:flex;justify-content:space-between;align-items:center;font-size:var(--small);color:var(--text-muted);padding-top:.5rem;flex-shrink:0}
+
+/* title */
+.slide-title{justify-content:center;overflow:hidden;background:var(--gradient-hero),var(--surface-card)}
+.slide-title .title-wrap{display:flex;flex-direction:column;gap:clamp(.7rem,1.8vw,1.5rem);max-width:1200px;margin:0 auto;position:relative;z-index:1}
+.slide-title h1{font-size:var(--title);font-weight:800;line-height:1.1;letter-spacing:-.03em;color:var(--ink);margin:0}
+.meta-row{display:flex;flex-wrap:wrap;gap:.4rem}
+.meta-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border-radius:var(--radius-pill);background:var(--surface-tint);color:var(--text-secondary);font-size:var(--small);font-weight:600}
+.meta-chip.primary{background:var(--accent-tint);color:var(--accent-strong)}
+
+/* divider */
+.slide-divider{justify-content:center;background:var(--ink);color:#fff}
+.slide-divider .section-num{font-size:clamp(4rem,13vw,8rem);font-weight:800;line-height:1;color:transparent;-webkit-text-stroke:2px var(--accent)}
+.slide-divider h2{font-size:var(--h2);color:#fff;margin:.2em 0 0}
+.slide-divider .lead{color:var(--border);max-width:720px}
+
+/* eyebrow */
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:var(--small);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:5px 13px;background:var(--accent-tint);border-radius:var(--radius-pill);align-self:flex-start}
+.eyebrow .dot,.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0}
+
+/* cards */
+.card{background:var(--surface-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:clamp(.75rem,1.2vw,1.2rem);box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:clamp(.25rem,.6vw,.6rem);min-width:0}
+.card-title{font-weight:700;font-size:var(--body);color:var(--ink)}
+.card-desc{font-size:var(--small);color:var(--text-secondary);line-height:1.5}
+.card-val{font-size:var(--h3);font-weight:800;color:var(--accent)}
+.card-accent{border-color:var(--accent-soft);background:linear-gradient(180deg,var(--surface-card) 0%,var(--surface-tint) 100%)}
+.card-dark{background:var(--ink);border-color:var(--ink);color:#fff}
+.card-dark .card-title{color:#fff}
+.card-dark .card-body{color:var(--border);font-size:var(--body);line-height:1.5}
+.card-success{border-color:var(--success);background:color-mix(in srgb,var(--success) 6%,white)}
+.card-success .card-title{color:var(--success)}
+.card-danger{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 6%,white)}
+.card-danger .card-title{color:var(--danger)}
+
+/* badges */
+.badge{display:inline-block;padding:2px 9px;border-radius:var(--radius-sm);font-size:var(--small);font-weight:700;letter-spacing:.04em;background:var(--accent-tint);color:var(--accent-strong)}
+.badge-success{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success)}
+.badge-warning{background:color-mix(in srgb,var(--warning) 15%,transparent);color:var(--warning)}
+.badge-danger{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+
+/* code */
+.code-block{background:var(--surface-code);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:var(--radius-sm);padding:10px 14px;font-family:var(--font-mono);font-size:var(--mono);color:#e2e8f0;line-height:1.65;overflow-x:auto;white-space:pre}
+code{font-family:var(--font-mono);font-size:.83em;background:color-mix(in srgb,var(--ink) 9%,transparent);padding:2px 5px;border-radius:4px;color:var(--text-primary)}
+.card-dark code{background:color-mix(in srgb,white 15%,transparent);color:#e2e8f0}
+.card-danger code,.card-success code{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+
+/* callouts */
+.callout{border-radius:var(--radius-sm);padding:12px 15px;font-size:var(--body);border-left:4px solid var(--accent);background:var(--accent-tint)}
+.callout-warning{border-color:var(--warning);background:color-mix(in srgb,var(--warning) 8%,transparent)}
+.callout-danger{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,transparent)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:var(--small)}
+th{text-align:left;padding:9px 13px;background:var(--ink);color:var(--accent);font-weight:700;font-size:.73rem;text-transform:uppercase;letter-spacing:.06em}
+td{padding:8px 13px;border-bottom:1px solid var(--border);color:var(--text-secondary)}
+tr:hover td{background:var(--accent-tint)}
+tr.row-total td{background:var(--surface-tint);color:var(--ink);font-weight:700;border-top:2px solid var(--accent)}
+tr.row-alt td{background:color-mix(in srgb,var(--warning) 7%,white);color:var(--ink)}
+.t-right{text-align:right}
+
+/* flow */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow-step{background:var(--surface-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px;font-size:var(--small);color:var(--text-primary);display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.flow-step .flow-num{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
+.flow-step .flow-title{font-weight:600;color:var(--ink)}
+.flow-step .flow-body{font-size:var(--small);color:var(--text-muted);line-height:1.4}
+.flow-arrow{color:var(--accent);font-size:1.1rem;padding:0 7px;align-self:center;flex-shrink:0}
+
+/* def list */
+.def-list{display:flex;flex-direction:column;gap:.4rem}
+.def-list .def-row{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:.8rem;padding:.5rem 0;border-bottom:1px solid var(--border-light)}
+.def-list .def-term{font-weight:700;color:var(--accent);font-size:var(--small)}
+.def-list .def-desc{color:var(--text-secondary);font-size:var(--small)}
+
+/* stats */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:clamp(.65rem,1.1vw,1.1rem)}
+.stat{display:flex;flex-direction:column;gap:.2rem}
+.stat .big-num{font-size:clamp(1.6rem,3.5vw,2.8rem);font-weight:800;background:var(--gradient-text);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.stat .stat-label{font-weight:700;color:var(--ink);font-size:var(--small)}
+.stat .stat-body{font-size:var(--small);color:var(--text-muted);line-height:1.45}
+
+/* grids */
+.grid{display:grid;gap:clamp(.65rem,1.1vw,1.1rem)}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:clamp(.85rem,1.8vw,1.8rem);align-items:stretch}
+.two-col>*,.grid>*,.flow>*{min-width:0;min-height:0}
+.two-col,.grid,.flow{min-height:0}
+
+/* media slots */
+.media-cover{height:100%;min-height:0;overflow:hidden;border-radius:var(--radius-md);background:var(--surface-warm)}
+.media-cover img{width:100%;height:100%;object-fit:cover;object-position:center}
+.media-bg{position:absolute;inset:0;z-index:0;overflow:hidden}
+.media-bg img{width:100%;height:100%;object-fit:cover}
+.media-bg::after{content:"";position:absolute;inset:0;background:var(--scrim)}
+.has-media-bg{position:relative;overflow:hidden}
+.has-media-bg .title-wrap,.has-media-bg .slide-content{position:relative;z-index:1}
+.has-media-bg h1,.has-media-bg h2,.has-media-bg .lead{color:#fff}
+.media-thumb{aspect-ratio:16/9;overflow:hidden;border-radius:var(--radius-sm);background:var(--surface-warm)}
+.media-thumb img{width:100%;height:100%;object-fit:cover}
+.media-contain{width:100%;height:100%;min-height:0;display:grid;place-items:center;overflow:hidden;background:var(--surface-page);border:1px solid var(--border);border-radius:var(--radius-md);padding:clamp(.4rem,1.2vw,.9rem)}
+.media-contain img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+.media-mark{height:clamp(1.5rem,3vw,2.5rem);width:auto}
+
+/* animations */
+.reveal{opacity:0;transform:translateY(14px)}
+.reveal.in{opacity:1;transform:none;transition:opacity var(--dur-normal) var(--ease),transform var(--dur-normal) var(--ease)}
+.stagger>*{opacity:0;transform:translateY(14px)}
+.stagger.in>*{opacity:1;transform:none;transition:opacity var(--dur-normal) var(--ease),transform var(--dur-normal) var(--ease);transition-delay:calc(var(--i,0)*80ms)}
+svg [data-animate="draw"]{stroke-dasharray:var(--len,1000);stroke-dashoffset:var(--len,1000)}
+svg.in [data-animate="draw"]{animation:eng-draw var(--dur-slow) var(--ease) forwards}
+@keyframes eng-draw{to{stroke-dashoffset:0}}
+svg [data-animate="grow"]{transform:scaleY(0);transform-origin:bottom;transform-box:fill-box}
+svg.in [data-animate="grow"]{animation:eng-grow var(--dur-normal) var(--ease) forwards}
+@keyframes eng-grow{to{transform:scaleY(1)}}
+svg [data-animate="pulse"].in{animation:eng-pulse 2.4s ease-in-out infinite}
+@keyframes eng-pulse{0%,100%{opacity:.85}50%{opacity:1}}
+
+/* nav chrome */
+.progress-bar{position:fixed;top:0;left:0;right:0;height:3px;background:transparent;z-index:50}
+.progress-bar-fill{height:100%;width:0;background:var(--gradient-accent);transition:width var(--dur-normal) var(--ease)}
+.nav-dots{position:fixed;right:16px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:50}
+.nav-dots button{width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--border);transition:all .2s var(--ease)}
+.nav-dots button.active{background:var(--accent);transform:scale(1.4)}
+.slide-counter{position:fixed;left:16px;bottom:14px;font-family:var(--font-mono);font-size:var(--small);color:var(--text-muted);z-index:50}
+.slide-counter strong{color:var(--accent)}
+
+/* responsive */
+@media(max-height:600px){.slide{--pad-block:clamp(.6rem,2vw,1.2rem)}.nav-dots,.slide-counter{display:none}}
+@media(max-width:900px){.grid-3{grid-template-columns:1fr 1fr}.grid-4{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.grid-2,.grid-3,.grid-4,.two-col{grid-template-columns:1fr}.flow{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}html{scroll-behavior:auto}.reveal,.stagger>*,svg [data-animate]{opacity:1!important;transform:none!important;animation:none!important;stroke-dashoffset:0!important}}
+
+/* ============================================================
+   SLIDE-SPECIFIC UTILITIES
+   ============================================================ */
+/* Image grids for screenshots */
+.img-grid{display:grid;gap:var(--gap-element);flex:1;min-height:0;align-content:stretch}
+.img-grid>*{min-width:0;min-height:0}
+.img-grid-2{grid-template-columns:1fr 1fr;grid-auto-rows:1fr}
+.img-grid-3{grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr}
+/* Architecture/diagram image fills remaining flex space */
+.arch-img{flex:1;min-height:0}
+/* Mini bullet list */
+.mini-list{display:flex;flex-direction:column;gap:.35rem;margin:.3rem 0 0;padding:0}
+.mini-list li{font-size:var(--small);color:var(--text-secondary);line-height:1.5;list-style:none;padding-left:1.2em;position:relative}
+.mini-list li::before{content:"›";position:absolute;left:0;color:var(--accent);font-weight:700}
+.card-dark .mini-list li{color:var(--border)}
+/* Table wrapper */
+.tbl-wrap{flex:1;min-height:0;overflow:auto}
+/* Flex column utility */
+.flex-col { display: flex; flex-direction: column; gap: var(--gap-content); min-height: 0; }
+/* Arch diagram frame — flex-bounded so max-height:100% resolves against parent flex height */
+.arch-frame { display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface-page); padding: clamp(.4rem,1.2vw,.9rem); min-height: 0; }
+.arch-frame img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.arch-frame.arch-img { flex: 1; }
+/* Fill remaining flex space (for two-col as flex item) */
+.fill { flex: 1; min-height: 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S01 — TITLE
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-title" id="slide-01">
+  <div class="title-wrap">
+    <span class="eyebrow reveal"><span class="dot"></span>Phase 3 · Week 1</span>
+    <h1 class="reveal">TechX TF4<br>Performance &amp; Cost<br><span class="gradient-text">"Evidence-First"</span>.</h1>
+    <p class="lead reveal">Baseline rõ ràng cho kiến trúc, performance và cost — trước khi right-size bất cứ thứ gì.</p>
+    <div class="meta-row reveal">
+      <span class="meta-chip primary"><span class="dot"></span>Technical Review</span>
+      <span class="meta-chip"><span class="dot"></span>6 sections · 28 slides</span>
+      <span class="meta-chip"><span class="dot"></span>AWS EKS · us-east-1</span>
+      <span class="meta-chip"><span class="dot"></span>10–15 phút</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S02 — DIVIDER 01: Hệ thống & Kiến trúc
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-divider" id="slide-02">
+  <div class="slide-content">
+    <div class="section-num reveal">01</div>
+    <h2 class="reveal">Hệ thống &amp; Kiến trúc</h2>
+    <p class="lead reveal">TechX là nền tảng microservices mô phỏng e-commerce — hiểu kiến trúc trước khi tối ưu.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S03 — Service Layers Overview
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-03">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>01 · Hệ thống</span>
+      <h2>8 nhóm service của TechX TF4</h2>
+      <p class="lead">Mỗi nhóm có vai trò riêng trong request path, critical path và cost profile.</p>
+    </div>
+    <div class="two-col stagger">
+      <div class="def-list">
+        <div class="def-row">
+          <span class="def-term">Entry</span>
+          <span class="def-desc"><code>frontend-proxy</code> — nhận traffic từ ALB, điểm vào duy nhất</span>
+        </div>
+        <div class="def-row">
+          <span class="def-term">Storefront</span>
+          <span class="def-desc"><code>frontend</code>, <code>image-provider</code> — giao diện và hình ảnh sản phẩm</span>
+        </div>
+        <div class="def-row">
+          <span class="def-term">Product &amp; AI</span>
+          <span class="def-desc"><code>product-catalog</code>, <code>product-reviews</code>, <code>llm</code>, <code>recommendation</code>, <code>ad</code></span>
+        </div>
+        <div class="def-row">
+          <span class="def-term">Checkout</span>
+          <span class="def-desc"><code>cart</code>, <code>checkout</code>, <code>payment</code>, <code>email</code>, <code>currency</code>, <code>shipping</code>, <code>quote</code> — revenue path</span>
+        </div>
+      </div>
+      <div class="def-list">
+        <div class="def-row">
+          <span class="def-term">Data &amp; Messaging</span>
+          <span class="def-desc"><code>postgresql</code>, <code>valkey-cart</code>, <code>kafka</code></span>
+        </div>
+        <div class="def-row">
+          <span class="def-term">Async Consumers</span>
+          <span class="def-desc"><code>accounting</code>, <code>fraud-detection</code> — xử lý sau khi order tạo</span>
+        </div>
+        <div class="def-row">
+          <span class="def-term">Observability</span>
+          <span class="def-desc"><code>prometheus</code>, <code>jaeger</code>, <code>grafana</code>, <code>otel-collector</code>, <code>opensearch</code></span>
+        </div>
+        <div class="def-row">
+          <span class="def-term">Control &amp; Test</span>
+          <span class="def-desc"><code>flagd</code> (feature flags), <code>load-generator</code> (Locust)</span>
+        </div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Checkout revenue path — frontend → checkout → cart / product-catalog / currency / payment / shipping / email / kafka — là critical path. Chậm hoặc lỗi ở đây đồng nghĩa user không hoàn tất được đơn hàng.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>01 · Hệ thống</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S04 — AWS High-Level Architecture
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-04">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>01 · Kiến trúc</span>
+      <h2>AWS us-east-1: VPC, ALB, EKS, NAT Gateway</h2>
+      <p class="lead">Inbound: User → IGW → ALB → frontend-proxy → EKS &nbsp;|&nbsp; Outbound: EKS → NAT → ECR. Single NAT Gateway — trade-off trong Week 1.</p>
+    </div>
+    <div class="arch-frame arch-img reveal">
+      <img src="./slide-assets/01-techx-tf4-aws-high-level-architecture.jpg" alt="AWS High-Level Architecture: VPC multi-AZ, ALB, EKS, NAT Gateway trong us-east-1">
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Trade-off được ghi nhận</div>
+      <div class="card-body">Multi-AZ chỉ claim ở compute layer (worker nodes ở us-east-1a và us-east-1b). Stateful workloads (PostgreSQL, Kafka, Valkey, OpenSearch) chưa claim full HA. Single NAT tiết kiệm hơn NAT/AZ nhưng outbound chưa đạt network HA tối đa.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>01 · Kiến trúc</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S05 — EKS Namespace Architecture
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-05">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>01 · Kiến trúc</span>
+      <h2>Namespace techx-tf4: từ ALB đến Kafka</h2>
+      <p class="lead">frontend-proxy → frontend → product/AI path + checkout path. Checkout phải gọi 7+ service downstream — latency cộng dồn nếu có service chậm.</p>
+    </div>
+    <div class="two-col fill stagger">
+      <div class="flex-col">
+        <div class="def-list">
+          <div class="def-row">
+            <span class="def-term">Entry</span>
+            <span class="def-desc"><code>frontend-proxy</code> → <code>frontend</code> → service downstream</span>
+          </div>
+          <div class="def-row">
+            <span class="def-term">Checkout path</span>
+            <span class="def-desc"><code>checkout</code> → cart / currency / payment / shipping / email / Kafka — 7+ call tuần tự, latency cộng dồn</span>
+          </div>
+          <div class="def-row">
+            <span class="def-term">Product &amp; AI</span>
+            <span class="def-desc"><code>product-catalog</code>, <code>recommendation</code>, <code>llm</code>, <code>ad</code> — product enrichment path</span>
+          </div>
+          <div class="def-row">
+            <span class="def-term">Async pipeline</span>
+            <span class="def-desc">Kafka → <code>accounting</code>, <code>fraud-detection</code> — xử lý sau order, không chặn checkout response</span>
+          </div>
+          <div class="def-row">
+            <span class="def-term">Data stores</span>
+            <span class="def-desc"><code>postgresql</code>, <code>valkey-cart</code>, <code>opensearch</code> — state và observability backend</span>
+          </div>
+        </div>
+        <div class="card card-dark">
+          <div class="card-title">Revenue path &amp; async pipeline</div>
+          <div class="card-body">Sau khi order tạo, Kafka publish event cho <code>accounting</code> và <code>fraud-detection</code> xử lý async — không chặn checkout response. Checkout đi qua 7+ service → latency cộng dồn nếu bất kỳ downstream nào chậm.</div>
+        </div>
+      </div>
+      <div class="arch-frame">
+        <img src="./slide-assets/02-techx-tf4-eks-namespace-architecture.jpg" alt="EKS Namespace Architecture: techx-tf4 service map với checkout revenue path">
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>01 · Kiến trúc</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S06 — External Services & Cost Control
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-06">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>01 · Kiến trúc</span>
+      <h2>ECR, AWS Budgets, Cost Explorer, flagd</h2>
+      <p class="lead">Các thành phần nằm ngoài user request path — nhưng quan trọng cho deployment và cost control.</p>
+    </div>
+    <div class="arch-frame arch-img reveal">
+      <img src="./slide-assets/03-techx-tf4-external-services-cost-control-layer.jpg" alt="External Services: ECR, AWS Budgets với threshold 70/90/100%, Cost Explorer, flagd">
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Cost visibility path</div>
+      <div class="card-body">AWS Budgets và Cost Explorer không nằm trong user request path. AWS Budgets cảnh báo ở ngưỡng 70%, 90%, 100% — email từ GitHub Secret, không hard-code trong repo. Cost Explorer dùng để đối chiếu estimate với actual bill.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>01 · Kiến trúc</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S07 — DIVIDER 02: Deployment & Runtime
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-divider" id="slide-07">
+  <div class="slide-content">
+    <div class="section-num reveal">02</div>
+    <h2 class="reveal">Deployment &amp; Runtime Status</h2>
+    <p class="lead reveal">22 deployments chạy ổn — nhưng có 4 cảnh báo cần xử lý trước khi right-size bất cứ thứ gì.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S08 — Deployment Flow
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-08">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>02 · Deployment</span>
+      <h2>Source → Container → ECR → Helm/Terraform → EKS</h2>
+      <p class="lead">Terraform quản lý infra; Helm quản lý application. Node group: <code>t3.large</code> × 2 (max 4), private subnet, pull image qua NAT.</p>
+    </div>
+    <div class="flow stagger">
+      <div class="flow-step">
+        <span class="flow-num">01</span>
+        <span class="flow-title">Source Code</span>
+        <span class="flow-body">GitHub repo</span>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="flow-num">02</span>
+        <span class="flow-title">Container Image</span>
+        <span class="flow-body">GitHub Actions CI/CD</span>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="flow-num">03</span>
+        <span class="flow-title">ECR</span>
+        <span class="flow-body">Registry <code>techx-corp</code></span>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="flow-num">04</span>
+        <span class="flow-title">Helm + Terraform</span>
+        <span class="flow-body">plan/apply qua CI workflow</span>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step card-accent">
+        <span class="flow-num">05</span>
+        <span class="flow-title">EKS namespace</span>
+        <span class="flow-body"><code>techx-tf4</code> · 22 deployments</span>
+      </div>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card">
+        <div class="card-title">Infrastructure layer</div>
+        <div class="card-desc">Terraform: EKS cluster, VPC, node group (<code>t3.large</code> × 2 desired, × 4 max), AWS Budget guardrail</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Application layer</div>
+        <div class="card-desc">Helm: deployments, services, ConfigMaps trong namespace <code>techx-tf4</code>. ALB expose webstore, Grafana, Jaeger.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Observability stack</div>
+        <div class="card-desc">Prometheus, Grafana, Jaeger, OTel Collector, OpenSearch — thu metrics, logs, traces runtime</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Tách Terraform (infra) và Helm (app) giảm blast radius: thay đổi app không ảnh hưởng infra và ngược lại. Worker nodes pull image từ ECR qua NAT Gateway — là outbound data cost driver.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>02 · Deployment</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S09 — Runtime Status: Confirmed & Warnings
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-09">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>02 · Runtime</span>
+      <h2>Hệ thống đang chạy — và đang có cảnh báo</h2>
+      <p class="lead">Không right-size khi còn OOM/restart bất thường — ổn định trước, right-size sau.</p>
+    </div>
+    <div class="two-col stagger">
+      <div class="card card-success">
+        <div class="card-title">✓ Confirmed — hoạt động</div>
+        <ul class="mini-list">
+          <li>22 application deployments <code>READY 1/1</code></li>
+          <li>Webstore public endpoint <code>HTTP 200 OK</code></li>
+          <li>Grafana route <code>/grafana/</code> — <code>HTTP 200 OK</code></li>
+          <li>Jaeger route <code>/jaeger/ui/</code> — <code>HTTP 200 OK</code></li>
+          <li>Worker nodes ở 2 AZ: <code>us-east-1a</code> và <code>us-east-1b</code></li>
+          <li>Application pods đang <code>Running</code></li>
+        </ul>
+      </div>
+      <div class="card card-danger">
+        <div class="card-title">⚠ Cảnh báo — xử lý trước khi right-size</div>
+        <ul class="mini-list">
+          <li><code>accounting</code> CrashLoopBackOff — OOMKilled, restart <strong>118 lần</strong> / 15h (limit <code>120Mi</code>)</li>
+          <li><code>checkout</code> restart 4 lần lúc startup — Kafka broker chưa sẵn sàng, log báo <code>connection refused</code></li>
+          <li><code>load-generator</code> OOMKilled 1 lần — củng cố quyết định tắt <code>LOCUST_AUTOSTART</code></li>
+          <li><code>checkout</code> headroom ~<code>4Mi</code> (limit <code>20Mi</code>, <code>GOMEMLIMIT=16MiB</code>) — risk estimate từ config</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Những cảnh báo này ảnh hưởng trực tiếp đến quyết định right-sizing. Giảm tài nguyên khi <code>accounting</code> đang OOMKilled hoặc <code>checkout</code> memory buffer quá mỏng là rủi ro cao — cần ổn định trước.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>02 · Runtime</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S10 — DIVIDER 03: Hai Trụ
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-divider" id="slide-10">
+  <div class="slide-content">
+    <div class="section-num reveal">03</div>
+    <h2 class="reveal">Hai Trụ: Performance &amp; Cost</h2>
+    <p class="lead reveal">Cắt cost mù có thể gây OOM; tăng resource bừa lãng phí AWS budget — cân bằng bằng evidence.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S11 — Tại sao phải cân bằng
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-11">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>03 · Hai Trụ</span>
+      <h2>Performance và Cost là hai mặt của một quyết định</h2>
+      <p class="lead">Tối ưu một phía mà không nhìn phía kia đều dẫn đến hệ quả không mong muốn.</p>
+    </div>
+    <div class="two-col stagger">
+      <div class="card card-accent">
+        <div class="card-title">📊 Performance Efficiency</div>
+        <div class="card-desc">Dùng runtime evidence — trace, metric, restart log. Biết bottleneck nằm ở đâu trước khi thay đổi bất cứ thứ gì.</div>
+        <div class="card-desc"><strong>Nếu chỉ tối ưu cost, bỏ qua performance:</strong> giảm tài nguyên quá tay → OOM, tăng latency, hỏng checkout flow.</div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-title">💰 Cost Optimization</div>
+        <div class="card-desc">Dùng baseline estimate và cost driver. Biết tiền đang đi vào đâu — và tiết kiệm ở đâu là an toàn.</div>
+        <div class="card-desc"><strong>Nếu chỉ tăng resource, bỏ qua cost:</strong> hệ thống chạy ổn nhưng lãng phí chi phí AWS không có căn cứ.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Right-sizing chỉ được đề xuất khi performance evidence và cost evidence không mâu thuẫn. Hướng làm: biết bottleneck → biết cost driver → mới quyết định thay đổi.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>03 · Hai Trụ</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S12 — DIVIDER 04: Performance Efficiency
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-divider" id="slide-12">
+  <div class="slide-content">
+    <div class="section-num reveal">04</div>
+    <h2 class="reveal">Performance Efficiency</h2>
+    <p class="lead reveal">Mọi nhận định performance đều từ Grafana, Prometheus, Jaeger và kubectl — không có gut feeling.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S13 — Grafana: CPU & Memory
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-13">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>Grafana/Prometheus: CPU và Memory theo pod</h2>
+      <p class="lead">Nguồn metrics runtime chính. Memory evidence phải đi kèm mọi cost decision — không tách rời.</p>
+    </div>
+    <div class="img-grid img-grid-2 stagger arch-img">
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-pods-cpu.png" alt="Grafana dashboard: CPU usage theo pod trong namespace techx-tf4">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-pods-memory.png" alt="Grafana dashboard: Memory usage theo pod trong namespace techx-tf4">
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Nếu memory đã sát limit hoặc có OOMKilled thì không được giảm limit để tiết kiệm cost — hai quyết định này phải nhìn vào cùng một bộ metrics. CPU usage xác định workload nào đang tạo áp lực tính toán.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S14 — Resource States: Idle vs Under Load
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-14">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>Idle vs Under Load — service nào bùng tài nguyên</h2>
+      <p class="lead">Delta idle → load xác định service cần HPA hoặc resource buffer lớn hơn.</p>
+    </div>
+    <div class="img-grid img-grid-2 stagger arch-img">
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-resources-idle.png" alt="Grafana: Resource usage khi hệ thống không có tải (idle baseline)">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-resources-load.png" alt="Grafana: Resource usage khi có tải (under load)">
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Idle = baseline tự nhiên trước khi so sánh. Under load = trạng thái khi có traffic. Service nào tăng CPU/RAM rõ nhất là ứng viên ưu tiên tuning — <code>frontend</code>, <code>checkout</code>, <code>product-reviews</code> và <code>cart</code> nằm trên critical path.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S15 — Grafana: Latency, Error Rate, Request Rate
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-15">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>Latency p95/p99, Error Rate và Request Rate</h2>
+      <p class="lead">Ba dashboard bảo vệ team khỏi tối ưu sai hướng — mỗi cái trả lời một câu hỏi khác nhau.</p>
+    </div>
+    <div class="img-grid img-grid-3 stagger arch-img">
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-latency.png" alt="Grafana: Latency p95/p99 dashboard — phát hiện service làm chậm request path">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-error-rate.png" alt="Grafana: Error rate dashboard — cảnh báo nếu thay đổi gây tăng lỗi">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/grafana-request-rate.png" alt="Grafana: Request rate dashboard — traffic thực tế vào hệ thống">
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Error rate tăng sau một thay đổi cost hoặc resource → rollback hoặc điều tra trước khi tiếp tục. Request rate liên quan trực tiếp đến <code>load-generator</code> autostart — synthetic traffic làm nhiễu metrics thật.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S16 — Jaeger: Service Coverage & Checkout Traces
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-16">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>Jaeger: OTel tracing — coverage và checkout critical path</h2>
+      <p class="lead">Trace evidence hỗ trợ quyết định async hóa email/post-processing để giảm latency cảm nhận.</p>
+    </div>
+    <div class="img-grid img-grid-3 stagger arch-img">
+      <div class="media-contain">
+        <img src="./slide-assets/jaeger-services-dropdown.png" alt="Jaeger: Services dropdown — xác nhận checkout, payment, product-catalog, frontend đã có trace coverage">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/checkout-flow-1-1.png" alt="Jaeger: Checkout flow trace — phần 1, nhiều downstream service được gọi">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/checkout-flow-1-2.png" alt="Jaeger: Checkout flow trace — phần 2, chi tiết span và timing">
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Checkout request đi qua cart, product-catalog, currency, payment, shipping, email và Kafka — nhiều call tuần tự. Downstream chậm cộng dồn làm chậm toàn bộ checkout. Payment/order cần idempotency key và outbox pattern để retry không gây double charge.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S17 — Jaeger: Product Flows
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-17">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>Browse catalog, AI Assistant và Recommendation traces</h2>
+      <p class="lead">Ba flow tiêu biểu ngoài checkout — mỗi flow có bottleneck tiềm năng riêng cần theo dõi.</p>
+    </div>
+    <div class="img-grid img-grid-3 stagger arch-img">
+      <div class="media-contain">
+        <img src="./slide-assets/browse-product-flow.png" alt="Jaeger: Browse product flow — baseline phản hồi nhanh, bottleneck tiềm năng khi data tăng">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/product-ai-assistant-flow.png" alt="Jaeger: Product AI Assistant flow — qua product-reviews và mock LLM">
+      </div>
+      <div class="media-contain">
+        <img src="./slide-assets/get-product-recommendations-flow.png" alt="Jaeger: Get product recommendations flow — frontend gọi nhiều lần sang product-catalog">
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">AI Assistant: mock LLM nhanh hiện tại — chuyển sang LLM thật cần cache, timeout và streaming response. Recommendation: frontend gọi nhiều lần sang <code>product-catalog</code> → hướng tối ưu Week 2: batch hoặc parallel call.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S18 — Bottleneck Analysis
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-18">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>3 bottleneck đã xác định từ trace và code review</h2>
+      <p class="lead">Cả 3 giải pháp dùng hạ tầng hiện có — không thêm managed service mới, không tăng cost trong Week 1.</p>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card card-accent">
+        <div class="card-title"><span class="badge badge-warning">B1</span> N+1 Currency Conversion</div>
+        <div class="card-desc"><strong>Vấn đề:</strong> Product listing với currency khác USD gọi <code>currency</code> gRPC theo từng sản phẩm — số call tăng theo N product hiển thị.</div>
+        <div class="card-desc"><strong>Giải pháp:</strong> Cache exchange rate ngắn hạn theo cặp tiền (ví dụ USD→VND). Nhiều product dùng chung một tỷ giá — giảm call lặp lại.</div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-title"><span class="badge badge-warning">B2</span> Catalog Search Full Scan</div>
+        <div class="card-desc"><strong>Vấn đề:</strong> Search dùng <code>LOWER()</code> và <code>LIKE %query%</code> — index thường khó phát huy. Latency tăng khi data sản phẩm lớn hơn.</div>
+        <div class="card-desc"><strong>Giải pháp:</strong> Thêm <code>LIMIT</code> hợp lý cho search result. Chưa cần OpenSearch — không tăng compute/storage cost.</div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-title"><span class="badge badge-danger">B3</span> Checkout Sequential Deps</div>
+        <div class="card-desc"><strong>Vấn đề:</strong> Cart, currency, payment, shipping, email, Kafka đều chạy tuần tự. Downstream chậm → latency cộng dồn cho user.</div>
+        <div class="card-desc"><strong>Giải pháp:</strong> Async email/post-processing qua Kafka. Idempotency key + outbox pattern cho payment/order — retry an toàn.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">3 giải pháp đều dùng hạ tầng hiện có: cache trong runtime, <code>LIMIT</code> trong query, async qua Kafka sẵn có. Không thêm hạ tầng mới, không tăng cost — đây là tiêu chí chọn giải pháp trong Week 1.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S19 — Right-sizing Recommendations
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-19">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>04 · Performance</span>
+      <h2>Khuyến nghị resource và scaling — dựa trên evidence</h2>
+      <p class="lead">HPA chỉ triển khai sau khi metrics ổn định 48–72 giờ — không deploy HPA trên nền OOM chưa xử lý.</p>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card">
+        <div class="card-title">Bổ sung CPU/memory requests</div>
+        <div class="card-desc">Nhiều service thiếu CPU requests/limits. Thiếu memory request làm scheduler không đặt pod đúng node. Bổ sung đầy đủ trước khi right-size.</div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-title">accounting: tăng 200–256Mi</div>
+        <div class="card-desc">Limit <code>120Mi</code> gây OOMKilled liên tục — 118 restart / 15h. .NET app với OTel auto-instrumentation + Kafka consumer cần headroom lớn hơn. Verify restart count về 0 trong 24h.</div>
+      </div>
+      <div class="card card-accent">
+        <div class="card-title">checkout: tăng limit 64Mi</div>
+        <div class="card-desc">Limit <code>20Mi</code>, <code>GOMEMLIMIT=16MiB</code>, headroom ~<code>4Mi</code> là risk estimate từ config. Tăng lên <code>64Mi</code>, đặt <code>GOMEMLIMIT ≈ 51MiB</code> (~80% limit). Verify qua Grafana.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Đặt HPA cho <code>frontend</code> và <code>checkout</code> sau khi Prometheus/Grafana metrics ổn định đủ 48–72 giờ. Theo dõi p95/p99 latency và OOM/restart count sau mỗi lần thay đổi resource.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>04 · Performance</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S20 — DIVIDER 05: Cost Optimization
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-divider" id="slide-20">
+  <div class="slide-content">
+    <div class="section-num reveal">05</div>
+    <h2 class="reveal">Cost Optimization</h2>
+    <p class="lead reveal">Baseline dưới $300/week — nhưng compute có thể tăng gần gấp đôi nếu node group scale từ 2 lên 4 nodes.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S21 — Baseline Cost Estimate Table
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-21">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>05 · Cost</span>
+      <h2>Cost driver breakdown — 2×t3.large baseline</h2>
+      <p class="lead">Estimate hiện tại, chưa phải actual bill. ECR, CloudWatch và data transfer đang Pending — cần Cost Explorer.</p>
+    </div>
+    <div class="tbl-wrap reveal">
+      <table>
+        <thead>
+          <tr>
+            <th>Thành phần</th>
+            <th class="t-right">/tháng</th>
+            <th class="t-right">/tuần</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>EKS Control Plane</td>
+            <td class="t-right">$73.00</td>
+            <td class="t-right">$16.80</td>
+            <td>Phí cố định, Kubernetes 1.34 standard support</td>
+          </tr>
+          <tr>
+            <td>EC2 Worker Nodes (2×t3.large)</td>
+            <td class="t-right">$121.47</td>
+            <td class="t-right">$27.96</td>
+            <td>Compute cost cố định chính — desired 2 nodes</td>
+          </tr>
+          <tr>
+            <td>EBS Root Volumes (40 GiB gp3)</td>
+            <td class="t-right">$3.20</td>
+            <td class="t-right">$0.74</td>
+            <td>2 volumes × 20 GiB</td>
+          </tr>
+          <tr>
+            <td>NAT Gateway (1 gateway)</td>
+            <td class="t-right">$32.85</td>
+            <td class="t-right">$7.56</td>
+            <td>Chưa tính data processing $0.045/GB</td>
+          </tr>
+          <tr>
+            <td>ALB (base hourly)</td>
+            <td class="t-right">$16.43</td>
+            <td class="t-right">$3.78</td>
+            <td>Chưa tính LCU usage (ví dụ: 1 LCU = +$1.34/tuần)</td>
+          </tr>
+          <tr class="row-total">
+            <td><strong>Fixed Baseline (2 nodes)</strong></td>
+            <td class="t-right"><strong>$246.95</strong></td>
+            <td class="t-right"><strong>$56.83</strong></td>
+            <td>Dưới target $300/week ✓</td>
+          </tr>
+          <tr class="row-alt">
+            <td>Scenario: maxSize=4 (4×t3.large)</td>
+            <td class="t-right">$368.42</td>
+            <td class="t-right">$84.79</td>
+            <td>Nếu node group scale lên tối đa — compute gần gấp đôi</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Observability stack (Prometheus, Grafana, Jaeger, OpenSearch) là indirect cost — không có dòng riêng vì chạy trên EC2 nodes hiện có. ECR storage, CloudWatch và cross-AZ data transfer cần Cost Explorer để có actual numbers.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>05 · Cost</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S22 — Cost Stats & Budget
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-22">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>05 · Cost</span>
+      <h2>Baseline vs scenarios — và một gap cần chốt</h2>
+      <p class="lead">Budget target trong tài liệu là $300/week nhưng Terraform guardrail đang là $300/month — cần thống nhất.</p>
+    </div>
+    <div class="stat-grid stagger">
+      <div class="stat">
+        <div class="big-num" data-animate="count" data-to="56.83">0</div>
+        <div class="stat-label">$/tuần — Fixed baseline hiện tại</div>
+        <div class="stat-body">EKS + EC2 (2×t3.large) + EBS + NAT + ALB. Dưới target $300/week.</div>
+      </div>
+      <div class="stat">
+        <div class="big-num" data-animate="count" data-to="84.79">0</div>
+        <div class="stat-label">$/tuần — Scenario 4×t3.large</div>
+        <div class="stat-body">Compute tăng gần gấp đôi nếu node group scale lên maxSize=4.</div>
+      </div>
+      <div class="stat">
+        <div class="big-num" data-animate="count" data-to="300">0</div>
+        <div class="stat-label">$/tuần — Budget target (tài liệu)</div>
+        <div class="stat-body">Headroom hiện tại ~$243/tuần — dành cho usage-based charges chưa tính.</div>
+      </div>
+      <div class="stat">
+        <div class="big-num" data-animate="count" data-to="300">0</div>
+        <div class="stat-label">$/tháng — Terraform guardrail ⚠</div>
+        <div class="stat-body">$300/month ≠ $300/week. Gap này cần được chốt rõ trong budget policy.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">Gap $300/week (tài liệu) vs $300/month (Terraform guardrail) cần được chốt ngay. Nếu giữ weekly target, cần đổi Terraform limit sang monthly equivalent (~$1,300/month) và ghi rõ trong README/evidence.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>05 · Cost</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S23 — Single NAT Trade-off & AWS Budget Guardrail
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-23">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>05 · Cost</span>
+      <h2>Hai quyết định cost tuần này: NAT Gateway và AWS Budget</h2>
+      <p class="lead">Cả hai là conscious trade-off được document rõ — không phải thiếu sót.</p>
+    </div>
+    <div class="two-col stagger">
+      <div class="card">
+        <div class="card-title">🔀 Single NAT Gateway</div>
+        <div class="card-desc"><strong>Lợi ích:</strong> Giảm fixed NAT cost so với NAT per AZ. Phù hợp cho giai đoạn baseline và kiểm soát chi phí Week 1.</div>
+        <div class="card-desc"><strong>Trade-off:</strong> Chưa đạt network HA tối đa cho outbound. Nếu AZ liên quan gặp vấn đề, outbound từ private subnet bị ảnh hưởng.</div>
+        <div class="card-desc"><strong>Hướng sau:</strong> NAT per AZ nếu cần production-grade HA. Theo dõi NAT data processing ($0.045/GB) qua Cost Explorer khi traffic tăng.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🛡 AWS Budget Guardrail (Terraform)</div>
+        <div class="card-desc"><strong>Đã setup:</strong> Budget type COST, time unit MONTHLY, default limit $300/month. Threshold notifications: 70%, 90%, 100%.</div>
+        <div class="card-desc"><strong>Security:</strong> Email recipients từ GitHub Secret — không hard-code trong repo. Tích hợp vào CI/Terraform plan/apply workflow.</div>
+        <div class="card-desc"><strong>Gap cần xử lý:</strong> $300/month vs $300/week target trong tài liệu — cần chốt policy và ghi rõ trong README/evidence.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body">AWS Budgets không ngăn chi phí — nó cảnh báo qua email. Team vẫn cần theo dõi Cost Explorer để so sánh estimate với actual daily/weekly burn rate và validate sau mỗi Terraform apply.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>05 · Cost</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S24 — Quick Wins & What NOT to Do
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-24">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>05 · Cost</span>
+      <h2>Quick win và những thứ không được cắt trong Week 1</h2>
+      <p class="lead">Quick win an toàn nhất: disable <code>LOCUST_AUTOSTART</code> — giảm nhiễu metrics và indirect observability cost ngay lập tức.</p>
+    </div>
+    <div class="two-col stagger">
+      <div class="card card-success">
+        <div class="card-title">✅ Thực hiện ngay</div>
+        <ul class="mini-list">
+          <li>Set <code>LOCUST_AUTOSTART=false</code> — tắt synthetic traffic 24/7, metrics phản ánh đúng user traffic thật</li>
+          <li>Validate AWS Budget qua AWS CLI/console sau Terraform apply</li>
+          <li>Set CloudWatch log retention cho log groups không critical</li>
+          <li>Thêm ECR lifecycle policy — tránh image storage tăng âm thầm</li>
+          <li>Chốt budget policy: $300/month hay monthly equivalent của $300/week</li>
+          <li>Thu thập Cost Explorer actual billing data</li>
+        </ul>
+      </div>
+      <div class="card card-danger">
+        <div class="card-title">🚫 Không làm trong Week 1</div>
+        <ul class="mini-list">
+          <li>Không giảm Jaeger/Grafana/Prometheus/OpenSearch memory — mất observability là mất evidence</li>
+          <li>Không giảm tài nguyên khi <code>accounting</code> vẫn đang CrashLoopBackOff</li>
+          <li>Không right-size compute khi chưa có 48–72h runtime data ổn định</li>
+          <li>Không tắt observability stack để tiết kiệm — đây là indirect cost cần thiết, không phải lãng phí</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Key insight</div>
+      <div class="card-body"><code>load-generator</code> autostart tạo synthetic traffic 24/7 → làm nhiễu metrics, tăng trace/log volume, tạo áp lực lên observability stack. Disable trước khi thu thập 48–72h baseline data sạch.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>05 · Cost</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S25 — DIVIDER 06: Lỗ hổng & Backlog
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-divider" id="slide-25">
+  <div class="slide-content">
+    <div class="section-num reveal">06</div>
+    <h2 class="reveal">Lỗ hổng &amp; Backlog</h2>
+    <p class="lead reveal">Không che lỗ hổng — document rõ và prioritize để xử lý có trật tự trong tuần kế tiếp.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S26 — Performance Gaps
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-26">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>06 · Lỗ hổng</span>
+      <h2>5 lỗ hổng Performance đã xác định</h2>
+      <p class="lead">Ưu tiên: fix <code>accounting</code> OOM trước → checkout startup race → checkout memory buffer → checkout async → catalog LIMIT.</p>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card">
+        <div class="card-title"><span class="badge badge-danger">P1</span> accounting OOMKilled</div>
+        <div class="card-desc">Restart 118 lần / 15h. Memory limit <code>120Mi</code> không đủ cho .NET app với OTel + Kafka consumer. <strong>Fix:</strong> tăng lên 200–256Mi, verify restart count về 0 trong 24h qua Grafana.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge badge-warning">P2</span> checkout startup race</div>
+        <div class="card-desc">Kafka broker chưa sẵn sàng khi checkout khởi động — log báo <code>connection refused</code>, restart 4 lần. <strong>Fix:</strong> thêm retry/backoff khi tạo Kafka producer lúc startup.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge badge-warning">P3</span> checkout memory buffer</div>
+        <div class="card-desc">Limit <code>20Mi</code>, <code>GOMEMLIMIT=16MiB</code>, headroom ~<code>4Mi</code> — risk estimate từ config, chưa phải confirmed OOM event. <strong>Fix:</strong> limit <code>64Mi</code>, GOMEMLIMIT ≈ 80% limit.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge badge-warning">P4</span> checkout sequential deps</div>
+        <div class="card-desc">Latency cộng dồn qua 7+ service. Payment/order nguy cơ double charge khi retry. <strong>Fix:</strong> async email qua Kafka, idempotency key + outbox pattern cho payment/order.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge">P5</span> catalog search full scan</div>
+        <div class="card-desc"><code>LOWER()</code> + <code>LIKE %query%</code> khó dùng index — latency tăng khi data sản phẩm tăng. <strong>Fix:</strong> thêm <code>LIMIT</code> hợp lý cho search result trước khi cân nhắc OpenSearch.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Backlog Performance — 9 items tổng</div>
+      <div class="card-body">Ngoài 5 lỗ hổng trên: chuẩn hóa Prometheus/Grafana dashboard làm source of truth · N+1 currency cache · HPA sau khi metrics ổn định 48–72h · theo dõi p95/p99 + OOM/restart sau mỗi thay đổi.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>06 · Lỗ hổng</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S27 — Cost Gaps & Backlog
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="slide-27">
+  <div class="slide-content slide-content-body">
+    <div class="slide-header reveal">
+      <span class="eyebrow"><span class="dot"></span>06 · Lỗ hổng</span>
+      <h2>5 lỗ hổng Cost đã xác định</h2>
+      <p class="lead">Ưu tiên: chốt budget policy → disable <code>LOCUST_AUTOSTART</code> → capture Cost Explorer → CloudWatch + ECR lifecycle.</p>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card">
+        <div class="card-title"><span class="badge badge-warning">C1</span> Cost Explorer chưa đầy đủ</div>
+        <div class="card-desc">Baseline vẫn là estimate — chưa thấy rõ NAT data processing, ALB LCU, CloudWatch ingestion actual. <strong>Fix:</strong> chờ billing cập nhật, capture actual daily/weekly burn rate, so sánh với estimate.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge badge-danger">C2</span> Budget unit chưa thống nhất</div>
+        <div class="card-desc">$300/week trong tài liệu vs $300/month trong Terraform guardrail. Reviewer có thể hiểu sai. <strong>Fix:</strong> chốt policy rõ ràng, ghi trong README/evidence, điều chỉnh Terraform limit nếu cần.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge badge-danger">C3</span> Load generator autostart</div>
+        <div class="card-desc">Synthetic traffic 24/7 làm nhiễu metrics, tăng log/trace volume và indirect cost. <strong>Fix:</strong> set <code>LOCUST_AUTOSTART=false</code>, verify Grafana/Jaeger request volume giảm sau khi tắt.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge badge-warning">C4</span> Observability OOM risk</div>
+        <div class="card-desc">Jaeger/Grafana có OOM/restart risk. Mất observability = mất khả năng right-size đúng. <strong>Fix:</strong> không giảm memory, theo dõi OOMKilled/restart count sau khi tắt synthetic traffic.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="badge">C5</span> CloudWatch &amp; ECR lifecycle</div>
+        <div class="card-desc">Log storage (8 log groups) và image storage có thể tăng âm thầm mà không có alert. <strong>Fix:</strong> set retention cho non-critical log groups; thêm lifecycle policy cho untagged/dev images trong ECR.</div>
+      </div>
+    </div>
+    <div class="card card-dark reveal">
+      <div class="card-title">Backlog Cost — 10 items tổng</div>
+      <div class="card-body">Ngoài 5 lỗ hổng trên: validate AWS Budget qua AWS CLI/console · so sánh estimate vs actual · theo dõi NAT data processing và ALB LCU · compute right-size chỉ sau khi không còn OOM/restart bất thường và có 48–72h data.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>06 · Lỗ hổng</span><span>Phase 3 · Week 1</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     S28 — CLOSING
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide slide-title" id="slide-28">
+  <div class="title-wrap">
+    <span class="eyebrow reveal"><span class="dot"></span>Phase 3 · Week 1</span>
+    <h1 class="reveal">Optimize có kiểm soát.<br><span class="gradient-text">Evidence → Decision → Validate</span>.</h1>
+    <p class="lead reveal">Team không chỉ giảm chi phí — team đang xây một quy trình tối ưu có kiểm soát, với rollback plan rõ ràng cho mỗi quyết định.</p>
+    <div class="meta-row reveal">
+      <span class="meta-chip primary"><span class="dot"></span>Architecture baseline rõ ✓</span>
+      <span class="meta-chip"><span class="dot"></span>Performance evidence từ Grafana/Jaeger ✓</span>
+      <span class="meta-chip"><span class="dot"></span>Cost $56.83/tuần (dưới target) ✓</span>
+      <span class="meta-chip"><span class="dot"></span>Bottleneck xác định + backlog prioritized ✓</span>
+    </div>
+    <div class="meta-row reveal">
+      <span class="meta-chip primary"><span class="dot"></span>Q&amp;A</span>
+    </div>
+  </div>
+</section>
+
+<script>
+/* =============================================================
+   PRESENTATION.JS
+   ============================================================= */
+(function(){
+  'use strict';
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function prepAnimations(){
+    document.querySelectorAll('.stagger').forEach(function(c){
+      Array.prototype.forEach.call(c.children,function(ch,i){ch.style.setProperty('--i',i);});
+    });
+    document.querySelectorAll('svg [data-animate="draw"]').forEach(function(p){
+      try{var L=p.getTotalLength();p.style.setProperty('--len',L);}catch(e){}
+    });
+  }
+
+  function revealInside(scope){
+    scope.querySelectorAll('.reveal,.stagger').forEach(function(el){el.classList.add('in');});
+    scope.querySelectorAll('svg').forEach(function(el){el.classList.add('in');});
+    runCounters(scope);
+  }
+
+  function runCounters(scope){
+    scope.querySelectorAll('[data-animate="count"]').forEach(function(el){
+      if(el.dataset.done)return;
+      el.dataset.done='1';
+      var to=parseFloat(el.dataset.to||el.textContent)||0;
+      if(reduce){el.textContent=to;return;}
+      var dur=900,t0=null;
+      function tick(t){
+        if(!t0)t0=t;
+        var p=Math.min((t-t0)/dur,1);
+        var v=to*(1-Math.pow(1-p,3));
+        el.textContent=(to%1===0)?Math.round(v):v.toFixed(2);
+        if(p<1)requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function setupSlideReveal(){
+    var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    if(!slides.length)return;
+    revealInside(slides[0]);
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(!e.isIntersecting)return;
+        revealInside(e.target);
+      });
+    },{threshold:0.4});
+    slides.forEach(function(s){io.observe(s);});
+  }
+
+  function SlidePresentation(){
+    this.slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    if(!this.slides.length)return;
+    this.current=0;
+    this.buildChrome();
+    this.bind();
+    this.observeActive();
+  }
+  SlidePresentation.prototype.buildChrome=function(){
+    var bar=document.createElement('div');bar.className='progress-bar';
+    this.progress=document.createElement('div');this.progress.className='progress-bar-fill';
+    bar.appendChild(this.progress);document.body.appendChild(bar);
+    this.dots=document.createElement('div');this.dots.className='nav-dots';
+    var self=this;
+    this.slides.forEach(function(s,i){
+      var b=document.createElement('button');
+      b.setAttribute('aria-label','Slide '+(i+1));
+      b.addEventListener('click',function(){self.goTo(i);});
+      self.dots.appendChild(b);
+    });
+    document.body.appendChild(this.dots);
+    this.counter=document.createElement('div');this.counter.className='slide-counter';
+    document.body.appendChild(this.counter);
+    this.update(0);
+  };
+  SlidePresentation.prototype.bind=function(){
+    var self=this;
+    document.addEventListener('keydown',function(e){
+      if(e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '){e.preventDefault();self.next();}
+      if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();self.prev();}
+    });
+  };
+  SlidePresentation.prototype.observeActive=function(){
+    var self=this;
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){if(e.isIntersecting)self.update(self.slides.indexOf(e.target));});
+    },{threshold:0.5});
+    this.slides.forEach(function(s){io.observe(s);});
+  };
+  SlidePresentation.prototype.next=function(){this.goTo(Math.min(this.current+1,this.slides.length-1));};
+  SlidePresentation.prototype.prev=function(){this.goTo(Math.max(this.current-1,0));};
+  SlidePresentation.prototype.goTo=function(i){this.slides[i].scrollIntoView({behavior:reduce?'auto':'smooth'});};
+  SlidePresentation.prototype.update=function(i){
+    this.current=i;
+    var dots=this.dots.querySelectorAll('button');
+    dots.forEach(function(d,j){d.classList.toggle('active',j===i);});
+    var total=String(this.slides.length).padStart(2,'0');
+    this.counter.innerHTML='<strong>'+String(i+1).padStart(2,'0')+'</strong> / '+total;
+    this.progress.style.width=((i+1)/this.slides.length*100)+'%';
+  };
+
+  document.addEventListener('DOMContentLoaded',function(){
+    prepAnimations();
+    if(document.documentElement.classList.contains('slides')){
+      setupSlideReveal();
+      new SlidePresentation();
+    }
+  });
+})();
+</script>
+</body>
+</html>
