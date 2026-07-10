@@ -1,399 +1,306 @@
-# COST-05: Right-sizing & Cost Saving Recommendation
+# COST-05: Khuyến nghị right-sizing và cost saving
 
-Capture date: 2026-07-09
+Ngày rà soát: 2026-07-10
 
 ## 1. Mục tiêu
 
-Tài liệu này tổng hợp các recommendation cho COST-05 dựa trên:
+Tài liệu này đối chiếu recommendation với implementation hiện có trong repository. Mỗi action được phân loại rõ là đã implement, chưa implement hoặc chỉ được phép thực hiện khi có thêm runtime evidence.
+
+Nguồn chính:
 
 - `docs/evidence/epic-04-cost-optimization/01-baseline-cost-estimate.md`
 - `docs/evidence/epic-04-cost-optimization/06-cost-quick-wins.md`
 - `docs/evidence/epic-03-performance-efficiency/04-runtime-performance-evidence.md`
 - `docs/evidence/epic-03-performance-efficiency/runtime/`
+- `techx-corp-chart/values.yaml`
+- `deploy/values-app-stamp.yaml`
+- `deploy/values-observability.yaml`
+- `infra/terraform/eks.tf`
+- `infra/terraform/ecr.tf`
+- `.github/workflows/deploy.yaml`
 
-Nguyên tắc chính: chỉ đề xuất tiết kiệm chi phí khi có bằng chứng đủ rõ ràng về cost driver, runtime health và khả năng rollback. Không giảm CPU/memory limit của workload chỉ dựa trên cảm tính hoặc snapshot ngắn, đặc biệt khi runtime đang có dấu hiệu restart/OOM.
+Nguyên tắc: không giảm CPU, memory hoặc node capacity khi workload còn `OOMKilled`, restart bất thường hoặc chưa có dữ liệu đủ dài. Cost estimate cũng không được mô tả như actual billing khi chưa đối chiếu Cost Explorer.
 
----
+## 2. Kết quả kiểm tra implementation
 
-## 2. Tổng hợp input evidence
+### 2.1. Kiến trúc deploy và node group
 
-### 2.1. COST-01 — Baseline cost
+Workflow deploy tách hai Helm release:
 
-Baseline hiện tại:
+- Application release `techx-corp` trong namespace `techx-tf4`.
+- Observability release `techx-observability` trong namespace `techx-observability`.
 
-| Hạng mục | Finding | Ý nghĩa với COST-05 |
+`infra/terraform/eks.tf:32-40` cấu hình managed node group:
+
+- `min_size=2`
+- `desired_size=2`
+- `max_size=4`
+- instance type `t3.large`
+- capacity type `ON_DEMAND`
+
+Repository không cài Cluster Autoscaler hoặc Karpenter. Vì vậy `max_size=4` chỉ là giới hạn của Auto Scaling Group. Cấu hình này không chứng minh cluster sẽ tự tăng từ 2 lên 4 node khi pod bị `Pending`. Việc tăng node hiện chỉ xảy ra khi có thao tác bên ngoài repository hoặc thay đổi desired capacity.
+
+Runtime evidence ghi nhận 2 node ở `us-east-1a` và `us-east-1b`. Đây là node placement đa AZ ở thời điểm chụp, không phải full HA. Application vẫn chủ yếu chạy một replica và chart chưa có topology spread hoặc pod anti-affinity mặc định.
+
+### 2.2. Load generator
+
+Implementation hiện tại:
+
+- `load-generator` được bật tại `techx-corp-chart/values.yaml:498-500`.
+- `LOCUST_AUTOSTART=true` tại `values.yaml:519-520`.
+- Memory limit là `1500Mi` tại `values.yaml:533-535`.
+- Local Compose path cũng có `LOCUST_AUTOSTART=true` tại `techx-corp-platform/.env:104`.
+- `deploy/values-app-stamp.yaml` không override các giá trị này.
+
+Vì vậy action tắt autostart chưa được implement trong source of truth của EKS hoặc local Compose.
+
+Load generator gọi `http://frontend-proxy:8080` trong cluster. Traffic này không đi qua public ALB theo flow mặc định, nên không nên claim nó trực tiếp làm tăng ALB LCU. Nó cũng không mặc định đi qua NAT Gateway. Tác động đã có cơ sở là:
+
+- Tăng CPU và memory của application pods.
+- Tăng request, log và trace volume.
+- Tăng áp lực cho Jaeger, Prometheus, OpenSearch, Grafana và OTel Collector.
+- Làm sai lệch baseline của user traffic.
+- Có thể tạo thêm node pressure, nhưng repository chưa có node autoscaler để tự scale theo áp lực đó.
+
+### 2.3. Observability
+
+Cấu hình hiện tại trong `values.yaml`:
+
+| Component | Cấu hình chính | Kết luận |
 |---|---|---|
-| EKS cluster | `techx-tf4-cluster`, ACTIVE | Fixed control plane cost |
-| Node group | `techx-general-ng-20260707091432750200000017` | Main compute cost driver |
-| Instance type | `t3.large` | Chỉ nên right-size sau khi CPU/memory evidence ổn định |
-| Scaling config | min=2, desired=2, max=4 | Chi phí hiện tại dựa trên 2 nodes; max=4 là cost risk |
-| Worker nodes | 2 nodes across `us-east-1a` and `us-east-1b` | Duy trì basic multi-AZ placement |
-| NAT Gateway | 1 NAT Gateway | Fixed cost driver đã được tối ưu theo hướng Single NAT cho Week 1 |
-| ALB | 1 internet-facing ALB | Entry point cần thiết; có hourly cost và LCU cost |
-| EBS | 2 x 20 GiB gp3 root volumes, total 40 GiB | Storage cost cố định ở mức thấp/trung bình |
-| ECR | 1 repo `techx-corp` | Cần lifecycle cleanup nếu số lượng image tăng |
-| CloudWatch Logs | 8 log groups, một số group chưa set retention | Cost risk nếu log ingestion/storage tăng |
-| PVC | Không có PVC trong `techx-tf4` | Chi phí PVC hiện tại thấp, nhưng có persistence risk cho stateful workload |
+| Jaeger | memory limit `600Mi`, in-memory storage, `MEMORY_MAX_TRACES=25000` | Screenshot xác nhận `OOMKilled=True`, restart count `1`; không giảm memory khi chưa xác định nguyên nhân và peak usage |
+| Prometheus | memory limit `400Mi`, retention `7d`, persistent volume tắt | Retention đã được cấu hình, nhưng dữ liệu mất khi pod/storage tạm thời bị thay thế |
+| Grafana | memory limit `300Mi`; runtime evidence ghi request/limit `300Mi` | Đã có bằng chứng `OOMKilled`, exit `137`, restart count `7`; không giảm |
+| OpenSearch | heap `400m`, memory limit `1100Mi`, persistence tắt | Không giảm khi chưa đo heap, index size và peak memory |
+| OTel Collector | DaemonSet, memory limit `200Mi` | Chi phí tăng theo số node; cần tính theo DaemonSet replica count |
 
-Current estimate:
+Bằng chứng raw cho Grafana nằm tại:
 
-| Scenario | Monthly estimate | Weekly estimate | Budget comparison |
+`docs/evidence/epic-03-performance-efficiency/runtime/grafana/grafana-resource-evidence-2026-07-09.md`
+
+Screenshot `docs/evidence/epic-04-cost-optimization/runtime/screenshots/Jaeger overkill.jpg` xác nhận container Jaeger từng có `OOMKilled=True` và restart count `1` ở memory limit `600Mi`. Đây là bằng chứng cho ít nhất một sự cố OOM lịch sử. Snapshot `runtime/jaeger/http-check-2026-07-09.md:21-25` cho thấy pod Jaeger sau đó đang `Running` với restart count `0`; nhiều khả năng đây là pod hoặc container instance mới, nên hai bằng chứng không mâu thuẫn. Screenshot chưa thể hiện đầy đủ timestamp, pod/container ID, peak memory hoặc traffic correlation. Vì vậy OOM được xem là đã xác nhận, còn nguyên nhân và mức memory phù hợp vẫn cần điều tra.
+
+Namespace inventory không thấy PVC. Điều này khớp với Prometheus và OpenSearch persistence đang tắt, còn Jaeger dùng in-memory storage. Storage cost thấp nhưng restart có thể làm mất metrics, logs hoặc traces.
+
+### 2.4. ECR lifecycle
+
+Action thêm ECR lifecycle policy đã được implement tại `infra/terraform/ecr.tf:17-51`:
+
+- Xóa untagged image sau 7 ngày.
+- Giữ tối đa 30 tagged image gần nhất.
+
+Vì vậy tài liệu không nên tiếp tục ghi "Add ECR lifecycle policy" như một action chưa làm.
+
+Policy hiện tại vẫn cần hardening. Rule `tagStatus: any` có thể expire tagged image cũ, kể cả release tag cần rollback. Cần kiểm tra lifecycle preview và thay rule chung bằng tag prefixes hoặc retention policy phân biệt release, environment và development image.
+
+### 2.5. CloudWatch Logs retention
+
+Runtime inventory ghi nhận 8 log groups. Một số group có retention, một số group để `Not set`.
+
+Repository không có `aws_cloudwatch_log_group` hoặc `retention_in_days` để quản lý các non-critical log group đó. EKS control plane log group hiện được quan sát với retention 90 ngày, nhưng các `/ec2/cloudwatch-agent/...` group có thể thuộc workload hoặc môi trường khác. Không được thay retention hàng loạt trước khi xác nhận ownership, compliance và nguồn tạo log.
+
+Action này chưa được implement trong Terraform hiện tại.
+
+### 2.6. ResourceQuota
+
+`deploy/quota.yaml` là manifest mẫu/manual, không được apply trong `.github/workflows/deploy.yaml`. Workflow cũng không tạo `LimitRange`.
+
+Nếu quota được apply vào namespace `techx-tf4`, các pod thiếu CPU request/limit có thể bị admission từ chối. Observability chạy ở namespace khác nên cần quota riêng nếu team muốn kiểm soát cả hai release.
+
+Do đó, việc giữ hoặc giảm node capacity phải đi cùng:
+
+- Tổng resource request/limit của từng namespace.
+- Server-side dry-run với quota.
+- Node allocatable và headroom trong baseline lẫn controlled load test.
+
+## 3. Baseline cost và giới hạn của estimate
+
+Số liệu từ COST-01:
+
+| Kịch bản | Monthly estimate | Weekly estimate | Trạng thái |
 |---|---:|---:|---|
-| Fixed baseline current | `$246.95/month` | `$56.83/week` | Below `$300/week` |
-| Fixed baseline + average 1 ALB LCU | `$252.79/month` | `$58.18/week` | Below `$300/week` |
-| Node group max scenario, 4 x `t3.large` | `$368.42/month` | `$84.79/week` | Still below `$300/week`, but compute nearly doubles |
+| Fixed baseline hiện tại | `$246.95/month` | `$56.83/week` | Estimate, chưa phải actual bill |
+| Fixed baseline và trung bình 1 ALB LCU | `$252.79/month` | `$58.18/week` | Scenario, ALB LCU thực tế chưa được đo |
+| 4 node theo mô hình cũ | `$368.42/month` | `$84.79/week` | Đang giữ EBS ở 40 GiB nên chưa tính đủ 4 root volume |
+| 4 node với 4 x 20 GiB gp3 | khoảng `$371.62/month` | khoảng `$85.53/week` | Scenario điều chỉnh nếu cả 4 node cùng chạy đủ tháng |
 
-Kết luận từ COST-01:
+Estimate chưa gồm đầy đủ:
 
-- Baseline hiện tại vẫn nằm dưới budget `$300/week`.
-- Cost driver cố định lớn nhất có thể kiểm soát là EC2 worker nodes.
-- NAT Gateway và ALB là fixed cost đáng chú ý, nhưng hiện tại đều gắn với quyết định kiến trúc cần thiết.
-- Cost risk quan trọng nhất hiện tại không phải là overspend ngay lập tức, mà là uncontrolled runtime behavior có thể làm tăng compute, logs, traces, NAT data processing, ALB LCU và future node scaling.
+- NAT data processing.
+- ALB LCU thực tế.
+- ECR storage thực tế.
+- CloudWatch ingestion và storage thực tế.
+- Data transfer, kể cả cross-AZ.
+- Tax, credit, discount hoặc Savings Plans.
 
-### 2.2. COST-06 — Quick wins
+Budget target cũng chưa thống nhất giữa `$300/week` trong một số tài liệu và AWS Budget `$300/month` đã được khai báo tại `infra/terraform/variables.tf:90-99` và `infra/terraform/budgets.tf:2-18`. Theo guardrail hiện tại, baseline `$246.95/month` thấp hơn budget khoảng `$53.05/month`, nhưng scenario cũ `$368.42/month` vượt khoảng `$68.42/month`, còn scenario đã điều chỉnh `$371.62/month` vượt khoảng `$71.62/month`. Không được dùng phép so sánh với `$300/week` để chứng minh tuân thủ AWS Budget đang implement.
 
-Key findings:
+## 4. Recommendation summary
 
-| Area | Evidence | COST-05 decision |
-|---|---|---|
-| Load Generator | `LOCUST_AUTOSTART=true`, `load-generator` enabled, memory limit khoảng `1500Mi` | Disable autostart; chỉ chạy khi có controlled test |
-| Jaeger | Existing evidence cho thấy Jaeger từng bị `OOMKilled` ở current limit | Không giảm Jaeger memory; điều tra hoặc tăng nếu OOM tiếp tục |
-| Prometheus | Chưa đủ long-window runtime evidence để giảm limit an toàn | Không giảm trong Week 1 |
-| OpenSearch | Chưa đủ long-window runtime evidence để giảm limit an toàn | Không giảm trong Week 1 |
-| Grafana | COST-06 đang conservative; PERF runtime evidence sau đó cho thấy memory/restart risk | Không giảm; đánh giá tăng dựa trên OOM/restart evidence |
-
-Kết luận từ COST-06:
-
-- Quick win tốt nhất có thể làm ngay là operational quick win: disable load-generator autostart.
-- Observability stack không nên được xem là mục tiêu cắt giảm chi phí nhanh.
-- Memory pressure của Jaeger/Grafana cho thấy việc giảm memory quá mạnh sẽ làm tăng reliability risk và có thể làm xấu đi performance evidence.
-
-### 2.3. PERF-04 — Runtime performance evidence
-
-Runtime findings từ `runtime/` evidence:
-
-| Evidence | Finding | COST-05 implication |
-|---|---|---|
-| `runtime/kubectl/deployments-2026-07-09.md` | 22 application deployments are `READY 1/1` | Baseline app deployable và available |
-| `runtime/kubectl/pods-wide-2026-07-09.md` | All app pods are `Running`; `accounting` có 31 restarts, `checkout` có 4, `load-generator` có 1 | Không giảm resource một cách mù quáng; cần điều tra các pod có restart cao trước |
-| `runtime/kubectl/nodes-zones-2026-07-09.md` | 2 ready nodes across `us-east-1a` and `us-east-1b` | Không giảm node count xuống dưới 2 nếu chưa chấp nhận lower HA |
-| Grafana/Prometheus resource dashboards | CPU-memory trend được lấy từ Prometheus/Grafana thay vì lệnh Kubernetes resource snapshot | Node/pod right-sizing cần dựa trên 48-72h metrics window, không dựa vào một snapshot ngắn |
-| `runtime/kubectl/warning-events-2026-07-09.md` | `accounting` BackOff warning; Grafana previous readiness warning | Đang có runtime stability issues trước khi cost cuts |
-| `runtime/grafana/grafana-resource-evidence-2026-07-09.md` | Grafana main container had `OOMKilled`, exit code 137, restart count 7, memory request/limit 300Mi | Không giảm Grafana; tăng lên 512Mi/768Mi là reliability fix |
-| `04-runtime-performance-evidence.md` | Grafana/APM traces exist; checkout/payment/product-catalog và các service khác có trace coverage | Dùng traces này để bảo vệ performance trong quá trình tối ưu cost |
-
-Known gaps:
-
-- Prometheus/Grafana là source metrics chính cho CPU/RAM, nhưng vẫn cần một cửa sổ quan sát 48-72 giờ trước khi right-sizing.
-- Kafka runtime metrics chưa đủ hoàn chỉnh để tuning cost/performance.
-- Jaeger self-metrics cần follow-up, đặc biệt vì đã quan sát được OOMKilled.
-- Grafana memory/restart risk đã được xác nhận; tránh mọi đề xuất giảm memory cho Grafana.
-- Vẫn cần Cost Explorer actual billing data để validate estimate so với daily/weekly burn rate thực tế.
-
----
-
-## 3. Recommendation summary
-
-| Priority | Recommendation | Decision | Expected impact | Risk |
-|---|---|---|---|---|
-| P0 | Disable `load-generator` autostart | Do now | Giảm synthetic traffic, log/trace noise và indirect resource pressure | Low |
-| P0 | Không giảm Jaeger/Grafana memory | Do now | Bảo vệ observability reliability | Low |
-| P0 | Điều tra các pod có restart cao trước khi right-sizing | Do now | Tránh cost changes che khuất reliability bugs | Medium |
-| P1 | Chuẩn hóa Prometheus/Grafana CPU-memory dashboards và PromQL queries | Do next | Cho phép resource/node right-sizing dựa trên evidence | Low |
-| P1 | Set CloudWatch log retention cho non-critical log groups | Do next | Ngăn log storage cost tăng không kiểm soát | Low |
-| P1 | Thêm ECR lifecycle policy | Do next | Ngăn image storage tăng không kiểm soát | Low |
-| P2 | Review node group size/type sau 48–72h metrics | Conditional | Có khả năng tiết kiệm EC2 nếu workload underutilized | Medium/High |
-| P2 | Review ALB/NAT data processing sau khi có Cost Explorer data | Conditional | Giảm usage-based cost nếu traffic pattern phù hợp | Medium |
-
----
-
-## 4. Recommended actions
-
-### 4.1. Action 1 — Disable load-generator autostart
-
-Decision: implement.
-
-Rationale:
-
-- `load-generator` hữu ích cho controlled performance tests, nhưng không nên liên tục tạo synthetic traffic.
-- Synthetic traffic liên tục có thể làm tăng application CPU, memory, traces, logs, ALB LCU, NAT data processing và observability workload pressure.
-- Nó cũng làm nhiễu SLO/SLI dashboards và khiến performance/cost analysis kém tin cậy hơn.
-
-Recommended config change:
-
-```text
-LOCUST_AUTOSTART=true -> LOCUST_AUTOSTART=false
-```
-
-Scope:
-
-- Helm/chart value nếu deployment dùng chart-controlled env.
-- `.env` value nếu local/docker-compose path vẫn được team sử dụng.
-
-Expected saving:
-
-- Direct AWS bill reduction có thể chưa xuất hiện ngay vì node group vẫn giữ 2 x `t3.large`.
-- Indirect saving có giá trị cao: giảm trace/log noise, giảm artificial requests, giảm pressure lên Jaeger/Grafana/Prometheus/OpenSearch và giảm khả năng scale-up không cần thiết lên max nodes.
-
-Validation:
-
-- Confirm `load-generator` không tự động start traffic sau khi redeploy.
-- Confirm Grafana request rate giảm về real-user/test-only traffic.
-- Confirm Jaeger trace volume không bị Locust đẩy liên tục.
-- Confirm không có application flow nào phụ thuộc vào việc load-generator chạy 24/7.
-
-Rollback:
-
-```text
-LOCUST_AUTOSTART=false -> LOCUST_AUTOSTART=true
-```
-
-Chỉ rollback khi có planned load test cần bật lại.
-
-### 4.2. Action 2 — Keep current 2-node baseline for Week 1
-
-Decision: giữ `min=2`, `desired=2` trong giai đoạn hiện tại.
-
-Rationale:
-
-- Current 2-node layout cung cấp basic spread across `us-east-1a` và `us-east-1b`.
-- Runtime evidence cho thấy tất cả pods đang Running, nhưng vẫn có restarts và warning events.
-- Cần thêm 48-72 giờ CPU/memory trend từ Prometheus/Grafana trước khi chuyển sang smaller instances hoặc fewer nodes một cách an toàn.
-- Observability components đang có memory risk, nên giảm node capacity lúc này sẽ làm tăng operational risk.
-
-Do not do now:
-
-- Không giảm xuống 1 node trừ khi team chấp nhận rõ ràng đây là non-HA cost-saving mode.
-- Không chuyển từ `t3.large` sang `t3.medium` cho đến khi pod memory usage, node memory headroom và restart/OOM patterns được đo trong ít nhất 48–72 giờ.
-- Không tăng `maxSize` vượt 4 nếu chưa có budget approval.
-
-Conditional future option:
-
-| Option | Estimated EC2 impact | Conditions before applying |
-|---|---:|---|
-| 2 x `t3.large` -> 2 x smaller instance type | Có thể giảm EC2 cost đáng kể | Cần stable CPU/memory headroom, không có OOM, không tăng restart |
-| `maxSize=4` -> `maxSize=3` | Giới hạn scale-out cost risk | Chỉ thực hiện nếu load test xác nhận 3 nodes chịu được peak |
-| Scheduled scale-down | Tiết kiệm compute ngoài business hours | Chỉ phù hợp nếu đây là non-production hoặc team chấp nhận downtime/lower capacity |
-
-### 4.3. Action 3 — Do not cut observability memory limits yet
-
-Decision: không giảm Jaeger, Prometheus, OpenSearch hoặc Grafana limits trong COST-05 cycle này.
-
-Rationale:
-
-- COST-06 đã flag Jaeger OOMKilled risk.
-- PERF runtime evidence xác nhận Grafana từng bị `OOMKilled`, exit code 137 và restart count 7 ở mức 300Mi.
-- Memory usage trend và peak data cần được chốt lại bằng Prometheus/Grafana trong cửa sổ 48-72 giờ.
-- Observability stack cần thiết để tạo performance evidence cho PERF-04 và các right-sizing work sau này.
-
-Specific decisions:
-
-| Component | Current direction | Reason |
-|---|---|---|
-| Jaeger | Không giảm; điều tra OOM; cân nhắc tăng nếu OOM lặp lại | Đã có OOMKilled evidence |
-| Grafana | Không giảm; cân nhắc tăng request/limit lên 512Mi/768Mi | OOMKilled, exit 137, restart count 7 |
-| Prometheus | Giữ current limit cho đến khi có 48–72h metrics | Chưa có safe reduction evidence |
-| OpenSearch | Giữ current limit cho đến khi có storage/memory/index evidence | Stateful/search workload, chưa có safe reduction evidence |
-
-Grafana reliability recommendation from PERF-04:
-
-```yaml
-grafana:
-  resources:
-    requests:
-      memory: 512Mi
-    limits:
-      memory: 768Mi
-```
-
-Cost note:
-
-- Tăng Grafana memory tự nó không phải là cost saving.
-- Tuy nhiên, đây vẫn là một cost optimization decision vì observability ổn định giúp tránh right-sizing sai và tránh repeated restarts làm méo metrics/traces.
-
-### 4.4. Action 4 — Chuẩn hóa metrics evidence path trước khi compute right-sizing
-
-Decision: cần hoàn thành trước khi EC2/node right-sizing.
-
-Required evidence:
-
-- Prometheus/Grafana pod CPU và memory trong 48-72 giờ.
-- Node CPU/memory dashboard hoặc PromQL tương đương cho cùng cửa sổ đo.
-- Restart count và OOMKilled history của app pods và observability pods.
-- Load-test window với `load-generator` được bật thủ công rồi tắt lại sau test.
-
-Acceptance criteria before changing node size/type:
-
-- Không có OOMKilled event mới cho Jaeger/Grafana.
-- `accounting` BackOff/restart issue đã được giải thích hoặc fix.
-- Node memory headroom vẫn healthy trong baseline và controlled load test.
-- Checkout/payment/product-catalog traces vẫn nằm trong performance targets sau bất kỳ resource change nào.
-
-### 4.5. Action 5 — Add CloudWatch log retention
-
-Decision: implement cho non-critical log groups sau khi owner confirm.
-
-Rationale:
-
-- COST-01 ghi nhận có 8 log groups và một số group chưa set retention.
-- Current stored bytes còn thấp, nhưng log storage cost có thể tăng theo thời gian.
-- Đây là cost guardrail ít rủi ro hơn so với việc cắt runtime memory.
-
-Recommended policy:
-
-| Log type | Suggested retention |
-|---|---:|
-| Temporary/test logs | 1–7 days |
-| Application troubleshooting logs | 14–30 days |
-| Audit/security-required logs | Follow compliance requirement |
-| EKS control plane logs | Giữ current policy trừ khi owner approve change |
-
-Validation:
-
-- Confirm retention chỉ được set cho approved log groups.
-- Verify không rút ngắn nhầm các log cần cho audit.
-
-### 4.6. Action 6 — Add ECR lifecycle cleanup
-
-Decision: implement sau khi confirm image promotion policy.
-
-Rationale:
-
-- ECR storage hiện chưa phải main cost driver, nhưng có thể tăng âm thầm khi build image tích lũy.
-- Lifecycle policy có rủi ro thấp nếu release tags được bảo vệ.
-
-Recommended policy:
-
-- Giữ toàn bộ protected release tags.
-- Giữ latest N development images theo branch/environment.
-- Expire untagged images sau một short retention window.
-
-Validation:
-
-- Confirm rollback image tags được giữ lại.
-- Confirm production release tags không match cleanup rule.
-
----
-
-## 5. Do-not-do list
-
-Các thay đổi dưới đây không được khuyến nghị trong cycle này:
-
-| Change | Reason |
-|---|---|
-| Reduce Jaeger memory | Jaeger có OOMKilled evidence |
-| Reduce Grafana memory | Grafana có OOMKilled, exit 137 và restart count 7 |
-| Reduce Prometheus/OpenSearch memory without long-window runtime metrics | Chưa có đủ evidence |
-| Downsize from `t3.large` immediately | Chưa có đủ 48-72h Prometheus/Grafana trend và runtime restarts vẫn tồn tại |
-| Scale node group min/desired from 2 to 1 by default | Sẽ làm giảm HA và có thể overload remaining node |
-| Remove NAT Gateway | Private subnet outbound traffic đang phụ thuộc NAT; cần architecture change |
-| Remove ALB | ALB là public entry point cho Webstore/Grafana/Jaeger routes |
-| Treat current estimate as actual billing | Vẫn cần Cost Explorer actual data |
-
----
-
-## 6. Cost impact model
-
-### 6.1. Immediate expected impact
-
-| Action | Direct AWS bill impact | Indirect impact | Confidence |
+| Ưu tiên | Recommendation | Trạng thái implementation | Quyết định |
 |---|---|---|---|
-| Disable load-generator autostart | Thấp ngay lập tức, trừ khi nó ngăn scale-up hoặc giảm usage-based charges | Cao: giảm traffic, traces, logs, observability pressure | High |
-| CloudWatch retention | Thấp hiện tại, ngăn future growth | Medium | High |
-| ECR lifecycle | Thấp hiện tại, ngăn future growth | Low/Medium | High |
-| Do not reduce observability memory | Không có direct saving | Cao về reliability protection | High |
+| P0 | Đặt `LOCUST_AUTOSTART=false` cho EKS và local Compose | Chưa implement | Làm ngay, sau đó redeploy và verify |
+| P0 | Không giảm Grafana memory | Có runtime OOM evidence | Giữ hoặc thử tăng có kiểm soát |
+| P0 | Điều tra Jaeger sau OOM | Screenshot xác nhận `OOMKilled=True`, restart count `1` | Giữ memory, bổ sung timestamp, peak usage và traffic correlation trước khi đổi |
+| P0 | Xử lý `accounting` OOM/restart trước khi cost cut | Chưa hoàn tất | Làm trước right-sizing |
+| P1 | Giữ 2 x `t3.large` trong cửa sổ Week 1 | Đang implement | Giữ cho đến khi có 48 đến 72 giờ metrics |
+| P1 | Chuẩn hóa Prometheus/Grafana metrics | Đang có dashboard, thiếu long-window dataset | Hoàn thiện trước compute right-sizing |
+| P1 | Quản lý CloudWatch retention theo ownership | Chưa implement | Làm sau khi owner xác nhận |
+| P1 | Harden ECR lifecycle policy | Policy đã có nhưng chưa bảo vệ release tags rõ ràng | Review lifecycle preview và sửa rule |
+| P2 | Đổi instance type hoặc giảm max size | Chưa được chứng minh an toàn | Chỉ thử sau controlled load test |
+| P2 | Node autoscaling | Chưa implement | Cần Cluster Autoscaler hoặc Karpenter nếu muốn tự scale |
 
-### 6.2. Conditional future savings
+## 5. Hành động đề xuất
 
-| Candidate | Why it could save | Why it is not approved yet |
-|---|---|---|
-| Smaller worker instance type | EC2 worker nodes là main fixed cost driver | Cần CPU/memory headroom và không có OOM/restart growth |
-| Lower max node group size | Ngăn accidental scale to 4 nodes | Cần load-test proof rằng smaller max vẫn chịu được peak |
-| Scheduled scale-down | Giảm compute trong idle windows | Cần environment classification và downtime/capacity acceptance |
-| NAT data optimization | NAT có hourly cost và data processing cost | Cần Cost Explorer/data transfer evidence |
-| ALB LCU optimization | ALB usage có thể tăng theo traffic | Cần request/LCU evidence |
+### 5.1. Tắt load-generator autostart
 
----
-
-## 7. Proposed implementation plan
-
-### Phase 1 — Safe quick wins
-
-1. Disable `LOCUST_AUTOSTART`.
-2. Confirm load-generator chỉ được dùng thủ công trong planned tests.
-3. Set CloudWatch retention cho approved non-critical log groups.
-4. Add ECR lifecycle policy cho untagged/dev images.
-5. Giữ current node group ở 2 x `t3.large`.
-6. Giữ observability limits ổn định; không giảm Jaeger/Grafana/Prometheus/OpenSearch.
-
-### Phase 2 — Runtime evidence window
-
-1. Chuẩn hóa Prometheus/Grafana dashboard và PromQL query làm source of truth cho CPU/RAM.
-2. Collect 48-72h CPU/memory data cho app pods và observability pods.
-3. Track restart count và OOMKilled history.
-4. Run một controlled load test với load-generator được bật thủ công.
-5. Compare Grafana/APM traces cho checkout, payment, product-catalog, recommendation, product-reviews và frontend flows trước/sau quick wins.
-
-### Phase 3 — Right-size compute if evidence allows
-
-Chỉ thực hiện sau Phase 2:
-
-1. Evaluate liệu `t3.large` có đang overprovisioned hay không.
-2. Test smaller worker node type hoặc reduced max size trong một controlled window.
-3. Validate p95/p99 latency, error rate, pod restarts, OOMKilled events và node memory headroom.
-4. Roll back ngay nếu latency, restart count hoặc OOM events regress.
-
----
-
-## 8. Jira evidence comment
+Thay đổi cần làm:
 
 ```text
-EVIDENCE UPDATE - COST-05 Right-sizing & Cost Saving Recommendation
+techx-corp-chart/values.yaml:
+LOCUST_AUTOSTART=true -> false
 
-1. Đã làm gì?
-
-Đã hoàn thành recommendation cho COST-05 dựa trên COST-01 baseline cost, COST-06 quick wins và PERF-04 runtime evidence.
-
-2. Kết quả chính
-
-Baseline hiện tại vẫn nằm dưới budget $300/week:
-- Fixed baseline current: ~$56.83/week
-- Fixed baseline + average 1 ALB LCU: ~$58.18/week
-- Node group max scenario 4 x t3.large: ~$84.79/week
-
-Main cost driver:
-- EC2 worker nodes: 2 x t3.large
-- EKS control plane fixed cost
-- NAT Gateway and ALB fixed baseline costs
-- Observability stack creates indirect node pressure
-
-Recommendation được approve cho Week 1:
-- Disable LOCUST_AUTOSTART / load-generator autostart.
-- Keep node group at min=2, desired=2 for now.
-- Do not reduce Jaeger/Grafana/Prometheus/OpenSearch memory limits yet.
-- Investigate accounting restarts and observability OOM/restart evidence before resource cuts.
-- Add CloudWatch log retention for approved non-critical log groups.
-- Add ECR lifecycle cleanup after confirming image retention policy.
-
-Recommendation KHÔNG nên làm ngay:
-- Không downsize t3.large khi chưa có đủ 48-72h Prometheus/Grafana CPU-memory trend.
-- Không giảm node count về 1 nếu chưa chấp nhận mất HA.
-- Không giảm Jaeger/Grafana memory vì đã có OOM/restart risk.
-- Không giảm Prometheus/OpenSearch khi chưa có 48–72h runtime evidence.
-
-3. Bằng chứng sử dụng
-
-- COST-01 baseline:
-docs/evidence/epic-04-cost-optimization/01-baseline-cost-estimate.md
-
-- COST-06 quick wins:
-docs/evidence/epic-04-cost-optimization/06-cost-quick-wins.md
-
-- PERF-04 runtime performance evidence:
-docs/evidence/epic-03-performance-efficiency/04-runtime-performance-evidence.md
-docs/evidence/epic-03-performance-efficiency/runtime/
-
-4. Follow-up
-
-Cần chốt Prometheus/Grafana là source of truth để thu thập CPU/memory trong 48-72h. Sau đó mới thực hiện compute right-sizing như đổi instance type, giảm max node group hoặc scheduled scale-down.
+techx-corp-platform/.env:
+LOCUST_AUTOSTART=true -> false
 ```
+
+Nếu team cần khác nhau theo environment, nên đưa giá trị này vào một environment-specific values file thay vì sửa tay trước mỗi lần test.
+
+Validation:
+
+- Rendered app manifest có `LOCUST_AUTOSTART=false`.
+- Sau redeploy, Locust không tự tạo user load.
+- Request rate và trace volume giảm về traffic thực hoặc planned test.
+- Khi chạy test, bật thủ công, ghi lại start/end time rồi tắt sau test.
+
+Rollback chỉ dùng cho planned load test, không bật lại làm baseline mặc định.
+
+### 5.2. Giữ 2 node trong giai đoạn hiện tại
+
+Giữ `min=2`, `desired=2` trong Week 1 vì:
+
+- Runtime còn OOM và restart history.
+- Application và observability dùng chung node group.
+- Chưa có 48 đến 72 giờ CPU/memory trend đủ sạch sau khi tắt synthetic traffic.
+- Hai node đã được quan sát ở hai AZ, dù application chưa đạt full HA.
+
+Chưa thực hiện:
+
+- Không giảm về 1 node nếu chưa chấp nhận downtime và mất redundancy ở node layer.
+- Không chuyển sang `t3.medium` khi chưa cộng tổng memory request/working set của cả hai namespace.
+- Không tăng `max_size` vượt 4 khi chưa có budget approval.
+- Không mô tả `max_size=4` là autoscaling đã hoạt động khi chưa có Cluster Autoscaler hoặc Karpenter.
+
+### 5.3. Giữ observability ổn định
+
+- Grafana: không giảm. Có thể thử request `512Mi`, limit `768Mi`, sau đó kiểm tra 24 giờ.
+- Jaeger: không giảm dưới `600Mi` vì screenshot đã xác nhận một lần `OOMKilled`. Cần bổ sung timestamp, peak usage và traffic correlation. Có thể giảm trace volume bằng sampling hoặc `MEMORY_MAX_TRACES` trước khi chỉ tăng memory.
+- Prometheus: giữ `400Mi`; retention đã là `7d`, nhưng persistence đang tắt.
+- OpenSearch: giữ `1100Mi`; cần theo dõi heap, index growth và log retention.
+- OTel Collector: theo dõi memory theo từng DaemonSet pod và nhân với số node khi lập capacity model.
+
+Acceptance criteria trước khi thay đổi memory:
+
+- Không có `OOMKilled` mới.
+- Restart count không tăng.
+- Grafana và Jaeger route vẫn trả `HTTP 200`.
+- Metrics, traces và logs vẫn có dữ liệu trong test window.
+
+### 5.4. Quản lý CloudWatch retention
+
+Trước khi tạo Terraform resource:
+
+1. Xác nhận từng log group thuộc cluster hoặc workload nào.
+2. Phân loại audit/security, application troubleshooting và temporary/test logs.
+3. Chọn retention theo compliance và nhu cầu điều tra.
+4. Import resource hiện có vào Terraform nếu Terraform sẽ quản lý chúng.
+5. Chạy plan và kiểm tra không xóa hoặc recreate nhầm log group.
+
+Gợi ý ban đầu:
+
+| Loại log | Retention tham khảo |
+|---|---:|
+| Temporary/test | 1 đến 7 ngày |
+| Application troubleshooting | 14 đến 30 ngày |
+| Audit/security | Theo compliance requirement |
+| EKS control plane | Giữ policy hiện tại cho đến khi owner phê duyệt |
+
+### 5.5. Harden ECR lifecycle
+
+Policy đã tồn tại, nên action tiếp theo là review chứ không phải tạo mới.
+
+Validation:
+
+- Dùng `aws ecr get-lifecycle-policy` để xác minh policy đã được apply, thay vì chỉ dựa vào Terraform declaration.
+- Chạy lifecycle preview.
+- Xác nhận rollback tags không bị expire.
+- Xác nhận production release tags được bảo vệ.
+- Chỉ expire untagged và development images theo policy đã thống nhất.
+
+### 5.6. Compute right-sizing có điều kiện
+
+Chỉ thử đổi instance type hoặc node count khi:
+
+- `LOCUST_AUTOSTART=false` đã được deploy.
+- Có 48 đến 72 giờ metrics cho app và observability.
+- `accounting` và Grafana không còn OOM mới.
+- Có tổng request/limit và working set theo từng namespace.
+- Controlled load test đạt p95/p99, error rate và checkout success target.
+- ResourceQuota server-side dry-run thành công.
+
+Rollback nếu latency, error rate, restart, `OOMKilled` hoặc pending pod tăng.
+
+## 6. Không thực hiện trong cycle này
+
+| Thay đổi | Lý do |
+|---|---|
+| Giảm Grafana memory | Có bằng chứng `OOMKilled`, exit `137` |
+| Giảm Jaeger theo giả định usage thấp | Screenshot đã xác nhận một lần `OOMKilled`; nguyên nhân và traffic correlation chưa rõ |
+| Giảm Prometheus/OpenSearch memory | Chưa có long-window evidence; persistence đang tắt |
+| Chuyển ngay từ `t3.large` sang instance nhỏ hơn | Chưa có node/pod headroom đầy đủ |
+| Giảm node count mặc định từ 2 xuống 1 | Giảm node-layer redundancy và capacity |
+| Xóa NAT Gateway hoặc ALB | Cần architecture change và traffic analysis riêng |
+| Xem max size 4 là active autoscaling | Repository chưa có Cluster Autoscaler hoặc Karpenter |
+| Tạo thêm ECR lifecycle policy | Policy đã tồn tại; cần harden policy hiện tại |
+| Xem estimate là actual bill | Chưa có Cost Explorer actual data |
+
+## 7. Kế hoạch triển khai
+
+### Giai đoạn 1: safe changes
+
+1. Đặt `LOCUST_AUTOSTART=false` trong chart và local `.env`.
+2. Redeploy và kiểm tra request/trace volume.
+3. Giữ node group ở 2 x `t3.large`.
+4. Xử lý `accounting` và Grafana OOM/restart.
+5. Bổ sung metadata cho Jaeger OOM evidence: timestamp, pod/container ID, peak usage và traffic correlation.
+6. Review ECR lifecycle preview.
+
+### Giai đoạn 2: evidence window
+
+1. Thu CPU/memory trong 48 đến 72 giờ cho cả hai namespace.
+2. Theo dõi restart và `OOMKilled` theo pod/container.
+3. Chạy controlled load test có start/end time rõ ràng.
+4. Đối chiếu Cost Explorer với estimate.
+5. Xác nhận log group ownership và retention policy.
+
+### Giai đoạn 3: conditional optimization
+
+1. Thử instance type nhỏ hơn trong controlled window nếu headroom cho phép.
+2. Kiểm tra lại chi phí EBS nếu node count thay đổi.
+3. Đánh giá giảm `max_size` sau peak load test.
+4. Chỉ bổ sung node autoscaler khi có nhu cầu scale theo pending pods và có capacity/budget guardrail.
+
+## 8. Trạng thái
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Cost baseline | Đã có estimate; chưa đối chiếu actual bill |
+| Load-generator autostart | Chưa tắt trong source config |
+| Node group 2 x `t3.large` | Đã implement |
+| ECR lifecycle | Đã implement; cần bảo vệ release tags rõ ràng hơn |
+| CloudWatch retention cho non-critical groups | Chưa được quản lý trong Terraform |
+| Observability right-sizing | Chưa đủ evidence; Grafana không được giảm |
+| Compute right-sizing | Chưa được phê duyệt |
+| Node autoscaling | Chưa được implement |
+
+COST-05 chỉ hoàn tất khi recommendation được chuyển thành config change, có rendered output, rollout evidence, số liệu trước/sau và rollback result nếu validation không đạt.
