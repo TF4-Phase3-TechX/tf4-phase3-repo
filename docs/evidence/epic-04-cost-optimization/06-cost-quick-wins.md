@@ -66,7 +66,7 @@ docker stats --no-stream
 > ⚠️ **Giới hạn của bằng chứng đo lường:** Số liệu `docker stats` chỉ phản ánh **steady-state evidence** (trạng thái tải bình thường), **chưa** phản ánh hành vi bộ nhớ khi hệ thống chịu peak traffic hoặc load test thực tế — và quan trọng hơn, **không tự phát hiện được các sự kiện `OOMKilled` đã xảy ra trong quá khứ** như trường hợp Jaeger. Trước khi áp dụng bất kỳ mức limit mới nào, cần kiểm tra thêm:
 >
 > - `docker inspect <container> --format '{{.State.OOMKilled}}'` và lịch sử restart (`docker inspect <container> --format '{{.RestartCount}}'`)
-> - `kubectl top pod` / `kubectl top node` (nếu hạ tầng chạy trên Kubernetes) và `kubectl describe pod` để xem event OOM
+> - `kubectl describe pod` và `kubectl logs --previous` để xem restart reason, event OOM và log trước khi container chết
 > - Dashboard Grafana theo dõi memory theo thời gian thực trong lúc chạy load test có kiểm soát
 > - Prometheus (`container_memory_usage_bytes`, `container_oom_events_total` hoặc metric tương đương) để quan sát xu hướng và đỉnh (peak) sử dụng bộ nhớ theo thời gian
 
@@ -113,7 +113,7 @@ Bản báo cáo này không có đầy đủ số liệu runtime về memory usa
 
 | Bước | Việc cần làm | Công cụ | Thời gian |
 | :-- | :--- | :--- | :-- |
-| 1 | Thu thập `docker stats`/`kubectl top`/Prometheus metrics liên tục trong 48–72 giờ cho tất cả service observability | `docker stats`, `kubectl top`, Grafana/Prometheus | 48–72 giờ |
+| 1 | Thu thập `docker stats` và Prometheus/Grafana metrics liên tục trong 48-72 giờ cho tất cả service observability | `docker stats`, Grafana/Prometheus | 48-72 giờ |
 | 2 | Ghi nhận `OOMKilled`, restart count và thời điểm spike memory — đặc biệt đối chiếu lại lịch sử OOM của Jaeger để xác định pattern (thời điểm nào, tương quan traffic nào) | Docker logs, container events, `docker inspect` | Trong toàn bộ cửa sổ đo |
 | 3 | Chạy một lần load test có kiểm soát và quan sát memory peak của Jaeger/Prometheus | `load-generator` (chỉ khi cần, bật thủ công), Grafana/Prometheus | 1 lần trong cửa sổ đo |
 | 4 | Với Jaeger: đánh giá xem 600 MiB có đủ cho traffic thực tế sau khi tắt `load-generator` hay không — có thể OOM đến từ chính traffic giả lập, không phải traffic thật | So sánh OOM timestamp với lịch sử bật/tắt load-generator | Sau Bước 1 của Pha 1 |
