@@ -13,6 +13,11 @@ default:
       value: otel-collector.techx-observability.svc.cluster.local
 
 components:
+  load-generator:
+    envOverrides:
+      - name: LOCUST_AUTOSTART
+        value: "false"
+
   frontend-proxy:
     envOverrides:
       - name: GRAFANA_HOST
