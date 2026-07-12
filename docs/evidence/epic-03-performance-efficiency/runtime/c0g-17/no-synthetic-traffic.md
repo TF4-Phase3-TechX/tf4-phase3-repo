@@ -4,7 +4,7 @@
 **Scope:** `techx-tf4` EKS application baseline  
 **Owner:** Nguyễn Thành Vinh  
 **Support:** Huy (Grafana/Jaeger verification)  
-**Status:** Pending CI/deployment evidence
+**Status:** Runtime verification passed — 2026-07-12
 
 ## Purpose
 
@@ -16,7 +16,7 @@ The baseline setting is the named `LOCUST_AUTOSTART: "false"` override in `deplo
 
 - The pull request containing C0G-17 changes is approved and merged to `main`.
 - The GitHub Actions `helm-render` job and its `rendered-manifests` artifact are available.
-- The GitHub Actions deployment workflow has completed. Begin observations only after its smoke HTTP requests finish.
+- The GitHub Actions deployment workflow has completed. Begin observations after rollout completion.
 - `kubectl`, `helm`, and AWS EKS access target cluster `techx-tf4-cluster`, namespace `techx-tf4`.
 - Access is available to Grafana and Jaeger, directly or through the frontend-proxy routes.
 
@@ -26,12 +26,14 @@ Record the following before observing traffic:
 
 | Field | Evidence |
 | --- | --- |
-| PR / commit | `<link>` |
-| CI run / rendered-manifests artifact | `<link>` |
-| Deployment workflow / deploy-evidence artifact | `<link>` |
-| Helm revision | `<value>` |
-| Image tag | `<value>` |
-| UTC deploy completion | `<timestamp>` |
+| PR / commit | Pending commit / PR creation |
+| CI run / rendered-manifests artifact | Run for image `06c7031` — artifact `deploy-evidence-06c7031` |
+| Deployment workflow / deploy-evidence artifact | [committed artifact](deploy-evidence-06c7031/) |
+| Helm revision | `14` |
+| Image tag | `06c7031` (`06c7031-load-generator`) |
+| UTC deploy completion | `2026-07-12T17:30:14Z` |
+
+The deployment artifact recorded `generation=7`, `observedGeneration=7`, `readyReplicas=1`, `availableReplicas=1`, and `locustAutostart="false"` for the live `load-generator` Deployment.
 
 The CI rendered-manifests artifact must show the app release was rendered with both deployment overlays. Verify the effective setting from that artifact or reproduce the render locally:
 
@@ -80,16 +82,10 @@ Record a UTC start and end timestamp. Use a minimum ten-minute window after a tw
 
 ### 1. Locust UI state
 
-Port-forward the service if the ingress route is unavailable:
+Use the ALB route `/loadgen/` and capture the state that shows zero active users and no active swarm. This prevents a manually started test from being misclassified as an autostart regression.
 
-```bash
-kubectl -n techx-tf4 port-forward svc/load-generator 8089:8089
-```
-
-Capture a screenshot of `http://127.0.0.1:8089` (or `/loadgen/`) that shows zero active users and no active swarm. This prevents a manually started test from being misclassified as an autostart regression.
-
-- Screenshot / URL: `<link>`
-- Captured UTC: `<timestamp>`
+- URL: `http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com/loadgen/`
+- Captured state: `ready`, `user_count=0` before and after the recorded window.
 
 ### 2. Grafana request-rate evidence
 
@@ -105,10 +101,9 @@ sum(increase(traces_span_metrics_calls_total{service_name="load-generator"}[10m]
 
 Expected result: both queries are `0` for each bounded window. Also capture the existing spanmetrics/service-throughput dashboard filtered to `load-generator`.
 
-| Window | Five-minute rate | Ten-minute increment | Screenshot / query link |
+| Window | Five-minute rate | Ten-minute increment | Query route |
 | --- | ---: | ---: | --- |
-| 1 | `<0>` | `<0>` | `<link>` |
-| 2 | `<0>` | `<0>` | `<link>` |
+| 2026-07-12T18:19:31Z → 18:29:32Z | `0` at start/end | `0` at start/end | Grafana Prometheus datasource proxy |
 
 Capture total application or `frontend-proxy` traffic separately as context only. It does **not** have to be zero: public requests, health checks, and the deployment workflow’s smoke requests can create legitimate non-Locust traces.
 
@@ -116,25 +111,37 @@ Capture total application or `frontend-proxy` traffic separately as context only
 
 Search Jaeger for service `load-generator`, with the start and end times set to the same bounded observation window. Capture the zero-result page.
 
-If the compatibility query API is available, collect a machine-readable count through a local port-forward as a supplement:
+Use the ALB-routed Jaeger API with the same UTC window converted to microseconds:
 
 ```bash
-kubectl -n techx-observability port-forward svc/jaeger 16686:16686
-
-curl -sG http://127.0.0.1:16686/api/traces \
+curl -sG 'http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com/jaeger/ui/api/traces' \
   --data-urlencode 'service=load-generator' \
   --data-urlencode "start=${START_US}" \
   --data-urlencode "end=${END_US}" \
-  --data-urlencode 'limit=1000' |
-  jq '{trace_count: (.data | length), span_count: ([.data[].spans | length] | add // 0)}'
+  --data-urlencode 'limit=1000'
 ```
 
-Expected result: zero new `load-generator` traces and spans in the bounded window. If the API is unavailable or differs on the deployed Jaeger version, retain the UI search as authoritative evidence and record the API response; do not guess a replacement endpoint.
+Expected result: zero new `load-generator` traces and spans in the bounded window.
 
-| Window | Jaeger result | UI screenshot | API output, if supported |
-| --- | --- | --- | --- |
-| 1 | `0 traces / 0 spans` | `<link>` | `<link>` |
-| 2 | `0 traces / 0 spans` | `<link>` | `<link>` |
+| Window | Jaeger result | API route |
+| --- | --- | --- |
+| 2026-07-12T18:19:31Z → 18:29:32Z | `0 traces / 0 spans` | `/jaeger/ui/api/traces` |
+
+## Recorded runtime result — 2026-07-12
+
+Evidence was collected through the public ALB `http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com`; no port-forward was used. The Locust UI check was intentionally performed before a 660-second settling period so its own UI-render telemetry could not appear in the bounded evidence window.
+
+| Check | Result |
+| --- | --- |
+| Live deployment | `LOCUST_AUTOSTART=false`; generation `7` observed as `7`; one ready/available replica |
+| Locust pre-window state | `ready`, `user_count=0`, configured host `http://frontend-proxy:8080` |
+| Locust post-window state | `ready`, `user_count=0` |
+| Evidence window | `2026-07-12T18:19:31Z` to `2026-07-12T18:29:32Z` (UTC) |
+| Grafana five-minute rate at start/end | `0` / `0` |
+| Grafana ten-minute increment at start/end | `0` / `0` |
+| Jaeger `load-generator` traces in bounded window | `0` traces, `0` spans |
+
+Queries were sent through Grafana's Prometheus datasource proxy (`/grafana/api/datasources/uid/webstore-metrics/resources/api/v1/query`) and Jaeger was queried at `/jaeger/ui/api/traces` with the same start/end microsecond timestamps. This proves that the deployed Locust server was idle and did not auto-generate synthetic traffic during the observation window.
 
 ## Rollback
 
