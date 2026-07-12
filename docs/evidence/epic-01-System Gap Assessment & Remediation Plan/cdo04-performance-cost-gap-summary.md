@@ -199,17 +199,17 @@ Hướng xử lý W2+:
 | Component bị ảnh hưởng | Tất cả workload |
 | Tác động business | Quota/admission hoặc resource contention có thể ảnh hưởng deploy/performance |
 | Tác động SLO | Rủi ro latency/error nếu CPU/memory requests/limits sai |
-| Runtime validation cần có | `kubectl top`, server dry-run/apply result, rendered resource values |
+| Runtime validation cần có | Prometheus/Grafana resource metrics, server dry-run/apply result, rendered resource values |
 
 Việc cần làm trong Week 1:
 
 - Ghi nhận hạn chế hiện tại.
-- Đánh dấu CPU/memory right-sizing là pending cho tới khi Metrics API/Grafana/Prometheus data đáng tin cậy.
+- Đánh dấu CPU/memory right-sizing là pending cho tới khi Grafana/Prometheus data đáng tin cậy.
 - Không downsize node hoặc critical services quá sớm.
 
 Hướng xử lý W2+:
 
-- Enable/fix Metrics API hoặc dùng Prometheus/Grafana resource metrics.
+- Dùng Prometheus/Grafana resource metrics.
 - Thêm requests/limits dựa trên số đo thật.
 - Validate quota compatibility bằng server dry-run.
 - Feed kết quả vào COST-05 và PERF-05.
@@ -258,7 +258,7 @@ Hướng xử lý W2+:
 | Validate currency fan-out bằng trace | PERF-01 | Capture Jaeger trace cho Browse non-USD flow | Pending |
 | Validate search query plan | PERF-02 | Chạy `EXPLAIN ANALYZE` trên search query | Pending |
 | Right-size observability an toàn | COST-02 | Right-size Grafana/Jaeger từng bước sau OOMKilled evidence; đưa OpenSearch vào watchlist | Ready for Review |
-| Fix Metrics API / thu thập CPU-memory evidence | K8S-03 | Dùng `kubectl top pods/nodes` hoặc Prometheus equivalent | Pending |
+| Thu thập CPU-memory evidence | K8S-03 | Dùng Prometheus/Grafana resource metrics | Pending |
 
 ### P2 — Tối ưu W2+
 
@@ -276,7 +276,7 @@ Hướng xử lý W2+:
 | Rủi ro / giả định | Tác động | Cách giảm thiểu |
 |---|---|---|
 | Runtime load test chưa chạy đầy đủ | Chưa thể claim official performance baseline | Ghi rõ chỉ là runtime evidence; controlled load test sẽ làm sau |
-| Metrics API chưa khả dụng | Chặn `kubectl top` CPU/memory evidence | Dùng Grafana/Prometheus nếu có; fix metrics-server |
+| CPU/memory evidence chưa đủ dài | Chưa thể chốt right-sizing an toàn | Thu Prometheus/Grafana trend trong 48 đến 72 giờ |
 | Memory headroom không đồng nghĩa giảm AWS bill ngay lập tức | Cost saving có thể là gián tiếp | Giải thích là right-sizing/headroom, không claim giảm bill trực tiếp |
 | OpenSearch/Grafana usage gần limit | Có nguy cơ OOM nếu giảm quá mạnh | Đưa vào watchlist, không giảm trong Week 1 |
 | Performance fix có thể ảnh hưởng correctness | Tối ưu currency/search có thể đổi hành vi | Thêm test và validate trước khi implement |

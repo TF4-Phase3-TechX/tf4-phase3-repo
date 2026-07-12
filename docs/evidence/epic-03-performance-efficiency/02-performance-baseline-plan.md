@@ -250,9 +250,8 @@ kubectl scale deployment/load-generator --replicas=0 -n techx-tf4
 # 1. Verify all pods running
 kubectl get pods -n techx-tf4
 
-# 2. Check baseline metrics
-kubectl top pods -n techx-tf4
-kubectl top nodes
+# 2. Check baseline CPU/memory in Grafana
+# Capture the namespace and node resource panels for techx-tf4.
 
 # 3. Open Grafana
 kubectl port-forward svc/frontend-proxy 8080:8080 -n techx-tf4
@@ -301,9 +300,9 @@ kubectl port-forward svc/frontend-proxy 8080:8080 -n techx-tf4
 ### **Output to Capture**
 
 #### **Real-time Metrics** (during test)
-```bash
+```text
 # CPU/Memory
-watch -n 5 'kubectl top pods -n techx-tf4'
+Theo dõi dashboard CPU/Memory của namespace `techx-tf4` trong Grafana với refresh 5 giây.
 
 # Request stats (Locust UI)
 # → http://localhost:8089
@@ -311,10 +310,9 @@ watch -n 5 'kubectl top pods -n techx-tf4'
 ```
 
 #### **Post-Test Evidence**
-```bash
+```text
 # 1. Resource usage
-kubectl top pods -n techx-tf4 > evidence-top-pods.txt
-kubectl top nodes > evidence-top-nodes.txt
+Capture Grafana CPU/Memory panels for namespace `techx-tf4` and worker nodes.
 
 # 2. Grafana screenshots
 # - Service latency dashboard
@@ -355,14 +353,14 @@ Rationale: 5× SLO violation (1% allowed)
 #### **2. CPU > 90%**
 ```
 Trigger: Any pod CPU usage > 90%
-Measurement: kubectl top pods
+Measurement: Grafana CPU panel / PromQL
 Rationale: Prevent throttling, cascading failure
 ```
 
 #### **3. Memory > 85%**
 ```
 Trigger: Any pod memory > 85% of limit
-Measurement: kubectl top pods
+Measurement: Grafana memory panel / PromQL
 Rationale: Prevent OOMKill, pod restart
 ```
 
@@ -383,7 +381,7 @@ Rationale: Each node = ~$60/week extra cost
 #### **6. Load Generator Overload**
 ```
 Trigger: LG pod CPU > 80% OR Memory > 1200Mi
-Measurement: kubectl top pods -l app=load-generator
+Measurement: Grafana load-generator CPU/Memory panels
 Rationale: Ensure test validity (generator not bottleneck)
 ```
 

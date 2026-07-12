@@ -72,7 +72,7 @@ Lưu ý: `kubectl get ns` bị giới hạn quyền cluster-scope, nhưng các l
 | ECR | Elastic Container Registry | Lưu image và pull image | Low/Medium | ECR repo/image list |
 | CloudWatch Logs | CloudWatch | Lưu log application/infrastructure nếu enabled | Medium | Log group screenshot |
 | CloudWatch Metrics | CloudWatch | Custom metrics / dashboard / alarm | Low/Medium | Metric/dashboard screenshot |
-| Observability Stack | Grafana, Jaeger, Prometheus, OpenSearch, OTel Collector | Tốn CPU/RAM trên worker nodes | High | `kubectl get pods`, `kubectl top pods` nếu có metrics-server |
+| Observability Stack | Grafana, Jaeger, Prometheus, OpenSearch, OTel Collector | Tốn CPU/RAM trên worker nodes | High | `kubectl get pods`, Grafana/Prometheus CPU-memory dashboards |
 | PVC / Data Volumes | PVC/EBS | Lưu data cho PostgreSQL/Valkey/Kafka/OpenSearch nếu có PVC | Medium/High | `kubectl get pvc` |
 | Data Transfer | AWS networking | Traffic cross-AZ/outbound có thể phát sinh phí | Medium | VPC/route/data transfer evidence |
 
@@ -232,7 +232,7 @@ This means CDO04 has enough namespace-level access for current COST-01 inventory
 | CloudWatch Logs | 8 log groups | ingest + storage | `Pending / hiện tại thấp` | `Pending / hiện tại thấp` | Stored bytes hiện thấp, nhưng chưa rõ log ingestion trend |
 | CloudWatch Metrics/Alarms | Chưa validate đầy đủ | metric/alarm pricing | `Pending` | `Pending` | Cần kiểm tra dashboard/alarm inventory |
 | PVC Storage | Không tìm thấy PVC | `0 GiB` | `$0.00` | `$0.00` | Không thấy PVC cost, nhưng vẫn có persistence risk |
-| Observability Stack | Workloads chạy trong cluster | sử dụng EC2 gián tiếp | Đã bao gồm trong EC2 nodes | Đã bao gồm trong EC2 nodes | Cần `kubectl top` để right-size |
+| Observability Stack | Workloads chạy trong cluster | sử dụng EC2 gián tiếp | Đã bao gồm trong EC2 nodes | Đã bao gồm trong EC2 nodes | Cần Grafana/Prometheus metrics để right-size |
 | Data Transfer | Có thể phát sinh qua NAT/ALB/cross-AZ | usage-based | `Pending` | `Pending` | Cần Cost Explorer / traffic data |
 
 ---
@@ -275,7 +275,7 @@ Kết quả estimate ban đầu:
 | EKS Worker Nodes / EC2 | 2 running `t3.large` nodes | High | Đây là fixed compute cost chính của baseline |
 | Node Group Scaling | min=2, desired=2, max=4 | High | Nếu scale lên max=4, compute cost có thể tăng khoảng 2x so với desired hiện tại |
 | Multi-AZ Compute | Nodes chạy ở `us-east-1a` và `us-east-1b` | Medium | Tốt cho compute resilience, nhưng không đồng nghĩa full HA cho stateful workloads |
-| Instance Type | `t3.large` | Medium/High | Cần so sánh CPU/memory usage sau khi có `kubectl top` để right-size |
+| Instance Type | `t3.large` | Medium/High | Cần so sánh CPU/memory usage từ Grafana/Prometheus trước khi right-size |
 | NAT Gateway | 1 NAT Gateway, state `available` | High | Fixed cost đáng chú ý; đã validate Single NAT Gateway |
 | Application Load Balancer | 1 internet-facing ALB, active | Medium | Có hourly cost và LCU cost |
 | EBS Volumes | 2 gp3 volumes, tổng 40 GiB | Medium | Storage cost cơ bản của worker nodes |
@@ -291,12 +291,12 @@ Kết quả estimate ban đầu:
 
 | Risk ID | Risk | Impact | Likelihood | Mitigation |
 |---|---|---|---|---|
-| COST-RISK-01 | Worker nodes `t3.large` có thể quá lớn hoặc quá nhỏ so với tải thực tế | Tăng fixed cost hoặc thiếu performance | Medium | Right-size sau khi có CPU/memory từ `kubectl top` |
+| COST-RISK-01 | Worker nodes `t3.large` có thể quá lớn hoặc quá nhỏ so với tải thực tế | Tăng fixed cost hoặc thiếu performance | Medium | Right-size sau khi có CPU/memory trend từ Grafana/Prometheus |
 | COST-RISK-02 | Node group có maxSize = 4 | Compute cost có thể tăng nếu autoscale/manual scale lên max | Medium | Theo dõi scale event và Cost Explorer |
 | COST-RISK-03 | NAT Gateway tạo fixed cost cao | Tăng baseline cost ngay cả khi traffic thấp | Medium | Dùng Single NAT trong Week 1, monitor Cost Explorer |
 | COST-RISK-04 | ALB là fixed entry cost | Tăng baseline cost | Low/Medium | Theo dõi ALB LCU và request volume |
 | COST-RISK-05 | CloudWatch log groups chưa set retention | Log storage cost có thể tăng theo thời gian | Medium | Set retention phù hợp cho log groups non-critical |
-| COST-RISK-06 | Observability stack có nhiều components | Có thể ép node phải lớn hơn | Medium/High | Dùng `kubectl top pods` để xem CPU/RAM và right-size |
+| COST-RISK-06 | Observability stack có nhiều components | Có thể ép node phải lớn hơn | Medium/High | Dùng Grafana/Prometheus để xem CPU/RAM và right-size |
 | COST-RISK-07 | Không có PVC trong namespace | Có thể giảm storage cost hiện tại nhưng tăng data loss risk | High | Ghi nhận risk; cần ADR/follow-up cho stateful persistence |
 | COST-RISK-08 | Cost Explorer chưa có đủ billing data | Actual cost chưa đối chiếu được ngay | Medium | Dùng estimate trước, cập nhật actual sau |
 | COST-RISK-09 | `load-generator` đang chạy trong namespace | Có thể tạo traffic/cost/nhiễu metric nếu autostart | Medium | Kiểm tra cấu hình load-generator, chỉ bật khi test |
@@ -494,15 +494,7 @@ kubectl -n techx-tf4 get svc
 kubectl -n techx-tf4 get pvc
 ```
 
-Optional after metrics-server access is available:
-
-```bash
-kubectl -n techx-tf4 top pods
-```
-
-```bash
-kubectl top nodes
-```
+CPU/memory runtime evidence được lấy từ Grafana/Prometheus dashboard và PromQL theo cửa sổ quan sát 48-72 giờ. Namespace inventory vẫn dùng các lệnh kubectl ở trên để kiểm tra pod/deployment/service/PVC.
 
 ---
 
@@ -519,7 +511,7 @@ kubectl top nodes
 | CloudWatch log group size | Done | screenshots / CLI output |
 | Kubernetes pods/deployments/services | Done | screenshots / CLI output |
 | PVC count | Done - no resources found | screenshots / CLI output |
-| Kubernetes CPU/memory usage | Pending | Requires `kubectl top pods` / metrics-server access |
+| Kubernetes CPU/memory usage | Pending | Requires Grafana/Prometheus query window and dashboard capture |
 | Cost Explorer screenshot | Pending | runtime/cost-explorer-baseline |
 | Baseline cost estimate table | Done | this file |
 | Cost risk analysis | Done | this file |
@@ -586,5 +578,5 @@ docs/evidence/epic-04-cost-optimization/runtime/
 
 4. Ghi chú / Follow-up
 
-Actual cost from Cost Explorer is still pending until billing data is available. Next steps are to capture Cost Explorer, compare estimate vs actual cost, run kubectl top for CPU/memory evidence, and prepare right-sizing/cost saving recommendations.
+Actual cost from Cost Explorer is still pending until billing data is available. Next steps are to capture Cost Explorer, compare estimate vs actual cost, collect CPU/memory evidence from Grafana/Prometheus, and prepare right-sizing/cost saving recommendations.
 ```

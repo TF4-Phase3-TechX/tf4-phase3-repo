@@ -492,7 +492,7 @@ Cuối Tuần 1, TF nên có đủ bằng chứng để nói rõ:
 | Kafka lag dưới tải         | TBD             | Bounded và có alert           | Prometheus                     |
 | Cost / 1.000 requests      | TBD             | Giảm hoặc có lý do chính đáng | Cost Explorer + load test      |
 | Cost / successful checkout | TBD             | Giảm hoặc có lý do chính đáng | Cost Explorer + checkout count |
-| CPU/memory waste           | TBD             | Giảm over/under-provisioning  | `kubectl top` + values         |
+| CPU/memory waste           | TBD             | Giảm over/under-provisioning  | Prometheus/Grafana + values    |
 
 
 ---
@@ -530,7 +530,7 @@ Các hạng mục dưới đây là đề xuất ban đầu, không phải cam k
 | Chuẩn hóa readiness/liveness cho revenue path    | Liên hệ trực tiếp INC-3; chart đã hỗ trợ probe                 | Xác nhận health endpoint, test rollout và threshold    | Revert Helm values            |
 | Dashboard và alert cho checkout SLO              | Không đo thì không vận hành được; checkout là revenue-critical | Xác nhận metrics/labels thực tế                        | Revert dashboard/alert config |
 | Load test và trace bottleneck                    | Cần baseline trước mọi tối ưu performance/cost                 | Baseline cluster và guardrail tải                      | Dừng load generator           |
-| Right-size requests/limits                       | Có thể giảm waste hoặc giảm OOM/throttling                     | Có `kubectl top`, load profile và bằng chứng về quota  | Revert Helm values            |
+| Right-size requests/limits                       | Có thể giảm waste hoặc giảm OOM/throttling                     | Có Prometheus/Grafana resource evidence, load profile và bằng chứng về quota | Revert Helm values |
 | HPA cho frontend/checkout/cart                   | Giảm rủi ro single replica/bottleneck khi tải cao              | Requests đúng, metrics ổn định, test scale up/down     | Xóa HPA hoặc scale thủ công   |
 | Đánh giá Valkey durability/HA                    | INC-2 chưa được xử lý triệt để                                 | So sánh persistence/replica/managed option với chi phí | Trở về baseline + backup plan |
 | Kafka lag monitoring và event integrity          | Bảo vệ accounting, fraud và audit                              | Xác nhận consumer group/metric/alert labels            | Revert dashboard/alert        |
@@ -605,7 +605,7 @@ kubectl -n <NS> get pods -o wide
 kubectl -n <NS> get deploy,svc,hpa,pdb
 kubectl -n <NS> describe pod <POD>
 kubectl -n <NS> logs deploy/frontend-proxy --tail=100
-kubectl -n <NS> top pods
+# Thu thập CPU/memory qua Prometheus/Grafana.
 kubectl -n <NS> port-forward svc/frontend-proxy 8080:8080
 ```
 

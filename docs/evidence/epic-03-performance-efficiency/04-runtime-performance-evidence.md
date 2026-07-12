@@ -4,11 +4,11 @@ Báo cáo ghi nhận thông số tài nguyên thực tế và dữ liệu truy v
 
 ---
 
-## 1. Phương Án Đo Lường Tài Nguyên Bằng PromQL (CPU/Memory Usage) - PERF-04.2
+## 1. Đo lường tài nguyên bằng PromQL (CPU/Memory Usage) - PERF-04.2
 
-Do cụm EKS hiện tại gặp lỗi **Infrastructure Blocker**: `Metrics API not available` khi chạy lệnh trực tiếp (`kubectl top nodes` / `kubectl -n techx-tf4 top pods`), toàn bộ việc đo lường tài nguyên sẽ được thực hiện thông qua giao diện **Prometheus UI** hoặc tab **Explore của Grafana** bằng cách nhập các câu lệnh **PromQL** sau để lấy thông số chính xác:
+Prometheus UI và tab Explore của Grafana là source of truth cho CPU/memory runtime evidence. Dùng các câu lệnh PromQL sau để lấy thông số theo pod và node:
 
-### 1.1. Đo lường tài nguyên Pod (Thay thế cho `kubectl top pods`)
+### 1.1. Đo lường tài nguyên Pod bằng PromQL
 *   **CPU usage của từng Pod trong namespace `techx-tf4` (đơn vị: Cores):**
     ```promql
     sum(rate(container_cpu_usage_seconds_total{namespace="techx-tf4", container!=""}[5m])) by (pod)
@@ -20,7 +20,7 @@ Do cụm EKS hiện tại gặp lỗi **Infrastructure Blocker**: `Metrics API n
     ```
     *   **Minh chứng hình ảnh:** [grafana-pods-memory.png](screenshots/grafana-pods-memory.png)
 
-### 1.2. Đo lường tài nguyên Node (Thay thế cho `kubectl top nodes`)
+### 1.2. Đo lường tài nguyên Node bằng PromQL
 *   **CPU usage của từng Node (đơn vị: Cores):**
     ```promql
     sum(rate(node_cpu_seconds_total{mode!="idle"}[5m])) by (instance)
