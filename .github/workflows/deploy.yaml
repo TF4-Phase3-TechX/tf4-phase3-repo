@@ -204,6 +204,15 @@ jobs:
           kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
           helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
           helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true
+          kubectl -n "$APP_NAMESPACE" get deployment/load-generator -o json |
+            jq '{
+              generation: .metadata.generation,
+              observedGeneration: .status.observedGeneration,
+              image: ([.spec.template.spec.containers[] | select(.name == "load-generator") | .image] | first),
+              locustAutostart: ([.spec.template.spec.containers[] | select(.name == "load-generator") | .env[]? | select(.name == "LOCUST_AUTOSTART") | .value] | first),
+              readyReplicas: (.status.readyReplicas // 0),
+              availableReplicas: (.status.availableReplicas // 0)
+            }' > evidence/load-generator-runtime-config.json || true
           cp /tmp/frontend-proxy-pf.log evidence/frontend-proxy-pf.log 2>/dev/null || true
 
       - name: Upload deploy evidence
