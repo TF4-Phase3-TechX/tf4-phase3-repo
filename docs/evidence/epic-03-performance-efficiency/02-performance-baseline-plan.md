@@ -226,7 +226,7 @@ kubectl port-forward svc/load-generator 8089:8089 -n techx-tf4
 
 Do not use positional Helm array overrides to start a test. Array indexes are fragile and can alter an unrelated environment variable. Use a reviewed, named values overlay for future automated test profiles.
 
-See [C0G-17 no-synthetic-traffic evidence](runtime/c0g-17-no-synthetic-traffic.md) for deployment and verification requirements.
+See [C0G-17 no-synthetic-traffic evidence](runtime/c0g-17/no-synthetic-traffic.md) for deployment and verification requirements.
 
 #### **Stop Load Test**
 ```bash
