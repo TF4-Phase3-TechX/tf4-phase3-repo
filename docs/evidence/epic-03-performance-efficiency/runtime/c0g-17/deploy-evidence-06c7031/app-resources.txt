@@ -1,0 +1,71 @@
+NAME                              READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS        IMAGES                                                                            SELECTOR
+deployment.apps/accounting        1/1     1            1           4d22h   accounting        511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-accounting        opentelemetry.io/name=accounting
+deployment.apps/ad                1/1     1            1           4d22h   ad                511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-ad                opentelemetry.io/name=ad
+deployment.apps/cart              1/1     1            1           4d22h   cart              511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-cart              opentelemetry.io/name=cart
+deployment.apps/checkout          1/1     1            1           4d22h   checkout          511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-checkout          opentelemetry.io/name=checkout
+deployment.apps/currency          1/1     1            1           4d22h   currency          511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-currency          opentelemetry.io/name=currency
+deployment.apps/email             1/1     1            1           4d22h   email             511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-email             opentelemetry.io/name=email
+deployment.apps/flagd             1/1     1            1           4d22h   flagd             ghcr.io/open-feature/flagd:v0.12.9                                                opentelemetry.io/name=flagd
+deployment.apps/fraud-detection   1/1     1            1           4d22h   fraud-detection   511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-fraud-detection   opentelemetry.io/name=fraud-detection
+deployment.apps/frontend          1/1     1            1           4d22h   frontend          511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-frontend          opentelemetry.io/name=frontend
+deployment.apps/frontend-proxy    1/1     1            1           4d22h   frontend-proxy    511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-frontend-proxy    opentelemetry.io/name=frontend-proxy
+deployment.apps/image-provider    1/1     1            1           4d22h   image-provider    511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-image-provider    opentelemetry.io/name=image-provider
+deployment.apps/kafka             1/1     1            1           4d22h   kafka             511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-kafka             opentelemetry.io/name=kafka
+deployment.apps/llm               1/1     1            1           4d22h   llm               511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-llm               opentelemetry.io/name=llm
+deployment.apps/load-generator    1/1     1            1           4d22h   load-generator    511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-load-generator    opentelemetry.io/name=load-generator
+deployment.apps/payment           1/1     1            1           4d22h   payment           511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-payment           opentelemetry.io/name=payment
+deployment.apps/postgresql        1/1     1            1           4d22h   postgresql        postgres:17.6                                                                     opentelemetry.io/name=postgresql
+deployment.apps/product-catalog   1/1     1            1           4d22h   product-catalog   511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-product-catalog   opentelemetry.io/name=product-catalog
+deployment.apps/product-reviews   1/1     1            1           4d22h   product-reviews   511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-product-reviews   opentelemetry.io/name=product-reviews
+deployment.apps/quote             1/1     1            1           4d22h   quote             511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-quote             opentelemetry.io/name=quote
+deployment.apps/recommendation    1/1     1            1           4d22h   recommendation    511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-recommendation    opentelemetry.io/name=recommendation
+deployment.apps/shipping          1/1     1            1           4d22h   shipping          511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-shipping          opentelemetry.io/name=shipping
+deployment.apps/valkey-cart       1/1     1            1           4d22h   valkey-cart       valkey/valkey:9.0.1-alpine3.23                                                    opentelemetry.io/name=valkey-cart
+
+NAME                      TYPE           CLUSTER-IP       EXTERNAL-IP                                     PORT(S)             AGE     SELECTOR
+service/ad                ClusterIP      172.20.226.181   <none>                                          8080/TCP            4d22h   opentelemetry.io/name=ad
+service/cart              ClusterIP      172.20.148.103   <none>                                          8080/TCP            4d22h   opentelemetry.io/name=cart
+service/checkout          ClusterIP      172.20.60.78     <none>                                          8080/TCP            4d22h   opentelemetry.io/name=checkout
+service/currency          ClusterIP      172.20.138.94    <none>                                          8080/TCP            4d22h   opentelemetry.io/name=currency
+service/email             ClusterIP      172.20.152.217   <none>                                          8080/TCP            4d22h   opentelemetry.io/name=email
+service/flagd             ClusterIP      172.20.53.96     <none>                                          8013/TCP,8016/TCP   4d22h   opentelemetry.io/name=flagd
+service/frontend          ClusterIP      172.20.39.20     <none>                                          8080/TCP            4d22h   opentelemetry.io/name=frontend
+service/frontend-proxy    ClusterIP      172.20.74.72     <none>                                          8080/TCP            4d22h   opentelemetry.io/name=frontend-proxy
+service/grafana           ExternalName   <none>           grafana.techx-observability.svc.cluster.local   <none>              3d14h   <none>
+service/image-provider    ClusterIP      172.20.214.139   <none>                                          8081/TCP            4d22h   opentelemetry.io/name=image-provider
+service/jaeger            ExternalName   <none>           jaeger.techx-observability.svc.cluster.local    <none>              3d14h   <none>
+service/kafka             ClusterIP      172.20.180.83    <none>                                          9092/TCP,9093/TCP   4d22h   opentelemetry.io/name=kafka
+service/llm               ClusterIP      172.20.163.157   <none>                                          8000/TCP            4d22h   opentelemetry.io/name=llm
+service/load-generator    ClusterIP      172.20.219.77    <none>                                          8089/TCP            4d22h   opentelemetry.io/name=load-generator
+service/payment           ClusterIP      172.20.95.167    <none>                                          8080/TCP            4d22h   opentelemetry.io/name=payment
+service/postgresql        ClusterIP      172.20.87.154    <none>                                          5432/TCP            4d22h   opentelemetry.io/name=postgresql
+service/product-catalog   ClusterIP      172.20.14.135    <none>                                          8080/TCP            4d22h   opentelemetry.io/name=product-catalog
+service/product-reviews   ClusterIP      172.20.99.48     <none>                                          3551/TCP            4d22h   opentelemetry.io/name=product-reviews
+service/quote             ClusterIP      172.20.114.244   <none>                                          8080/TCP            4d22h   opentelemetry.io/name=quote
+service/recommendation    ClusterIP      172.20.173.151   <none>                                          8080/TCP            4d22h   opentelemetry.io/name=recommendation
+service/shipping          ClusterIP      172.20.221.24    <none>                                          8080/TCP            4d22h   opentelemetry.io/name=shipping
+service/valkey-cart       ClusterIP      172.20.4.115     <none>                                          6379/TCP            4d22h   opentelemetry.io/name=valkey-cart
+
+NAME                                   READY   STATUS    RESTARTS         AGE     IP            NODE                          NOMINATED NODE   READINESS GATES
+pod/accounting-85db46b594-8hszx        1/1     Running   41 (2d13h ago)   2d21h   10.0.11.202   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/ad-bf9db44b8-xfgzf                 1/1     Running   0                2d21h   10.0.11.139   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/cart-74f4c6c774-wg5v9              1/1     Running   0                2d21h   10.0.11.32    ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/checkout-7889784f5d-xnw2c          1/1     Running   0                2d21h   10.0.11.25    ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/currency-59c9758d5c-sgzw9          1/1     Running   0                2d21h   10.0.11.153   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/email-5cc6dcd5db-tpht5             1/1     Running   0                2d21h   10.0.11.10    ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/flagd-64cd7974c8-dl9xp             1/1     Running   0                3d14h   10.0.11.250   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/fraud-detection-7d7d46b464-f2mdg   1/1     Running   0                2d21h   10.0.11.144   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/frontend-d6c8797c5-6lx7f           1/1     Running   0                2d21h   10.0.11.4     ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/frontend-proxy-cb6f987f5-478xt     1/1     Running   0                2d21h   10.0.10.210   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/image-provider-7486b8d78f-749k2    1/1     Running   0                2d21h   10.0.10.214   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/kafka-659cc7547c-clpcg             1/1     Running   0                2d21h   10.0.11.238   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/llm-7d76974886-ppxm4               1/1     Running   0                2d21h   10.0.10.179   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/load-generator-7564466dbd-2txrb    1/1     Running   0                13s     10.0.11.81    ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/payment-9dbc878f7-9fsdt            1/1     Running   0                2d21h   10.0.10.185   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/postgresql-75fff48d97-6prp2        1/1     Running   0                3d14h   10.0.11.113   ip-10-0-11-40.ec2.internal    <none>           <none>
+pod/product-catalog-8cdc6c9bd-smpkw    1/1     Running   0                2d21h   10.0.10.203   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/product-reviews-55679b5cc7-g75xs   1/1     Running   0                2d21h   10.0.10.108   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/quote-568bfc9488-xbp7n             1/1     Running   0                2d21h   10.0.10.169   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/recommendation-548c6cb6d6-cvzs2    1/1     Running   0                2d21h   10.0.10.41    ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/shipping-5dc5d8c647-52f22          1/1     Running   0                2d21h   10.0.10.212   ip-10-0-10-231.ec2.internal   <none>           <none>
+pod/valkey-cart-5866fc4b85-ktkxq       1/1     Running   0                3d14h   10.0.10.184   ip-10-0-10-231.ec2.internal   <none>           <none>
