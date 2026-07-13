@@ -1161,8 +1161,10 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
+      requests:
+        memory: 768Mi
       limits:
-        memory: 600Mi
+        memory: 768Mi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -1316,8 +1318,10 @@ grafana:
         cpu: 150m
         memory: 256Mi
   resources:
+    requests:
+      memory: 512Mi
     limits:
-      memory: 300Mi
+      memory: 768Mi
 
 opensearch:
   enabled: true
