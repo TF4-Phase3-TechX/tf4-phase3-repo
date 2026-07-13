@@ -218,7 +218,7 @@ components:
 
   cart:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -264,10 +264,10 @@ components:
 
   checkout:
     enabled: true
-    replicas: 2
+    replicas: 1
     autoscaling:
       enabled: true
-      minReplicas: 2
+      minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
       behavior:
@@ -404,10 +404,10 @@ components:
 
   frontend:
     enabled: true
-    replicas: 2
+    replicas: 1
     autoscaling:
       enabled: true
-      minReplicas: 2
+      minReplicas: 1
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
       behavior:
@@ -485,7 +485,7 @@ components:
 
   frontend-proxy:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -628,7 +628,7 @@ components:
 
   payment:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -671,7 +671,7 @@ components:
 
   product-catalog:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -809,7 +809,7 @@ components:
 
   shipping:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
