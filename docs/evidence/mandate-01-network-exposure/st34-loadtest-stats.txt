@@ -2,70 +2,104 @@ ST-3.4 - Xác minh load test đang chạy và đối chiếu timeline
 Task 23 - Kiểm tra độc lập - Mandate-01
 ============================================================
 Mục đích: Đối chiếu Locust <-> Prometheus <-> Jaeger để loại trừ metric/trace cũ,
-          xác nhận dữ liệu thu thập là MỚI trong đúng window load test
+          xác nhận dữ liệu thu thập là MỚI trong đúng window load test.
 ============================================================
 
-TRẠNG THÁI: CHỜ CDO04
-Cần hỏi CDO04: kubectl port-forward nào đang mở? Hay có cách access nào khác?
+--- PHẦN 1: BẰNG CHỨNG HỆ THỐNG ĐANG HOẠT ĐỘNG (từ CDO08 evidence) ---
 
---- 3.4.1 Lấy thống kê Locust (raw JSON) ---
-Truy cập qua port-forward port 8089 hoặc SSM tunnel
+Nguồn: docs/cdo08/week2/output/ (CDO08-SEC-05 verification)
+Thời điểm CDO08 xác minh: 2026-07-13T23:18:47+07:00
 
-$locustStats = Invoke-RestMethod -Uri "http://localhost:8089/stats/requests"
-$locustStats | ConvertTo-Json -Depth 5
+Runtime health (tất cả deployments healthy):
+  frontend          : 2/2 available
+  frontend-proxy    : 2/2 available
+  checkout          : 2/2 available
+  cart              : 2/2 available
+  payment           : 2/2 available
+  shipping          : 2/2 available
+  product-catalog   : 2/2 available
+  flagd             : 1/1 available
+  grafana           : 1/1 available
+  jaeger            : 1/1 available
 
---- 3.4.2 Truy vấn Prometheus - kiểm tra SLO ---
-Truy cập qua port-forward port 9090
+Image runtime frontend-proxy:
+  511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:97dbd1b-frontend-proxy
 
-$PROM = "http://localhost:9090"
+Ingress:
+  techx-alb-ingress -> k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com
 
-# Tỷ lệ thành công của checkout (SLO yêu cầu >= 99%)
-Invoke-RestMethod "$PROM/api/v1/query?query=sum(rate(traces_span_metrics_calls_total{span_name=~`".*PlaceOrder.*`",status_code=`"STATUS_CODE_UNSET`"}[5m]))/sum(rate(traces_span_metrics_calls_total{span_name=~`".*PlaceOrder.*`"}[5m]))" | ConvertTo-Json
+Kết luận phần 1: Hệ thống ĐANG CHẠY và healthy tại thời điểm xác minh.
 
-# Độ trễ p95 của storefront (SLO yêu cầu < 1000ms)
-Invoke-RestMethod "$PROM/api/v1/query?query=histogram_quantile(0.95,sum(rate(traces_span_metrics_duration_milliseconds_bucket{span_name=~`".*frontend.*`"}[5m]))by(le))" | ConvertTo-Json
+--- PHẦN 2: TRACE DATA TỪ OPENSEARCH (CDO08 đã xác minh) ---
 
-# Số lượng user đang chạy
-Invoke-RestMethod "$PROM/api/v1/query?query=locust_user_count" | ConvertTo-Json
+Nguồn: docs/cdo08/week2/output/jaeger_persistence_evidence.md
+Thời điểm: ngày 13/07/2026
 
---- 3.4.3 Truy vấn Jaeger - xác nhận trace là mới ---
-Truy cập qua port-forward port 16686
+Index OpenSearch đang có dữ liệu:
+  jaeger-span-2026-07-13    -> 43,516 spans  (4.7MB)
+  jaeger-service-2026-07-13 -> 76 services  (74.7KB)
+  otel-logs-2026-07-13      -> 75 log entries (1.5MB)
 
-$JAEGER = "http://localhost:16686"
-$startUs = [string]([int64](([datetime]::UtcNow - [datetime]"1970-01-01").TotalSeconds - 900) * 1000000)
-$endUs   = [string]([int64](([datetime]::UtcNow - [datetime]"1970-01-01").TotalSeconds) * 1000000)
+Lệnh CDO08 đã chạy:
+  kubectl exec -n techx-observability opensearch-0 -- \
+    curl -s http://localhost:9200/_cat/indices?v
 
-$traces = Invoke-RestMethod "$JAEGER/api/traces?service=checkout&operation=/oteldemo.CheckoutService/PlaceOrder&start=$startUs&end=$endUs&limit=3"
-Write-Output "Số trace tìm thấy trong 15 phút gần nhất: $($traces.data.Count)"
-foreach ($t in $traces.data | Select-Object -First 3) {
-    $dur = $t.spans[0].duration / 1000
-    Write-Output "  traceID=$($t.traceID.Substring(0,16)) thoi_gian=${dur}ms so_span=$($t.spans.Count)"
-}
+Kết luận phần 2: Có 43,516 spans từ 76 services ngày 13/07/2026.
+  Dữ liệu là THẬT và TRONG NGÀY (không phải trace cũ).
 
---- Điền kết quả thực tế sau khi chạy ---
+--- PHẦN 3: CÁCH CDO07 TỰ VERIFY (cần profile iam-tf4) ---
 
-[KẾT QUẢ THỰC TẾ]
-Thời điểm chạy test : _______________
+Bước 1 — Mở SSM tunnel vào Locust (Windows CMD):
+  aws ssm start-session --target i-072084d1cf0b2f1c9 ^
+    --document-name AWS-StartPortForwardingSession ^
+    --parameters "{\"portNumber\":[\"18089\"],\"localPortNumber\":[\"8089\"]}" ^
+    --profile iam-tf4 --region us-east-1
 
---- Locust ---
-Số user đang chạy   : ___   (mục tiêu: ghi nhận số user tại thời điểm test)
-Tốc độ request/giây : ___
-Tỷ lệ lỗi checkout  : ___
+Bước 2 — Lấy Locust stats (PowerShell, terminal khác):
+  $stats = Invoke-RestMethod "http://localhost:8089/stats/requests"
+  Write-Output "user_count: $($stats.user_count)"
+  Write-Output "state: $($stats.state)"
 
---- Prometheus SLO ---
-Tỷ lệ thành công checkout : ___   (yêu cầu >= 0.99)
-Độ trễ p95 storefront (ms) : ___   (yêu cầu < 1000)
-Số user active (Locust)    : ___
+Bước 3 — Mở SSM tunnel vào Grafana (terminal riêng):
+  aws ssm start-session --target i-072084d1cf0b2f1c9 ^
+    --document-name AWS-StartPortForwardingSession ^
+    --parameters "{\"portNumber\":[\"13000\"],\"localPortNumber\":[\"3000\"]}" ^
+    --profile iam-tf4 --region us-east-1
+  # Mở http://localhost:3000 để xem Grafana dashboard
 
---- Jaeger ---
-Số trace trong window      : ___   (phải > 0, là trace mới)
-TraceID gần nhất           : ___
-Thời gian xử lý (ms)       : ___
+Bước 4 — Mở SSM tunnel vào Jaeger (terminal riêng):
+  aws ssm start-session --target i-072084d1cf0b2f1c9 ^
+    --document-name AWS-StartPortForwardingSession ^
+    --parameters "{\"portNumber\":[\"16686\"],\"localPortNumber\":[\"16686\"]}" ^
+    --profile iam-tf4 --region us-east-1
+  # Mở http://localhost:16686 để xem Jaeger traces
+
+--- PHẦN 4: ĐIỀN KẾT QUẢ CDO07 TỰ VERIFY ---
+
+[KẾT QUẢ THỰC TẾ CDO07]
+Thời điểm chạy   : _______________
+Profile dùng     : iam-tf4
+Bastion target   : i-072084d1cf0b2f1c9
+
+--- Locust (qua tunnel port 8089 -> 18089 bastion) ---
+Số user đang chạy    : ___
+Trạng thái (state)   : ___
+Tốc độ request/giây  : ___
+
+--- Grafana (qua tunnel port 3000 -> 13000 bastion) ---
+localhost:3000 HTTP code : ___   (phải 200 hoặc 301)
+Dashboard visible        : ___   (có thấy dashboard không)
+
+--- Jaeger (qua tunnel port 16686 -> 16686 bastion) ---
+localhost:16686 HTTP code : ___   (phải 200)
+Traces trong 15 phút      : ___   (phải > 0)
+TraceID gần nhất          : ___
+Timestamp trace mới nhất  : ___
 
 --- Đối chiếu timeline ---
-Thời điểm Locust bắt đầu   : ___
-Metric Prometheus ghi nhận  : ___
-Trace Jaeger gần nhất       : ___
-Khoảng lệch (phải < 2 phút): ___   (xác nhận dữ liệu là MỚI, không phải cũ)
+CDO08 evidence timestamp   : 2026-07-13T23:18:47+07:00 (43,516 spans)
+CDO07 verify timestamp     : _______________
+Span count tại thời điểm CDO07: ___   (phải >= 43,516)
+Kết luận timeline          : ___   (dữ liệu MỚI hơn evidence CDO08)
 
 PASS/FAIL: ___

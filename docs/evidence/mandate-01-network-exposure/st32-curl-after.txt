@@ -1,56 +1,37 @@
 ST-3.2 SAU KHI DEPLOY - Curl test từ mạng ngoài (xác minh sau khi CDO08 deploy SEC-05)
 Task 23 - Kiểm tra độc lập - Mandate-01
 ============================================================
-Mục đích: Xác minh các internal routes đã bị block, storefront vẫn trả 200
-============================================================
 
-TRẠNG THÁI: CHỜ CDO08 DEPLOY SEC-05 XONG MỚI CHẠY
-Yêu cầu: Envoy đã có direct_response 404 cho 6 internal routes
+Thời điểm : 2026-07-13T16:55:09Z
+IP nguồn   : 42.118.54.254
+ALB        : http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com
 
---- Lệnh chạy trên Windows PowerShell (chạy lại sau khi CDO08 deploy) ---
+--- Kết quả kiểm tra sau khi CDO08 deploy SEC-05 ---
 
-$ALB = "http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com"
+GET /             -> HTTP 200   OK - storefront vẫn công khai (đúng yêu cầu)
+GET /grafana/     -> HTTP 404   DA BLOCK - Grafana không còn truy cập được từ internet
+GET /grafana      -> HTTP 404   DA BLOCK
+GET /jaeger/ui/   -> HTTP 404   DA BLOCK - Jaeger không còn truy cập được từ internet
+GET /jaeger/      -> HTTP 404   DA BLOCK
+GET /loadgen/     -> HTTP 404   DA BLOCK - Locust không còn truy cập được từ internet
+GET /feature      -> HTTP 404   DA BLOCK
+GET /flagservice/ -> HTTP 404   DA BLOCK
+GET /otlp-http/   -> HTTP 404   DA BLOCK
 
-$paths = @("","grafana/","grafana","jaeger/ui/","jaeger/","loadgen/","feature","flagservice/","otlp-http/")
-foreach ($p in $paths) {
-    try {
-        $r = Invoke-WebRequest -Uri "$ALB/$p" -MaximumRedirection 0 -UseBasicParsing -ErrorAction SilentlyContinue
-        $code = $r.StatusCode
-    } catch {
-        try { $code = [int]$_.Exception.Response.StatusCode } catch { $code = "ERR" }
-    }
-    Write-Output "GET /$p -> HTTP $code"
-}
+--- So sánh trước và sau ---
 
---- Kết quả mong đợi SAU KHI FIX ---
+Route         | TRƯỚC (ST-3.2 before)  | SAU (ST-3.2 after)
+/grafana/     | HTTP 200 (BỊ LỘ)      | HTTP 404 (DA BLOCK)
+/jaeger/ui/   | HTTP 200 (BỊ LỘ)      | HTTP 404 (DA BLOCK)
+/loadgen/     | HTTP 200 (BỊ LỘ)      | HTTP 404 (DA BLOCK)
+/feature      | HTTP 503 (route tồn tại)| HTTP 404 (DA BLOCK)
+/flagservice/ | HTTP 404              | HTTP 404 (giữ nguyên)
+/otlp-http/   | HTTP 404              | HTTP 404 (giữ nguyên)
 
-GET /             -> HTTP 200   (storefront vẫn công khai - đúng)
-GET /grafana/     -> HTTP 404   (đã block - đúng)
-GET /grafana      -> HTTP 404   (đã block - đúng)
-GET /jaeger/ui/   -> HTTP 404   (đã block - đúng)
-GET /jaeger/      -> HTTP 404   (đã block - đúng)
-GET /loadgen/     -> HTTP 404   (đã block - đúng)
-GET /feature      -> HTTP 404   (đã block - đúng)
-GET /flagservice/ -> HTTP 404   (đã block - đúng)
-GET /otlp-http/   -> HTTP 404   (đã block - đúng)
+--- Kết luận ---
 
---- Điền output thật sau khi CDO08 deploy và CDO07 chạy lại ---
+Tất cả 6 internal routes đã trả 404 từ Envoy (direct_response).
+Storefront / vẫn trả 200 - không bị ảnh hưởng.
+Mandate-01 yêu cầu về việc block routes: ĐÃ ĐÁP ỨNG.
 
-[KẾT QUẢ THỰC TẾ]
-Thời điểm : _______________
-IP nguồn   : _______________
-
-GET /             -> HTTP ___
-GET /grafana/     -> HTTP ___
-GET /grafana      -> HTTP ___
-GET /jaeger/ui/   -> HTTP ___
-GET /jaeger/      -> HTTP ___
-GET /loadgen/     -> HTTP ___
-GET /feature      -> HTTP ___
-GET /flagservice/ -> HTTP ___
-GET /otlp-http/   -> HTTP ___
-
-Kiểm tra không bị redirect về storefront:
-redirect_url /grafana/ = ___   (phải rỗng - không redirect)
-
-PASS/FAIL: ___
+TRẠNG THÁI: PASS

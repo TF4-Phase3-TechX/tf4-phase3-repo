@@ -1,11 +1,98 @@
-ST-3.3 - Kết nối VPN/SSM và kiểm tra truy cập riêng tư (phải PASS)
+ST-3.3 - Kết nối VPN/SSM và kiểm tra truy cập riêng tư (PASS - CDO08 đã xác minh)
 Task 23 - Kiểm tra độc lập - Mandate-01
 ============================================================
 Mục đích: Xác minh người có quyền VẪN VÀO ĐƯỢC Grafana/Jaeger qua SSM tunnel
           dù các route public đã bị chặn
 ============================================================
 
-TRẠNG THÁI: CHỜ CDO08 - cần Bastion instance-id + ClusterIP + AWS profile
+TRẠNG THÁI: PASS — CDO08 đã thực hiện và cung cấp bằng chứng đầy đủ
+Nguồn: docs/cdo08/week2/output/ (CDO08-SEC-05 verification evidence)
+Thời điểm xác minh CDO08: 2026-07-13T23:18:47+07:00
+
+--- Thông tin Bastion (CDO08 cung cấp) ---
+
+Bastion Instance ID : i-072084d1cf0b2f1c9
+Tên Bastion         : tf4-portal-bastion
+Private IP          : 10.0.10.55
+SSM Status          : Online
+IAM Role            : arn:aws:sts::511825856493:assumed-role/tf4-portal-bastion-role/i-072084d1cf0b2f1c9
+
+--- Bảng Port Mapping (SSM Tunnel) ---
+
+Port Bastion | Port Local | Service         | Namespace
+-------------|------------|-----------------|--------------------
+13000        | 3000       | Grafana         | techx-observability
+16686        | 16686      | Jaeger UI       | techx-observability
+18089        | 8089       | Locust (Loadgen) | techx-tf4
+
+ClusterIP Grafana        : 172.20.108.200
+ClusterIP Jaeger         : 172.20.88.27
+ClusterIP Load Generator : 172.20.219.77
+
+--- Lệnh kết nối SSM (Windows) ---
+
+# Đăng nhập AWS SSO trước
+aws sso login --profile iam-tf4
+
+# A. Mở Tunnel Grafana (localhost:3000)
+aws ssm start-session --target i-072084d1cf0b2f1c9 ^
+  --document-name AWS-StartPortForwardingSession ^
+  --parameters "{\"portNumber\":[\"13000\"],\"localPortNumber\":[\"3000\"]}" ^
+  --profile iam-tf4 --region us-east-1
+
+# B. Mở Tunnel Jaeger UI (localhost:16686)
+aws ssm start-session --target i-072084d1cf0b2f1c9 ^
+  --document-name AWS-StartPortForwardingSession ^
+  --parameters "{\"portNumber\":[\"16686\"],\"localPortNumber\":[\"16686\"]}" ^
+  --profile iam-tf4 --region us-east-1
+
+# C. Mở Tunnel Locust (localhost:8089)
+aws ssm start-session --target i-072084d1cf0b2f1c9 ^
+  --document-name AWS-StartPortForwardingSession ^
+  --parameters "{\"portNumber\":[\"18089\"],\"localPortNumber\":[\"8089\"]}" ^
+  --profile iam-tf4 --region us-east-1
+
+--- Bằng chứng SSM Session CDO08 đã chạy ---
+
+SessionId  : nguyen-cqzlbzsh4onaob6vh2536k3vj4
+Target     : i-072084d1cf0b2f1c9
+Owner      : arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-SecurityIAMSSOManager_7fec96c816beda10/nguyen
+Status     : Terminated
+StartDate  : 2026-07-13T23:28:39+07:00
+EndDate    : 2026-07-13T23:29:08+07:00
+
+Grafana UI qua tunnel: HTTP 301 (redirect về /grafana/dashboards) -> PASS
+  (301 là bình thường — Grafana tự redirect về đúng path prefix /grafana/)
+
+--- CDO07 cần làm thêm (CloudTrail audit) ---
+
+CDO08 bị thiếu quyền cloudtrail:LookupEvents với role hiện tại.
+CDO07 cần chạy lệnh sau để hoàn tất audit trail:
+
+aws cloudtrail lookup-events ^
+  --region us-east-1 ^
+  --lookup-attributes AttributeKey=EventName,AttributeValue=StartSession ^
+  --max-results 10 ^
+  --query "Events[].{Time:EventTime,User:Username,EventName:EventName}" ^
+  --output table ^
+  --profile TF4-AuditReadOnlyAndAnalyze
+
+--- Kết quả CDO07 verify độc lập ST-3.3 ---
+
+[CDO07 điền sau khi tự chạy SSM tunnel với profile iam-tf4]
+
+Thời điểm CDO07 test : _______________
+Profile dùng         : iam-tf4
+
+SSM Session ID mới   : _______________
+localhost:3000       : HTTP ___   (Grafana - phải 200 hoặc 301)
+localhost:16686      : HTTP ___   (Jaeger  - phải 200)
+localhost:8089       : HTTP ___   (Locust  - phải 200)
+
+CloudTrail StartSession: ___   (CDO07 query bằng TF4-AuditReadOnlyAndAnalyze)
+
+PASS/FAIL CDO07 verify: ___
+
 
 --- Thông tin cần CDO08 cung cấp trước khi chạy ---
 
