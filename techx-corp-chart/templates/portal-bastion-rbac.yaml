@@ -1,0 +1,65 @@
+{{- if and .Values.bastionPortalAccess.enabled (eq .Release.Namespace "techx-observability") }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: portal-portforward
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["grafana", "jaeger"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: portal-portforward-binding
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: Group
+    name: {{ .Values.bastionPortalAccess.groupName | quote }}
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: portal-portforward
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+
+{{- if and .Values.bastionPortalAccess.enabled (eq .Release.Namespace "techx-tf4") }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: loadgen-portforward
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["load-generator"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: loadgen-portforward-binding
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: Group
+    name: {{ .Values.bastionPortalAccess.groupName | quote }}
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: loadgen-portforward
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

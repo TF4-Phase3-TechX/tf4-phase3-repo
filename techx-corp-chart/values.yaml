@@ -1408,3 +1408,7 @@ opensearch:
   resources:
     limits:
       memory: 1100Mi
+
+bastionPortalAccess:
+  enabled: false
+  groupName: portal-bastion-group
