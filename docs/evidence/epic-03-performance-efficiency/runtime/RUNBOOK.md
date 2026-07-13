@@ -1,62 +1,78 @@
-# Task-4 runbook
+# Kịch bản vận hành Task-4 (Task-4 Runbook)
 
-## Goal
-Run the flash-sale load test at 200 concurrent users with a 15-minute steady state and capture evidence.
+## Mục tiêu
 
-## Timeline
-- Ramp-up: 1 minute
-- Steady-state: 15 minutes
-- Ramp-down: 20 seconds
-- Total runtime: 16 minutes 20 seconds
+Chạy thử nghiệm tải (load test) giả lập chiến dịch flash-sale ở mức **200 người dùng đồng thời (concurrent users)**, duy trì trạng thái ổn định trong **15 phút** và thu thập đầy đủ bằng chứng kiểm thử (evidence).
 
-## Traffic mix
-The Locust scenario is designed to exercise realistic flash-sale behavior rather than a single lightweight endpoint.
+## Mốc thời gian (Timeline)
 
-- Browse/discovery flow: product list, product detail, recommendations, reviews, ads, AI assistant, homepage
-- Cart flow: view cart and add-to-cart actions
-- Checkout flow: single-item and multi-item checkout
+* **Ramp-up (Tăng tải):** 1 phút
+* **Steady-state (Duy trì đỉnh tải):** 15 phút
+* **Ramp-down (Giảm tải):** 20 giây
+* ⏱️ **Tổng thời gian chạy (Total runtime):** 16 phút 20 giây
 
-## Prerequisites
-- Access to the target Kubernetes cluster
-- `kubectl` configured for namespace `techx-tf4`
-- The `load-generator` deployment available
-- Flagd remains enabled; do not disable it for the test
+## Phân bổ Traffic (Traffic mix)
 
-## Dry-run
+Kịch bản Locust được thiết kế để mô phỏng chính xác hành vi thực tế của người dùng trong ngày flash-sale, nghiêm cấm việc chỉ spam vào một endpoint nhẹ duy nhất.
+
+* **Luồng xem/tìm kiếm (Browse/discovery flow):** Xem danh sách sản phẩm, chi tiết sản phẩm, gợi ý (recommendations), đánh giá (reviews), quảng cáo (ads), trợ lý AI (AI assistant), và trang chủ.
+* **Luồng giỏ hàng (Cart flow):** Hành vi xem giỏ hàng và thêm sản phẩm vào giỏ (add-to-cart).
+* **Luồng thanh toán (Checkout flow):** Thanh toán đơn hàng đơn lẻ (single-item) và thanh toán nhiều sản phẩm (multi-item).
+
+## Điều kiện tiên quyết (Prerequisites)
+
+* Có quyền truy cập vào cụm Kubernetes mục tiêu.
+* Công cụ `kubectl` đã được cấu hình chính xác cho namespace `techx-tf4`.
+* Deployment `load-generator` đã sẵn sàng hoạt động.
+* **Lưu ý quan trọng:** Hệ thống `flagd` phải được giữ nguyên; nghiêm cấm vô hiệu hóa trong suốt quá trình test.
+
+## Chạy thử nghiệm tải thấp (Dry-run)
+
 ```bash
 bash scripts/run-load-test-task4.sh dry-run
+
 ```
 
-Then open the Locust UI at `http://localhost:8089` and verify the traffic mix and basic health.
+Sau đó, mở giao diện Locust UI tại địa chỉ `http://localhost:8089` để kiểm tra cấu hình traffic mix và trạng thái sức khỏe cơ bản của hệ thống.
 
-## Full run
+## Chạy chính thức (Full run)
+
 ```bash
 bash scripts/run-load-test-task4.sh full
+
 ```
 
-## Stop conditions
-Stop early if any of the following thresholds are exceeded:
-- checkout-related errors exceed the configured threshold (5 errors per 100 log lines)
-- CPU usage exceeds 90% for monitored pods
-- memory usage exceeds 850Mi for monitored pods
-- load-generator CPU exceeds 80% or memory exceeds 1200Mi
-- node count grows beyond the baseline unexpectedly
+## Điều kiện dừng khẩn cấp (Stop conditions)
 
-## Dashboard mapping
-Use Grafana in the `techx-observability` namespace and focus on the following signals for namespace `techx-tf4`:
-- latency dashboard for the storefront and checkout endpoints
-- error rate dashboard for checkout and cart requests
-- request-rate dashboard for the overall webstore traffic
-- pod resource dashboards to verify CPU and memory stability
+Hệ thống sẽ lập tức dừng đợt test nếu vượt quá bất kỳ ngưỡng giới hạn nào sau đây:
 
-## Evidence checklist
-Capture the following before closing the task:
-- run output and timestamps from `task4-full-T0.txt` and `task4-full-T1.txt`
-- Locust stats CSV and HTML report
-- monitor log from `load-test-monitor-*.log`
-- Grafana screenshots for latency, error rate, and request rate
-- Jaeger traces for representative checkout and cart requests
+* Lỗi liên quan đến luồng thanh toán (checkout) vượt quá ngưỡng cấu hình (5 lỗi trên mỗi 100 dòng log).
+* Mức sử dụng CPU vượt quá 90% đối với các pod đang được giám sát.
+* Mức sử dụng bộ nhớ (Memory) vượt quá 850Mi đối với các pod đang được giám sát.
+* Pod `load-generator` có CPU vượt quá 80% hoặc bộ nhớ vượt quá 1200Mi.
+* Số lượng Node của cụm tăng trưởng vượt mức baseline một cách bất thường.
 
-## Evidence artifacts
-Artifacts are written under:
-- `docs/evidence/epic-03-performance-efficiency/runtime/`
+## Chỉ mục Giám sát (Dashboard mapping)
+
+Sử dụng Grafana trong namespace `techx-observability` và tập trung vào các chỉ số thuộc namespace `techx-tf4`:
+
+* Dashboard giám sát độ trễ (latency) của các endpoint cửa hàng (storefront) và thanh toán (checkout).
+* Dashboard giám sát tỷ lệ lỗi (error rate) của các request thuộc luồng thanh toán và giỏ hàng.
+* Dashboard giám sát tần suất request (request-rate) của toàn bộ lưu lượng webstore.
+* Dashboard giám sát tài nguyên của pod để xác định mức độ ổn định của CPU và Memory.
+
+## Danh mục bằng chứng cần thu thập (Evidence checklist)
+
+Thu thập và rà soát đầy đủ các tệp sau trước khi đóng task:
+
+* Kết quả log chạy kèm mốc thời gian cụ thể từ file `task4-full-T0.txt` và `task4-full-T1.txt`.
+* File dữ liệu thô thống kê CSV và file báo cáo HTML report xuất ra từ Locust.
+* Nhật ký giám sát từ file log `load-test-monitor-*.log`.
+* Ảnh chụp màn hình Grafana hiển thị các biểu đồ độ trễ (latency), tỷ lệ lỗi (error rate), và tần suất request (request rate).
+* Các vết trace trên Jaeger mô tả cho các request tiêu biểu của luồng thanh toán (checkout) và giỏ hàng (cart).
+
+## Thư mục lưu trữ bằng chứng (Evidence artifacts)
+
+Toàn bộ tài liệu bằng chứng trên sẽ được lưu tại đường dẫn:
+
+* `docs/evidence/epic-03-performance-efficiency/runtime/`
