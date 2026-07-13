@@ -134,12 +134,16 @@ Nguồn cấu hình:
 
 | Item | Chi phí ước tính |
 |---|---|
-| EC2 Bastion | CDO04 xác nhận loại máy và lịch chạy bằng AWS Pricing Calculator |
+| EC2 Bastion `t3.nano` | `$0.0052/giờ`; baseline 8 giờ/tuần = `$0.0416/tuần` |
+| EBS gp3 mã hóa 8 GiB | Khoảng `$0.148/tuần`; EBS vẫn phát sinh phí khi EC2 dừng |
 | SSM Session Manager | Không có phí riêng cho tính năng Session Manager |
 | CloudWatch/S3 session log | Theo dung lượng và retention |
-| NAT hoặc SSM VPC endpoints | Kiểm tra hạ tầng hiện có; không mặc định là `$0` |
+| NAT Gateway hiện có | Không tính thêm fixed hourly cost cho SEC-05; cộng khoảng `$0.045/GB` data processing, chưa gồm data transfer/cross-AZ nếu có |
+| SSM VPC endpoints mới | **Không tạo**; 3 endpoint × 1 AZ × 168 giờ × `$0.01` ≈ `$5.04/tuần`, chưa gồm data |
 | Internal ALB | **Không sử dụng trong phương án này** |
-| **Fixed cost sơ bộ** | **`$3.7–$3.9/tuần` cho EC2 `t3.nano` + EBS gp3, theo CDO04; tổng incremental cost vẫn chờ NAT/logging assumptions** |
+| **Fixed cost phương án chọn** | **Khoảng `$0.19/tuần` ở baseline 8 giờ; `$0.36/tuần` nếu chạy 40 giờ; tối đa khoảng `$1.02/tuần` nếu chạy 24x7. Chưa gồm NAT data, logging, data transfer và thuế.** |
+
+**Kết luận cost:** chọn `t3.nano` scheduled/on-demand + EBS gp3 8 GiB + NAT hiện có. Đây là phương án rẻ nhất phù hợp thiết kế SSM; không tạo Internal ALB hoặc SSM VPC Endpoint mới. Vì `t3.nano` chỉ có 0.5 GiB RAM, Infra phải pilot SSM Agent + AWS CLI + `kubectl`; nếu cần tăng instance size thì phải gửi CDO04 review lại.
 
 **Audit trail (cho CDO07 duyệt):**
 
@@ -209,7 +213,7 @@ Team nội bộ (AWS SSO identity cá nhân)
 - Quản lý bằng Terraform sau Infra review; không chạy trực tiếp lệnh `run-instances` mẫu.
 - Private subnet, không public IP, Security Group không có inbound, không mở port 22.
 - Bắt buộc IMDSv2, encrypted EBS, SSM Agent, patch baseline và instance profile tối thiểu.
-- Bastion cần AWS CLI, `kubectl` và network đến EKS API; dùng NAT hiện có hoặc SSM VPC endpoints theo cost review.
+- Bastion cần AWS CLI, `kubectl` và network đến EKS API; phương án chọn dùng **single NAT Gateway hiện có**, không tạo SSM VPC Endpoint mới.
 - Tạo EKS Access Entry cho **Bastion instance role**, không dùng admin credential.
 - Kubernetes RBAC chỉ cho `get/list` Service/Pod cần thiết và `create` trên `pods/portforward` trong `techx-tf4`, `techx-observability`.
 
@@ -222,7 +226,20 @@ Team nội bộ (AWS SSO identity cá nhân)
 
 **Bước 4 — Hướng dẫn truy cập hai lớp:**
 
-Ví dụ Grafana; chọn `<BASTION_PORT>` riêng để tránh trùng với session khác.
+Baseline port mapping phục vụ đối soát CDO07:
+
+| Bastion loopback port | Kubernetes target | Source/runtime mapping |
+|---:|---|---|
+| `13000` | `techx-observability/svc/grafana:80` | `kubectl ... svc/grafana 13000:80` |
+| `16686` | `techx-observability/svc/jaeger:16686` | `kubectl ... svc/jaeger 16686:16686` |
+| `18089` | `techx-tf4/svc/load-generator:8089` | `kubectl ... svc/load-generator 18089:8089` |
+
+Mapping này là audit baseline trong source control. Không đổi/reuse port cho service
+khác nếu chưa cập nhật PR, runbook và CDO07 mapping evidence. Thiết kế hiện hỗ trợ
+một active port-forward trên mỗi portal; nhu cầu concurrent session phải được
+review và cấp port range cố định riêng.
+
+Ví dụ Grafana:
 
 ```bash
 # Laptop — login bằng SSO identity cá nhân.
@@ -235,14 +252,14 @@ aws ssm start-session \
 
 # Chạy bên trong Bastion và giữ process mở.
 kubectl -n techx-observability port-forward \
-  --address 127.0.0.1 svc/grafana <BASTION_PORT>:80
+  --address 127.0.0.1 svc/grafana 13000:80
 
 # Terminal B trên laptop — chuyển localhost đến port vừa mở trên Bastion.
 aws ssm start-session \
   --profile <mentor-btc-profile> \
   --target <BASTION_INSTANCE_ID> \
   --document-name AWS-StartPortForwardingSession \
-  --parameters 'portNumber=["<BASTION_PORT>"],localPortNumber=["3000"]'
+  --parameters 'portNumber=["13000"],localPortNumber=["3000"]'
 
 # Mở http://127.0.0.1:3000/grafana/
 ```
@@ -250,14 +267,22 @@ aws ssm start-session \
 Thay lệnh Terminal A cho portal khác:
 
 ```bash
-# Jaeger; sau đó Terminal B forward cùng <BASTION_PORT> về local 16686.
+# Jaeger; Terminal B forward Bastion port 16686 về local 16686.
 kubectl -n techx-observability port-forward \
-  --address 127.0.0.1 svc/jaeger <BASTION_PORT>:16686
+  --address 127.0.0.1 svc/jaeger 16686:16686
+aws ssm start-session \
+  --profile <mentor-btc-profile> --target <BASTION_INSTANCE_ID> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters 'portNumber=["16686"],localPortNumber=["16686"]'
 # Mở http://127.0.0.1:16686/jaeger/ui/
 
-# Loadgen; sau đó Terminal B forward cùng <BASTION_PORT> về local 8089.
+# Loadgen; Terminal B forward Bastion port 18089 về local 8089.
 kubectl -n techx-tf4 port-forward \
-  --address 127.0.0.1 svc/load-generator <BASTION_PORT>:8089
+  --address 127.0.0.1 svc/load-generator 18089:8089
+aws ssm start-session \
+  --profile <mentor-btc-profile> --target <BASTION_INSTANCE_ID> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters 'portNumber=["18089"],localPortNumber=["8089"]'
 # Mở http://127.0.0.1:8089/
 ```
 
@@ -300,17 +325,20 @@ Trước khi sửa/deploy, phải có:
 **CDO04 — `APPROVED WITH CONDITIONS`:**
 
 - [x] CDO04 đồng ý phương án SSM Bastion về mặt budget.
-- [ ] Xác nhận NAT hiện có hay SSM VPC Endpoints; không tạo endpoint mới nếu chưa được review lại.
-- [ ] Chốt `t3.nano`, EBS gp3, logging retention và runtime `24x7` hoặc scheduled/on-demand.
+- [x] Dùng single NAT Gateway hiện có; không tạo SSM VPC Endpoint mới.
+- [x] Chọn `t3.nano`, EBS gp3 mã hóa 8 GiB và scheduled/on-demand với baseline 8 giờ/tuần; 24x7 chỉ là kịch bản chi phí cao nhất.
+- [ ] Chốt CloudWatch/S3 session logging và retention trước deploy.
 - [ ] Projected total weekly TF cost vẫn `<= $300` trước deploy.
 - [ ] Không tăng instance size ngoài proposal nếu chưa được CDO04 review lại.
 - [ ] Sau deploy attach Cost Explorer actual cost và giải thích variance so với estimate.
 
-Preliminary fixed cost do CDO04 cung cấp: `EC2 t3.nano + EBS gp3 ≈ $3.7–$3.9/tuần`, chưa gồm NAT/VPC Endpoint/logging usage.
+Projected fixed incremental cost của phương án chọn là khoảng `$0.19/tuần` ở baseline 8 giờ, hoặc `$1.02/tuần` nếu chạy 24x7. Mức `$3.7–$3.9/tuần` trong comment CDO04 được giữ làm **budget ceiling**, không dùng làm projected cost; các số trên chưa gồm NAT data, logging, data transfer và thuế.
 
 **CDO07 — Audit review:**
 - [ ] CDO07 xác nhận CloudTrail đang bật và ghi được `StartSession` event với đủ: user ARN, timestamp, source IP.
+- [ ] CDO07 chấp nhận fixed Bastion port baseline: `13000=Grafana`, `16686=Jaeger`, `18089=Loadgen`.
 - [ ] CDO07 xác nhận SSM shell logging và EKS audit logging có/không được bật.
+- [ ] CDO07 xác minh CloudTrail S3 bucket thực tế, retention/delete control và mức immutability; S3 Versioning một mình không được gọi là WORM.
 - [ ] Owner/Tech Lead chấp nhận residual risk: audit được identity/session/API port-forward nhưng không audit đầy đủ hành động HTTP trong portal.
 
 ## 8. Thực hiện sau approval
