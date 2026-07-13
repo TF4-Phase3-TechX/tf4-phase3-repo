@@ -1115,15 +1115,41 @@ jaeger:
       jaeger_storage_exporter:
         trace_storage: memory_backend
 
+# SMTP password for Alertmanager email notifications. This should be injected via CI/CD (--set alertmanagerSmtpPassword=***).
+alertmanagerSmtpPassword: ""
+
 prometheus:
   enabled: true
   alertmanager:
-    enabled: false
+    enabled: true
     persistence:
       enabled: false
     resources:
+      requests:
+        cpu: 10m
+        memory: 50Mi
       limits:
         memory: 100Mi
+    extraSecretMounts:
+      - name: smtp-auth
+        secretName: alertmanager-smtp-auth
+        mountPath: /etc/alertmanager/secrets
+        readOnly: true
+    config:
+      route:
+        receiver: tf4-on-call-email
+        routes:
+          - matchers:
+              - severity="critical"
+            receiver: tf4-on-call-email
+      receivers:
+        - name: tf4-on-call-email
+          email_configs:
+            - to: "vanphutin2902@gmail.com"
+              from: "vanphutin2902@gmail.com"
+              smarthost: "smtp.gmail.com:587"
+              auth_username: "vanphutin2902@gmail.com"
+              auth_password_file: /etc/alertmanager/secrets/auth_password
   configmapReload:
     prometheus:
       enabled: true

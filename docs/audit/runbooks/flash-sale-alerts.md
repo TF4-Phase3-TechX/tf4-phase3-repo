@@ -156,9 +156,7 @@ kubectl -n techx-observability get configmap prometheus-flash-sale-alerts
 kubectl -n techx-observability logs deployment/prometheus -c prometheus-server --since=10m
 ```
 
-Use Prometheus `/rules` or `/api/v1/rules` to confirm all four groups are loaded, and Prometheus `/alerts` to capture active alert state. Save screenshots and API output with UTC timestamps in the Task-3 evidence document.
-
-> **Note:** Alertmanager is currently disabled. Alert notification delivery (Slack/email/webhook) is deferred until a receiver configuration is approved.
+Use Prometheus `/rules` or `/api/v1/rules` to confirm all four groups are loaded, and Alertmanager `/api/v2/alerts` to capture active alert state. Save screenshots and API output with UTC timestamps in the Task-3 evidence document.
 
 The offline firing test is defined in `techx-corp-chart/prometheus/tests/flash-sale-alerts.test.yaml`. It proves that sustained load-generator traffic transitions the real production rule to firing after its ten-minute wait.
 
@@ -173,4 +171,4 @@ helm -n techx-observability history techx-observability
 helm -n techx-observability rollback techx-observability <previous-revision> --wait --timeout 10m
 ```
 
-After rollback, confirm Prometheus readiness, rule count and Grafana datasource health.
+After rollback, confirm Prometheus readiness, rule count, Alertmanager state and Grafana datasource health.

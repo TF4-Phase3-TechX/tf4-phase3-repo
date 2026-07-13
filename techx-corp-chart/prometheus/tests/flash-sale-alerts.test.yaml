@@ -37,6 +37,8 @@ tests:
     input_series:
       - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="1000"}
         values: 0+10x20
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="2000"}
+        values: 0+96x20
       - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="+Inf"}
         values: 0+100x20
     alert_rule_test:

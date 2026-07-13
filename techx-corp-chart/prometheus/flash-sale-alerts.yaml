@@ -280,7 +280,7 @@ groups:
           component: grafana
         annotations:
           summary: Grafana is unavailable
-          description: The Grafana deployment has had no available replica or no availability metric for two minutes.
+          description: The Grafana deployment has had no available replica for two minutes.
           runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#grafanaunavailable
 
       - alert: PrometheusUnavailable
@@ -296,7 +296,7 @@ groups:
           component: prometheus
         annotations:
           summary: Prometheus is unavailable
-          description: The Prometheus deployment has had no available replica or no availability metric for two minutes. This self-monitoring rule requires an external evaluator for total Prometheus failure.
+          description: The Prometheus deployment has had no available replica for two minutes. This self-monitoring rule requires an external evaluator for total Prometheus failure.
           runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#prometheusunavailable
 
       - alert: JaegerUnavailable
@@ -312,7 +312,7 @@ groups:
           component: jaeger
         annotations:
           summary: Jaeger is unavailable
-          description: The Jaeger deployment has had no available replica or no availability metric for two minutes.
+          description: The Jaeger deployment has had no available replica for two minutes.
           runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#jaegerunavailable
 
   - name: flash-sale-test-window
