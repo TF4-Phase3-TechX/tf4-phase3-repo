@@ -184,6 +184,8 @@ components:
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
+      requests:
+        memory: 256Mi
       limits:
         memory: 256Mi
     initContainers:
@@ -221,6 +223,7 @@ components:
 
   cart:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -243,6 +246,22 @@ components:
     resources:
       limits:
         memory: 160Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+        service: oteldemo.CartService
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     initContainers:
       - name: wait-for-valkey-cart
         image: busybox:latest
@@ -255,6 +274,7 @@ components:
 
   checkout:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -289,6 +309,21 @@ components:
     resources:
       limits:
         memory: 20Mi
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
@@ -377,6 +412,7 @@ components:
 
   frontend:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -423,6 +459,21 @@ components:
     resources:
       limits:
         memory: 250Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 1001 # nextjs
       runAsGroup: 1001
@@ -430,6 +481,7 @@ components:
 
   frontend-proxy:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -485,6 +537,22 @@ components:
     resources:
       limits:
         memory: 65Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 10000
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 101 # envoy
       runAsGroup: 101
@@ -556,6 +624,7 @@ components:
 
   payment:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -576,6 +645,21 @@ components:
     resources:
       limits:
         memory: 140Mi
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 1000 # node
       runAsGroup: 1000
@@ -583,6 +667,7 @@ components:
 
   product-catalog:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -607,6 +692,21 @@ components:
     resources:
       limits:
         memory: 20Mi
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   product-reviews:
     enabled: true
@@ -705,6 +805,7 @@ components:
 
   shipping:
     enabled: true
+    replicas: 2
     useDefault:
       env: true
     service:
@@ -723,6 +824,21 @@ components:
     resources:
       limits:
         memory: 20Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   flagd:
     enabled: true
@@ -1065,10 +1181,8 @@ jaeger:
   fullnameOverride: jaeger
   jaeger:
     storage:
-      type: memory
+      type: elasticsearch
     extraEnv:
-      - name: MEMORY_MAX_TRACES
-        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -1080,6 +1194,8 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
+      requests:
+        memory: 768Mi
       limits:
         memory: 768Mi
   userconfig:
@@ -1113,14 +1229,14 @@ jaeger:
           endpoint: 0.0.0.0:13133
       jaeger_query:
         storage:
-          traces: memory_backend
+          traces: opensearch_backend
           metrics: metrics_backend
         base_path: /jaeger/ui
       jaeger_storage:
         backends:
-          memory_backend:
-            memory:
-              max_traces: ${env:MEMORY_MAX_TRACES}
+          opensearch_backend:
+            elasticsearch:
+              server_urls: ["http://opensearch:9200"]
         metric_backends:
           metrics_backend:
             prometheus:
@@ -1139,23 +1255,64 @@ jaeger:
 
     exporters:
       jaeger_storage_exporter:
-        trace_storage: memory_backend
+        trace_storage: opensearch_backend
+  storage:
+    type: elasticsearch
+    elasticsearch:
+      tls:
+        enabled: false
+      url: http://opensearch:9200
+  esIndexCleaner:
+    enabled: true
+    numberOfDays: 3
+    schedule: "35 23 * * *"
 
 prometheus:
   enabled: true
   alertmanager:
-    enabled: false
+    enabled: true
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 10m
+        memory: 50Mi
+      limits:
+        memory: 100Mi
+    extraSecretMounts:
+      - name: smtp-auth
+        secretName: alertmanager-smtp-auth
+        mountPath: /etc/alertmanager/secrets
+        readOnly: true
   configmapReload:
     prometheus:
-      enabled: false
+      enabled: true
+      extraVolumeDirs:
+        - /etc/alerts.d
+      extraConfigmapMounts:
+        - name: flash-sale-alerts
+          mountPath: /etc/alerts.d
+          configMap: prometheus-flash-sale-alerts
+          readOnly: true
   kube-state-metrics:
     enabled: false
   prometheus-node-exporter:
     enabled: false
   prometheus-pushgateway:
     enabled: false
+  serverFiles:
+    prometheus.yml:
+      rule_files:
+        - /etc/config/recording_rules.yml
+        - /etc/config/alerting_rules.yml
+        - /etc/alerts.d/*.yaml
   server:
     fullnameOverride: prometheus
+    extraConfigmapMounts:
+      - name: flash-sale-alerts
+        mountPath: /etc/alerts.d
+        configMap: prometheus-flash-sale-alerts
+        readOnly: true
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
@@ -1235,8 +1392,10 @@ grafana:
         cpu: 150m
         memory: 256Mi
   resources:
-    limits:
+    requests:
       memory: 512Mi
+    limits:
+      memory: 768Mi
 
 opensearch:
   enabled: true
@@ -1244,9 +1403,12 @@ opensearch:
   clusterName: demo-cluster
   nodeGroup: techx-corp
   singleNode: true
+  protocol: http
   opensearchJavaOpts: "-Xms400m -Xmx400m"
   persistence:
-    enabled: false
+    enabled: true
+    size: 8Gi
+    storageClass: "gp2"
   extraEnvs:
     - name: "bootstrap.memory_lock"
       value: "true"
