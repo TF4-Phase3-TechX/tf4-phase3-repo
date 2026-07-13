@@ -293,11 +293,11 @@ async def add_baggage_header(route: Route, request: Request):
 class Task4FlashSaleShape(LoadTestShape):
     """Task-4: 200 users, 15 minutes steady-state with controlled ramp-up/down."""
 
-    RAMP_SECONDS = 40
-    STEADY_SECONDS = 900
-    RAMP_DOWN_SECONDS = 40
+    RAMP_SECONDS = 60         # 1 phút tăng tải (Ramp-up)
+    STEADY_SECONDS = 900       # 15 phút duy trì đỉnh tải (Steady-state)
+    RAMP_DOWN_SECONDS = 20     # 20 giây giảm tải có kiểm soát (Ramp-down)
     TARGET_USERS = 200
-    SPAWN_RATE = 5
+    SPAWN_RATE = 3.33          # ~200 users / 60s để đạt đỉnh trong 1 phút
 
     def tick(self):
         run_time = self.get_run_time()
