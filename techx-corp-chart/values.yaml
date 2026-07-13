@@ -1244,18 +1244,49 @@ jaeger:
 prometheus:
   enabled: true
   alertmanager:
-    enabled: false
+    enabled: true
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 10m
+        memory: 50Mi
+      limits:
+        memory: 100Mi
+    extraSecretMounts:
+      - name: smtp-auth
+        secretName: alertmanager-smtp-auth
+        mountPath: /etc/alertmanager/secrets
+        readOnly: true
   configmapReload:
     prometheus:
-      enabled: false
+      enabled: true
+      extraVolumeDirs:
+        - /etc/alerts.d
+      extraConfigmapMounts:
+        - name: flash-sale-alerts
+          mountPath: /etc/alerts.d
+          configMap: prometheus-flash-sale-alerts
+          readOnly: true
   kube-state-metrics:
     enabled: false
   prometheus-node-exporter:
     enabled: false
   prometheus-pushgateway:
     enabled: false
+  serverFiles:
+    prometheus.yml:
+      rule_files:
+        - /etc/config/recording_rules.yml
+        - /etc/config/alerting_rules.yml
+        - /etc/alerts.d/*.yaml
   server:
     fullnameOverride: prometheus
+    extraConfigmapMounts:
+      - name: flash-sale-alerts
+        mountPath: /etc/alerts.d
+        configMap: prometheus-flash-sale-alerts
+        readOnly: true
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
