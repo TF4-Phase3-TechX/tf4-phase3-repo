@@ -169,10 +169,11 @@ Alertmanager recipient configuration and routing are managed via GitHub Environm
 To update the Alertmanager routing and recipients, create a `alertmanager-email-values.yaml` file with the desired route and receivers:
 
 ```yaml
-alertmanager:
-  config:
-    route: ...
-    receivers: ...
+prometheus:
+  alertmanager:
+    config:
+      route: ...
+      receivers: ...
 ```
 
 Then create or update the base64-encoded secret for the target environment (e.g. `production`):
