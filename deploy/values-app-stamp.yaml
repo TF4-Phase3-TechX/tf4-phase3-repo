@@ -11,3 +11,18 @@ default:
   envOverrides:
     - name: OTEL_COLLECTOR_NAME
       value: otel-collector.techx-observability.svc.cluster.local
+
+components:
+  load-generator:
+    envOverrides:
+      - name: LOCUST_AUTOSTART
+        value: "false"
+
+  frontend-proxy:
+    envOverrides:
+      - name: GRAFANA_HOST
+        value: grafana.techx-observability.svc.cluster.local
+      - name: JAEGER_HOST
+        value: jaeger.techx-observability.svc.cluster.local
+
+bastionPortalAccess: { enabled: true }

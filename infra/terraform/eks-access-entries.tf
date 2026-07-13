@@ -13,11 +13,26 @@ locals {
   }
 
   eks_view_access_entries = {
-    sso_ai_readonly_limited_invoke     = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6"
-    sso_audit_readonly_analyze         = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882"
-    sso_base_readonly                  = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7"
-    sso_cost_perf_readonly_alerting    = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86"
-    sso_sec_reliability_readonly_audit = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155"
+    sso_ai_readonly_limited_invoke = {
+      arn    = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6"
+      groups = ["ai-readers"]
+    }
+    sso_audit_readonly_analyze = {
+      arn    = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882"
+      groups = ["audit-readonly-analyzers"]
+    }
+    sso_base_readonly = {
+      arn    = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7"
+      groups = ["base-readonly-users"]
+    }
+    sso_cost_perf_readonly_alerting = {
+      arn    = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86"
+      groups = ["cost-perf-readonly-alerting-users"]
+    }
+    sso_sec_reliability_readonly_audit = {
+      arn    = "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155"
+      groups = ["security-reliability-auditors"]
+    }
   }
 }
 
@@ -46,9 +61,10 @@ resource "aws_eks_access_policy_association" "admin" {
 resource "aws_eks_access_entry" "view" {
   for_each = local.eks_view_access_entries
 
-  cluster_name  = module.eks.cluster_name
-  principal_arn = each.value
-  type          = "STANDARD"
+  cluster_name      = module.eks.cluster_name
+  principal_arn     = each.value.arn
+  type              = "STANDARD"
+  kubernetes_groups = each.value.groups
 
   tags = var.tags
 }
@@ -59,6 +75,16 @@ resource "aws_eks_access_policy_association" "view" {
   cluster_name  = module.eks.cluster_name
   principal_arn = aws_eks_access_entry.view[each.key].principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+resource "aws_eks_access_policy_association" "sec_reliability_secret_reader" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = aws_eks_access_entry.view["sso_sec_reliability_readonly_audit"].principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSSecretReaderPolicy"
 
   access_scope {
     type = "cluster"

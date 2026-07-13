@@ -1,0 +1,16 @@
+{{- if and .Values.components.postgresql.enabled .Values.components.postgresql.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-pvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" (dict "name" "postgresql" "Chart" .Chart "Release" .Release "Values" .Values) | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.components.postgresql.persistence.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.components.postgresql.persistence.size | quote }}
+{{- end }}

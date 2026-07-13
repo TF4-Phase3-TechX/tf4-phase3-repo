@@ -141,7 +141,7 @@ type checkout struct {
 	paymentSvcAddr        string
 	kafkaBrokerSvcAddr    string
 	pb.UnimplementedCheckoutServiceServer
-	KafkaProducerClient     sarama.SyncProducer
+	KafkaProducerClient     sarama.AsyncProducer
 	shippingSvcClient       pb.ShippingServiceClient
 	productCatalogSvcClient pb.ProductCatalogServiceClient
 	cartSvcClient           pb.CartServiceClient
@@ -233,10 +233,8 @@ func main() {
 	if svc.kafkaBrokerSvcAddr != "" {
 		svc.KafkaProducerClient, err = kafka.CreateKafkaProducer([]string{svc.kafkaBrokerSvcAddr}, logger)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create Kafka producer: %v", err))
-			panic(fmt.Sprintf("KAFKA_ADDR is set but producer creation failed: %v", err))
+			logger.Error(err.Error())
 		}
-		defer svc.KafkaProducerClient.Close()
 	}
 
 	logger.Info(fmt.Sprintf("service config: %+v", svc))
@@ -315,7 +313,7 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 
 	prep, err := cs.prepareOrderItemsAndShippingQuoteFromCart(ctx, req.UserId, req.UserCurrency, req.Address)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s", err.Error())
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	span.AddEvent("prepared")
 
@@ -387,9 +385,7 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	// send to kafka only if kafka broker address is set
 	if cs.kafkaBrokerSvcAddr != "" {
 		logger.Info("sending to postProcessor")
-		if err := cs.sendToPostProcessor(ctx, orderResult); err != nil {
-			return nil, status.Errorf(codes.Unavailable, "failed to publish order event: %+v", err)
-		}
+		cs.sendToPostProcessor(ctx, orderResult)
 	}
 
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
@@ -612,15 +608,11 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 	return shipResp.TrackingID, nil
 }
 
-func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderResult) error {
-	if cs.KafkaProducerClient == nil {
-		return fmt.Errorf("kafka producer is not initialized")
-	}
-
+func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderResult) {
 	message, err := proto.Marshal(result)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to marshal message to protobuf: %+v", err))
-		return err
+		return
 	}
 
 	msg := sarama.ProducerMessage{
@@ -632,72 +624,54 @@ func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderRes
 	span := createProducerSpan(ctx, &msg)
 	defer span.End()
 
+	// Send message and handle response
 	startTime := time.Now()
-	if err := ctx.Err(); err != nil {
-		span.SetAttributes(
-			attribute.Bool("messaging.kafka.producer.success", false),
-			attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
-		)
-		span.SetStatus(otelcodes.Error, err.Error())
-		return err
-	}
-
-	// SendMessage does not accept a context, so we run it in a goroutine and
-	// race against ctx.Done() to respect the gRPC client deadline.
-	type sendResult struct {
-		partition int32
-		offset    int64
-		err       error
-	}
-	ch := make(chan sendResult, 1)
-	go func() {
-		p, o, e := cs.KafkaProducerClient.SendMessage(&msg)
-		ch <- sendResult{p, o, e}
-	}()
-
-	var partition int32
-	var offset int64
 	select {
-	case res := <-ch:
-		partition, offset, err = res.partition, res.offset, res.err
+	case cs.KafkaProducerClient.Input() <- &msg:
+		select {
+		case successMsg := <-cs.KafkaProducerClient.Successes():
+			span.SetAttributes(
+				attribute.Bool("messaging.kafka.producer.success", true),
+				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
+				attribute.KeyValue(semconv.MessagingKafkaMessageOffset(int(successMsg.Offset))),
+			)
+			logger.Info(fmt.Sprintf("Successful to write message. offset: %v, duration: %v", successMsg.Offset, time.Since(startTime)))
+		case errMsg := <-cs.KafkaProducerClient.Errors():
+			span.SetAttributes(
+				attribute.Bool("messaging.kafka.producer.success", false),
+				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
+			)
+			span.SetStatus(otelcodes.Error, errMsg.Err.Error())
+			logger.Error(fmt.Sprintf("Failed to write message: %v", errMsg.Err))
+		case <-ctx.Done():
+			span.SetAttributes(
+				attribute.Bool("messaging.kafka.producer.success", false),
+				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
+			)
+			span.SetStatus(otelcodes.Error, "Context cancelled: "+ctx.Err().Error())
+			logger.Warn(fmt.Sprintf("Context canceled before success message received: %v", ctx.Err()))
+		}
 	case <-ctx.Done():
-		err = ctx.Err()
-	}
-
-	if err != nil {
 		span.SetAttributes(
 			attribute.Bool("messaging.kafka.producer.success", false),
 			attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
 		)
-		span.SetStatus(otelcodes.Error, err.Error())
-		logger.Error(fmt.Sprintf("Failed to write message: %v", err))
-		return err
+		span.SetStatus(otelcodes.Error, "Failed to send: "+ctx.Err().Error())
+		logger.Error(fmt.Sprintf("Failed to send message to Kafka within context deadline: %v", ctx.Err()))
+		return
 	}
-
-	span.SetAttributes(
-		attribute.Bool("messaging.kafka.producer.success", true),
-		attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
-		attribute.KeyValue(semconv.MessagingKafkaDestinationPartition(int(partition))),
-		attribute.KeyValue(semconv.MessagingKafkaMessageOffset(int(offset))),
-	)
-	logger.Info(fmt.Sprintf("Successful to write message. partition: %v, offset: %v, duration: %v", partition, offset, time.Since(startTime)))
 
 	ffValue := cs.getIntFeatureFlag(ctx, "kafkaQueueProblems")
 	if ffValue > 0 {
 		logger.Info("Warning: FeatureFlag 'kafkaQueueProblems' is activated, overloading queue now.")
-		// Run overload sends in background goroutines to avoid blocking checkout
-		// response (sync producer SendMessage is blocking unlike async Input()).
 		for i := 0; i < ffValue; i++ {
-			go func() {
-				if _, _, sendErr := cs.KafkaProducerClient.SendMessage(&msg); sendErr != nil {
-					logger.Error(fmt.Sprintf("Failed to write overload simulation message: %v", sendErr))
-				}
-			}()
+			go func(i int) {
+				cs.KafkaProducerClient.Input() <- &msg
+				_ = <-cs.KafkaProducerClient.Successes()
+			}(i)
 		}
-		logger.Info(fmt.Sprintf("Dispatched #%d messages for overload simulation.", ffValue))
+		logger.Info(fmt.Sprintf("Done with #%d messages for overload simulation.", ffValue))
 	}
-
-	return nil
 }
 
 func createProducerSpan(ctx context.Context, msg *sarama.ProducerMessage) trace.Span {

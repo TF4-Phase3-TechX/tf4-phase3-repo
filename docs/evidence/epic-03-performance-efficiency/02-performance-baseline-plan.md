@@ -199,39 +199,34 @@ This document consolidates the performance baseline testing plan for TechX Corp 
 ### **Configuration**
 
 #### **Helm Values**
+
+The EKS baseline is controlled by `deploy/values-app-stamp.yaml`, which applies a named override to the chart default:
+
 ```yaml
-load-generator:
-  enabled: true
-  env:
-    - name: LOCUST_USERS
-      value: "10"              # Concurrent users
-    - name: LOCUST_SPAWN_RATE
-      value: "1"               # Ramp-up rate (users/sec)
-    - name: LOCUST_HOST
-      value: "http://frontend-proxy:8080"
-    - name: LOCUST_AUTOSTART
-      value: "false"           # Manual start for control
-    - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-      value: "true"            # Include browser tests
+components:
+  load-generator:
+    envOverrides:
+      - name: LOCUST_AUTOSTART
+        value: "false"         # Manual start for controlled tests
 ```
+
+`load-generator` remains deployed so its UI is available. Starting or restarting the pod must not be interpreted as starting a load test when this value is `false`. The local Docker Compose `.env` is not the EKS baseline source.
 
 #### **Start Load Test**
 ```bash
-# Method 1: Scale deployment
+# Scaling creates or restores the Locust server pod only; it does not start a swarm.
 kubectl scale deployment/load-generator --replicas=1 -n techx-tf4
 
-# Method 2: Locust Web UI
+# Approved manual start: Locust Web UI
 kubectl port-forward svc/load-generator 8089:8089 -n techx-tf4
 # → Open http://localhost:8089
 # → Configure users & spawn rate
 # → Click "Start swarming"
-
-# Method 3: Helm upgrade
-helm upgrade techx-corp ./techx-corp-chart \
-  -n techx-tf4 \
-  --reuse-values \
-  --set load-generator.env[10].value="true"  # LOCUST_AUTOSTART
 ```
+
+Do not use positional Helm array overrides to start a test. Array indexes are fragile and can alter an unrelated environment variable. Use a reviewed, named values overlay for future automated test profiles.
+
+See [C0G-17 no-synthetic-traffic evidence](runtime/c0g-17/no-synthetic-traffic.md) for deployment and verification requirements.
 
 #### **Stop Load Test**
 ```bash
@@ -250,9 +245,8 @@ kubectl scale deployment/load-generator --replicas=0 -n techx-tf4
 # 1. Verify all pods running
 kubectl get pods -n techx-tf4
 
-# 2. Check baseline metrics
-kubectl top pods -n techx-tf4
-kubectl top nodes
+# 2. Check baseline CPU/memory in Grafana
+# Capture the namespace and node resource panels for techx-tf4.
 
 # 3. Open Grafana
 kubectl port-forward svc/frontend-proxy 8080:8080 -n techx-tf4
@@ -301,9 +295,9 @@ kubectl port-forward svc/frontend-proxy 8080:8080 -n techx-tf4
 ### **Output to Capture**
 
 #### **Real-time Metrics** (during test)
-```bash
+```text
 # CPU/Memory
-watch -n 5 'kubectl top pods -n techx-tf4'
+Theo dõi dashboard CPU/Memory của namespace `techx-tf4` trong Grafana với refresh 5 giây.
 
 # Request stats (Locust UI)
 # → http://localhost:8089
@@ -311,10 +305,9 @@ watch -n 5 'kubectl top pods -n techx-tf4'
 ```
 
 #### **Post-Test Evidence**
-```bash
+```text
 # 1. Resource usage
-kubectl top pods -n techx-tf4 > evidence-top-pods.txt
-kubectl top nodes > evidence-top-nodes.txt
+Capture Grafana CPU/Memory panels for namespace `techx-tf4` and worker nodes.
 
 # 2. Grafana screenshots
 # - Service latency dashboard
@@ -355,14 +348,14 @@ Rationale: 5× SLO violation (1% allowed)
 #### **2. CPU > 90%**
 ```
 Trigger: Any pod CPU usage > 90%
-Measurement: kubectl top pods
+Measurement: Grafana CPU panel / PromQL
 Rationale: Prevent throttling, cascading failure
 ```
 
 #### **3. Memory > 85%**
 ```
 Trigger: Any pod memory > 85% of limit
-Measurement: kubectl top pods
+Measurement: Grafana memory panel / PromQL
 Rationale: Prevent OOMKill, pod restart
 ```
 
@@ -383,7 +376,7 @@ Rationale: Each node = ~$60/week extra cost
 #### **6. Load Generator Overload**
 ```
 Trigger: LG pod CPU > 80% OR Memory > 1200Mi
-Measurement: kubectl top pods -l app=load-generator
+Measurement: Grafana load-generator CPU/Memory panels
 Rationale: Ensure test validity (generator not bottleneck)
 ```
 

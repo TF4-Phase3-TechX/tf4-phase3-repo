@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AIO1 Backlog Pitch - AIE & AIOps</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+:root {
+  --brand-primary:#0f172a;
+  --brand-accent:#f59e0b;
+  --brand-accent-2:#fb923c;
+  --brand-secondary:#3b82f6;
+  --brand-danger:#ef4444;
+  --brand-success:#22c55e;
+  --brand-purple:#8b5cf6;
+  --text-primary:#1e293b;
+  --text-secondary:#475569;
+  --text-muted:#94a3b8;
+  --border:#e2e8f0;
+  --surface-dark:#ffffff;
+  --surface-card:#f8fafc;
+  --gradient-warm:linear-gradient(135deg,#f59e0b,#ef4444);
+  --gradient-blue:linear-gradient(135deg,#3b82f6,#8b5cf6);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-snap-type:y mandatory;scroll-behavior:smooth;overflow-x:hidden}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--surface-dark);color:var(--text-primary);line-height:1.5;-webkit-font-smoothing:antialiased}
+.slide{min-height:100vh;width:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:clamp(32px,5vh,76px) clamp(24px,5vw,112px);position:relative;overflow:hidden}
+.slide-title{text-align:center;background:var(--surface-dark)}
+.slide-title::before{content:'';position:absolute;top:-30%;right:-20%;width:60%;height:80%;background:radial-gradient(circle,rgba(245,158,11,.13) 0%,transparent 70%);pointer-events:none}
+.slide-title::after{content:'';position:absolute;bottom:-20%;left:-15%;width:50%;height:60%;background:radial-gradient(circle,rgba(59,130,246,.09) 0%,transparent 70%);pointer-events:none}
+.slide-title h1{font-size:clamp(2.25rem,5.4vw,4.6rem);font-weight:800;line-height:1.04;letter-spacing:-.035em;margin-bottom:18px}
+.slide-title .lead{font-size:clamp(1rem,1.8vw,1.25rem);color:var(--text-secondary);max-width:860px;margin:0 auto}
+.gradient-text{background:var(--gradient-warm);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.gradient-blue{background:var(--gradient-blue);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.eyebrow{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--brand-accent);margin-bottom:10px}
+.meta-chips{display:flex;gap:12px;margin-top:24px;justify-content:center;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:7px;padding:7px 14px;background:var(--surface-card);border:1px solid var(--border);border-radius:8px;font-size:.82rem;color:var(--text-secondary)}
+.chip strong{color:var(--text-primary)}
+.slide-divider{text-align:center;background:var(--surface-dark)}
+.slide-divider::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(245,158,11,.07) 0%,transparent 60%);pointer-events:none}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:clamp(5rem,12vw,10rem);font-weight:700;-webkit-text-stroke:2px rgba(245,158,11,.22);color:transparent;line-height:1;margin-bottom:-18px}
+.section-label{font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:var(--brand-accent);margin-bottom:8px}
+.slide-divider h2{font-size:clamp(1.9rem,4.2vw,3.25rem);font-weight:800;line-height:1.12;letter-spacing:-.02em}
+.slide-divider .lead{font-size:clamp(.98rem,1.5vw,1.16rem);color:var(--text-secondary);margin-top:14px;max-width:760px}
+.slide-content{width:100%;max-width:1160px}
+.slide-header{margin-bottom:clamp(22px,3vh,40px)}
+.slide-header h2{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:800;line-height:1.12;letter-spacing:-.02em}
+.slide-header .lead{font-size:clamp(.88rem,1.2vw,1.02rem);color:var(--text-secondary);margin-top:7px;max-width:860px}
+.slide-footer{position:absolute;bottom:20px;left:40px;right:140px;display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+.grid{display:grid;gap:clamp(14px,2vw,22px)}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.grid-5{grid-template-columns:repeat(5,1fr)}
+.card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:clamp(16px,2vw,24px);transition:transform .3s var(--ease-out)}
+.card:hover{transform:translateY(-2px)}
+.card h3{font-size:clamp(.94rem,1.3vw,1.13rem);font-weight:800;margin-bottom:8px}
+.card p,.card li{font-size:clamp(.82rem,1vw,.94rem);color:var(--text-secondary);line-height:1.55}
+.card-dark{background:var(--brand-primary);border-color:rgba(245,158,11,.2);color:#e2e8f0}
+.card-dark h3{color:#fff}
+.card-dark p,.card-dark li{color:#cbd5e1}
+.card-accent{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(251,146,60,.05));border-color:rgba(245,158,11,.32)}
+.card-blue{background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.05));border-color:rgba(59,130,246,.32)}
+.card-green{background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(74,222,128,.05));border-color:rgba(34,197,94,.32)}
+.card-purple{background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(167,139,250,.05));border-color:rgba(139,92,246,.32)}
+.card-danger{background:linear-gradient(135deg,#b91c1c,#991b1b);border:none;box-shadow:0 4px 14px rgba(185,28,28,.34);color:#fff}
+.card-danger h3,.card-danger p,.card-danger li{color:#fff}
+.icon-soft{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:14px;background:linear-gradient(135deg,rgba(245,158,11,.16),rgba(251,146,60,.08))}
+.icon-blue{background:linear-gradient(135deg,rgba(59,130,246,.16),rgba(139,92,246,.08))}
+.icon-green{background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(74,222,128,.08))}
+.number{font-family:'JetBrains Mono',monospace;font-size:clamp(2.1rem,4vw,3.6rem);font-weight:800;color:var(--brand-accent);line-height:1}
+.number-blue{color:var(--brand-secondary)}
+.number-green{color:var(--brand-success)}
+.number-purple{color:var(--brand-purple)}
+.label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;justify-content:center}
+.flow-step{background:var(--surface-card);border:1px solid var(--border);border-radius:10px;padding:clamp(12px,1.5vw,18px) clamp(14px,2vw,22px);text-align:center;font-size:clamp(.76rem,1vw,.9rem);font-weight:700;min-width:138px}
+.flow-arrow{color:var(--brand-accent);font-size:1.25rem;padding:0 8px;flex-shrink:0}
+.bullets{list-style:none;padding:0}
+.bullets li{padding:9px 0 9px 26px;position:relative;font-size:clamp(.84rem,1vw,.95rem);color:var(--text-secondary);border-bottom:1px solid var(--border)}
+.bullets li:last-child{border-bottom:none}
+.bullets li::before{content:'';position:absolute;left:0;top:16px;width:8px;height:8px;border-radius:50%;background:var(--brand-accent)}
+.checkpoint{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:14px 18px;font-size:.9rem;color:var(--text-secondary)}
+.checkpoint strong{color:var(--brand-success)}
+.warn{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:14px 18px;font-size:.9rem;color:var(--text-secondary)}
+.warn strong{color:var(--brand-danger)}
+table{width:100%;border-collapse:collapse;font-size:clamp(.76rem,.95vw,.88rem)}
+th{text-align:left;padding:10px 12px;background:rgba(30,41,59,.9);color:var(--brand-accent);font-weight:800;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid rgba(245,158,11,.3)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-secondary);vertical-align:top}
+tr:hover td{background:rgba(51,65,85,.05)}
+code{font-family:'JetBrains Mono',monospace;font-size:.86em;background:rgba(51,65,85,.12);padding:2px 6px;border-radius:4px;color:#0f172a}
+.code-block{background:#0f172a;border:1px solid rgba(245,158,11,.24);border-radius:10px;padding:16px 18px;font-family:'JetBrains Mono',monospace;font-size:clamp(.68rem,.9vw,.82rem);color:#e2e8f0;line-height:1.65;overflow-x:auto;white-space:pre}
+.badge{display:inline-block;padding:4px 10px;border-radius:5px;font-size:.72rem;font-weight:800;letter-spacing:.04em}
+.badge-accent{background:rgba(245,158,11,.15);color:var(--brand-accent)}
+.badge-blue{background:rgba(59,130,246,.15);color:var(--brand-secondary)}
+.badge-success{background:rgba(34,197,94,.15);color:var(--brand-success)}
+.badge-purple{background:rgba(139,92,246,.15);color:var(--brand-purple)}
+.badge-danger{background:rgba(239,68,68,.15);color:var(--brand-danger)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:clamp(22px,3vw,42px);align-items:start}
+.timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.timeline .card{position:relative}
+.timeline .card::before{content:'';position:absolute;top:38px;left:-18px;width:18px;height:2px;background:var(--border)}
+.timeline .card:first-child::before{display:none}
+.priority{display:flex;gap:12px;align-items:flex-start;margin-top:12px}
+.priority .pill{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:.78rem;padding:5px 9px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--brand-accent);white-space:nowrap}
+.progress-bar{position:fixed;top:0;left:0;height:3px;background:var(--gradient-warm);z-index:1000;width:0%;transition:width .3s}
+.nav-dots{position:fixed;right:20px;top:50%;transform:translateY(-50%);z-index:1000;display:flex;flex-direction:column;gap:8px}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.35);cursor:pointer;transition:all .3s;border:none;padding:0}
+.nav-dot.active{background:var(--brand-accent);transform:scale(1.4)}
+.slide-counter{position:fixed;bottom:20px;right:24px;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-muted);z-index:1000}
+.slide-counter strong{color:var(--text-primary)}
+.slide-closing{text-align:center}
+.slide-closing h2{font-size:clamp(2rem,4vw,3.3rem);font-weight:800;line-height:1.1;margin-bottom:16px}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4,.grid-5,.two-col,.timeline{grid-template-columns:1fr!important}.flow{flex-direction:column}.flow-arrow{transform:rotate(90deg)}.nav-dots{display:none}.slide-footer{display:none}}
+@media(max-height:700px){.slide{padding:24px 20px}.slide-header{margin-bottom:18px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progress"></div>
+<nav class="nav-dots" id="navDots"></nav>
+<div class="slide-counter" id="counter"><strong>01</strong> / 23</div>
+
+<section class="slide slide-title">
+  <div class="eyebrow">TF4 · AIO01 · Phase 3 Backlog Pitch</div>
+  <h1><span class="gradient-text">AIE + AIOps</span><br>Backlog plan cho 3 tuần</h1>
+  <p class="lead">Week 1 đã đóng vai trò discovery/evidence. Week 2-3 chuyển sang implementation có kiểm soát: AI reliability & Copilot cho AIE, telemetry-driven incident intelligence cho AIOps.</p>
+  <div class="meta-chips">
+    <div class="chip"><i data-lucide="users"></i><strong>Team</strong> AIO1 / TF4</div>
+    <div class="chip"><i data-lucide="check-circle-2"></i><strong>W1</strong> Done</div>
+    <div class="chip"><i data-lucide="list-checks"></i><strong>W2-W3</strong> 36 Jira tasks</div>
+    <div class="chip"><i data-lucide="shield"></i><strong>Rule</strong> Evidence before claim</div>
+  </div>
+</section>
+
+<section class="slide slide-divider">
+  <div class="section-number">01</div>
+  <div class="section-label">Positioning</div>
+  <h2>Không phải “làm AI cho nhiều”.<br>Là <span class="gradient-text">giảm risk có evidence</span>.</h2>
+  <p class="lead">Backlog được chia theo hai path bắt buộc của AIO: AIE cải thiện AI product feature; AIOps dùng telemetry để detect, summarize, và hỗ trợ incident handling.</p>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">Week 1 status</div>
+      <h2>Week 1 đã hoàn tất discovery, chưa claim real AI readiness</h2>
+      <p class="lead">Đây là điểm cần nói rõ với hội đồng: W1 chứng minh team đã đọc source, chạy baseline, xác định gap và tạo backlog. Không claim mock LLM là real LLM quality.</p>
+    </div>
+    <div class="grid grid-4">
+      <div class="card card-green"><div class="number number-green">13</div><div class="label">W1 tasks</div><p>Toàn bộ task Week 1 của AIO1 đã được chuyển Done.</p></div>
+      <div class="card card-accent"><div class="number">8</div><div class="label">epics</div><p>4 AIE, 3 AIOps, 1 OPS/evidence readiness.</p></div>
+      <div class="card card-blue"><div class="number number-blue">36</div><div class="label">W2/W3 tasks</div><p>Đã chia thành task Jira cho implementation và validation.</p></div>
+      <div class="card card-dark"><div class="number">0</div><div class="label">overclaim</div><p>Mock baseline chỉ là evidence đường đi, không phải model-quality evidence.</p></div>
+    </div>
+    <div class="checkpoint" style="margin-top:22px"><strong>Talk line:</strong> “Tuần 1 tụi em không cố code sớm. Tụi em đóng baseline, xác định risk bằng source/runtime evidence, rồi convert thành backlog W2/W3 có owner và done criteria.”</div>
+  </div>
+  <div class="slide-footer"><span>01 · Positioning</span><span>W1 closed, W2/W3 implementation starts</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">Backlog map</div>
+      <h2>Hai path chính: AIE và AIOps</h2>
+      <p class="lead">AIE bảo vệ và mở rộng customer-facing AI. AIOps xây năng lực operational AI dựa trên metrics/logs/traces.</p>
+    </div>
+    <div class="two-col">
+      <div class="card card-blue">
+        <div class="icon-soft icon-blue"><i data-lucide="bot"></i></div>
+        <h3>AIE — AI Engineering</h3>
+        <ul class="bullets">
+          <li>Eval pipeline và faithfulness rubric.</li>
+          <li>Controlled real LLM enablement.</li>
+          <li>Fallback, timeout, circuit breaker, DB pool.</li>
+          <li>Prompt injection, PII/system prompt guardrails.</li>
+          <li>Shopping Copilot MVP: search, grounded Q&A, memory, tool controls, confirmation gate.</li>
+        </ul>
+      </div>
+      <div class="card card-accent">
+        <div class="icon-soft"><i data-lucide="activity"></i></div>
+        <h3>AIOps — AI for Operations</h3>
+        <ul class="bullets">
+          <li>Programmatic Prometheus/OpenSearch/Jaeger access.</li>
+          <li>Incident taxonomy và detection rules.</li>
+          <li>Continuous lightweight detector.</li>
+          <li>AI-specific LLM timeout/error detector.</li>
+          <li>Incident summary, runbook hints, validation report.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="warn" style="margin-top:22px"><strong>Boundary:</strong> AIO không thay CDO deploy/operate platform. AIO đọc telemetry, tạo evidence-backed diagnosis/suggestion, còn execution/remediation vẫn human/CDO-controlled.</div>
+  </div>
+  <div class="slide-footer"><span>01 · Backlog map</span><span>AIE + AIOps</span></div>
+</section>
+
+<section class="slide slide-divider">
+  <div class="section-number">02</div>
+  <div class="section-label">AIE Path</div>
+  <h2>AIE ưu tiên <span class="gradient-blue">reliability + eval</span><br>trước khi mở rộng Copilot.</h2>
+  <p class="lead">Nếu chưa đo được chất lượng, chưa có fallback/timeout/cost guard, thì real LLM và Copilot đều là risk.</p>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIE backlog</div>
+      <h2>AIE có 3 nhóm work chính</h2>
+      <p class="lead">Nhóm task được ưu tiên theo dependency: eval + real LLM readiness trước, reliability/safety sau, rồi mới mở rộng Copilot.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="card card-blue">
+        <div class="number number-blue">01</div>
+        <div class="label">foundation</div>
+        <h3>Eval + real LLM readiness</h3>
+        <p>Run eval trên mock/current LLM để validate pipeline; controlled real LLM chỉ bật khi có checklist, rollback, cost và fallback gates.</p>
+        <div class="priority"><span class="pill">P0</span><p><code>TF4AIO-22</code>, <code>25</code>, <code>23</code></p></div>
+      </div>
+      <div class="card card-green">
+        <div class="number number-green">02</div>
+        <div class="label">safety</div>
+        <h3>Reliability, fallback, guardrails</h3>
+        <p>Timeout/circuit breaker, safe fallback, DB pooling, prompt injection guardrail, output filter, telemetry/cost tracking.</p>
+        <div class="priority"><span class="pill">P0/P1</span><p><code>TF4AIO-24</code>, <code>26-30</code>, <code>51-52</code></p></div>
+      </div>
+      <div class="card card-purple">
+        <div class="number number-purple">03</div>
+        <div class="label">feature</div>
+        <h3>Shopping Copilot MVP</h3>
+        <p>Natural-language search, grounded Q&A, memory, allow-list, loop audit, cart confirmation, task-success eval.</p>
+        <div class="priority"><span class="pill">P1/P2</span><p><code>TF4AIO-31-35</code>, <code>53-55</code></p></div>
+      </div>
+    </div>
+    <div class="checkpoint" style="margin-top:22px"><strong>Key defense:</strong> “Eval on mock/current LLM là để validate eval runner/report format, không phải claim model quality. Model-quality evidence bắt đầu sau controlled real LLM.”</div>
+  </div>
+  <div class="slide-footer"><span>02 · AIE</span><span>Eval → Reliability → Copilot</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIE why</div>
+      <h2>Vì sao AIE backlog này không over-scope?</h2>
+      <p class="lead">Mỗi nhóm task defend được bằng source/requirement evidence: AI hiện tại đang mock, thiếu timeout/fallback/cost/eval và sẽ rủi ro khi bật real LLM.</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Gap / risk</th>
+          <th>Evidence hiện tại</th>
+          <th>Task defended</th>
+          <th>Cách nói với mentor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Mock LLM không đo được real quality</td>
+          <td>Baseline trả kết quả giống nhau, latency thấp bất thường, source dùng OpenAI-compatible mock.</td>
+          <td>Eval pipeline, controlled real LLM.</td>
+          <td>“W1 chỉ chứng minh path chạy, W2 mới đo model thật.”</td>
+        </tr>
+        <tr>
+          <td>LLM call có thể treo service</td>
+          <td>OpenAI client path chưa có timeout/circuit breaker; gRPC workers hữu hạn.</td>
+          <td>Fallback, timeout, circuit breaker.</td>
+          <td>“Đây là reliability risk, không chỉ AI feature polish.”</td>
+        </tr>
+        <tr>
+          <td>Unsafe/misleading output</td>
+          <td>Có flag inaccurate/rate-limit; user/review text đi vào model/tool flow.</td>
+          <td>Guardrail, PII/system prompt filter, faithfulness eval.</td>
+          <td>“Safety task đến từ SLO/AI_FEATURE, không phải nice-to-have.”</td>
+        </tr>
+        <tr>
+          <td>Không thấy cost/token/latency</td>
+          <td>Metric hiện tại chủ yếu là AI request counter.</td>
+          <td>AI telemetry fields, cost guard.</td>
+          <td>“Không có telemetry thì không defend được real LLM readiness.”</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="slide-footer"><span>02 · AIE</span><span>Evidence-backed backlog</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIE delivery plan</div>
+      <h2>AIE timeline W2-W3</h2>
+      <p class="lead">Không start tất cả cùng lúc. Làm theo chain để tránh real LLM/Copilot chạy trước guardrails.</p>
+    </div>
+    <div class="timeline">
+      <div class="card card-blue">
+        <div class="badge badge-blue">Early W2</div>
+        <h3>Foundation first</h3>
+        <ul class="bullets">
+          <li>Eval runner + seed cases.</li>
+          <li>Real LLM readiness checklist.</li>
+          <li>Controlled real LLM smoke only.</li>
+        </ul>
+      </div>
+      <div class="card card-green">
+        <div class="badge badge-success">Mid W2</div>
+        <h3>Reliability and safety</h3>
+        <ul class="bullets">
+          <li>Fallback + timeout/circuit breaker.</li>
+          <li>Prompt/PII guardrails.</li>
+          <li>Cost/latency/error telemetry.</li>
+        </ul>
+      </div>
+      <div class="card card-purple">
+        <div class="badge badge-purple">W2-W3</div>
+        <h3>Copilot MVP</h3>
+        <ul class="bullets">
+          <li>Search + grounded Q&A.</li>
+          <li>Memory + tool allow-list.</li>
+          <li>Cart confirmation + task eval.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="warn" style="margin-top:22px"><strong>De-scope rule:</strong> Nếu có incident/directive mới, defer Copilot polish trước. Không defer eval, fallback/timeout, telemetry/cost, controlled real LLM gates.</div>
+  </div>
+  <div class="slide-footer"><span>02 · AIE</span><span>Timeline and de-scope rule</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIE full backlog · Foundation / reliability / safety</div>
+      <h2>AIE backlog chi tiết: làm gì và vì sao</h2>
+      <p class="lead">Nhóm task này là điều kiện trước khi nói real LLM/Copilot “ready”: phải đo được, fallback được, không treo service, không leak unsafe content.</p>
+    </div>
+    <table style="font-size:clamp(.68rem,.82vw,.78rem)">
+      <thead>
+        <tr>
+          <th>Jira</th>
+          <th>Task</th>
+          <th>Giải thích / output cần có</th>
+          <th>Why it exists</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>TF4AIO-22</code></td><td>Run eval on mock/current LLM</td><td>Chạy eval runner + report format trên baseline hiện tại; ghi rõ limitation.</td><td>Validate eval pipeline trước, không claim model quality.</td></tr>
+        <tr><td><code>TF4AIO-25</code></td><td>Add real LLM readiness checklist</td><td>Checklist secret/config/eval/fallback/cost/rollback.</td><td>Real LLM thay đổi latency, cost, failure mode.</td></tr>
+        <tr><td><code>TF4AIO-23</code></td><td>Enable real LLM in controlled mode</td><td>Chọn model/config, smoke 1-2 products, so với rubric, rollback về mock.</td><td>Đây là cutover có kiểm soát, không phải bật đại trà.</td></tr>
+        <tr><td><code>TF4AIO-24</code></td><td>Implement/test safe fallback for LLM failure</td><td>429/down/timeout không show summary sai và không treo page.</td><td>AI best-effort nhưng không được gây UX/service failure.</td></tr>
+        <tr><td><code>TF4AIO-51</code></td><td>Test LLM incident flags</td><td>Test <code>llmRateLimitError</code> / <code>llmInaccurateResponse</code>.</td><td>BTC có thể trigger incident; team phải chứng minh behavior.</td></tr>
+        <tr><td><code>TF4AIO-26</code></td><td>Prompt injection guardrail</td><td>Review/user content không override summarization/Q&A intent.</td><td>AI_FEATURE gọi rõ prompt injection qua review content.</td></tr>
+        <tr><td><code>TF4AIO-27</code></td><td>PII and system prompt output filter</td><td>Không expose PII/system prompt/internal instruction.</td><td>Telemetry/model output có risk leakage.</td></tr>
+        <tr><td><code>TF4AIO-28</code></td><td>Fix DB connection pooling</td><td>Không mở connection mới cho mỗi review request dưới load.</td><td>Review/AI path dùng DB; INC-1 liên quan connection exhaustion.</td></tr>
+        <tr><td><code>TF4AIO-29</code></td><td>LLM timeout and circuit breaker</td><td>Slow LLM không exhaust gRPC/thread workers.</td><td>Real LLM là external dependency chậm/lỗi được.</td></tr>
+        <tr><td><code>TF4AIO-30</code></td><td>Monitor and alert LLM API cost</td><td>Cost visible, threshold/owner rõ.</td><td>Real LLM tạo spend ngoài AWS infra budget.</td></tr>
+        <tr><td><code>TF4AIO-52</code></td><td>Add AI-specific telemetry fields</td><td>Latency/error/fallback/token/cost markers.</td><td>AIOps và Ops Review cần signal thật, không chỉ request counter.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="slide-footer"><span>02 · AIE</span><span>Full backlog · foundation/reliability/safety</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIE full backlog · Shopping Copilot</div>
+      <h2>Copilot backlog chi tiết: agentic nhưng có kiểm soát</h2>
+      <p class="lead">Copilot requirement đến từ <code>AI_FEATURE.md</code>: agent tự build, gọi đúng tool, grounded, có confirmation gate, loop limit, audit và task-success eval.</p>
+    </div>
+    <table style="font-size:clamp(.70rem,.85vw,.80rem)">
+      <thead>
+        <tr>
+          <th>Jira</th>
+          <th>Task</th>
+          <th>Giải thích / output cần có</th>
+          <th>Requirement mapping</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>TF4AIO-31</code></td><td>Design Copilot architecture and tool wiring plan</td><td>Tool registry, service boundary, data flow, write-action policy.</td><td>Trước khi build phải biết wire tool nào vào service nào.</td></tr>
+        <tr><td><code>TF4AIO-32</code></td><td>Natural-language product search MVP</td><td>User query tự nhiên → product-catalog search/filter → product suggestions.</td><td>Core intent #1 trong AI_FEATURE.</td></tr>
+        <tr><td><code>TF4AIO-33</code></td><td>Grounded Q&A over product reviews</td><td>Answer dựa trên reviews/catalog; biết nói “không có thông tin”.</td><td>Core intent #2; grounded, no hallucination.</td></tr>
+        <tr><td><code>TF4AIO-53</code></td><td>Multi-turn conversation memory</td><td>Nhớ context như “nó”, “cái đầu tiên”, selected product.</td><td>Cross-cutting requirement: multi-turn.</td></tr>
+        <tr><td><code>TF4AIO-34</code></td><td>Tool allow-list and excessive-agency guardrail</td><td>Agent chỉ gọi tool được phép; chặn checkout/xoá giỏ/tác vụ ngoài scope.</td><td>Cross-cutting: allowed tools + excessive-agency.</td></tr>
+        <tr><td><code>TF4AIO-54</code></td><td>Agent loop limit and tool audit log</td><td>Max iterations/tool calls; log tool name/args/result status.</td><td>Cross-cutting: loop limit + audit every tool call.</td></tr>
+        <tr><td><code>TF4AIO-35</code></td><td>Cart action with confirmation gate</td><td>Add/update cart only after explicit user confirmation.</td><td>Core intent #3; write actions require confirmation.</td></tr>
+        <tr><td><code>TF4AIO-55</code></td><td>Copilot task-success eval</td><td>Eval report cho search/Q&A/cart intents; pass/fail reproducible.</td><td>Chấm bằng task-success, không phải “trả lời trôi chảy”.</td></tr>
+      </tbody>
+    </table>
+    <div class="warn" style="margin-top:18px"><strong>Defer first if overloaded:</strong> extended memory polish, extra Copilot intents, cart action. Do not defer tool allow-list/confirmation/eval if claiming Copilot readiness.</div>
+  </div>
+  <div class="slide-footer"><span>02 · AIE</span><span>Full backlog · Copilot</span></div>
+</section>
+
+<section class="slide slide-divider">
+  <div class="section-number">03</div>
+  <div class="section-label">AIOps Path</div>
+  <h2>AIOps không phải dashboard screenshot.<br>Là <span class="gradient-text">telemetry → evidence → runbook hint</span>.</h2>
+  <p class="lead">Detector phải query được data thật, chạy liên tục, output phải nhìn thấy được, và không được mutate platform/flagd.</p>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIOps backlog</div>
+      <h2>AIOps MVP đi từ data access đến validation</h2>
+      <p class="lead">Scope cố ý nhỏ: 2 incident MVP, detector explainable, summary/runbook, rồi validation report.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step"><i data-lucide="database"></i><br>Telemetry access<br><span class="badge badge-blue">Prom / OS / Jaeger</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="list-filter"></i><br>Rules & thresholds<br><span class="badge badge-accent">LLM + latency</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="radar"></i><br>Detector<br><span class="badge badge-success">continuous</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="file-text"></i><br>Incident summary<br><span class="badge badge-purple">evidence-backed</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="clipboard-check"></i><br>Runbook hint<br><span class="badge badge-blue">human-in-loop</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="badge-check"></i><br>Validation report<br><span class="badge badge-accent">FP/FN/gaps</span></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:26px">
+      <div class="card"><h3>Data foundation</h3><p><code>TF4AIO-36</code>: verify programmatic Prometheus/OpenSearch query access before claiming detector readiness.</p></div>
+      <div class="card"><h3>Detector MVP</h3><p><code>TF4AIO-37-41</code>: rules, prototype, continuous workload, output channel, AI-specific LLM failure.</p></div>
+      <div class="card"><h3>Summary/runbook</h3><p><code>TF4AIO-42-46</code>, <code>56</code>: summary format, runbook mapping, failure drill, validation report.</p></div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>Telemetry-driven incident intelligence</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIOps full backlog · Data + detector</div>
+      <h2>AIOps backlog chi tiết: từ query access đến detector chạy liên tục</h2>
+      <p class="lead">Không thể claim AIOps detector nếu chưa query được telemetry bằng code hoặc endpoint được CDO cho phép.</p>
+    </div>
+    <table style="font-size:clamp(.70rem,.85vw,.80rem)">
+      <thead>
+        <tr>
+          <th>Jira</th>
+          <th>Task</th>
+          <th>Giải thích / output cần có</th>
+          <th>Why it exists</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>TF4AIO-36</code></td><td>Verify Prometheus/OpenSearch programmatic query access</td><td>PromQL/OpenSearch query trả data thật; capture sample output.</td><td>UI access chưa đủ để detector chạy.</td></tr>
+        <tr><td><code>TF4AIO-37</code></td><td>Define detection rules and thresholds</td><td>Rule spec cho LLM error và latency spike; field/query/threshold rõ.</td><td>Detector phải explainable và review được.</td></tr>
+        <tr><td><code>TF4AIO-38</code></td><td>Build rule-based detector prototype</td><td>Prototype đọc sample/live telemetry, tạo incident candidate JSON.</td><td>Rule-based baseline là path nhanh và defend được.</td></tr>
+        <tr><td><code>TF4AIO-39</code></td><td>Deploy detector as continuous K8s workload</td><td>Deployment/worker/CronJob nhẹ; poll interval, timeout, resource limit.</td><td>AIOps phải chạy khi vận hành, không phải local one-shot.</td></tr>
+        <tr><td><code>TF4AIO-40</code></td><td>Define detector notification/output channel</td><td>Structured log/OpenSearch minimum; Slack/webhook/Grafana alert if time.</td><td>Detect mà không ai thấy thì chưa operationally useful.</td></tr>
+        <tr><td><code>TF4AIO-41</code></td><td>Detect AI-specific LLM timeout/error</td><td>Correlate LLM 429/error logs, product-reviews spans, AI counter/error rate.</td><td>Đây là incident type sát nhất với AI ownership.</td></tr>
+      </tbody>
+    </table>
+    <div class="checkpoint" style="margin-top:18px"><strong>Implementation note:</strong> <code>TF4AIO-38</code> có thể reuse/adapt RCA engine cũ làm triage runtime, nhưng TF4 telemetry adapters phải viết mới.</div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>Full backlog · data/detector</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIOps full backlog · Summary + validation</div>
+      <h2>AIOps backlog chi tiết: biến signal thành incident report</h2>
+      <p class="lead">Phát hiện chỉ là nửa đầu. Nửa sau là summary dễ hiểu, runbook hint, và validation có false positive/false negative.</p>
+    </div>
+    <table style="font-size:clamp(.70rem,.85vw,.80rem)">
+      <thead>
+        <tr>
+          <th>Jira</th>
+          <th>Task</th>
+          <th>Giải thích / output cần có</th>
+          <th>Why it exists</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>TF4AIO-42</code></td><td>Define incident summary format</td><td>Template: incident type, affected service, evidence, confidence, impact, next step.</td><td>Output phải đọc được trong Ops Review/on-call.</td></tr>
+        <tr><td><code>TF4AIO-43</code></td><td>Build incident summary MVP</td><td>Generate summary từ detector signals; optional LLM only summarizes grounded evidence.</td><td>AI value nằm ở triage context, không chỉ alert.</td></tr>
+        <tr><td><code>TF4AIO-44</code></td><td>Map incident types to runbook actions</td><td>LLM error → check LLM/flag/fallback; latency → check p95/dependency/DB/load.</td><td>Recommendation phải curated, không free-form remediation.</td></tr>
+        <tr><td><code>TF4AIO-56</code></td><td>Validate detector with load test/failure drill</td><td>Controlled test with CDO coordination; capture query/output evidence.</td><td>Không claim detector nếu chưa drill được.</td></tr>
+        <tr><td><code>TF4AIO-45</code></td><td>Validate LLM timeout/error signal</td><td>Use flag/controlled signal if allowed; verify logs/spans/metrics correlation.</td><td>Proves AIOps covers AI-specific incident.</td></tr>
+        <tr><td><code>TF4AIO-46</code></td><td>Write AIOps validation report</td><td>What worked, missed cases, false positives, telemetry gaps, next improvements.</td><td>Final evidence needs limitations, not only happy path.</td></tr>
+      </tbody>
+    </table>
+    <div class="warn" style="margin-top:18px"><strong>Boundary:</strong> Runbook output là suggestion/human-in-loop. Không auto-restart pod, không sửa flagd, không mutate traffic path trong MVP.</div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>Full backlog · summary/validation</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIOps automation stance</div>
+      <h2>Automation có trong roadmap, nhưng MVP không auto-remediate</h2>
+      <p class="lead">Đề bài có hướng “detect → safety check → xử lý → verify”, nhưng W2/W3 của AIO1 nên giữ ở human-in-the-loop để tránh overclaim và tránh chạm quyền platform của CDO.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step"><i data-lucide="radar"></i><br>Detect<br><span class="badge badge-success">MVP</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="file-search"></i><br>Summarize evidence<br><span class="badge badge-success">MVP</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="clipboard-list"></i><br>Suggest runbook<br><span class="badge badge-success">MVP</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="user-check"></i><br>Human confirms<br><span class="badge badge-blue">MVP boundary</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="shield-check"></i><br>Dry-run / blast radius<br><span class="badge badge-accent">Stretch</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><i data-lucide="refresh-cw"></i><br>Approved action + verify<br><span class="badge badge-purple">Future</span></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:26px">
+      <div class="card card-green">
+        <h3>Committed MVP</h3>
+        <p>Detector, incident summary, runbook hint, validation report. No write action by AI.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>Stretch if time allows</h3>
+        <p>Automation readiness design: action catalog, dry-run contract, required approval fields, telemetry verification checklist.</p>
+      </div>
+      <div class="card card-danger">
+        <h3>Out of scope</h3>
+        <p>Auto restart pod, auto rollback, auto change flagd, auto mutate traffic, or any action without human/CDO approval.</p>
+      </div>
+    </div>
+    <div class="checkpoint" style="margin-top:22px"><strong>Defense line:</strong> “Tụi em acknowledge automation direction, nhưng MVP intentionally stops at runbook suggestion + human confirmation. Automation requires safety gate, blast-radius check, rollback policy, and CDO-owned execution.”</div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>Automation roadmap without overclaim</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIOps MVP incidents</div>
+      <h2>Chọn 2 incident types đầu tiên, hoãn phần dễ overbuild</h2>
+      <p class="lead">MVP chọn theo signal readiness, evidence quality, demo value, trigger feasibility.</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Incident type</th>
+          <th>Score</th>
+          <th>Data signals</th>
+          <th>Decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>LLM timeout/error</strong></td>
+          <td><span class="badge badge-success">12/12</span></td>
+          <td>OpenSearch error logs, Jaeger ERROR spans, Prometheus AI counter drop, gRPC error rate.</td>
+          <td>MVP W2. Directly maps to AI reliability/safety path.</td>
+        </tr>
+        <tr>
+          <td><strong>Latency spike</strong></td>
+          <td><span class="badge badge-accent">10/12</span></td>
+          <td>Prometheus p95 histogram, Jaeger duration outlier, queue-time estimate, throughput drop.</td>
+          <td>MVP W2. Covers historical INC-1 style risk.</td>
+        </tr>
+        <tr>
+          <td>Error rate spike</td>
+          <td><span class="badge badge-blue">7/12</span></td>
+          <td>gRPC/HTTP error metrics; often downstream effect of latency/LLM failure.</td>
+          <td>W3 composite signal, not independent W2 MVP.</td>
+        </tr>
+        <tr>
+          <td>Pod crash, Kafka lag, DB saturation</td>
+          <td><span class="badge badge-danger">defer</span></td>
+          <td>Need K8s event watcher, lower business priority, or missing DB receiver.</td>
+          <td>Future/secondary after MVP proves loop.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="checkpoint" style="margin-top:20px"><strong>Talk line:</strong> “Tụi em chọn ít nhưng có thể chứng minh. LLM error là AI-path incident; latency spike là platform-path incident ảnh hưởng service/SLO.”</div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>MVP incident selection</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">AIOps engine strategy</div>
+      <h2>Reuse engine cũ làm runtime, nâng RCA bằng scorer nhẹ</h2>
+      <p class="lead">Không copy nguyên và không build SOTA từ đầu. Cách tốt nhất là reuse framework + adapt TF4 telemetry + plugin RCA scorers.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step">TF4 telemetry<br><span class="badge badge-blue">Prom / OS / Jaeger</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">TF4 adapters<br><span class="badge badge-accent">new</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Detector<br><span class="badge badge-success">rules first</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">RCA core<br><span class="badge badge-purple">reuse + improve</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Summary / runbook<br><span class="badge badge-blue">human-readable</span></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:26px">
+      <div class="card card-green">
+        <h3>Keep from old AI engine</h3>
+        <p><code>/v1/triage</code> shape, evidence bundle, RCA baseline, confidence gate, report/audit, runbook/action suggestion.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>Build new for TF4</h3>
+        <p>OpenSearch adapter, Prometheus query labels, Jaeger service/span mapping, TF4 incident taxonomy, output channel.</p>
+      </div>
+      <div class="card card-purple">
+        <h3>Optional scorer upgrade</h3>
+        <p>TORAI-lite multi-source score as main upgrade; BARO-lite/BARO spike only for metric-heavy latency case.</p>
+      </div>
+    </div>
+    <div class="warn" style="margin-top:22px"><strong>Do not overclaim:</strong> Đây là research-inspired scoring, không claim full BARO/TORAI implementation nếu không implement đúng paper.</div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>Reuse framework, adapt RCA</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">TORAI-lite / BARO-lite</div>
+      <h2>“Lite” nghĩa là bỏ research-heavy parts, giữ phần chạy được</h2>
+      <p class="lead">Mục tiêu capstone là detect-correlate-recommend có evidence, không phải reproduce paper benchmark.</p>
+    </div>
+    <div class="two-col">
+      <div class="card card-accent">
+        <h3>TORAI-lite: main AIOps scorer</h3>
+        <p>Giữ ý tưởng multi-source RCA: metric + log + trace + deploy + AI-specific signal.</p>
+        <div class="code-block">service_score =
+  0.35 * metric_anomaly_score
++ 0.25 * trace_error_latency_score
++ 0.20 * log_error_score
++ 0.10 * deploy_correlation_score
++ 0.10 * ai_specific_signal_score</div>
+        <p style="margin-top:12px">Bỏ full symptom clustering, causal ranker formal, hypothesis testing đầy đủ.</p>
+      </div>
+      <div class="card card-blue">
+        <h3>BARO-lite: metric-heavy latency scorer</h3>
+        <p>Giữ ý tưởng compare baseline window vs incident window để rank service/metric bất thường.</p>
+        <div class="code-block">metric_score =
+  abs(incident_mean - baseline_mean) / baseline_std
++ recent_spike_bonus
++ slo_metric_bonus</div>
+        <p style="margin-top:12px">Bỏ full Bayesian online change-point posterior/hazard tuning nếu không đủ thời gian.</p>
+      </div>
+    </div>
+    <div class="checkpoint" style="margin-top:22px"><strong>Defense:</strong> “SOTA algorithms được dùng như reference để nâng scorer, nhưng demo path vẫn deterministic, auditable, và có fallback nếu data không đủ sạch.”</div>
+  </div>
+  <div class="slide-footer"><span>03 · AIOps</span><span>Research-inspired but practical</span></div>
+</section>
+
+<section class="slide slide-divider">
+  <div class="section-number">04</div>
+  <div class="section-label">Execution</div>
+  <h2>Ai làm gì, ưu tiên gì,<br><span class="gradient-text">đóng task bằng evidence gì</span>?</h2>
+  <p class="lead">Backlog không chỉ là list task. Nó có owner, priority, evidence rule, và de-scope rule.</p>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">Ownership</div>
+      <h2>Task assignment theo track</h2>
+      <p class="lead">Done/In Review không assign lại. W2/W3 To Do assign theo primary owner, reviewer khi cần.</p>
+    </div>
+    <div class="grid grid-4">
+      <div class="card card-dark">
+        <div class="icon-soft"><i data-lucide="crown"></i></div>
+        <h3>Tech Lead</h3>
+        <p>Nam — architecture, PR plan, final evidence, cross-track decisions.</p>
+      </div>
+      <div class="card">
+        <div class="icon-soft"><i data-lucide="clipboard-list"></i></div>
+        <h3>PM</h3>
+        <p>Thông — status, Ops Review, budget guard, weekly evidence narrative.</p>
+      </div>
+      <div class="card card-accent">
+        <div class="icon-soft"><i data-lucide="activity"></i></div>
+        <h3>AIOps</h3>
+        <p>Nam, Hậu, Hòa, Tâm — telemetry access, detector, summary, validation.</p>
+      </div>
+      <div class="card card-blue">
+        <div class="icon-soft icon-blue"><i data-lucide="bot"></i></div>
+        <h3>AIE</h3>
+        <p>Vũ, Thông, Văn — eval, real LLM, safety, Copilot, telemetry/cost.</p>
+      </div>
+    </div>
+    <div class="checkpoint" style="margin-top:22px"><strong>20% buffer:</strong> W2/W3 giữ capacity cho BTC directive và incident response. Không allocate 100% planned work.</div>
+  </div>
+  <div class="slide-footer"><span>04 · Execution</span><span>Ownership and capacity</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">Early W2 priority</div>
+      <h2>Start đúng dependency chain</h2>
+      <p class="lead">Nếu làm Copilot/AIOps summary trước khi có eval/telemetry access thì sẽ khó defend.</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Must do first</th>
+          <th>Task names / output</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AIE</td>
+          <td><code>22</code> → <code>25</code> → <code>23</code></td>
+          <td>Run eval on mock/current LLM → readiness checklist → controlled real LLM enablement.</td>
+          <td>Eval + readiness + controlled real LLM are prerequisites for meaningful AI quality work.</td>
+        </tr>
+        <tr>
+          <td>AIE Reliability</td>
+          <td><code>24</code> + <code>29</code> + <code>52</code> + <code>30</code></td>
+          <td>Safe fallback + timeout/circuit breaker + AI telemetry fields + LLM cost monitor.</td>
+          <td>Real LLM must not hang app, leak cost, or be invisible to telemetry.</td>
+        </tr>
+        <tr>
+          <td>AIOps</td>
+          <td><code>36</code> → <code>37</code> → <code>40</code></td>
+          <td>Programmatic telemetry query access → rule/threshold spec → output channel.</td>
+          <td>Detector cannot be built correctly without data access, rules, and output channel.</td>
+        </tr>
+        <tr>
+          <td>OPS</td>
+          <td><code>47</code> + <code>48</code> + <code>57</code></td>
+          <td>Implementation PR plan + weekly Ops Review section + LLM/API budget guard.</td>
+          <td>PR/evidence/budget process must exist before implementation expands.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="warn" style="margin-top:20px"><strong>If overloaded:</strong> Defer W3 packaging, cart action, multi-turn memory, Copilot polish, and alert/webhook upgrade. Do not defer eval, fallback/timeout, telemetry/cost, or AIOps query access.</div>
+  </div>
+  <div class="slide-footer"><span>04 · Execution</span><span>Early W2 priorities</span></div>
+</section>
+
+<section class="slide">
+  <div class="slide-content">
+    <div class="slide-header">
+      <div class="eyebrow">Evidence rule</div>
+      <h2>Definition of Done = evidence-backed</h2>
+      <p class="lead">Mỗi task đóng lại phải có artifact review được. Không dùng local-only path làm final evidence trên Jira.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="card card-green"><h3>Code / PR evidence</h3><p>Repo doc link, PR link, commit, command output, test report. Áp dụng cho implementation tasks.</p></div>
+      <div class="card card-blue"><h3>Telemetry evidence</h3><p>PromQL/OpenSearch query output, Jaeger trace/span link, Grafana screenshot khi cần UI proof.</p></div>
+      <div class="card card-accent"><h3>Eval evidence</h3><p>Eval report, seed dataset, pass/fail table, limitation note: mock eval vs real LLM quality.</p></div>
+    </div>
+    <div class="checkpoint" style="margin-top:22px"><strong>Jira hygiene:</strong> Evidence starts local if needed, but final link should point to repo/docs, PR, Jira attachment, or query result. Avoid `E:\...` links in final Jira comment.</div>
+  </div>
+  <div class="slide-footer"><span>04 · Execution</span><span>Evidence-backed DoD</span></div>
+</section>
+
+<section class="slide slide-closing">
+  <div class="slide-content">
+    <div class="eyebrow">Close</div>
+    <h2>Backlog này cho thấy AIO1 biết <span class="gradient-text">build gì, vì sao build, và đo bằng gì</span>.</h2>
+    <p class="lead" style="max-width:860px;margin:0 auto 26px;color:var(--text-secondary)">AIE giảm risk của customer-facing AI trước khi mở rộng Copilot. AIOps dùng telemetry thật để detect, summarize, và suggest runbook; không overclaim auto-remediation hay SOTA RCA.</p>
+    <div class="grid grid-3">
+      <div class="card card-blue"><h3>AIE outcome</h3><p>Eval + real LLM readiness + safety/reliability + guarded Copilot MVP.</p></div>
+      <div class="card card-accent"><h3>AIOps outcome</h3><p>Telemetry adapters + detector + incident summary + runbook hint + validation report.</p></div>
+      <div class="card card-green"><h3>Review outcome</h3><p>Task ownership, priority, evidence rule, and de-scope plan are clear.</p></div>
+    </div>
+  </div>
+  <div class="slide-footer"><span>Close</span><span>AIO1 backlog pitch</span></div>
+</section>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+const nav = document.getElementById('navDots');
+const counter = document.getElementById('counter');
+const progress = document.getElementById('progress');
+slides.forEach((_, i) => {
+  const b = document.createElement('button');
+  b.className = 'nav-dot';
+  b.type = 'button';
+  b.setAttribute('aria-label', `Go to slide ${i + 1}`);
+  b.onclick = () => slides[i].scrollIntoView({ behavior: 'smooth' });
+  nav.appendChild(b);
+});
+const dots = [...document.querySelectorAll('.nav-dot')];
+function updateNav() {
+  let idx = 0;
+  const mid = window.innerHeight / 2;
+  slides.forEach((s, i) => {
+    const r = s.getBoundingClientRect();
+    if (r.top <= mid && r.bottom >= mid) idx = i;
+  });
+  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  counter.innerHTML = `<strong>${String(idx + 1).padStart(2, '0')}</strong> / ${String(slides.length).padStart(2, '0')}`;
+  progress.style.width = `${((idx + 1) / slides.length) * 100}%`;
+}
+window.addEventListener('scroll', updateNav, { passive: true });
+window.addEventListener('resize', updateNav);
+document.addEventListener('keydown', (e) => {
+  let idx = dots.findIndex(d => d.classList.contains('active'));
+  if (idx < 0) idx = 0;
+  if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'ArrowRight') {
+    e.preventDefault(); slides[Math.min(idx + 1, slides.length - 1)].scrollIntoView({ behavior: 'smooth' });
+  }
+  if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'ArrowLeft') {
+    e.preventDefault(); slides[Math.max(idx - 1, 0)].scrollIntoView({ behavior: 'smooth' });
+  }
+});
+if (window.lucide) lucide.createIcons();
+updateNav();
+</script>
+</body>
+</html>
