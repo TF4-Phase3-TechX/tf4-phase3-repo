@@ -1148,10 +1148,8 @@ jaeger:
   fullnameOverride: jaeger
   jaeger:
     storage:
-      type: memory
+      type: elasticsearch
     extraEnv:
-      - name: MEMORY_MAX_TRACES
-        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -1198,14 +1196,14 @@ jaeger:
           endpoint: 0.0.0.0:13133
       jaeger_query:
         storage:
-          traces: memory_backend
+          traces: opensearch_backend
           metrics: metrics_backend
         base_path: /jaeger/ui
       jaeger_storage:
         backends:
-          memory_backend:
-            memory:
-              max_traces: ${env:MEMORY_MAX_TRACES}
+          opensearch_backend:
+            elasticsearch:
+              server_urls: ["http://opensearch:9200"]
         metric_backends:
           metrics_backend:
             prometheus:
@@ -1224,7 +1222,17 @@ jaeger:
 
     exporters:
       jaeger_storage_exporter:
-        trace_storage: memory_backend
+        trace_storage: opensearch_backend
+  storage:
+    type: elasticsearch
+    elasticsearch:
+      tls:
+        enabled: false
+      url: http://opensearch:9200
+  esIndexCleaner:
+    enabled: true
+    numberOfDays: 3
+    schedule: "35 23 * * *"
 
 prometheus:
   enabled: true
@@ -1331,9 +1339,11 @@ opensearch:
   clusterName: demo-cluster
   nodeGroup: techx-corp
   singleNode: true
+  protocol: http
   opensearchJavaOpts: "-Xms400m -Xmx400m"
   persistence:
-    enabled: false
+    enabled: true
+    size: 8Gi
   extraEnvs:
     - name: "bootstrap.memory_lock"
       value: "true"
