@@ -1,0 +1,75 @@
+ST-3.3 - Kết nối VPN/SSM và kiểm tra truy cập riêng tư (phải PASS)
+Task 23 - Kiểm tra độc lập - Mandate-01
+============================================================
+Mục đích: Xác minh người có quyền VẪN VÀO ĐƯỢC Grafana/Jaeger qua SSM tunnel
+          dù các route public đã bị chặn
+============================================================
+
+TRẠNG THÁI: CHỜ CDO08 - cần Bastion instance-id + ClusterIP + AWS profile
+
+--- Thông tin cần CDO08 cung cấp trước khi chạy ---
+
+  BASTION_ID  = i-0xxxxxxxxxxxxxxxx  (instance-id của EC2 Bastion)
+  GRAFANA_IP  = xxx.xxx.xxx.xxx      (ClusterIP của Grafana service)
+              Lấy bằng lệnh:
+              kubectl -n techx-observability get svc grafana -o jsonpath='{.spec.clusterIP}'
+  JAEGER_IP   = xxx.xxx.xxx.xxx      (ClusterIP của Jaeger service)
+              Lấy bằng lệnh:
+              kubectl -n techx-observability get svc jaeger -o jsonpath='{.spec.clusterIP}'
+  AWS_PROFILE = tên profile có quyền ssm:StartSession
+
+--- Bảng mapping port (dùng để đọc CloudTrail log) ---
+
+  Port 3000  -> Grafana  (namespace: techx-observability)
+  Port 16686 -> Jaeger   (namespace: techx-observability)
+  Port 8089  -> Locust   (namespace: techx-tf4)
+
+Lưu ý: CloudTrail chỉ ghi được số port, không ghi tên service.
+Bảng này là bằng chứng bổ sung để xác định ai vào service nào.
+
+--- Bước 1: Mở SSM tunnel (Terminal 1, giữ mở) ---
+
+$env:BASTION_ID = "___"     # ĐIỀN instance-id
+$env:GRAFANA_IP = "___"     # ĐIỀN ClusterIP
+$env:AWS_PROFILE = "___"    # ĐIỀN tên profile
+
+aws ssm start-session `
+  --target $env:BASTION_ID `
+  --document-name AWS-StartPortForwardingSessionToRemoteHost `
+  --parameters "{`"host`":[`"$env:GRAFANA_IP`"],`"portNumber`":[`"80`"],`"localPortNumber`":[`"3000`"]}" `
+  --profile $env:AWS_PROFILE
+
+--- Bước 2: Kiểm tra tunnel đang hoạt động (Terminal 2) ---
+
+$ALB = "http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com"
+
+# Grafana qua SSM tunnel - phải ra 200
+try {
+    $r = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 5
+    Write-Output "localhost:3000 (Grafana/SSM) -> HTTP $($r.StatusCode)"
+} catch { Write-Output "localhost:3000 -> ERR: $($_.Exception.Message)" }
+
+# Public ALB vẫn phải bị chặn - phải ra 404
+try {
+    $r = Invoke-WebRequest -Uri "$ALB/grafana/" -MaximumRedirection 0 -UseBasicParsing -ErrorAction SilentlyContinue
+    Write-Output "ALB /grafana/ (public) -> HTTP $($r.StatusCode)"
+} catch {
+    try { Write-Output "ALB /grafana/ (public) -> HTTP $([int]$_.Exception.Response.StatusCode)" }
+    catch { Write-Output "ALB /grafana/ (public) -> ERR" }
+}
+
+--- Điền kết quả thực tế sau khi chạy ---
+
+[KẾT QUẢ THỰC TẾ]
+Thời điểm     : _______________
+Bastion ID    : _______________
+AWS Profile   : _______________
+
+SSM Session ID    : Starting session with SessionId: _______________
+Trạng thái tunnel : Port 3000 forwarding to ___:80
+
+localhost:3000 (Grafana/SSM)  -> HTTP ___   (phải 200)
+ALB /grafana/ (công khai)     -> HTTP ___   (phải 404)
+
+PASS/FAIL: ___
+Ghi chú thêm: ___

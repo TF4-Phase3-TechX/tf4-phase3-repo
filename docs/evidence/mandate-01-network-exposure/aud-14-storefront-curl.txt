@@ -1,5 +1,14 @@
-$ curl -I https://k8s-tf4-storefront-xxx.ap-southeast-1.elb.amazonaws.com/
-HTTP/2 200 
-date: Mon, 13 Jul 2026 10:15:00 GMT
-content-type: text/html; charset=utf-8
-server: istio-envoy
+# AUD-14 — Storefront public access
+# ⚠️ File này là PLACEHOLDER CŨ — data giả (domain sai, region sai, server sai)
+# Thay bằng output thật từ st32-curl-before.txt và st32-curl-after.txt
+#
+# ALB thật: k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com
+# Region thật: us-east-1
+# Server thật: Envoy (không phải istio-envoy)
+#
+# Lệnh thật để chạy:
+# curl -sS -D - -o /dev/null \
+#   "http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com/"
+#
+# [OUTPUT THẬT — điền sau khi chạy lệnh trên]
+PENDING — xem st32-curl-before.txt

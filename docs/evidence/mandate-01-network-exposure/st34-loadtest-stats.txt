@@ -1,0 +1,71 @@
+ST-3.4 - Xác minh load test đang chạy và đối chiếu timeline
+Task 23 - Kiểm tra độc lập - Mandate-01
+============================================================
+Mục đích: Đối chiếu Locust <-> Prometheus <-> Jaeger để loại trừ metric/trace cũ,
+          xác nhận dữ liệu thu thập là MỚI trong đúng window load test
+============================================================
+
+TRẠNG THÁI: CHỜ CDO04
+Cần hỏi CDO04: kubectl port-forward nào đang mở? Hay có cách access nào khác?
+
+--- 3.4.1 Lấy thống kê Locust (raw JSON) ---
+Truy cập qua port-forward port 8089 hoặc SSM tunnel
+
+$locustStats = Invoke-RestMethod -Uri "http://localhost:8089/stats/requests"
+$locustStats | ConvertTo-Json -Depth 5
+
+--- 3.4.2 Truy vấn Prometheus - kiểm tra SLO ---
+Truy cập qua port-forward port 9090
+
+$PROM = "http://localhost:9090"
+
+# Tỷ lệ thành công của checkout (SLO yêu cầu >= 99%)
+Invoke-RestMethod "$PROM/api/v1/query?query=sum(rate(traces_span_metrics_calls_total{span_name=~`".*PlaceOrder.*`",status_code=`"STATUS_CODE_UNSET`"}[5m]))/sum(rate(traces_span_metrics_calls_total{span_name=~`".*PlaceOrder.*`"}[5m]))" | ConvertTo-Json
+
+# Độ trễ p95 của storefront (SLO yêu cầu < 1000ms)
+Invoke-RestMethod "$PROM/api/v1/query?query=histogram_quantile(0.95,sum(rate(traces_span_metrics_duration_milliseconds_bucket{span_name=~`".*frontend.*`"}[5m]))by(le))" | ConvertTo-Json
+
+# Số lượng user đang chạy
+Invoke-RestMethod "$PROM/api/v1/query?query=locust_user_count" | ConvertTo-Json
+
+--- 3.4.3 Truy vấn Jaeger - xác nhận trace là mới ---
+Truy cập qua port-forward port 16686
+
+$JAEGER = "http://localhost:16686"
+$startUs = [string]([int64](([datetime]::UtcNow - [datetime]"1970-01-01").TotalSeconds - 900) * 1000000)
+$endUs   = [string]([int64](([datetime]::UtcNow - [datetime]"1970-01-01").TotalSeconds) * 1000000)
+
+$traces = Invoke-RestMethod "$JAEGER/api/traces?service=checkout&operation=/oteldemo.CheckoutService/PlaceOrder&start=$startUs&end=$endUs&limit=3"
+Write-Output "Số trace tìm thấy trong 15 phút gần nhất: $($traces.data.Count)"
+foreach ($t in $traces.data | Select-Object -First 3) {
+    $dur = $t.spans[0].duration / 1000
+    Write-Output "  traceID=$($t.traceID.Substring(0,16)) thoi_gian=${dur}ms so_span=$($t.spans.Count)"
+}
+
+--- Điền kết quả thực tế sau khi chạy ---
+
+[KẾT QUẢ THỰC TẾ]
+Thời điểm chạy test : _______________
+
+--- Locust ---
+Số user đang chạy   : ___   (mục tiêu: ghi nhận số user tại thời điểm test)
+Tốc độ request/giây : ___
+Tỷ lệ lỗi checkout  : ___
+
+--- Prometheus SLO ---
+Tỷ lệ thành công checkout : ___   (yêu cầu >= 0.99)
+Độ trễ p95 storefront (ms) : ___   (yêu cầu < 1000)
+Số user active (Locust)    : ___
+
+--- Jaeger ---
+Số trace trong window      : ___   (phải > 0, là trace mới)
+TraceID gần nhất           : ___
+Thời gian xử lý (ms)       : ___
+
+--- Đối chiếu timeline ---
+Thời điểm Locust bắt đầu   : ___
+Metric Prometheus ghi nhận  : ___
+Trace Jaeger gần nhất       : ___
+Khoảng lệch (phải < 2 phút): ___   (xác nhận dữ liệu là MỚI, không phải cũ)
+
+PASS/FAIL: ___

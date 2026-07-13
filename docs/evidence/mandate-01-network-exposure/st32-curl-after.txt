@@ -1,0 +1,56 @@
+ST-3.2 SAU KHI DEPLOY - Curl test từ mạng ngoài (xác minh sau khi CDO08 deploy SEC-05)
+Task 23 - Kiểm tra độc lập - Mandate-01
+============================================================
+Mục đích: Xác minh các internal routes đã bị block, storefront vẫn trả 200
+============================================================
+
+TRẠNG THÁI: CHỜ CDO08 DEPLOY SEC-05 XONG MỚI CHẠY
+Yêu cầu: Envoy đã có direct_response 404 cho 6 internal routes
+
+--- Lệnh chạy trên Windows PowerShell (chạy lại sau khi CDO08 deploy) ---
+
+$ALB = "http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com"
+
+$paths = @("","grafana/","grafana","jaeger/ui/","jaeger/","loadgen/","feature","flagservice/","otlp-http/")
+foreach ($p in $paths) {
+    try {
+        $r = Invoke-WebRequest -Uri "$ALB/$p" -MaximumRedirection 0 -UseBasicParsing -ErrorAction SilentlyContinue
+        $code = $r.StatusCode
+    } catch {
+        try { $code = [int]$_.Exception.Response.StatusCode } catch { $code = "ERR" }
+    }
+    Write-Output "GET /$p -> HTTP $code"
+}
+
+--- Kết quả mong đợi SAU KHI FIX ---
+
+GET /             -> HTTP 200   (storefront vẫn công khai - đúng)
+GET /grafana/     -> HTTP 404   (đã block - đúng)
+GET /grafana      -> HTTP 404   (đã block - đúng)
+GET /jaeger/ui/   -> HTTP 404   (đã block - đúng)
+GET /jaeger/      -> HTTP 404   (đã block - đúng)
+GET /loadgen/     -> HTTP 404   (đã block - đúng)
+GET /feature      -> HTTP 404   (đã block - đúng)
+GET /flagservice/ -> HTTP 404   (đã block - đúng)
+GET /otlp-http/   -> HTTP 404   (đã block - đúng)
+
+--- Điền output thật sau khi CDO08 deploy và CDO07 chạy lại ---
+
+[KẾT QUẢ THỰC TẾ]
+Thời điểm : _______________
+IP nguồn   : _______________
+
+GET /             -> HTTP ___
+GET /grafana/     -> HTTP ___
+GET /grafana      -> HTTP ___
+GET /jaeger/ui/   -> HTTP ___
+GET /jaeger/      -> HTTP ___
+GET /loadgen/     -> HTTP ___
+GET /feature      -> HTTP ___
+GET /flagservice/ -> HTTP ___
+GET /otlp-http/   -> HTTP ___
+
+Kiểm tra không bị redirect về storefront:
+redirect_url /grafana/ = ___   (phải rỗng - không redirect)
+
+PASS/FAIL: ___
