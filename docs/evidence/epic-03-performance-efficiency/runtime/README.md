@@ -49,31 +49,6 @@ See [TASK4-EVIDENCE-CHECKLIST.md](TASK4-EVIDENCE-CHECKLIST.md) for the full evid
    - `accounting` pod has repeated restarts and current BackOff warning.
    - Grafana had a previous readiness probe failure but is currently `4/4 Running`.
 
-## Screenshot status
-
-All screenshots have been successfully captured and saved in `/screenshots/` directory:
-- `grafana-pods-cpu.png` (Pod CPU usage PromQL)
-- `grafana-pods-memory.png` (Pod Memory usage PromQL)
-- `grafana-latency.png` (Grafana latency dashboard)
-- `grafana-error-rate.png` (Grafana error rate dashboard)
-- `grafana-request-rate.png` (Grafana request rate dashboard)
-- `jaeger-services-dropdown.png` (Jaeger services dropdown)
-- Jaeger waterfall traces for critical flows
-
-All public UI routes are reachable and verified.
-
-## Jira evidence comment
-
-PERF-04 runtime evidence collection has been started after deployment.
-
-Completed:
-
-- Captured pod status and node placement for namespace `techx-tf4`.
-- Captured EKS node zone placement across `us-east-1a` and `us-east-1b`.
-- Verified all application deployments are currently `1/1` available.
-- Verified Webstore, Grafana and Jaeger public routes return `HTTP 200 OK`.
-- Captured CPU/memory evidence via Prometheus/Grafana PromQL queries and Grafana screenshots.
-
 Key runtime risks:
 
 - `accounting` pod shows repeated restarts and BackOff warning.
