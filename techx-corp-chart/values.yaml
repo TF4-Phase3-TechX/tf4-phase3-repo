@@ -238,6 +238,22 @@ components:
     resources:
       limits:
         memory: 160Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+        service: oteldemo.CartService
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     initContainers:
       - name: wait-for-valkey-cart
         image: busybox:latest
@@ -279,6 +295,21 @@ components:
     resources:
       limits:
         memory: 20Mi
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
@@ -403,6 +434,21 @@ components:
     resources:
       limits:
         memory: 250Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 1001  # nextjs
       runAsGroup: 1001
@@ -465,6 +511,22 @@ components:
     resources:
       limits:
         memory: 65Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 10000
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 101  # envoy
       runAsGroup: 101
@@ -556,6 +618,21 @@ components:
     resources:
       limits:
         memory: 140Mi
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 1000  # node
       runAsGroup: 1000
@@ -587,6 +664,21 @@ components:
     resources:
       limits:
         memory: 20Mi
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   product-reviews:
     enabled: true
@@ -703,6 +795,21 @@ components:
     resources:
       limits:
         memory: 20Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   flagd:
     enabled: true
