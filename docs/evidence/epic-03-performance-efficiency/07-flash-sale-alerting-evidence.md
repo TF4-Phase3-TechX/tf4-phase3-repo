@@ -118,6 +118,18 @@ Attach or link the deploy-evidence artifact and capture these UI states:
 | Alertmanager | API/UI reachable; firing alerts visible and email notifications routed when present |
 | Grafana `Flash Sale Alert State` dashboard | Active count and pending/firing state panels load from `webstore-metrics` |
 
+## End-to-End Alerting Evidence
+
+The full alerting pipeline has been verified on the live Kubernetes cluster (`production`) using a synthetic smoke test alert. The system successfully routed the alert and sent a notification email via the configured SMTP server.
+
+**Verification Steps Performed:**
+1. Fired a `SmokeTestCluster` alert into the live Alertmanager instance via `kubectl run ... curl`.
+2. Verified the alert appeared in the Alertmanager UI (`http://localhost:9093`) under the `tf4-on-call-email` receiver group.
+3. Confirmed the receipt of the `[FIRING:1] SmokeTestCluster` email in the target inbox (e.g., `vanphutin2902@gmail.com`).
+
+![Alertmanager UI](screenshots/Alertmanager-UI.png)
+![Email notification](screenshots/received-email.png)
+
 ## Operational handling
 
 The complete owner mapping, first response, alert-specific diagnosis and mitigation steps are in `docs/audit/runbooks/flash-sale-alerts.md`.
