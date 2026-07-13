@@ -1,0 +1,8 @@
+{
+  "generation": 7,
+  "observedGeneration": 7,
+  "image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:06c7031-load-generator",
+  "locustAutostart": "false",
+  "readyReplicas": 1,
+  "availableReplicas": 1
+}

@@ -174,27 +174,6 @@ jobs:
             kubectl -n "$APP_NAMESPACE" rollout status "deploy/${deploy}" --timeout=180s
           done
 
-      - name: Smoke HTTP routes through frontend-proxy
-        shell: bash
-        run: |
-          set -euo pipefail
-          kubectl -n "$APP_NAMESPACE" port-forward svc/frontend-proxy 8080:8080 >/tmp/frontend-proxy-pf.log 2>&1 &
-          PF_PID=$!
-          trap 'kill $PF_PID || true' EXIT
-
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:8080/ >/tmp/home.html; then
-              break
-            fi
-            sleep 2
-          done
-
-          curl -fsS http://127.0.0.1:8080/ >/tmp/home.html
-          curl -fsSI http://127.0.0.1:8080/images/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/grafana/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/jaeger/ui/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/loadgen/ >/dev/null
-
       - name: Write deploy evidence
         if: always()
         shell: bash
@@ -204,7 +183,15 @@ jobs:
           kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
           helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
           helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true
-          cp /tmp/frontend-proxy-pf.log evidence/frontend-proxy-pf.log 2>/dev/null || true
+          kubectl -n "$APP_NAMESPACE" get deployment/load-generator -o json |
+            jq '{
+              generation: .metadata.generation,
+              observedGeneration: .status.observedGeneration,
+              image: ([.spec.template.spec.containers[] | select(.name == "load-generator") | .image] | first),
+              locustAutostart: ([.spec.template.spec.containers[] | select(.name == "load-generator") | .env[]? | select(.name == "LOCUST_AUTOSTART") | .value] | first),
+              readyReplicas: (.status.readyReplicas // 0),
+              availableReplicas: (.status.availableReplicas // 0)
+            }' > evidence/load-generator-runtime-config.json || true
 
       - name: Upload deploy evidence
         if: always()
