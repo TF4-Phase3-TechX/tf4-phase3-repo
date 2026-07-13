@@ -180,7 +180,10 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: DB_CONNECTION_STRING
-        value: Host=postgresql;Username=otelu;Password=otelp;Database=otel
+        valueFrom:
+          secretKeyRef:
+            name: accounting-db-secret
+            key: connection-string
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
@@ -664,7 +667,10 @@ components:
       - name: GOMEMLIMIT
         value: 16MiB
       - name: DB_CONNECTION_STRING
-        value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+        valueFrom:
+          secretKeyRef:
+            name: product-catalog-db-secret
+            key: connection-string
       - name: OTEL_SEMCONV_STABILITY_OPT_IN
         value: database
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -698,7 +704,10 @@ components:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: OPENAI_API_KEY
-        value: dummy
+        valueFrom:
+          secretKeyRef:
+            name: product-reviews-openai-secret
+            key: api-key
       - name: LLM_MODEL
         value: techx-llm
       - name: LLM_HOST
@@ -716,7 +725,10 @@ components:
       - name: FLAGD_PORT
         value: "8013"
       - name: DB_CONNECTION_STRING
-        value: host=postgresql user=otelu password=otelp dbname=otel
+        valueFrom:
+          secretKeyRef:
+            name: product-reviews-db-secret
+            key: connection-string
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: OTEL_PYTHON_LOG_CORRELATION
@@ -984,7 +996,10 @@ components:
       - name: POSTGRES_USER
         value: root
       - name: POSTGRES_PASSWORD
-        value: otel
+        valueFrom:
+          secretKeyRef:
+            name: postgresql-secret
+            key: postgres-password
       - name: POSTGRES_DB
         value: otel
     mountedConfigMaps:
