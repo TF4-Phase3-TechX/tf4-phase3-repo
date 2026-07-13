@@ -141,6 +141,40 @@ jobs:
           check_release_not_pending "$APP_NAMESPACE" techx-corp
           check_release_not_pending "$OBS_NAMESPACE" techx-observability
 
+      - name: Decode Alertmanager email configuration
+        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        env:
+          ALERTMANAGER_EMAIL_VALUES_B64: ${{ secrets.ALERTMANAGER_EMAIL_VALUES_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          : "${ALERTMANAGER_EMAIL_VALUES_B64:?Missing ALERTMANAGER_EMAIL_VALUES_B64}"
+
+          recipient_values="$RUNNER_TEMP/alertmanager-email-values.yaml"
+
+          printf '%s' "$ALERTMANAGER_EMAIL_VALUES_B64" |
+            base64 --decode > "$recipient_values"
+
+          test -s "$recipient_values"
+
+      - name: Apply Alertmanager SMTP credential
+        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        env:
+          ALERTMANAGER_SMTP_PASSWORD: ${{ secrets.ALERTMANAGER_SMTP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : "${ALERTMANAGER_SMTP_PASSWORD:?Missing ALERTMANAGER_SMTP_PASSWORD}"
+
+          kubectl -n "$OBS_NAMESPACE" create secret generic alertmanager-smtp-auth \
+            --from-literal=auth_password="$ALERTMANAGER_SMTP_PASSWORD" \
+            --dry-run=client \
+            -o yaml |
+            kubectl apply -f -
+
       - name: Deploy observability
         if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
         run: |
@@ -149,6 +183,7 @@ jobs:
             --create-namespace \
             -f deploy/values-observability.yaml \
             -f deploy/values-flagd-sync.yaml \
+            -f "$RUNNER_TEMP/alertmanager-email-values.yaml" \
             --wait \
             --timeout 10m
 

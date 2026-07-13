@@ -25,6 +25,33 @@ AWS SSO identity cá nhân
 → operational portal
 ```
 
+CDO07 đóng vai trò **Audit Backstop** cần thẩm định phương án thiết kế này trước khi deploy, và nghiệm thu bằng chứng (evidence) sau khi hoàn tất.
+
+---
+
+## 2. Điểm kiểm toán quan trọng (Audit Trail & Security)
+
+### Cơ chế log audit của SSM:
+Khác với SSH Bastion thông thường (vốn không log được người dùng làm gì và phải sửa Security Group liên tục), SSM Session Manager đi qua HTTPS và tích hợp chặt chẽ với **AWS CloudTrail**.
+Mọi hành vi khởi tạo tunnel (`StartSession`) đều được ghi lại tự động:
+* **Ai vào:** User ARN / IAM Role ARN (BTC dùng Admin profile sẵn có, team nội bộ dùng Read-only profile).
+* **Lúc nào:** Timestamp chính xác theo múi giờ hệ thống.
+* **Từ đâu:** Source IP Address của máy client.
+* **Vào service nào:** Request parameter chỉ định cụ thể target host (vd: `grafana.techx-observability.svc`).
+
+---
+
+## 3. Quy trình Đánh giá & Nghiệm thu của CDO07
+
+### Giai đoạn 1 — Nội dung CDO07 cần xác nhận (Trước khi deploy):
+CDO07 vui lòng đọc thiết kế và check-off:
+- [x] **Độ tin cậy của Audit Trail:** Xác nhận log sự kiện `StartSession` trên CloudTrail là đủ bằng chứng kiểm toán cho truy cập cổng vận hành. (CloudTrail đã được verify là đang hoạt động).
+
+### Giai đoạn 2 — Xác nhận khả năng Audit (Sau khi deploy):
+CDO07 kiểm tra thực tế trên CloudTrail:
+- [ ] **Xác nhận có thể Audit:** Chạy query hoặc kiểm tra CloudTrail console xem event `StartSession` đã được ghi nhận thành công và đầy đủ thông tin (user ARN, timestamp, source IP, target service) khi có phiên truy cập thử nghiệm.
+
+
 - Bastion không có public IP và không mở inbound SSH/port 22.
 - Người dùng không dùng shared admin credential hoặc long-lived access key.
 - Bastion instance role dùng EKS Access Entry/RBAC tối thiểu; không có `cluster-admin`.

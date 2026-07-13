@@ -20,6 +20,14 @@ module "eks" {
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true
 
+  # Khai báo các Addon cần cài đặt cho EKS
+  cluster_addons = {
+    coredns            = {}
+    kube-proxy         = {}
+    vpc-cni            = {}
+    aws-ebs-csi-driver = {}
+  }
+
   # EKS access entries are managed explicitly in eks-access-entries.tf.
   enable_cluster_creator_admin_permissions = false
 

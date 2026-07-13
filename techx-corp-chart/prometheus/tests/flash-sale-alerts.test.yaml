@@ -1,0 +1,178 @@
+rule_files:
+  - ../flash-sale-alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: sustained load-generator traffic fires after the noise window
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_calls_total{service_name="load-generator",span_kind="SPAN_KIND_INTERNAL"}
+        values: 0+60x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: LoadGeneratorTrafficOutsideTestWindow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-performance
+              component: load-generator
+            exp_annotations:
+              summary: Load-generator is producing traffic outside an approved window
+              description: Load-generator telemetry exceeded 0.1 spans per second for ten minutes. Silence this alert only for a documented, time-bounded test window.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#loadgeneratortrafficoutsidetestwindow
+
+  - name: short load-generator traffic does not bypass the wait duration
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_calls_total{service_name="load-generator",span_kind="SPAN_KIND_INTERNAL"}
+        values: 0+60x20
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: LoadGeneratorTrafficOutsideTestWindow
+        exp_alerts: []
+
+  - name: Storefront P95 > 1s fires
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="1000"}
+        values: 0+10x20
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="2000"}
+        values: 0+96x20
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="+Inf"}
+        values: 0+100x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: StorefrontP95High
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: tf4-webstore
+              component: storefront
+            exp_annotations:
+              summary: Storefront p95 latency is above the one-second SLO
+              description: Customer-facing browse routes remained above 1000 ms p95 for five minutes.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#storefrontp95high
+
+  - name: Availability alert does not false-fire with valid metric
+    interval: 1m
+    input_series:
+      - series: k8s_deployment_available{k8s_namespace_name="techx-observability",k8s_deployment_name="grafana"}
+        values: 1x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GrafanaUnavailable
+        exp_alerts: []
+
+  - name: NodeNotReady fires
+    interval: 1m
+    input_series:
+      - series: k8s_node_condition{condition="Ready",k8s_node_name="node1"}
+        values: 0x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: NodeNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: tf4-platform
+              component: kubernetes-node
+              condition: Ready
+              k8s_node_name: node1
+            exp_annotations:
+              summary: A Kubernetes node is not ready
+              description: Node node1 has not reported Ready for two minutes.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#nodenotready
+
+  - name: CheckoutSuccessRateLow needs traffic > 20 to fire
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_calls_total{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",status_code="STATUS_CODE_OK"}
+        values: 0+1x20
+      - series: traces_span_metrics_calls_total{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",status_code="STATUS_CODE_ERROR"}
+        values: 0+1x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CheckoutSuccessRateLow
+        exp_alerts: []
+
+  - name: PodRestartBurst fires when restarts exceed threshold
+    interval: 1m
+    input_series:
+      - series: k8s_container_restarts{k8s_namespace_name="techx-tf4",k8s_pod_name="frontend-abc",k8s_container_name="frontend"}
+        values: 0 0 0 0 0 1 2 3 4 5 5 5 5 5 5 5 5 5 5 5
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: PodRestartBurst
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-platform
+              component: kubernetes
+              k8s_namespace_name: techx-tf4
+              k8s_pod_name: frontend-abc
+              k8s_container_name: frontend
+            exp_annotations:
+              summary: A container is restarting repeatedly
+              description: Container techx-tf4/frontend-abc/frontend gained more than two restarts in ten minutes.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podrestartburst
+
+  - name: PodPendingOrNotRunning fires for Pending pod (phase 1)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-tf4",k8s_pod_name="cart-pending-xyz"}
+        values: 1x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-platform
+              component: kubernetes-scheduling
+              k8s_namespace_name: techx-tf4
+              k8s_pod_name: cart-pending-xyz
+            exp_annotations:
+              summary: A pod is pending or not running
+              description: Pod techx-tf4/cart-pending-xyz remained outside the Running phase for five minutes; inspect scheduling events.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podpendingornotrunning
+
+  - name: PodPendingOrNotRunning fires for Failed pod (phase 4)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-observability",k8s_pod_name="grafana-failed-abc"}
+        values: 4x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-platform
+              component: kubernetes-scheduling
+              k8s_namespace_name: techx-observability
+              k8s_pod_name: grafana-failed-abc
+            exp_annotations:
+              summary: A pod is pending or not running
+              description: Pod techx-observability/grafana-failed-abc remained outside the Running phase for five minutes; inspect scheduling events.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podpendingornotrunning
+
+  - name: PodPendingOrNotRunning does not fire for Running pod (phase 2)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-tf4",k8s_pod_name="frontend-running-abc"}
+        values: 2x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts: []
+
+  - name: PodPendingOrNotRunning does not fire for Succeeded job pod (phase 3)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-tf4",k8s_pod_name="migration-job-done"}
+        values: 3x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts: []

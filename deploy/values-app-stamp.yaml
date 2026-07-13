@@ -24,3 +24,5 @@ components:
         value: grafana.techx-observability.svc.cluster.local
       - name: JAEGER_HOST
         value: jaeger.techx-observability.svc.cluster.local
+
+bastionPortalAccess: { enabled: true }
