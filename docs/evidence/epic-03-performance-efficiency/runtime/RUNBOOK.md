@@ -56,13 +56,13 @@ Hệ thống sẽ lập tức dừng đợt test nếu vượt quá bất kỳ n
 
 | Tiêu chí nghiệm thu | Chỉ số | Panel Grafana | Bằng chứng |
 |---|---|---|---|
-| Checkout ≥99% | Tỷ lệ thành công | Checkout Success | ![checkout](./runtime/screenshots/task4.png)|
-| Storefront p95 < 1s | HTTP p95 | Storefront Latency | ![Error Rate](./runtime/screenshots/Errorrate.png)|
-| Error rate thấp | 5xx rate | Error Rate | ![Error Rate](docs\evidence\epic-03-performance-efficiency\screenshots\Errorrate.png)|
-| Không OOM | Số lần container restart | Pod Health | ![PodHealth](./runtime/screenshots/PodHealth.png)|
-| Không Memory Pressure | Memory working set | Container Memory | ![Memory](./runtime/screenshots/memory.png)|
-| Node còn headroom | CPU/memory utilization | Node Overview | ![Node](./runtime/screenshots/node.png)|
-| Observability hoạt động | Số trace / span | Jaeger/OpenSearch | ![checkout](./runtime/screenshots/task4.png)|
+| Checkout ≥99% | Tỷ lệ thành công | Checkout Success | ![checkout](../screenshots/task4.png) |
+| Storefront p95 < 1s | HTTP p95 | Storefront Latency | ![Storefront Latency](../screenshots/Errorrate.png) |
+| Error rate thấp | 5xx rate | Error Rate | ![Error Rate](../screenshots/Errorrate.png) |
+| Không OOM | Số lần container restart | Pod Health | ![Pod Health](../screenshots/PodHealth.png) |
+| Không Memory Pressure | Memory working set | Container Memory | ![Container Memory](../screenshots/memory.png) |
+| Node còn headroom | CPU/memory utilization | Node Overview | ![Node Overview](../screenshots/node.png) |
+| Observability hoạt động | Số trace / span | Jaeger/OpenSearch | ![Jaeger Traces](../screenshots/task4.png) |
 
 
 ## Danh mục bằng chứng cần thu thập (Evidence checklist)
