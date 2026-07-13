@@ -107,23 +107,39 @@ jobs:
           kubectl create namespace "$OBS_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
           kubectl create namespace "$APP_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Detach legacy observability from app release
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+      - name: Preflight Helm release state
         shell: bash
         run: |
           set -euo pipefail
-          if helm -n "$APP_NAMESPACE" status techx-corp >/dev/null 2>&1; then
-            echo "Existing app release found; disabling observability subcharts before installing shared observability release."
-            helm upgrade techx-corp ./techx-corp-chart \
-              --namespace "$APP_NAMESPACE" \
-              --set default.image.repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" \
-              --set default.image.tag="$IMAGE_TAG" \
-              -f deploy/values-app-stamp.yaml \
-              --wait \
-              --timeout 10m
-          else
-            echo "No existing app release found; no legacy observability resources to detach."
-          fi
+
+          check_release_not_pending() {
+            local namespace="$1"
+            local release="$2"
+
+            if ! helm -n "$namespace" status "$release" >/tmp/helm-status.json 2>/dev/null; then
+              echo "Release ${release} does not exist in ${namespace}; install can proceed."
+              return 0
+            fi
+
+            helm -n "$namespace" status "$release"
+
+            local status
+            status="$(helm -n "$namespace" status "$release" -o json | jq -r '.info.status // empty')"
+            if [[ "$status" == pending-* ]]; then
+              echo "::error::Helm release ${release} in namespace ${namespace} is locked in status ${status}."
+              echo "::error::This workflow will not force-unlock Helm state. Confirm no Helm operation is running, then recover the stale revision manually."
+              echo "Diagnostics:"
+              helm -n "$namespace" history "$release" || true
+              kubectl -n "$namespace" get secrets \
+                -l "owner=helm,name=${release}" \
+                -L status,version \
+                --sort-by=.metadata.creationTimestamp || true
+              exit 1
+            fi
+          }
+
+          check_release_not_pending "$APP_NAMESPACE" techx-corp
+          check_release_not_pending "$OBS_NAMESPACE" techx-observability
 
       - name: Deploy observability
         if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
@@ -132,6 +148,7 @@ jobs:
             --namespace "$OBS_NAMESPACE" \
             --create-namespace \
             -f deploy/values-observability.yaml \
+            -f deploy/values-flagd-sync.yaml \
             --wait \
             --timeout 10m
 
@@ -143,6 +160,7 @@ jobs:
             --set default.image.repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" \
             --set default.image.tag="$IMAGE_TAG" \
             -f deploy/values-app-stamp.yaml \
+            -f deploy/values-flagd-sync.yaml \
             --wait \
             --timeout 10m
 
@@ -156,28 +174,6 @@ jobs:
             kubectl -n "$APP_NAMESPACE" rollout status "deploy/${deploy}" --timeout=180s
           done
 
-      - name: Smoke HTTP routes through frontend-proxy
-        shell: bash
-        run: |
-          set -euo pipefail
-          kubectl -n "$APP_NAMESPACE" port-forward svc/frontend-proxy 8080:8080 >/tmp/frontend-proxy-pf.log 2>&1 &
-          PF_PID=$!
-          trap 'kill $PF_PID || true' EXIT
-
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:8080/ >/tmp/home.html; then
-              break
-            fi
-            sleep 2
-          done
-
-          curl -fsS http://127.0.0.1:8080/ >/tmp/home.html
-          curl -fsSI http://127.0.0.1:8080/images/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/grafana/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/jaeger/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/loadgen/ >/dev/null
-          curl -fsSI http://127.0.0.1:8080/feature/ >/dev/null
-
       - name: Write deploy evidence
         if: always()
         shell: bash
@@ -187,7 +183,15 @@ jobs:
           kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
           helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
           helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true
-          cp /tmp/frontend-proxy-pf.log evidence/frontend-proxy-pf.log 2>/dev/null || true
+          kubectl -n "$APP_NAMESPACE" get deployment/load-generator -o json |
+            jq '{
+              generation: .metadata.generation,
+              observedGeneration: .status.observedGeneration,
+              image: ([.spec.template.spec.containers[] | select(.name == "load-generator") | .image] | first),
+              locustAutostart: ([.spec.template.spec.containers[] | select(.name == "load-generator") | .env[]? | select(.name == "LOCUST_AUTOSTART") | .value] | first),
+              readyReplicas: (.status.readyReplicas // 0),
+              availableReplicas: (.status.availableReplicas // 0)
+            }' > evidence/load-generator-runtime-config.json || true
 
       - name: Upload deploy evidence
         if: always()

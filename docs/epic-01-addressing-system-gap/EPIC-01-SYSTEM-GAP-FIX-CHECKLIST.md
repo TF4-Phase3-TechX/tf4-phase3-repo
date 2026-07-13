@@ -131,12 +131,13 @@ Done rule:
 - [ ] `K8S-03` Add measured resource baseline or quota compatibility note.
   - Target: requests/limits plan based on runtime data; quota admission status clear.
   - Evidence file: `018-k8s-03-resource-quota-baseline.md`
-  - Validation: `kubectl top`, server dry-run/apply result, rendered resources.
+  - Validation: Prometheus/Grafana resource metrics, server dry-run/apply result, rendered resources.
 
 - [ ] `OBS-03` Restore repo auditability artifacts.
   - Target: CODEOWNERS path mismatch fixed or documented; ADR/runbook/postmortem templates added if allowed.
-  - Evidence file: `019-obs-03-repo-auditability-artifacts.md`
+  - Evidence file: `003-obs-03-repo-auditability-artifacts.md`
   - Validation: file links and GitHub branch protection/CODEOWNERS check if available.
+  - Status: PR opened with templates and destination folders, pending GitHub CODEOWNERS check and merge.
 
 - [ ] `PERF-01` / `PERF-02` Fix or baseline browse/search performance.
   - Target: avoid N currency fan-out where safe and bound search with pagination/index plan.

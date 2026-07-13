@@ -5,7 +5,6 @@ package kafka
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/IBM/sarama"
 )
@@ -29,25 +28,34 @@ func (l *saramaLogger) Print(v ...interface{}) {
 	l.logger.Info(fmt.Sprint(v...))
 }
 
-func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.SyncProducer, error) {
+func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.AsyncProducer, error) {
 	// Set the logger for sarama to use.
 	sarama.Logger = &saramaLogger{logger: logger}
 
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 	saramaConfig.Producer.Return.Errors = true
-	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	saramaConfig.Producer.Retry.Max = 5
-	saramaConfig.Producer.Timeout = 10 * time.Second
-	// Idempotent producer deferred to REL-03 (requires idempotency key + outbox design first).
-	// Note: WaitForAll + retries produce at-least-once semantics; downstream consumers must be idempotent.
+
+	// Sarama has an issue in a single broker kafka if the kafka broker is restarted.
+	// This setting is to prevent that issue from manifesting itself, but may swallow failed messages.
+	saramaConfig.Producer.RequiredAcks = sarama.NoResponse
 
 	saramaConfig.Version = ProtocolVersion
 
-	producer, err := sarama.NewSyncProducer(brokers, saramaConfig)
+	// So we can know the partition and offset of messages.
+	saramaConfig.Producer.Return.Successes = true
+
+	producer, err := sarama.NewAsyncProducer(brokers, saramaConfig)
 	if err != nil {
 		return nil, err
 	}
 
+	// We will log to STDOUT if we're not able to produce messages.
+	go func() {
+		for err := range producer.Errors() {
+			logger.Error(fmt.Sprintf("Failed to write message: %+v", err))
+
+		}
+	}()
 	return producer, nil
 }
