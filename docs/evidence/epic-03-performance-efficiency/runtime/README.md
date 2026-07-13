@@ -12,6 +12,21 @@ Namespace under test:
 - Observability namespace: `techx-observability`
 - Public ALB host: `k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com`
 
+## Task-4 acceptance evidence package
+
+The Task-4 flash-sale load test is prepared for use as acceptance evidence with the following documented controls:
+
+- Traffic mix: browse/discovery, cart, and checkout flows are included; the test does not rely on one lightweight endpoint only.
+- Ramp-up timeline: 1 minute ramp-up to 200 users, 15 minutes steady-state at 200 users, 20 seconds ramp-down; total runtime is 16m20s.
+- Stop conditions: stop early if checkout-related error logs exceed the configured threshold, if CPU or memory guardrails trigger, or if the load-generator shows abnormal resource pressure.
+- Full-run SLO gating: the run script validates checkout success ≥ 99%, browse/cart success ≥ 99.5%, and storefront p95 < 1000ms from `task4-full-stats.csv`.
+- Full-run artifacts: `task4-full-stats.csv`, `task4-full-report.html`, `task4-full-T0.txt`, `task4-full-T1.txt`, and monitor log.
+- Cost evidence: collect a cost-efficiency summary in `task4-cost-efficiency.md` that compares baseline vs full-run capacity and computes cost per request/order.
+- Dashboard mapping: monitor latency, error rate, request rate, and pod/resource metrics in Grafana for namespace `techx-tf4`.
+- Evidence checklist: capture the run script output, Locust stats/report, monitor log, and Grafana screenshots before closing the task.
+
+See [TASK4-EVIDENCE-CHECKLIST.md](TASK4-EVIDENCE-CHECKLIST.md) for the full evidence checklist.
+
 ## Subtask status
 
 | Subtask | Owner | Status | Evidence |
@@ -37,31 +52,6 @@ Namespace under test:
 8. Runtime warning events should be watched:
    - `accounting` pod has repeated restarts and current BackOff warning.
    - Grafana had a previous readiness probe failure but is currently `4/4 Running`.
-
-## Screenshot status
-
-All screenshots have been successfully captured and saved in `/screenshots/` directory:
-- `grafana-pods-cpu.png` (Pod CPU usage PromQL)
-- `grafana-pods-memory.png` (Pod Memory usage PromQL)
-- `grafana-latency.png` (Grafana latency dashboard)
-- `grafana-error-rate.png` (Grafana error rate dashboard)
-- `grafana-request-rate.png` (Grafana request rate dashboard)
-- `jaeger-services-dropdown.png` (Jaeger services dropdown)
-- Jaeger waterfall traces for critical flows
-
-All public UI routes are reachable and verified.
-
-## Jira evidence comment
-
-PERF-04 runtime evidence collection has been started after deployment.
-
-Completed:
-
-- Captured pod status and node placement for namespace `techx-tf4`.
-- Captured EKS node zone placement across `us-east-1a` and `us-east-1b`.
-- Verified all application deployments are currently `1/1` available.
-- Verified Webstore, Grafana and Jaeger public routes return `HTTP 200 OK`.
-- Captured CPU/memory evidence via Prometheus/Grafana PromQL queries and Grafana screenshots.
 
 Key runtime risks:
 
