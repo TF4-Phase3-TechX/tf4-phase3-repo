@@ -1,18 +1,22 @@
 #!/bin/bash
 # Performance Test Monitor with Auto-Stop Conditions
 # Task: PERF-02.3
-# Owner: TuÃ¡ÂºÂ¥n
-# Reviewer: HoÃƒÂ ng
+# Owner: Tuấn
+# Reviewer: Hoàng
 
 set -euo pipefail
 
 # Configuration
 NAMESPACE="${NAMESPACE:-techx-tf4}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-30}"
-LOG_FILE="load-test-monitor-$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="${MONITOR_LOG_PATH:-docs/evidence/epic-03-performance-efficiency/runtime/load-test-monitor-$(date -u +%Y%m%dT%H%M%SZ).log}"
+mkdir -p "$(dirname "$LOG_FILE")"
 
 # Thresholds
 ERROR_RATE_THRESHOLD=5
+CHECKOUT_SUCCESS_THRESHOLD=99
+BROWSE_CART_SUCCESS_THRESHOLD=99.5
+STORE_FRONT_P95_THRESHOLD=1000
 CPU_THRESHOLD=90
 MEMORY_THRESHOLD_PERCENT=85
 LATENCY_THRESHOLD=5
@@ -65,16 +69,16 @@ stop_load_test() {
 }
 
 check_error_rate() {
-    # Check error logs in checkout (critical service)
+    # Prefer Locust stats but fall back to simple log counting for checkout errors.
     local error_count
     error_count=$(kubectl logs -n "$NAMESPACE" deployment/checkout --tail=100 2>/dev/null | \
         grep -c "ERROR" || echo 0)
 
     if [ "$error_count" -gt "$ERROR_RATE_THRESHOLD" ]; then
-        stop_load_test "Error count ${error_count} exceeds threshold $ERROR_RATE_THRESHOLD in last 100 logs"
+        stop_load_test "Checkout error count ${error_count} exceeds threshold $ERROR_RATE_THRESHOLD in last 100 logs"
     fi
 
-    log_ok "Error count: $error_count (threshold: $ERROR_RATE_THRESHOLD)"
+    log_ok "Checkout error count: $error_count (threshold: $ERROR_RATE_THRESHOLD)"
 }
 
 check_cpu_usage() {

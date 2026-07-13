@@ -31,8 +31,10 @@ Use this checklist before marking Task-4 as evidence-ready.
 - [ ] Capture pod resource evidence if there were resource concerns.
 
 ### Output artifacts
-- [ ] Save Locust stats CSV.
-- [ ] Save Locust HTML report.
+- [ ] Save Locust stats CSV as `task4-full-stats.csv`.
+- [ ] Save Locust HTML report as `task4-full-report.html`.
 - [ ] Save the monitor log.
-- [ ] Save the run timestamps in the evidence folder.
-- [ ] Save screenshots or exports for Grafana/Jaeger as needed.
+- [ ] Save the run timestamps as `task4-full-T0.txt` and `task4-full-T1.txt`.
+- [ ] Save Grafana/Prometheus dashboard screenshots covering the exact full-run window.
+- [ ] Save the cost-efficiency evidence summary as `task4-cost-efficiency.md`.
+- [ ] Confirm full-run SLO validation passed in the run script.

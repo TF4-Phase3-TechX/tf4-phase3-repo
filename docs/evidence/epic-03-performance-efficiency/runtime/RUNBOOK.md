@@ -39,8 +39,9 @@ Sau đó, mở giao diện Locust UI tại địa chỉ `http://localhost:8089` 
 
 ```bash
 bash scripts/run-load-test-task4.sh full
-
 ```
+
+> The full run validates the Task-4 load shape by requiring the live deployment to have `LOCUST_LOAD_SHAPE=task4` and by overriding the shape directly in the Locust command.
 
 ## Điều kiện dừng khẩn cấp (Stop conditions)
 
@@ -54,16 +55,15 @@ Hệ thống sẽ lập tức dừng đợt test nếu vượt quá bất kỳ n
 
 ## Chỉ mục Giám sát (Dashboard mapping)
 
-| Tiêu chí nghiệm thu | Chỉ số | Panel Grafana | Bằng chứng |
+| Tiêu chí nghiệm thu | Chỉ số | Panel Grafana | Artifact |
 |---|---|---|---|
-| Checkout ≥99% | Tỷ lệ thành công | Checkout Success | ![checkout](../screenshots/task4.png) |
-| Storefront p95 < 1s | HTTP p95 | Storefront Latency | ![Storefront Latency](../screenshots/Errorrate.png) |
-| Error rate thấp | 5xx rate | Error Rate | ![Error Rate](../screenshots/Errorrate.png) |
-| Không OOM | Số lần container restart | Pod Health | ![Pod Health](../screenshots/PodHealth.png) |
-| Không Memory Pressure | Memory working set | Container Memory | ![Container Memory](../screenshots/memory.png) |
-| Node còn headroom | CPU/memory utilization | Node Overview | ![Node Overview](../screenshots/node.png) |
-| Observability hoạt động | Số trace / span | Jaeger/OpenSearch | ![Jaeger Traces](../screenshots/task4.png) |
-
+| Checkout ≥99% | Tỷ lệ thành công | Checkout Success | `grafana/checkout-success.png` |
+| Storefront p95 < 1s | HTTP p95 | Storefront Latency | `grafana/storefront-latency.png` |
+| Error rate thấp | 5xx rate | Error Rate | `grafana/error-rate.png` |
+| Không OOM | Số lần container restart | Pod Health | `grafana/pod-health.png` |
+| Không Memory Pressure | Memory working set | Container Memory | `grafana/container-memory.png` |
+| Node còn headroom | CPU/memory utilization | Node Overview | `grafana/node-overview.png` |
+| Observability hoạt động | Số trace / span | Jaeger/OpenSearch | `jaeger/trace-sample.png` |
 
 ## Danh mục bằng chứng cần thu thập (Evidence checklist)
 

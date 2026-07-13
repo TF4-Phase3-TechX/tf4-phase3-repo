@@ -19,6 +19,9 @@ The Task-4 flash-sale load test is prepared for use as acceptance evidence with 
 - Traffic mix: browse/discovery, cart, and checkout flows are included; the test does not rely on one lightweight endpoint only.
 - Ramp-up timeline: 1 minute ramp-up to 200 users, 15 minutes steady-state at 200 users, 20 seconds ramp-down; total runtime is 16m20s.
 - Stop conditions: stop early if checkout-related error logs exceed the configured threshold, if CPU or memory guardrails trigger, or if the load-generator shows abnormal resource pressure.
+- Full-run SLO gating: the run script validates checkout success ≥ 99%, browse/cart success ≥ 99.5%, and storefront p95 < 1000ms from `task4-full-stats.csv`.
+- Full-run artifacts: `task4-full-stats.csv`, `task4-full-report.html`, `task4-full-T0.txt`, `task4-full-T1.txt`, and monitor log.
+- Cost evidence: collect a cost-efficiency summary in `task4-cost-efficiency.md` that compares baseline vs full-run capacity and computes cost per request/order.
 - Dashboard mapping: monitor latency, error rate, request rate, and pod/resource metrics in Grafana for namespace `techx-tf4`.
 - Evidence checklist: capture the run script output, Locust stats/report, monitor log, and Grafana screenshots before closing the task.
 
