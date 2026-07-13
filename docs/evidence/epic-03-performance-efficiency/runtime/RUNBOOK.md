@@ -54,12 +54,16 @@ Hệ thống sẽ lập tức dừng đợt test nếu vượt quá bất kỳ n
 
 ## Chỉ mục Giám sát (Dashboard mapping)
 
-Sử dụng Grafana trong namespace `techx-observability` và tập trung vào các chỉ số thuộc namespace `techx-tf4`:
+| Tiêu chí nghiệm thu | Chỉ số | Panel Grafana | Bằng chứng |
+|---|---|---|---|
+| Checkout ≥99% | Tỷ lệ thành công | Checkout Success | Ảnh chụp màn hình |
+| Storefront p95 < 1s | HTTP p95 | Storefront Latency | Ảnh chụp màn hình |
+| Error rate thấp | 5xx rate | Error Rate | Ảnh chụp màn hình |
+| Không OOM | Số lần container restart | Pod Health | Ảnh chụp màn hình |
+| Không Memory Pressure | Memory working set | Container Memory | Ảnh chụp màn hình |
+| Node còn headroom | CPU/memory utilization | Node Overview | Ảnh chụp màn hình |
+| Observability hoạt động | Số trace / span | Jaeger/OpenSearch | Ảnh chụp màn hình |
 
-* Dashboard giám sát độ trễ (latency) của các endpoint cửa hàng (storefront) và thanh toán (checkout).
-* Dashboard giám sát tỷ lệ lỗi (error rate) của các request thuộc luồng thanh toán và giỏ hàng.
-* Dashboard giám sát tần suất request (request-rate) của toàn bộ lưu lượng webstore.
-* Dashboard giám sát tài nguyên của pod để xác định mức độ ổn định của CPU và Memory.
 
 ## Danh mục bằng chứng cần thu thập (Evidence checklist)
 
