@@ -1,0 +1,342 @@
+groups:
+  - name: flash-sale-slo
+    interval: 30s
+    rules:
+      - alert: StorefrontP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(traces_span_metrics_duration_milliseconds_bucket{
+                service_name="frontend",
+                span_kind="SPAN_KIND_SERVER",
+                span_name=~"GET /|GET /product.*|GET /api/products.*|GET /api/data.*"
+              }[5m])
+            )
+          ) > 1000
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: storefront
+        annotations:
+          summary: Storefront p95 latency is above the one-second SLO
+          description: Customer-facing browse routes remained above 1000 ms p95 for five minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#storefrontp95high
+
+      - alert: CheckoutSuccessRateLow
+        expr: |
+          (
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              span_name="POST /api/checkout",
+              status_code!="STATUS_CODE_ERROR"
+            }[5m]))
+            /
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              span_name="POST /api/checkout"
+            }[5m]))
+          ) < 0.99
+          and
+          sum(increase(traces_span_metrics_calls_total{
+            service_name="frontend",
+            span_kind="SPAN_KIND_SERVER",
+            span_name="POST /api/checkout"
+          }[5m])) >= 20
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: checkout
+        annotations:
+          summary: Checkout success rate is below the 99 percent SLO
+          description: End-to-end checkout success remained below 99 percent for five minutes with at least 20 requests in the evaluation window.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#checkoutsuccessratelow
+
+      - alert: BrowseSuccessRateLow
+        expr: |
+          (
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              span_name=~"GET /|GET /product.*|GET /api/products.*|GET /api/data.*",
+              status_code!="STATUS_CODE_ERROR"
+            }[5m]))
+            /
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              span_name=~"GET /|GET /product.*|GET /api/products.*|GET /api/data.*"
+            }[5m]))
+          ) < 0.995
+          and
+          sum(increase(traces_span_metrics_calls_total{
+            service_name="frontend",
+            span_kind="SPAN_KIND_SERVER",
+            span_name=~"GET /|GET /product.*|GET /api/products.*|GET /api/data.*"
+          }[5m])) >= 20
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: browse
+        annotations:
+          summary: Browse success rate is below the 99.5 percent SLO
+          description: Customer browse success remained below 99.5 percent for five minutes with at least 20 requests in the evaluation window.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#browsesuccessratelow
+
+      - alert: CartSuccessRateLow
+        expr: |
+          (
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              span_name=~"(GET|POST|DELETE) /api/cart",
+              status_code!="STATUS_CODE_ERROR"
+            }[5m]))
+            /
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              span_name=~"(GET|POST|DELETE) /api/cart"
+            }[5m]))
+          ) < 0.995
+          and
+          sum(increase(traces_span_metrics_calls_total{
+            service_name="frontend",
+            span_kind="SPAN_KIND_SERVER",
+            span_name=~"(GET|POST|DELETE) /api/cart"
+          }[5m])) >= 20
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: cart
+        annotations:
+          summary: Cart success rate is below the 99.5 percent SLO
+          description: Cart operations remained below 99.5 percent success for five minutes with at least 20 requests in the evaluation window.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#cartsuccessratelow
+
+      - alert: FrontendErrorRateHigh
+        expr: |
+          (
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER",
+              status_code="STATUS_CODE_ERROR"
+            }[5m]))
+            /
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="frontend",
+              span_kind="SPAN_KIND_SERVER"
+            }[5m]))
+          ) > 0.05
+          and
+          sum(increase(traces_span_metrics_calls_total{
+            service_name="frontend",
+            span_kind="SPAN_KIND_SERVER"
+          }[5m])) >= 20
+        for: 2m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: frontend
+        annotations:
+          summary: Frontend error rate is above five percent
+          description: Customer-facing frontend errors exceeded five percent for two minutes with sufficient traffic to avoid low-volume noise.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#frontenderrorratehigh
+
+  - name: flash-sale-kubernetes-pressure
+    interval: 30s
+    rules:
+      - alert: PodOOMKilled
+        expr: |
+          sum by (namespace, pod, container) (
+            increase(container_oom_events_total{
+              namespace=~"techx-tf4|techx-observability",
+              container!=""
+            }[10m])
+          ) > 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: tf4-platform
+          component: kubernetes
+        annotations:
+          summary: A workload container was OOM-killed
+          description: Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} recorded an OOM event in the last ten minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#podoomkilled
+
+      - alert: PodRestartBurst
+        expr: |
+          max_over_time(k8s_container_restarts{
+            k8s_namespace_name=~"techx-tf4|techx-observability"
+          }[10m])
+          -
+          min_over_time(k8s_container_restarts{
+            k8s_namespace_name=~"techx-tf4|techx-observability"
+          }[10m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+          owner: tf4-platform
+          component: kubernetes
+        annotations:
+          summary: A container is restarting repeatedly
+          description: Container {{ $labels.k8s_namespace_name }}/{{ $labels.k8s_pod_name }}/{{ $labels.k8s_container_name }} gained more than two restarts in ten minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#podrestartburst
+
+      - alert: NodeCPUPressure
+        expr: |
+          max by (k8s_node_name) (k8s_node_cpu_usage)
+          /
+          on (k8s_node_name)
+          label_replace(
+            max by (instance) (machine_cpu_cores{job="kubernetes-nodes-cadvisor"}),
+            "k8s_node_name",
+            "$1",
+            "instance",
+            "(.*)"
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          owner: tf4-platform
+          component: kubernetes-node
+        annotations:
+          summary: Node CPU usage is above 85 percent
+          description: Node {{ $labels.k8s_node_name }} remained above 85 percent CPU usage for ten minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#nodecpupressure
+
+      - alert: NodeMemoryPressure
+        expr: |
+          max by (k8s_node_name) (
+            k8s_node_memory_usage_bytes
+            /
+            (k8s_node_memory_usage_bytes + k8s_node_memory_available_bytes)
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          owner: tf4-platform
+          component: kubernetes-node
+        annotations:
+          summary: Node memory usage is above 85 percent
+          description: Node {{ $labels.k8s_node_name }} remained above 85 percent memory usage for ten minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#nodememorypressure
+
+      - alert: NodeNotReady
+        expr: |
+          k8s_node_condition_ready != 1
+        for: 2m
+        labels:
+          severity: critical
+          owner: tf4-platform
+          component: kubernetes-node
+        annotations:
+          summary: A Kubernetes node is not ready
+          description: Node {{ $labels.k8s_node_name }} has not reported Ready for two minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#nodenotready
+
+      - alert: PodPendingOrNotRunning
+        expr: |
+          k8s_pod_phase{
+            k8s_namespace_name=~"techx-tf4|techx-observability",
+            k8s_pod_name!=""
+          } != 2
+        for: 5m
+        labels:
+          severity: warning
+          owner: tf4-platform
+          component: kubernetes-scheduling
+        annotations:
+          summary: A pod is pending or not running
+          description: Pod {{ $labels.k8s_namespace_name }}/{{ $labels.k8s_pod_name }} remained outside the Running phase for five minutes; inspect scheduling events.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#podpendingornotrunning
+
+  - name: flash-sale-observability
+    interval: 30s
+    rules:
+      - alert: GrafanaUnavailable
+        expr: |
+          k8s_deployment_available{
+            k8s_namespace_name="techx-observability",
+            k8s_deployment_name="grafana"
+          } < 1
+          or
+          absent(k8s_deployment_available{
+            k8s_namespace_name="techx-observability",
+            k8s_deployment_name="grafana"
+          })
+        for: 2m
+        labels:
+          severity: critical
+          owner: tf4-observability
+          component: grafana
+        annotations:
+          summary: Grafana is unavailable
+          description: The Grafana deployment has had no available replica or no availability metric for two minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#grafanaunavailable
+
+      - alert: PrometheusUnavailable
+        expr: |
+          k8s_deployment_available{
+            k8s_namespace_name="techx-observability",
+            k8s_deployment_name="prometheus"
+          } < 1
+          or
+          absent(k8s_deployment_available{
+            k8s_namespace_name="techx-observability",
+            k8s_deployment_name="prometheus"
+          })
+        for: 2m
+        labels:
+          severity: critical
+          owner: tf4-observability
+          component: prometheus
+        annotations:
+          summary: Prometheus is unavailable
+          description: The Prometheus deployment has had no available replica or no availability metric for two minutes. This self-monitoring rule requires an external evaluator for total Prometheus failure.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#prometheusunavailable
+
+      - alert: JaegerUnavailable
+        expr: |
+          k8s_deployment_available{
+            k8s_namespace_name="techx-observability",
+            k8s_deployment_name="jaeger"
+          } < 1
+          or
+          absent(k8s_deployment_available{
+            k8s_namespace_name="techx-observability",
+            k8s_deployment_name="jaeger"
+          })
+        for: 2m
+        labels:
+          severity: critical
+          owner: tf4-observability
+          component: jaeger
+        annotations:
+          summary: Jaeger is unavailable
+          description: The Jaeger deployment has had no available replica or no availability metric for two minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#jaegerunavailable
+
+  - name: flash-sale-test-window
+    interval: 30s
+    rules:
+      - alert: LoadGeneratorTrafficOutsideTestWindow
+        expr: |
+          sum(rate(traces_span_metrics_calls_total{
+            service_name="load-generator"
+          }[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          owner: tf4-performance
+          component: load-generator
+        annotations:
+          summary: Load-generator is producing traffic outside an approved window
+          description: Load-generator telemetry exceeded 0.1 spans per second for ten minutes. Silence this alert only for a documented, time-bounded test window.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#loadgeneratortrafficoutsidetestwindow

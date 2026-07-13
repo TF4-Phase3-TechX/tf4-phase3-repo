@@ -163,12 +163,36 @@ jobs:
       - name: Helm lint baseline chart
         run: helm lint ./techx-corp-chart
 
+      - name: Validate flash-sale alert rules
+        run: |
+          docker run --rm \
+            --entrypoint /bin/promtool \
+            -v "${GITHUB_WORKSPACE}/techx-corp-chart/prometheus:/rules:ro" \
+            quay.io/prometheus/prometheus:v3.11.3 \
+            check rules /rules/flash-sale-alerts.yaml
+          docker run --rm \
+            --entrypoint /bin/promtool \
+            -w /rules/tests \
+            -v "${GITHUB_WORKSPACE}/techx-corp-chart/prometheus:/rules:ro" \
+            quay.io/prometheus/prometheus:v3.11.3 \
+            test rules flash-sale-alerts.test.yaml
+
       - name: Render observability release
         run: |
           helm template techx-observability ./techx-corp-chart \
             --namespace techx-observability \
             -f deploy/values-observability.yaml \
             > /tmp/techx-observability.yaml
+
+      - name: Assert flash-sale alerts are rendered
+        run: |
+          grep -F 'name: prometheus-flash-sale-alerts' /tmp/techx-observability.yaml
+          grep -F '/etc/alerts.d/*.yaml' /tmp/techx-observability.yaml
+          grep -F 'alert: StorefrontP95High' /tmp/techx-observability.yaml
+          grep -F 'alert: CheckoutSuccessRateLow' /tmp/techx-observability.yaml
+          grep -F 'alert: LoadGeneratorTrafficOutsideTestWindow' /tmp/techx-observability.yaml
+          grep -F 'name: techx-observability-alertmanager' /tmp/techx-observability.yaml
+          grep -F '"uid": "flash-sale-alert-state"' /tmp/techx-observability.yaml
 
       - name: Render app release
         run: |

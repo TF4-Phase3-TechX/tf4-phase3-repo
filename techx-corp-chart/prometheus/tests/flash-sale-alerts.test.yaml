@@ -1,0 +1,33 @@
+rule_files:
+  - ../flash-sale-alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: sustained load-generator traffic fires after the noise window
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_calls_total{service_name="load-generator",span_kind="SPAN_KIND_INTERNAL"}
+        values: 0+60x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: LoadGeneratorTrafficOutsideTestWindow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-performance
+              component: load-generator
+            exp_annotations:
+              summary: Load-generator is producing traffic outside an approved window
+              description: Load-generator telemetry exceeded 0.1 spans per second for ten minutes. Silence this alert only for a documented, time-bounded test window.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#loadgeneratortrafficoutsidetestwindow
+
+  - name: short load-generator traffic does not bypass the wait duration
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_calls_total{service_name="load-generator",span_kind="SPAN_KIND_INTERNAL"}
+        values: 0+60x20
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: LoadGeneratorTrafficOutsideTestWindow
+        exp_alerts: []

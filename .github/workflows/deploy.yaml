@@ -183,6 +183,14 @@ jobs:
           kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
           helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
           helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true
+          kubectl -n "$OBS_NAMESPACE" get configmap prometheus-flash-sale-alerts -o yaml \
+            > evidence/prometheus-flash-sale-alerts-configmap.yaml || true
+          kubectl get --raw \
+            "/api/v1/namespaces/${OBS_NAMESPACE}/services/http:prometheus:9090/proxy/api/v1/rules" \
+            > evidence/prometheus-rule-state.json || true
+          kubectl get --raw \
+            "/api/v1/namespaces/${OBS_NAMESPACE}/services/http:techx-observability-alertmanager:9093/proxy/api/v2/alerts" \
+            > evidence/alertmanager-alert-state.json || true
           kubectl -n "$APP_NAMESPACE" get deployment/load-generator -o json |
             jq '{
               generation: .metadata.generation,
