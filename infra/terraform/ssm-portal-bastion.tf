@@ -92,13 +92,13 @@ resource "aws_iam_instance_profile" "portal_bastion" {
   })
 }
 
-# 3. Fetch latest Amazon Linux 2023 Minimal AMI
+# 3. Fetch latest Amazon Linux 2023 AMI
 data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["al2023-ami-minimal-kernel-*-x86_64"]
+    values = ["al2023-ami-*-x86_64"]
   }
 }
 
