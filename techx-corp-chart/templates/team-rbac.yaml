@@ -1,3 +1,4 @@
+{{- if eq .Release.Namespace "techx-observability" }}
 # === RBAC for AI Team (ai-readers) ===
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -53,8 +54,9 @@ roleRef:
   kind: ClusterRole
   name: security-reliability-capacity-readonly
   apiGroup: rbac.authorization.k8s.io
+{{- end }}
 
----
+{{- if eq .Release.Namespace "techx-tf4" }}
 # 2. Namespace Role and RoleBinding for techx-tf4 runtime evidence
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -85,3 +87,4 @@ roleRef:
   kind: Role
   name: security-reliability-namespace-readonly
   apiGroup: rbac.authorization.k8s.io
+{{- end }}
