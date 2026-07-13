@@ -22,7 +22,7 @@ groups:
         annotations:
           summary: Storefront p95 latency is above the one-second SLO
           description: Customer-facing browse routes remained above 1000 ms p95 for five minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#storefrontp95high
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#storefrontp95high
 
       - alert: CheckoutSuccessRateLow
         expr: |
@@ -54,7 +54,7 @@ groups:
         annotations:
           summary: Checkout success rate is below the 99 percent SLO
           description: End-to-end checkout success remained below 99 percent for five minutes with at least 20 requests in the evaluation window.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#checkoutsuccessratelow
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#checkoutsuccessratelow
 
       - alert: BrowseSuccessRateLow
         expr: |
@@ -86,7 +86,7 @@ groups:
         annotations:
           summary: Browse success rate is below the 99.5 percent SLO
           description: Customer browse success remained below 99.5 percent for five minutes with at least 20 requests in the evaluation window.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#browsesuccessratelow
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#browsesuccessratelow
 
       - alert: CartSuccessRateLow
         expr: |
@@ -118,7 +118,7 @@ groups:
         annotations:
           summary: Cart success rate is below the 99.5 percent SLO
           description: Cart operations remained below 99.5 percent success for five minutes with at least 20 requests in the evaluation window.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#cartsuccessratelow
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#cartsuccessratelow
 
       - alert: FrontendErrorRateHigh
         expr: |
@@ -147,7 +147,7 @@ groups:
         annotations:
           summary: Frontend error rate is above five percent
           description: Customer-facing frontend errors exceeded five percent for two minutes with sufficient traffic to avoid low-volume noise.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#frontenderrorratehigh
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#frontenderrorratehigh
 
   - name: flash-sale-kubernetes-pressure
     interval: 30s
@@ -168,15 +168,15 @@ groups:
         annotations:
           summary: A workload container was OOM-killed
           description: Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} recorded an OOM event in the last ten minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#podoomkilled
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podoomkilled
 
       - alert: PodRestartBurst
         expr: |
-          max_over_time(k8s_container_restarts{
+          max_over_time(k8s_container_restart_count{
             k8s_namespace_name=~"techx-tf4|techx-observability"
           }[10m])
           -
-          min_over_time(k8s_container_restarts{
+          min_over_time(k8s_container_restart_count{
             k8s_namespace_name=~"techx-tf4|techx-observability"
           }[10m]) > 2
         for: 5m
@@ -187,7 +187,7 @@ groups:
         annotations:
           summary: A container is restarting repeatedly
           description: Container {{ $labels.k8s_namespace_name }}/{{ $labels.k8s_pod_name }}/{{ $labels.k8s_container_name }} gained more than two restarts in ten minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#podrestartburst
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podrestartburst
 
       - alert: NodeCPUPressure
         expr: |
@@ -209,7 +209,7 @@ groups:
         annotations:
           summary: Node CPU usage is above 85 percent
           description: Node {{ $labels.k8s_node_name }} remained above 85 percent CPU usage for ten minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#nodecpupressure
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#nodecpupressure
 
       - alert: NodeMemoryPressure
         expr: |
@@ -226,11 +226,11 @@ groups:
         annotations:
           summary: Node memory usage is above 85 percent
           description: Node {{ $labels.k8s_node_name }} remained above 85 percent memory usage for ten minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#nodememorypressure
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#nodememorypressure
 
       - alert: NodeNotReady
         expr: |
-          k8s_node_condition_ready != 1
+          k8s_node_condition{condition="Ready"} != 1
         for: 2m
         labels:
           severity: critical
@@ -239,14 +239,14 @@ groups:
         annotations:
           summary: A Kubernetes node is not ready
           description: Node {{ $labels.k8s_node_name }} has not reported Ready for two minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#nodenotready
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#nodenotready
 
       - alert: PodPendingOrNotRunning
         expr: |
           k8s_pod_phase{
             k8s_namespace_name=~"techx-tf4|techx-observability",
-            k8s_pod_name!=""
-          } != 2
+            phase=~"Pending|Failed|Unknown"
+          } == 1
         for: 5m
         labels:
           severity: warning
@@ -255,7 +255,7 @@ groups:
         annotations:
           summary: A pod is pending or not running
           description: Pod {{ $labels.k8s_namespace_name }}/{{ $labels.k8s_pod_name }} remained outside the Running phase for five minutes; inspect scheduling events.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#podpendingornotrunning
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podpendingornotrunning
 
   - name: flash-sale-observability
     interval: 30s
@@ -266,11 +266,6 @@ groups:
             k8s_namespace_name="techx-observability",
             k8s_deployment_name="grafana"
           } < 1
-          or
-          absent(k8s_deployment_available{
-            k8s_namespace_name="techx-observability",
-            k8s_deployment_name="grafana"
-          })
         for: 2m
         labels:
           severity: critical
@@ -279,7 +274,7 @@ groups:
         annotations:
           summary: Grafana is unavailable
           description: The Grafana deployment has had no available replica or no availability metric for two minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#grafanaunavailable
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#grafanaunavailable
 
       - alert: PrometheusUnavailable
         expr: |
@@ -287,11 +282,6 @@ groups:
             k8s_namespace_name="techx-observability",
             k8s_deployment_name="prometheus"
           } < 1
-          or
-          absent(k8s_deployment_available{
-            k8s_namespace_name="techx-observability",
-            k8s_deployment_name="prometheus"
-          })
         for: 2m
         labels:
           severity: critical
@@ -300,7 +290,7 @@ groups:
         annotations:
           summary: Prometheus is unavailable
           description: The Prometheus deployment has had no available replica or no availability metric for two minutes. This self-monitoring rule requires an external evaluator for total Prometheus failure.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#prometheusunavailable
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#prometheusunavailable
 
       - alert: JaegerUnavailable
         expr: |
@@ -308,11 +298,6 @@ groups:
             k8s_namespace_name="techx-observability",
             k8s_deployment_name="jaeger"
           } < 1
-          or
-          absent(k8s_deployment_available{
-            k8s_namespace_name="techx-observability",
-            k8s_deployment_name="jaeger"
-          })
         for: 2m
         labels:
           severity: critical
@@ -321,7 +306,7 @@ groups:
         annotations:
           summary: Jaeger is unavailable
           description: The Jaeger deployment has had no available replica or no availability metric for two minutes.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#jaegerunavailable
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#jaegerunavailable
 
   - name: flash-sale-test-window
     interval: 30s
@@ -339,4 +324,4 @@ groups:
         annotations:
           summary: Load-generator is producing traffic outside an approved window
           description: Load-generator telemetry exceeded 0.1 spans per second for ten minutes. Silence this alert only for a documented, time-bounded test window.
-          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/runbooks/flash-sale-alerts.md#loadgeneratortrafficoutsidetestwindow
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#loadgeneratortrafficoutsidetestwindow

@@ -1118,7 +1118,7 @@ jaeger:
 prometheus:
   enabled: true
   alertmanager:
-    enabled: true
+    enabled: false
     persistence:
       enabled: false
     resources:
