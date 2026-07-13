@@ -44,10 +44,18 @@ Stop early if any of the following thresholds are exceeded:
 
 ## Dashboard mapping
 Use Grafana in the `techx-observability` namespace and focus on the following signals for namespace `techx-tf4`:
-- latency dashboard for the storefront and checkout endpoints
-- error rate dashboard for checkout and cart requests
-- request-rate dashboard for the overall webstore traffic
-- pod resource dashboards to verify CPU and memory stability
+
+| Acceptance Criteria | Metric | Grafana Panel | Evidence |
+|---|---|---|---|
+| Checkout ≥99% | Success rate | Checkout Success | Screenshot |
+| Storefront p95 < 1s | HTTP p95 | Storefront Latency | Screenshot |
+| Error rate thấp | 5xx rate | Error Rate | Screenshot |
+| Không OOM | Container restart count | Pod Health | Screenshot |
+| Không Memory Pressure | Memory working set | Container Memory | Screenshot |
+| Node còn headroom | CPU/memory utilization | Node Overview | Screenshot |
+| Observability hoạt động | Trace count / span count | Jaeger/OpenSearch | Screenshot |
+
+Use these mappings as the evidence checklist when capturing screenshots and dashboards.
 
 ## Evidence checklist
 Capture the following before closing the task:
