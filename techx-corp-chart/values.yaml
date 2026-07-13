@@ -1344,6 +1344,7 @@ opensearch:
   persistence:
     enabled: true
     size: 8Gi
+    storageClass: "gp2"
   extraEnvs:
     - name: "bootstrap.memory_lock"
       value: "true"
