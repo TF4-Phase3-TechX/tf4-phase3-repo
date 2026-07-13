@@ -66,9 +66,9 @@ else
 fi
 
 echo "[3/7] Starting monitor..."
-./scripts/monitor-load-test.sh &
+bash scripts/monitor-load-test.sh &
 MONITOR_PID=$!
-trap 'kill $MONITOR_PID 2>/dev/null; "$KUBECTL_BIN" scale deployment/load-generator --replicas=0 -n "$NAMESPACE"' EXIT
+trap 'kill $MONITOR_PID 2>/dev/null; "$KUBECTL_BIN" scale deployment/load-generator --replicas=0 -n "$NAMESPACE" 2>/dev/null || true' EXIT
 
 T0=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo "T0 (test start): $T0" | tee "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-T0.txt"
@@ -99,8 +99,13 @@ T1=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo "T1 (test end): $T1" | tee "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-T1.txt"
 
 echo "[5/7] Capturing evidence..."
-"$KUBECTL_BIN" cp "$NAMESPACE/$("$KUBECTL_BIN" get pod -n "$NAMESPACE" -l app=load-generator -o jsonpath='{.items[0].metadata.name}')":/tmp/task4-results_stats.csv \
-  "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-stats.csv" 2>/dev/null || true
+LOADGEN_POD=$("$KUBECTL_BIN" get pod -n "$NAMESPACE" -l app.kubernetes.io/name=load-generator -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+if [[ -n "$LOADGEN_POD" ]]; then
+  "$KUBECTL_BIN" cp "$NAMESPACE/$LOADGEN_POD":/tmp/task4-results_stats.csv \
+    "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-stats.csv" 2>/dev/null || true
+else
+  echo "WARN: No load-generator pod found to copy stats from."
+fi
 
 echo "[6/7] Scale down load-generator..."
 "$KUBECTL_BIN" scale deployment/load-generator --replicas=0 -n "$NAMESPACE"

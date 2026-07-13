@@ -1,8 +1,8 @@
 #!/bin/bash
 # Performance Test Monitor with Auto-Stop Conditions
 # Task: PERF-02.3
-# Owner: Tuấn
-# Reviewer: Hoàng
+# Owner: TuÃ¡ÂºÂ¥n
+# Reviewer: HoÃƒÂ ng
 
 set -euo pipefail
 
