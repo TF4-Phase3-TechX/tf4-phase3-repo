@@ -191,12 +191,7 @@ components:
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
-        command:
-          [
-            "sh",
-            "-c",
-            "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;",
-          ]
+        command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
 
   ad:
     enabled: true
@@ -265,12 +260,7 @@ components:
     initContainers:
       - name: wait-for-valkey-cart
         image: busybox:latest
-        command:
-          [
-            "sh",
-            "-c",
-            "until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;",
-          ]
+        command: ["sh", "-c", "until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;"]
 
   checkout:
     enabled: true
@@ -327,12 +317,7 @@ components:
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
-        command:
-          [
-            "sh",
-            "-c",
-            "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;",
-          ]
+        command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
 
   currency:
     enabled: true
@@ -403,12 +388,7 @@ components:
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
-        command:
-          [
-            "sh",
-            "-c",
-            "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;",
-          ]
+        command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
 
   frontend:
     enabled: true
@@ -455,7 +435,7 @@ components:
       - name: WEB_OTEL_SERVICE_NAME
         value: frontend-web
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-        value: http://localhost:8080/otlp-http/v1/traces # This expects users to use `kubectl port-forward ...`
+        value: http://localhost:8080/otlp-http/v1/traces             # This expects users to use `kubectl port-forward ...`
     resources:
       limits:
         memory: 250Mi
@@ -475,7 +455,7 @@ components:
       failureThreshold: 3
       successThreshold: 1
     securityContext:
-      runAsUser: 1001 # nextjs
+      runAsUser: 1001  # nextjs
       runAsGroup: 1001
       runAsNonRoot: true
 
@@ -488,11 +468,11 @@ components:
       port: 8080
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
-      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: httpcheck
       io.opentelemetry.discovery.metrics/config: |
-        targets:
-          - endpoint: "http://`endpoint`"
+          targets:
+            - endpoint: "http://`endpoint`"
     env:
       - name: ENVOY_PORT
         value: "8080"
@@ -554,7 +534,7 @@ components:
       failureThreshold: 3
       successThreshold: 1
     securityContext:
-      runAsUser: 101 # envoy
+      runAsUser: 101  # envoy
       runAsGroup: 101
       runAsNonRoot: true
 
@@ -566,12 +546,12 @@ components:
       port: 8081
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
-      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: nginx
       io.opentelemetry.discovery.metrics/config: |
-        endpoint: "http://`endpoint`/status"
-        collection_interval: "10s"
-        timeout: "20s"
+          endpoint: "http://`endpoint`/status"
+          collection_interval: "10s"
+          timeout: "20s"
     env:
       - name: IMAGE_PROVIDER_PORT
         value: "8081"
@@ -661,7 +641,7 @@ components:
       failureThreshold: 3
       successThreshold: 1
     securityContext:
-      runAsUser: 1000 # node
+      runAsUser: 1000  # node
       runAsGroup: 1000
       runAsNonRoot: true
 
@@ -772,7 +752,7 @@ components:
       limits:
         memory: 40Mi
     securityContext:
-      runAsUser: 33 # www-data
+      runAsUser: 33  # www-data
       runAsGroup: 33
       runAsNonRoot: true
 
@@ -801,7 +781,7 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
       limits:
-        memory: 500Mi # This is high to enable supporting the recommendationCache feature flag use case
+        memory: 500Mi            # This is high to enable supporting the recommendationCache feature flag use case
 
   shipping:
     enabled: true
@@ -906,12 +886,7 @@ components:
     initContainers:
       - name: init-config
         image: busybox
-        command:
-          [
-            "sh",
-            "-c",
-            "cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json",
-          ]
+        command: ["sh", "-c", "cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json"]
         volumeMounts:
           - mountPath: /config-ro
             name: config-ro
@@ -951,7 +926,7 @@ components:
       limits:
         memory: 700Mi
     securityContext:
-      runAsUser: 1000 # appuser
+      runAsUser: 1000  # appuser
       runAsGroup: 1000
       runAsNonRoot: true
 
@@ -977,11 +952,17 @@ components:
       repository: "postgres"
       tag: "17.6"
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 10Gi
     service:
       port: 5432
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
-      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: postgresql
       io.opentelemetry.discovery.metrics/config: |
         username: root
@@ -1012,10 +993,19 @@ components:
         value: otel
       - name: POSTGRES_DB
         value: otel
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
     mountedConfigMaps:
       - name: postgresql-init
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
+    additionalVolumeMounts:
+      - name: postgresql-data
+        mountPath: /var/lib/postgresql/data
+    additionalVolumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: postgresql-pvc
     resources:
       limits:
         memory: 100Mi
@@ -1033,7 +1023,7 @@ components:
         value: 6379
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
-      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: redis
       io.opentelemetry.discovery.metrics/config: |
         username: valkey
@@ -1042,7 +1032,7 @@ components:
       limits:
         memory: 20Mi
     securityContext:
-      runAsUser: 999 # valkey
+      runAsUser: 999  # valkey
       runAsGroup: 1000
       runAsNonRoot: true
 
@@ -1132,20 +1122,20 @@ opentelemetry-collector:
               - span.kind == SPAN_KIND_SERVER and resource.attributes["service.name"] == "frontend" and span.attributes["http.route"] == nil
             statements:
               # Workaround for Next.js high cardinality span name issue: https://github.com/vercel/next.js/issues/54694
-              - set(span.attributes["http.route"], "/api/cart") where IsMatch(span.attributes["http.target"], "\\/api\\/cart") # e.g. # /api/cart
-              - set(span.attributes["http.route"], "/api/checkout") where IsMatch(span.attributes["http.target"], "\\/api\\/checkout") # e.g. # /api/checkout
-              - set(span.attributes["http.route"], "/api/products/{productId}") where IsMatch(span.attributes["http.target"], "\\/api\\/products\\/.*") # e.g. /api/products/1YMWWN1N4O
-              - set(span.attributes["http.route"], "/api/recommendations") where IsMatch(span.attributes["http.target"], "\\/api\\/recommendations") # e.g. # /api/recommendations?productIds=...
-              - set(span.attributes["http.route"], "/api/data") where IsMatch(span.attributes["http.target"], "\\/api\\/data.*") # e.g. # " /api/data?contextKeys=telescopes" or /api/data/?contextKeys=cameras
+              - set(span.attributes["http.route"], "/api/cart") where IsMatch(span.attributes["http.target"], "\\/api\\/cart")  # e.g. # /api/cart
+              - set(span.attributes["http.route"], "/api/checkout") where IsMatch(span.attributes["http.target"], "\\/api\\/checkout")  # e.g. # /api/checkout
+              - set(span.attributes["http.route"], "/api/products/{productId}") where IsMatch(span.attributes["http.target"], "\\/api\\/products\\/.*")  # e.g. /api/products/1YMWWN1N4O
+              - set(span.attributes["http.route"], "/api/recommendations") where IsMatch(span.attributes["http.target"], "\\/api\\/recommendations")  # e.g. # /api/recommendations?productIds=...
+              - set(span.attributes["http.route"], "/api/data") where IsMatch(span.attributes["http.target"], "\\/api\\/data.*")  # e.g. # " /api/data?contextKeys=telescopes" or /api/data/?contextKeys=cameras
           - context: span
             statements:
               # SANITIZE ALL SPAN NAMES TO PREVENT CARDINALITY EXPLOSION
               - set_semconv_span_name("1.37.0", "unsanitized_span_name")
       resource:
         attributes:
-          - key: service.instance.id
-            from_attribute: k8s.pod.uid
-            action: insert
+        - key: service.instance.id
+          from_attribute: k8s.pod.uid
+          action: insert
 
     connectors:
       spanmetrics: {}
@@ -1153,8 +1143,7 @@ opentelemetry-collector:
     service:
       pipelines:
         traces:
-          processors:
-            [memory_limiter, resourcedetection, resource, transform, batch]
+          processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [otlp/jaeger, debug, spanmetrics]
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics]
@@ -1419,3 +1408,7 @@ opensearch:
   resources:
     limits:
       memory: 1100Mi
+
+bastionPortalAccess:
+  enabled: false
+  groupName: portal-bastion-group
