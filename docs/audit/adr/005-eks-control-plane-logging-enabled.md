@@ -38,7 +38,12 @@ cluster_enabled_log_types = ["api", "audit", "authenticator"]
 - CloudWatch Log Group: `/aws/eks/techx-tf4-cluster/cluster` — retention 90 ngày.
 - Log streams: `kube-apiserver-audit-*`, `kube-apiserver-*`, `authenticator-*`.
 
-**Không bật:** `controllerManager`, `scheduler` — do cân nhắc chi phí CloudWatch ingestion (~$5-10/tuần thêm nếu bật cả 5).
+**Không bật:** `controllerManager`, `scheduler` — **quyết định có chủ đích, không phải thiếu sót.**
+
+Confirmed bởi CDO-07 (Đinh Văn Ty, 2026-07-10):
+> "cái ni không phải là lỗi nha, vì phân tích hiện tại cho thấy 2 cái này chưa quá quan trọng và cũng như nếu dùng sẽ tăng chi phí → đẩy lên các tuần sau mới làm"
+
+Chi phí ước tính nếu bật thêm: ~$5-10/tuần. Defer sang Week 2+ khi có runtime evidence cần thiết.
 
 ---
 
