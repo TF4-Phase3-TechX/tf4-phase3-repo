@@ -6,6 +6,7 @@ jaeger: { enabled: false }
 prometheus: { enabled: false }
 grafana: { enabled: false }
 opensearch: { enabled: false }
+metrics-server: { enabled: false }
 
 default:
   envOverrides:

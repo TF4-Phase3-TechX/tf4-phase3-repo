@@ -19,9 +19,3 @@ components:
         value: "false"
       - name: LOCUST_HOST
         value: http://frontend-proxy:8080
-    resources:
-      limits:
-        memory: 1500Mi
-      requests:
-        cpu: 500m
-        memory: 512Mi
