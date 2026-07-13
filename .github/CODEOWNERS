@@ -2,3 +2,8 @@
 # Mọi PR cần ít nhất 1 thành viên tf4-leads approve
 
 * @TF4-Phase3-TechX/tf4-leads
+
+# Auditability artifacts
+/docs/audit/** @TF4-Phase3-TechX/tf4-leads
+/docs/evidence/** @TF4-Phase3-TechX/tf4-leads
+/.github/** @TF4-Phase3-TechX/tf4-leads

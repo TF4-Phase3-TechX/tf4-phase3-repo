@@ -41,7 +41,7 @@ Lưu ý: `kubectl get ns` bị giới hạn quyền cluster-scope, nhưng các l
 | AWS Account ID | 511825856493 |
 | Region | us-east-1 |
 | EKS Cluster | techx-tf4-cluster |
-| Kubernetes Version | 1.30 |
+| Kubernetes Version | 1.34 |
 | Cluster Status | ACTIVE |
 
 ---
@@ -72,7 +72,7 @@ Lưu ý: `kubectl get ns` bị giới hạn quyền cluster-scope, nhưng các l
 | ECR | Elastic Container Registry | Lưu image và pull image | Low/Medium | ECR repo/image list |
 | CloudWatch Logs | CloudWatch | Lưu log application/infrastructure nếu enabled | Medium | Log group screenshot |
 | CloudWatch Metrics | CloudWatch | Custom metrics / dashboard / alarm | Low/Medium | Metric/dashboard screenshot |
-| Observability Stack | Grafana, Jaeger, Prometheus, OpenSearch, OTel Collector | Tốn CPU/RAM trên worker nodes | High | `kubectl get pods`, `kubectl top pods` nếu có metrics-server |
+| Observability Stack | Grafana, Jaeger, Prometheus, OpenSearch, OTel Collector | Tốn CPU/RAM trên worker nodes | High | `kubectl get pods`, Grafana/Prometheus CPU-memory dashboards |
 | PVC / Data Volumes | PVC/EBS | Lưu data cho PostgreSQL/Valkey/Kafka/OpenSearch nếu có PVC | Medium/High | `kubectl get pvc` |
 | Data Transfer | AWS networking | Traffic cross-AZ/outbound có thể phát sinh phí | Medium | VPC/route/data transfer evidence |
 
@@ -84,7 +84,7 @@ Lưu ý: `kubectl get ns` bị giới hạn quyền cluster-scope, nhưng các l
 |---|---|---|---|
 | EKS Cluster | techx-tf4-cluster | Medium | `aws eks list-clusters`, `aws eks describe-cluster` |
 | Cluster Status | ACTIVE | Medium | `aws eks describe-cluster` |
-| Kubernetes Version | 1.30 | Low | `aws eks describe-cluster` |
+| Kubernetes Version | 1.34 | Low | `aws eks describe-cluster` |
 | Region | us-east-1 | Medium | AWS CLI output |
 | Node Group | techx-general-ng-20260707091432750200000017 | High | `aws eks list-nodegroups` |
 | Node Group Status | ACTIVE | High | `aws eks describe-nodegroup` |
@@ -206,6 +206,7 @@ This means CDO04 has enough namespace-level access for current COST-01 inventory
 
 | Hạng mục giá | Đơn giá sử dụng | Nguồn / Ghi chú |
 |---|---:|---|
+| EKS cluster control plane, standard support | `$0.10/giờ` | Kubernetes 1.34 đang thuộc EKS standard support; chưa tính extended support surcharge |
 | EC2 `t3.large` Linux On-Demand, us-east-1 | `$0.0832/giờ` | Tham chiếu giá On-Demand công khai |
 | NAT Gateway theo giờ | `$0.045/giờ` | Chưa bao gồm phí xử lý dữ liệu |
 | NAT Gateway xử lý dữ liệu | `$0.045/GB` | Phụ thuộc traffic thực tế |
@@ -220,6 +221,7 @@ This means CDO04 has enough namespace-level access for current COST-01 inventory
 
 | Thành phần | Số lượng / Giả định | Công thức | Ước tính theo tháng | Ước tính theo tuần | Ghi chú |
 |---|---:|---|---:|---:|---|
+| EKS Cluster Control Plane | 1 cluster, Kubernetes `1.34` standard support | `1 x $0.10 x 730h` | `$73.00` | `$16.80` | Phí control plane EKS cố định; 1.34 chưa vào extended support |
 | EC2 Worker Nodes | 2 x `t3.large` | `2 x $0.0832 x 730h` | `$121.47` | `$27.96` | Chi phí compute cố định chính |
 | Kịch bản EC2 scale tối đa | 4 x `t3.large` | `4 x $0.0832 x 730h` | `$242.94` | `$55.91` | Không phải cost hiện tại; là risk nếu node group scale lên maxSize=4 |
 | EBS Root Volumes | 40 GiB gp3 | `40 x $0.08` | `$3.20` | `$0.74` | 2 volumes x 20 GiB |
@@ -230,7 +232,7 @@ This means CDO04 has enough namespace-level access for current COST-01 inventory
 | CloudWatch Logs | 8 log groups | ingest + storage | `Pending / hiện tại thấp` | `Pending / hiện tại thấp` | Stored bytes hiện thấp, nhưng chưa rõ log ingestion trend |
 | CloudWatch Metrics/Alarms | Chưa validate đầy đủ | metric/alarm pricing | `Pending` | `Pending` | Cần kiểm tra dashboard/alarm inventory |
 | PVC Storage | Không tìm thấy PVC | `0 GiB` | `$0.00` | `$0.00` | Không thấy PVC cost, nhưng vẫn có persistence risk |
-| Observability Stack | Workloads chạy trong cluster | sử dụng EC2 gián tiếp | Đã bao gồm trong EC2 nodes | Đã bao gồm trong EC2 nodes | Cần `kubectl top` để right-size |
+| Observability Stack | Workloads chạy trong cluster | sử dụng EC2 gián tiếp | Đã bao gồm trong EC2 nodes | Đã bao gồm trong EC2 nodes | Cần Grafana/Prometheus metrics để right-size |
 | Data Transfer | Có thể phát sinh qua NAT/ALB/cross-AZ | usage-based | `Pending` | `Pending` | Cần Cost Explorer / traffic data |
 
 ---
@@ -239,9 +241,9 @@ This means CDO04 has enough namespace-level access for current COST-01 inventory
 
 | Loại tổng | Bao gồm | Ước tính theo tháng | Ước tính theo tuần | Ghi chú |
 |---|---|---:|---:|---|
-| **Tổng baseline cố định hiện tại** | EC2 worker nodes + EBS gp3 + NAT Gateway hourly + ALB hourly | **`$173.95/tháng`** | **`$40.03/tuần`** | Chưa bao gồm NAT data processing, ALB LCU, ECR storage, CloudWatch ingest, data transfer |
-| **Tổng baseline cố định + trung bình 1 ALB LCU** | Tổng baseline cố định hiện tại + trung bình 1 LCU | **`$179.79/tháng`** | **`$41.38/tuần`** | Thực tế hơn nếu ALB có traffic đều |
-| **Kịch bản node scale tối đa** | 4 x `t3.large` EC2 + EBS + NAT hourly + ALB hourly | **`$295.42/tháng`** | **`$68.00/tuần`** | Chỉ là scenario nếu node group scale từ desired=2 lên max=4; chưa bao gồm usage-based charges |
+| **Tổng baseline cố định hiện tại** | EKS control plane + EC2 worker nodes + EBS gp3 + NAT Gateway hourly + ALB hourly | **`$246.95/tháng`** | **`$56.83/tuần`** | Chưa bao gồm NAT data processing, ALB LCU, ECR storage, CloudWatch ingest, data transfer |
+| **Tổng baseline cố định + trung bình 1 ALB LCU** | Tổng baseline cố định hiện tại + trung bình 1 LCU | **`$252.79/tháng`** | **`$58.18/tuần`** | Thực tế hơn nếu ALB có traffic đều |
+| **Kịch bản node scale tối đa** | EKS control plane + 4 x `t3.large` EC2 + EBS + NAT hourly + ALB hourly | **`$368.42/tháng`** | **`$84.79/tuần`** | Chỉ là scenario nếu node group scale từ desired=2 lên maxSize=4; chưa bao gồm usage-based charges |
 
 ---
 
@@ -252,13 +254,13 @@ Target budget:
 $300/tuần
 
 Kết quả estimate ban đầu:
-- Tổng baseline cố định hiện tại: ~$40.03/tuần
-- Tổng baseline cố định + trung bình 1 ALB LCU: ~$41.38/tuần
-- Kịch bản node scale tối đa: ~$68.00/tuần
+- Tổng baseline cố định hiện tại: ~$56.83/tuần
+- Tổng baseline cố định + trung bình 1 ALB LCU: ~$58.18/tuần
+- Kịch bản node scale tối đa: ~$84.79/tuần
 
 Đánh giá:
 - Estimate baseline hiện tại đang thấp hơn budget $300/tuần.
-- Cost driver cố định chính là EC2 worker nodes.
+- Cost driver cố định chính là EC2 worker nodes, sau đó là EKS control plane fee.
 - NAT Gateway và ALB là các fixed cost driver quan trọng, kể cả khi traffic thấp.
 - Nếu node group scale từ 2 nodes lên 4 nodes, chi phí EC2 compute có thể tăng gần gấp đôi.
 - Actual cost vẫn cần được xác nhận bằng Cost Explorer vì estimate này chưa bao gồm NAT data processing, ALB LCU usage thực tế, - - CloudWatch ingestion, ECR image storage và data transfer.
@@ -273,7 +275,7 @@ Kết quả estimate ban đầu:
 | EKS Worker Nodes / EC2 | 2 running `t3.large` nodes | High | Đây là fixed compute cost chính của baseline |
 | Node Group Scaling | min=2, desired=2, max=4 | High | Nếu scale lên max=4, compute cost có thể tăng khoảng 2x so với desired hiện tại |
 | Multi-AZ Compute | Nodes chạy ở `us-east-1a` và `us-east-1b` | Medium | Tốt cho compute resilience, nhưng không đồng nghĩa full HA cho stateful workloads |
-| Instance Type | `t3.large` | Medium/High | Cần so sánh CPU/memory usage sau khi có `kubectl top` để right-size |
+| Instance Type | `t3.large` | Medium/High | Cần so sánh CPU/memory usage từ Grafana/Prometheus trước khi right-size |
 | NAT Gateway | 1 NAT Gateway, state `available` | High | Fixed cost đáng chú ý; đã validate Single NAT Gateway |
 | Application Load Balancer | 1 internet-facing ALB, active | Medium | Có hourly cost và LCU cost |
 | EBS Volumes | 2 gp3 volumes, tổng 40 GiB | Medium | Storage cost cơ bản của worker nodes |
@@ -289,12 +291,12 @@ Kết quả estimate ban đầu:
 
 | Risk ID | Risk | Impact | Likelihood | Mitigation |
 |---|---|---|---|---|
-| COST-RISK-01 | Worker nodes `t3.large` có thể quá lớn hoặc quá nhỏ so với tải thực tế | Tăng fixed cost hoặc thiếu performance | Medium | Right-size sau khi có CPU/memory từ `kubectl top` |
+| COST-RISK-01 | Worker nodes `t3.large` có thể quá lớn hoặc quá nhỏ so với tải thực tế | Tăng fixed cost hoặc thiếu performance | Medium | Right-size sau khi có CPU/memory trend từ Grafana/Prometheus |
 | COST-RISK-02 | Node group có maxSize = 4 | Compute cost có thể tăng nếu autoscale/manual scale lên max | Medium | Theo dõi scale event và Cost Explorer |
 | COST-RISK-03 | NAT Gateway tạo fixed cost cao | Tăng baseline cost ngay cả khi traffic thấp | Medium | Dùng Single NAT trong Week 1, monitor Cost Explorer |
 | COST-RISK-04 | ALB là fixed entry cost | Tăng baseline cost | Low/Medium | Theo dõi ALB LCU và request volume |
 | COST-RISK-05 | CloudWatch log groups chưa set retention | Log storage cost có thể tăng theo thời gian | Medium | Set retention phù hợp cho log groups non-critical |
-| COST-RISK-06 | Observability stack có nhiều components | Có thể ép node phải lớn hơn | Medium/High | Dùng `kubectl top pods` để xem CPU/RAM và right-size |
+| COST-RISK-06 | Observability stack có nhiều components | Có thể ép node phải lớn hơn | Medium/High | Dùng Grafana/Prometheus để xem CPU/RAM và right-size |
 | COST-RISK-07 | Không có PVC trong namespace | Có thể giảm storage cost hiện tại nhưng tăng data loss risk | High | Ghi nhận risk; cần ADR/follow-up cho stateful persistence |
 | COST-RISK-08 | Cost Explorer chưa có đủ billing data | Actual cost chưa đối chiếu được ngay | Medium | Dùng estimate trước, cập nhật actual sau |
 | COST-RISK-09 | `load-generator` đang chạy trong namespace | Có thể tạo traffic/cost/nhiễu metric nếu autostart | Medium | Kiểm tra cấu hình load-generator, chỉ bật khi test |
@@ -303,7 +305,7 @@ Kết quả estimate ban đầu:
 
 ## 12. Baseline Findings
 
-1. Hệ thống đang chạy trên EKS cluster `techx-tf4-cluster`, trạng thái `ACTIVE`, Kubernetes version `1.30`.
+1. Hệ thống đang chạy trên EKS cluster `techx-tf4-cluster`, trạng thái `ACTIVE`, Kubernetes version `1.34`.
 2. Node group hiện tại là `techx-general-ng-20260707091432750200000017`, trạng thái `ACTIVE`.
 3. Cluster có 2 worker nodes `t3.large`, chạy ở 2 AZ khác nhau: `us-east-1a` và `us-east-1b`.
 4. Node group có scaling config `min=2`, `desired=2`, `max=4`.
@@ -492,15 +494,7 @@ kubectl -n techx-tf4 get svc
 kubectl -n techx-tf4 get pvc
 ```
 
-Optional after metrics-server access is available:
-
-```bash
-kubectl -n techx-tf4 top pods
-```
-
-```bash
-kubectl top nodes
-```
+CPU/memory runtime evidence được lấy từ Grafana/Prometheus dashboard và PromQL theo cửa sổ quan sát 48-72 giờ. Namespace inventory vẫn dùng các lệnh kubectl ở trên để kiểm tra pod/deployment/service/PVC.
 
 ---
 
@@ -517,7 +511,7 @@ kubectl top nodes
 | CloudWatch log group size | Done | screenshots / CLI output |
 | Kubernetes pods/deployments/services | Done | screenshots / CLI output |
 | PVC count | Done - no resources found | screenshots / CLI output |
-| Kubernetes CPU/memory usage | Pending | Requires `kubectl top pods` / metrics-server access |
+| Kubernetes CPU/memory usage | Pending | Requires Grafana/Prometheus query window and dashboard capture |
 | Cost Explorer screenshot | Pending | runtime/cost-explorer-baseline |
 | Baseline cost estimate table | Done | this file |
 | Cost risk analysis | Done | this file |
@@ -552,7 +546,7 @@ EVIDENCE UPDATE
 Team đã validate các cost driver chính của baseline gồm EKS cluster, EKS managed node group, EC2 worker nodes, EBS volumes, NAT Gateway, ALB, ECR repository, CloudWatch log groups và Kubernetes workloads trong namespace techx-tf4.
 
 Kết quả chính:
-- EKS cluster: techx-tf4-cluster, ACTIVE, Kubernetes 1.30
+- EKS cluster: techx-tf4-cluster, ACTIVE, Kubernetes 1.34
 - Node group: techx-general-ng-20260707091432750200000017
 - Instance type: t3.large
 - Scaling: min=2, desired=2, max=4
@@ -584,5 +578,5 @@ docs/evidence/epic-04-cost-optimization/runtime/
 
 4. Ghi chú / Follow-up
 
-Actual cost from Cost Explorer is still pending until billing data is available. Next steps are to capture Cost Explorer, compare estimate vs actual cost, run kubectl top for CPU/memory evidence, and prepare right-sizing/cost saving recommendations.
+Actual cost from Cost Explorer is still pending until billing data is available. Next steps are to capture Cost Explorer, compare estimate vs actual cost, collect CPU/memory evidence from Grafana/Prometheus, and prepare right-sizing/cost saving recommendations.
 ```

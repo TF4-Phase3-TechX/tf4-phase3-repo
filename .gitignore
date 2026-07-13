@@ -98,3 +98,7 @@ note/
 !infra/bootstrap/.terraform.lock.hcl
 !infra/terraform/.terraform.lock.hcl
 !techx-corp-chart/Chart.lock
+
+# ── Local Scan Guide ──
+huong-dan-grafana.md
+docs/aio01/w1_tasks_summary.md

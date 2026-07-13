@@ -123,6 +123,8 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
+        env:
+          TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan
@@ -175,6 +177,7 @@ jobs:
             --set default.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY} \
             --set default.image.tag=preview \
             -f deploy/values-app-stamp.yaml \
+            -f deploy/values-flagd-sync.yaml \
             > /tmp/techx-corp-app.yaml
 
       - name: Upload rendered manifests

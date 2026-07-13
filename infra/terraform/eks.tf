@@ -20,8 +20,21 @@ module "eks" {
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true
 
-  # Cấp quyền admin EKS cho tài khoản/IAM Principal tạo cụm (để kubectl get nodes hoạt động)
-  enable_cluster_creator_admin_permissions = true
+  # Khai báo các Addon cần cài đặt cho EKS
+  cluster_addons = {
+    coredns            = {}
+    kube-proxy         = {}
+    vpc-cni            = {}
+    aws-ebs-csi-driver = {}
+  }
+
+  # EKS access entries are managed explicitly in eks-access-entries.tf.
+  enable_cluster_creator_admin_permissions = false
+
+  # Keep KMS key administration stable across local and CI Terraform runs.
+  kms_key_administrators = [
+    "arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply",
+  ]
 
   # Định nghĩa Managed Node Group chạy trong Private Subnets
   eks_managed_node_groups = {

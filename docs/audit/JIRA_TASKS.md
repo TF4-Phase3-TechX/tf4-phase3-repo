@@ -25,6 +25,7 @@
 - **Summary:** `[Compliance] Rà soát quyền IAM và đánh giá Access Analyzer`
 - **Assignee:** Member 1
 - **Label:** `Research`, `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Phát hiện user/role dư thừa quyền (over-privileged) dựa trên báo cáo Access Analyzer.
 **✅ Sub-tasks (Definition of Done):**
@@ -38,6 +39,7 @@
 - **Summary:** `[Compliance] Đánh giá thay đổi cấu hình hạ tầng lõi trên AWS Config`
 - **Assignee:** Member 2
 - **Label:** `Research`, `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đối chiếu resource timeline của AWS Config với checklist yêu cầu an toàn.
 **✅ Sub-tasks (Definition of Done):**
@@ -51,6 +53,7 @@
 - **Summary:** `[Docs] Thu thập và lưu vết tài liệu quyết định kiến trúc (ADR)`
 - **Assignee:** Member 3
 - **Label:** `Docs`
+- **Priority:** P2
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Viết tóm tắt các quyết định thay đổi thiết kế và đẩy vào thư mục `/adr`.
 **✅ Sub-tasks (Definition of Done):**
@@ -64,6 +67,7 @@
 - **Summary:** `[Docs] Đóng gói Báo cáo Evidence Audit tuần cho Friday Presentation`
 - **Assignee:** Member 4
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P2
 - **Estimate:** 6h (1.5 SP)
 - **Mục tiêu:** Gom bằng chứng từ các thành viên khác vào ngày chốt báo cáo để xuất file.
 **✅ Sub-tasks (Definition of Done):**
@@ -78,6 +82,7 @@
 - **Summary:** `[Log-Tracking] Nghiệm thu lưu vết CloudTrail an toàn vào S3`
 - **Assignee:** Member 5
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Giao requirement cho DevOps và truy cập S3 kiểm chứng log CloudTrail được ghi nhận.
 **✅ Sub-tasks (Definition of Done):**
@@ -91,6 +96,7 @@
 - **Summary:** `[Log-Tracking] Nghiệm thu log Control Plane EKS trên CloudWatch`
 - **Assignee:** Member 6
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Giao requirement cho DevOps, kiểm tra Log Groups query được log EKS.
 **✅ Sub-tasks (Definition of Done):**
@@ -104,6 +110,7 @@
 - **Summary:** `[Compliance] Xác nhận chính sách Retention vòng đời log OpenSearch`
 - **Assignee:** Member 7
 - **Label:** `Research`, `Need-Review`
+- **Priority:** P2
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Review mã JSON chính sách ISM (Index State Management) do DevOps cung cấp.
 **✅ Sub-tasks (Definition of Done):**
@@ -117,6 +124,7 @@
 - **Summary:** `[Log-Tracking] Phối hợp nghiệm thu biểu đồ log lỗi (401, 403) trên Grafana`
 - **Assignee:** Member 8
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đảm bảo Dashboard hiển thị đúng dữ liệu log truy cập trái phép.
 **✅ Sub-tasks (Definition of Done):**
@@ -131,6 +139,7 @@
 - **Summary:** `[Delegation] Soạn thảo chi tiết các ticket bàn giao cấu hình cho DevOps (CDO08)`
 - **Assignee:** Shared (Các thành viên Nhóm 2)
 - **Label:** `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Viết file requirement Markdown chuyển sang board của team DevOps.
 **✅ Sub-tasks (Definition of Done):**
@@ -147,6 +156,7 @@
 - **Summary:** `[Observability] Thiết lập SLI queries, Grafana alerts và Alertmanager receiver (OBS-01)`
 - **Assignee:** Shared
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 8h (2 SP)
 - **Mục tiêu:** Khắc phục tình trạng missing SLO alerts cho checkout/payment/Kafka/DB.
 **✅ Sub-tasks (Definition of Done):**
@@ -160,6 +170,7 @@
 - **Summary:** `[Observability] Redact dữ liệu nhạy cảm (PII/payment/prompt) trong logs/traces (OBS-02)`
 - **Assignee:** Shared
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 8h (2 SP)
 - **Mục tiêu:** Ẩn các thông tin nhạy cảm (order/payment/email/AI prompt) trong telemetry.
 **✅ Sub-tasks (Definition of Done):**
@@ -173,6 +184,7 @@
 - **Summary:** `[Auditability] Sửa CODEOWNERS và tạo template ADR/runbook/postmortem (OBS-03)`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P2
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đảm bảo CODEOWNERS trỏ đúng đường dẫn và team có đủ template mẫu.
 **✅ Sub-tasks (Definition of Done):**
@@ -189,6 +201,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng Security Gaps (SEC-01, SEC-02) từ CDO-08`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Xác nhận 100% không còn unauthenticated access và không lộ credentials.
 **✅ Sub-tasks (Definition of Done):**
@@ -202,6 +215,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng Reliability/K8S Gaps (REL-01/02/03/06, K8S-01/04) từ CDO-08`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Verify tính toàn vẹn của Kafka event, DB data loss, ADR và độ bền dữ liệu.
 **✅ Sub-tasks (Definition of Done):**
@@ -214,6 +228,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng Cost Gaps (COST-02, K8S-03) từ CDO-04`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Xác nhận quyết định retention cho observability và resource quota compatibility.
 **✅ Sub-tasks (Definition of Done):**
@@ -226,6 +241,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng AI Gaps (AI-01, AI-02) từ AIO-01`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Xác nhận không lộ prompt/PII và AI eval/fallback document.
 **✅ Sub-tasks (Definition of Done):**
@@ -238,6 +254,7 @@
 - **Summary:** `[Verify] Review toàn bộ evidence file đảm bảo đúng template và naming convention`
 - **Assignee:** Audit Lead / PM
 - **Label:** `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đảm bảo tất cả evidence file của EPIC-01 đều có 4 section bắt buộc.
 **✅ Sub-tasks (Definition of Done):**
@@ -245,6 +262,20 @@
   - [ ] Đảm bảo nội dung có đủ 4 mục theo format yêu cầu.
   - [ ] Báo cáo PM/Lead các file lỗi để yêu cầu fix.
   - [ ] **Evidence:** Tick 100% check-list này và để lại link report vào comment Jira.
+
+**Task 18: Kiểm toán KMS CMK (Key Policy & Rotation)**
+- **Issue Type:** Task
+- **Summary:** `[Compliance] Kiểm tra Key Policy và Auto Rotation của KMS CMK cho CloudTrail`
+- **Assignee:** Member 4
+- **Label:** `Research`, `Need-Review`
+- **Priority:** P1
+- **Estimate:** 2h (0.5 SP)
+- **Mục tiêu:** Đảm bảo dữ liệu CloudTrail (và các evidence khác) được mã hóa bằng CMK an toàn, không bị over-privileged quyền Decrypt.
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] Thu thập ARN của KMS CMK từ team DevOps.
+  - [ ] Kiểm tra Key Policy, đảm bảo giới hạn chặt chẽ quyền `kms:Decrypt`.
+  - [ ] Xác nhận tính năng Key Rotation đã được bật (`aws kms get-key-rotation-status`).
+  - [ ] **Evidence:** Screenshot cấu hình Key Policy hoặc output lệnh AWS CLI.
 
 ---
 
