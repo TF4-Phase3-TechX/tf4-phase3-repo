@@ -4,6 +4,10 @@ set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-techx-tf4}"
 MODE="${1:-dry-run}"
+RAMP_UP="1m"
+STEADY_STATE="15m"
+RAMP_DOWN="20s"
+TOTAL_RUNTIME="16m20s"
 
 if command -v kubectl >/dev/null 2>&1; then
   KUBECTL_BIN="$(command -v kubectl)"
@@ -29,8 +33,8 @@ case "$MODE" in
   full)
     USERS=200
     SPAWN=5
-    RUN_TIME="16m20s"
-    echo "=== FULL TEST: ${USERS} users, 15 min steady ==="
+    RUN_TIME="${TOTAL_RUNTIME}"
+    echo "=== FULL TEST: ${USERS} users | ramp-up ${RAMP_UP} | steady-state ${STEADY_STATE} | ramp-down ${RAMP_DOWN} | total ${RUN_TIME} ==="
     ;;
   *)
     echo "Usage: $0 [dry-run|full]"
@@ -68,6 +72,7 @@ trap 'kill $MONITOR_PID 2>/dev/null; "$KUBECTL_BIN" scale deployment/load-genera
 
 T0=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo "T0 (test start): $T0" | tee "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-T0.txt"
+echo "Timeline: ramp-up ${RAMP_UP} -> steady-state ${STEADY_STATE} -> ramp-down ${RAMP_DOWN} (total ${RUN_TIME})"
 
 if [[ "$MODE" == "full" ]]; then
   echo "[4/7] Starting Locust headless (LoadTestShape task4)..."

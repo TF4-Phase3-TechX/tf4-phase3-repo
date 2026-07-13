@@ -3,10 +3,24 @@
 ## Goal
 Run the flash-sale load test at 200 concurrent users with a 15-minute steady state and capture evidence.
 
+## Timeline
+- Ramp-up: 1 minute
+- Steady-state: 15 minutes
+- Ramp-down: 20 seconds
+- Total runtime: 16 minutes 20 seconds
+
+## Traffic mix
+The Locust scenario is designed to exercise realistic flash-sale behavior rather than a single lightweight endpoint.
+
+- Browse/discovery flow: product list, product detail, recommendations, reviews, ads, AI assistant, homepage
+- Cart flow: view cart and add-to-cart actions
+- Checkout flow: single-item and multi-item checkout
+
 ## Prerequisites
 - Access to the target Kubernetes cluster
 - `kubectl` configured for namespace `techx-tf4`
 - The `load-generator` deployment available
+- Flagd remains enabled; do not disable it for the test
 
 ## Dry-run
 ```bash
@@ -20,12 +34,29 @@ Then open the Locust UI at `http://localhost:8089` and verify the traffic mix an
 bash scripts/run-load-test-task4.sh full
 ```
 
-## Evidence
+## Stop conditions
+Stop early if any of the following thresholds are exceeded:
+- checkout-related errors exceed the configured threshold (5 errors per 100 log lines)
+- CPU usage exceeds 90% for monitored pods
+- memory usage exceeds 850Mi for monitored pods
+- load-generator CPU exceeds 80% or memory exceeds 1200Mi
+- node count grows beyond the baseline unexpectedly
+
+## Dashboard mapping
+Use Grafana in the `techx-observability` namespace and focus on the following signals for namespace `techx-tf4`:
+- latency dashboard for the storefront and checkout endpoints
+- error rate dashboard for checkout and cart requests
+- request-rate dashboard for the overall webstore traffic
+- pod resource dashboards to verify CPU and memory stability
+
+## Evidence checklist
+Capture the following before closing the task:
+- run output and timestamps from `task4-full-T0.txt` and `task4-full-T1.txt`
+- Locust stats CSV and HTML report
+- monitor log from `load-test-monitor-*.log`
+- Grafana screenshots for latency, error rate, and request rate
+- Jaeger traces for representative checkout and cart requests
+
+## Evidence artifacts
 Artifacts are written under:
 - `docs/evidence/epic-03-performance-efficiency/runtime/`
-
-## Stop conditions
-Stop early if:
-- checkout-related errors exceed the configured threshold
-- CPU or memory guardrails trigger
-- the monitor script indicates abnormal growth
