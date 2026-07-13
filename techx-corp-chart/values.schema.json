@@ -654,8 +654,22 @@
     "LivenessProbe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "httpGet"
+      "oneOf": [
+        {
+          "required": [
+            "httpGet"
+          ]
+        },
+        {
+          "required": [
+            "tcpSocket"
+          ]
+        },
+        {
+          "required": [
+            "grpc"
+          ]
+        }
       ],
       "properties": {
         "httpGet": {
@@ -693,32 +707,87 @@
               }
             },
             "port": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "grpc": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "service": {
+              "type": "string"
             }
           }
         },
         "initialDelaySeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "timeoutSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "periodSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "successThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "const": 1
         },
         "failureThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
     "ReadinessProbe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "httpGet"
+      "oneOf": [
+        {
+          "required": [
+            "httpGet"
+          ]
+        },
+        {
+          "required": [
+            "tcpSocket"
+          ]
+        },
+        {
+          "required": [
+            "grpc"
+          ]
+        }
       ],
       "properties": {
         "httpGet": {
@@ -756,24 +825,65 @@
               }
             },
             "port": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "grpc": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "service": {
+              "type": "string"
             }
           }
         },
         "initialDelaySeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "timeoutSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "periodSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "successThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "failureThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
