@@ -107,7 +107,7 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 
 ## PodPendingOrNotRunning
 
-- Threshold: pod phase differs from the live-cluster Running enum value `2` for `5m`.
+- Threshold: pod phase equals `1` (Pending), `4` (Failed) or `5` (Unknown) for `5m`.
 - Owner/severity: `tf4-platform` / `warning`.
 - Run `kubectl describe pod` and inspect `FailedScheduling` events.
 - Check resource requests, ResourceQuota, node capacity, taints, selectors, affinity and PVC status.
@@ -115,15 +115,15 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 
 ## GrafanaUnavailable
 
-- Threshold: Grafana deployment availability below one or absent for `2m`.
+- Threshold: Grafana deployment availability below one for `2m`.
 - Owner/severity: `tf4-observability` / `critical`.
 - Check Grafana pod status, sidecars, memory, mounted provisioning ConfigMaps and recent Helm changes.
-- Use Prometheus and Alertmanager directly while Grafana is unavailable.
+- Use Prometheus `/alerts` directly while Grafana is unavailable.
 - Roll back the observability Helm revision if the outage follows a deployment.
 
 ## PrometheusUnavailable
 
-- Threshold: Prometheus deployment availability below one or absent for `2m`.
+- Threshold: Prometheus deployment availability below one for `2m`.
 - Owner/severity: `tf4-observability` / `critical`.
 - Check pod status, OOM, storage, configuration reload logs and `/\-/ready` when reachable.
 - Prometheus cannot reliably notify on its own total failure. Confirm this condition through Grafana query errors, Kubernetes monitoring or an external uptime check.
@@ -131,7 +131,7 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 
 ## JaegerUnavailable
 
-- Threshold: Jaeger deployment availability below one or absent for `2m`.
+- Threshold: Jaeger deployment availability below one for `2m`.
 - Owner/severity: `tf4-observability` / `critical`.
 - Check Jaeger pod status, OOM/restarts, memory limits and collector export errors.
 - Continue incident triage with Prometheus and application logs until tracing is restored.
@@ -156,7 +156,9 @@ kubectl -n techx-observability get configmap prometheus-flash-sale-alerts
 kubectl -n techx-observability logs deployment/prometheus -c prometheus-server --since=10m
 ```
 
-Use Prometheus `/rules` or `/api/v1/rules` to confirm all four groups are loaded, and Alertmanager `/api/v2/alerts` to capture active alert state. Save screenshots and API output with UTC timestamps in the Task-3 evidence document.
+Use Prometheus `/rules` or `/api/v1/rules` to confirm all four groups are loaded, and Prometheus `/alerts` to capture active alert state. Save screenshots and API output with UTC timestamps in the Task-3 evidence document.
+
+> **Note:** Alertmanager is currently disabled. Alert notification delivery (Slack/email/webhook) is deferred until a receiver configuration is approved.
 
 The offline firing test is defined in `techx-corp-chart/prometheus/tests/flash-sale-alerts.test.yaml`. It proves that sustained load-generator traffic transitions the real production rule to firing after its ten-minute wait.
 
@@ -171,4 +173,4 @@ helm -n techx-observability history techx-observability
 helm -n techx-observability rollback techx-observability <previous-revision> --wait --timeout 10m
 ```
 
-After rollback, confirm Prometheus readiness, rule count, Alertmanager state and Grafana datasource health.
+After rollback, confirm Prometheus readiness, rule count and Grafana datasource health.

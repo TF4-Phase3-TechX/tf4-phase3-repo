@@ -172,11 +172,11 @@ groups:
 
       - alert: PodRestartBurst
         expr: |
-          max_over_time(k8s_container_restart_count{
+          max_over_time(k8s_container_restarts{
             k8s_namespace_name=~"techx-tf4|techx-observability"
           }[10m])
           -
-          min_over_time(k8s_container_restart_count{
+          min_over_time(k8s_container_restarts{
             k8s_namespace_name=~"techx-tf4|techx-observability"
           }[10m]) > 2
         for: 5m
@@ -244,9 +244,16 @@ groups:
       - alert: PodPendingOrNotRunning
         expr: |
           k8s_pod_phase{
-            k8s_namespace_name=~"techx-tf4|techx-observability",
-            phase=~"Pending|Failed|Unknown"
+            k8s_namespace_name=~"techx-tf4|techx-observability"
           } == 1
+          or
+          k8s_pod_phase{
+            k8s_namespace_name=~"techx-tf4|techx-observability"
+          } == 4
+          or
+          k8s_pod_phase{
+            k8s_namespace_name=~"techx-tf4|techx-observability"
+          } == 5
         for: 5m
         labels:
           severity: warning

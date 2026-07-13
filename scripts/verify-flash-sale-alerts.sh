@@ -6,7 +6,6 @@ OBS_NAMESPACE="${OBS_NAMESPACE:-techx-observability}"
 EXPECTED_RULE_COUNT="${EXPECTED_RULE_COUNT:-15}"
 
 PROMETHEUS_RULES_PATH="/api/v1/namespaces/${OBS_NAMESPACE}/services/http:prometheus:9090/proxy/api/v1/rules"
-ALERTMANAGER_ALERTS_PATH="/api/v1/namespaces/${OBS_NAMESPACE}/services/http:techx-observability-alertmanager:9093/proxy/api/v2/alerts"
 
 echo "Checking mounted flash-sale rule ConfigMap..."
 kubectl -n "$OBS_NAMESPACE" get configmap prometheus-flash-sale-alerts >/dev/null
@@ -52,8 +51,5 @@ jq -e '
   ] | length == 0
 ' <<<"$rules_json" >/dev/null
 
-echo "Checking Alertmanager API..."
-alerts_json="$(kubectl get --raw "$ALERTMANAGER_ALERTS_PATH")"
-jq -e 'type == "array"' <<<"$alerts_json" >/dev/null
-
-echo "Flash-sale alert verification passed: ${loaded_count} healthy rules; Alertmanager API reachable."
+echo "Flash-sale alert verification passed: ${loaded_count} healthy rules."
+echo "NOTE: Alertmanager is currently disabled. Alert visibility is via Prometheus /alerts and the Grafana Flash Sale Alert State dashboard."

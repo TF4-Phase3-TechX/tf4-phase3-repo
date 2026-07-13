@@ -13,7 +13,7 @@ The production rule file contains 15 Prometheus alerts across four groups:
 - `flash-sale-observability`: Grafana, Prometheus and Jaeger deployment availability.
 - `flash-sale-test-window`: sustained load-generator traffic outside an approved window.
 
-Every rule has a non-zero `for` duration, `severity`, `owner`, summary, description and runbook URL. Alertmanager is enabled and Prometheus loads the standalone rules from `/etc/alerts.d/*.yaml`.
+Every rule has a non-zero `for` duration, `severity`, `owner`, summary, description and runbook URL. Alertmanager is currently disabled (no receiver configured); alert visibility is via Prometheus `/alerts` and the Grafana Flash Sale Alert State dashboard. Prometheus loads the standalone rules from `/etc/alerts.d/*.yaml`.
 
 ## Repository verification
 
@@ -37,7 +37,6 @@ Rendered-manifest checks confirmed:
 - ConfigMap `prometheus-flash-sale-alerts` contains `flash-sale-alerts.yaml`.
 - Prometheus mounts the ConfigMap at `/etc/alerts.d`.
 - Prometheus `rule_files` contains `/etc/alerts.d/*.yaml`.
-- Alertmanager Service, ConfigMap and StatefulSet are rendered.
 - Grafana dashboard `Flash Sale Alert State` is provisioned with active count, pending/firing instances and state-over-time panels.
 
 ## Promtool validation and firing evidence
@@ -63,7 +62,7 @@ The firing test feeds sustained load-generator traffic into the production `Load
 - It is firing at fifteen minutes after satisfying the configured ten-minute wait.
 - The firing alert contains `severity=warning`, `owner=tf4-performance` and `component=load-generator`.
 
-CI repeats both `promtool check rules` and `promtool test rules` for every chart/deploy change.
+CI repeats both `promtool check rules` and `promtool test rules` for every chart/deploy change once CI steps are added in a dedicated PR.
 
 ## Live metric discovery performed before implementation
 
@@ -71,7 +70,7 @@ The live Prometheus datasource was queried before selecting the expressions. It 
 
 - `traces_span_metrics_calls_total` and `traces_span_metrics_duration_milliseconds_bucket` with frontend, checkout, cart and load-generator series.
 - `container_oom_events_total`.
-- `k8s_container_restarts`, `k8s_pod_phase`, `k8s_node_condition_ready` and `k8s_deployment_available`.
+- `k8s_container_restarts`, `k8s_pod_phase`, `k8s_node_condition` and `k8s_deployment_available`.
 - `k8s_node_cpu_usage`, `k8s_node_memory_usage_bytes` and `k8s_node_memory_available_bytes`.
 
 At discovery time, the proposed SLI expressions returned:
@@ -94,7 +93,6 @@ The deployment workflow automatically saves:
 
 - `prometheus-flash-sale-alerts-configmap.yaml`
 - `prometheus-rule-state.json`
-- `alertmanager-alert-state.json`
 - Helm status and observability resource state
 
 After deployment, run:
@@ -106,7 +104,8 @@ bash scripts/verify-flash-sale-alerts.sh
 Expected result:
 
 ```text
-Flash-sale alert verification passed: 15 healthy rules; Alertmanager API reachable.
+Flash-sale alert verification passed: 15 healthy rules.
+NOTE: Alertmanager is currently disabled. Alert visibility is via Prometheus /alerts and the Grafana Flash Sale Alert State dashboard.
 ```
 
 Attach or link the deploy-evidence artifact and capture these UI states:
@@ -115,14 +114,13 @@ Attach or link the deploy-evidence artifact and capture these UI states:
 | --- | --- |
 | Prometheus `/rules` | Four `flash-sale-*` groups, 15 healthy rules |
 | Prometheus `/alerts` | Inactive, pending or firing state visible |
-| Alertmanager | API/UI reachable; firing alerts visible when present |
 | Grafana `Flash Sale Alert State` dashboard | Active count and pending/firing state panels load from `webstore-metrics` |
 
 ## Operational handling
 
-The complete owner mapping, first response, alert-specific diagnosis and mitigation steps are in `docs/runbooks/flash-sale-alerts.md`.
+The complete owner mapping, first response, alert-specific diagnosis and mitigation steps are in `docs/audit/runbooks/flash-sale-alerts.md`.
 
-Approved load tests must use a time-bounded Alertmanager silence matching only `LoadGeneratorTrafficOutsideTestWindow`. The silence must expire at the documented test end; `LOCUST_AUTOSTART=false` remains the baseline.
+Approved load tests must use a time-bounded Prometheus silence (or Grafana silence when Alertmanager is disabled) matching only `LoadGeneratorTrafficOutsideTestWindow`. The silence must expire at the documented test end; `LOCUST_AUTOSTART=false` remains the baseline.
 
 ## Rollback and disable
 

@@ -93,3 +93,84 @@ tests:
       - eval_time: 10m
         alertname: CheckoutSuccessRateLow
         exp_alerts: []
+
+  - name: PodRestartBurst fires when restarts exceed threshold
+    interval: 1m
+    input_series:
+      - series: k8s_container_restarts{k8s_namespace_name="techx-tf4",k8s_pod_name="frontend-abc",k8s_container_name="frontend"}
+        values: 0 0 0 0 0 1 2 3 4 5 5 5 5 5 5 5 5 5 5 5
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: PodRestartBurst
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-platform
+              component: kubernetes
+              k8s_namespace_name: techx-tf4
+              k8s_pod_name: frontend-abc
+              k8s_container_name: frontend
+            exp_annotations:
+              summary: A container is restarting repeatedly
+              description: Container techx-tf4/frontend-abc/frontend gained more than two restarts in ten minutes.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podrestartburst
+
+  - name: PodPendingOrNotRunning fires for Pending pod (phase 1)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-tf4",k8s_pod_name="cart-pending-xyz"}
+        values: 1x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-platform
+              component: kubernetes-scheduling
+              k8s_namespace_name: techx-tf4
+              k8s_pod_name: cart-pending-xyz
+            exp_annotations:
+              summary: A pod is pending or not running
+              description: Pod techx-tf4/cart-pending-xyz remained outside the Running phase for five minutes; inspect scheduling events.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podpendingornotrunning
+
+  - name: PodPendingOrNotRunning fires for Failed pod (phase 4)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-observability",k8s_pod_name="grafana-failed-abc"}
+        values: 4x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: tf4-platform
+              component: kubernetes-scheduling
+              k8s_namespace_name: techx-observability
+              k8s_pod_name: grafana-failed-abc
+            exp_annotations:
+              summary: A pod is pending or not running
+              description: Pod techx-observability/grafana-failed-abc remained outside the Running phase for five minutes; inspect scheduling events.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#podpendingornotrunning
+
+  - name: PodPendingOrNotRunning does not fire for Running pod (phase 2)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-tf4",k8s_pod_name="frontend-running-abc"}
+        values: 2x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts: []
+
+  - name: PodPendingOrNotRunning does not fire for Succeeded job pod (phase 3)
+    interval: 1m
+    input_series:
+      - series: k8s_pod_phase{k8s_namespace_name="techx-tf4",k8s_pod_name="migration-job-done"}
+        values: 3x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PodPendingOrNotRunning
+        exp_alerts: []
