@@ -78,6 +78,7 @@ jobs:
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana-community https://grafana-community.github.io/helm-charts
           helm repo add opensearch https://opensearch-project.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
           helm repo update
           helm dependency build ./techx-corp-chart
 
@@ -187,6 +188,16 @@ jobs:
             --wait \
             --timeout 10m
 
+      - name: Verify Metrics API
+        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$OBS_NAMESPACE" rollout status deployment/metrics-server --timeout=180s
+          kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=180s
+          kubectl get --raw /apis/metrics.k8s.io/v1beta1 >/dev/null
+          kubectl top nodes
+
       - name: Deploy app
         run: |
           helm upgrade --install techx-corp ./techx-corp-chart \
@@ -214,7 +225,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p evidence
-          kubectl -n "$APP_NAMESPACE" get deploy,svc,pods -o wide > evidence/app-resources.txt || true
+          kubectl -n "$APP_NAMESPACE" get deploy,svc,pods,hpa -o wide > evidence/app-resources.txt || true
+          kubectl -n "$APP_NAMESPACE" get events --sort-by=.lastTimestamp > evidence/app-events.txt || true
+          kubectl -n "$APP_NAMESPACE" describe hpa > evidence/app-hpa.txt || true
+          kubectl top nodes > evidence/node-metrics.txt || true
+          kubectl -n "$APP_NAMESPACE" top pods > evidence/app-pod-metrics.txt || true
           kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
           helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
           helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true
