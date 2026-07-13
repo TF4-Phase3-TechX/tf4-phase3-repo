@@ -49,6 +49,22 @@
     },
     "opensearch": {
       "type": "object"
+    },
+    "bastionPortalAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "groupName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "groupName"
+      ]
     }
   },
   "required": [

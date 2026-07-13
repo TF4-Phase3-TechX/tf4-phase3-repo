@@ -28,3 +28,5 @@ components:
   llm: { enabled: false }
   postgresql: { enabled: false }
   valkey-cart: { enabled: false }
+
+bastionPortalAccess: { enabled: true }
