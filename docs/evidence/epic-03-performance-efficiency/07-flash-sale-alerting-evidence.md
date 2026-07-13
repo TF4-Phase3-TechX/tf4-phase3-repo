@@ -146,3 +146,12 @@ The baseline resource usage limits for the cluster observability stack are appro
 ## Known monitoring boundary
 
 Prometheus evaluates the observability availability rules and can alert when Grafana or Jaeger loses availability. A completely stopped Prometheus cannot evaluate its own `PrometheusUnavailable` rule. Total Prometheus failure therefore requires Grafana datasource-error monitoring, Kubernetes/external uptime monitoring, or another Prometheus evaluator. The rule and runbook explicitly document this self-monitoring boundary rather than claiming impossible in-process coverage.
+
+## CDO08 Security follow-up
+
+The following hardening tasks for Alertmanager credential management are separated from Task-3 and delegated to the CDO08 Security backlog:
+- Transition Secret provisioning to External Secrets combined with AWS Secrets Manager or a suitable secret manager.
+- Establish rotation and revoke procedures for the SMTP app password.
+- Review least-privilege RBAC for the CI identity allowed to create or update `alertmanager-smtp-auth`.
+- Review GitHub Environment protection rules, approvers, and access to Environment Secrets.
+- Audit retention and logging to ensure credentials or decoded configurations are not inadvertently exposed.

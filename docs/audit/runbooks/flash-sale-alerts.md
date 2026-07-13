@@ -160,6 +160,40 @@ Use Prometheus `/rules` or `/api/v1/rules` to confirm all four groups are loaded
 
 The offline firing test is defined in `techx-corp-chart/prometheus/tests/flash-sale-alerts.test.yaml`. It proves that sustained load-generator traffic transitions the real production rule to firing after its ten-minute wait.
 
+## Alertmanager configuration management
+
+Alertmanager recipient configuration and routing are managed via GitHub Environment Secrets to support multiple environments and recipients without hardcoding them in the chart.
+
+### Update recipient configuration
+
+To update the Alertmanager routing and recipients, create a `alertmanager-email-values.yaml` file with the desired route and receivers:
+
+```yaml
+alertmanager:
+  config:
+    route: ...
+    receivers: ...
+```
+
+Then create or update the base64-encoded secret for the target environment (e.g. `production`):
+
+```bash
+gh secret set ALERTMANAGER_EMAIL_VALUES_B64 \
+  --env production \
+  < <(base64 < alertmanager-email-values.yaml | tr -d '\n')
+```
+
+### Update SMTP credential
+
+The SMTP password is provided separately to avoid leaking it in the Helm release history or decoded values:
+
+```bash
+gh secret set ALERTMANAGER_SMTP_PASSWORD \
+  --env production
+```
+
+The GitHub CLI will prompt you to enter the password interactively. The CI workflow will securely mount this as a Kubernetes Secret (`alertmanager-smtp-auth`) during deployment.
+
 ## Disable and rollback
 
 To disable one bad rule, remove or correct only that rule in `flash-sale-alerts.yaml`, merge through the normal workflow and redeploy observability. Do not disable the whole alerting stack for a single malformed expression.
