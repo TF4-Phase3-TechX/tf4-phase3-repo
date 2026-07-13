@@ -1,0 +1,8 @@
+{
+  "mandate": "DIRECTIVE-01-NETWORK-EXPOSURE",
+  "utc_window": "2026-07-13T10:00:00Z - 2026-07-13T10:30:00Z",
+  "alb_dns": "k8s-tf4-storefront-xxx.ap-southeast-1.elb.amazonaws.com",
+  "git_sha": "a1b2c3d4",
+  "helm_tag": "v1.2.0",
+  "verifier": "CDO07-Audit-Team"
+}
