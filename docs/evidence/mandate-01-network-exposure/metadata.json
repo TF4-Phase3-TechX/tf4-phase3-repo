@@ -1,26 +1,70 @@
 {
-  "mandate": "DIRECTIVE-01-NETWORK-EXPOSURE",
+  "mandate": "MANDATE-01-NETWORK-EXPOSURE",
   "task": "Task-23 — Independent Verification (CDO07)",
-  "utc_window_before_deploy": "2026-07-13T15:56:38Z",
-  "utc_window_after_deploy":  "2026-07-13T16:55:09Z",
-  "alb_dns": "k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com",
-  "aws_region": "us-east-1",
-  "aws_account": "511825856493",
-  "eks_cluster": "techx-tf4-cluster",
-  "verifier_ip": "42.118.54.254",
-  "git_sha": "2ced9bbef1d6d7d356bb1253477c566a61364562",
-  "helm_release_revision": "FILL — helm -n techx-tf4 history techx-corp | tail -1",
-  "bastion_instance_id": "i-072084d1cf0b2f1c9",
-  "bastion_name": "tf4-portal-bastion",
-  "bastion_private_ip": "10.0.10.55",
-  "grafana_clusterip": "172.20.108.200",
-  "jaeger_clusterip": "172.20.88.27",
-  "locust_clusterip": "172.20.219.77",
-  "ssm_profile": "iam-tf4",
-  "verifier": "CDO07 — Task 23",
-  "st31_status": "DONE",
-  "st32_before_status": "DONE",
-  "st32_after_status": "PASS — 2026-07-13T16:55:09Z — all 6 routes blocked",
-  "st33_status": "PASS (CDO08 verified) — CDO07 independent verify pending profile iam-tf4",
-  "st34_status": "PARTIAL PASS (CDO08 evidence: 43516 spans, 76 services) — CDO07 verify pending"
+  "verdict": "PASS",
+  "verifier": "hung.hoangkim",
+  "verifier_role": "AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882",
+  "verified_at": "2026-07-14T01:42:33+07:00",
+
+  "infra": {
+    "alb_dns": "k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com",
+    "aws_region": "us-east-1",
+    "aws_account": "511825856493",
+    "eks_cluster": "techx-tf4-cluster",
+    "bastion_instance_id": "i-072084d1cf0b2f1c9",
+    "bastion_name": "tf4-portal-bastion",
+    "bastion_private_ip": "10.0.10.55",
+    "grafana_clusterip": "172.20.108.200",
+    "jaeger_clusterip": "172.20.88.27",
+    "locust_clusterip": "172.20.219.77"
+  },
+
+  "verifier_machine": {
+    "ip": "42.118.54.254",
+    "os": "Windows 11",
+    "aws_cli": "v2.34.61",
+    "ssm_plugin": "v1.2.835.0"
+  },
+
+  "subtasks": {
+    "ST-3.1": {
+      "status": "PASS",
+      "timestamp": "2026-07-13T15:56:38Z",
+      "evidence": "st31-env-setup.txt"
+    },
+    "ST-3.2-before": {
+      "status": "DONE",
+      "timestamp": "2026-07-13T15:58:17Z",
+      "evidence": "st32-curl-before.txt",
+      "exposed_routes": ["/grafana/", "/jaeger/ui/", "/loadgen/"]
+    },
+    "ST-3.2-after": {
+      "status": "PASS",
+      "timestamp": "2026-07-13T16:55:09Z",
+      "evidence": "st32-curl-after.txt",
+      "all_routes_blocked": true
+    },
+    "ST-3.3": {
+      "status": "PASS",
+      "timestamp": "2026-07-14T01:17:33+07:00",
+      "evidence": "st33-vpn-tunnel.txt",
+      "cdo07_session_id": "hung.hoangkim-7jyzlso8gnvkyl7t4vgr28nu3a",
+      "cdo08_session_id": "nguyen-cqzlbzsh4onaob6vh2536k3vj4",
+      "grafana_via_tunnel": "HTTP 301 -> 200",
+      "cloudtrail_verified": true
+    },
+    "ST-3.4": {
+      "status": "PASS",
+      "timestamp": "2026-07-14T01:42:33+07:00",
+      "evidence": "st34-loadtest-stats.txt",
+      "locust_session_id": "hung.hoangkim-pgcpt9cdjazcjytesyavbhcttq",
+      "jaeger_session_id": "hung.hoangkim-vqhplqcrezhltkkcatt6hfijjy",
+      "deployments_healthy": "22/22",
+      "jaeger_services": 19,
+      "latest_trace": "2026-07-14T01:42:33+07:00"
+    }
+  },
+
+  "git_sha_at_verify": "2ced9bbef1d6d7d356bb1253477c566a61364562",
+  "cdo08_image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:97dbd1b-frontend-proxy"
 }
