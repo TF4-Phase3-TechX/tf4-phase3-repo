@@ -9,7 +9,7 @@ import random
 import uuid
 import logging
 
-from locust import HttpUser, task, between
+from locust import HttpUser, task, between, LoadTestShape
 from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry, event
 
 from opentelemetry import context, baggage, trace
@@ -117,20 +117,26 @@ class WebsiteUser(HttpUser):
         super().__init__(*args, **kwargs)
         self.tracer = trace.get_tracer(__name__)
 
-    @task(1)
+    @task(10)
     def index(self):
         with self.tracer.start_as_current_span("user_index", context=Context()):
             logging.info("User accessing index page")
             self.client.get("/")
 
-    @task(10)
+    @task(8)
+    def browse_product_list(self):
+        with self.tracer.start_as_current_span("user_browse_product_list", context=Context()):
+            logging.info("User browsing product list")
+            self.client.get("/api/products", params={"currencyCode": "USD"})
+
+    @task(12)
     def browse_product(self):
         product = random.choice(products)
         with self.tracer.start_as_current_span("user_browse_product", context=Context(), attributes={"product.id": product}):
             logging.info(f"User browsing product: {product}")
             self.client.get("/api/products/" + product)
 
-    @task(3)
+    @task(8)
     def get_recommendations(self):
         product = random.choice(products)
         with self.tracer.start_as_current_span("user_get_recommendations", context=Context(), attributes={"product.id": product}):
@@ -140,14 +146,14 @@ class WebsiteUser(HttpUser):
             }
             self.client.get("/api/recommendations", params=params)
 
-    @task(2)
+    @task(6)
     def get_product_reviews(self):
         product = random.choice(products)
         with self.tracer.start_as_current_span("user_get_product_reviews", context=Context(), attributes={"product.id": product}):
             logging.info(f"User getting product reviews for product: {product}")
             self.client.get("/api/product-reviews/" + product)
 
-    @task(1)
+    @task(10)
     def ask_product_ai_assistant(self):
         product = random.choice(products)
         question = 'Can you summarize the product reviews?'
@@ -158,7 +164,7 @@ class WebsiteUser(HttpUser):
             }
             self.client.post("/api/product-ask-ai-assistant/" + product, json=question)
 
-    @task(3)
+    @task(6)
     def get_ads(self):
         category = random.choice(categories)
         with self.tracer.start_as_current_span("user_get_ads", context=Context(), attributes={"category": str(category)}):
@@ -168,13 +174,13 @@ class WebsiteUser(HttpUser):
             }
             self.client.get("/api/data/", params=params)
 
-    @task(3)
+    @task(12)
     def view_cart(self):
         with self.tracer.start_as_current_span("user_view_cart", context=Context()):
             logging.info("User viewing cart")
             self.client.get("/api/cart")
 
-    @task(2)
+    @task(13)
     def add_to_cart(self, user=""):
         if user == "":
             user = str(uuid.uuid1())
@@ -192,7 +198,7 @@ class WebsiteUser(HttpUser):
             }
             self.client.post("/api/cart", json=cart_item)
 
-    @task(1)
+    @task(8)
     def checkout(self):
         user = str(uuid.uuid1())
         with self.tracer.start_as_current_span("user_checkout_single", context=Context(), attributes={"user.id": user}):
@@ -202,7 +208,7 @@ class WebsiteUser(HttpUser):
             self.client.post("/api/checkout", json=checkout_person)
             logging.info(f"Checkout completed for user {user}")
 
-    @task(1)
+    @task(7)
     def checkout_multi(self):
         user = str(uuid.uuid1())
         item_count = random.choice([2, 3, 4])
@@ -215,7 +221,7 @@ class WebsiteUser(HttpUser):
             self.client.post("/api/checkout", json=checkout_person)
             logging.info(f"Multi-item checkout completed for user {user}")
 
-    @task(5)
+    @task(1)
     def flood_home(self):
         flood_count = get_flagd_value("loadGeneratorFloodHomepage")
         if flood_count > 0:
@@ -282,3 +288,33 @@ async def add_baggage_header(route: Route, request: Request):
         'baggage': ', '.join(filter(None, (existing_baggage, 'synthetic_request=true')))
     }
     await route.continue_(headers=headers)
+
+
+class Task4FlashSaleShape(LoadTestShape):
+    """Task-4: 200 users, 15 minutes steady-state with controlled ramp-up/down."""
+
+    RAMP_SECONDS = 40
+    STEADY_SECONDS = 900
+    RAMP_DOWN_SECONDS = 40
+    TARGET_USERS = 200
+    SPAWN_RATE = 5
+
+    def tick(self):
+        run_time = self.get_run_time()
+        ramp_end = self.RAMP_SECONDS
+        steady_end = ramp_end + self.STEADY_SECONDS
+        total_end = steady_end + self.RAMP_DOWN_SECONDS
+
+        if run_time < ramp_end:
+            return (self.TARGET_USERS, self.SPAWN_RATE)
+        if run_time < steady_end:
+            return (self.TARGET_USERS, self.SPAWN_RATE)
+        if run_time < total_end:
+            elapsed_down = run_time - steady_end
+            remaining = max(0, self.TARGET_USERS - int(elapsed_down * self.SPAWN_RATE))
+            return (remaining, self.SPAWN_RATE)
+        return None
+
+
+if os.environ.get("LOCUST_LOAD_SHAPE", "").lower() == "task4":
+    load_shape = Task4FlashSaleShape
