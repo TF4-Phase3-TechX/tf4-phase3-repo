@@ -16,7 +16,7 @@
 | 200 users / 15 phút, giữ SLO | Local `lean-v2` final run có 200 users, 15 phút; raw CSV được copy tại `artifacts/` | **Local pass; EKS pending** |
 | Browse/cart ≥99.5%, checkout ≥99%, storefront p95 <1s | Xem §2; flow SLO của local CSV đều đạt | **Local pass; EKS pending** |
 | Tự tìm/bịt bottleneck, không phá kiến trúc | Direct requests/limits, HPA CPU cho critical stateless path, Metrics Server và guardrail; không đổi flagd hay stateful autoscaling | **Implemented/rendered** |
-| Scale lên rồi xuống | Local frontend từng có tín hiệu HPA `1→2→3→1`; EKS policy hiện là 2–3 replica. EKS chưa có HPA timeline | **Local signal; EKS pending** |
+| Scale lên rồi xuống | Local frontend từng có tín hiệu HPA `1→2→3→1`; EKS canary đặt `frontend`/`checkout` HPA 1–3 replica. EKS chưa có HPA timeline | **Local signal; EKS pending** |
 | ~$300/tuần và cost/successful unit không phình | Giá AWS Price List và allocation model tại §5; Cost Explorer/CUR chưa đối chiếu | **Pre-live partial estimate only** |
 
 Ràng buộc mandate vẫn giữ nguyên: storefront public, cổng vận hành private, và không vô hiệu hóa/động vào cơ chế incident `flagd`.
@@ -64,10 +64,11 @@ Local lab dùng ladder `lean → balanced → headroom`: bắt đầu mức rese
 | Hạng mục | Thay đổi | Lý do / giới hạn |
 |---|---|---|
 | Resource contract | 12 service trong scope flash-sale có direct CPU/memory requests và limits tại [`values.yaml`](../../../techx-corp-chart/values.yaml): `frontend-proxy`, `frontend`, `cart`, `product-catalog`, `recommendation`, `product-reviews`, `llm`, `checkout`, `currency`, `payment`, `shipping`, `load-generator` | Scheduler có reservation rõ ràng; CPU HPA có baseline. Không tune node size/count. |
-| Autoscaling | Chỉ `frontend` và `checkout` dùng `autoscaling/v2`, min 2 / max 3, target CPU 70%, scale up tối đa +1 pod/60s, scale-down stabilization 300s tại [`values.yaml`](../../../techx-corp-chart/values.yaml) và [`hpa.yaml`](../../../techx-corp-chart/templates/hpa.yaml) | Giữ HA baseline 2 replica và tránh autoscale stateful/flagd/observability. Deployment bỏ `spec.replicas` khi HPA enabled để tránh ownership conflict. |
+| Replica baseline | `cart`, `frontend-proxy`, `payment`, `product-catalog`, `shipping` dùng 1 replica; `frontend` và `checkout` dùng HPA floor 1 tại [`values.yaml`](../../../techx-corp-chart/values.yaml) | Giải phóng capacity/cost trước Flash Sale. Không scale stateful, flagd hoặc observability. |
+| Autoscaling | Chỉ `frontend` và `checkout` dùng `autoscaling/v2`, min 1 / max 3, target CPU 70%, scale up tối đa +1 pod/60s, scale-down stabilization 300s tại [`values.yaml`](../../../techx-corp-chart/values.yaml) và [`hpa.yaml`](../../../techx-corp-chart/templates/hpa.yaml) | Deployment bỏ `spec.replicas` khi HPA enabled; `minReplicas: 1` là effective baseline. |
 | Kubernetes resource metrics | Metrics Server là dependency của release observability, không phải workflow riêng; request `50m/100Mi`, limit `100m/200Mi` tại [`values-observability.yaml`](../../../deploy/values-observability.yaml) | Cấp `metrics.k8s.io` cho HPA CPU và `kubectl top`; Prometheus vẫn phụ trách dashboard/SLO, không thay thế Metrics API. |
-| Load control | [`values-load-test-task4.yaml`](../../../deploy/values-load-test-task4.yaml) cấu hình API-only, 200 users, spawn 5/s, total 16m20s; `LOCUST_AUTOSTART=false` | Traffic chỉ bật trong phiên được duyệt, không tạo load ngầm. Runbook giải thích 1m ramp-up + 15m steady + 20s ramp-down. |
-| Fail-closed guard | [`monitor-load-test.sh`](../../../scripts/monitor-load-test.sh) từ chối chạy nếu Metrics API, node metrics hoặc pod metrics không có; dừng/scale load-generator về 0 khi checkout error hoặc usage vượt guardrail/thiếu limit | Tránh chạy mù không có resource gate; snapshot pods/events/HPA/top được lưu khi stop. |
+| Load control | [`values-load-test-task4.yaml`](../../../deploy/values-load-test-task4.yaml) cấu hình API-only, 200 users, spawn 5/s, total 16m20s, browser traffic disabled và `LOCUST_AUTOSTART=false`; `load-generator` có 1 replica | Pod chỉ phát traffic khi operator bắt đầu phiên được duyệt. Runbook giải thích 1m ramp-up + 15m steady + 20s ramp-down. |
+| Evidence gate | [`RUNBOOK.md`](./RUNBOOK.md) yêu cầu UI-first evidence từ Grafana, Jaeger, OpenSearch, Alertmanager và Locust; chỉ Locust CSV/HTML là raw load-generator output | Không dùng `monitor-load-test.sh`, CLI dump hay raw Prometheus/Alertmanager JSON làm evidence MANDATE-02. |
 | Delivery checks | [CI](../../../.github/workflows/ci.yaml) render/lint chart, assert 12 deployments có CPU/memory requests/limits và chỉ có HPA `frontend`,`checkout`; [deploy](../../../.github/workflows/deploy.yaml) deploy observability trước, verify Metrics API rồi mới deploy app và chụp HPA/pod/node evidence | Giảm lỗi render/order trước canary; không phải runtime test evidence. |
 
 ### 3.3 Capacity boundaries và open risk
@@ -83,11 +84,11 @@ Local lab dùng ladder `lean → balanced → headroom`: bắt đầu mức rese
 Dùng lại [Task-4 runbook](../../epic-03-performance-efficiency/runtime/RUNBOOK.md) và harness hiện có, không tạo workflow/harness mới:
 
 1. Deploy observability; verify `deployment/metrics-server`, `apiservice/v1beta1.metrics.k8s.io`, raw `/apis/metrics.k8s.io/v1beta1`, `kubectl top nodes`.
-2. Deploy app với `values-app-stamp.yaml`; xác nhận HPA target/CPU metrics, requests/limits và quota headroom.
+2. Deploy app với `values-app-stamp.yaml`; xác nhận 5 Deployment static có 1 available replica, `frontend`/`checkout` HPA min/current là 1, HPA target/CPU metrics, requests/limits và quota headroom.
 3. Chụp pre-test baseline đang có tại [`TASK-5-Pre-Load-Test-Baseline.md`](./TASK-5-Pre-Load-Test-Baseline.md), rồi chạy API-only 200-user shape. Bài test không tự chạy do `LOCUST_AUTOSTART=false`.
-4. Giám sát SLO, restart/OOM, per-pod limit utilization, node utilization, HPA desired/current replicas, events và node count. Dừng nếu monitor fail-closed, checkout log error vượt ngưỡng, CPU >90% limit hoặc memory >85% limit; monitor scale load-generator về 0 khi gate fail.
-5. Sau ramp-down, chờ HPA scale-down window (300s) và thu HPA/events/pod/node metrics. Không pass scale-down nếu replica/usage không quay lại baseline hợp lý.
-6. Chụp Locust CSV/HTML, monitor log, Grafana/Prometheus SLO/resource windows, HPA describe, restart/OOM snapshot, deploy evidence; sau đó so Cost Explorer/CUR và T3 credit/surplus-credit data cho đúng UTC window.
+4. Giám sát SLO, restart/OOM, per-pod limit utilization, node utilization, HPA desired/current replicas, events và node count. Dừng theo safety stop trong [`RUNBOOK.md`](./RUNBOOK.md) nếu checkout error hoặc resource gate vượt ngưỡng.
+5. Sau ramp-down, chờ HPA scale-down window (300s) và xác nhận `frontend`/`checkout` quay về 1 replica; thu evidence UI cho HPA, events, pods và node metrics. Không pass scale-down nếu replica/usage không quay lại baseline này.
+6. Chụp Locust CSV/HTML và UI evidence cùng test window từ Grafana, Jaeger, OpenSearch và Alertmanager; sau đó so Cost Explorer/CUR và T3 credit/surplus-credit data cho đúng UTC window.
 
 ## 5. AWS Price List cost estimate (pre-live)
 

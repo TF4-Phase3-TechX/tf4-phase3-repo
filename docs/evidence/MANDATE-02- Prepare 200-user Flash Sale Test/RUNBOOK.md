@@ -25,7 +25,7 @@ Sau khi pre-flight PASS, không thay Helm values, environment variables, replica
 | Thuộc tính | Giá trị được review |
 |---|---|
 | Load shape | `LOCUST_LOAD_SHAPE=task4` |
-| Autostart | `LOCUST_AUTOSTART=false` |
+| Autostart config | `LOCUST_AUTOSTART=false` (không dùng làm safety gate cho headless pod) |
 | Target | `200` users |
 | Traffic | API-only, browser traffic disabled |
 | Target host | `http://frontend-proxy:8080` |
@@ -34,7 +34,9 @@ Sau khi pre-flight PASS, không thay Helm values, environment variables, replica
 | Ramp-down | 20 giây |
 | Tổng runtime | 16 phút 20 giây |
 
-`Task4FlashSaleShape` trong `src/load-generator/locustfile.py` là source of truth: target 200, 60 giây ramp-up, 900 giây steady-state, 20 giây ramp-down. Shape dùng `3.33` users/s; CLI `--spawn-rate 5` vẫn được ghi trong command nhưng không thay đổi profile của shape.
+`Task4FlashSaleShape` trong `src/load-generator/locustfile.py` là source of truth: target 200, 60 giây ramp-up, 900 giây steady-state, 20 giây ramp-down. Shape dùng `3.33` users/s.
+
+> **Cảnh báo launch:** live validation cho thấy khi `LOCUST_HEADLESS=true` và `LOCUST_LOAD_SHAPE=task4`, Locust có thể bắt đầu phát traffic ngay khi replacement pod Ready, dù `LOCUST_AUTOSTART=false`. Vì vậy Helm apply Task-4 là **T0/start action**, không phải harmless pre-flight. Mở toàn bộ UI, tạo evidence folder và ghi T0 ngay trước Helm apply; không chạy thêm `kubectl exec ... locust` thứ hai trong cùng run.
 
 | Flow | Tasks | Weight | Tỷ lệ |
 |---|---|---:|---:|
@@ -94,9 +96,41 @@ Mọi screenshot UI phải:
 
 Trước test, operator dùng `kubectl` để xác nhận cluster reachable, pod application không ở `Error`, `CrashLoopBackOff`, `ImagePullBackOff`, `Pending` hoặc `CreateContainerError`; `flagd` đang chạy; Metrics API và `kubectl top` hoạt động; Grafana/Prometheus/Jaeger ready.
 
-Trước full run, Helm release phải đã áp dụng đúng [`values-load-test-task4.yaml`](../../../deploy/values-load-test-task4.yaml) và chart values đã review. Xác nhận deployment load-generator có `replicas=1`, `LOCUST_AUTOSTART=false`, `LOCUST_HEADLESS=true`, `LOCUST_USERS=200`, `LOCUST_SPAWN_RATE=5`, `LOCUST_RUN_TIME=16m20s`, `LOCUST_LOAD_SHAPE=task4` và `LOCUST_BROWSER_TRAFFIC_ENABLED=false`. Xác nhận `cart`, `frontend-proxy`, `payment`, `product-catalog` và `shipping` có một replica; HPA `frontend`/`checkout` có `minReplicas=1`, `maxReplicas=3`. Nếu một giá trị khác, **BLOCKED**: dừng tại đây, sửa qua Helm/Git workflow đã review, chụp lại baseline rồi mới tạo RUN_ID mới. Không sửa live bằng `kubectl set env`.
+Trước full run, chart values phải đã review: `cart`, `frontend-proxy`, `payment`, `product-catalog` và `shipping` có một replica; HPA `frontend`/`checkout` có `minReplicas=1`, `maxReplicas=3`. Nếu một giá trị khác, **BLOCKED**: dừng tại đây, sửa qua Helm/Git workflow đã review, chụp lại baseline rồi mới tạo RUN_ID mới. Không sửa live bằng `kubectl set env`.
 
-Chụp UI baseline theo `TASK-5-Pre-Load-Test-Baseline.md`, không tạo thêm file text. Trong Grafana Flash Sale Verification Dashboard, đặt range 30 phút ngay trước T0 và chụp các panel tương ứng vào `dashboard/` của RUN_ID.
+Chụp UI baseline theo `TASK-5-Pre-Load-Test-Baseline.md`, không tạo thêm file text. Trong Grafana Flash Sale Verification Dashboard, đặt range 30 phút ngay trước T0 và chụp các panel tương ứng vào `dashboard/` của RUN_ID. Giữ Grafana, Jaeger, Alertmanager và Grafana Explore/OpenSearch mở trước Helm apply; screenshot T0 phải được chụp ngay trước action này.
+
+### Apply Task-4 values — bắt đầu official run
+
+Trên cluster hai node hiện tại, scale generator về 0 trước để tránh RollingUpdate tạo pod thứ hai cùng reservation `500m CPU / 768Mi` và bị `Insufficient cpu`. Sau khi Helm tạo replacement pod Task-4, traffic có thể bắt đầu ngay khi pod Ready; **không chờ hoặc chạy command Locust thứ hai**.
+
+```bash
+export AWS_REGION=us-east-1
+export AWS_ACCOUNT_ID=511825856493
+export ECR_REPOSITORY=techx-corp
+export IMAGE_TAG=6b5058f
+export NS=techx-tf4
+
+kubectl -n "$NS" scale deployment/load-generator --replicas=0
+kubectl -n "$NS" rollout status deployment/load-generator --timeout=120s
+
+# Đây là T0/start action: giữ UI evidence mở trước khi chạy.
+helm upgrade --install techx-corp ./techx-corp-chart \
+  --namespace "$NS" \
+  --create-namespace \
+  --set default.image.repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" \
+  --set default.image.tag="$IMAGE_TAG" \
+  --set components.load-generator.imageOverride.tag=6b5058f-task4-shape-fix \
+  -f deploy/values-app-stamp.yaml \
+  -f deploy/values-flagd-sync.yaml \
+  -f deploy/values-load-test-task4.yaml \
+  --wait \
+  --timeout 10m
+```
+
+Ngay khi generator Ready, operator ghi T0 UTC, chụp checkpoint phút 1 / 7–8 / 14–15 theo mục 7, sau đó dùng safety stop ở mục 10 khi run đủ 16m20s hoặc khi đạt safety-stop condition. Xác nhận deployment có `replicas=1`, `LOCUST_HEADLESS=true`, `LOCUST_USERS=200`, `LOCUST_SPAWN_RATE=5`, `LOCUST_RUN_TIME=16m20s`, `LOCUST_LOAD_SHAPE=task4` và `LOCUST_BROWSER_TRAFFIC_ENABLED=false`.
+
+
 
 Các limitation phải giữ nguyên nếu còn xảy ra trên UI:
 
@@ -123,38 +157,25 @@ Khi port-forward mất kết nối, khởi động lại cùng lệnh trong term
 
 ## 6. Chạy load test và giữ raw output của Locust
 
-Thực hiện dry-run trước theo quy trình đã review. Nếu dry-run fail, không chạy full test.
-
-Dùng `kubectl` chỉ để vận hành load-generator; không redirect output vào `.txt` hoặc `.log`. Raw output bắt buộc được lấy từ Locust-generated CSV/HTML sau run.
+Tạo `<RUN_ID>`/evidence folder trước T0, mở toàn bộ UI, sau đó dùng Helm action ở mục 4 để bắt đầu run. Không chạy `kubectl exec ... locust` thứ hai: với Task-4 values hiện tại, headless Locust đã là process chính của pod và traffic bắt đầu khi pod Ready.
 
 ```bash
-export NS=techx-tf4
 export RUN_ID="official-$(date -u +%Y%m%dT%H%M%SZ)"
 export EVIDENCE="docs/evidence/MANDATE-02- Prepare 200-user Flash Sale Test/$RUN_ID"
 mkdir -p "$EVIDENCE/locust" "$EVIDENCE/dashboard" "$EVIDENCE/alerts" "$EVIDENCE/traces" "$EVIDENCE/logs" "$EVIDENCE/incident"
-
-kubectl -n "$NS" scale deployment/load-generator --replicas=1
-kubectl -n "$NS" rollout status deployment/load-generator --timeout=120s
-
-# Ghi T0/T1 trong Grafana time picker và SUMMARY.md, không tạo T0/T1 text artifact.
-kubectl -n "$NS" exec deploy/load-generator -- \
-  env LOCUST_LOAD_SHAPE=task4 LOCUST_AUTOSTART=false locust --headless \
-    --users 200 --spawn-rate 5 --run-time 16m20s \
-    --host http://frontend-proxy:8080 \
-    --csv /tmp/task4-results --html /tmp/task4-report.html \
-    --skip-log-setup -f locustfile.py --only-summary
 ```
 
-Ngay khi Locust hoàn thành, copy raw artifact vào `locust/`. Không coi artifact thiếu là PASS.
+> **Raw-artifact gate:** Task-4 Helm values hiện chưa truyền Locust `--csv` và `--html` arguments. Vì vậy Helm-launched run có thể tạo dashboard/trace/log/alert evidence, nhưng **chưa tự tạo CSV/HTML bắt buộc**. Không được đóng MANDATE-02/PASS nếu chưa có `stats.csv`, `stats-history.csv`, `failures.csv`, `exceptions.csv` và `report.html` từ cùng RUN_ID. Đây là `BLOCKED` cho official acceptance, không phải lý do chạy thêm process Locust trong pod.
+
+Sau T2/safety stop, scale generator về 0 theo mục 10. Chỉ copy Locust-generated CSV/HTML khi chart/harness đã tạo chúng trong pod của đúng RUN_ID; không coi output terminal, raw API hay file tự tính là thay thế. Khi artifact đã tồn tại, copy chúng vào `locust/` bằng các lệnh sau:
 
 ```bash
-LOADGEN_POD=$(kubectl -n "$NS" get pod -l app.kubernetes.io/name=load-generator -o jsonpath='{.items[0].metadata.name}')
-kubectl -n "$NS" cp "$LOADGEN_POD:/tmp/task4-results_stats.csv" "$EVIDENCE/locust/stats.csv"
-kubectl -n "$NS" cp "$LOADGEN_POD:/tmp/task4-results_stats_history.csv" "$EVIDENCE/locust/stats-history.csv"
-kubectl -n "$NS" cp "$LOADGEN_POD:/tmp/task4-results_failures.csv" "$EVIDENCE/locust/failures.csv" || true
-kubectl -n "$NS" cp "$LOADGEN_POD:/tmp/task4-results_exceptions.csv" "$EVIDENCE/locust/exceptions.csv" || true
-kubectl -n "$NS" cp "$LOADGEN_POD:/tmp/task4-report.html" "$EVIDENCE/locust/report.html"
-kubectl -n "$NS" scale deployment/load-generator --replicas=0
+LOADGEN_POD=$(kubectl -n techx-tf4 get pod -l app.kubernetes.io/name=load-generator -o jsonpath='{.items[0].metadata.name}')
+kubectl -n techx-tf4 cp "$LOADGEN_POD:/tmp/task4-results_stats.csv" "$EVIDENCE/locust/stats.csv"
+kubectl -n techx-tf4 cp "$LOADGEN_POD:/tmp/task4-results_stats_history.csv" "$EVIDENCE/locust/stats-history.csv"
+kubectl -n techx-tf4 cp "$LOADGEN_POD:/tmp/task4-results_failures.csv" "$EVIDENCE/locust/failures.csv" || true
+kubectl -n techx-tf4 cp "$LOADGEN_POD:/tmp/task4-results_exceptions.csv" "$EVIDENCE/locust/exceptions.csv" || true
+kubectl -n techx-tf4 cp "$LOADGEN_POD:/tmp/task4-report.html" "$EVIDENCE/locust/report.html"
 ```
 
 Mở `locust/report.html` để xác nhận peak **200 active users**, tổng duration và request/failure distribution. `stats-history.csv` là raw time-series chứng minh ramp/steady/ramp-down; `report.html` và CSV là raw load-generator output bắt buộc.
