@@ -5,9 +5,11 @@
 > đưa về private. Các route `/feature`, `/flagservice/` và `/otlp-http/` cũng phải
 > bị chặn trên public proxy dù hiện tại backend chỉ trả `503/404`. Phương án đề
 > xuất là thêm explicit deny cho các route vận hành trên Envoy public và dùng
-> **AWS SSM Session Manager** làm tunnel private access — không cần SSH key, không
-> cần whitelist IP, audit trail tự động qua CloudTrail. BTC dùng admin credential
-> có sẵn; team nội bộ dùng IAM read-only role. **Tài liệu này chưa phải phê
+> **AWS SSO cá nhân → SSM Session Manager → Bastion private → `kubectl
+> port-forward` trên Bastion → portal**. Phương án không cần SSH key, public IP,
+> inbound port 22 hoặc internal ALB. CloudTrail ghi nhận phiên SSM; Kubernetes
+> audit (nếu bật) ghi nhận API port-forward, nhưng không ghi nội dung HTTP/hành
+> động trong portal. **Tài liệu này chưa phải phê
 > duyệt triển khai; không được thay đổi runtime trước khi hoàn tất Approval gate.**
 
 ## 1. Trạng thái và quyết định cần đưa ra
@@ -18,10 +20,12 @@
 - Đã xác nhận Grafana, Jaeger và Load Generator bị public exposure thật.
 - Đã inventory các route operational/internal còn lại trong config và runtime.
 - Chưa thay đổi ingress, frontend-proxy hoặc workload runtime.
-- Quyết định cần approve: dùng **AWS SSM Session Manager qua EC2 Bastion** làm private access
-  — BTC dùng admin credential có sẵn, team nội bộ dùng IAM read-only role.
-  Không cần SSH key, không cần whitelist IP, audit trail tự động qua CloudTrail.
-  Chi phí ~$3.5/tuần (EC2 t3.nano). Sau đó chặn tường minh sáu internal route trên public Envoy.
+- Quyết định cần approve: dùng **AWS SSO cá nhân → SSM → EC2 Bastion private →
+  `kubectl port-forward` trên Bastion → portal**. Mỗi người dùng identity riêng;
+  không dùng shared admin credential. Không cần SSH key, public IP, inbound port
+  22 hoặc internal ALB. Chi phí chính là EC2 Bastion và logging/network liên quan,
+  cần CDO04 xác nhận bằng AWS Pricing Calculator. Sau đó chặn tường minh sáu
+  internal route trên public Envoy.
 
 Luồng thực hiện để mọi bên cùng hiểu:
 
@@ -101,44 +105,49 @@ Nguồn cấu hình:
 
 | Phương án                   | Chi phí/tuần | Audit trail               | Quản lý quyền                                            | Rủi ro storefront | Rollback   |
 | --------------------------- | ------------ | ------------------------- | -------------------------------------------------------- | ----------------- | ---------- |
-| `kubectl port-forward`      | $0           | ❌ Không có               | Cần kubeconfig + đúng role                               | Rất thấp          | Dễ         |
+| Laptop chạy `kubectl port-forward` trực tiếp | $0 | API/session-level nếu EKS audit bật; không có application-level audit | Phải cấp kubeconfig/RBAC trực tiếp cho từng người | Rất thấp | Dễ |
 | SSH Bastion (port 22)       | ~$3–5        | ✅ sshd log               | ❌ Phải quản lý SSH key + whitelist IP thay đổi liên tục | Thấp              | Dễ         |
-| **AWS SSM Session Manager** | **~$3–5**    | **✅ CloudTrail tự động** | **✅ IAM role — không cần key, không cần whitelist IP**  | Thấp              | Dễ         |
+| **SSM Bastion + `kubectl port-forward`** | **EC2 + log/network** | **CloudTrail + SSM shell log + EKS API audit; không có application-level audit** | **AWS SSO cá nhân + SSM IAM + Bastion EKS RBAC** | Thấp | Dễ |
 | VPN                         | ~$0–20       | 🔶 Tuỳ server             | Phức tạp                                                 | Thấp              | Trung bình |
-| Internal ALB                | +$20         | 🔶 ALB log                | Cần thêm đường vào VPC                                   | Thấp              | Trung bình |
 
 ### Lý do chọn SSM thay vì SSH Bastion
 
 - **SSH Bastion:** IP người dùng thay đổi liên tục → phải sửa Security Group tay. Cấp key mới cho từng người → phải generate + gửi key an toàn. Mentor mới → lại làm lại từ đầu.
 - **SSM:** Quyền = IAM role/policy. Thêm người mới → attach policy 1 lệnh. IP không quan trọng vì kết nối qua HTTPS. Không mở port 22.
-- **BTC đã có admin credential** → họ dùng SSM ngay, không cần setup gì thêm.
+- **Mentor/BTC dùng AWS SSO identity cá nhân** → CloudTrail truy vết được người mở phiên; không dùng shared admin credential.
 
-### Lý do loại `kubectl port-forward`
+### Vì sao không cho Mentor/BTC port-forward trực tiếp từ laptop?
 
-- **Không audit được:** Không có log nào ghi lại ai đã vào Grafana/Jaeger lúc nào.
-- **Không dùng chung:** Port bind vào local machine — nhiều người không thể vào cùng lúc.
-- **Không persistent:** Đóng terminal là mất access.
+- Phải cấp kubeconfig và Kubernetes RBAC trực tiếp cho từng người.
+- Khó tạo một access path thống nhất khi môi trường máy và network khác nhau.
+- SSM Bastion tạo điểm vào private tập trung và CloudTrail ghi danh tính mở phiên.
+- `kubectl port-forward` vẫn được dùng, nhưng chạy trên Bastion bằng EKS role giới hạn.
+- Đóng session/process thì private access mất; đây là hành vi fail-closed mong muốn.
 
 ## 6. Phương án đề xuất cho TF4
 
-**Phương án chọn: AWS SSM Session Manager qua EC2 Bastion** — không cần SSH key, không cần whitelist IP.
+**Phương án chọn: AWS SSO cá nhân → SSM Session Manager → EC2 Bastion private → `kubectl port-forward` trên Bastion → portal.**
 
 ### 6.1 Tại sao chọn SSM?
 
 **Chi phí (cho CDO04 duyệt):**
 
-| Item                                                | Chi phí ước tính                               |
-| --------------------------------------------------- | ---------------------------------------------- |
-| EC2 `t3.nano` chạy bastion                          | ~$3.5/tuần                                     |
-| SSM Session Manager                                 | $0 (built-in AWS)                              |
-| Không cần VPN gateway, ALB thêm, hay manage SSH key | $0                                             |
-| **Tổng thêm**                                       | **~$3.5/tuần** — nằm trong ngân sách $300/tuần |
+| Item | Chi phí ước tính |
+|---|---|
+| EC2 Bastion `t3.nano` | `$0.0052/giờ`; baseline 8 giờ/tuần = `$0.0416/tuần` |
+| EBS gp3 mã hóa 8 GiB | Khoảng `$0.148/tuần`; EBS vẫn phát sinh phí khi EC2 dừng |
+| SSM Session Manager | Không có phí riêng cho tính năng Session Manager |
+| CloudWatch/S3 session log | Theo dung lượng và retention |
+| NAT Gateway hiện có | Không tính thêm fixed hourly cost cho SEC-05; cộng khoảng `$0.045/GB` data processing, chưa gồm data transfer/cross-AZ nếu có |
+| SSM VPC endpoints mới | **Không tạo**; 3 endpoint × 1 AZ × 168 giờ × `$0.01` ≈ `$5.04/tuần`, chưa gồm data |
+| Internal ALB | **Không sử dụng trong phương án này** |
+| **Fixed cost phương án chọn** | **Khoảng `$0.19/tuần` ở baseline 8 giờ; `$0.36/tuần` nếu chạy 40 giờ; tối đa khoảng `$1.02/tuần` nếu chạy 24x7. Chưa gồm NAT data, logging, data transfer và thuế.** |
 
-So sánh: VPN ~$20/tuần, Internal ALB ~$20/tuần, SSH Bastion tương đương nhưng tốn công quản lý key + SG.
+**Kết luận cost:** chọn `t3.nano` scheduled/on-demand + EBS gp3 8 GiB + NAT hiện có. Đây là phương án rẻ nhất phù hợp thiết kế SSM; không tạo Internal ALB hoặc SSM VPC Endpoint mới. Vì `t3.nano` chỉ có 0.5 GiB RAM, Infra phải pilot SSM Agent + AWS CLI + `kubectl`; nếu cần tăng instance size thì phải gửi CDO04 review lại.
 
 **Audit trail (cho CDO07 duyệt):**
 
-Mọi session SSM đều được ghi tự động vào **AWS CloudTrail**:
+CloudTrail ghi API mở/kết thúc session SSM:
 
 ```
 EventName:    StartSession
@@ -147,10 +156,14 @@ EventTime:    2026-07-14T10:30:00Z
 SourceIPAddress: 1.2.3.4
 RequestParameters:
   target: i-0abc123def456
-  portNumber: 80   ← Grafana
+  target: i-0abc123def456
 ```
 
-CDO07 query CloudTrail → biết ngay **ai vào, lúc nào, từ IP nào, vào service nào**.
+CloudTrail cho biết **ai mở phiên, lúc nào, từ IP nào và vào Bastion nào**. SSM
+shell logging (nếu bật) có thể ghi lệnh `kubectl port-forward`; EKS audit logging
+(nếu bật) có thể ghi API port-forward do Bastion role gọi. Các lớp này **không ghi
+nội dung HTTP hoặc hành động bên trong portal**. Đây là residual risk cần owner và
+Tech Lead chấp nhận vì Acceptance Criteria hiện không yêu cầu application-level audit.
 
 ### 6.2 Kiến trúc
 
@@ -163,7 +176,7 @@ Internet
 Public ALB → Envoy proxy
 
 
-BTC (admin credential có sẵn)
+Mentor/BTC (AWS SSO identity cá nhân)
   │
   │  HTTPS — không cần port 22, không cần whitelist IP
   ▼
@@ -171,11 +184,15 @@ AWS SSM Endpoint
   │
   │  SSM Agent (chạy trong EC2 Bastion, private subnet)
   ▼
-EC2 Bastion → tunnel → Grafana / Jaeger / Loadgen (ClusterIP, chỉ trong VPC)
+EC2 Bastion
+  │  kubeconfig + EKS access entry/RBAC giới hạn
+  │  kubectl port-forward bind 127.0.0.1
+  ▼
+Grafana / Jaeger / Loadgen (Kubernetes Service)
 
 
-Team nội bộ (IAM read-only role)
-  → Tương tự, nhưng chỉ có quyền StartSession vào bastion instance này
+Team nội bộ (AWS SSO identity cá nhân)
+  → Tương tự, chỉ có quyền mở session vào đúng Bastion
 ```
 
 ### 6.3 Các bước thực hiện
@@ -193,70 +210,84 @@ Team nội bộ (IAM read-only role)
 
 **Bước 2 — Launch EC2 Bastion (private subnet, SSM role):**
 
-```bash
-# IAM role cho EC2: AmazonSSMManagedInstanceCore
-# Không cần mở port 22, không cần public IP cho bastion
-aws ec2 run-instances \
-  --image-id ami-0c02fb55956c7d316 \
-  --instance-type t3.nano \
-  --iam-instance-profile Name=SSMInstanceProfile \
-  --subnet-id subnet-private-xxxx \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=techx-tf4-bastion}]'
+- Quản lý bằng Terraform sau Infra review; không chạy trực tiếp lệnh `run-instances` mẫu.
+- Private subnet, không public IP, Security Group không có inbound, không mở port 22.
+- Bắt buộc IMDSv2, encrypted EBS, SSM Agent, patch baseline và instance profile tối thiểu.
+- Bastion cần AWS CLI, `kubectl` và network đến EKS API; phương án chọn dùng **single NAT Gateway hiện có**, không tạo SSM VPC Endpoint mới.
+- Tạo EKS Access Entry cho **Bastion instance role**, không dùng admin credential.
+- Kubernetes RBAC chỉ cho `get/list` Service/Pod cần thiết và `create` trên `pods/portforward` trong `techx-tf4`, `techx-observability`.
 
-# Security Group bastion: KHÔNG cần mở port nào từ internet
-# Security Group Grafana/Jaeger/Loadgen: inbound chỉ từ bastion SG
-```
+**Bước 3 — Cấp quyền cho Mentor/BTC và team:**
 
-**Bước 3 — Cấp quyền cho team nội bộ (không phải BTC):**
+- Mỗi người dùng AWS IAM Identity Center/SSO identity cá nhân; không dùng shared admin credential hoặc long-lived access key.
+- Permission Set chỉ cho phép mở SSM session đến đúng Bastion và dùng đúng session documents.
+- Người dùng không cần kubeconfig/EKS RBAC trên laptop; chỉ Bastion instance role có Kubernetes permission tối thiểu.
+- IAM/SSO được quản lý bằng Terraform hoặc quy trình IAM được approve; không dùng `put-user-policy` thủ công.
 
-```bash
-# BTC đã có admin → không cần làm gì thêm
+**Bước 4 — Hướng dẫn truy cập hai lớp:**
 
-# Team nội bộ: tạo IAM policy chỉ cho phép StartSession vào đúng bastion
-aws iam put-user-policy \
-  --user-name nhan \
-  --policy-name SSMBastionReadOnly \
-  --policy-document '{
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Action": ["ssm:StartSession", "ssm:TerminateSession"],
-      "Resource": "arn:aws:ec2:*:*:instance/<bastion-instance-id>"
-    }]
-  }'
-```
+Baseline port mapping phục vụ đối soát CDO07:
 
-**Bước 4 — Hướng dẫn truy cập (BTC và team nội bộ dùng chung cách này):**
+| Bastion loopback port | Kubernetes target | Source/runtime mapping |
+|---:|---|---|
+| `13000` | `techx-observability/svc/grafana:80` | `kubectl ... svc/grafana 13000:80` |
+| `16686` | `techx-observability/svc/jaeger:16686` | `kubectl ... svc/jaeger 16686:16686` |
+| `18089` | `techx-tf4/svc/load-generator:8089` | `kubectl ... svc/load-generator 18089:8089` |
+
+Mapping này là audit baseline trong source control. Không đổi/reuse port cho service
+khác nếu chưa cập nhật PR, runbook và CDO07 mapping evidence. Thiết kế hiện hỗ trợ
+một active port-forward trên mỗi portal; nhu cầu concurrent session phải được
+review và cấp port range cố định riêng.
+
+Ví dụ Grafana:
 
 ```bash
-# Cài Session Manager plugin (1 lần)
-brew install --cask session-manager-plugin   # macOS
-# hoặc: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
+# Laptop — login bằng SSO identity cá nhân.
+aws sso login --profile <mentor-btc-profile>
 
-# Login (BTC dùng admin profile, team dùng profile của mình)
-aws sso login --profile tf4-readonly
-
-# Tunnel vào Grafana
+# Terminal A — mở SSM shell vào Bastion.
 aws ssm start-session \
-  --target i-<bastion-instance-id> \
-  --document-name AWS-StartPortForwardingSessionToRemoteHost \
-  --parameters '{"host":["<grafana-clusterip>"],"portNumber":["80"],"localPortNumber":["3000"]}'
-# → Mở http://localhost:3000
+  --profile <mentor-btc-profile> \
+  --target <BASTION_INSTANCE_ID>
 
-# Tunnel vào Jaeger
-aws ssm start-session \
-  --target i-<bastion-instance-id> \
-  --document-name AWS-StartPortForwardingSessionToRemoteHost \
-  --parameters '{"host":["<jaeger-clusterip>"],"portNumber":["16686"],"localPortNumber":["16686"]}'
-# → Mở http://localhost:16686
+# Chạy bên trong Bastion và giữ process mở.
+kubectl -n techx-observability port-forward \
+  --address 127.0.0.1 svc/grafana 13000:80
 
-# Tunnel vào Loadgen
+# Terminal B trên laptop — chuyển localhost đến port vừa mở trên Bastion.
 aws ssm start-session \
-  --target i-<bastion-instance-id> \
-  --document-name AWS-StartPortForwardingSessionToRemoteHost \
-  --parameters '{"host":["<loadgen-clusterip>"],"portNumber":["8089"],"localPortNumber":["8089"]}'
-# → Mở http://localhost:8089
+  --profile <mentor-btc-profile> \
+  --target <BASTION_INSTANCE_ID> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters 'portNumber=["13000"],localPortNumber=["3000"]'
+
+# Mở http://127.0.0.1:3000/grafana/
 ```
+
+Thay lệnh Terminal A cho portal khác:
+
+```bash
+# Jaeger; Terminal B forward Bastion port 16686 về local 16686.
+kubectl -n techx-observability port-forward \
+  --address 127.0.0.1 svc/jaeger 16686:16686
+aws ssm start-session \
+  --profile <mentor-btc-profile> --target <BASTION_INSTANCE_ID> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters 'portNumber=["16686"],localPortNumber=["16686"]'
+# Mở http://127.0.0.1:16686/jaeger/ui/
+
+# Loadgen; Terminal B forward Bastion port 18089 về local 8089.
+kubectl -n techx-tf4 port-forward \
+  --address 127.0.0.1 svc/load-generator 18089:8089
+aws ssm start-session \
+  --profile <mentor-btc-profile> --target <BASTION_INSTANCE_ID> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters 'portNumber=["18089"],localPortNumber=["8089"]'
+# Mở http://127.0.0.1:8089/
+```
+
+Khi đóng Terminal A hoặc B, private access dừng. Không chạy port-forward bằng
+`0.0.0.0`, `nohup` hoặc service persistent nếu chưa có review riêng.
 
 **Bước 5 — Verify audit trail (CDO07):**
 
@@ -287,17 +318,28 @@ Trước khi sửa/deploy, phải có:
 
 **Phương án private access:**
 
-- [ ] BTC xác nhận đã test SSM tunnel thành công với admin credential (instance-id đã được cung cấp).
-- [ ] Team nội bộ xác nhận IAM read-only role đã được cấp và test tunnel thành công.
+- [ ] Mentor/BTC xác nhận AWS SSO identity cá nhân đã được cấp quyền vào đúng Bastion và test tunnel hai lớp thành công.
+- [ ] Bastion instance role có EKS Access Entry/RBAC tối thiểu và không có `cluster-admin`.
+- [ ] Team nội bộ xác nhận Permission Set giới hạn đã được cấp và test thành công.
 
-**CDO04 — Cost review:**
+**CDO04 — `APPROVED WITH CONDITIONS`:**
 
-- [ ] CDO04 xác nhận EC2 `t3.nano` (~$3.5/tuần) nằm trong ngân sách $300/tuần.
-- [ ] CDO04 xác nhận SSM rẻ hơn SSH Bastion (tương đương cost EC2 nhưng không tốn công vận hành key/SG), VPN ~$20/tuần, Internal ALB ~$20/tuần.
+- [x] CDO04 đồng ý phương án SSM Bastion về mặt budget.
+- [x] Dùng single NAT Gateway hiện có; không tạo SSM VPC Endpoint mới.
+- [x] Chọn `t3.nano`, EBS gp3 mã hóa 8 GiB và scheduled/on-demand với baseline 8 giờ/tuần; 24x7 chỉ là kịch bản chi phí cao nhất.
+- [ ] Chốt CloudWatch/S3 session logging và retention trước deploy.
+- [ ] Projected total weekly TF cost vẫn `<= $300` trước deploy.
+- [ ] Không tăng instance size ngoài proposal nếu chưa được CDO04 review lại.
+- [ ] Sau deploy attach Cost Explorer actual cost và giải thích variance so với estimate.
+
+Projected fixed incremental cost của phương án chọn là khoảng `$0.19/tuần` ở baseline 8 giờ, hoặc `$1.02/tuần` nếu chạy 24x7. Mức `$3.7–$3.9/tuần` trong comment CDO04 được giữ làm **budget ceiling**, không dùng làm projected cost; các số trên chưa gồm NAT data, logging, data transfer và thuế.
 
 **CDO07 — Audit review:**
 - [ ] CDO07 xác nhận CloudTrail đang bật và ghi được `StartSession` event với đủ: user ARN, timestamp, source IP.
-- [ ] CDO07 xác nhận audit trail đáp ứng trụ Auditability: ai vào, lúc nào, từ đâu.
+- [ ] CDO07 chấp nhận fixed Bastion port baseline: `13000=Grafana`, `16686=Jaeger`, `18089=Loadgen`.
+- [ ] CDO07 xác nhận SSM shell logging và EKS audit logging có/không được bật.
+- [ ] CDO07 xác minh CloudTrail S3 bucket thực tế, retention/delete control và mức immutability; S3 Versioning một mình không được gọi là WORM.
+- [ ] Owner/Tech Lead chấp nhận residual risk: audit được identity/session/API port-forward nhưng không audit đầy đủ hành động HTTP trong portal.
 
 ## 8. Thực hiện sau approval
 
@@ -349,7 +391,8 @@ Pass khi:
 - [ ] Storefront `/` trả `200 OK`.
 - [ ] Checkout smoke test pass và không làm tụt checkout SLO.
 - [ ] Cả path trần và subpath của sáu internal routes không trả portal, không bị catch-all trả storefront SPA, không redirect vào portal và không WebSocket upgrade; mong đợi explicit public `404` hoặc policy `401/403`.
-- [ ] Grafana/Jaeger/Loadgen truy cập được theo private runbook khi Mentor/BTC cần.
+- [ ] Grafana/Jaeger/Loadgen truy cập được bằng AWS SSO → SSM → Bastion → `kubectl port-forward` khi Mentor/BTC cần.
+- [ ] CloudTrail evidence xác nhận identity và thời gian mở/kết thúc SSM session; không tuyên bố đây là application-level audit.
 - [ ] flagd pod vẫn Ready; ứng dụng vẫn dùng OpenFeature hooks bình thường.
 - [ ] Có command output và screenshot trước/sau kèm timestamp; không chứa token/cookie/PII.
 
@@ -396,8 +439,16 @@ Nếu release do Helm quản lý, dùng `helm rollback <release> <previous-revis
 
 > Runtime evidence xác nhận Grafana, Jaeger và Load Generator đang public qua
 > internet-facing ALB. Các route feature, flagservice và OTLP cũng tồn tại trên
-> public proxy dù backend hiện trả lỗi. Đề xuất chặn tường minh toàn bộ operational/internal
-> route trên public Envoy, giữ nguyên storefront, và dùng AWS SSO + kubectl
-> port-forward làm đường truy cập private tạm thời cho Mentor/BTC. Chưa triển khai
-> cho đến khi đủ approval. Sau thay đổi phải chứng minh storefront 200, checkout
-> pass, flagd/OpenFeature không bị ảnh hưởng và các internal path không còn public.
+> public proxy dù backend hiện trả lỗi. Đề xuất chặn tường minh toàn bộ
+> operational/internal route trên public Envoy, giữ nguyên storefront, và cấp
+> private access cho Mentor/BTC theo luồng: AWS SSO identity cá nhân → SSM Session
+> Manager → EC2 Bastion private không mở SSH/public IP → `kubectl port-forward`
+> chạy trên Bastion → operational portal. CloudTrail dùng để truy vết người mở
+> phiên SSM; SSM shell/EKS audit (nếu bật) ghi nhận lệnh/API port-forward nhưng
+> không ghi đầy đủ hành động HTTP trong portal. Hạn chế này được ghi nhận là
+> residual risk cần owner/Tech Lead approve. Phương án không tạo internal ALB.
+> Chưa triển khai cho đến khi phương án, chi phí, IAM/RBAC, network và rollback
+> được các owner liên quan approve. Sau thay đổi phải chứng minh storefront vẫn
+> trả `200`, checkout smoke test pass và SLO không giảm, flagd/OpenFeature không
+> bị thay đổi hoặc vô hiệu hóa, các internal path không còn public, đồng thời
+> Mentor/BTC truy cập private thành công bằng danh tính cá nhân.

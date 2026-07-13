@@ -49,6 +49,22 @@
     },
     "opensearch": {
       "type": "object"
+    },
+    "bastionPortalAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "groupName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "groupName"
+      ]
     }
   },
   "required": [
@@ -158,6 +174,12 @@
         "revisionHistoryLimit": {
           "type": "integer"
         },
+        "strategy": {
+          "$ref": "#/definitions/DeploymentStrategy"
+        },
+        "persistence": {
+          "$ref": "#/definitions/Persistence"
+        },
         "service": {
           "$ref": "#/definitions/Service"
         },
@@ -243,6 +265,39 @@
         "useDefault"
       ],
       "title": "Service"
+    },
+    "DeploymentStrategy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RollingUpdate",
+            "Recreate"
+          ]
+        }
+      }
+    },
+    "Persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "storageClassName": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "storageClassName",
+        "size"
+      ]
     },
     "Env": {
       "type": "object",

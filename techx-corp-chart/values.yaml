@@ -952,6 +952,12 @@ components:
       repository: "postgres"
       tag: "17.6"
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 10Gi
     service:
       port: 5432
     podAnnotations:
@@ -987,10 +993,19 @@ components:
         value: otel
       - name: POSTGRES_DB
         value: otel
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
     mountedConfigMaps:
       - name: postgresql-init
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
+    additionalVolumeMounts:
+      - name: postgresql-data
+        mountPath: /var/lib/postgresql/data
+    additionalVolumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: postgresql-pvc
     resources:
       limits:
         memory: 100Mi
@@ -1393,3 +1408,7 @@ opensearch:
   resources:
     limits:
       memory: 1100Mi
+
+bastionPortalAccess:
+  enabled: false
+  groupName: portal-bastion-group
