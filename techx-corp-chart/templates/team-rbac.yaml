@@ -1,0 +1,87 @@
+# === RBAC for AI Team (ai-readers) ===
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-observability-reader
+  namespace: techx-observability
+rules:
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["services/proxy"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-observability-reader-binding
+  namespace: techx-observability
+subjects:
+  - kind: Group
+    name: "ai-readers"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ai-observability-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# === RBAC for Security/Reliability Team (security-reliability-auditors) ===
+# 1. ClusterRole and ClusterRoleBinding for Node Capacity and Metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: security-reliability-capacity-readonly
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: security-reliability-capacity-readonly-binding
+subjects:
+  - kind: Group
+    name: "security-reliability-auditors"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: security-reliability-capacity-readonly
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# 2. Namespace Role and RoleBinding for techx-tf4 runtime evidence
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: security-reliability-namespace-readonly
+  namespace: techx-tf4
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: security-reliability-namespace-readonly-binding
+  namespace: techx-tf4
+subjects:
+  - kind: Group
+    name: "security-reliability-auditors"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: security-reliability-namespace-readonly
+  apiGroup: rbac.authorization.k8s.io
