@@ -195,8 +195,18 @@ jobs:
           set -euo pipefail
           kubectl -n "$OBS_NAMESPACE" rollout status deployment/metrics-server --timeout=180s
           kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=180s
-          kubectl get --raw /apis/metrics.k8s.io/v1beta1 >/dev/null
-          kubectl top nodes
+
+          for attempt in {1..12}; do
+            if kubectl top nodes && kubectl -n "$APP_NAMESPACE" top pods; then
+              exit 0
+            fi
+
+            echo "Metrics Server is ready but metrics are not available yet; retrying (${attempt}/12)..."
+            sleep 10
+          done
+
+          echo "::error::Metrics API did not return node and application pod metrics."
+          exit 1
 
       - name: Deploy app
         run: |
