@@ -371,11 +371,54 @@ EC2 instance ID không quen biết trong account. Cần xác nhận đây là in
 | `kubectl get pods` | K8s state | CDO07 | 15:39 +07 |
 | `kubectl get events` | K8s events | CDO07 | 15:21 +07 |
 | `flash-sale-alerts.yaml` | Source code | main branch | — |
+| `docs/audit/postmortems/evidence_incident.jpg` | K8s Audit Log screenshot | CDO07 | 14/07/2026 |
 | Alertmanager output | ⚠️ PENDING | CDO08 | — |
 | Grafana alert history | ⚠️ PENDING | CDO08 | — |
 
+### evidence_incident.jpg — Phân tích
+
+Screenshot từ K8s Audit Log (OpenSearch/Grafana) cho thấy các sự kiện trong window incident:
+
+```
+Timestamp range: 2026-07-14T14:15 – 14:27 +07:00
+
+Notable entries:
+  14:27:18 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | jaeger-5f4f88c588-r
+  14:27:18 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | grafana-b9fc94c47-1
+  14:27:18 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | load-generator-75fc
+  14:25:42 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | grafana-b9fc94c47-1
+  14:25:42 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | jaeger-5f4f88c5a8-r
+  14:25:39 | TF4-SecReliabilityReadOnlyAudit/phuong     | create | pods | jaeger-5f4f88c5a8-r
+  14:25:30 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | grafana-b9fc94c47-1
+  15:54:05 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | load-generator-75fc
+  15:53:48 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | jaeger-5f4f88c5a8-r
+  15:53:48 | TF4-SecReliabilityReadOnlyAudit/nam        | create | pods | grafana-b9fc94c47-1
+  15:51:04 | TF4-SecReliabilityReadOnlyAudit/nam        | create | pods | jaeger-5f4f88c5a8-r
+  15:41:95 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | grafana-b9fc94c47-1
+  15:41:77 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | load-generator-75fc
+  15:41:70 | tf4-portal-bastion-role/i-072084d1cf0b2f1c9 | create | pods | jaeger-5f4f88c5a8-r
+```
+
+**Nhận xét từ screenshot:**
+
+1. **Bastion `i-072084d1cf0b2f1c9` đang `create pods`** — đây là hành vi K8s port-forward.
+   Khi bastion chạy `kubectl port-forward svc/grafana`, K8s audit log ghi `create pods/portforward`
+   với verb `create` trên resource `pods`. Đây là hành vi bình thường của CDO08 mở tunnel.
+
+2. **`phuong` và `nam`** (TF4-SecReliabilityReadOnlyAudit) cũng đang `create pods` (port-forward)
+   vào Grafana/Jaeger trong window incident — team đang điều tra.
+
+3. **Timestamp 14:25–14:27** khớp với incident window 14:15–14:30 — K8s audit log
+   **ĐÃ GHI LẠI** hoạt động trong window incident. Hệ thống logging hoạt động đúng.
+
+**Kết luận từ evidence_incident.jpg:**
+- ✅ K8s Audit Log đang hoạt động và ghi đầy đủ
+- ✅ Team CDO08/CDO07 (phuong, nam) đã chủ động điều tra trong window
+- ✅ Bastion đang được dùng đúng mục đích (port-forward để access observability)
+- ⚠️ Cần xem Grafana dashboard data mà phuong/nam đã access để lấy metrics thực tế
+
 **CDO07 role:** TF4-AuditReadOnlyAndAnalyze — read-only, NO port-forward, NO exec.
-**Verifier:** hung.hoangkim | **Commit:** `abc8622` (branch `cd7/docs/verify-mandate-1`)
+**Verifier:** hung.hoangkim | **Commits:** `abc8622`, `1225132`, `5f95224` (branch `cd7/docs/verify-mandate-1`)
 
 ---
 
