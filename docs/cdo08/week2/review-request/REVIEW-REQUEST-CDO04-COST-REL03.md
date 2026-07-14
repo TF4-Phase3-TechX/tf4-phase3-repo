@@ -11,10 +11,10 @@ Yêu cầu CDO04 đánh giá chi phí của các phương án persistence và Hi
 CDO08 đã xác nhận hiện trạng runtime:
 
 - PostgreSQL có `postgresql-pvc` nhưng vẫn single replica, chưa có failover.
-- Valkey hiện không có PVC; cart state có thể mất khi pod/node restart.
-- Kafka hiện single broker/controller và không có PVC; có rủi ro mất event hoặc gián đoạn async processing.
+- Valkey trước PR không có PVC; REL-03 bổ sung `valkey-cart-pvc` 5Gi để giảm rủi ro mất cart khi pod recreate.
+- Kafka trước PR single broker/controller và không có PVC; REL-03 bổ sung `kafka-pvc` 10Gi cho broker log dir để giảm rủi ro mất event khi pod recreate.
 
-Task REL-03 chưa triển khai thay đổi stateful. CDO08 cần CDO04 review cost trước khi chọn phương án production.
+Task REL-03 chỉ triển khai incremental in-cluster PVC. CDO08 vẫn cần CDO04 review cost trước khi chọn phương án production HA/managed service.
 
 ## Options cần estimate
 
@@ -22,9 +22,11 @@ Task REL-03 chưa triển khai thay đổi stateful. CDO08 cần CDO04 review co
 |--------|-----------|--------------------------------------|---------------------|-----------------------|
 | Giữ PostgreSQL hiện tại + backup/restore proof | PostgreSQL | EBS `gp2` 10Gi hiện tại, backup storage tối thiểu | Giữ persistence hiện có, bổ sung restore proof | Chi phí backup/storage thêm là bao nhiêu? Có đủ trong budget không? |
 | RDS Multi-AZ | PostgreSQL | Instance class nhỏ phù hợp dev/prod-lite, Multi-AZ, backup retention tối thiểu | Managed DB, failover tốt hơn, backup/restore chuẩn hơn | Monthly cost? Có vượt budget hiện tại không? |
-| Valkey StatefulSet + PVC | Valkey cart | 1-2 replica, EBS size nhỏ cho cart, storage class hiện có | Giảm rủi ro mất cart khi pod recreate | Chi phí EBS và node headroom? Có đáng so với giá trị cart không? |
+| Valkey Deployment + PVC hiện tại | Valkey cart | EBS `gp2` 5Gi | Giảm rủi ro mất cart khi pod recreate | Chi phí EBS thêm là bao nhiêu? Có đủ trong budget không? |
+| Valkey StatefulSet/Sentinel + PVC | Valkey cart | 1 master + replica nếu cần, EBS size nhỏ cho cart | Tiến gần hơn tới HA/failover in-cluster | Chi phí EBS/node headroom? Vận hành có quá nặng không? |
 | ElastiCache Multi-AZ | Valkey cart | Small node class, Multi-AZ nếu cần | Managed cache, availability tốt hơn | Monthly cost? Có quá lớn so với cart durability không? |
-| Kafka StatefulSet + PVC | Kafka | Multi-broker hoặc tối thiểu single broker + PVC, retention giới hạn | Giảm rủi ro mất event khi pod recreate | EBS/node cost? Vận hành có quá nặng không? |
+| Kafka Deployment + PVC hiện tại | Kafka | EBS `gp2` 10Gi, single broker | Giảm rủi ro mất broker log khi pod recreate | Chi phí EBS thêm là bao nhiêu? Có đủ trong budget không? |
+| Kafka StatefulSet + PVC | Kafka | Multi-broker, retention giới hạn | Tiến gần hơn tới HA/failover in-cluster | EBS/node cost? Vận hành có quá nặng không? |
 | Amazon MSK | Kafka | Smallest feasible cluster cho workload hiện tại | Managed Kafka, HA tốt hơn | Monthly cost? Có phù hợp budget không? |
 
 ## Output Expected

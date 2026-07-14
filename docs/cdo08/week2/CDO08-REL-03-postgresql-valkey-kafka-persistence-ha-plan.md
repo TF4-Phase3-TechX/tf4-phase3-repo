@@ -31,8 +31,8 @@ Không thực hiện thay đổi production trong task này.
 ## Findings
 
 - PostgreSQL đã có persistence thông qua `postgresql-pvc` nhưng vẫn là single replica nên chưa có High Availability.
-- Valkey chưa có persistent storage và chưa có High Availability.
-- Kafka chưa có persistent storage và chưa có High Availability.
+- Valkey đã được đề xuất bật PVC trong PR này, nhưng chưa có High Availability.
+- Kafka đã được đề xuất bật PVC trong PR này, nhưng chưa có High Availability.
 
 ---
 
@@ -110,14 +110,14 @@ Verified:
 | Component | Current Behaviour | Risk |
 |-----------|-------------------|------|
 | **PostgreSQL** | Pod sử dụng `postgresql-pvc`. Khi Pod restart hoặc recreate, PVC sẽ được mount lại nên dữ liệu vẫn được giữ. Tuy nhiên do chỉ có **1 replica**, database sẽ bị downtime trong thời gian Pod khởi động lại và không có khả năng failover. | Medium |
-| **Valkey** | Không sử dụng PersistentVolumeClaim. Khi Pod bị recreate hoặc reschedule sang node khác, dữ liệu trong bộ nhớ có thể bị mất. | High |
-| **Kafka** | Chỉ có **1 broker** và chưa có persistent storage. Khi Pod hoặc node gặp sự cố, broker log và event có nguy cơ bị mất, đồng thời không có broker khác để tiếp tục xử lý. | High |
+| **Valkey** | PR này bật `valkey-cart-pvc` và append-only persistence. Trước khi PR deploy, runtime chưa có PVC. Sau deploy, pod recreate/reschedule sẽ mount lại PVC nhưng vẫn không có failover. | Medium |
+| **Kafka** | PR này bật `kafka-pvc` cho broker log dir. Trước khi PR deploy, runtime chưa có PVC. Sau deploy, pod recreate/reschedule sẽ mount lại PVC nhưng vẫn chỉ có 1 broker/controller. | Medium/High |
 
 ### Summary
 
 - PostgreSQL đã có persistence thông qua PVC nhưng vẫn là **Single Point of Failure (SPOF)** do chỉ có một replica.
-- Valkey chưa có persistence nên có nguy cơ mất **Cart State** khi Pod bị recreate hoặc node failure.
-- Kafka chưa có persistence và High Availability nên có nguy cơ mất **Order Events** nếu broker gặp sự cố.
+- Valkey được giảm data-loss risk bằng PVC + append-only persistence trong PR này, nhưng vẫn chưa có HA/failover.
+- Kafka được giảm data-loss risk bằng PVC cho broker log dir trong PR này, nhưng vẫn chưa có HA/failover và vẫn cần REL-07 verify producer/consumer behavior.
 
 ### Replica Context
 
@@ -130,11 +130,23 @@ Verified:
 
 # 4. Chart Values Evidence
 
+## Implementation Scope
+
+Trong PR này CDO08 chọn **incremental persistence** cho stateful runtime hiện tại:
+
+- Giữ `postgresql` với PVC hiện có.
+- Bật PVC cho `valkey-cart` để giảm rủi ro mất cart khi pod recreate/reschedule.
+- Bật PVC cho `kafka` để giữ broker log/event data qua pod recreate/reschedule.
+- Giữ cả ba workload ở `replicas: 1`. Đây **chưa phải HA multi-replica** và không thay thế RDS/ElastiCache/MSK.
+- Dùng `strategy: Recreate` cho Valkey/Kafka vì PVC hiện là `ReadWriteOnce`; không cho phép hai pod cùng mount volume trong rolling update.
+
+Mục tiêu của PR là giảm data-loss risk trước, không triển khai full HA/failover.
+
 ## PostgreSQL
 
 **Source**
 
-`techx-corp-chart/templates/postgresql-pvc.yaml`
+`techx-corp-chart/templates/component-pvcs.yaml`
 
 Verified:
 
@@ -161,8 +173,11 @@ Verified:
 Verified:
 
 - `replicas: 1`
-- Không thấy PersistentVolumeClaim.
-- Không thấy volume mount cho data.
+- `persistence.enabled: true`
+- Chart tạo `valkey-cart-pvc` với `storageClassName: gp2`, `size: 5Gi`
+- Mount PVC vào `/data`
+- Chạy `valkey-server --appendonly yes --dir /data`
+- `strategy: Recreate` để tránh RWO PVC mount conflict trong rollout.
 
 ---
 
@@ -175,8 +190,11 @@ Verified:
 Verified:
 
 - `replicas: 1`
-- Không thấy PersistentVolumeClaim.
-- Không thấy volumeClaim cho broker log.
+- `persistence.enabled: true`
+- Chart tạo `kafka-pvc` với `storageClassName: gp2`, `size: 10Gi`
+- Set `KAFKA_LOG_DIRS=/tmp/kraft-combined-logs`
+- Mount PVC vào `/tmp/kraft-combined-logs`
+- `strategy: Recreate` để tránh RWO PVC mount conflict trong rollout.
 
 ---
 
@@ -209,15 +227,15 @@ Verified:
 
 **Recommended**
 
-- **Short-term:** Giữ Valkey hiện tại nếu business chấp nhận cart state là ephemeral, nhưng phải ghi rõ đây là accepted risk tạm thời.
-- **Decision gate:** Xác nhận với PM/business xem mất cart khi pod/node restart có được chấp nhận không.
-- **Nếu cart durability là bắt buộc:** chọn giữa Valkey StatefulSet + PVC hoặc ElastiCache Multi-AZ sau khi CDO04 review cost.
+- **Short-term:** Bật PVC + append-only persistence cho Valkey hiện tại để không còn phụ thuộc hoàn toàn vào memory state.
+- **Decision gate còn lại:** Sau khi deploy, verify cart còn sau pod recreation. Nếu business yêu cầu failover/no-downtime cho cart, chọn giữa Valkey StatefulSet/Sentinel hoặc ElastiCache Multi-AZ sau CDO04 review cost.
+- **Long-term candidate:** ElastiCache Multi-AZ nếu budget cho phép và cart durability/availability trở thành production requirement.
 
 **Reason**
 
-- Valkey hiện không có PVC, nên cart có thể mất khi pod recreate/reschedule.
+- Valkey runtime trước PR không có PVC, nên cart có thể mất khi pod recreate/reschedule.
 - Cart loss ảnh hưởng checkout conversion nhưng không nhất thiết là data-of-record như order/payment.
-- Vì vậy quyết định đúng phụ thuộc business tolerance: nếu mất cart không chấp nhận được thì phải đưa persistence/managed cache lên priority cao hơn.
+- PM không chấp nhận mất cart trong normal restart/reschedule, nên PR này chọn incremental PVC trước khi cân nhắc managed cache.
 
 ---
 
@@ -225,7 +243,7 @@ Verified:
 
 **Recommended**
 
-- **Short-term:** Không tăng HA Kafka vội, nhưng phải xác nhận retention, topic, replay path và event durability gap.
+- **Short-term:** Bật PVC cho Kafka broker log dir, không tăng HA Kafka vội, và phải xác nhận retention, topic, replay path và event durability gap.
 - **Week 2 action:** Phối hợp REL-07 để verify khi Kafka unavailable/slow thì checkout producer và consumer behavior có bằng chứng rõ.
 - **Long-term candidate:** Amazon MSK hoặc Kafka StatefulSet multi-broker + PVC, chỉ chọn sau cost review và technical review.
 
@@ -233,7 +251,8 @@ Verified:
 
 - Migration Kafka có độ phức tạp cao hơn PostgreSQL.
 - Chi phí triển khai và vận hành lớn hơn.
-- Kafka đang single broker/controller và không có PVC, nên broker restart/node failure có rủi ro mất event hoặc gián đoạn async processing.
+- Kafka runtime trước PR là single broker/controller và không có PVC, nên broker restart/node failure có rủi ro mất event hoặc gián đoạn async processing.
+- PVC giảm rủi ro mất broker log khi pod recreate/reschedule, nhưng không xử lý được node/AZ/storage failure hoặc broker failover.
 - Nếu chọn sai phương án migration, rủi ro duplicate event, event gap và consumer offset inconsistency cao hơn lợi ích short-term.
 - Cần CDO04 review trước khi quyết định phương án triển khai production.
 
@@ -342,29 +361,32 @@ Verified:
 
 ### Pre-check
 
-1. Xác nhận business có chấp nhận mất cart state khi pod/node restart hay không.
-2. Nếu không chấp nhận, chọn target: Valkey StatefulSet + PVC hoặc ElastiCache.
+1. PM xác nhận không chấp nhận mất cart trong normal pod restart/reschedule.
+2. Target được chọn trong PR này: Valkey hiện tại + PVC + append-only persistence.
 3. Xác nhận Cart service có smoke test add/view cart.
-4. Xác nhận `VALKEY_ADDR` có thể đổi qua secret/config mà không hardcode.
+4. Xác nhận `VALKEY_ADDR` không đổi (`valkey-cart:6379`) để tránh cutover endpoint.
 
 ### Migration steps
 
-1. Chuẩn bị môi trường Valkey mới (PVC hoặc ElastiCache nếu được approve).
-2. Cập nhật `VALKEY_ADDR`.
-3. Rollout lại Cart service.
-4. Verify Cart read/write hoạt động bình thường.
-5. Theo dõi runtime sau khi cutover.
+1. Render chart tạo `valkey-cart-pvc`.
+2. Mount `valkey-cart-pvc` vào `/data`.
+3. Chạy `valkey-server --appendonly yes --dir /data`.
+4. Deploy bằng Helm; `strategy: Recreate` sẽ recreate Valkey pod.
+5. Verify Cart read/write hoạt động bình thường.
+6. Recreate Valkey pod và verify cart state vẫn còn nếu test data/TTL cho phép.
 
 ### Cutover acceptance
 
 - Cart service kết nối target Valkey thành công.
 - Add product to cart và view cart pass.
 - Checkout dùng cart hiện tại pass.
+- `kubectl -n techx-tf4 get pvc valkey-cart-pvc` trả `Bound`.
+- Valkey pod Running sau recreate.
 
 ### Rollback boundary
 
-- Rollback được bằng cách revert `VALKEY_ADDR`.
-- Cart state trong target mới có thể bị mất khi rollback; nếu cần giữ cart, phải có export/import hoặc chấp nhận data loss rõ ràng.
+- Rollback bằng Helm rollback/revert chart về cấu hình không mount PVC.
+- Dữ liệu cart đã ghi vào AOF trên PVC có thể không được đọc nếu rollback về ephemeral mode; chỉ rollback khi chấp nhận cart state loss hoặc đã export/import.
 
 ---
 
@@ -376,15 +398,17 @@ Verified:
 2. Xác nhận retention policy mong muốn.
 3. Xác nhận producer behavior từ REL-07 khi Kafka unavailable/slow.
 4. Xác nhận consumer offset strategy và duplicate-event tolerance của Accounting/Fraud Detection.
+5. Target được chọn trong PR này: single-broker Kafka hiện tại + PVC cho broker log dir, chưa bật multi-broker.
 
 ### Migration steps
 
-1. Chuẩn bị Kafka cluster mục tiêu (StatefulSet hoặc MSK nếu được approve).
-2. Đồng bộ topic và retention policy.
-3. Cập nhật `KAFKA_ADDR` cho Producer và Consumer.
-4. Rollout Checkout, Accounting và Fraud Detection.
-5. Verify producer publish và consumer xử lý event.
-6. Smoke test luồng Checkout → Kafka → Accounting/Fraud Detection.
+1. Render chart tạo `kafka-pvc`.
+2. Set `KAFKA_LOG_DIRS=/tmp/kraft-combined-logs`.
+3. Mount `kafka-pvc` vào `/tmp/kraft-combined-logs`.
+4. Deploy bằng Helm; `strategy: Recreate` sẽ recreate Kafka pod.
+5. Không đổi `KAFKA_ADDR`; producer/consumer vẫn dùng `kafka:9092`.
+6. Verify producer publish và consumer xử lý event.
+7. Recreate Kafka pod và verify broker lên lại với cùng PVC.
 
 ### Cutover acceptance
 
@@ -392,12 +416,49 @@ Verified:
 - Accounting và Fraud Detection consume event đúng.
 - Không có event gap hoặc duplicate không xử lý được trong test window.
 - Consumer offset behavior được ghi lại.
+- `kubectl -n techx-tf4 get pvc kafka-pvc` trả `Bound`.
+- Kafka pod Running sau recreate.
 
 ### Rollback boundary
 
-- Rollback an toàn nếu chưa có event mới quan trọng trên target.
-- Nếu target đã nhận event và consumer đã xử lý một phần, rollback phải có event reconciliation plan; không rollback mù.
+- Rollback bằng Helm rollback/revert chart về cấu hình không mount PVC.
+- Nếu Kafka đã nhận event sau deploy, rollback có thể làm mất broker log mới nếu quay về ephemeral mode; cần reconciliation với Accounting/Fraud Detection trước khi rollback.
 ---
+
+# 8.1 Implementation Verification Commands
+
+```bash
+helm template techx-corp ./techx-corp-chart -n techx-tf4 \
+  -f deploy/values-app-stamp.yaml \
+  -f deploy/values-flagd-sync.yaml \
+  > /tmp/rel03-rendered.yaml
+
+grep -n "name: kafka-pvc\\|name: valkey-cart-pvc\\|KAFKA_LOG_DIRS\\|mountPath: /data\\|mountPath: /tmp/kraft-combined-logs" /tmp/rel03-rendered.yaml
+```
+
+Sau deploy:
+
+```bash
+kubectl -n techx-tf4 get pvc postgresql-pvc valkey-cart-pvc kafka-pvc
+kubectl -n techx-tf4 rollout status deploy/valkey-cart --timeout=180s
+kubectl -n techx-tf4 rollout status deploy/kafka --timeout=180s
+kubectl -n techx-tf4 get pods -l opentelemetry.io/name=valkey-cart
+kubectl -n techx-tf4 get pods -l opentelemetry.io/name=kafka
+```
+
+Persistence smoke:
+
+```bash
+# Valkey: add/view cart qua app smoke test trước và sau khi recreate pod.
+kubectl -n techx-tf4 delete pod -l opentelemetry.io/name=valkey-cart
+kubectl -n techx-tf4 rollout status deploy/valkey-cart --timeout=180s
+
+# Kafka: verify checkout publish và consumer logs trước và sau khi recreate pod.
+kubectl -n techx-tf4 delete pod -l opentelemetry.io/name=kafka
+kubectl -n techx-tf4 rollout status deploy/kafka --timeout=180s
+```
+
+> Không dùng `kubectl exec` làm default evidence nếu reviewer chỉ có CDO08 read-only. Nếu cần inspect file trong mounted volume, nhờ Deploy Operator/Admin chạy và attach evidence.
 
 # 9. Rollback Plan
 
@@ -479,18 +540,18 @@ Review:
 Current runtime verification cho thấy:
 
 - PostgreSQL đã có PVC nhưng vẫn là single replica.
-- Valkey và Kafka chưa có persistent storage.
-- Cả ba component chưa đạt High Availability.
+- Valkey và Kafka trước PR chưa có persistent storage; PR này bổ sung PVC cho cả hai.
+- Cả ba component vẫn chưa đạt High Availability vì vẫn single replica/single broker.
 
-Đề xuất trước mắt là hoàn thiện backup/restore plan, đánh giá yêu cầu persistence của Valkey và Kafka, sau đó review các phương án managed service hoặc StatefulSet. Không triển khai thay đổi production trước khi có migration plan, rollback plan, staging validation và CDO04 cost review.
+Đề xuất trước mắt là triển khai incremental persistence bằng PVC cho Valkey/Kafka, sau đó hoàn thiện backup/restore proof và đánh giá HA/managed service ở bước riêng. Không triển khai full HA hoặc managed service trước khi có migration plan, rollback plan, staging validation và CDO04 cost review.
 
 ## Recommended Next Step
 
 Week 2
 
 - PostgreSQL: hoàn thiện backup/restore proof và pod recreation test với `postgresql-pvc`.
-- Valkey: PM/business xác nhận cart state có được phép ephemeral không. Nếu không, chọn PVC hoặc ElastiCache candidate sau CDO04 review.
-- Kafka: phối hợp REL-07 để xác nhận event durability, retention/replay và producer/consumer behavior khi Kafka lỗi.
+- Valkey: deploy `valkey-cart-pvc`, verify cart state sau pod recreation, sau đó mới đánh giá ElastiCache/HA nếu cần no-downtime.
+- Kafka: deploy `kafka-pvc`, phối hợp REL-07 để xác nhận event durability, retention/replay và producer/consumer behavior khi Kafka lỗi.
 - CDO04: trả lời cost review theo `docs/cdo08/week2/review-request/REVIEW-REQUEST-CDO04-COST-REL03.md`.
 - Không triển khai stateful HA/managed service trước khi migration/rollback plan được approve.
 
@@ -506,5 +567,7 @@ Task được xem là hoàn thành khi:
 - Có migration plan.
 - Có rollback plan.
 - Có CDO04 cost review request.
+- Helm render/lint pass.
+- `valkey-cart-pvc` và `kafka-pvc` render đúng.
 - Evidence được attach vào Jira.
 - Không triển khai stateful change trước khi được review và approve.
