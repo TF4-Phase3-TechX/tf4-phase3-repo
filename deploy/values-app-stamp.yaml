@@ -6,6 +6,7 @@ jaeger: { enabled: false }
 prometheus: { enabled: false }
 grafana: { enabled: false }
 opensearch: { enabled: false }
+metrics-server: { enabled: false }
 
 default:
   envOverrides:
@@ -24,3 +25,5 @@ components:
         value: grafana.techx-observability.svc.cluster.local
       - name: JAEGER_HOST
         value: jaeger.techx-observability.svc.cluster.local
+
+bastionPortalAccess: { enabled: true }
