@@ -78,3 +78,23 @@ output "aws_config_evidence_prefix" {
   description = "S3 prefix chứa evidence AWS Config trong staging bucket và archive bucket"
   value       = local.aws_config_evidence_prefix
 }
+# Ref: AUDIT-010 — CloudTrail tamper-evident outputs
+output "cloudtrail_kms_key_arn" {
+  description = "ARN of the KMS CMK used to encrypt CloudTrail logs"
+  value       = aws_kms_key.cloudtrail.arn
+}
+
+output "cloudtrail_kms_key_id" {
+  description = "Key ID of the CloudTrail KMS CMK (for key policy review)"
+  value       = aws_kms_key.cloudtrail.key_id
+}
+
+output "cloudtrail_log_group_name" {
+  description = "CloudWatch Log Group name receiving CloudTrail events"
+  value       = aws_cloudwatch_log_group.cloudtrail.name
+}
+
+output "cloudtrail_log_group_arn" {
+  description = "CloudWatch Log Group ARN for CloudTrail"
+  value       = aws_cloudwatch_log_group.cloudtrail.arn
+}
