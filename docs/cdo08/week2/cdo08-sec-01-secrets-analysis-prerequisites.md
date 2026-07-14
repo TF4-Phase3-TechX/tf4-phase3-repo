@@ -3,7 +3,7 @@
 > **Task:** `[CDO08-SEC-01][P1][Secrets] Move sensitive config candidates out of Helm values`
 > **Owner chính:** Thuỷ (Security)
 > **Branch:** `feature/CDO08-SEC-01-move-secrets`
-> **Trạng thái:** `ANALYSIS & PREREQUISITES COMPLETE — WAITING FOR DEPLOY APPROVAL`
+> **Trạng thái:** `ANALYSIS & CODE COMPLETE — PRE-DEPLOY VERIFICATION PENDING`
 > **Thời gian phân tích:** 2026-07-13T22:00:00+07:00
 
 ---
@@ -25,11 +25,11 @@ Báo cáo này tổng hợp kết quả phân tích và phân loại toàn bộ 
 
 | # | File & Dòng | Config Key | Service | Giá trị hiện tại | Phân loại | Mức độ | Trạng thái migration |
 |---|:---|:---|:---|:---|:---|:---|:---|
-| 1 | [values.yaml:L182-186](../../../techx-corp-chart/values.yaml#L182) | `DB_CONNECTION_STRING` | `accounting` | `Host=postgresql;Username=otelu;Password=otelp;Database=otel` | **Real Secret** — Active DB credential | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: accounting-db-secret` |
-| 2 | [values.yaml:L669-673](../../../techx-corp-chart/values.yaml#L669) | `DB_CONNECTION_STRING` | `product-catalog` | `postgres://otelu:otelp@postgresql/otel?sslmode=disable` | **Real Secret** — Active DB credential | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: product-catalog-db-secret` |
-| 3 | [values.yaml:L727-731](../../../techx-corp-chart/values.yaml#L727) | `DB_CONNECTION_STRING` | `product-reviews` | `host=postgresql user=otelu password=otelp dbname=otel` | **Real Secret** — Active DB credential | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: product-reviews-db-secret` |
-| 4 | [values.yaml:L706-710](../../../techx-corp-chart/values.yaml#L706) | `OPENAI_API_KEY` | `product-reviews` | `dummy` | **Placeholder/Demo** — Mocked LLM, không phải key thật | P1 Thấp | ✅ **Đã migrate** → `secretKeyRef: product-reviews-openai-secret` |
-| 5 | [values.yaml:L998-1002](../../../techx-corp-chart/values.yaml#L998) | `POSTGRES_PASSWORD` | `postgresql` | `otel` | **Real Secret** — PostgreSQL admin password | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: postgresql-secret` |
+| 1 | [values.yaml:L182-186](../../../techx-corp-chart/values.yaml#L182) | `DB_CONNECTION_STRING` | `accounting` | `***REDACTED***` | **Real Secret** — Active DB credential | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: accounting-db-secret` |
+| 2 | [values.yaml:L669-673](../../../techx-corp-chart/values.yaml#L669) | `DB_CONNECTION_STRING` | `product-catalog` | `***REDACTED***` | **Real Secret** — Active DB credential | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: product-catalog-db-secret` |
+| 3 | [values.yaml:L727-731](../../../techx-corp-chart/values.yaml#L727) | `DB_CONNECTION_STRING` | `product-reviews` | `***REDACTED***` | **Real Secret** — Active DB credential | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: product-reviews-db-secret` |
+| 4 | [values.yaml:L706-710](../../../techx-corp-chart/values.yaml#L706) | `OPENAI_API_KEY` | `product-reviews` | `***REDACTED***` | **Placeholder/Demo** — Mocked LLM, không phải key thật | P1 Thấp | ✅ **Đã migrate** → `secretKeyRef: product-reviews-openai-secret` |
+| 5 | [values.yaml:L998-1002](../../../techx-corp-chart/values.yaml#L998) | `POSTGRES_PASSWORD` | `postgresql` | `***REDACTED***` | **Real Secret** — PostgreSQL admin password | P1 Cao | ✅ **Đã migrate** → `secretKeyRef: postgresql-secret` |
 
 ### 2.2 Findings liên quan — Ngoài scope task nhưng cần ghi nhận
 
@@ -100,29 +100,45 @@ postgresql-secret             → postgresql         (key: postgres-password)
 > [!IMPORTANT]
 > Các lệnh sau **PHẢI** được chạy thành công trước khi thực hiện `helm upgrade` với branch `feature/CDO08-SEC-01-move-secrets`.
 
+**Bước 1 — Thiết lập biến môi trường** (lấy giá trị từ secure vault / 1Password / AWS SSM Parameter Store):
+
+```bash
+# WARNING: Không commit giá trị thật vào repo. Lấy từ secure source.
+export ACCOUNTING_DB_CONNECTION_STRING="<value-from-secure-source>"
+export PRODUCT_CATALOG_DB_CONNECTION_STRING="<value-from-secure-source>"
+export PRODUCT_REVIEWS_DB_CONNECTION_STRING="<value-from-secure-source>"
+export OPENAI_API_KEY="<value-from-secure-source>"
+export POSTGRES_PASSWORD="<value-from-secure-source>"
+```
+
+**Bước 2 — Tạo Kubernetes Secrets:**
+
 ```bash
 NS=techx-tf4
 
 # 1. accounting — DB connection string (.NET format)
 kubectl -n $NS create secret generic accounting-db-secret \
-  --from-literal=connection-string="Host=postgresql;Username=otelu;Password=otelp;Database=otel"
+  --from-literal=connection-string="$ACCOUNTING_DB_CONNECTION_STRING"
 
 # 2. product-catalog — DB connection string (PostgreSQL URI format)
 kubectl -n $NS create secret generic product-catalog-db-secret \
-  --from-literal=connection-string="postgres://otelu:otelp@postgresql/otel?sslmode=disable"
+  --from-literal=connection-string="$PRODUCT_CATALOG_DB_CONNECTION_STRING"
 
 # 3. product-reviews — DB connection string (libpq format)
 kubectl -n $NS create secret generic product-reviews-db-secret \
-  --from-literal=connection-string="host=postgresql user=otelu password=otelp dbname=otel"
+  --from-literal=connection-string="$PRODUCT_REVIEWS_DB_CONNECTION_STRING"
 
-# 4. product-reviews — OpenAI API key (placeholder)
+# 4. product-reviews — OpenAI API key
 kubectl -n $NS create secret generic product-reviews-openai-secret \
-  --from-literal=api-key="dummy"
+  --from-literal=api-key="$OPENAI_API_KEY"
 
 # 5. postgresql — Admin password
 kubectl -n $NS create secret generic postgresql-secret \
-  --from-literal=postgres-password="otel"
+  --from-literal=postgres-password="$POSTGRES_PASSWORD"
 ```
+
+> [!WARNING]
+> **Không bao giờ commit giá trị plaintext của secrets vào repository.** Các giá trị thật phải được lấy từ secure source (vault, SSM, 1Password) tại thời điểm deploy.
 
 **Xác nhận điều kiện tiên quyết:**
 
@@ -168,7 +184,7 @@ kubectl -n techx-tf4 get secret \
 #### accounting (L182-186)
 ```diff
        - name: DB_CONNECTION_STRING
--        value: Host=postgresql;Username=otelu;Password=otelp;Database=otel
+-        value: ***REDACTED***
 +        valueFrom:
 +          secretKeyRef:
 +            name: accounting-db-secret
@@ -178,7 +194,7 @@ kubectl -n techx-tf4 get secret \
 #### product-catalog (L669-673)
 ```diff
        - name: DB_CONNECTION_STRING
--        value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+-        value: ***REDACTED***
 +        valueFrom:
 +          secretKeyRef:
 +            name: product-catalog-db-secret
@@ -188,7 +204,7 @@ kubectl -n techx-tf4 get secret \
 #### product-reviews — OPENAI_API_KEY (L706-710)
 ```diff
        - name: OPENAI_API_KEY
--        value: dummy
+-        value: ***REDACTED***
 +        valueFrom:
 +          secretKeyRef:
 +            name: product-reviews-openai-secret
@@ -198,7 +214,7 @@ kubectl -n techx-tf4 get secret \
 #### product-reviews — DB_CONNECTION_STRING (L727-731)
 ```diff
        - name: DB_CONNECTION_STRING
--        value: host=postgresql user=otelu password=otelp dbname=otel
+-        value: ***REDACTED***
 +        valueFrom:
 +          secretKeyRef:
 +            name: product-reviews-db-secret
@@ -208,7 +224,7 @@ kubectl -n techx-tf4 get secret \
 #### postgresql (L998-1002)
 ```diff
        - name: POSTGRES_PASSWORD
--        value: otel
+-        value: ***REDACTED***
 +        valueFrom:
 +          secretKeyRef:
 +            name: postgresql-secret
@@ -283,16 +299,19 @@ kubectl -n techx-tf4 delete secret \
 |---|:---|:---|:---|
 | 1 | Có bảng phân loại secret | ✅ Hoàn thành | [Section 2](#2-bảng-phân-loại-secret-acceptance-criteria-1) — 5 in-scope + 4 out-of-scope |
 | 2 | Sensitive config không còn hardcoded hoặc có exception rõ | ✅ Hoàn thành (trên branch) | [Section 7](#7-thay-đổi-đã-thực-hiện-trên-branch) — 5/5 items đã migrate; 4 items out-of-scope có exception rõ |
-| 3 | Service đọc được secret mới sau deploy | ⏳ Chờ deploy | Cần chạy `helm upgrade` và verify theo [Section 8.2](#82-runtime-verification--sau-khi-deploy) |
+| 3 | Service đọc được secret mới sau deploy | ⏳ **Chưa đạt — chờ deploy & runtime verification** | Cần: (a) tạo Secrets trên cluster hoặc deploy chart có `secrets.yaml` template, (b) chạy `helm upgrade`, (c) verify theo [Section 8.2](#82-runtime-verification--sau-khi-deploy) |
 | 4 | Có rollback path | ✅ Hoàn thành | [Section 9](#9-rollback-path) |
 
 > [!IMPORTANT]
 > **Hành động tiếp theo:**
 > 1. ✅ ~~Phân tích & phân loại secrets~~ — Hoàn thành
 > 2. ✅ ~~Research phương án & code changes~~ — Hoàn thành trên branch
-> 3. ⏳ **Chờ approval từ PM/Reviewer** để tiến hành deploy
-> 4. ⏳ Tạo Kubernetes Secrets trên cluster (cần active AWS session)
-> 5. ⏳ Deploy & verify runtime
+> 3. ✅ ~~Thêm Helm template `secrets.yaml`~~ — Secret objects sẽ được tạo tự động khi deploy
+> 4. ⏳ **Chờ approval từ PM/Reviewer** để tiến hành deploy
+> 5. ⏳ Override secret values qua `--set` hoặc secure values file khi deploy (giá trị mặc định là `CHANGE_ME`)
+> 6. ⏳ Deploy & verify runtime — chạy rollout status cho 4 services
+>
+> **Lưu ý:** Helm template `secrets.yaml` đã được thêm vào chart để tạo 5 Secret objects tự động. Giá trị mặc định là placeholder `CHANGE_ME` — Deploy Operator cần override bằng giá trị thật qua CI/CD pipeline.
 
 ---
 

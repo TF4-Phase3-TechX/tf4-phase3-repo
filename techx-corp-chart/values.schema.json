@@ -53,6 +53,25 @@
     "metrics-server": {
       "type": "object"
     },
+    "secrets": {
+      "type": "object",
+      "description": "Kubernetes Secrets managed by Helm. Values must be overridden at deploy time.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["enabled", "data"]
+      }
+    },
     "bastionPortalAccess": {
       "type": "object",
       "additionalProperties": false,

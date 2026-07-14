@@ -1454,6 +1454,32 @@ opensearch:
     limits:
       memory: 1100Mi
 
+# -- Kubernetes Secrets managed by Helm (CDO08-SEC-01)
+# WARNING: Do NOT commit real credentials here. Use placeholder values only.
+# Override with real values via: helm upgrade --set secrets.accounting-db-secret.data.connection-string="..."
+# Or use a separate encrypted values file in CI/CD pipeline.
+secrets:
+  accounting-db-secret:
+    enabled: true
+    data:
+      connection-string: "CHANGE_ME"
+  product-catalog-db-secret:
+    enabled: true
+    data:
+      connection-string: "CHANGE_ME"
+  product-reviews-db-secret:
+    enabled: true
+    data:
+      connection-string: "CHANGE_ME"
+  product-reviews-openai-secret:
+    enabled: true
+    data:
+      api-key: "CHANGE_ME"
+  postgresql-secret:
+    enabled: true
+    data:
+      postgres-password: "CHANGE_ME"
+
 bastionPortalAccess:
   enabled: false
   groupName: portal-bastion-group
