@@ -1,5 +1,0 @@
-$ curl -I https://k8s-tf4-storefront-xxx.ap-southeast-1.elb.amazonaws.com/
-HTTP/2 200 
-date: Mon, 13 Jul 2026 10:15:00 GMT
-content-type: text/html; charset=utf-8
-server: istio-envoy

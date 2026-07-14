@@ -1,4 +1,0 @@
-$ curl -I https://jaeger.tf4.techx.vn/
-HTTP/2 403 
-date: Mon, 13 Jul 2026 10:17:00 GMT
-server: istio-envoy

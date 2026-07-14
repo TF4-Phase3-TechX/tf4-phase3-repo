@@ -1,6 +1,7 @@
 # CDO07 Independent Verification Report: Jaeger Persistence & Auditability
 
-**Verifier:** CDO07 (Nghia Bui / AI Assistant)
+**Người thực hiện:** CDO07
+**Reviewer:** Bùi Thành Nghĩa
 **Date:** 2026-07-13
 **Target:** Kiểm chứng giải pháp Persistent Storage cho Jaeger của CDO08 (Issue 1)
 **Role used:** `TF4-AuditReadOnlyAndAnalyze`
@@ -48,7 +49,7 @@ Dựa trên nguyên tắc Audit (chỉ dùng Read-Only, không can thiệp hệ 
   1. Cấu hình lại OpenTelemetry Collector hoặc Instrumentation của ứng dụng để tự động bắt và thay thế (redact) các giá trị nhạy cảm (như email, thẻ tín dụng, mật khẩu) trước khi đẩy lên OpenSearch.
   2. Báo lại cho CDO07 re-test sau khi đã fix xong.
 
-![Evidence](img/evidence_failed_pii.png)
+![Evidence](images/evidence_failed_pii.png)
 ---
 
 ## 4. Đánh giá rủi ro còn lại (Remaining Risk) - Bảo mật cổng UI
