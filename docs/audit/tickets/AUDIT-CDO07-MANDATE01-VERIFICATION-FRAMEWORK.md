@@ -1,6 +1,6 @@
 # [CDO07] Audit Verification Framework — MANDATE-01 Network Exposure
 
-> **Mục đích:** Khung chuẩn cho Task 21 và Task 22 (Quang + Hùng) thực hiện  
+> **Mục đích:** Khung chuẩn cho Task 21 và Task 22 (Trực + Hùng) thực hiện, Nghĩa sẽ là người review lại và chỉnh sửa  
 > sau khi CDO08 hoàn tất deploy SEC-05 (Envoy block + SSM Bastion).  
 > **Không được điền evidence vào đây trước khi CDO08 deploy xong.**
 
@@ -8,7 +8,7 @@
 |---|---|
 | Mandate | DIRECTIVE #1 — Network Exposure |
 | Deadline | Thứ Ba 14/07/2026 |
-| Owner CDO07 | Quang (Task 21), Hùng (Task 22) |
+| Owner CDO07 | Trực (Task 21), Hùng (Task 22) |
 | Prerequisite | CDO08-SEC-05 deploy xong + Bastion instance-id được cung cấp |
 | Pass tối thiểu | Evidence có thể tái kiểm chứng; Xác minh chi phí và log truy cập thành công; Kết quả CDO08/CDO04 được ký duyệt rõ ràng |
 
@@ -26,7 +26,7 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
   "bastion_instance_id": "<ĐIỀN SAU KHI CDO08 DEPLOY>",
   "git_sha": "<git rev-parse HEAD>",
   "helm_release_revision": "<helm -n techx-tf4 history techx-corp | tail -1>",
-  "verifier": "CDO07 — Quang + Hùng",
+  "verifier": "CDO07 — Trực + Hùng + Nghĩa",
   "note": "Evidence thu thập SAU khi CDO08-SEC-05 deploy xong"
 }
 ```
@@ -35,14 +35,14 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
 
 | File | Nội dung | Người làm |
 |---|---|---|
-| `aud-14-storefront-curl.txt` | curl -I ALB/  → phải ra HTTP 200 | Quang |
-| `aud-15-grafana-curl.txt` | curl -I ALB/grafana/ → phải ra HTTP 404 | Quang |
-| `aud-15-jaeger-curl.txt` | curl -I ALB/jaeger/ui/ → phải ra HTTP 404 | Quang |
-| `aud-15-loadgen-curl.txt` | curl -I ALB/loadgen/ → phải ra HTTP 404 | Quang |
-| `aud-15-feature-curl.txt` | curl -I ALB/feature → phải ra HTTP 404 | Quang |
-| `aud-15-flagservice-curl.txt` | curl -I ALB/flagservice/ → phải ra HTTP 404 | Quang |
-| `aud-15-otlp-curl.txt` | curl -I ALB/otlp-http/ → phải ra HTTP 404 | Quang |
-| `aud-16-argocd-curl.txt` | curl ArgoCD nếu tồn tại → phải ra HTTP 404 | Quang |
+| `aud-14-storefront-curl.md` | curl -I ALB/  → phải ra HTTP 200 | Nghĩa |
+| `aud-15-grafana-curl.md` | curl -I ALB/grafana/ → phải ra HTTP 404 | Nghĩa |
+| `aud-15-jaeger-curl.md` | curl -I ALB/jaeger/ui/ → phải ra HTTP 404 | Nghĩa |
+| `aud-15-loadgen-curl.txt` | curl -I ALB/loadgen/ → phải ra HTTP 404 | Nghĩa |
+| `aud-15-feature-curl.txt` | curl -I ALB/feature → phải ra HTTP 404 | Nghĩa |
+| `aud-15-flagservice-curl.txt` | curl -I ALB/flagservice/ → phải ra HTTP 404 | Nghĩa |
+| `aud-15-otlp-curl.txt` | curl -I ALB/otlp-http/ → phải ra HTTP 404 | Nghĩa |
+| `aud-16-argocd-curl.md` | curl ArgoCD nếu tồn tại → phải ra HTTP 404 | Nghĩa |
 | `aud-17-cloudtrail-startsession.txt` | CloudTrail query StartSession event | Hùng |
 | `aud-18-private-access-screenshot.png` | Screenshot SSM tunnel vào Grafana thành công | Hùng |
 | `aud-19-cost-verification.md` | Xác minh chi phí Bastion vs budget | Hùng |
