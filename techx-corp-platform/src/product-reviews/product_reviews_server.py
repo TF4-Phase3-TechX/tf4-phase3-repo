@@ -214,95 +214,200 @@ def get_ai_assistant_response(request_product_id, question):
            {"role": "user", "content": user_prompt}
         ]
 
-        # use the LLM to summarize the product reviews
-        initial_response = client.chat.completions.create(
-            model=llm_model,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto"
-        )
+        # # use the LLM to summarize the product reviews
+        # initial_response = client.chat.completions.create(
+        #     model=llm_model,
+        #     messages=messages,
+        #     tools=tools,
+        #     tool_choice="auto"
+        # )
 
-        response_message = initial_response.choices[0].message
-        tool_calls = response_message.tool_calls
+        # response_message = initial_response.choices[0].message
+        # tool_calls = response_message.tool_calls
 
-        logger.info(f"Response message: {response_message}")
+        # logger.info(f"Response message: {response_message}")
 
-        # Check if the model wants to call a tool
-        if tool_calls:
-            logger.info(f"Model wants to call {len(tool_calls)} tool(s)")
+        # # Check if the model wants to call a tool
+        # if tool_calls:
+        #     logger.info(f"Model wants to call {len(tool_calls)} tool(s)")
 
-            # Append the assistant's message with tool calls
-            messages.append(response_message)
+        #     # Append the assistant's message with tool calls
+        #     messages.append(response_message)
 
-            # Process all tool calls
-            for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
+        #     # Process all tool calls
+        #     for tool_call in tool_calls:
+        #         function_name = tool_call.function.name
+        #         function_args = json.loads(tool_call.function.arguments)
 
-                logger.info(f"Processing tool call: '{function_name}' with arguments: {function_args}")
+        #         logger.info(f"Processing tool call: '{function_name}' with arguments: {function_args}")
 
-                if function_name == "fetch_product_reviews":
-                    function_response = fetch_product_reviews(
-                        product_id=function_args.get("product_id")
-                    )
-                    logger.info(f"Function response for fetch_product_reviews: '{function_response}'")
+        #         if function_name == "fetch_product_reviews":
+        #             function_response = fetch_product_reviews(
+        #                 product_id=function_args.get("product_id")
+        #             )
+        #             logger.info(f"Function response for fetch_product_reviews: '{function_response}'")
 
-                elif function_name == "fetch_product_info":
-                    function_response = fetch_product_info(
-                        product_id=function_args.get("product_id")
-                    )
-                    logger.info(f"Function response for fetch_product_info: '{function_response}'")
+        #         elif function_name == "fetch_product_info":
+        #             function_response = fetch_product_info(
+        #                 product_id=function_args.get("product_id")
+        #             )
+        #             logger.info(f"Function response for fetch_product_info: '{function_response}'")
 
-                else:
-                    raise Exception(f'Received unexpected tool call request: {function_name}')
+        #         else:
+        #             raise Exception(f'Received unexpected tool call request: {function_name}')
 
-                # Append the tool response
-                messages.append(
-                    {
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": function_response,
-                    }
-                )
+        #         # Append the tool response
+        #         messages.append(
+        #             {
+        #                 "tool_call_id": tool_call.id,
+        #                 "role": "tool",
+        #                 "name": function_name,
+        #                 "content": function_response,
+        #             }
+        #         )
 
-            llm_inaccurate_response = check_feature_flag("llmInaccurateResponse")
-            logger.info(f"llmInaccurateResponse feature flag: {llm_inaccurate_response}")
+        #     llm_inaccurate_response = check_feature_flag("llmInaccurateResponse")
+        #     logger.info(f"llmInaccurateResponse feature flag: {llm_inaccurate_response}")
 
-            if llm_inaccurate_response and request_product_id == "L9ECAV7KIM":
-                logger.info(f"Returning an inaccurate response for product_id: {request_product_id}")
-                # Add a final user message to ask the LLM to return an inaccurate response
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": f"Based on the tool results, answer the original question about product ID, but make the answer inaccurate:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
-                    }
-                )
-            else:
-                # Add a final user message to guide the LLM to synthesize the response
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": f"Based on the tool results, answer the original question about product ID:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
-                    }
-                )
+        #     if llm_inaccurate_response and request_product_id == "L9ECAV7KIM":
+        #         logger.info(f"Returning an inaccurate response for product_id: {request_product_id}")
+        #         # Add a final user message to ask the LLM to return an inaccurate response
+        #         messages.append(
+        #             {
+        #                 "role": "user",
+        #                 "content": f"Based on the tool results, answer the original question about product ID, but make the answer inaccurate:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
+        #             }
+        #         )
+        #     else:
+        #         # Add a final user message to guide the LLM to synthesize the response
+        #         messages.append(
+        #             {
+        #                 "role": "user",
+        #                 "content": f"Based on the tool results, answer the original question about product ID:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
+        #             }
+        #         )
 
-            logger.info(f"Invoking the LLM with the following messages: '{messages}'")
+        #     logger.info(f"Invoking the LLM with the following messages: '{messages}'")
 
-            final_response = client.chat.completions.create(
+        #     final_response = client.chat.completions.create(
+        #         model=llm_model,
+        #         messages=messages
+        #     )
+
+        #     result = final_response.choices[0].message.content
+
+        #     ai_assistant_response.response = result
+
+        #     logger.info(f"Returning an AI assistant response: '{result}'")
+
+        # else:
+        #     logger.info(f"Returning an AI assistant response: '{response_message}'")
+        #     ai_assistant_response.response = response_message.content
+
+        try:
+            # use the LLM to summarize the product reviews
+            initial_response = client.chat.completions.create(
                 model=llm_model,
-                messages=messages
+                messages=messages,
+                tools=tools,
+                tool_choice="auto"
             )
 
-            result = final_response.choices[0].message.content
+            response_message = initial_response.choices[0].message
+            tool_calls = response_message.tool_calls
 
-            ai_assistant_response.response = result
+            logger.info(f"Response message: {response_message}")
 
-            logger.info(f"Returning an AI assistant response: '{result}'")
+            # Check if the model wants to call a tool
+            if tool_calls:
+                logger.info(f"Model wants to call {len(tool_calls)} tool(s)")
 
-        else:
-            logger.info(f"Returning an AI assistant response: '{response_message}'")
-            ai_assistant_response.response = response_message.content
+                # Append the assistant's message with tool calls
+                messages.append(response_message)
+
+                # Process all tool calls
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+
+                    logger.info(f"Processing tool call: '{function_name}' with arguments: {function_args}")
+
+                    if function_name == "fetch_product_reviews":
+                        function_response = fetch_product_reviews(
+                            product_id=function_args.get("product_id")
+                        )
+                        logger.info(f"Function response for fetch_product_reviews: '{function_response}'")
+
+                    elif function_name == "fetch_product_info":
+                        function_response = fetch_product_info(
+                            product_id=function_args.get("product_id")
+                        )
+                        logger.info(f"Function response for fetch_product_info: '{function_response}'")
+
+                    else:
+                        raise Exception(f'Received unexpected tool call request: {function_name}')
+
+                    # Append the tool response
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response,
+                        }
+                    )
+
+                llm_inaccurate_response = check_feature_flag("llmInaccurateResponse")
+                logger.info(f"llmInaccurateResponse feature flag: {llm_inaccurate_response}")
+
+                if llm_inaccurate_response and request_product_id == "L9ECAV7KIM":
+                    logger.info(f"Returning an inaccurate response for product_id: {request_product_id}")
+                    # Add a final user message to ask the LLM to return an inaccurate response
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": f"Based on the tool results, answer the original question about product ID, but make the answer inaccurate:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
+                        }
+                    )
+                else:
+                    # Add a final user message to guide the LLM to synthesize the response
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": f"Based on the tool results, answer the original question about product ID:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
+                        }
+                    )
+
+                logger.info(f"Invoking the LLM with the following messages: '{messages}'")
+
+                final_response = client.chat.completions.create(
+                    model=llm_model,
+                    messages=messages
+                )
+
+                result = final_response.choices[0].message.content
+
+                ai_assistant_response.response = result
+
+                logger.info(f"Returning an AI assistant response: '{result}'")
+
+            else:
+                logger.info(f"Returning an AI assistant response: '{response_message}'")
+                ai_assistant_response.response = response_message.content
+        
+        except Exception as e:
+            logger.error(f"Error communicating with LLM: {e}", exc_info=True)
+            span.record_exception(e)
+            span.set_status(Status(StatusCode.ERROR, description=str(e)))
+            
+            fallback_dict = {
+                "summary": "Hệ thống AI hiện đang bận. Vui lòng đọc đánh giá gốc.",
+                "confidence": 0,
+                "status": "INSUFFICIENT_CONTEXT"
+            }
+            ai_assistant_response.response = json.dumps(fallback_dict)
+            logger.info("Returning safe JSON fallback due to LLM error.")
+
 
         # Collect metrics for this service
         product_review_svc_metrics["app_ai_assistant_counter"].add(1, {'product.id': request_product_id})
@@ -368,9 +473,24 @@ if __name__ == "__main__":
     llm_host = must_map_env('LLM_HOST')
     llm_port = must_map_env('LLM_PORT')
     llm_mock_url = f"http://{llm_host}:{llm_port}/v1"
-    llm_base_url = must_map_env('LLM_BASE_URL')
-    llm_api_key = must_map_env('OPENAI_API_KEY')
-    llm_model = must_map_env('LLM_MODEL')
+
+    llm_host = must_map_env('LLM_HOST')
+    llm_port = must_map_env('LLM_PORT')
+    llm_mock_url = f"http://{llm_host}:{llm_port}/v1"
+    
+    # 2. Xử lý Hot-swap Routing dựa vào OPENAI_API_KEY
+    api_key_env = os.environ.get('OPENAI_API_KEY')
+    
+    if api_key_env:
+        # Nếu có Key -> Bật Real LLM
+        llm_api_key = api_key_env
+        llm_base_url = os.environ.get('LLM_BASE_URL', "https://api.openai.com/v1")
+        llm_model = os.environ.get('LLM_MODEL', "gpt-4o-mini")
+    else:
+        # Nếu KHÔNG có Key -> Tự động Fallback về Mock LLM
+        llm_api_key = "mock_key"
+        llm_base_url = llm_mock_url
+        llm_model = "techx-llm"
 
     catalog_addr = must_map_env('PRODUCT_CATALOG_ADDR')
     pc_channel = grpc.insecure_channel(catalog_addr)
@@ -382,3 +502,4 @@ if __name__ == "__main__":
     server.start()
     logger.info(f'Product reviews service started, listening on port {port}')
     server.wait_for_termination()
+    
