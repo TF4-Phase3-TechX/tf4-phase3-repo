@@ -8,6 +8,7 @@
 from concurrent import futures
 import logging
 import os
+import random
 
 import grpc
 from google.protobuf.json_format import MessageToDict
@@ -21,12 +22,13 @@ from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 
-from ai_assistant import GroundedAssistant
+from ai_assistant import AssistantOutcome, GroundedAssistant
 from bedrock_adapter import BedrockAdapter
 from database import fetch_avg_product_review_score_from_db, fetch_product_reviews_from_db
 import demo_pb2
 import demo_pb2_grpc
 from metrics import init_metrics
+from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
 
 
 logger = logging.getLogger("main")
@@ -99,7 +101,28 @@ def fetch_product_info(product_id: str) -> dict:
 def get_ai_assistant_response(request_product_id: str, question: str):
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
         span.set_attribute("app.product.id", request_product_id)
-        outcome = assistant.answer(request_product_id, question)
+        # Preserve the BTC-owned incident flags at the application boundary.
+        # They exercise safe degradation and output blocking without selecting
+        # a mock provider or allowing intentionally inaccurate content through.
+        inject_rate_limit = check_feature_flag("llmRateLimitError") and random.random() < 0.5
+        if inject_rate_limit:
+            outcome = AssistantOutcome(
+                response=UNAVAILABLE_RESPONSE,
+                outcome="unavailable",
+                error_class="injected_rate_limit",
+            )
+        else:
+            outcome = assistant.answer(request_product_id, question)
+            if check_feature_flag("llmInaccurateResponse") and request_product_id == "L9ECAV7KIM":
+                outcome = AssistantOutcome(
+                    response=INSUFFICIENT_RESPONSE,
+                    outcome="insufficient",
+                    latency_ms=outcome.latency_ms,
+                    input_tokens=outcome.input_tokens,
+                    output_tokens=outcome.output_tokens,
+                    error_class="injected_inaccurate_response_blocked",
+                    quarantined_reviews=outcome.quarantined_reviews,
+                )
         attributes = {
             "llm.model": assistant.provider.model_id,
             "llm.call": "converse",

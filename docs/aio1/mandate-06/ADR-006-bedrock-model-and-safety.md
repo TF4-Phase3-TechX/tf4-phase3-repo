@@ -4,7 +4,7 @@
 - Status: **Proposed**
 - Owner: Nam
 - Required approvers: AIO1 Tech Lead, CDO deployment owner, CDO-07 Audit
-- Signatures: pending real-model evaluation and canary evidence
+- Signatures: pending canary, mentor and named approval evidence
 
 ## Context
 

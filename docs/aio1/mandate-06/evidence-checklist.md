@@ -9,9 +9,9 @@ Only GitHub/PR URLs and sanitized committed artifacts belong in Jira. Do not pas
 - [ ] Associate namespace `techx-tf4`, ServiceAccount `product-reviews-bedrock`, and the role.
 - [x] Create evaluation Guardrail and pin READY version 3; sanitized metadata committed. CDO must confirm promotion/use for canary.
 - [ ] Create the non-production leak-detection marker Secret `product-reviews-bedrock-canary` without placing its value in Git/Jira/logs.
-- [ ] Temporarily grant the evaluation identity Haiku, Qwen, Nova US profile/destination resources, and the Guardrail.
-- [ ] Replace `SET_BY_CDO` in the GitOps values; never deploy that placeholder to canary.
-- [ ] Update the two deployed price variables when the winner changes; remove every unused model/profile resource from the IAM template.
+- [x] Evaluation identity accessed Haiku, Qwen, Nova US profiles/destinations and Guardrail v3. Preferred SSO execution remains a process improvement.
+- [x] Canary overlay pins the evaluated Guardrail ID/version; the reusable chart default intentionally retains `SET_BY_CDO` and must not be deployed alone.
+- [x] Canary price variables and runtime policy are narrowed to Nova; re-snapshot pricing before CDO rollout.
 
 ## Bake-off record (Vũ, Hậu, Hòa)
 
@@ -19,7 +19,7 @@ Only GitHub/PR URLs and sanitized committed artifacts belong in Jira. Do not pas
 - [x] Run all 30 cases × 3 repetitions through `eval/run_bakeoff.py`; execution used the updated `default` AWS IAM identity rather than the preferred SSO profile.
 - [x] Commit only the metadata-only `bakeoff-report.json`; provider-side logging inspection remains pending.
 - [ ] Human-review every deterministic failure and ambiguous grounded case.
-- [ ] Record winner and rationale in ADR-006; keep `Proposed` until runtime evidence passes.
+- [x] Record Nova winner and rationale in ADR-006; keep `Proposed` until cluster runtime evidence passes.
 
 ## Canary and telemetry record (Tâm, Hòa, CDO)
 

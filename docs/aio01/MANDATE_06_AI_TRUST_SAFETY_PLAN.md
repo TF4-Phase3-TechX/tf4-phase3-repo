@@ -2,7 +2,7 @@
 
 - Effective date: 2026-07-14
 - Deadline: 2026-07-18
-- Status: implementation complete locally; real-model/CDO evidence pending
+- Status: implementation and real-model bake-off complete; CDO cluster evidence pending
 - Canonical decision: [`docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md`](../aio1/mandate-06/ADR-006-bedrock-model-and-safety.md)
 - Evidence checklist: [`docs/aio1/mandate-06/evidence-checklist.md`](../aio1/mandate-06/evidence-checklist.md)
 
