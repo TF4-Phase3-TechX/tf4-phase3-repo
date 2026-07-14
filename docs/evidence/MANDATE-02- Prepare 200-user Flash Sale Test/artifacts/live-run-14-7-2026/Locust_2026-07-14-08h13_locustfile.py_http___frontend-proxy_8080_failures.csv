@@ -1,0 +1,8 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/api/recommendations?productIds=0PUK6V6EV0,HTTPError('503 Server Error: Service Unavailable for url: /api/recommendations?productIds=0PUK6V6EV0'),1,2026-07-14T08:21:54Z,2026-07-14T08:21:54Z
+GET,/api/products/OLJCESPC7Z,HTTPError('503 Server Error: Service Unavailable for url: /api/products/OLJCESPC7Z'),1,2026-07-14T08:21:54Z,2026-07-14T08:21:54Z
+GET,/api/products/HQTGWGPNH4,HTTPError('503 Server Error: Service Unavailable for url: /api/products/HQTGWGPNH4'),1,2026-07-14T08:19:32Z,2026-07-14T08:19:32Z
+GET,/api/data/?contextKeys=books,HTTPError('503 Server Error: Service Unavailable for url: /api/data/?contextKeys=books'),1,2026-07-14T08:27:42Z,2026-07-14T08:27:42Z
+GET,/api/data/?contextKeys=travel,HTTPError('503 Server Error: Service Unavailable for url: /api/data/?contextKeys=travel'),1,2026-07-14T08:27:42Z,2026-07-14T08:27:42Z
+GET,/api/products/L9ECAV7KIM,HTTPError('503 Server Error: Service Unavailable for url: /api/products/L9ECAV7KIM'),1,2026-07-14T08:21:54Z,2026-07-14T08:21:54Z
+GET,/api/products/1YMWWN1N4O,HTTPError('503 Server Error: Service Unavailable for url: /api/products/1YMWWN1N4O'),1,2026-07-14T08:14:45Z,2026-07-14T08:14:45Z
