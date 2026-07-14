@@ -104,7 +104,7 @@ Configuration history/snapshot của scope 65 resource được giả định nh
 1 GB x $0.023/GB-month = $0.023/month
 ```
 
-Làm tròn storage và request cost: **$0.03/tháng**. Versioning hoặc Object Lock có thể tăng storage nếu giữ nhiều version, nhưng với JSON history nhỏ thì vẫn không đáng kể so với budget TF4.
+Làm tròn storage và request cost: **$0.03/tháng**. Versioning và Object Lock `COMPLIANCE` 30 ngày có thể tăng storage do giữ các version trong suốt thời hạn khóa, nhưng với JSON history nhỏ thì vẫn không đáng kể so với budget TF4.
 
 ## 7. Tổng chi phí tháng đầu
 

@@ -43,7 +43,7 @@ CDO08 triển khai bằng Terraform, không setup thủ công trên Console:
 5. Tạo `aws_config_retention_configuration` với retention tối thiểu 30 ngày.
 6. Start recorder sau khi delivery channel sẵn sàng.
 7. Bảo vệ S3 destination bằng encryption, versioning, public access block và `force_destroy = false`.
-8. Operator triển khai thông thường không được có quyền xóa history của chính mình. Ưu tiên Object Lock Governance 30 ngày; nếu defer phải có ADR và compensating control được CDO07 review.
+8. Bắt buộc bật S3 Object Lock ở chế độ `COMPLIANCE` với thời gian lưu giữ tối thiểu 30 ngày (`object_lock_enabled = true`, default retention mode `COMPLIANCE`). Không dùng `GOVERNANCE` và không defer bằng ADR/compensating control, nhằm bảo đảm không operator, Admin hoặc Root nào có thể xóa hay rút ngắn retention của configuration history trước thời hạn.
 
 ### Resource types cần record
 
@@ -116,7 +116,7 @@ ec2:DescribeSecurityGroups
 }
 ```
 
-Không cấp `config:Put*`, `config:Delete*`, `config:Start*`, `config:Stop*`, `s3:Delete*` hoặc `s3:BypassGovernanceRetention` cho CDO07.
+Không cấp `config:Put*`, `config:Delete*`, `config:Start*`, `config:Stop*` hoặc `s3:Delete*` cho CDO07. Bucket lưu evidence phải dùng Object Lock `COMPLIANCE`; quyền `s3:BypassGovernanceRetention` không được xem là biện pháp bảo vệ vì chỉ có tác dụng với chế độ `GOVERNANCE`.
 
 ## 6. Bài kiểm thử nghiệm thu
 
@@ -138,7 +138,7 @@ CDO07 phải độc lập:
 - [ ] `totalDiscoveredResources > 0` và có đủ resource lõi trong scope.
 - [ ] CDO07 chạy được Resource Timeline/Advanced Query bằng profile Audit mà không gặp `AccessDenied`.
 - [ ] CDO07 đối chiếu được một thay đổi kiểm thử với CloudTrail và truy ra người, thời gian, nội dung.
-- [ ] Operator không thể xóa configuration history đang trong retention.
+- [ ] S3 Object Lock `COMPLIANCE` 30 ngày đã được xác minh; Operator, Admin và Root không thể xóa hoặc rút ngắn retention của configuration history trước thời hạn.
 - [ ] `docs/audit/AUDIT_CHECKLIST.md` được cập nhật Pass/Fail và link evidence.
 - [ ] Chi phí sau deploy được theo dõi và không vượt budget guardrail trong [`AWS_CONFIG_COST_ESTIMATE.md`](../AWS_CONFIG_COST_ESTIMATE.md).
 
