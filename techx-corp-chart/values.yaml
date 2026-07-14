@@ -365,6 +365,12 @@ components:
     env:
       - name: PROMETHEUS_URL
         value: http://prometheus:9090/api/v1/query?query=up
+      - name: OUTPUT_CHANNEL
+        value: stdout-jsonl
+      - name: OUTPUT_SCHEMA_VERSION
+        value: "1.0"
+      - name: OWNER_RESPONSE_PATH
+        value: review-runbook-and-create-ticket
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
@@ -375,9 +381,9 @@ components:
       - -c
       - |
         while true; do
-          echo "[detector] $(date -u +%FT%TZ) checking prometheus"
-          wget -q -O - "${PROMETHEUS_URL:-http://prometheus:9090/api/v1/query?query=up}" 2>/dev/null | head -c 200
-          echo
+          ts=$(date -u +%FT%TZ)
+          payload=$(printf '{"timestamp":"%s","detector":"aioops-detector","channel":"%s","schema_version":"%s","incident_type":"prometheus_probe","severity":"info","summary":"Prometheus probe executed","evidence":{"prometheus_url":"%s"},"owner":"AIOps-oncall","owner_response_path":"%s"}' "$ts" "${OUTPUT_CHANNEL:-stdout-jsonl}" "${OUTPUT_SCHEMA_VERSION:-1.0}" "${PROMETHEUS_URL:-http://prometheus:9090/api/v1/query?query=up}" "${OWNER_RESPONSE_PATH:-review-runbook-and-create-ticket}")
+          echo "$payload"
           sleep 60
         done
 

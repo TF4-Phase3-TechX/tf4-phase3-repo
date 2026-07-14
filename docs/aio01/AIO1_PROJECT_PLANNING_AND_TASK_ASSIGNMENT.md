@@ -134,16 +134,16 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W1 | Confirm observability access | Nam / Hòa | Grafana/Jaeger access evidence | `TF4AIO-13` In Review |
 | W1-W2 | Select MVP incident types | Hòa | Choose 2-3 MVP incidents, likely latency spike, error spike, LLM timeout/error | `TF4AIO-14` In Progress |
 | W2 | Define detection rules/thresholds | Hòa / Hậu | Rule spec for selected incidents | `TF4AIO-37` To Do |
-| W2-W3 | Build rule-based detector prototype | Hậu / Tâm | Detector runs on sample/live metrics | `TF4AIO-38` To Do |
+| W2-W3 | Build rule-based detector prototype | Hậu / Tâm | Detector runs on sample/live metrics and emits structured JSONL output to logs | `TF4AIO-38` To Do |
 | W2-W3 | Detect AI-specific LLM timeout/error | Hậu / Tâm | Detector identifies AI path issue when signal exists | `TF4AIO-41` To Do |
 | W2-W3 | Define incident summary format | Nam / Hòa | Summary template with symptoms/evidence/impact | `TF4AIO-42` To Do |
 | W2-W3 | Build incident summary MVP | Tâm / Hậu | Summary generated from detector signals | `TF4AIO-43` To Do |
 | W2-W3 | Map incident type to runbook actions | Hòa / Nam | Runbook hints for each MVP incident | `TF4AIO-44` To Do |
-| W3 | Validate latency/error detector with load test | Hậu / Tâm + CDO dependency | Detector catches controlled degradation | `TF4AIO-56` To Do |
+| W3 | Validate latency/error detector with load test | Hậu / Tâm + CDO dependency | Detector catches controlled degradation or limitation is documented; false positives/negatives are recorded | `TF4AIO-56` To Do |
 | W3 | Validate LLM timeout/error signal | Hậu / Tâm + AIE dependency | AIOps recognizes AI path issue | `TF4AIO-45` To Do |
 | W3 | Write AIOps validation report | Hòa / Nam | What worked, what failed, false positives/limitations | `TF4AIO-46` To Do |
 
-Ghi chú triển khai cho TF4AIO-6: workload detector đã được thêm vào chart Helm như một Deployment liên tục, có giới hạn tài nguyên và không thay đổi flagd/openfeature. Xem evidence tại [docs/aio01/TF4AIO-6-detector-evidence.md](./TF4AIO-6-detector-evidence.md).
+Ghi chú triển khai cho TF4AIO-6: workload detector đã được thêm vào chart Helm như một Deployment liên tục, có giới hạn tài nguyên và không thay đổi flagd/openfeature. Channel đầu ra đầu tiên được chọn là structured JSONL logs (`stdout-jsonl`), với payload schema và owner response path được ghi trong [docs/aio01/TF4AIO-6-detector-evidence.md](./TF4AIO-6-detector-evidence.md).
 
 ### 7.3 Operational / PM track
 
