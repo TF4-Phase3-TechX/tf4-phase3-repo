@@ -5,6 +5,7 @@
 > **Branch:** `feature/CDO08-SEC-01-move-secrets`
 > **Trạng thái:** `ANALYSIS & CODE COMPLETE — PRE-DEPLOY VERIFICATION PENDING`
 > **Thời gian phân tích:** 2026-07-13T22:00:00+07:00
+> **Cập nhật lần cuối:** 2026-07-14T14:00:00+07:00
 
 ---
 
@@ -49,24 +50,37 @@ Các items sau được phát hiện trong [báo cáo week1](../week1/secrets-co
 
 ## 3. Phương án lưu Secret đã chọn
 
-### 3.1 Phương án: Native Kubernetes Secrets + `secretKeyRef`
+### 3.1 Phương án: External Secrets Operator + AWS Secrets Manager + IRSA
 
 | Tiêu chí | Đánh giá |
 |:---|:---|
-| **Phương án chọn** | Native Kubernetes Secrets với `env.valueFrom.secretKeyRef` |
-| **Lý do chọn** | Không cần thêm operator/dependency mới; đủ đáp ứng acceptance criteria; phù hợp với scope P1 |
-| **Phương án thay thế đã cân nhắc** | AWS Secrets Manager + External Secrets Operator — Phù hợp hơn cho production thật, nhưng vượt scope task hiện tại và cần install thêm operator trên cluster |
-| **Cách tạo Secret** | `kubectl create secret generic` — Xem chi tiết tại [Section 5](#5-lệnh-tạo-kubernetes-secrets-điều-kiện-tiên-quyết) |
+| **Phương án chọn** | External Secrets Operator (ESO) + AWS Secrets Manager + IRSA |
+| **Lý do chọn** | Production-ready; secret thật không nằm trong Git/Helm/CI; source of truth tập trung tại AWS Secrets Manager; có versioning, rotation, audit; quyền truy cập qua IRSA theo nguyên tắc least privilege |
+| **Phương án đã loại bỏ** | (1) Helm tự tạo Kubernetes Secret từ `.Values.secrets` — Rủi ro lộ secret qua CI log, Git history, Helm values; (2) CD tạo Secret trực tiếp từ GitHub Actions Secrets — Không centralized, khó audit/rotate |
+| **Cách hoạt động** | ESO đồng bộ secret từ AWS Secrets Manager → Kubernetes Secret trong namespace `techx-tf4`. Workload đọc secret qua `secretKeyRef` như trước |
 
-### 3.2 Mapping Secret → Service
+### 3.2 Mapping Secret → Service → AWS Secrets Manager
 
 ```
-accounting-db-secret          → accounting        (key: connection-string)
-product-catalog-db-secret     → product-catalog    (key: connection-string)
-product-reviews-db-secret     → product-reviews    (key: connection-string)
-product-reviews-openai-secret → product-reviews    (key: api-key)
-postgresql-secret             → postgresql         (key: postgres-password)
+Kubernetes Secret                  → Service            → Key              → AWS Secrets Manager Path
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+accounting-db-secret               → accounting          (connection-string) → tf4/techx-tf4/accounting/db-connection-string
+product-catalog-db-secret          → product-catalog     (connection-string) → tf4/techx-tf4/product-catalog/db-connection-string
+product-reviews-db-secret          → product-reviews     (connection-string) → tf4/techx-tf4/product-reviews/db-connection-string
+product-reviews-openai-secret      → product-reviews     (api-key)           → tf4/techx-tf4/product-reviews/openai-api-key
+postgresql-secret                  → postgresql          (postgres-password)  → tf4/techx-tf4/postgresql/postgres-password
 ```
+
+### 3.3 Naming Convention — AWS Secrets Manager
+
+```
+tf4/techx-tf4/<service-name>/<secret-purpose>
+```
+
+Ví dụ:
+- `tf4/techx-tf4/accounting/db-connection-string`
+- `tf4/techx-tf4/product-reviews/openai-api-key`
+- `tf4/techx-tf4/postgresql/postgres-password`
 
 ---
 
@@ -76,83 +90,144 @@ postgresql-secret             → postgresql         (key: postgres-password)
 
 | Service | Thay đổi | Rủi ro khi rollout | Mitigation |
 |:---|:---|:---|:---|
-| `accounting` | `DB_CONNECTION_STRING` chuyển từ `value` → `secretKeyRef` | Pod không start nếu Secret chưa tồn tại (`CreateContainerConfigError`) | Pre-create Secret trước khi `helm upgrade` |
-| `product-catalog` | `DB_CONNECTION_STRING` chuyển từ `value` → `secretKeyRef` | Tương tự trên | Pre-create Secret |
-| `product-reviews` | `DB_CONNECTION_STRING` + `OPENAI_API_KEY` chuyển sang `secretKeyRef` | 2 secret references — cả hai phải tồn tại | Pre-create cả 2 Secret |
-| `postgresql` | `POSTGRES_PASSWORD` chuyển sang `secretKeyRef` | Rolling restart DB pod — **Rủi ro cao nhất**: phải đảm bảo password match với `init.sql` | Pre-create Secret; verify password khớp; deploy khi không có active transactions |
+| `accounting` | `DB_CONNECTION_STRING` đọc từ `secretKeyRef` | Pod không start nếu Secret chưa được ESO sync (`CreateContainerConfigError`) | Verify ExternalSecret status `Ready` trước khi `helm upgrade` |
+| `product-catalog` | `DB_CONNECTION_STRING` đọc từ `secretKeyRef` | Tương tự trên | Verify ExternalSecret status |
+| `product-reviews` | `DB_CONNECTION_STRING` + `OPENAI_API_KEY` đọc từ `secretKeyRef` | 2 secret references — cả hai phải tồn tại | Verify cả 2 ExternalSecret |
+| `postgresql` | `POSTGRES_PASSWORD` đọc từ `secretKeyRef` | Rolling restart DB pod — **Rủi ro cao nhất**: phải đảm bảo password match với `init.sql` | Verify password khớp; deploy khi không có active transactions |
 
 ### 4.2 Rủi ro rollout tổng thể
 
 > [!WARNING]
-> **Rủi ro chính:** Nếu 5 Kubernetes Secrets chưa được tạo trước khi chạy `helm upgrade`, tất cả 4 service sẽ fail với `CreateContainerConfigError`.
+> **Rủi ro chính:** Nếu ESO chưa sync thành công 5 secrets từ AWS Secrets Manager trước khi chạy `helm upgrade`, tất cả 4 service sẽ fail với `CreateContainerConfigError`.
 >
 > **Rủi ro phụ:** PostgreSQL pod restart sẽ gây gián đoạn ngắn (~10-30s) cho tất cả service đọc DB. Cần coordinate với team để deploy khi không có live traffic hoặc chấp nhận downtime ngắn.
 
 ### 4.3 Constraint quan trọng
 
 > [!IMPORTANT]
-> **Coordination với DB Initializer:** Giá trị password trong Secret **PHẢI** khớp chính xác với password trong [postgresql/init.sql:L4](../../../techx-corp-chart/postgresql/init.sql#L4) (`otelp` cho user `otelu`, `otel` cho admin). Nếu không khớp, service sẽ bị `connection refused` từ PostgreSQL.
+> **Coordination với DB Initializer:** Giá trị password trong AWS Secrets Manager **PHẢI** khớp chính xác với password trong [postgresql/init.sql:L4](../../../techx-corp-chart/postgresql/init.sql#L4) (`otelp` cho user `otelu`, `otel` cho admin). Nếu không khớp, service sẽ bị `connection refused` từ PostgreSQL.
 
 ---
 
-## 5. Lệnh tạo Kubernetes Secrets (Điều kiện tiên quyết)
+## 5. External Secrets Operator — Kiến trúc & Điều kiện tiên quyết
+
+### 5.1 Kiến trúc
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ AWS Secrets Manager                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐      │
+│  │ tf4/techx-tf4/accounting/db-connection-string                     │      │
+│  │ tf4/techx-tf4/product-catalog/db-connection-string                │      │
+│  │ tf4/techx-tf4/product-reviews/db-connection-string                │      │
+│  │ tf4/techx-tf4/product-reviews/openai-api-key                      │      │
+│  │ tf4/techx-tf4/postgresql/postgres-password                        │      │
+│  └───────────────────────────────────────────────────────────────────┘      │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │ IRSA (STS AssumeRoleWithWebIdentity)
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ EKS Cluster — namespace: techx-tf4                                          │
+│                                                                              │
+│  ┌─────────────────────────┐    ┌──────────────────────────┐                │
+│  │ External Secrets        │    │ SecretStore              │                │
+│  │ Operator (ESO)          │◄───│ aws-secretsmanager       │                │
+│  │ (external-secrets ns)   │    │ (provider: AWS SM)       │                │
+│  └──────────┬──────────────┘    └──────────────────────────┘                │
+│             │ sync                                                           │
+│             ▼                                                                │
+│  ┌──────────────────────────┐   ┌──────────────────────────┐                │
+│  │ ExternalSecret (x5)     │──►│ Kubernetes Secret (x5)    │                │
+│  │ (refreshInterval: 1h)   │   │ (type: Opaque)            │                │
+│  └──────────────────────────┘   └────────────┬─────────────┘                │
+│                                               │ secretKeyRef                 │
+│                                               ▼                              │
+│  ┌──────────────────────────────────────────────────────────┐                │
+│  │ Workloads: accounting, product-catalog,                  │                │
+│  │            product-reviews, postgresql                    │                │
+│  └──────────────────────────────────────────────────────────┘                │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Điều kiện tiên quyết
+
+| # | Điều kiện | Trạng thái | Ghi chú |
+|:---|:---|:---|:---|
+| 1 | External Secrets Operator đã cài trên cluster | ⏳ Cần xác nhận | `kubectl -n external-secrets get pods` |
+| 2 | IRSA đã enable trên EKS cluster (OIDC provider) | ⏳ Cần xác nhận | `aws eks describe-cluster --name <cluster> --query "cluster.identity.oidc"` |
+| 3 | IAM role cho ESO đã tạo với least-privilege policy | ⏳ Cần tạo | Xem [eso-iam-policy.json](../../../infra/eso-iam-policy.json) |
+| 4 | IAM role có trust relationship cho IRSA | ⏳ Cần tạo | Xem [eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json) |
+| 5 | Service account `external-secrets-sa` có annotation IRSA | ⏳ Cần tạo | `eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>` |
+| 6 | 5 secrets đã tạo trong AWS Secrets Manager | ⏳ Cần tạo | Tạo qua AWS Console hoặc CLI — **không commit giá trị vào repo** |
+| 7 | Team có quyền `secretsmanager:CreateSecret` | ⏳ Cần xác nhận | Cần trước khi tạo secrets |
+
+### 5.3 Tạo Secret trong AWS Secrets Manager
 
 > [!IMPORTANT]
-> Các lệnh sau **PHẢI** được chạy thành công trước khi thực hiện `helm upgrade` với branch `feature/CDO08-SEC-01-move-secrets`.
-
-**Bước 1 — Thiết lập biến môi trường** (lấy giá trị từ secure vault / 1Password / AWS SSM Parameter Store):
+> Các lệnh sau chỉ được thực hiện từ máy có quyền truy cập AWS Secrets Manager. Không chạy trong CI/CD pipeline. Không log giá trị secret.
 
 ```bash
-# WARNING: Không commit giá trị thật vào repo. Lấy từ secure source.
-export ACCOUNTING_DB_CONNECTION_STRING="<value-from-secure-source>"
-export PRODUCT_CATALOG_DB_CONNECTION_STRING="<value-from-secure-source>"
-export PRODUCT_REVIEWS_DB_CONNECTION_STRING="<value-from-secure-source>"
-export OPENAI_API_KEY="<value-from-secure-source>"
-export POSTGRES_PASSWORD="<value-from-secure-source>"
+# Tạo 5 secrets trong AWS Secrets Manager
+# Giá trị <VALUE> phải được lấy từ secure source (1Password, vault, etc.)
+# KHÔNG commit giá trị thật vào repo hoặc log.
+
+aws secretsmanager create-secret \
+  --name tf4/techx-tf4/accounting/db-connection-string \
+  --secret-string "<VALUE>" \
+  --description "Accounting service DB connection string" \
+  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=accounting
+
+aws secretsmanager create-secret \
+  --name tf4/techx-tf4/product-catalog/db-connection-string \
+  --secret-string "<VALUE>" \
+  --description "Product Catalog service DB connection string" \
+  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=product-catalog
+
+aws secretsmanager create-secret \
+  --name tf4/techx-tf4/product-reviews/db-connection-string \
+  --secret-string "<VALUE>" \
+  --description "Product Reviews service DB connection string" \
+  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=product-reviews
+
+aws secretsmanager create-secret \
+  --name tf4/techx-tf4/product-reviews/openai-api-key \
+  --secret-string "<VALUE>" \
+  --description "Product Reviews OpenAI API key (placeholder/demo)" \
+  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=product-reviews
+
+aws secretsmanager create-secret \
+  --name tf4/techx-tf4/postgresql/postgres-password \
+  --secret-string "<VALUE>" \
+  --description "PostgreSQL admin password" \
+  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=postgresql
 ```
 
-**Bước 2 — Tạo Kubernetes Secrets:**
+**Xác nhận secrets đã tạo:**
 
 ```bash
-NS=techx-tf4
-
-# 1. accounting — DB connection string (.NET format)
-kubectl -n $NS create secret generic accounting-db-secret \
-  --from-literal=connection-string="$ACCOUNTING_DB_CONNECTION_STRING"
-
-# 2. product-catalog — DB connection string (PostgreSQL URI format)
-kubectl -n $NS create secret generic product-catalog-db-secret \
-  --from-literal=connection-string="$PRODUCT_CATALOG_DB_CONNECTION_STRING"
-
-# 3. product-reviews — DB connection string (libpq format)
-kubectl -n $NS create secret generic product-reviews-db-secret \
-  --from-literal=connection-string="$PRODUCT_REVIEWS_DB_CONNECTION_STRING"
-
-# 4. product-reviews — OpenAI API key
-kubectl -n $NS create secret generic product-reviews-openai-secret \
-  --from-literal=api-key="$OPENAI_API_KEY"
-
-# 5. postgresql — Admin password
-kubectl -n $NS create secret generic postgresql-secret \
-  --from-literal=postgres-password="$POSTGRES_PASSWORD"
+aws secretsmanager list-secrets \
+  --filters Key=name,Values=tf4/techx-tf4 \
+  --query "SecretList[].{Name:Name,ARN:ARN}" \
+  --output table
 ```
 
-> [!WARNING]
-> **Không bao giờ commit giá trị plaintext của secrets vào repository.** Các giá trị thật phải được lấy từ secure source (vault, SSM, 1Password) tại thời điểm deploy.
+### 5.4 IRSA Setup
 
-**Xác nhận điều kiện tiên quyết:**
+**IAM Policy:** Xem [eso-iam-policy.json](../../../infra/eso-iam-policy.json)
+- Chỉ cho phép `secretsmanager:GetSecretValue` và `secretsmanager:DescribeSecret`
+- Resource giới hạn đúng 5 secret ARN paths
+- Không cấp wildcard `secretsmanager:*`
 
-```bash
-# Verify tất cả 5 secrets đã tồn tại
-kubectl -n techx-tf4 get secret \
-  accounting-db-secret \
-  product-catalog-db-secret \
-  product-reviews-db-secret \
-  product-reviews-openai-secret \
-  postgresql-secret
-```
+**Trust Policy:** Xem [eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json)
+- Chỉ cho phép service account `external-secrets-sa` trong namespace `techx-tf4`
+- Sử dụng EKS OIDC provider
 
-**Kết quả mong đợi:** 5 secrets hiển thị với TYPE `Opaque` và trạng thái bình thường.
+> [!NOTE]
+> Cần thay `<ACCOUNT_ID>` và `<OIDC_PROVIDER>` bằng giá trị thật trong policy files trước khi apply. Lấy OIDC provider:
+> ```bash
+> aws eks describe-cluster --name <CLUSTER_NAME> \
+>   --query "cluster.identity.oidc.issuer" --output text | sed 's|https://||'
+> ```
 
 ---
 
@@ -167,68 +242,62 @@ kubectl -n techx-tf4 get secret \
 | **5** | `product-reviews-openai-secret` | `product-reviews` | Placeholder `dummy` — rủi ro thấp nhất nhưng nên migrate cùng batch |
 
 > [!NOTE]
-> Trên branch `feature/CDO08-SEC-01-move-secrets`, cả 5 candidates đã được migrate trong `values.yaml`. Việc deploy thực tế sẽ áp dụng tất cả cùng lúc qua một lệnh `helm upgrade` duy nhất.
+> Trên branch `feature/CDO08-SEC-01-move-secrets`, cả 5 candidates đã được migrate trong `values.yaml` sang `secretKeyRef`. ESO sẽ tạo Kubernetes Secrets tự động khi sync từ AWS Secrets Manager.
 
 ---
 
 ## 7. Thay đổi đã thực hiện trên Branch
 
-### File được sửa đổi
+### File được sửa đổi / tạo mới / xóa
 
 | File | Mô tả thay đổi |
 |:---|:---|
-| [techx-corp-chart/values.yaml](../../../techx-corp-chart/values.yaml) | 5 biến env chuyển từ `value: <plaintext>` sang `valueFrom.secretKeyRef` |
+| [techx-corp-chart/values.yaml](../../../techx-corp-chart/values.yaml) | 5 biến env giữ `valueFrom.secretKeyRef`; **xóa** block `.Values.secrets` (CHANGE_ME); **thêm** block `.Values.externalSecrets` (chỉ chứa config reference, không chứa secret value) |
+| [techx-corp-chart/values.schema.json](../../../techx-corp-chart/values.schema.json) | **Xóa** schema `secrets`; **thêm** schema `externalSecrets` |
+| ~~techx-corp-chart/templates/secrets.yaml~~ | **Đã xóa** — Helm template tạo K8s Secrets không còn cần thiết |
+| [techx-corp-chart/templates/secretstore.yaml](../../../techx-corp-chart/templates/secretstore.yaml) | **Mới** — SecretStore namespace-scoped cho AWS Secrets Manager + IRSA |
+| [techx-corp-chart/templates/external-secrets.yaml](../../../techx-corp-chart/templates/external-secrets.yaml) | **Mới** — 5 ExternalSecret resources đồng bộ secret từ AWS SM → K8s Secret |
+| [infra/eso-iam-policy.json](../../../infra/eso-iam-policy.json) | **Mới** — IAM policy least privilege cho ESO |
+| [infra/eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json) | **Mới** — IRSA trust relationship |
 
-### Chi tiết diff cho từng service
+### Chi tiết thay đổi trong values.yaml
 
-#### accounting (L182-186)
+#### externalSecrets config (thay thế secrets block)
 ```diff
-       - name: DB_CONNECTION_STRING
--        value: ***REDACTED***
-+        valueFrom:
-+          secretKeyRef:
-+            name: accounting-db-secret
-+            key: connection-string
+-# -- Kubernetes Secrets managed by Helm (CDO08-SEC-01)
+-# WARNING: Do NOT commit real credentials here. Use placeholder values only.
+-# Override with real values via: helm upgrade --set secrets.accounting-db-secret.data.connection-string="..."
+-# Or use a separate encrypted values file in CI/CD pipeline.
+-secrets:
+-  accounting-db-secret:
+-    enabled: true
+-    data:
+-      connection-string: "CHANGE_ME"
+-  ...
++# -- External Secrets Operator configuration (CDO08-SEC-01)
++# Secrets are sourced from AWS Secrets Manager and synced by ESO.
++# No secret values are stored in this file or in Git.
++externalSecrets:
++  enabled: true
++  region: us-east-1
++  serviceAccountName: external-secrets-sa
++  refreshInterval: 1h
++  secrets:
++    accounting-db-secret:
++      remoteRef: tf4/techx-tf4/accounting/db-connection-string
++      secretKey: connection-string
++    ...
 ```
 
-#### product-catalog (L669-673)
-```diff
-       - name: DB_CONNECTION_STRING
--        value: ***REDACTED***
-+        valueFrom:
-+          secretKeyRef:
-+            name: product-catalog-db-secret
-+            key: connection-string
-```
-
-#### product-reviews — OPENAI_API_KEY (L706-710)
-```diff
-       - name: OPENAI_API_KEY
--        value: ***REDACTED***
-+        valueFrom:
-+          secretKeyRef:
-+            name: product-reviews-openai-secret
-+            key: api-key
-```
-
-#### product-reviews — DB_CONNECTION_STRING (L727-731)
-```diff
-       - name: DB_CONNECTION_STRING
--        value: ***REDACTED***
-+        valueFrom:
-+          secretKeyRef:
-+            name: product-reviews-db-secret
-+            key: connection-string
-```
-
-#### postgresql (L998-1002)
-```diff
-       - name: POSTGRES_PASSWORD
--        value: ***REDACTED***
-+        valueFrom:
-+          secretKeyRef:
-+            name: postgresql-secret
-+            key: postgres-password
+#### secretKeyRef references (giữ nguyên, không thay đổi)
+```yaml
+# accounting, product-catalog, product-reviews, postgresql
+# Tất cả vẫn đọc secret qua secretKeyRef — không ảnh hưởng
+- name: DB_CONNECTION_STRING
+  valueFrom:
+    secretKeyRef:
+      name: accounting-db-secret
+      key: connection-string
 ```
 
 ---
@@ -238,57 +307,144 @@ kubectl -n techx-tf4 get secret \
 ### 8.1 Static Verification — Scan secrets còn sót
 
 ```bash
-# Quét lại toàn bộ repo xem còn hardcoded credential nào trong scope
-rg -n "PASSWORD|SECRET|API_KEY|TOKEN|CONNECTION_STRING" \
+# Quét lại toàn bộ repo xem còn hardcoded credential hoặc CHANGE_ME
+rg -n "CHANGE_ME|PASSWORD|SECRET|API_KEY|TOKEN|CONNECTION_STRING" \
   techx-corp-chart/values.yaml deploy/ techx-corp-platform/src/
 ```
 
-**Kết quả mong đợi:** Các biến trong scope (5 items) chỉ xuất hiện dưới dạng `secretKeyRef` reference, không còn plaintext value.
+**Kết quả mong đợi:** Các biến trong scope (5 items) chỉ xuất hiện dưới dạng `secretKeyRef` reference, không còn plaintext value hoặc `CHANGE_ME`.
 
-### 8.2 Runtime Verification — Sau khi deploy
+### 8.2 ESO Verification — Sau khi deploy
 
 ```bash
-# 1. Verify secrets đã tồn tại trên cluster
-kubectl -n techx-tf4 get secret
+# 1. Verify External Secrets Operator đang chạy
+kubectl -n external-secrets get pods
 
-# 2. Verify rollout status của các service bị ảnh hưởng
+# 2. Verify SecretStore ready
+kubectl -n techx-tf4 get secretstore aws-secretsmanager
+kubectl -n techx-tf4 describe secretstore aws-secretsmanager
+
+# 3. Verify ExternalSecret sync status
+kubectl -n techx-tf4 get externalsecret
+# Kết quả mong đợi: tất cả 5 ExternalSecret có STATUS = SecretSynced, READY = True
+
+# 4. Verify chi tiết từng ExternalSecret
+kubectl -n techx-tf4 describe externalsecret accounting-db-secret
+kubectl -n techx-tf4 describe externalsecret product-catalog-db-secret
+kubectl -n techx-tf4 describe externalsecret product-reviews-db-secret
+kubectl -n techx-tf4 describe externalsecret product-reviews-openai-secret
+kubectl -n techx-tf4 describe externalsecret postgresql-secret
+```
+
+### 8.3 Kubernetes Secret Verification
+
+```bash
+# 5. Verify Kubernetes Secrets đã được ESO tạo
+kubectl -n techx-tf4 get secret accounting-db-secret
+kubectl -n techx-tf4 get secret product-catalog-db-secret
+kubectl -n techx-tf4 get secret product-reviews-db-secret
+kubectl -n techx-tf4 get secret product-reviews-openai-secret
+kubectl -n techx-tf4 get secret postgresql-secret
+# Kết quả mong đợi: 5 secrets hiển thị với TYPE Opaque
+```
+
+> [!WARNING]
+> **Không được in secret value ra terminal, log hoặc tài liệu evidence.** Chỉ verify sự tồn tại và metadata của secrets.
+
+### 8.4 Runtime Verification — Workload health
+
+```bash
+# 6. Verify rollout status
 kubectl -n techx-tf4 rollout status deploy/accounting
 kubectl -n techx-tf4 rollout status deploy/product-catalog
 kubectl -n techx-tf4 rollout status deploy/product-reviews
 kubectl -n techx-tf4 rollout status deploy/postgresql
 
-# 3. Verify service đọc được DB (check logs cho connection errors)
+# 7. Verify logs — không có lỗi kết nối DB, lỗi đọc API key, hoặc lỗi thiếu secret
 kubectl -n techx-tf4 logs deploy/accounting -c accounting --tail=50
 kubectl -n techx-tf4 logs deploy/product-catalog -c product-catalog --tail=50
 kubectl -n techx-tf4 logs deploy/product-reviews -c product-reviews --tail=50
 
-# 4. Verify env vars đọc từ secret (không còn plaintext)
+# 8. Verify env vars đọc từ secret (không còn plaintext)
 kubectl -n techx-tf4 get deploy accounting -o jsonpath='{.spec.template.spec.containers[0].env}' | jq .
 ```
 
 ---
 
-## 9. Rollback Path
+## 9. Rollback & Break-Glass Plan
 
-Nếu service không đọc được config mới sau deploy:
+### 9.1 Rollback Helm changes
 
 ```bash
-# 1. Revert values.yaml về main
+# Revert values.yaml về main
 git checkout main -- techx-corp-chart/values.yaml
 
-# 2. Re-deploy Helm chart với values cũ
+# Re-deploy Helm chart với values cũ
 helm upgrade --install techx-corp ./techx-corp-chart -n techx-tf4 --create-namespace \
   --set default.image.repository=<ECR_REGISTRY_URL> \
   -f deploy/values-observability.yaml \
   -f deploy/values-flagd-sync.yaml
+```
 
-# 3. (Optional) Cleanup secrets nếu cần
-kubectl -n techx-tf4 delete secret \
-  accounting-db-secret \
-  product-catalog-db-secret \
-  product-reviews-db-secret \
-  product-reviews-openai-secret \
-  postgresql-secret
+> [!CAUTION]
+> **Không rollback bằng cách commit plaintext secret vào repository.** Nếu cần rollback, sử dụng break-glass procedure bên dưới.
+
+### 9.2 Break-Glass — Tạo Kubernetes Secret tạm thời
+
+Nếu ESO hoặc IRSA gặp lỗi và cần khôi phục service ngay:
+
+```bash
+# 1. Suspend ExternalSecret để tránh conflict
+kubectl -n techx-tf4 annotate externalsecret accounting-db-secret \
+  reconcile.external-secrets.io/disabled=true
+kubectl -n techx-tf4 annotate externalsecret product-catalog-db-secret \
+  reconcile.external-secrets.io/disabled=true
+kubectl -n techx-tf4 annotate externalsecret product-reviews-db-secret \
+  reconcile.external-secrets.io/disabled=true
+kubectl -n techx-tf4 annotate externalsecret product-reviews-openai-secret \
+  reconcile.external-secrets.io/disabled=true
+kubectl -n techx-tf4 annotate externalsecret postgresql-secret \
+  reconcile.external-secrets.io/disabled=true
+
+# 2. Lấy giá trị secret từ AWS Secrets Manager qua kênh kiểm soát
+# (Chạy trên máy có quyền truy cập AWS — KHÔNG log giá trị)
+SECRET_VALUE=$(aws secretsmanager get-secret-value \
+  --secret-id tf4/techx-tf4/accounting/db-connection-string \
+  --query SecretString --output text)
+
+# 3. Tạo Kubernetes Secret thủ công
+kubectl -n techx-tf4 create secret generic accounting-db-secret \
+  --from-literal=connection-string="$SECRET_VALUE" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Lặp lại cho 4 secrets còn lại...
+
+# 4. Restart workloads
+kubectl -n techx-tf4 rollout restart deploy/accounting
+kubectl -n techx-tf4 rollout restart deploy/product-catalog
+kubectl -n techx-tf4 rollout restart deploy/product-reviews
+kubectl -n techx-tf4 rollout restart deploy/postgresql
+```
+
+### 9.3 Khôi phục ESO sau khi lỗi được xử lý
+
+```bash
+# 1. Xác nhận ESO pods healthy
+kubectl -n external-secrets get pods
+
+# 2. Xác nhận IRSA hoạt động
+kubectl -n techx-tf4 describe sa external-secrets-sa
+
+# 3. Remove suspend annotation
+kubectl -n techx-tf4 annotate externalsecret accounting-db-secret \
+  reconcile.external-secrets.io/disabled-
+# Lặp lại cho 4 ExternalSecrets còn lại...
+
+# 4. Verify sync lại thành công
+kubectl -n techx-tf4 get externalsecret
+# Kết quả: tất cả STATUS = SecretSynced
+
+# 5. Xóa manual secrets nếu cần (ESO sẽ take over ownership)
 ```
 
 ---
@@ -298,20 +454,24 @@ kubectl -n techx-tf4 delete secret \
 | # | Criteria | Trạng thái | Evidence |
 |---|:---|:---|:---|
 | 1 | Có bảng phân loại secret | ✅ Hoàn thành | [Section 2](#2-bảng-phân-loại-secret-acceptance-criteria-1) — 5 in-scope + 4 out-of-scope |
-| 2 | Sensitive config không còn hardcoded hoặc có exception rõ | ✅ Hoàn thành (trên branch) | [Section 7](#7-thay-đổi-đã-thực-hiện-trên-branch) — 5/5 items đã migrate; 4 items out-of-scope có exception rõ |
-| 3 | Service đọc được secret mới sau deploy | ⏳ **Chưa đạt — chờ deploy & runtime verification** | Cần: (a) tạo Secrets trên cluster hoặc deploy chart có `secrets.yaml` template, (b) chạy `helm upgrade`, (c) verify theo [Section 8.2](#82-runtime-verification--sau-khi-deploy) |
-| 4 | Có rollback path | ✅ Hoàn thành | [Section 9](#9-rollback-path) |
+| 2 | Không còn hardcoded sensitive configuration trong Helm values | ✅ Hoàn thành (trên branch) | `.Values.secrets` với `CHANGE_ME` đã bị xóa; chỉ còn `secretKeyRef` references |
+| 3 | Secret thật nằm trong AWS Secrets Manager, không nằm trong Git | ⏳ Chờ tạo secrets trong AWS SM | Cần tạo 5 secrets theo [Section 5.3](#53-tạo-secret-trong-aws-secrets-manager) |
+| 4 | Không sử dụng SSM Parameter Store | ✅ Hoàn thành | Toàn bộ thiết kế dùng AWS Secrets Manager |
+| 5 | ESO đồng bộ thành công secret từ AWS SM → K8s Secret | ⏳ Chờ deploy & runtime verification | Cần: (a) ESO installed, (b) IRSA configured, (c) `helm upgrade`, (d) verify theo [Section 8.2](#82-eso-verification--sau-khi-deploy) |
+| 6 | Workload đọc được secret thông qua secretKeyRef | ⏳ Chờ deploy & runtime verification | Verify theo [Section 8.4](#84-runtime-verification--workload-health) |
+| 7 | Có evidence cho IAM/IRSA theo nguyên tắc least privilege | ✅ Hoàn thành | [eso-iam-policy.json](../../../infra/eso-iam-policy.json) + [eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json) |
+| 8 | Có rollback và break-glass plan rõ ràng | ✅ Hoàn thành | [Section 9](#9-rollback--break-glass-plan) |
 
 > [!IMPORTANT]
 > **Hành động tiếp theo:**
 > 1. ✅ ~~Phân tích & phân loại secrets~~ — Hoàn thành
-> 2. ✅ ~~Research phương án & code changes~~ — Hoàn thành trên branch
-> 3. ✅ ~~Thêm Helm template `secrets.yaml`~~ — Secret objects sẽ được tạo tự động khi deploy
-> 4. ⏳ **Chờ approval từ PM/Reviewer** để tiến hành deploy
-> 5. ⏳ Override secret values qua `--set` hoặc secure values file khi deploy (giá trị mặc định là `CHANGE_ME`)
-> 6. ⏳ Deploy & verify runtime — chạy rollout status cho 4 services
->
-> **Lưu ý:** Helm template `secrets.yaml` đã được thêm vào chart để tạo 5 Secret objects tự động. Giá trị mặc định là placeholder `CHANGE_ME` — Deploy Operator cần override bằng giá trị thật qua CI/CD pipeline.
+> 2. ✅ ~~Code changes: xóa Helm secrets, thêm ESO manifests~~ — Hoàn thành trên branch
+> 3. ✅ ~~IAM policy & trust policy references~~ — Hoàn thành
+> 4. ⏳ **Xác nhận ESO đã cài trên cluster** — Nếu chưa, cần tạo installation request
+> 5. ⏳ **Tạo IAM role + IRSA** — Apply policy files, tạo service account
+> 6. ⏳ **Tạo secrets trong AWS Secrets Manager** — Thuỷ chủ động coordinate
+> 7. ⏳ **Chờ approval từ PM/Reviewer** để tiến hành deploy
+> 8. ⏳ Deploy & verify runtime — chạy verification plan Section 8
 
 ---
 
@@ -319,7 +479,11 @@ kubectl -n techx-tf4 delete secret \
 
 | Vai trò | Người | Hành động cần thiết |
 |:---|:---|:---|
-| Owner | Thuỷ | Đã hoàn thành phân tích, code changes, và báo cáo |
+| Owner | Thuỷ | Đã hoàn thành phân tích, code changes, ESO manifests, IAM policy references |
 | PM | Hải | Review và approve để tiến hành deploy |
-| Security Reviewer | Nhân | Review changes trên branch |
+| Security Reviewer | Nhân | Review IAM policy, IRSA trust, ESO configuration |
 | Deploy Operator | — | Hỗ trợ deploy khi có approval |
+| Infra/Platform | — | Xác nhận ESO installed, IRSA enabled; tạo IAM role nếu cần review gate |
+
+> [!NOTE]
+> Nếu cần review về IAM, chi phí, audit hoặc operator ownership, Thuỷ cần chủ động tạo review request hoặc review gate cho team liên quan trước khi implement và deploy.
