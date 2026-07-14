@@ -157,9 +157,9 @@ resource "aws_s3_bucket" "cloudtrail_logs" {
 
   tags = var.tags
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 
 # S3 Object Lock Configuration — COMPLIANCE mode, 90 ngày
