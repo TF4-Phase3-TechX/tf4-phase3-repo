@@ -73,6 +73,49 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-CostPer
                 "s3:ListStorageLens*"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "AllowPortForwardingToApprovedBastion",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:StartSession"
+            ],
+            "Resource": [
+                "arn:aws:ec2:us-east-1:511825856493:instance/i-072084d1cf0b2f1c9",
+                "arn:aws:ssm:us-east-1::document/AWS-StartPortForwardingSession"
+            ]
+        },
+        {
+            "Sid": "AllowSessionDataChannelForOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/${aws:userid}-*"
+            ]
+        },
+        {
+            "Sid": "AllowManageOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:ResumeSession",
+                "ssm:TerminateSession"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/${aws:userid}-*"
+            ]
+        },
+        {
+            "Sid": "AllowReadOnlySessionAndInstanceDiscovery",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeInstanceInformation",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
         }
     ]
 }
@@ -82,7 +125,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-CostPer
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này gồm 2 Statements lớn: `CostManagementAndAlerting` (Quản lý & Cảnh báo Chi phí) và `PerformanceOptimizationAndMonitoring` (Giám sát & Tối ưu Hiệu năng).
+Policy này gồm 6 Statements phục vụ mục đích kiểm soát chi phí, hiệu năng và cấp quyền truy cập cổng giám sát bảo mật qua SSM Tunnel:
 
 ### Statement 1: `CostManagementAndAlerting` (Quản lý & Cảnh báo Chi phí)
 
@@ -107,6 +150,28 @@ Nhóm quyền này cho phép theo dõi tài nguyên nhằm phát hiện các tà
 * **AWS Performance Insights (PI)**: Lấy dữ liệu phân tích sâu hiệu suất database RDS (`pi:Get*`, `Describe*`).
 * **Savings Plans**: Kiểm tra các gói cam kết chiết khấu chi phí (`savingsplans:Describe*`).
 * **S3 Storage Lens**: Phân tích dung lượng, xu hướng sử dụng và cấu hình bảo mật của các S3 bucket trên diện rộng (`s3:GetStorageLens*`, `ListStorageLens*`).
+
+---
+
+### Statement 3: `AllowPortForwardingToApprovedBastion` (Cấp quyền mở SSM Port Forward)
+* **Hành động**: `ssm:StartSession`
+* **Tài nguyên**: Giới hạn ở Bastion Host `arn:aws:ec2:us-east-1:511825856493:instance/i-072084d1cf0b2f1c9` và tài liệu SSM Port-Forwarding chuẩn `arn:aws:ssm:us-east-1::document/AWS-StartPortForwardingSession`.
+* **Mô tả**: Cho phép thiết lập đường truyền cổng vận hành (Grafana, Jaeger, Locust, Alertmanager) về localhost của máy cá nhân. Quyền này tuyệt đối **không** cho phép mở phiên shell tương tác (không cấp `SSM-SessionManagerRunShell` hay `AWS-StartSSHSession`).
+
+### Statement 4: `AllowSessionDataChannelForOwnSessions` (Mở kênh truyền dữ liệu)
+* **Hành động**: `ssmmessages:OpenDataChannel`
+* **Tài nguyên**: Giới hạn ở session ID được định danh theo User ID hiện tại của chính người tạo (`session/${aws:userid}-*`).
+* **Mô tả**: Cho phép thiết lập kênh truyền dữ liệu bảo mật hai chiều thông qua SSM.
+
+### Statement 5: `AllowManageOwnSessions` (Quản trị phiên kết nối cá nhân)
+* **Hành động**: `ssm:ResumeSession`, `ssm:TerminateSession`
+* **Tài nguyên**: Giới hạn ở session ID của chính người dùng đó (`session/${aws:userid}-*`).
+* **Mô tả**: Cho phép người dùng tự khôi phục phiên kết nối khi bị rớt mạng (`ResumeSession`) và đóng sạch session để dọn dẹp sau khi kiểm thử xong (`TerminateSession`).
+
+### Statement 6: `AllowReadOnlySessionAndInstanceDiscovery` (Tra cứu thông tin phiên & Trạng thái Bastion)
+* **Hành động**: `ssm:DescribeInstanceInformation`, `ssm:DescribeSessions`, `ssm:GetConnectionStatus`, `ec2:DescribeInstances`
+* **Tài nguyên**: `*` (áp dụng toàn cục để tra cứu).
+* **Mô tả**: Quyền kiểm tra trạng thái Online của Bastion host trong danh sách SSM và xem các phiên kết nối đang hoạt động.
 
 ---
 [⬅️ Quay lại nhóm CDO04](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)
