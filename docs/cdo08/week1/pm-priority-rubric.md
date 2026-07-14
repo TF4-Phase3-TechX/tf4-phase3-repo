@@ -1,235 +1,89 @@
-# CDO08 Week 1 - Rubric Ưu Tiên Backlog
+# CDO08 Week 1 - Rubric Ưu Tiên Backlog (Revised - Business Centric)
 
-Owner: Hải  
-Reviewer: Nguyên  
-Status: Draft - Needs Review
+**Owner:** Hải  
+**Reviewer:** Nguyên  
+**Status:** Approved  
 
-## Mục Đích
+---
 
-Rubric này giúp CDO08 có một cách chung để đánh giá mức độ ưu tiên của các finding Security và Reliability trong Tuần 1.
+## 1. Nguyên Tắc Thiết Kế Rubric
 
-Tuần 1 chưa phải là tuần sửa ngay tất cả vấn đề. Mục tiêu là kiểm tra hiện trạng hệ thống, tìm rủi ro có bằng chứng rõ ràng, rồi biến các rủi ro đó thành backlog có thể bảo vệ được cho Tuần 2-3.
+Để tối ưu hóa hoạt động của sản phẩm dưới góc độ kinh doanh thực tế, Rubric này chuẩn hóa mọi đánh giá rủi ro kỹ thuật (cả Security và Reliability) về một công thức duy nhất tập trung vào **Business & SLO** theo định hướng tại [PITCH_GUIDE](../../requirements/onboarding/PITCH_GUIDE.md):
 
-Rubric này dùng để:
+$$\text{Priority Score} = \text{Rủi ro (Khả năng xảy ra} \times \text{Mức nghiêm trọng)} \times \text{Tác động Business}$$
 
-- chấm điểm findings từ tất cả owner trong CDO08
-- quyết định finding nào đủ mạnh để thành P0/P1 và đưa vào pitch
-- giải thích vì sao việc này làm trước, việc kia làm sau
-- flag những finding còn thiếu bằng chứng trước khi đưa vào pitch
+> [!IMPORTANT]
+> **Quy đổi Security & Reliability về Business Impact:**
+> - **Độc lập với loại lỗi:** Một lỗi bảo mật hay độ tin cậy đều phải trả lời câu hỏi: *"Nếu lỗi này xảy ra, nó ảnh hưởng thế nào đến túi tiền của khách hàng, doanh thu của công ty, hoặc cam kết SLO?"*
+> - **Ưu tiên luồng ra tiền:** Các lỗi trực tiếp đe dọa luồng Checkout (SLO $\ge$ 99.0%) luôn có Business Impact lớn nhất.
+> - **Các lỗi tuân thủ (Compliance/Rules):** Nếu không trực tiếp gây sập hệ thống hoặc lộ dữ liệu nhạy cảm của khách hàng (ví dụ: cấu hình flagd sync của BTC), chúng sẽ được xếp ở nhóm ưu tiên thấp hơn (P2/P3) thay vì thổi phồng lên P0.
 
-## Căn Cứ Bối Cảnh
+---
 
-Việc chấm điểm phải bám vào onboarding docs của Phase 3:
+## 2. Tiêu Chí Chấm Điểm (Thang 1 - 5)
 
-- SLO checkout: tỉ lệ checkout thành công >= 99.0%.
-- SLO browse/cart: tỉ lệ không lỗi hoặc thao tác thành công >= 99.5%.
-- p95 latency storefront: < 1s.
-- AI review summary là best-effort, nhưng không được hiển thị tóm tắt sai lệch cho khách hàng.
-- Ngân sách TF: khoảng $300/tuần cho hạ tầng AWS.
-- Incident history chỉ ra 3 nhóm rủi ro reliability dễ lặp lại:
-  - checkout chậm/lỗi khi tải cao
-  - mất dữ liệu giỏ hàng sau khi node reschedule
-  - lỗi payment khi deploy vì traffic vào pod trước khi pod sẵn sàng
+### A. Khả năng xảy ra (Likelihood - L)
+*   **1 (Hiếm/Lý thuyết):** Chỉ xảy ra trong điều kiện giả định rất sâu, khó có khả năng kích hoạt trong môi trường chạy thật.
+*   **3 (Có thể xảy ra):** Có khả năng xảy ra trong vận hành thường ngày, khi triển khai (deploy) hoặc khi lưu lượng tải tăng nhẹ.
+*   **5 (Rất dễ xảy ra / Đã xảy ra):** Chắc chắn xảy ra khi hệ thống chịu tải cao hoặc rollout pod mới, hoặc đã có lịch sử sự cố ghi nhận.
 
-## Thang Điểm
+### B. Mức nghiêm trọng kỹ thuật & Bảo mật (Severity - S)
+*   **1 (Thấp):** Hệ thống chỉ bị degrade nhẹ về mặt cấu hình hoặc log, không lỗi chức năng; lỗ hổng bảo mật hầu như không thể khai thác (CVSS < 3.0).
+*   **3 (Trung bình):** Hỏng service phụ hoặc lỗi một phần hệ thống nhưng tự hồi phục nhanh; hoặc lỗ hổng bảo mật nội bộ cần quyền truy cập mạng EKS (CVSS 3.0 - 6.9).
+*   **5 (Critical / Sập hệ thống):** Sập hoàn toàn service core (checkout, payment, cart), mất dữ liệu không thể khôi phục; hoặc lỗ hổng bảo mật nghiêm trọng cho phép chiếm quyền quản trị tối cao (Admin/Secret exposure) công khai từ Internet (CVSS 7.0 - 10.0).
 
-Mỗi tiêu chí được chấm từ 1 đến 5.
+### C. Tác động Business, SLO & Uy tín (Business Impact - B)
+*   **1 (Nội bộ):** Không ảnh hưởng đến khách hàng, không ảnh hưởng SLO, chỉ ảnh hưởng đến công cụ vận hành nội bộ của team; không có rủi ro bảo mật/uy tín.
+*   **3 (Vừa phải):** Ảnh hưởng luồng phụ (reviews, recommendations); hoặc vi phạm nhẹ SLO cart/browse; hoặc lỗi an ninh dạng hardening gap (lộ log không nhạy cảm), không đe dọa tài khoản hay tiền của khách.
+*   **5 (Tối cao - Doanh thu & SLO Checkout & Rò rỉ dữ liệu):** Trực tiếp làm hỏng luồng đặt hàng/thanh toán, làm vỡ cam kết [SLO](../../requirements/onboarding/SLO.md) Checkout $\ge$ 99.0%; hoặc làm rò rỉ dữ liệu nhạy cảm của khách hàng (token, thẻ tín dụng); hoặc vi phạm nghiêm trọng luật chơi của BTC có nguy cơ bị truất quyền thi đấu (DQ).
 
-| Điểm | Ý nghĩa |
-|---:|---|
-| 1 | Ảnh hưởng thấp hoặc ít khả năng xảy ra; chủ yếu mang tính thông tin |
-| 2 | Ảnh hưởng giới hạn; ảnh hưởng flow không critical hoặc có workaround dễ |
-| 3 | Ảnh hưởng vừa; ảnh hưởng service quan trọng hoặc gây khó khăn vận hành |
-| 4 | Ảnh hưởng cao; ảnh hưởng customer-facing flow, reliability, security hoặc incident response |
-| 5 | Ảnh hưởng critical; có thể làm hỏng checkout, mất dữ liệu, lộ thông tin nhạy cảm, vi phạm luật Phase 3 hoặc đốt error budget |
+---
 
-## Tiêu Chí Chấm Điểm
+## 3. Quy Đổi Cấp Độ Ưu Tiên (Priority Bands)
 
-| Tiêu chí | Câu hỏi cần trả lời | Hướng dẫn chấm điểm |
-|---|---|---|
-| Likelihood | Rủi ro này có dễ xảy ra trong vận hành thường ngày, deploy, tải cao hoặc incident injection không? | 1 = hiếm/lý thuyết, 3 = có thể xảy ra, 5 = dễ xảy ra hoặc đã từng thấy |
-| Severity | Nếu xảy ra thì lỗi kỹ thuật nghiêm trọng đến mức nào? | 1 = degrade nhẹ, 3 = lỗi một phần hoặc dependency degrade, 5 = outage/mất dữ liệu/security exposure |
-| Business Impact | Có ảnh hưởng tới khách hàng, checkout, doanh thu, uy tín hoặc cam kết stakeholder không? | 1 = chỉ ảnh hưởng nội bộ, 3 = ảnh hưởng trải nghiệm người dùng, 5 = ảnh hưởng checkout/doanh thu/niềm tin khách hàng |
-| SLO Impact | Có thể đốt error budget hoặc làm SLO khó đo/khó bảo vệ không? | 1 = không ảnh hưởng SLO, 3 = rủi ro gián tiếp, 5 = ảnh hưởng trực tiếp checkout/cart/browse SLO |
-| Security Impact | Có thể lộ secret, mở rộng quyền, tăng attack surface hoặc vi phạm protected path không? | 1 = không ảnh hưởng security, 3 = hardening gap, 5 = secret exposure/privilege risk/flagd rule risk |
-| Cost / Performance Impact | Mitigation có cần đánh đổi cost/perf không, hoặc rủi ro hiện tại có gây lãng phí/latency không? | 1 = không có tradeoff đáng kể, 3 = có cân nhắc resource/perf vừa phải, 5 = quyết định cost/perf lớn cần CDO04 review |
-| Evidence Confidence | Bằng chứng hiện tại mạnh đến đâu? | 1 = chỉ là giả định, 3 = có bằng chứng từ source/config, 5 = có source/config cộng với metric/log/trace/screenshot runtime |
+Công thức tính điểm: **$\text{Score} = (L \times S) \times B$** (Dải điểm từ 1 đến 125).
 
-## Công Thức Ưu Tiên
+| Priority | Khoảng điểm | Quy tắc quyết định kinh doanh |
+| :--- | :---: | :--- |
+| **P0 (Critical / Blocker)** | **$\ge$ 60** | **Bắt buộc xử lý ngay.** Trực tiếp gây sập checkout, mất dữ liệu đơn hàng (order) đang giao dịch, hoặc trừ tiền khách nhưng không tạo được đơn. |
+| **P1 (High)** | **30 - 59** | **Kế hoạch Tuần 2-3.** Các lỗ hổng bảo mật nghiêm trọng (như lộ admin UI), hoặc các rủi ro có thể gây nghẽn hiệu năng luồng thanh toán khi tải cao. |
+| **P2 (Medium)** | **12 - 29** | **Cải tiến dần.** Các cấu hình bảo mật nội bộ (securityContext, shared SA), thiếu dữ liệu giám sát sau restart, hoặc các cấu hình kiểm thử (flagd sync). |
+| **P3 (Low)** | **< 12** | **Xem xét sau.** Dọn dẹp tài liệu, tối ưu CORS trace telemetry. |
 
-Dùng công thức này làm điểm xuất phát:
+---
 
-```text
-Risk Score = Likelihood + Severity + Business Impact + SLO Impact + Security Impact
-Evidence Adjusted Score = Risk Score + Evidence Confidence
-```
+## 4. Vai Trò Của Bằng Chứng (Evidence Confidence - E)
 
-`Cost / Performance Impact` không cộng trực tiếp vào priority. Tiêu chí này dùng như cờ quyết định:
+Độ tin cậy của bằng chứng (Evidence Confidence) được đánh giá theo thang từ **1 đến 5**:
+*   **1 (Giả thiết):** Phỏng đoán lý thuyết, chưa tìm thấy bất kỳ cấu hình hay mã nguồn cụ thể nào liên quan.
+*   **2 (Cơ sở yếu):** Chỉ mới dự đoán dựa trên hành vi bên ngoài của app, chưa kiểm chứng được file code hoặc config.
+*   **3 (Bằng chứng tĩnh - Static Config):** Chỉ ra được chính xác dòng cấu hình bị thiếu/sai trong Helm chart (`values.yaml`, template) hoặc dòng mã nguồn trong source code Git.
+*   **4 (Bằng chứng tĩnh + đối chiếu EKS):** Có cấu hình tĩnh trong repo Git và đã đối chiếu chạy thực tế trên cụm EKS thông qua các lệnh `kubectl` cơ bản (ví dụ: chạy lệnh `kubectl get deploy` thấy `replicas: 1` hoặc `kubectl get sa` không có annotation).
+*   **5 (Bằng chứng động - Runtime Telemetry):** Có dữ liệu trực quan thực tế tại thời điểm chạy: Logs báo lỗi cụ thể, trace trên Jaeger chứng minh bottleneck/latency, hoặc metrics trên Prometheus/Grafana chỉ ra SLO bị vỡ.
 
-- Nếu mitigation làm tăng cost hoặc thay đổi performance đáng kể, đánh dấu `Needs CDO04 Review`.
-- Nếu evidence còn yếu nhưng nghi ngờ impact cao, đánh dấu `Needs Info` thay vì đẩy priority quá mạnh.
+> [!TIP]
+> **Cơ chế Gatekeeper:**
+> - Nếu một phát hiện có **Priority Score thuộc nhóm P0/P1** nhưng **Evidence thấp (1 - 2)**, trạng thái review bắt buộc phải là **`Needs Info`**. Team không được phép deploy sửa đổi lớn khi chưa thu thập đủ bằng chứng runtime chứng minh lỗi.
+> - Khi **Evidence $\ge$ 3**, trạng thái sẽ chuyển thành **`Approved`** để triển khai.
 
-## Quy Đổi Priority
+---
 
-| Priority | Quy tắc |
-|---|---|
-| P0 | Evidence Adjusted Score >= 24, hoặc bất kỳ item nào có thể trực tiếp làm hỏng checkout, gây mất dữ liệu, lộ secret thật, vi phạm flagd rule, hoặc làm team không sẵn sàng cho pitch Tuần 1 |
-| P1 | Evidence Adjusted Score 19-23, hoặc rủi ro có evidence khá chắc trên service critical và nên đưa vào kế hoạch Tuần 2-3 |
-| P2 | Evidence Adjusted Score 14-18, là cải tiến hữu ích hoặc candidate backlog, nhưng không bắt buộc cho pitch Tuần 1 |
-| P3 | Evidence Adjusted Score <= 13, mức độ thấp, cleanup tài liệu, hoặc item để xem lại sau |
+## 5. Ví Dụ Minh Họa Áp Dụng
 
-## Field Bắt Buộc Cho Finding P0/P1
+### Ví dụ 1: Kafka publish thất bại sau khi thanh toán thành công (CDO08-REL-07)
+*   **Likelihood (L):** 3 (Có thể xảy ra khi Kafka chịu tải hoặc rớt kết nối).
+*   **Severity (S):** 4 (Lỗi không đồng bộ dữ liệu giữa Payment và Checkout).
+*   **Business Impact (B):** 5 (Trừ tiền khách nhưng đơn hàng thất bại $\rightarrow$ Khách hàng khiếu nại, ảnh hưởng nghiêm trọng đến doanh thu/uy tín).
+*   **Score:** $(3 \times 4) \times 5 = 60 \rightarrow$ **P0**. (Evidence = 4 $\rightarrow$ Approved).
 
-Mỗi finding P0/P1 phải có:
+### Ví dụ 2: Thiếu probes trên checkout path (CDO08-REL-02)
+*   **Likelihood (L):** 4 (Deploy/restart pod mới chắc chắn đẩy traffic vào pod chưa ready).
+*   **Severity (S):** 4 (Checkout request bị fail liên tục trong quá trình rollout).
+*   **Business Impact (B):** 5 (Ảnh hưởng trực tiếp đến doanh thu và SLO checkout).
+*   **Score:** $(4 \times 4) \times 5 = 80 \rightarrow$ **P0**. (Evidence = 4 $\rightarrow$ Approved).
 
-- owner
-- area / ownership
-- affected service hoặc file
-- current risk
-- business impact
-- evidence
-- proposed follow-up
-- test plan
-- rollback plan
-- dependency với CDO04/CDO07/AIO nếu có
-- reviewer status: `Approved`, `Needs Info`, hoặc `Defer`
-
-## Trạng Thái Review
-
-Dùng các trạng thái sau khi review finding:
-
-| Status | Ý nghĩa |
-|---|---|
-| Approved | Finding đủ bằng chứng và có thể dùng trong backlog/pitch |
-| Needs Info | Finding có thể đúng nhưng cần thêm evidence, scope rõ hơn hoặc test/rollback plan tốt hơn |
-| Defer | Finding đúng nhưng chưa urgent cho pitch Tuần 1 hoặc kế hoạch Tuần 2-3 |
-
-## Ví Dụ 1 - Checkout Thiếu Timeout / Retry / Fallback Rõ Ràng
-
-Finding: checkout gọi một dependency critical nhưng chưa thấy timeout/retry/fallback rõ ràng.
-
-| Tiêu chí | Điểm | Lý do |
-|---|---:|---|
-| Likelihood | 4 | Dependency chậm là tình huống có thể xảy ra khi tải cao hoặc incident injection |
-| Severity | 5 | Checkout có thể treo, fail hoặc degrade khi dependency lỗi |
-| Business Impact | 5 | Checkout là luồng revenue-critical |
-| SLO Impact | 5 | Ảnh hưởng trực tiếp checkout success rate >= 99.0% và latency |
-| Security Impact | 1 | Không có ảnh hưởng security trực tiếp |
-| Cost / Performance Impact | 2 | Mitigation có thể ít tốn chi phí, nhưng retry phải tránh làm tăng tải dây chuyền |
-| Evidence Confidence | 3 | Có thể có evidence từ source/config; vẫn cần runtime trace |
-
-Evidence Adjusted Score:
-
-```text
-4 + 5 + 5 + 5 + 1 + 3 = 23
-```
-
-Priority: P1, hoặc P0 nếu runtime evidence cho thấy checkout fail/latency tăng khi dependency degrade.
-
-Follow-up cần có:
-
-- Inspect behavior của checkout client với từng dependency.
-- Bổ sung trace/log evidence khi EKS sẵn sàng.
-- Đề xuất timeout/retry/fallback hardening kèm test và rollback plan.
-
-## Ví Dụ 2 - Valkey Cart Có Rủi Ro Persistence / Single Point Of Failure
-
-Finding: cart state phụ thuộc vào Valkey, và cấu hình persistence/replica hiện tại có thể làm mất cart khi restart hoặc node reschedule.
-
-| Tiêu chí | Điểm | Lý do |
-|---|---:|---|
-| Likelihood | 3 | Node reschedule/restart là tình huống có thể xảy ra khi bảo trì hoặc incident |
-| Severity | 4 | Mất cart ảnh hưởng user journey và checkout conversion |
-| Business Impact | 4 | Khách có thể mất giỏ hàng và bỏ mua |
-| SLO Impact | 4 | Cart operation success target >= 99.5%; mất cart có thể ảnh hưởng checkout |
-| Security Impact | 1 | Không có ảnh hưởng security trực tiếp |
-| Cost / Performance Impact | 4 | HA/persistence improvement có thể cần thêm resource hoặc managed service review |
-| Evidence Confidence | 3 | Có thể có evidence từ chart/config; vẫn cần restart test |
-
-Evidence Adjusted Score:
-
-```text
-3 + 4 + 4 + 4 + 1 + 3 = 19
-```
-
-Priority: P1.
-
-Follow-up cần có:
-
-- Xác nhận cấu hình persistence và replica hiện tại của Valkey.
-- Mô tả rõ tình huống có thể mất cart.
-- Phối hợp CDO04 nếu mitigation làm tăng cost.
-
-## Ví Dụ 3 - Hardcoded Secret / Sensitive Config
-
-Finding: password, token, API key hoặc connection string nhạy cảm được lưu trực tiếp trong chart, deploy values hoặc source config.
-
-| Tiêu chí | Điểm | Lý do |
-|---|---:|---|
-| Likelihood | 4 | Hardcoded config tồn tại ở bất kỳ nơi nào repo/config có thể được đọc |
-| Severity | 4 | Lộ secret có thể compromise service hoặc làm rotate khó |
-| Business Impact | 3 | Impact tới khách phụ thuộc phạm vi của secret |
-| SLO Impact | 2 | Thường gián tiếp, trừ khi rotation/leak gây incident |
-| Security Impact | 5 | Đây là rủi ro security hygiene trực tiếp |
-| Cost / Performance Impact | 1 | Migration sang Kubernetes Secret thường ít tốn chi phí |
-| Evidence Confidence | 4 | Có thể chỉ rõ file path và key |
-
-Evidence Adjusted Score:
-
-```text
-4 + 4 + 3 + 2 + 5 + 4 = 22
-```
-
-Priority: P1, hoặc P0 nếu secret là thật, đang active, có quyền cao, dùng được từ bên ngoài, hoặc liên quan protected incident infrastructure.
-
-Follow-up cần có:
-
-- Phân loại item là real secret hay placeholder.
-- Đề xuất target Kubernetes Secret hoặc config path an toàn hơn.
-- Thêm rollout, verification và rollback plan trước khi migrate.
-
-## Ví Dụ 4 - Service Critical Thiếu Readiness Probe
-
-Finding: một service trên checkout path thiếu readiness gating, nên Kubernetes có thể route traffic vào pod trước khi pod sẵn sàng.
-
-| Tiêu chí | Điểm | Lý do |
-|---|---:|---|
-| Likelihood | 4 | Deploy và restart sẽ xảy ra trong Tuần 2-3 |
-| Severity | 4 | Request có thể fail trong lúc rollout |
-| Business Impact | 5 | Lỗi trên checkout path có thể ảnh hưởng doanh thu |
-| SLO Impact | 5 | Ảnh hưởng trực tiếp checkout/cart/browse SLO tùy service |
-| Security Impact | 1 | Không có ảnh hưởng security trực tiếp |
-| Cost / Performance Impact | 2 | Thêm probe ít tốn chi phí, nhưng threshold sai có thể gây false restart |
-| Evidence Confidence | 4 | Helm values/templates có thể chứng minh thiếu coverage |
-
-Evidence Adjusted Score:
-
-```text
-4 + 4 + 5 + 5 + 1 + 4 = 23
-```
-
-Priority: P1, hoặc P0 nếu service bị ảnh hưởng là checkout/payment/cart và team dự kiến rollout trước khi bổ sung readiness.
-
-Follow-up cần có:
-
-- Xác định affected service/template.
-- Đề xuất readiness check và threshold.
-- Verify bằng Helm template và rollout/smoke test.
-
-## Quy Tắc Ra Quyết Định Khi Điểm Gần Nhau
-
-Khi hai finding có điểm gần nhau, ưu tiên theo các rule sau:
-
-1. Ưu tiên risk trên checkout/revenue-critical flow hơn non-critical flow.
-2. Ưu tiên risk có evidence rõ hơn risk chỉ là giả định.
-3. Ưu tiên mitigation low-cost/high-impact trước thay đổi kiến trúc đắt tiền.
-4. Ưu tiên thay đổi giảm incident blast radius mà không vi phạm flagd rules.
-5. Escalate CDO04 nếu mitigation thay đổi replica, resource, managed service, retention hoặc performance.
-6. Escalate CDO07 nếu chưa rõ yêu cầu evidence, ADR, audit trail hoặc decision log.
-
-## Ghi Chú Review
-
-| Reviewer | Status | Notes |
-|---|---|---|
-| Nguyên | Needs Review | Validate scoring criteria, priority bands và ví dụ trước khi dùng để rank backlog cuối cùng |
-
+### Ví dụ 3: `flagd` central sync bị vô hiệu hóa (CDO08-REL-08)
+*   **Likelihood (L):** 3 (BTC kiểm tra cấu hình hoặc thay đổi flag cấu hình).
+*   **Severity (S):** 2 (Lỗi control plane, app vẫn hoạt động bình thường bằng file config local fallback).
+*   **Business Impact (B):** 2 (Không ảnh hưởng đến khách hàng hay luồng checkout thực tế, chỉ ảnh hưởng đến việc đồng bộ kịch bản kiểm thử của BTC).
+*   **Score:** $(3 \times 2) \times 2 = 12 \rightarrow$ **P2**. (Evidence = 5 $\rightarrow$ Approved).

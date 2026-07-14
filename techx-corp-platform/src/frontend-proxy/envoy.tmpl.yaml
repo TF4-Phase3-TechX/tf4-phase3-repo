@@ -37,30 +37,40 @@ static_resources:
                       domains:
                         - "*"
                       routes:
-                        - match: { path: "/loadgen" }
-                          redirect: { path_redirect: "/loadgen/" }
-                        - match: { prefix: "/loadgen/" }
-                          route: { cluster: loadgen, prefix_rewrite: "/" }
-                        - match: { prefix: "/otlp-http/" }
-                          route: { cluster: opentelemetry_collector_http, prefix_rewrite: "/" }
-                        - match: { path: "/jaeger" }
-                          redirect: { path_redirect: "/jaeger/" }
-                        - match: { prefix: "/jaeger/" }
-                          route: { cluster: jaeger }
+                        # Deny rules for internal operational portals (CDO08-SEC-05)
                         - match: { path: "/grafana" }
-                          redirect: { path_redirect: "/grafana/" }
+                          direct_response: { status: 404 }
                         - match: { prefix: "/grafana/" }
-                          route: { cluster: grafana }
+                          direct_response: { status: 404 }
+
+                        - match: { path: "/jaeger" }
+                          direct_response: { status: 404 }
+                        - match: { prefix: "/jaeger/" }
+                          direct_response: { status: 404 }
+
+                        - match: { path: "/loadgen" }
+                          direct_response: { status: 404 }
+                        - match: { prefix: "/loadgen/" }
+                          direct_response: { status: 404 }
+
+                        - match: { path: "/feature" }
+                          direct_response: { status: 404 }
+                        - match: { prefix: "/feature/" }
+                          direct_response: { status: 404 }
+
+                        - match: { path: "/flagservice" }
+                          direct_response: { status: 404 }
+                        - match: { prefix: "/flagservice/" }
+                          direct_response: { status: 404 }
+
+                        - match: { path: "/otlp-http" }
+                          direct_response: { status: 404 }
+                        - match: { prefix: "/otlp-http/" }
+                          direct_response: { status: 404 }
+
+                        # Allowed public routes
                         - match: { prefix: "/images/" }
                           route: { cluster: image-provider, prefix_rewrite: "/" }
-                        - match: { prefix: "/flagservice/" }
-                          route: { cluster: flagservice, prefix_rewrite: "/", timeout: 0s }
-                        - match: { prefix: "/feature" }
-                          route:
-                            cluster: flagd-ui
-                            prefix_rewrite: "/"
-                            upgrade_configs:
-                              - upgrade_type: websocket
                         - match: { prefix: "/" }  # Default/catch-all route - keep last since prefix:"/" matches everything
                           route: { cluster: frontend }
                 http_filters:

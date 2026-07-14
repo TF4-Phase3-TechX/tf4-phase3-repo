@@ -206,7 +206,7 @@ Việc cần làm tuần sau:
 
 Evidence:
 
-- Nguyên finding CDO08-REL-03 chỉ ra `payment/charge.js` gọi `OpenFeature.setProviderAndWait(flagProvider)` bên trong request handler `charge`.
+- Nguyên finding CDO08-REL-10 chỉ ra `payment/charge.js` gọi `OpenFeature.setProviderAndWait(flagProvider)` bên trong request handler `charge`.
 - Đây là hot path của checkout vì checkout gọi payment trước khi ship order và publish event.
 
 Việc cần làm tuần sau:
