@@ -135,8 +135,9 @@ Verified:
 Trong PR này CDO08 chọn **incremental persistence** cho stateful runtime hiện tại:
 
 - Giữ `postgresql` với PVC hiện có.
-- Bật PVC cho `valkey-cart` để giảm rủi ro mất cart khi pod recreate/reschedule.
-- Bật PVC cho `kafka` để giữ broker log/event data qua pod recreate/reschedule.
+- Bật PVC `gp3` cho `valkey-cart` để giảm rủi ro mất cart khi pod recreate/reschedule.
+- Bật PVC `gp3` cho `kafka` để giữ broker log/event data qua pod recreate/reschedule.
+- Không đổi `postgresql-pvc` hiện có từ `gp2` sang `gp3` trong PR này vì `storageClassName` của PVC đã tạo là immutable; cần migration riêng nếu muốn đổi.
 - Giữ cả ba workload ở `replicas: 1`. Đây **chưa phải HA multi-replica** và không thay thế RDS/ElastiCache/MSK.
 - Dùng `strategy: Recreate` cho Valkey/Kafka vì PVC hiện là `ReadWriteOnce`; không cho phép hai pod cùng mount volume trong rolling update.
 
@@ -174,7 +175,7 @@ Verified:
 
 - `replicas: 1`
 - `persistence.enabled: true`
-- Chart tạo `valkey-cart-pvc` với `storageClassName: gp2`, `size: 5Gi`
+- Chart tạo `valkey-cart-pvc` với `storageClassName: gp3`, `size: 5Gi`
 - Mount PVC vào `/data`
 - Chạy `valkey-server --appendonly yes --dir /data`
 - `strategy: Recreate` để tránh RWO PVC mount conflict trong rollout.
@@ -191,7 +192,7 @@ Verified:
 
 - `replicas: 1`
 - `persistence.enabled: true`
-- Chart tạo `kafka-pvc` với `storageClassName: gp2`, `size: 10Gi`
+- Chart tạo `kafka-pvc` với `storageClassName: gp3`, `size: 10Gi`
 - Set `KAFKA_LOG_DIRS=/tmp/kraft-combined-logs`
 - Mount PVC vào `/tmp/kraft-combined-logs`
 - `strategy: Recreate` để tránh RWO PVC mount conflict trong rollout.
@@ -212,7 +213,7 @@ Verified:
 
 - **Short-term:** Giữ PostgreSQL hiện tại cùng `postgresql-pvc`, nhưng phải hoàn thiện backup/restore proof và pod recreation test trước khi coi persistence hiện tại là đủ dùng.
 - **Week 2 action:** Tạo bằng chứng PostgreSQL có thể restart/recreate pod mà dữ liệu vẫn còn; sau đó chạy restore test từ backup.
-- **Long-term candidate:** RDS Multi-AZ là phương án production tốt hơn nếu CDO04 xác nhận chi phí phù hợp và team chấp nhận migration endpoint/secret.
+- **Long-term candidate:** RDS Multi-AZ là phương án dự phòng nếu sau này cần managed DB failover/backup hoàn chỉnh. Không triển khai trong phase này.
 
 **Reason**
 
@@ -228,8 +229,8 @@ Verified:
 **Recommended**
 
 - **Short-term:** Bật PVC + append-only persistence cho Valkey hiện tại để không còn phụ thuộc hoàn toàn vào memory state.
-- **Decision gate còn lại:** Sau khi deploy, verify cart còn sau pod recreation. Nếu business yêu cầu failover/no-downtime cho cart, chọn giữa Valkey StatefulSet/Sentinel hoặc ElastiCache Multi-AZ sau CDO04 review cost.
-- **Long-term candidate:** ElastiCache Multi-AZ nếu budget cho phép và cart durability/availability trở thành production requirement.
+- **Decision gate còn lại:** Sau khi deploy, verify cart còn sau pod recreation. Không triển khai Valkey Sentinel/operator hoặc ElastiCache Multi-AZ trong phase này theo feedback CDO04.
+- **Rejected options:** Valkey Sentinel/operator và ElastiCache Multi-AZ bị reject cho phase này vì operational risk/cost không phù hợp với giá trị cart state.
 
 **Reason**
 
@@ -245,7 +246,7 @@ Verified:
 
 - **Short-term:** Bật PVC cho Kafka broker log dir, không tăng HA Kafka vội, và phải xác nhận retention, topic, replay path và event durability gap.
 - **Week 2 action:** Phối hợp REL-07 để verify khi Kafka unavailable/slow thì checkout producer và consumer behavior có bằng chứng rõ.
-- **Long-term candidate:** Amazon MSK hoặc Kafka StatefulSet multi-broker + PVC, chỉ chọn sau cost review và technical review.
+- **Long-term candidate:** Amazon MSK chỉ là phương án dự phòng nếu business bắt buộc HA Kafka. Không triển khai Kafka StatefulSet multi-broker trong phase này.
 
 **Reason**
 
@@ -254,6 +255,7 @@ Verified:
 - Kafka runtime trước PR là single broker/controller và không có PVC, nên broker restart/node failure có rủi ro mất event hoặc gián đoạn async processing.
 - PVC giảm rủi ro mất broker log khi pod recreate/reschedule, nhưng không xử lý được node/AZ/storage failure hoặc broker failover.
 - Nếu chọn sai phương án migration, rủi ro duplicate event, event gap và consumer offset inconsistency cao hơn lợi ích short-term.
+- CDO04 reject Kafka StatefulSet multi-broker vì 3 broker JVM có thể gây node pressure và chi phí ẩn do phải scale thêm node.
 - Cần CDO04 review trước khi quyết định phương án triển khai production.
 
 ---
@@ -552,7 +554,8 @@ Week 2
 - PostgreSQL: hoàn thiện backup/restore proof và pod recreation test với `postgresql-pvc`.
 - Valkey: deploy `valkey-cart-pvc`, verify cart state sau pod recreation, sau đó mới đánh giá ElastiCache/HA nếu cần no-downtime.
 - Kafka: deploy `kafka-pvc`, phối hợp REL-07 để xác nhận event durability, retention/replay và producer/consumer behavior khi Kafka lỗi.
-- CDO04: trả lời cost review theo `docs/cdo08/week2/review-request/REVIEW-REQUEST-CDO04-COST-REL03.md`.
+- CDO04: đã approve PVC mới với điều kiện dùng `gp3`; xem `docs/cdo08/week2/review-request/REVIEW-REQUEST-CDO04-COST-REL03-PVC.md`.
+- HA/managed service: defer theo decision trong `docs/cdo08/week2/review-request/REVIEW-REQUEST-CDO04-COST-REL03-HA-OPTIONS.md`.
 - Không triển khai stateful HA/managed service trước khi migration/rollback plan được approve.
 
 ---

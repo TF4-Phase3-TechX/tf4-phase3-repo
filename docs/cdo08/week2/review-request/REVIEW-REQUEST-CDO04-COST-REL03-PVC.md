@@ -4,7 +4,7 @@
 **Commit:** `614c6ef feat(cdo08): add incremental persistence for valkey and kafka`  
 **Bên yêu cầu:** CDO08  
 **Bên review:** CDO04 Cost/Performance  
-**Trạng thái:** Đang chờ CDO04 review
+**Trạng thái:** CDO04 approved với điều kiện đổi PVC mới từ `gp2` sang `gp3`
 
 ---
 
@@ -20,22 +20,22 @@ Commit này không triển khai managed service và không bật HA multi-replic
 
 | Component | Thay đổi | StorageClass | Dung lượng | Mục đích |
 |-----------|--------|--------------|------|---------|
-| `valkey-cart` | Thêm `valkey-cart-pvc`, mount `/data`, bật append-only persistence | `gp2` | `5Gi` | Giảm rủi ro mất cart state khi pod recreate |
-| `kafka` | Thêm `kafka-pvc`, set `KAFKA_LOG_DIRS=/tmp/kraft-combined-logs` | `gp2` | `10Gi` | Giữ Kafka broker log/event data qua pod recreate |
+| `valkey-cart` | Thêm `valkey-cart-pvc`, mount `/data`, bật append-only persistence | `gp3` | `5Gi` | Giảm rủi ro mất cart state khi pod recreate |
+| `kafka` | Thêm `kafka-pvc`, set `KAFKA_LOG_DIRS=/tmp/kraft-combined-logs` | `gp3` | `10Gi` | Giữ Kafka broker log/event data qua pod recreate |
 
-**Tổng EBS storage mới:** khoảng `15Gi gp2`.
+**Tổng EBS storage mới:** khoảng `15Gi gp3`.
 
 ---
 
 ## Ước tính chi phí
 
-**Cơ sở tính:** AWS EBS `gp2` tại US East/N. Virginia có giá tham chiếu khoảng `$0.10/GB-month`. EBS tính phí theo dung lượng đã provision theo GB-month cho đến khi volume được xóa.
+**Cơ sở tính:** CDO04 feedback dùng `gp3` cho PVC mới. AWS EBS `gp3` tại US East/N. Virginia có giá tham chiếu khoảng `$0.08/GB-month`. EBS tính phí theo dung lượng đã provision theo GB-month cho đến khi volume được xóa.
 
 | PVC | Dung lượng | Giả định đơn giá | Ước tính/tháng | Ước tính/tuần |
 |-----|------|-----------------------|------------------------|-----------------------|
-| `valkey-cart-pvc` | `5Gi` | `$0.10/GB-month` | `$0.50/tháng` | `~$0.12/tuần` |
-| `kafka-pvc` | `10Gi` | `$0.10/GB-month` | `$1.00/tháng` | `~$0.23/tuần` |
-| **Tổng** | **15Gi** | `$0.10/GB-month` | **`$1.50/tháng`** | **`~$0.35/tuần`** |
+| `valkey-cart-pvc` | `5Gi` | `$0.08/GB-month` | `$0.40/tháng` | `~$0.09/tuần` |
+| `kafka-pvc` | `10Gi` | `$0.08/GB-month` | `$0.80/tháng` | `~$0.19/tuần` |
+| **Tổng** | **15Gi** | `$0.08/GB-month` | **`$1.20/tháng`** | **`~$0.28/tuần`** |
 
 ### Ghi chú
 
@@ -47,8 +47,8 @@ Commit này không triển khai managed service và không bật HA multi-replic
 Công thức:
 
 ```text
-15Gi * $0.10 per GB-month = $1.50/month
-$1.50 / 30 * 7 = ~$0.35/week
+15Gi * $0.08 per GB-month = $1.20/month
+$1.20 / 30 * 7 = ~$0.28/week
 ```
 
 ---
@@ -65,11 +65,11 @@ $1.50 / 30 * 7 = ~$0.35/week
 
 | Câu hỏi | Phản hồi CDO04 |
 |----------|----------------|
-| Chi phí thêm khoảng `15Gi gp2` có nằm trong budget hiện tại không? | Pending |
-| `gp2` có phù hợp không, hay nên dùng storage class khác nếu cluster hỗ trợ? | Pending |
-| EBS IOPS/throughput của PVC nhỏ có đủ cho Valkey AOF và Kafka broker log workload hiện tại không? | Pending |
-| Thay đổi này có gây áp lực node storage/IO hoặc scheduling không? | Pending |
-| `strategy: Recreate` cho `valkey-cart` và `kafka` gây downtime ngắn khi deploy. CDO04 có chấp nhận timing deploy này trong window hiện tại không? | Pending |
+| Chi phí thêm khoảng `15Gi gp3` có nằm trong budget hiện tại không? | **Approve**. Chi phí rất nhỏ, khoảng `~$0.28/tuần`, nằm trong budget dự án. |
+| `gp3` có phù hợp không, hay nên dùng storage class khác nếu cluster hỗ trợ? | **Change to gp3**. CDO04 yêu cầu đổi PVC mới từ `gp2` sang `gp3`. |
+| EBS IOPS/throughput của PVC nhỏ có đủ cho Valkey AOF và Kafka broker log workload hiện tại không? | **Low risk với gp3**. gp3 có baseline 3000 IOPS, tránh dùng gp2. |
+| Thay đổi này có gây áp lực node storage/IO hoặc scheduling không? | **Low risk** với dung lượng nhỏ 15Gi và gp3 baseline. |
+| `strategy: Recreate` cho `valkey-cart` và `kafka` gây downtime ngắn khi deploy. CDO04 có chấp nhận timing deploy này trong window hiện tại không? | **Approve**. Chấp nhận downtime ngắn trong cửa sổ bảo trì để tránh conflict ReadWriteOnce. |
 
 ---
 
@@ -79,10 +79,10 @@ CDO04 vui lòng trả lời theo format:
 
 | Hạng mục | Quyết định | Ghi chú |
 |------|----------|-------|
-| PVC cost | Approve / Reject / Needs change | ... |
-| StorageClass | Keep `gp2` / Change | ... |
-| IO/performance risk | Low / Medium / High | ... |
-| Deploy timing with `Recreate` | Approve / Need window | ... |
+| PVC cost | **Approve** | `~$0.28/tuần` với `gp3` |
+| StorageClass | **Change to `gp3`** | Áp dụng cho PVC mới `valkey-cart-pvc` và `kafka-pvc`; không đổi `postgresql-pvc` hiện có trong PR này |
+| IO/performance risk | **Low** | `gp3` baseline 3000 IOPS |
+| Deploy timing with `Recreate` | **Approve** | Chấp nhận downtime ngắn trong cửa sổ bảo trì |
 
 ---
 
@@ -90,7 +90,8 @@ CDO04 vui lòng trả lời theo format:
 
 - Đây là persistence incremental, chưa phải HA.
 - `strategy: Recreate` được dùng để tránh `ReadWriteOnce` PVC bị mount đồng thời trong rolling update.
-- Nếu CDO04 reject cost hoặc storage choice, CDO08 sẽ revert hoặc chỉnh PVC size/storageClass trước khi deploy.
+- CDO04 đã approve với điều kiện dùng `gp3` cho PVC mới.
+- Không đổi `postgresql-pvc` hiện có từ `gp2` sang `gp3` trong PR này vì `storageClassName` của PVC đã tạo là immutable; cần migration riêng nếu muốn đổi.
 - Sau deploy, CDO08 sẽ verify:
   - `kubectl -n techx-tf4 get pvc valkey-cart-pvc kafka-pvc`
   - `kubectl -n techx-tf4 rollout status deploy/valkey-cart`

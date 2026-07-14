@@ -906,7 +906,7 @@ components:
       type: Recreate
     persistence:
       enabled: true
-      storageClassName: gp2
+      storageClassName: gp3
       size: 10Gi
     ports:
       - name: plaintext
@@ -1039,7 +1039,7 @@ components:
       type: Recreate
     persistence:
       enabled: true
-      storageClassName: gp2
+      storageClassName: gp3
       size: 5Gi
     ports:
       - name: valkey-cart
