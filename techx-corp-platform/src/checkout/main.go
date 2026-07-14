@@ -46,6 +46,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
@@ -286,7 +287,42 @@ func (cs *checkout) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_W
 	return status.Errorf(codes.Unimplemented, "health check via Watch not implemented")
 }
 
+// retryRead chạy một lời gọi IDEMPOTENT với timeout cho mỗi attempt và tối đa 1
+// retry. Backoff tôn trọng ctx cha (không sleep khi ctx đã done).
+// CHỈ dùng cho read (cart, product-catalog, currency, get-quote).
+// TUYỆT ĐỐI không dùng cho call có side effect (payment, ship-order).
+func retryRead(ctx context.Context, perAttempt, backoff time.Duration, fn func(ctx context.Context) error) error {
+	var err error
+	for attempt := 0; attempt < 2; attempt++ {
+		callCtx, cancel := context.WithTimeout(ctx, perAttempt)
+		err = fn(callCtx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		if attempt == 0 {
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return ctx.Err() // ctx cha cancel/hết hạn → dừng, không sleep tiếp
+			}
+		}
+	}
+	return err
+}
+
 func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
+	// Overall deadline: trần chống-treo cho toàn request (không phải mục tiêu SLO).
+	// Configurable qua env để tune không cần rebuild; mặc định 20s.
+	overall := 20 * time.Second
+	if v := os.Getenv("CHECKOUT_OVERALL_TIMEOUT"); v != "" {
+		if d, perr := time.ParseDuration(v); perr == nil {
+			overall = d
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, overall)
+	defer cancel()
+
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
 		attribute.String("app.user.id", req.UserId),
@@ -324,6 +360,16 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	for _, it := range prep.orderItems {
 		multPrice := money.MultiplySlow(it.Cost, uint32(it.GetItem().GetQuantity()))
 		total = money.Must(money.Sum(total, multPrice))
+	}
+
+	// Chỉ bắt đầu payment nếu còn ĐỦ budget cho toàn bộ write path (payment 5s + ship 3s).
+	// Không dùng ctx.Err() đơn thuần — nó chỉ bắt ctx đã hết hạn hẳn, không bắt ctx sắp hết,
+	// nên không chặn được trường hợp overall deadline cháy GIỮA LÚC Charge đang chạy
+	// (RPC bị cancel client-side nhưng payment server có thể đã trừ tiền).
+	const writePathBudget = 8 * time.Second // payment 5s + ship-order 3s (§4.1)
+	if dl, ok := ctx.Deadline(); ok && time.Until(dl) < writePathBudget {
+		return nil, status.Errorf(codes.DeadlineExceeded,
+			"insufficient budget for payment+shipping (need %s); aborting before charge", writePathBudget)
 	}
 
 	txID, err := cs.chargeCard(ctx, total, req.CreditCard)
@@ -443,6 +489,15 @@ func mustCreateClient(svcAddr string) *grpc.ClientConn {
 	c, err := grpc.NewClient(svcAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		// WithConnectTimeout đã bị xóa khỏi grpc-go (chỉ tồn tại ở bản rất cũ);
+		// WithConnectParams.MinConnectTimeout là API hiện hành tương đương —
+		// giới hạn thời gian mỗi lần thử connect trước khi backoff/attempt tiếp theo.
+		// Phải set Backoff tường minh (backoff.DefaultConfig) — nếu bỏ trống,
+		// ConnectParams.Backoff là zero-value (không phải default), tắt mất backoff thật.
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.DefaultConfig,
+			MinConnectTimeout: 3 * time.Second,
+		}),
 	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("could not connect to %s service, err: %+v", svcAddr, err))
@@ -460,19 +515,32 @@ func (cs *checkout) quoteShipping(ctx context.Context, address *pb.Address, item
 		return nil, fmt.Errorf("failed to marshal ship order request: %+v", err)
 	}
 
-	resp, err := otelhttp.Post(ctx, cs.shippingSvcAddr+"/get-quote", "application/json", bytes.NewBuffer(quotePayload))
+	var shippingQuoteBytes []byte
+	var quoteStatusCode int
+	err = retryRead(ctx, 3*time.Second, 300*time.Millisecond, func(callCtx context.Context) error {
+		// body reader MỚI mỗi attempt — attempt trước đã consume reader cũ.
+		resp, e := otelhttp.Post(callCtx, cs.shippingSvcAddr+"/get-quote", "application/json", bytes.NewReader(quotePayload))
+		if e != nil {
+			return e
+		}
+		defer resp.Body.Close()
+		// Đọc body NGAY TRONG attempt: callCtx bị cancel khi retryRead trả về,
+		// mà ctx của HTTP request bao trùm cả việc đọc body — đọc body sau khi
+		// cancel sẽ lỗi "context canceled".
+		body, e := io.ReadAll(resp.Body)
+		if e != nil {
+			return e
+		}
+		quoteStatusCode = resp.StatusCode
+		shippingQuoteBytes = body
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed POST to shipping service: %+v", err)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed POST to email service: expected 200, got %d", resp.StatusCode)
-	}
-
-	shippingQuoteBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read shipping quote response: %+v", err)
+	if quoteStatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed POST to shipping quote service: expected 200, got %d", quoteStatusCode)
 	}
 
 	var quoteResp struct {
@@ -489,7 +557,12 @@ func (cs *checkout) quoteShipping(ctx context.Context, address *pb.Address, item
 }
 
 func (cs *checkout) getUserCart(ctx context.Context, userID string) ([]*pb.CartItem, error) {
-	cart, err := cs.cartSvcClient.GetCart(ctx, &pb.GetCartRequest{UserId: userID})
+	var cart *pb.Cart
+	err := retryRead(ctx, 2*time.Second, 200*time.Millisecond, func(callCtx context.Context) error {
+		var e error
+		cart, e = cs.cartSvcClient.GetCart(callCtx, &pb.GetCartRequest{UserId: userID})
+		return e
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user cart during checkout: %+v", err)
 	}
@@ -507,7 +580,12 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 	out := make([]*pb.OrderItem, len(items))
 
 	for i, item := range items {
-		product, err := cs.productCatalogSvcClient.GetProduct(ctx, &pb.GetProductRequest{Id: item.GetProductId()})
+		var product *pb.Product
+		err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+			var e error
+			product, e = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: item.GetProductId()})
+			return e
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get product #%q", item.GetProductId())
 		}
@@ -523,13 +601,18 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 }
 
 func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurrency string) (*pb.Money, error) {
-	result, err := cs.currencySvcClient.Convert(ctx, &pb.CurrencyConversionRequest{
-		From:   from,
-		ToCode: toCurrency})
+	var result *pb.Money
+	err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+		var e error
+		result, e = cs.currencySvcClient.Convert(callCtx, &pb.CurrencyConversionRequest{
+			From:   from,
+			ToCode: toCurrency})
+		return e
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert currency: %+v", err)
 	}
-	return result, err
+	return result, nil
 }
 
 func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInfo *pb.CreditCardInfo) (string, error) {
@@ -540,7 +623,10 @@ func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInf
 		paymentService = pb.NewPaymentServiceClient(c)
 	}
 
-	paymentResp, err := paymentService.Charge(ctx, &pb.ChargeRequest{
+	callCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	paymentResp, err := paymentService.Charge(callCtx, &pb.ChargeRequest{
 		Amount:     amount,
 		CreditCard: paymentInfo})
 	if err != nil {
@@ -558,7 +644,10 @@ func (cs *checkout) sendOrderConfirmation(ctx context.Context, email string, ord
 		return fmt.Errorf("failed to marshal order to JSON: %+v", err)
 	}
 
-	resp, err := otelhttp.Post(ctx, cs.emailSvcAddr+"/send_order_confirmation", "application/json", bytes.NewBuffer(emailPayload))
+	callCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resp, err := otelhttp.Post(callCtx, cs.emailSvcAddr+"/send_order_confirmation", "application/json", bytes.NewBuffer(emailPayload))
 	if err != nil {
 		return fmt.Errorf("failed POST to email service: %+v", err)
 	}
@@ -580,14 +669,17 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 		return "", fmt.Errorf("failed to marshal ship order request: %+v", err)
 	}
 
-	resp, err := otelhttp.Post(ctx, cs.shippingSvcAddr+"/ship-order", "application/json", bytes.NewBuffer(shipPayload))
+	callCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	resp, err := otelhttp.Post(callCtx, cs.shippingSvcAddr+"/ship-order", "application/json", bytes.NewBuffer(shipPayload))
 	if err != nil {
 		return "", fmt.Errorf("failed POST to shipping service: %+v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed POST to email service: expected 200, got %d", resp.StatusCode)
+		return "", fmt.Errorf("failed POST to shipping service: expected 200, got %d", resp.StatusCode)
 	}
 
 	trackingRespBytes, err := io.ReadAll(resp.Body)

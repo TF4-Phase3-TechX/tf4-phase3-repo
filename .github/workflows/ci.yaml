@@ -138,7 +138,7 @@ jobs:
     name: Helm lint and render
     runs-on: ubuntu-latest
     needs: [changes]
-    if: needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true'
+    if: needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -155,6 +155,7 @@ jobs:
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana-community https://grafana-community.github.io/helm-charts
           helm repo add opensearch https://opensearch-project.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
           helm repo update
 
       - name: Build Helm dependencies
@@ -180,6 +181,32 @@ jobs:
             -f deploy/values-flagd-sync.yaml \
             > /tmp/techx-corp-app.yaml
 
+      - name: Assert application resource and HPA defaults
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          resources = [r for r in yaml.safe_load_all(Path('/tmp/techx-corp-app.yaml').read_text()) if r]
+          expected = {
+              'frontend-proxy', 'frontend', 'cart', 'product-catalog', 'recommendation',
+              'product-reviews', 'llm', 'checkout', 'currency', 'payment', 'shipping',
+              'load-generator',
+          }
+          deployments = {r['metadata']['name']: r for r in resources if r['kind'] == 'Deployment'}
+          assert expected <= deployments.keys()
+          for name in expected:
+              container = deployments[name]['spec']['template']['spec']['containers'][0]
+              assert {'cpu', 'memory'} <= set(container['resources']['requests']), name
+              assert {'cpu', 'memory'} <= set(container['resources']['limits']), name
+          hpas = {r['metadata']['name']: r for r in resources if r['kind'] == 'HorizontalPodAutoscaler'}
+          assert set(hpas) == {'frontend', 'checkout'}
+          for name, hpa in hpas.items():
+              assert hpa['spec']['scaleTargetRef']['name'] == name
+              assert hpa['spec']['metrics'][0]['resource']['name'] == 'cpu'
+              assert 'replicas' not in deployments[name]['spec']
+          PY
+
       - name: Upload rendered manifests
         uses: actions/upload-artifact@v4
         with:
@@ -190,7 +217,7 @@ jobs:
           if-no-files-found: error
 
   app-smoke-build:
-    name: Docker smoke build checkout
+    name: Docker smoke build checkout + shipping
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.app == 'true'
@@ -211,6 +238,8 @@ jobs:
           EOF
           cat techx-corp-platform/.env.override
 
-      - name: Build checkout image only
+      # shipping (Rust) build included here: without it, a Rust compile failure would
+      # only surface after merge in build-and-push.yaml, not at PR-gate time.
+      - name: Build checkout + shipping images
         working-directory: techx-corp-platform
-        run: docker compose --env-file .env --env-file .env.override build checkout
+        run: docker compose --env-file .env --env-file .env.override build checkout shipping
