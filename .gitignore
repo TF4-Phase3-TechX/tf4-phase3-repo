@@ -71,6 +71,7 @@ charts/*.tgz
 .env
 .env.*
 !.env.override
+!.env.example
 *.pem
 *.key
 credentials.*
