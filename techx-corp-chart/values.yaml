@@ -928,6 +928,12 @@ components:
     useDefault:
       env: true
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 10Gi
     ports:
       - name: plaintext
         value: 9092
@@ -948,9 +954,20 @@ components:
         value: CONTROLLER
       - name: KAFKA_CONTROLLER_QUORUM_VOTERS
         value: 1@kafka:9093
+      - name: KAFKA_LOG_DIRS
+        value: /tmp/kraft-combined-logs
+    additionalVolumeMounts:
+      - name: kafka-data
+        mountPath: /tmp/kraft-combined-logs
+    additionalVolumes:
+      - name: kafka-data
+        persistentVolumeClaim:
+          claimName: kafka-pvc
     resources:
       limits:
         memory: 700Mi
+    podSecurityContext:
+      fsGroup: 1000
     securityContext:
       runAsUser: 1000  # appuser
       runAsGroup: 1000
@@ -1047,9 +1064,28 @@ components:
       repository: "valkey/valkey"
       tag: "9.0.1-alpine3.23"
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 5Gi
     ports:
       - name: valkey-cart
         value: 6379
+    command:
+      - valkey-server
+      - --appendonly
+      - "yes"
+      - --dir
+      - /data
+    additionalVolumeMounts:
+      - name: valkey-data
+        mountPath: /data
+    additionalVolumes:
+      - name: valkey-data
+        persistentVolumeClaim:
+          claimName: valkey-cart-pvc
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
       io.opentelemetry.discovery.metrics/enabled: 'true'
@@ -1059,7 +1095,9 @@ components:
         collection_interval: 10s
     resources:
       limits:
-        memory: 20Mi
+        memory: 64Mi
+    podSecurityContext:
+      fsGroup: 999
     securityContext:
       runAsUser: 999  # valkey
       runAsGroup: 1000
