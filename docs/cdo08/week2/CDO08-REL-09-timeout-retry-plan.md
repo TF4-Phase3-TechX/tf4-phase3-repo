@@ -63,7 +63,7 @@ Checkout gọi 7 service phụ thuộc mà không có giới hạn thời gian c
 
 | File | Thay đổi |
 |---|---|
-| `techx-corp-platform/src/checkout/main.go` | Helper `retryRead` (timeout/attempt + retry + backoff tôn trọng ctx) + overall deadline `context.WithTimeout` bọc `PlaceOrder` + guard `ctx.Err()` trước charge + per-RPC `context.WithTimeout` cho 7 lời gọi + `grpc.WithConnectTimeout` (phụ) cho `mustCreateClient` + retry qua helper cho 4 lời gọi đọc |
+| `techx-corp-platform/src/checkout/main.go` | Helper `retryRead` (timeout/attempt + retry + backoff tôn trọng ctx) + overall deadline `context.WithTimeout` bọc `PlaceOrder` + budget-precheck trước charge (không phải `ctx.Err()` đơn thuần) + per-RPC `context.WithTimeout` cho 7 lời gọi + `grpc.WithConnectParams` (kèm `backoff.DefaultConfig` tường minh, phụ) cho `mustCreateClient` + retry qua helper cho 4 lời gọi đọc |
 | `techx-corp-platform/src/shipping/src/shipping_service/quote.rs` | Thay `awc::Client::new()` bằng `awc::ClientBuilder` có timeout 2s |
 
 ---
@@ -244,9 +244,11 @@ Guard trước khi charge (giữa `span.AddEvent("prepared")` và `chargeCard`):
 
 ### 5.2 `checkout/main.go` — `mustCreateClient` (connect timeout — evidence phụ)
 
-**Thêm** `grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 3*time.Second})` vào `grpc.NewClient`.
+**Thêm** `grpc.WithConnectParams(grpc.ConnectParams{Backoff: backoff.DefaultConfig, MinConnectTimeout: 3*time.Second})` vào `grpc.NewClient`.
 
 > **[Sửa sau CI fail — 2026-07-14]** Bản trước dùng `grpc.WithConnectTimeout(3*time.Second)` — dial-option này **đã bị xóa khỏi grpc-go** (chỉ tồn tại ở bản rất cũ), CI báo `undefined: grpc.WithConnectTimeout` khi build với `google.golang.org/grpc v1.78.0` (pin trong `go.mod`). Đây là lỗi do viết plan mà không kiểm tra API thật của version grpc-go đang dùng trong repo — build failure lẽ ra phải bắt được sớm hơn nếu build thử cục bộ trước khi chốt plan. **Thay bằng** `grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: ...})` — API ổn định, tồn tại xuyên suốt nhiều năm trong grpc-go, đúng ý định: giới hạn thời gian mỗi lần thử connect trước khi backoff sang attempt tiếp theo.
+
+> **[Sửa sau code review — 2026-07-14]** `ConnectParams.Backoff` (kiểu `backoff.Config`) **override toàn bộ** default backoff của grpc-go, không phải merge/patch riêng `MinConnectTimeout`. Nếu chỉ set `MinConnectTimeout` mà bỏ trống `Backoff`, nó nhận **zero-value** (`BaseDelay`/`Multiplier`/`Jitter`/`MaxDelay` đều 0) — tắt mất cơ chế backoff thật, có nguy cơ retry connect dồn dập (tight loop) khi service down thay vì backoff tăng dần như mặc định. **Bắt buộc** set tường minh `Backoff: backoff.DefaultConfig` (từ package `google.golang.org/grpc/backoff`) cùng với `MinConnectTimeout` — xem snippet §5.2 đã cập nhật.
 
 > **Lưu ý (góp ý PM #8):** `grpc.NewClient` thiết lập connection **lazy**, nên connect timeout **không** phải là cơ chế chính đảm bảo request fail bounded. Giữ nó như một lớp phòng thủ phụ (dial hang lúc startup / service unreachable), nhưng **evidence chính** cho "fail bounded" là per-RPC `context.WithTimeout` (§5.3–5.6) + overall deadline (§5.1). Trace verify phải chỉ vào deadline **per-call**, không phải connect timeout.
 
@@ -267,7 +269,12 @@ func mustCreateClient(svcAddr string) *grpc.ClientConn {
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		// WithConnectTimeout đã bị xóa khỏi grpc-go; WithConnectParams.MinConnectTimeout
 		// là API hiện hành tương đương.
-		grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 3 * time.Second}),
+		// Phải set Backoff tường minh (backoff.DefaultConfig) — nếu bỏ trống,
+		// ConnectParams.Backoff là zero-value (không phải default), tắt mất backoff thật.
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.DefaultConfig,
+			MinConnectTimeout: 3 * time.Second,
+		}),
 	)
 ```
 
@@ -455,9 +462,11 @@ Sau:
 	}
 
 	if quoteStatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed POST to email service: expected 200, got %d", quoteStatusCode)
+		return nil, fmt.Errorf("failed POST to shipping quote service: expected 200, got %d", quoteStatusCode)
 	}
 ```
+
+> **[Sửa sau code review — 2026-07-14]** Message lỗi status-check nhầm ghi "email service" trong khi đang check response của shipping quote service — bug có sẵn từ code gốc, copy nguyên sang khi thêm `retryRead`. Đã sửa cùng lúc với `shipOrder` (§5.8, cũng ghi nhầm "email service" khi check `/ship-order`).
 
 > ⚠️ **Body phải được đọc NGAY TRONG attempt (trong closure)** — `retryRead` gọi `cancel()` cho `callCtx` ngay khi closure trả về, mà theo net/http, context của request bao trùm **toàn bộ vòng đời request lẫn đọc response body**. Nếu chỉ giữ `*http.Response` rồi đọc body *sau khi* `retryRead` trả về (như bản nháp trước), đọc body sẽ lỗi `context canceled` → get-quote fail vĩnh viễn dù shipping khoẻ. Với gRPC unary (cart/product/currency) không có vấn đề này — response message đã nhận trọn vẹn trước khi call trả về.
 

@@ -46,6 +46,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
@@ -491,7 +492,12 @@ func mustCreateClient(svcAddr string) *grpc.ClientConn {
 		// WithConnectTimeout đã bị xóa khỏi grpc-go (chỉ tồn tại ở bản rất cũ);
 		// WithConnectParams.MinConnectTimeout là API hiện hành tương đương —
 		// giới hạn thời gian mỗi lần thử connect trước khi backoff/attempt tiếp theo.
-		grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 3 * time.Second}),
+		// Phải set Backoff tường minh (backoff.DefaultConfig) — nếu bỏ trống,
+		// ConnectParams.Backoff là zero-value (không phải default), tắt mất backoff thật.
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.DefaultConfig,
+			MinConnectTimeout: 3 * time.Second,
+		}),
 	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("could not connect to %s service, err: %+v", svcAddr, err))
@@ -534,7 +540,7 @@ func (cs *checkout) quoteShipping(ctx context.Context, address *pb.Address, item
 	}
 
 	if quoteStatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed POST to email service: expected 200, got %d", quoteStatusCode)
+		return nil, fmt.Errorf("failed POST to shipping quote service: expected 200, got %d", quoteStatusCode)
 	}
 
 	var quoteResp struct {
@@ -673,7 +679,7 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed POST to email service: expected 200, got %d", resp.StatusCode)
+		return "", fmt.Errorf("failed POST to shipping service: expected 200, got %d", resp.StatusCode)
 	}
 
 	trackingRespBytes, err := io.ReadAll(resp.Body)
