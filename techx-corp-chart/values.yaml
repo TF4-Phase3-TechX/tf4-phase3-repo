@@ -352,6 +352,35 @@ components:
       requests: { cpu: 20m, memory: 24Mi }
       limits: { cpu: 75m, memory: 48Mi }
 
+  detector:
+    enabled: true
+    useDefault:
+      env: true
+    replicas: 1
+    imageOverride:
+      repository: busybox
+      tag: "1.36"
+    podAnnotations:
+      resource.opentelemetry.io/service.namespace: techx-corp
+    env:
+      - name: PROMETHEUS_URL
+        value: http://prometheus:9090/api/v1/query?query=up
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { cpu: 50m, memory: 32Mi }
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          echo "[detector] $(date -u +%FT%TZ) checking prometheus"
+          wget -q -O - "${PROMETHEUS_URL:-http://prometheus:9090/api/v1/query?query=up}" 2>/dev/null | head -c 200
+          echo
+          sleep 60
+        done
+
   email:
     enabled: true
     useDefault:

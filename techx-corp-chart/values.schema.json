@@ -94,6 +94,9 @@
         "currency": {
           "$ref": "#/definitions/Component"
         },
+        "detector": {
+          "$ref": "#/definitions/Component"
+        },
         "email": {
           "$ref": "#/definitions/Component"
         },

@@ -143,6 +143,8 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W3 | Validate LLM timeout/error signal | Hậu / Tâm + AIE dependency | AIOps recognizes AI path issue | `TF4AIO-45` To Do |
 | W3 | Write AIOps validation report | Hòa / Nam | What worked, what failed, false positives/limitations | `TF4AIO-46` To Do |
 
+Ghi chú triển khai cho TF4AIO-6: workload detector đã được thêm vào chart Helm như một Deployment liên tục, có giới hạn tài nguyên và không thay đổi flagd/openfeature. Xem evidence tại [docs/aio01/TF4AIO-6-detector-evidence.md](./TF4AIO-6-detector-evidence.md).
+
 ### 7.3 Operational / PM track
 
 Owner group: Nam, Thông.
