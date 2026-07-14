@@ -1,4 +1,3 @@
-# App-only stamp: tắt observability subchart, trỏ OTLP về collector chung.
 # Team tách nhau trong Grafana theo k8s.namespace.name (collector chung tự gắn).
 # TUNE khi deploy lần đầu: xác nhận OTEL_COLLECTOR_NAME override ăn.
 opentelemetry-collector: { enabled: false }
@@ -17,7 +16,7 @@ components:
   load-generator:
     envOverrides:
       - name: LOCUST_AUTOSTART
-        value: "false"
+        value: "true"
 
   frontend-proxy:
     envOverrides:
