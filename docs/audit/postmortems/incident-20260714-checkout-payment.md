@@ -234,9 +234,9 @@ LAST SEEN   TYPE     REASON                 OBJECT                              
 
 ```
 14:14–14:15  Frontend CPU spike → HPA SuccessfulRescale 1→2→3
-             Trong lúc scale: pod cũ terminate, pod mới chưa ready
-             → Request dropout window → checkout/payment timeout
-             → User báo không thanh toán được
+             NOTE: Scale UP KHÔNG terminate pod cũ — pod cũ vẫn sống và nhận request.
+             HPA chỉ ADD thêm pod mới. KHÔNG có request dropout do scaling.
+             → HPA scale là TRIỆU CHỨNG (CPU cao), không phải nguyên nhân checkout fail.
 
 14:15–14:30  Incident window (theo báo cáo user)
              quang.tranminh và phuong bắt đầu điều tra (CloudTrail 14:23+)
@@ -338,7 +338,7 @@ EC2 instance ID không quen biết trong account. Cần xác nhận đây là in
 ```
 1. Hệ thống CÓ log lại   → CloudTrail + K8s events confirmed
 2. Alert CÓ tự động      → HPA confirmed / Prometheus pending
-3. Root cause likely      → CPU spike → HPA scale → request dropout
+3. Root cause REVISED     → Likely fault injection via flagd (NOT HPA scale — Scale UP không terminate pod cũ)
 4. Incident đã RESOLVED   → frontend CPU 8%, 1 replica tại 15:39
 ```
 
@@ -376,3 +376,33 @@ EC2 instance ID không quen biết trong account. Cần xác nhận đây là in
 
 **CDO07 role:** TF4-AuditReadOnlyAndAnalyze — read-only, NO port-forward, NO exec.
 **Verifier:** hung.hoangkim | **Commit:** `abc8622` (branch `cd7/docs/verify-mandate-1`)
+
+---
+
+## 10. ⚠️ CORRECTION — Lỗi phân tích ban đầu (đã sửa)
+
+**Phân tích sai trong timeline ban đầu:**
+> "Trong lúc scale: pod cũ terminate, pod mới chưa ready → Request dropout"
+
+**Đây là SAI kiến thức K8s.**
+
+Khi HPA **Scale UP** (1→2→3):
+- Pod cũ **KHÔNG BAO GIỜ bị terminate** — vẫn sống và nhận request bình thường
+- K8s chỉ ADD thêm pod mới để chia tải
+- Không có request dropout window nào do HPA scale up
+- Scale DOWN mới terminate pod, và ngay cả khi đó có `terminationGracePeriodSeconds`
+
+**Kết luận đúng:**
+- HPA scale là **triệu chứng** (CPU cao), không phải nguyên nhân checkout fail
+- Root cause thực sự nhiều khả năng là **fault injection qua flagd** (mentor inject sự cố có chủ ý)
+- `flagd` pod restart 125m trước lúc CDO07 query — có thể là config fault mới được push
+- Cần CDO08 confirm: flagd flag state + checkout/payment application logs trong 14:15–14:30
+
+**Revised root cause hypothesis:**
+```
+Fault injection via flagd (BTC-controlled)
+→ checkout/payment service trả lỗi
+→ Client retry → CPU spike frontend
+→ HPA scale 1→3 (triệu chứng, không phải nguyên nhân)
+→ User thấy không thanh toán được
+```
