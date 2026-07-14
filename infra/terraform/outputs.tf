@@ -48,3 +48,33 @@ output "budget_monthly_limit" {
   description = "Monthly AWS Budget limit in USD"
   value       = var.budget_monthly_limit
 }
+
+output "aws_config_recorder_name" {
+  description = "Tên configuration recorder của AWS Config cho AUDIT-009"
+  value       = aws_config_configuration_recorder.main.name
+}
+
+output "aws_config_staging_bucket_name" {
+  description = "Tên S3 staging bucket nhận dữ liệu do AWS Config phân phối"
+  value       = aws_s3_bucket.config_staging.id
+}
+
+output "aws_config_staging_bucket_arn" {
+  description = "ARN của S3 staging bucket dành cho AWS Config"
+  value       = aws_s3_bucket.config_staging.arn
+}
+
+output "aws_config_archive_bucket_name" {
+  description = "Tên S3 archive bucket WORM nhận bản sao AWS Config"
+  value       = aws_s3_bucket.config_archive.id
+}
+
+output "aws_config_archive_bucket_arn" {
+  description = "ARN của S3 archive bucket WORM dành cho AWS Config"
+  value       = aws_s3_bucket.config_archive.arn
+}
+
+output "aws_config_evidence_prefix" {
+  description = "S3 prefix chứa evidence AWS Config trong staging bucket và archive bucket"
+  value       = local.aws_config_evidence_prefix
+}
