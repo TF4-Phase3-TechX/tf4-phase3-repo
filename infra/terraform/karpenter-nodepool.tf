@@ -12,8 +12,14 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass_general" {
       name = "techx-general"
     }
     spec = {
-      amiFamily = "AL2023"
-      role      = module.karpenter.node_iam_role_name
+      role = module.karpenter.node_iam_role_name
+
+      # Karpenter v1 EC2NodeClass requires amiSelectorTerms explicitly; an
+      # alias term both selects the latest AL2023 AMI and implies amiFamily,
+      # so amiFamily itself is no longer set here.
+      amiSelectorTerms = [
+        { alias = "al2023@latest" }
+      ]
 
       subnetSelectorTerms = [
         { tags = { "karpenter.sh/discovery" = var.cluster_name } }
