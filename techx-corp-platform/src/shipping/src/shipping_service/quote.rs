@@ -37,7 +37,9 @@ pub async fn create_quote_from_count(count: u32) -> Result<Quote, tonic::Status>
 }
 
 async fn request_quote(count: u32) -> Result<f64, anyhow::Error> {
-    let client = awc::Client::new();
+    let client = awc::ClientBuilder::new()
+        .timeout(std::time::Duration::from_secs(2))
+        .finish();
     let quote_service_addr: String = format!(
         "{}{}",
         env::var("QUOTE_ADDR")
