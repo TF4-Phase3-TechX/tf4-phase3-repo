@@ -39,10 +39,17 @@
 
 | File | Vấn đề | Xử lý |
 |---|---|---|
+<<<<<<< HEAD
 | `aud-14-storefront-curl.txt` | Domain giả, region sai | Đã thay bằng note, dùng `st32-curl-before/after.txt` |
 | `aud-15-grafana-curl.txt` | Domain giả (grafana.tf4.techx.vn) | Đã thay bằng note |
 | `aud-15-jaeger-curl.txt` | Domain giả (jaeger.tf4.techx.vn) | Đã thay bằng note |
 | `aud-16-argocd-curl.txt` | ArgoCD không deploy, domain giả | Đã ghi N/A |
+=======
+| `aud-14-storefront-curl.md` | Domain giả, region sai | Đã thay bằng output thực tế |
+| `aud-15-grafana-curl.md` | Domain giả (grafana.tf4.techx.vn) | Đã thay bằng output thực tế |
+| `aud-15-jaeger-curl.md` | Domain giả (jaeger.tf4.techx.vn) | Đã thay bằng output thực tế |
+| `aud-16-argocd-curl.md` | ArgoCD không deploy | Đã ghi N/A |
+>>>>>>> main
 
 ---
 

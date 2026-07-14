@@ -2,6 +2,7 @@
 Demo component Deployment template
 */}}
 {{- define "techx-corp.deployment" }}
+{{- $autoscaling := .autoscaling | default dict }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -10,7 +11,9 @@ metadata:
   labels:
     {{- include "techx-corp.labels" . | nindent 4 }}
 spec:
+  {{- if not ($autoscaling.enabled | default false) }}
   replicas: {{ .replicas | default .defaultValues.replicas }}
+  {{- end }}
   revisionHistoryLimit: {{ .revisionHistoryLimit | default .defaultValues.revisionHistoryLimit }}
   {{- if .strategy }}
   strategy:
