@@ -108,3 +108,25 @@ variable "budget_notification_emails" {
     error_message = "Each budget_notification_emails entry must be a valid email address."
   }
 }
+
+variable "external_secrets_chart_version" {
+  description = "Version of the External Secrets Operator Helm chart"
+  type        = string
+  default     = "0.9.20"
+
+  validation {
+    condition     = can(regex("^[0-9]+[.][0-9]+[.][0-9]+$", var.external_secrets_chart_version))
+    error_message = "external_secrets_chart_version must be a valid semver version string."
+  }
+}
+
+variable "argocd_chart_version" {
+  description = "Version of the Argo CD Helm chart"
+  type        = string
+  default     = "7.3.7"
+
+  validation {
+    condition     = can(regex("^[0-9]+[.][0-9]+[.][0-9]+$", var.argocd_chart_version))
+    error_message = "argocd_chart_version must be a valid semver version string."
+  }
+}
