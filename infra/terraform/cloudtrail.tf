@@ -1,5 +1,5 @@
 # Owner: Nhóm CDO07 (Audit)
-# Ref: AUDIT-011 — Fix 3 blockers cho MANDATE-04 Forensic Audit Trail
+# Ref: AUDIT-010 — Fix 3 blockers cho MANDATE-04 Forensic Audit Trail
 # Ngày: 2026-07-14
 # Thay đổi:
 #   [1] enable_log_file_validation = true   -> tamper-evident (digest file có chữ ký số)
@@ -305,7 +305,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
         Principal = {
           AWS = "*"
         }
-        Action   = "s3:*"
+        Action = "s3:*"
         Resource = [
           aws_s3_bucket.cloudtrail_logs.arn,
           "${aws_s3_bucket.cloudtrail_logs.arn}/*"
