@@ -955,10 +955,10 @@ components:
       - name: KAFKA_CONTROLLER_QUORUM_VOTERS
         value: 1@kafka:9093
       - name: KAFKA_LOG_DIRS
-        value: /tmp/kraft-combined-logs
+        value: /tmp/kafka-data/kraft-combined-logs
     additionalVolumeMounts:
       - name: kafka-data
-        mountPath: /tmp/kraft-combined-logs
+        mountPath: /tmp/kafka-data
     additionalVolumes:
       - name: kafka-data
         persistentVolumeClaim:
