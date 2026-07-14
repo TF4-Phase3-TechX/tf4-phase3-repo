@@ -69,3 +69,13 @@ output "cloudtrail_log_group_arn" {
   description = "CloudWatch Log Group ARN for CloudTrail"
   value       = aws_cloudwatch_log_group.cloudtrail.arn
 }
+
+output "karpenter_controller_role_arn" {
+  description = "IAM role ARN used by the Karpenter controller service account"
+  value       = module.karpenter.iam_role_arn
+}
+
+output "karpenter_node_role_name" {
+  description = "IAM role name used by Karpenter-provisioned worker nodes"
+  value       = module.karpenter.node_iam_role_name
+}
