@@ -3,7 +3,7 @@
 > **Task:** `[CDO08-SEC-01][P1][Secrets] Move sensitive config candidates out of Helm values`
 > **Owner chính:** Thuỷ (Security)
 > **Branch:** `feature/CDO08-SEC-01-move-secrets`
-> **Trạng thái:** `DESIGN + HELM REFERENCES COMPLETE — BLOCKED ON ESO/IRSA/AWS SECRETS PRE-DEPLOY GATES`
+> **Trạng thái:** `INFRA + HELM REFERENCES READY — BLOCKED ON SECRET VALUES AND RUNTIME VERIFICATION`
 > **Thời gian phân tích:** 2026-07-13T22:00:00+07:00
 > **Cập nhật lần cuối:** 2026-07-14T14:00:00+07:00
 
@@ -60,7 +60,7 @@ Các items sau được phát hiện trong [báo cáo week1](../week1/secrets-co
 | **Cách hoạt động** | ESO đồng bộ secret từ AWS Secrets Manager → Kubernetes Secret trong namespace `techx-tf4`. Workload đọc secret qua `secretKeyRef` như trước |
 
 > [!IMPORTANT]
-> Branch này **không tự cài External Secrets Operator, IAM role hoặc IRSA**. Trước khi merge/deploy phải có gate xác nhận ESO CRDs/controller, IAM role, IRSA ServiceAccount và AWS Secrets Manager entries đã tồn tại. Nếu các gate này chưa pass, không chạy Helm deploy vì chart sẽ render `ExternalSecret`/`SecretStore` cho app release và workload sẽ phụ thuộc vào các Kubernetes Secret do ESO sync.
+> Branch này quản lý ESO/IRSA/AWS Secrets metadata bằng Terraform trong `infra/terraform/external-secrets.tf`. Terraform **không** lưu secret values thật. Trước khi deploy app workload, admin phải nạp giá trị thật vào AWS Secrets Manager và verify ESO sync thành Kubernetes Secret.
 
 ### 3.2 Mapping Secret → Service → AWS Secrets Manager
 
@@ -156,53 +156,43 @@ Ví dụ:
 
 | # | Điều kiện | Trạng thái | Ghi chú |
 |:---|:---|:---|:---|
-| 1 | External Secrets Operator đã cài trên cluster | ⏳ Cần xác nhận | `kubectl -n external-secrets get pods` |
+| 1 | External Secrets Operator đã cài trên cluster | ✅ Terraform quản lý | `helm_release.external_secrets` trong `infra/terraform/external-secrets.tf` |
 | 2 | IRSA đã enable trên EKS cluster (OIDC provider) | ⏳ Cần xác nhận | `aws eks describe-cluster --name <cluster> --query "cluster.identity.oidc"` |
-| 3 | IAM role cho ESO đã tạo với least-privilege policy | ⏳ Cần tạo / review | Cần team infra/platform hoặc AWS admin tạo policy chỉ đọc đúng secret path |
-| 4 | IAM role có trust relationship cho IRSA | ⏳ Cần tạo / review | Trust policy phải bind đúng OIDC provider và service account `techx-tf4/external-secrets-sa` |
-| 5 | Service account `external-secrets-sa` có annotation IRSA | ⏳ Cần tạo | `eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>` |
-| 6 | 5 secrets đã tạo trong AWS Secrets Manager | ⏳ Cần tạo | Tạo qua AWS Console hoặc CLI — **không commit giá trị vào repo** |
-| 7 | Team có quyền `secretsmanager:CreateSecret` | ⏳ Cần xác nhận | Cần trước khi tạo secrets |
+| 3 | IAM role cho ESO đã tạo với least-privilege policy | ✅ Terraform quản lý | `aws_iam_role.external_secrets_reader` + `aws_iam_policy.external_secrets_reader` |
+| 4 | IAM role có trust relationship cho IRSA | ✅ Terraform quản lý | Trust policy bind đúng OIDC provider và service account `techx-tf4/external-secrets-sa` |
+| 5 | Service account `external-secrets-sa` có annotation IRSA | ✅ Terraform quản lý | `kubernetes_service_account_v1.external_secrets_app` |
+| 6 | 5 secrets metadata đã tạo trong AWS Secrets Manager | ✅ Terraform quản lý | `aws_secretsmanager_secret.cdo08_app` |
+| 7 | 5 secret values thật đã được nạp vào AWS Secrets Manager | ⏳ Admin cần nạp | Dùng `aws secretsmanager put-secret-value`; **không commit giá trị vào repo** |
 
-### 5.3 Tạo Secret trong AWS Secrets Manager
+### 5.3 Nạp giá trị Secret vào AWS Secrets Manager
 
 > [!IMPORTANT]
-> Các lệnh sau chỉ được thực hiện từ máy có quyền truy cập AWS Secrets Manager. Không chạy trong CI/CD pipeline. Không log giá trị secret.
+> Terraform tạo metadata của 5 AWS Secrets Manager secrets. Các lệnh sau chỉ nạp giá trị thật bằng `put-secret-value`. Không chạy trong CI/CD pipeline. Không log giá trị secret.
 
 ```bash
-# Tạo 5 secrets trong AWS Secrets Manager
+# Nạp giá trị cho 5 secrets trong AWS Secrets Manager.
 # Giá trị <VALUE> phải được lấy từ secure source (1Password, vault, etc.)
 # KHÔNG commit giá trị thật vào repo hoặc log.
 
-aws secretsmanager create-secret \
-  --name tf4/techx-tf4/accounting/db-connection-string \
-  --secret-string "<VALUE>" \
-  --description "Accounting service DB connection string" \
-  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=accounting
+aws secretsmanager put-secret-value \
+  --secret-id tf4/techx-tf4/accounting/db-connection-string \
+  --secret-string "<VALUE>"
 
-aws secretsmanager create-secret \
-  --name tf4/techx-tf4/product-catalog/db-connection-string \
-  --secret-string "<VALUE>" \
-  --description "Product Catalog service DB connection string" \
-  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=product-catalog
+aws secretsmanager put-secret-value \
+  --secret-id tf4/techx-tf4/product-catalog/db-connection-string \
+  --secret-string "<VALUE>"
 
-aws secretsmanager create-secret \
-  --name tf4/techx-tf4/product-reviews/db-connection-string \
-  --secret-string "<VALUE>" \
-  --description "Product Reviews service DB connection string" \
-  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=product-reviews
+aws secretsmanager put-secret-value \
+  --secret-id tf4/techx-tf4/product-reviews/db-connection-string \
+  --secret-string "<VALUE>"
 
-aws secretsmanager create-secret \
-  --name tf4/techx-tf4/product-reviews/openai-api-key \
-  --secret-string "<VALUE>" \
-  --description "Product Reviews OpenAI API key (placeholder/demo)" \
-  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=product-reviews
+aws secretsmanager put-secret-value \
+  --secret-id tf4/techx-tf4/product-reviews/openai-api-key \
+  --secret-string "<VALUE>"
 
-aws secretsmanager create-secret \
-  --name tf4/techx-tf4/postgresql/postgres-password \
-  --secret-string "<VALUE>" \
-  --description "PostgreSQL admin password" \
-  --tags Key=project,Value=tf4 Key=namespace,Value=techx-tf4 Key=service,Value=postgresql
+aws secretsmanager put-secret-value \
+  --secret-id tf4/techx-tf4/postgresql/postgres-password \
+  --secret-string "<VALUE>"
 ```
 
 **Xác nhận secrets đã tạo:**
@@ -216,12 +206,12 @@ aws secretsmanager list-secrets \
 
 ### 5.4 IRSA Setup
 
-**IAM Policy cần tạo/review:**
+**IAM Policy do Terraform tạo:**
 - Chỉ cho phép `secretsmanager:GetSecretValue` và `secretsmanager:DescribeSecret`
 - Resource giới hạn đúng 5 secret ARN paths
 - Không cấp wildcard `secretsmanager:*`
 
-**Trust Policy cần tạo/review:**
+**Trust Policy do Terraform tạo:**
 - Chỉ cho phép service account `external-secrets-sa` trong namespace `techx-tf4`
 - Sử dụng EKS OIDC provider
 
@@ -261,7 +251,7 @@ aws secretsmanager list-secrets \
 | ~~techx-corp-chart/templates/secrets.yaml~~ | **Đã xóa** — Helm template tạo K8s Secrets không còn cần thiết |
 | [techx-corp-chart/templates/secretstore.yaml](../../../techx-corp-chart/templates/secretstore.yaml) | **Mới** — SecretStore namespace-scoped cho AWS Secrets Manager + IRSA |
 | [techx-corp-chart/templates/external-secrets.yaml](../../../techx-corp-chart/templates/external-secrets.yaml) | **Mới** — 5 ExternalSecret resources đồng bộ secret từ AWS SM → K8s Secret |
-| Infra/IAM policy files | **Chưa nằm trong PR này** — Thuỷ cần tạo review gate/request cho infra/platform hoặc AWS admin nếu các IAM/IRSA resources chưa tồn tại |
+| [infra/terraform/external-secrets.tf](../../../infra/terraform/external-secrets.tf) | **Mới** — Cài ESO, tạo AWS Secrets Manager secret metadata, IAM policy/role IRSA và ServiceAccount `external-secrets-sa` |
 
 ### Chi tiết thay đổi trong values.yaml
 
@@ -325,9 +315,9 @@ rg -n "CHANGE_ME|PASSWORD|SECRET|API_KEY|TOKEN|CONNECTION_STRING" \
 
 **Kết quả mong đợi:** Các biến trong scope (5 items) chỉ xuất hiện dưới dạng `secretKeyRef` reference, không còn plaintext value hoặc `CHANGE_ME`.
 
-### 8.2 Pre-deploy Gate — ESO, CRDs, IRSA và AWS Secrets
+### 8.2 Pre-deploy Gate — ESO, CRDs, IRSA và AWS Secret Values
 
-Các gate này phải pass **trước** khi merge/deploy app release:
+Các gate này phải pass **sau Terraform apply và trước app deploy**:
 
 ```bash
 # 1. ESO CRDs đã tồn tại
@@ -354,7 +344,7 @@ aws secretsmanager list-secrets \
   --output table
 ```
 
-Nếu một trong các gate trên chưa pass, dừng deploy và tạo review/request cho team liên quan.
+Nếu một trong các gate trên chưa pass, dừng deploy. Nếu metadata đã có nhưng ESO sync lỗi `SecretSyncedError`, kiểm tra secret values đã được nạp bằng `put-secret-value` chưa.
 
 ### 8.3 ESO Verification — Sau khi deploy
 
@@ -497,21 +487,21 @@ kubectl -n techx-tf4 get externalsecret
 |---|:---|:---|:---|
 | 1 | Có bảng phân loại secret | ✅ Hoàn thành | [Section 2](#2-bảng-phân-loại-secret-acceptance-criteria-1) — 5 in-scope + 4 out-of-scope |
 | 2 | Không còn hardcoded sensitive configuration trong Helm values | ✅ Hoàn thành (trên branch) | `.Values.secrets` với `CHANGE_ME` đã bị xóa; chỉ còn `secretKeyRef` references |
-| 3 | Secret thật nằm trong AWS Secrets Manager, không nằm trong Git | ⏳ Chờ tạo secrets trong AWS SM | Cần tạo 5 secrets theo [Section 5.3](#53-tạo-secret-trong-aws-secrets-manager) |
+| 3 | Secret thật nằm trong AWS Secrets Manager, không nằm trong Git | ⏳ Chờ nạp secret values | Terraform tạo metadata; admin nạp giá trị theo [Section 5.3](#53-nạp-giá-trị-secret-vào-aws-secrets-manager) |
 | 4 | Không sử dụng SSM Parameter Store | ✅ Hoàn thành | Toàn bộ thiết kế dùng AWS Secrets Manager |
 | 5 | ESO đồng bộ thành công secret từ AWS SM → K8s Secret | ⏳ Chờ deploy & runtime verification | Cần: (a) ESO installed, (b) IRSA configured, (c) `helm upgrade`, (d) verify theo [Section 8.3](#83-eso-verification--sau-khi-deploy) |
 | 6 | Workload đọc được secret thông qua secretKeyRef | ⏳ Chờ deploy & runtime verification | Verify theo [Section 8.5](#85-runtime-verification--workload-health) |
-| 7 | Có evidence cho IAM/IRSA theo nguyên tắc least privilege | ⏳ Chờ infra/security review | Cần attach IAM policy, trust policy, service account annotation và reviewer approval |
+| 7 | Có evidence cho IAM/IRSA theo nguyên tắc least privilege | ✅ Terraform-managed | `infra/terraform/external-secrets.tf` tạo IAM policy, role trust và ServiceAccount annotation |
 | 8 | Có rollback và break-glass plan rõ ràng | ✅ Hoàn thành | [Section 9](#9-rollback--break-glass-plan) |
 
 > [!IMPORTANT]
 > **Hành động tiếp theo:**
 > 1. ✅ ~~Phân tích & phân loại secrets~~ — Hoàn thành
 > 2. ✅ ~~Code changes: xóa Helm secrets, thêm ESO manifests~~ — Hoàn thành trên branch
-> 3. ⏳ **Xác nhận ESO đã cài trên cluster** — Nếu chưa, cần tạo installation request
-> 4. ⏳ **Tạo/review IAM policy & trust policy** — Không nằm trong PR hiện tại; cần infra/security review nếu chưa tồn tại
-> 5. ⏳ **Tạo IAM role + IRSA** — Apply policy files, tạo service account
-> 6. ⏳ **Tạo secrets trong AWS Secrets Manager** — Thuỷ chủ động coordinate
+> 3. ⏳ **Terraform apply infra** — Cài ESO, tạo secret metadata, IAM role/policy và ServiceAccount IRSA
+> 4. ⏳ **Admin nạp secret values vào AWS Secrets Manager** — Dùng `put-secret-value`, không commit/log giá trị
+> 5. ⏳ **Verify ESO sync** — SecretStore/ExternalSecret Ready, Kubernetes Secrets tồn tại
+> 6. ⏳ **Deploy app release** — Sau khi gate pass
 > 7. ⏳ **Chờ approval từ PM/Reviewer** để tiến hành deploy
 > 8. ⏳ Deploy & verify runtime — chạy verification plan Section 8
 
@@ -521,11 +511,11 @@ kubectl -n techx-tf4 get externalsecret
 
 | Vai trò | Người | Hành động cần thiết |
 |:---|:---|:---|
-| Owner | Thuỷ | Đã hoàn thành phân tích, code changes và ESO manifests; cần coordinate pre-deploy gates |
+| Owner | Thuỷ | Đã hoàn thành phân tích, code changes, ESO manifests và Terraform infra changes; cần coordinate secret value loading |
 | PM | Hải | Review và approve để tiến hành deploy |
-| Security Reviewer | Nhân | Review IAM policy, IRSA trust, ESO configuration khi Thuỷ tạo review request/gate |
+| Security Reviewer | Nhân | Review IAM policy, IRSA trust và ESO configuration trong Terraform |
 | Deploy Operator | — | Hỗ trợ deploy khi có approval |
-| Infra/Platform | — | Xác nhận ESO installed, IRSA enabled; tạo IAM role nếu cần review gate |
+| Infra/Platform | — | Apply Terraform và xác nhận ESO/IRSA resources healthy |
 
 > [!NOTE]
 > Nếu cần review về IAM, chi phí, audit hoặc operator ownership, Thuỷ cần chủ động tạo review request hoặc review gate cho team liên quan trước khi implement và deploy.
