@@ -38,7 +38,6 @@ locals {
     "AWS::ECR::Repository",
     "AWS::DynamoDB::Table",
     "AWS::Logs::LogGroup",
-    "AWS::Config::ConfigurationRecorder",
     "AWS::AccessAnalyzer::Analyzer",
     "AWS::ElasticLoadBalancingV2::LoadBalancer",
     "AWS::ElasticLoadBalancingV2::Listener",
