@@ -1,0 +1,39 @@
+{{- range $name, $component := .Values.components }}
+{{- $component := set $component "name" ($name | lower) }}
+{{- $component := set $component "Release" $.Release }}
+{{- $component := set $component "Chart" $.Chart }}
+{{- $autoscaling := $component.autoscaling | default dict }}
+{{- if and $component.enabled ($autoscaling.enabled | default false) }}
+{{- if not $component.resources.requests.cpu }}
+{{- fail (printf "components.%s.autoscaling requires resources.requests.cpu" $name) }}
+{{- end }}
+{{- if gt (int $autoscaling.minReplicas) (int $autoscaling.maxReplicas) }}
+{{- fail (printf "components.%s.autoscaling minReplicas must not exceed maxReplicas" $name) }}
+{{- end }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name | lower }}
+  labels:
+    {{- include "techx-corp.labels" $component | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $name | lower }}
+  minReplicas: {{ $autoscaling.minReplicas }}
+  maxReplicas: {{ $autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $autoscaling.targetCPUUtilizationPercentage }}
+  {{- with $autoscaling.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

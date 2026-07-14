@@ -1,0 +1,14 @@
+{{- if .Values.prometheus.enabled -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-flash-sale-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alert-rules
+data:
+  flash-sale-alerts.yaml: |-
+{{ .Files.Get "prometheus/flash-sale-alerts.yaml" | indent 4 }}
+{{- end }}

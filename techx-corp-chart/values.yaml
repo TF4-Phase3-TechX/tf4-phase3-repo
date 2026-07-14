@@ -218,7 +218,7 @@ components:
 
   cart:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -239,8 +239,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 160Mi
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 192Mi }
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -264,7 +264,19 @@ components:
 
   checkout:
     enabled: true
-    replicas: 2
+    replicas: 1
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
     useDefault:
       env: true
     service:
@@ -297,8 +309,8 @@ components:
       - name: GOMEMLIMIT
         value: 16MiB
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 75m, memory: 48Mi }
+      limits: { cpu: 300m, memory: 96Mi }
     livenessProbe:
       grpc:
         port: 8080
@@ -337,8 +349,8 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 20m, memory: 24Mi }
+      limits: { cpu: 75m, memory: 48Mi }
 
   email:
     enabled: true
@@ -392,7 +404,19 @@ components:
 
   frontend:
     enabled: true
-    replicas: 2
+    replicas: 1
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
     useDefault:
       env: true
     service:
@@ -437,8 +461,8 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: http://localhost:8080/otlp-http/v1/traces             # This expects users to use `kubectl port-forward ...`
     resources:
-      limits:
-        memory: 250Mi
+      requests: { cpu: 100m, memory: 192Mi }
+      limits: { cpu: 400m, memory: 320Mi }
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -461,7 +485,7 @@ components:
 
   frontend-proxy:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -515,8 +539,8 @@ components:
       - name: OTEL_COLLECTOR_PORT_HTTP
         value: "4318"
     resources:
-      limits:
-        memory: 65Mi
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 128Mi }
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -599,12 +623,12 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 1500Mi
+      requests: { cpu: 500m, memory: 768Mi }
+      limits: { cpu: "1", memory: 1536Mi }
 
   payment:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -623,8 +647,8 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      limits:
-        memory: 140Mi
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 128Mi }
     livenessProbe:
       grpc:
         port: 8080
@@ -647,7 +671,7 @@ components:
 
   product-catalog:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -670,8 +694,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 50m, memory: 32Mi }
+      limits: { cpu: 200m, memory: 64Mi }
     livenessProbe:
       grpc:
         port: 8080
@@ -726,8 +750,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 100Mi
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 192Mi }
 
   quote:
     enabled: true
@@ -780,12 +804,12 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 500Mi            # This is high to enable supporting the recommendationCache feature flag use case
+      requests: { cpu: 75m, memory: 128Mi }
+      limits: { cpu: 300m, memory: 256Mi }
 
   shipping:
     enabled: true
-    replicas: 2
+    replicas: 1
     useDefault:
       env: true
     service:
@@ -802,8 +826,8 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 20m, memory: 16Mi }
+      limits: { cpu: 75m, memory: 32Mi }
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -943,6 +967,9 @@ components:
         value: flagd
       - name: FLAGD_PORT
         value: "8013"
+    resources:
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 250m, memory: 192Mi }
 
   postgresql:
     enabled: true
@@ -952,6 +979,12 @@ components:
       repository: "postgres"
       tag: "17.6"
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 10Gi
     service:
       port: 5432
     podAnnotations:
@@ -987,10 +1020,19 @@ components:
         value: otel
       - name: POSTGRES_DB
         value: otel
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
     mountedConfigMaps:
       - name: postgresql-init
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
+    additionalVolumeMounts:
+      - name: postgresql-data
+        mountPath: /var/lib/postgresql/data
+    additionalVolumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: postgresql-pvc
     resources:
       limits:
         memory: 100Mi
@@ -1020,6 +1062,9 @@ components:
       runAsUser: 999  # valkey
       runAsGroup: 1000
       runAsNonRoot: true
+
+metrics-server:
+  enabled: false
 
 opentelemetry-collector:
   enabled: true
@@ -1244,18 +1289,49 @@ jaeger:
 prometheus:
   enabled: true
   alertmanager:
-    enabled: false
+    enabled: true
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 10m
+        memory: 50Mi
+      limits:
+        memory: 100Mi
+    extraSecretMounts:
+      - name: smtp-auth
+        secretName: alertmanager-smtp-auth
+        mountPath: /etc/alertmanager/secrets
+        readOnly: true
   configmapReload:
     prometheus:
-      enabled: false
+      enabled: true
+      extraVolumeDirs:
+        - /etc/alerts.d
+      extraConfigmapMounts:
+        - name: flash-sale-alerts
+          mountPath: /etc/alerts.d
+          configMap: prometheus-flash-sale-alerts
+          readOnly: true
   kube-state-metrics:
     enabled: false
   prometheus-node-exporter:
     enabled: false
   prometheus-pushgateway:
     enabled: false
+  serverFiles:
+    prometheus.yml:
+      rule_files:
+        - /etc/config/recording_rules.yml
+        - /etc/config/alerting_rules.yml
+        - /etc/alerts.d/*.yaml
   server:
     fullnameOverride: prometheus
+    extraConfigmapMounts:
+      - name: flash-sale-alerts
+        mountPath: /etc/alerts.d
+        configMap: prometheus-flash-sale-alerts
+        readOnly: true
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
@@ -1362,3 +1438,7 @@ opensearch:
   resources:
     limits:
       memory: 1100Mi
+
+bastionPortalAccess:
+  enabled: false
+  groupName: portal-bastion-group

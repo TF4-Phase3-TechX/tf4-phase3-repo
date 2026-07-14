@@ -49,6 +49,25 @@
     },
     "opensearch": {
       "type": "object"
+    },
+    "metrics-server": {
+      "type": "object"
+    },
+    "bastionPortalAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "groupName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "groupName"
+      ]
     }
   },
   "required": [
@@ -155,8 +174,17 @@
         "replicas": {
           "type": "integer"
         },
+        "autoscaling": {
+          "$ref": "#/definitions/Autoscaling"
+        },
         "revisionHistoryLimit": {
           "type": "integer"
+        },
+        "strategy": {
+          "$ref": "#/definitions/DeploymentStrategy"
+        },
+        "persistence": {
+          "$ref": "#/definitions/Persistence"
         },
         "service": {
           "$ref": "#/definitions/Service"
@@ -243,6 +271,67 @@
         "useDefault"
       ],
       "title": "Service"
+    },
+    "Autoscaling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "behavior": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "DeploymentStrategy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RollingUpdate",
+            "Recreate"
+          ]
+        }
+      }
+    },
+    "Persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "storageClassName": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "storageClassName",
+        "size"
+      ]
     },
     "Env": {
       "type": "object",
