@@ -175,16 +175,17 @@ resource "aws_s3_bucket" "cloudtrail_logs" {
 }
 
 ###############################################################################
-# 5. S3 Object Lock Configuration — GOVERNANCE mode, 90 ngay
-#    GOVERNANCE: Operator khong xoa duoc (khong co s3:BypassGovernanceRetention)
-#    Admin (root/terraform) van co the override neu can
+# 5. S3 Object Lock Configuration — COMPLIANCE mode, 90 ngay
+#    COMPLIANCE: KHONG AI xoa duoc (ke ca root/admin) - true tamper-evident
+#    Bao mat toi da cho forensic audit trail theo MANDATE-04
+#    Luu y: Can giu versioning va expiration policy de tranh day bucket
 ###############################################################################
 resource "aws_s3_bucket_object_lock_configuration" "cloudtrail_logs" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
   rule {
     default_retention {
-      mode = "GOVERNANCE"
+      mode = "COMPLIANCE"
       days = 90
     }
   }
