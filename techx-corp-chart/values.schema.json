@@ -53,24 +53,46 @@
     "metrics-server": {
       "type": "object"
     },
-    "secrets": {
+    "externalSecrets": {
       "type": "object",
-      "description": "Kubernetes Secrets managed by Helm. Values must be overridden at deploy time.",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "data": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
-          }
+      "description": "External Secrets Operator configuration. Secrets are sourced from AWS Secrets Manager.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
         },
-        "required": ["enabled", "data"]
-      }
+        "region": {
+          "type": "string",
+          "description": "AWS region for Secrets Manager"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "description": "Kubernetes service account with IRSA annotation"
+        },
+        "refreshInterval": {
+          "type": "string",
+          "description": "How often ESO syncs secrets from AWS Secrets Manager"
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Map of Kubernetes Secret name to AWS Secrets Manager reference",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "remoteRef": {
+                "type": "string",
+                "description": "AWS Secrets Manager secret name/path"
+              },
+              "secretKey": {
+                "type": "string",
+                "description": "Key name in the created Kubernetes Secret"
+              }
+            },
+            "required": ["remoteRef", "secretKey"]
+          }
+        }
+      },
+      "required": ["enabled"]
     },
     "bastionPortalAccess": {
       "type": "object",

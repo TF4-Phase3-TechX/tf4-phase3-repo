@@ -1454,31 +1454,30 @@ opensearch:
     limits:
       memory: 1100Mi
 
-# -- Kubernetes Secrets managed by Helm (CDO08-SEC-01)
-# WARNING: Do NOT commit real credentials here. Use placeholder values only.
-# Override with real values via: helm upgrade --set secrets.accounting-db-secret.data.connection-string="..."
-# Or use a separate encrypted values file in CI/CD pipeline.
-secrets:
-  accounting-db-secret:
-    enabled: true
-    data:
-      connection-string: "CHANGE_ME"
-  product-catalog-db-secret:
-    enabled: true
-    data:
-      connection-string: "CHANGE_ME"
-  product-reviews-db-secret:
-    enabled: true
-    data:
-      connection-string: "CHANGE_ME"
-  product-reviews-openai-secret:
-    enabled: true
-    data:
-      api-key: "CHANGE_ME"
-  postgresql-secret:
-    enabled: true
-    data:
-      postgres-password: "CHANGE_ME"
+# -- External Secrets Operator configuration (CDO08-SEC-01)
+# Secrets are sourced from AWS Secrets Manager and synced by ESO.
+# No secret values are stored in this file or in Git.
+externalSecrets:
+  enabled: true
+  region: us-east-1
+  serviceAccountName: external-secrets-sa
+  refreshInterval: 1h
+  secrets:
+    accounting-db-secret:
+      remoteRef: tf4/techx-tf4/accounting/db-connection-string
+      secretKey: connection-string
+    product-catalog-db-secret:
+      remoteRef: tf4/techx-tf4/product-catalog/db-connection-string
+      secretKey: connection-string
+    product-reviews-db-secret:
+      remoteRef: tf4/techx-tf4/product-reviews/db-connection-string
+      secretKey: connection-string
+    product-reviews-openai-secret:
+      remoteRef: tf4/techx-tf4/product-reviews/openai-api-key
+      secretKey: api-key
+    postgresql-secret:
+      remoteRef: tf4/techx-tf4/postgresql/postgres-password
+      secretKey: postgres-password
 
 bastionPortalAccess:
   enabled: false
