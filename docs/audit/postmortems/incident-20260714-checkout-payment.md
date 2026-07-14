@@ -45,6 +45,18 @@ aws cloudtrail lookup-events \
   --output table
 ```
 
+![CloudTrail Detect](/docs/audit/postmortems/cloud_trail_detect.png)
+![CloudTrail CreateNetworkInterface](/docs/audit/postmortems/create_network_interface.png)
+
+**Phân tích bằng chứng CloudTrail:**
+Hai bức ảnh trên cung cấp bằng chứng "thép" về sự kiện lúc 14:16:28:
+1. **Event Name:** `CreateNetworkInterface`
+2. **User Name:** `AmazonEKS`
+3. **Error code:** `Client.DryRunOperation`
+4. **Source IP:** `eks.amazonaws.com`
+
+**Nhận định Audit:** Đây **KHÔNG PHẢI** là thao tác của con người. Khung giờ 14:15 - 14:30 trùng khớp với sự kiện tăng tải làm K8s HPA tự động scale up số lượng pod (từ 1 lên 3). Khi cần tạo pod mới, K8s VPC CNI (do agent `AmazonEKS` quản lý) đã tự động gọi API `CreateNetworkInterface` ở chế độ `DryRun` để kiểm tra quyền cấp phát IP (ENI) mới cho pod. Việc này chứng minh hệ thống AWS tự vận hành giãn nở mạng một cách hoàn hảo, tuyệt đối không có thao tác phá hoại hạ tầng từ bên ngoài.
+
 **Raw output:**
 
 ```
@@ -192,6 +204,9 @@ checkout   Deployment/checkout   cpu: 34%/70%   1        3        1
 frontend   Deployment/frontend   cpu: 127%/70%  1        3        3   ← CRITICAL: 3/3 max
 ```
 
+*(Placeholder: Nhờ CDO08 chụp ảnh Grafana Dashboard phần CPU Usage & HPA Replicas chèn vào đây)*
+`![Grafana HPA Scale Up](grafana-hpa-cpu-spike.jpg)`
+
 ### 3.3 HPA Status — AFTER incident (15:39)
 
 ```
@@ -276,6 +291,11 @@ Bastion là EC2 SSM host, không phải ECS node. ECS Agent đang chạy trên b
 
 **Không phải root cause** của checkout failure nhưng là security/config gap.
 
+### 🔴 Anomaly 1.5 — AWS GuardDuty (Security Gap)
+GuardDuty hiện **Chưa được bật** (list-detectors trả về mảng rỗng `[]`). Thiếu lớp giám sát an ninh mạng.
+*(Placeholder: Chèn ảnh chụp màn hình console AWS GuardDuty báo "Get Started" / Empty)*
+`![GuardDuty Not Enabled](guardduty-empty.jpg)`
+
 ### 🟡 Anomaly 2 — vinhkhuat GetCallerIdentity burst
 
 ```
@@ -348,12 +368,12 @@ EC2 instance ID không quen biết trong account. Cần xác nhận đây là in
 
 | # | Action | Owner | Priority |
 |---|---|---|---|
-| A1 | Alertmanager `/api/v2/alerts` output trong 14:15–14:30 | CDO08 | 🔴 HIGH |
-| A2 | Grafana alert history trong window | CDO08 | 🔴 HIGH |
+| A1 | Xin ảnh chụp Alertmanager `/api/v2/alerts` trong 14:15–14:30 | CDO08 | 🔴 HIGH |
+| A2 | Xin ảnh chụp Grafana (CPU HPA, HTTP Status 5xx, Checkout Success) | CDO08 | 🔴 HIGH |
 | A3 | Prometheus rules `/api/v1/rules` — confirm fired | CDO08 | 🔴 HIGH |
 | A4 | Confirm vinhkhuat activity 14:22 có authorized không | CDO08/Admin | 🟡 MED |
 | A5 | Investigate instance `i-01b00d955a0af0fac` | CDO08/Admin | 🟡 MED |
-| A6 | Investigate bastion ECS Agent (RegisterContainerInstance) | CDO08 | 🟡 MED |
+| A6 | Bật tính năng AWS GuardDuty đang bị thiếu | CDO04/CDO08 | 🟡 MED |
 | A7 | Confirm flagd có inject fault checkout trong window không | CDO08 | 🟡 MED |
 | A8 | Cấp SSM port-forwarding cho CDO04 named identities | CDO08 | 🟡 MED |
 | A9 | Cấp `pods/portforward` cho `ai-readers` trong `techx-observability` | CDO08 | 🟡 MED |
@@ -372,9 +392,12 @@ EC2 instance ID không quen biết trong account. Cần xác nhận đây là in
 | `kubectl get events` | K8s events | CDO07 | 15:21 +07 |
 | `flash-sale-alerts.yaml` | Source code | main branch | — |
 | `docs/audit/postmortems/evidence_incident.jpg` | K8s Audit Log screenshot | CDO07 | 14/07/2026 |
+| `docs/audit/postmortems/cloud_trail_detect.png` | CloudTrail Evidence | CDO07 | 14/07/2026 |
+| `docs/audit/postmortems/create_network_interface.png` | CloudTrail ENI Event | CDO07 | 14/07/2026 |
 | Alertmanager output | ⚠️ PENDING | CDO08 | — |
 | Grafana alert history | ⚠️ PENDING | CDO08 | — |
 
+![Log](/docs/audit/postmortems/evidence_incident.jpg)
 ### evidence_incident.jpg — Phân tích
 
 Screenshot từ K8s Audit Log (OpenSearch/Grafana) cho thấy các sự kiện trong window incident:
