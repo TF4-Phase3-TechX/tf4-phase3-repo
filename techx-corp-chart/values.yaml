@@ -1386,17 +1386,20 @@ grafana:
   fullnameOverride: grafana
   testFramework:
     enabled: false
+  admin:
+    existingSecret: grafana-admin-creds
+    userKey: admin-user
+    passwordKey: admin-password
   grafana.ini:
     auth:
-      disable_login_form: true
+      disable_login_form: false
     auth.anonymous:
       enabled: true
       org_name: Main Org.
-      org_role: Admin
+      org_role: Viewer
     server:
       root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana"
       serve_from_sub_path: true
-  adminPassword: admin
   plugins:
     - grafana-opensearch-datasource
   sidecar:

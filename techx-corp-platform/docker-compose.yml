@@ -846,8 +846,11 @@ services:
         limits:
           memory: 175M
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - "GF_INSTALL_PLUGINS=grafana-opensearch-datasource"
+      - "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}"
     volumes:
       - ./src/grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./src/grafana/provisioning/:/etc/grafana/provisioning/
