@@ -221,11 +221,25 @@ Sample image tag:
 
 ## 2.5 Alert Và Incident Evidence
 
-Cần bổ sung screenshot Alert UI:
+### Grafana Alert-State Evidence
 
-* Alert state trước test
-* Alert state trong test
-* Alert state sau test
+Evidence hiện có:
+
+* `screenshots/Grafana alert-state window.jpg`
+* Dashboard: `Flash-sale alert runbook`
+* Time range hiển thị trên UI: `2026-07-14 05:46:58–06:46:58 +07`
+* `Active Task-3 alerts` tại thời điểm chụp: `0`
+* Panel `Alert state over time` cho thấy đã có trạng thái pending/firing quanh khoảng `06:00 +07`, sau đó trở về `0`.
+
+![Grafana alert-state window](screenshots/Grafana%20alert-state%20window.jpg)
+
+**Verdict:** `PARTIAL`. Ảnh này chứng minh alert monitoring hoạt động và bao phủ một phần thời gian test/post-run, nhưng chưa thay thế đầy đủ bộ ba checkpoint riêng biệt theo runbook:
+
+* `alerts/01-alert-state-pre.jpg` — ngay trước T0
+* `alerts/02-alert-state-during.jpg` — khoảng phút 7–8 của steady-state
+* `alerts/03-alert-state-post.jpg` — sau ramp-down và thời gian chờ scale-down
+
+Không diễn giải panel `Pending and firing alert instances: No data` là không từng có alert trong toàn bộ window; panel lịch sử cho thấy đã có alert state quanh `06:00 +07`.
 
 ### Incident Runtime Sau Bài Test
 
@@ -241,7 +255,7 @@ Cần bổ sung screenshot Alert UI:
 * Reliability/observability gate chưa sạch vì PostgreSQL và Jaeger bị OOMKilled ngay sau main test window.
 * Cần ghi nhận đây là post-run incident và follow-up risk.
 
-## 2.6 Cost Result
+## 2.6 Cost Estimate
 
 Cost evidence hiện có:
 
@@ -253,7 +267,7 @@ Cost evidence hiện có:
 
   * `$45.501867/week`
 
-Final cost sign-off vẫn cần Cost Explorer hoặc CUR cho đúng UTC window.
+Final billing sign-off vẫn cần Cost Explorer hoặc CUR cho đúng UTC window. Acceptance hiện chỉ xác nhận đã có **cost estimate**, không xác nhận actual billed cost.
 
 Trước khi có số liệu đó, cost chỉ được xem là:
 
@@ -373,10 +387,10 @@ Count đã quan sát khi verify:
 | Raw Locust result cho 200 users / 15 minutes      | PARTIAL | CSV/HTML chính thức chưa có trong package                    |
 | SLO giữ trong target                              | PASS    | Grafana dashboard SLO panels                                 |
 | Dashboard screenshots included                    | PASS    | Đã liệt kê                                                   |
-| Alert evidence included                           | PARTIAL | Cần bổ sung Alert UI screenshots                             |
+| Alert evidence included                           | PARTIAL | Có `screenshots/04-grafana-alert-state-window.jpg`; còn thiếu checkpoint pre/during/post riêng |
 | Resource before/during/after included             | PASS    | Đầy đủ                                                       |
 | Scale-down evidence included                      | PASS    | HPA về 1/1 và load-generator = 0/0                           |
-| Cost result included                              | PARTIAL | Mới có estimate                                              |
+| Cost estimate included                            | PASS    | Có allocation estimate; final billing evidence vẫn pending   |
 | Reliability gate sạch, không OOM/restart          | FAIL    | PostgreSQL và Jaeger OOMKilled sau window                    |
 
 ---
@@ -405,4 +419,3 @@ Known post-run incident:
 
 Các điểm này được ghi nhận thành follow-up reliability risks trước khi tuyên bố platform đã được harden hoàn toàn.
 ```
-
