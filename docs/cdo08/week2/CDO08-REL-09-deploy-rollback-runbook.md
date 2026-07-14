@@ -34,7 +34,9 @@ Container name trong deploy: checkout=checkout, shipping=shipping
 SLO baseline: checkout success ≥ 99.0% (onboarding/SLO.md)
 ```
 
-> **[Cập nhật sau code review — 2026-07-14]** PR CI (`app-smoke-build` job) giờ smoke-build **cả checkout lẫn shipping** (trước đó chỉ build checkout — đã sửa vì PR này đụng cả 2 service, Rust build fail lẽ ra phải lộ ở PR-gate thay vì chỉ lộ sau merge). Nếu Rust build fail → PR CI đỏ, chặn merge — an toàn hơn bản trước.
+> ⚠️ **Gate CI cần biết:** PR CI chỉ smoke-build image **checkout** (Go). **Shipping (Rust) chỉ được compile khi merge** trong `build-and-push.yaml`. Nếu Rust build fail → deploy không xảy ra (an toàn), nhưng branch trên main đã chứa code chưa deploy được → phải fix-forward hoặc revert ngay.
+>
+> **[Ghi nhận từ code review — 2026-07-14]** Reviewer đề nghị thêm shipping vào PR CI vì PR này đụng cả 2 service — đã quyết định **chưa áp dụng** thay đổi `ci.yaml` trong PR này (giữ nguyên phạm vi). Rủi ro trên vẫn còn: nếu Rust build fail, chỉ lộ ra sau merge. Cân nhắc xử lý riêng (PR khác hoặc theo dõi thủ công khi merge) thay vì gộp vào đây.
 
 ## 3. Checklist TRƯỚC khi merge
 

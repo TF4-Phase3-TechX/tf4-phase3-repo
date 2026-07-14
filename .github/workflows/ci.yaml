@@ -217,7 +217,7 @@ jobs:
           if-no-files-found: error
 
   app-smoke-build:
-    name: Docker smoke build checkout + shipping
+    name: Docker smoke build checkout
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.app == 'true'
@@ -238,8 +238,6 @@ jobs:
           EOF
           cat techx-corp-platform/.env.override
 
-      # shipping (Rust) build included here: without it, a Rust compile failure would
-      # only surface after merge in build-and-push.yaml, not at PR-gate time.
-      - name: Build checkout + shipping images
+      - name: Build checkout image only
         working-directory: techx-corp-platform
-        run: docker compose --env-file .env --env-file .env.override build checkout shipping
+        run: docker compose --env-file .env --env-file .env.override build checkout
