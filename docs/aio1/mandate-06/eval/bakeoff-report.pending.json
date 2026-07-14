@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "status": "pending_aws_sso_access",
+  "generated_at": null,
+  "dataset_sha256": null,
+  "guardrail_id": null,
+  "guardrail_version": null,
+  "region": "us-east-1",
+  "repetitions": 3,
+  "inter_request_delay_seconds": 1.0,
+  "content_retention": "metadata_only_no_prompt_review_or_response_content",
+  "models": [],
+  "selection": {
+    "winner": null,
+    "rule": "highest weighted score; within 2 points choose lower cost",
+    "scores": []
+  }
+}
