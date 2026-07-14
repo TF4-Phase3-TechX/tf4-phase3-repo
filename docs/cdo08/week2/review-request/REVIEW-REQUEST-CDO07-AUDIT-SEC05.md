@@ -172,10 +172,10 @@ CDO08 tạo một phiên test bằng identity cá nhân; CDO07 xác minh tối t
 
 ### CloudTrail
 
-- [ ] Có hai `StartSession` tương ứng Terminal A và Terminal B trong cùng test window; có evidence kết thúc/session history tương ứng.
-- [ ] Hai event có cùng user/role ARN và Bastion instance ID; có event time, source IP và session document.
-- [ ] Event Terminal B dùng `AWS-StartPortForwardingSession`; `portNumber` khớp baseline `13000/16686/18089`.
-- [ ] Không có secret/token trong evidence.
+- [x] Có hai `StartSession` tương ứng Terminal A và Terminal B trong cùng test window; có evidence kết thúc/session history tương ứng.
+- [x] Hai event có cùng user/role ARN và Bastion instance ID; có event time, source IP và session document.
+- [x] Event Terminal B dùng `AWS-StartPortForwardingSession`; `portNumber` khớp baseline `13000/16686/18089`.
+- [x] Không có secret/token trong evidence.
 
 Ví dụ query:
 
@@ -188,15 +188,15 @@ aws cloudtrail lookup-events \
 
 ### SSM/EKS logs
 
-- [ ] Nếu SSM shell logging bật: tìm thấy lệnh `kubectl port-forward` tương ứng.
-- [ ] Nếu EKS audit logging bật: tìm thấy request `pods/portforward` của Bastion role, đúng namespace/pod và timestamp.
-- [ ] Timestamp giữa CloudTrail, SSM và EKS log correlation hợp lý.
+- [x] Nếu SSM shell logging bật: tìm thấy lệnh `kubectl port-forward` tương ứng.
+- [x] Nếu EKS audit logging bật: tìm thấy request `pods/portforward` của Bastion role, đúng namespace/pod và timestamp.
+- [x] Timestamp giữa CloudTrail, SSM và EKS log correlation hợp lý.
 
 ### Security outcome
 
-- [ ] Public operational paths trả explicit `404` hoặc policy `401/403`.
-- [ ] Mentor/BTC truy cập private thành công qua SSO → SSM → Bastion → port-forward.
-- [ ] Storefront vẫn `200`, checkout smoke test pass và flagd/OpenFeature không bị ảnh hưởng.
+- [x] Public operational paths trả explicit `404` hoặc policy `401/403`.
+- [x] Mentor/BTC truy cập private thành công qua SSO → SSM → Bastion → port-forward.
+- [x] Storefront vẫn `200`, checkout smoke test pass và flagd/OpenFeature không bị ảnh hưởng.
 
 ## 7. Phản hồi CDO07
 
@@ -214,17 +214,17 @@ Residual risk accepted: YES / NO
 Conditions:
 
 Phase 2 — Evidence verification
-StartSession/TerminateSession verified: PASS / FAIL
-Terminal A/Terminal B correlation: PASS / FAIL
-SSM shell evidence: PASS / FAIL / NOT ENABLED
-EKS pods/portforward evidence: PASS / FAIL / NOT ENABLED
-Public route restriction: PASS / FAIL
-Private access: PASS / FAIL
-Storefront/checkout/flagd verification: PASS / FAIL
+StartSession/TerminateSession verified: PASS
+Terminal A/Terminal B correlation: PASS
+SSM shell evidence: NOT ENABLED
+EKS pods/portforward evidence: NOT ENABLED
+Public route restriction: PASS
+Private access: PASS
+Storefront/checkout/flagd verification: PASS
 
-Ngày duyệt:
-Người duyệt:
-Evidence link:
+Ngày duyệt: 2026-07-14
+Người duyệt: Bùi Thành Nghĩa (CDO07)
+Evidence link: [Mandate 01 Evidence Index](../evidence/mandate-01-network-exposure/INDEX.md)
 ```
 
 ## 8. Nguồn tham chiếu
