@@ -57,7 +57,7 @@ Team CDO04 vui lòng cập nhật Terraform code cho CloudTrail và S3 bucket đ
 
 | Feature | File | Add | Lý do | Cost Impact |
 |---------|------|-----|-------|-------------|
-| S3 Object Lock GOVERNANCE | `infra/terraform/cloudtrail.tf` | `object_lock_enabled = true` + retention 90 days | WORM protection - log không thể sửa/xóa trong 90 ngày | $0 (included) |
+| S3 Object Lock COMPLIANCE | `infra/terraform/cloudtrail.tf` | `object_lock_enabled = true` + retention 90 days | WORM protection - log không thể sửa/xóa trong 90 ngày, kể cả root | $0 (included) |
 | Lifecycle prevent_destroy | `infra/terraform/cloudtrail.tf` | `lifecycle { prevent_destroy = true }` | Ngăn terraform destroy vô tình | $0 |
 | KMS CMK riêng | `infra/terraform/cloudtrail.tf` | `kms_key_id` + dedicated KMS key | Tách biệt encryption key, key rotation enabled | ~$1/tháng |
 
@@ -204,7 +204,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
 }
 ```
 
-### 4.4. Recommended: S3 Object Lock GOVERNANCE
+### 4.4. Recommended: S3 Object Lock COMPLIANCE
 
 **File:** `infra/terraform/cloudtrail.tf`
 
@@ -222,7 +222,7 @@ resource "aws_s3_bucket_object_lock_configuration" "cloudtrail_logs" {
 
   rule {
     default_retention {
-      mode = "GOVERNANCE"  # Operator không xóa được, admin vẫn có thể override
+      mode = "COMPLIANCE"  # Không ai xóa được, kể cả root - phù hợp forensic audit
       days = 90
     }
   }
@@ -351,7 +351,7 @@ resource "aws_iam_role_policy" "cloudtrail_cloudwatch" {
 
 ### 7.2. Recommended (Nếu implement)
 - [ ] S3 Object Lock enabled: `object_lock_enabled = true`
-- [ ] Object Lock configuration: GOVERNANCE mode, 90 days
+- [ ] Object Lock configuration: COMPLIANCE mode, 90 days
 - [ ] Lifecycle prevent_destroy = true
 - [ ] KMS CMK riêng tạo thành công
 
@@ -450,7 +450,7 @@ aws s3 rm s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/Clou
 aws s3api get-object-lock-configuration \
   --bucket tf4-cloudtrail-logs-bucket-511825856493 \
   --profile TF4-AuditReadOnlyAndAnalyze
-# Expected: Mode = "GOVERNANCE", Days = 90 ✅
+# Expected: Mode = "COMPLIANCE", Days = 90 ✅
 ```
 
 ### 9.5. Optional: CloudWatch Logs Integration

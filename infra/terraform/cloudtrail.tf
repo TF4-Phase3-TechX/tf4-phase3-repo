@@ -2,18 +2,15 @@
 # Ref: AUDIT-010 — Fix 3 blockers cho MANDATE-04 Forensic Audit Trail
 # Ngày: 2026-07-14
 # Thay đổi:
-#   [1] enable_log_file_validation = true   -> tamper-evident (digest file co chu ky so)
-#   [2] kms_key_id (KMS CMK rieng)          -> ma hoa log CloudTrail
+#   [1] enable_log_file_validation = true   -> tamper-evident (digest file có chữ ký số)
+#   [2] kms_key_id (KMS CMK riêng)          -> mã hóa log CloudTrail
 #   [3] cloud_watch_logs_group_arn/role_arn -> CloudTrail -> CloudWatch Logs (query nhanh)
-#   [4] S3 Object Lock GOVERNANCE 90 ngay   -> WORM, operator khong xoa duoc
+#   [4] S3 Object Lock COMPLIANCE 90 ngày   -> WORM, operator không xóa được
 #   [5] S3 explicit Deny statements         -> separation of duties
 
-###############################################################################
-# 1. KMS CMK danh rieng cho CloudTrail
-#    - Tach biet voi EKS KMS key (9f8187f4...)
-#    - Key rotation bat
-#    - Policy: CloudTrail service + CloudWatch Logs service co quyen encrypt
-###############################################################################
+# KMS CMK dành riêng cho CloudTrail
+# Tách biệt với EKS KMS key, key rotation bật
+# Policy: CloudTrail service + CloudWatch Logs service có quyền encrypt
 resource "aws_kms_key" "cloudtrail" {
   description             = "TF4 CloudTrail dedicated KMS key - log encryption & tamper-evident"
   deletion_window_in_days = 30
@@ -98,11 +95,9 @@ resource "aws_kms_alias" "cloudtrail" {
   target_key_id = aws_kms_key.cloudtrail.key_id
 }
 
-###############################################################################
-# 2. CloudWatch Log Group nhan log tu CloudTrail
-#    - Retention: 90 ngay (du cho forensic trong mandate)
-#    - Ma hoa bang KMS CMK o tren
-###############################################################################
+# CloudWatch Log Group nhận log từ CloudTrail
+# Retention: 90 ngày (đủ cho forensic trong mandate)
+# Mã hóa bằng KMS CMK ở trên
 resource "aws_cloudwatch_log_group" "cloudtrail" {
   name              = "/aws/cloudtrail/tf4-general-cloudtrail"
   retention_in_days = 90
@@ -111,11 +106,9 @@ resource "aws_cloudwatch_log_group" "cloudtrail" {
   tags = var.tags
 }
 
-###############################################################################
-# 3. IAM Role: cho phep CloudTrail ghi vao CloudWatch Logs
-#    Trust policy: cloudtrail.amazonaws.com assume role nay
-#    Inline policy: chi CreateLogStream + PutLogEvents vao dung log group
-###############################################################################
+# IAM Role: cho phép CloudTrail ghi vào CloudWatch Logs
+# Trust policy: cloudtrail.amazonaws.com assume role này
+# Inline policy: chỉ CreateLogStream + PutLogEvents vào đúng log group
 resource "aws_iam_role" "cloudtrail_cw_logs" {
   name = "tf4-cloudtrail-to-cloudwatch-role"
 
@@ -152,16 +145,11 @@ resource "aws_iam_role_policy" "cloudtrail_cw_logs_policy" {
   })
 }
 
-###############################################################################
-# 4. S3 Bucket — CloudTrail logs voi Object Lock (WORM)
-#
+# S3 Bucket — CloudTrail logs với Object Lock (WORM)
 # BREAKING CHANGE: object_lock_enabled = true -> "forces new resource"
-#    Bucket cu bi destroy (force_destroy cu = true nen xoa duoc objects)
-#    Bucket moi tao lai cung ten, voi Object Lock tu dau
-#
-# Sau apply: prevent_destroy = true ngan xoa vo tinh qua terraform destroy
-#            (muon xoa phai remove lifecycle block truoc)
-###############################################################################
+# Bucket cũ bị destroy (force_destroy cũ = true nên xóa được objects)
+# Bucket mới tạo lại cùng tên, với Object Lock từ đầu
+# Sau apply: prevent_destroy = true ngăn xóa vô tình qua terraform destroy
 resource "aws_s3_bucket" "cloudtrail_logs" {
   bucket              = "tf4-cloudtrail-logs-bucket-${data.aws_caller_identity.current.account_id}"
   force_destroy       = false
@@ -174,12 +162,9 @@ resource "aws_s3_bucket" "cloudtrail_logs" {
   }
 }
 
-###############################################################################
-# 5. S3 Object Lock Configuration — COMPLIANCE mode, 90 ngay
-#    COMPLIANCE: KHONG AI xoa duoc (ke ca root/admin) - true tamper-evident
-#    Bao mat toi da cho forensic audit trail theo MANDATE-04
-#    Luu y: Can giu versioning va expiration policy de tranh day bucket
-###############################################################################
+# S3 Object Lock Configuration — COMPLIANCE mode, 90 ngày
+# COMPLIANCE: Không ai xóa được, kể cả root account (strict WORM)
+# Khác với GOVERNANCE: admin không thể override, phù hợp audit/compliance yêu cầu cao
 resource "aws_s3_bucket_object_lock_configuration" "cloudtrail_logs" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -191,9 +176,6 @@ resource "aws_s3_bucket_object_lock_configuration" "cloudtrail_logs" {
   }
 }
 
-###############################################################################
-# 6. S3 Versioning
-###############################################################################
 resource "aws_s3_bucket_versioning" "cloudtrail_logs_versioning" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -202,10 +184,8 @@ resource "aws_s3_bucket_versioning" "cloudtrail_logs_versioning" {
   }
 }
 
-###############################################################################
-# 7. S3 Server-Side Encryption bang KMS CMK rieng cua CloudTrail
-#    bucket_key_enabled = true -> giam KMS API call cost ~99%
-###############################################################################
+# S3 Server-Side Encryption bằng KMS CMK riêng của CloudTrail
+# bucket_key_enabled = true -> giảm KMS API call cost ~99%
 resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail_logs" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -218,9 +198,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail_logs" 
   }
 }
 
-###############################################################################
-# 8. Chan tat ca truy cap Public vao S3 Bucket
-###############################################################################
 resource "aws_s3_bucket_public_access_block" "cloudtrail_logs_public_block" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -230,13 +207,11 @@ resource "aws_s3_bucket_public_access_block" "cloudtrail_logs_public_block" {
   restrict_public_buckets = true
 }
 
-###############################################################################
-# 9. S3 Bucket Policy
-#    Allow: CloudTrail service ghi log (GetBucketAcl + PutObject)
-#    Deny:  Non-admin xoa object/bucket (separation of duties)
-#    Deny:  Tat versioning (chi root moi duoc)
-#    Deny:  HTTP (bat buoc HTTPS)
-###############################################################################
+# S3 Bucket Policy
+# Allow: CloudTrail service ghi log (GetBucketAcl + PutObject)
+# Deny: Non-admin xóa object/bucket (separation of duties)
+# Deny: Tắt versioning (chỉ root mới được)
+# Deny: HTTP (bắt buộc HTTPS)
 resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -247,7 +222,6 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # ALLOW: CloudTrail kiem tra bucket ACL
       {
         Sid    = "AWSCloudTrailAclCheck"
         Effect = "Allow"
@@ -262,7 +236,6 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
           }
         }
       },
-      # ALLOW: CloudTrail ghi log vao bucket
       {
         Sid    = "AWSCloudTrailWrite"
         Effect = "Allow"
@@ -278,8 +251,6 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
           }
         }
       },
-      # DENY: Chan NON-ADMIN xoa object (separation of duties)
-      #       Chi root va github-actions-terraform-apply moi duoc xoa
       {
         Sid    = "DenyNonAdminDeleteObject"
         Effect = "Deny"
@@ -300,7 +271,6 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
           }
         }
       },
-      # DENY: Chan xoa bucket
       {
         Sid    = "DenyDeleteBucket"
         Effect = "Deny"
@@ -315,7 +285,6 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
           }
         }
       },
-      # DENY: Chan tat versioning (chi root moi duoc)
       {
         Sid    = "DenyDisableVersioning"
         Effect = "Deny"
@@ -330,7 +299,6 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
           }
         }
       },
-      # DENY: Bat buoc HTTPS cho moi request
       {
         Sid    = "DenyHTTPInsecureTransport"
         Effect = "Deny"
@@ -352,12 +320,10 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
   })
 }
 
-###############################################################################
-# 10. AWS CloudTrail — main trail voi du 3 fix
-#     enable_log_file_validation = true -> tao digest file, chu ky so SHA-256
-#     kms_key_id                        -> ma hoa log S3
-#     cloud_watch_logs_* -> day sang CloudWatch Logs de query nhanh
-###############################################################################
+# AWS CloudTrail — main trail với đủ 3 fix
+# enable_log_file_validation = true -> tạo digest file, chữ ký số SHA-256
+# kms_key_id -> mã hóa log S3
+# cloud_watch_logs_* -> đẩy sang CloudWatch Logs để query nhanh
 resource "aws_cloudtrail" "main" {
   name                          = "tf4-general-cloudtrail"
   s3_bucket_name                = aws_s3_bucket.cloudtrail_logs.id
@@ -365,15 +331,15 @@ resource "aws_cloudtrail" "main" {
   is_multi_region_trail         = true
   enable_logging                = true
 
-  # FIX 1: Log file validation — tao digest file moi gio, co SHA-256 hash va chu ky so RSA
-  #        -> Dung: aws cloudtrail validate-logs -> xac minh log chua bi sua
+  # FIX 1: Log file validation — tạo digest file mỗi giờ, có SHA-256 hash và chữ ký số RSA
+  # Dùng: aws cloudtrail validate-logs -> xác minh log chưa bị sửa
   enable_log_file_validation = true
 
-  # FIX 2: Ma hoa log bang KMS CMK rieng (khong dung chung EKS key)
+  # FIX 2: Mã hóa log bằng KMS CMK riêng (không dùng chung EKS key)
   kms_key_id = aws_kms_key.cloudtrail.arn
 
-  # FIX 3: Day log sang CloudWatch Logs -> query qua Insights UI trong vai giay
-  #        Khong can download tu S3 -> dat <=10 phut forensic drill
+  # FIX 3: Đẩy log sang CloudWatch Logs -> query qua Insights UI trong vài giây
+  # Không cần download từ S3 -> đạt <=10 phút forensic drill
   cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
   cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cw_logs.arn
 
