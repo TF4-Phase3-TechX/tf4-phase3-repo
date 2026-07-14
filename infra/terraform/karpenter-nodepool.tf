@@ -32,7 +32,9 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass_general" {
         { tags = { "karpenter.sh/discovery" = var.cluster_name } }
       ]
 
-      tags = var.tags
+      tags = merge(var.tags, {
+        "karpenter.sh/discovery" = var.cluster_name
+      })
     }
   }
 

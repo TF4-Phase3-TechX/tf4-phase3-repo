@@ -2,8 +2,7 @@ module "external_secrets_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
 
-  role_name            = "external-secrets-${var.cluster_name}"
-  role_name_use_prefix = false
+  role_name = "external-secrets-${var.cluster_name}"
   role_policy_arns = {
     external_secrets_read = aws_iam_policy.external_secrets_read.arn
   }
