@@ -725,6 +725,8 @@ components:
         value: dummy
       - name: LLM_MODEL
         value: techx-llm
+      - name: LLM_TIMEOUT_SECONDS
+        value: "5.0"
       - name: LLM_HOST
         value: llm
       - name: LLM_PORT

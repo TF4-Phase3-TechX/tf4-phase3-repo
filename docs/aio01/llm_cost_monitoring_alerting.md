@@ -51,7 +51,9 @@ graph LR
   - *Action:* Warning alert sent to Slack `#aio-alerts`.
 - **Rule 2: Daily Budget Exhaustion**
   - *Condition:* `sum(increase(app_llm_estimated_cost_usd[24h])) > 10.0`
-  - *Action:* Critical alert. Automatic fallback to mock LLM behavior is triggered.
+  - *Action:* Critical alert. Freeze further rollout and request the CDO owner to execute the approved real-to-mock cutover procedure. AIO does not mutate runtime flags or deployment state.
+
+> **Metric-name verification gate:** The PromQL names above are provisional until the first deployment confirms the exact OTel-to-Prometheus translated series names in Grafana/Prometheus. Do not enable an alert from this document until its query returns the expected live series.
 
 ---
 
@@ -70,9 +72,8 @@ graph LR
 
 If a **Hard Limit Threshold** is breached or a **Daily Budget Alert** fires:
 
-1. **Immediate Mediation:** The on-call engineer sets the `llmRateLimitError` or disables the real LLM flag in OpenFeature (reverting all traffic to the mock LLM).
-2. **Investigation:** Query OpenSearch logs to isolate the caller/API key causing high consumption:
-   `GET /product-reviews/_search?q=app.llm.estimated_cost_usd:>0.05`
+1. **Immediate Containment:** AIO raises a critical alert, freezes further rollout, and sends the evidence to the CDO deployment owner. AIO must not change `flagd`; `llmRateLimitError` is an incident-injection flag, not a real/mock traffic switch.
+2. **Investigation:** Query the verified Prometheus cost/token series grouped by the bounded `llm.model` label, then use correlated trace IDs to inspect expensive request paths. API keys and user IDs must not be exported as metric labels.
 3. **Loop Detection:** Check for high repetition of identical tool calls or traces showing excessively long tool-use loops.
-4. **Resolution:** Implement tighter loop limits (`max_iterations` cap) or blacklist offending user IDs.
-5. **Approval for Recovery:** PM approval is required before toggling the real LLM flag back to `true`.
+4. **Resolution:** Apply a reviewed request/iteration limit or disable further real-LLM rollout through the CDO-owned deployment procedure.
+5. **Approved Cutover/Recovery:** CDO executes the reviewed GitOps/Helm configuration revert to the chart's mock-LLM defaults. PM/TL approval and AIO verification are required before CDO restores real-LLM traffic.

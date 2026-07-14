@@ -44,6 +44,10 @@ def init_metrics(meter):
         'app_llm_errors_total', unit='errors',
         description="Cumulative number of LLM API call errors (timeouts, 4xx, 5xx)"
     )
+    app_llm_call_counter = meter.create_counter(
+        'app_llm_calls_total', unit='calls',
+        description="Cumulative number of LLM API calls partitioned by call stage and outcome"
+    )
 
     product_review_svc_metrics = {
         "app_product_review_counter": app_product_review_counter,
@@ -54,6 +58,7 @@ def init_metrics(meter):
         "app_llm_estimated_cost_counter": app_llm_estimated_cost_counter,
         "app_llm_latency_histogram": app_llm_latency_histogram,
         "app_llm_error_counter": app_llm_error_counter,
+        "app_llm_call_counter": app_llm_call_counter,
     }
 
     return product_review_svc_metrics

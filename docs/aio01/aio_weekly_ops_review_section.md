@@ -9,8 +9,8 @@ This document maintains the weekly operational status, risk assessments, key met
 ### 📊 AI Subsystem Health Summary
 - **Current Mode:** Mock LLM (readying for controlled real LLM migration).
 - **Service Status:** Green (No major degradations observed on mock endpoint).
-- **Average Latency (Mock):** 12ms
-- **API Error Rate:** 0% (Simulated rate limiting injected via flagd is resolved gracefully by the application fallback client).
+- **Average Latency (Mock):** Pending post-deploy Prometheus evidence.
+- **API Error Rate:** Pending controlled drill and post-deploy metric verification.
 
 ### 🔍 Key Metrics & Telemetry Gaps Fixed
 - **Status:** **PASS**
@@ -21,14 +21,14 @@ This document maintains the weekly operational status, risk assessments, key met
 
 | Risk Description | Severity | Mitigation Status | Next Action / Owner |
 | --- | --- | --- | --- |
-| **LLM Upstream Outage / Timeout** | High | Fallback UI response and gRPC timeouts implemented. | Test with mock rate-limiting and latency injection. (Văn) |
+| **LLM Upstream Outage / Timeout** | High | Five-second client timeout and safe fallback implemented; deployment evidence pending. | Test with controlled rate-limiting and latency injection. (Văn) |
 | **LLM API Cost Runaway** | Medium | Defined daily budgets ($10/day for Staging) and alerting thresholds. | Deploy OTel metrics dashboard on Grafana. (Thông) |
 | **Prompt Injection Vulnerability** | Medium | Allow-list of tools and system output filtering are in design. | Implement input validation before invoking completions. (Văn) |
 
 ### 🚨 Week 2 Incident Notes
 - **Incident ID:** None.
-- **Summary:** Simulated Rate Limit error drill was successfully run by injecting the `llmRateLimitError` feature flag. The application fell back to the graceful warning UI without cascading failures.
-- **Evidence:** Span exception log shows: `Caught Exception: Rate limit exceeded (simulated)`.
+- **Summary:** Controlled Rate Limit drill is planned using the BTC-owned `llmRateLimitError` injection flag. AIO will only observe the injected signal and must not mutate flagd.
+- **Evidence:** Pending reproducible log reference, trace ID, metric query, and observed fallback response after deployment.
 
 ### ➡️ Next Actions (Week 3)
 1. Perform canary cutover of real LLM in Staging environment using the newly created [Readiness Checklist](./real_llm_readiness_checklist.md).

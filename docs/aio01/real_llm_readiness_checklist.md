@@ -68,8 +68,7 @@ A rollback to the mock LLM behavior must be triggered immediately if any of the 
 | **Security Leakage** | System prompts or customer PII detected in output logs | Emergency rollback and regenerate API keys |
 
 ### Rollback Execution Steps
-1. Revert the helm/k8s chart overrides by applying the default values file (which resets `LLM_BASE_URL` to the local mock service).
-2. Apply changes via GitOps or manually using:
-   `helm upgrade --install aio-reviews ./techx-corp-chart -f deploy/values-mock-llm.yaml`
-3. Verify that requests route back to the mock LLM and latency returns to <50ms.
-4. Notify the on-call engineer and PM.
+1. AIO raises the rollback recommendation with latency/error/cost evidence. AIO must not mutate `flagd` or production deployment state.
+2. The CDO owner reverts the reviewed `deploy/values-aio-llm.yaml` overlay through the TF4 GitOps/Helm workflow, restoring the chart's default local mock `LLM_BASE_URL`. There is currently no standalone `values-mock-llm.yaml`; do not use an undocumented manual command.
+3. AIO verifies that requests route back to the mock LLM and latency returns to <50ms.
+4. Notify the on-call engineer and PM, and attach the deployment revision plus telemetry evidence.
