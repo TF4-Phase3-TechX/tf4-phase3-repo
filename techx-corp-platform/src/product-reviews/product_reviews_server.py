@@ -7,6 +7,7 @@
 # Python
 import os
 import json
+import time
 from concurrent import futures
 import random
 
@@ -215,12 +216,43 @@ def get_ai_assistant_response(request_product_id, question):
         ]
 
         # use the LLM to summarize the product reviews
-        initial_response = client.chat.completions.create(
-            model=llm_model,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto"
-        )
+        try:
+            start_time = time.time()
+            initial_response = client.chat.completions.create(
+                model=llm_model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto"
+            )
+            latency = time.time() - start_time
+            # Record span attribute (for traces/Jaeger)
+            span.set_attribute("app.llm.latency_seconds", latency)
+            # Record OTel metric (for Prometheus/Grafana alert rules)
+            product_review_svc_metrics["app_llm_latency_histogram"].record(latency, {'llm.call': 'initial', 'llm.model': llm_model})
+            if hasattr(initial_response, 'usage') and initial_response.usage:
+                prompt_tokens = initial_response.usage.prompt_tokens
+                completion_tokens = initial_response.usage.completion_tokens
+                total_tokens = initial_response.usage.total_tokens
+                cost = (prompt_tokens * 0.15 + completion_tokens * 0.60) / 1000000.0
+                # Span attributes
+                span.set_attribute("app.llm.prompt_tokens", prompt_tokens)
+                span.set_attribute("app.llm.completion_tokens", completion_tokens)
+                span.set_attribute("app.llm.total_tokens", total_tokens)
+                span.set_attribute("app.llm.estimated_cost_usd", cost)
+                # OTel counters — enables sum(increase(app_llm_estimated_cost_usd_total[1h])) PromQL
+                product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(prompt_tokens, {'llm.model': llm_model})
+                product_review_svc_metrics["app_llm_completion_tokens_counter"].add(completion_tokens, {'llm.model': llm_model})
+                product_review_svc_metrics["app_llm_estimated_cost_counter"].add(cost, {'llm.model': llm_model})
+                logger.info(f"LLM initial call usage: prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens}, total_tokens={total_tokens}, cost=${cost:.6f}, latency={latency:.3f}s")
+            else:
+                logger.info(f"LLM initial call latency: {latency:.3f}s (no usage info)")
+        except Exception as e:
+            logger.error(f"Caught Exception during initial LLM call: {e}")
+            span.record_exception(e)
+            span.set_status(Status(StatusCode.ERROR, description=str(e)))
+            product_review_svc_metrics["app_llm_error_counter"].add(1, {'llm.call': 'initial', 'llm.model': llm_model})
+            ai_assistant_response.response = "The system is unable to process your response. Please try again later."
+            return ai_assistant_response
 
         response_message = initial_response.choices[0].message
         tool_calls = response_message.tool_calls
@@ -289,10 +321,37 @@ def get_ai_assistant_response(request_product_id, question):
 
             logger.info(f"Invoking the LLM with the following messages: '{messages}'")
 
-            final_response = client.chat.completions.create(
-                model=llm_model,
-                messages=messages
-            )
+            try:
+                start_time = time.time()
+                final_response = client.chat.completions.create(
+                    model=llm_model,
+                    messages=messages
+                )
+                latency = time.time() - start_time
+                span.set_attribute("app.llm.final_latency_seconds", latency)
+                product_review_svc_metrics["app_llm_latency_histogram"].record(latency, {'llm.call': 'final', 'llm.model': llm_model})
+                if hasattr(final_response, 'usage') and final_response.usage:
+                    prompt_tokens = final_response.usage.prompt_tokens
+                    completion_tokens = final_response.usage.completion_tokens
+                    total_tokens = final_response.usage.total_tokens
+                    cost = (prompt_tokens * 0.15 + completion_tokens * 0.60) / 1000000.0
+                    span.set_attribute("app.llm.final_prompt_tokens", prompt_tokens)
+                    span.set_attribute("app.llm.final_completion_tokens", completion_tokens)
+                    span.set_attribute("app.llm.final_total_tokens", total_tokens)
+                    span.set_attribute("app.llm.final_estimated_cost_usd", cost)
+                    product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(prompt_tokens, {'llm.model': llm_model})
+                    product_review_svc_metrics["app_llm_completion_tokens_counter"].add(completion_tokens, {'llm.model': llm_model})
+                    product_review_svc_metrics["app_llm_estimated_cost_counter"].add(cost, {'llm.model': llm_model})
+                    logger.info(f"LLM final call usage: prompt_tokens={prompt_tokens}, completion_tokens={completion_tokens}, total_tokens={total_tokens}, cost=${cost:.6f}, latency={latency:.3f}s")
+                else:
+                    logger.info(f"LLM final call latency: {latency:.3f}s (no usage info)")
+            except Exception as e:
+                logger.error(f"Caught Exception during final LLM call: {e}")
+                span.record_exception(e)
+                span.set_status(Status(StatusCode.ERROR, description=str(e)))
+                product_review_svc_metrics["app_llm_error_counter"].add(1, {'llm.call': 'final', 'llm.model': llm_model})
+                ai_assistant_response.response = "The system is unable to process your response. Please try again later."
+                return ai_assistant_response
 
             result = final_response.choices[0].message.content
 
