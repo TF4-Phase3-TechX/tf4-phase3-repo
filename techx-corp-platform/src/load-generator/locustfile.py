@@ -9,7 +9,7 @@ import random
 import uuid
 import logging
 
-from locust import HttpUser, task, between, LoadTestShape
+from locust import HttpUser, task, between
 from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry, event
 
 from opentelemetry import context, baggage, trace
@@ -288,30 +288,3 @@ async def add_baggage_header(route: Route, request: Request):
         'baggage': ', '.join(filter(None, (existing_baggage, 'synthetic_request=true')))
     }
     await route.continue_(headers=headers)
-
-
-class Task4FlashSaleShape(LoadTestShape):
-    """Task-4: 200 users, 15 minutes steady-state with controlled ramp-up/down."""
-
-    abstract = os.environ.get("LOCUST_LOAD_SHAPE", "").lower() != "task4"
-    RAMP_SECONDS = 60         # 1 phút tăng tải (Ramp-up)
-    STEADY_SECONDS = 900       # 15 phút duy trì đỉnh tải (Steady-state)
-    RAMP_DOWN_SECONDS = 20     # 20 giây giảm tải có kiểm soát (Ramp-down)
-    TARGET_USERS = 200
-    SPAWN_RATE = 3.33          # ~200 users / 60s để đạt đỉnh trong 1 phút
-
-    def tick(self):
-        run_time = self.get_run_time()
-        ramp_end = self.RAMP_SECONDS
-        steady_end = ramp_end + self.STEADY_SECONDS
-        total_end = steady_end + self.RAMP_DOWN_SECONDS
-
-        if run_time < ramp_end:
-            return (self.TARGET_USERS, self.SPAWN_RATE)
-        if run_time < steady_end:
-            return (self.TARGET_USERS, self.SPAWN_RATE)
-        if run_time < total_end:
-            elapsed_down = run_time - steady_end
-            remaining = max(0, self.TARGET_USERS - int(elapsed_down * self.SPAWN_RATE))
-            return (remaining, self.SPAWN_RATE)
-        return None
