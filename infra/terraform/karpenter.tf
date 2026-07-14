@@ -1,8 +1,8 @@
 # Owner: CDO08 Reliability / CDO04 Infrastructure
 #
 # Stage 1 installs the Karpenter controller and its AWS IAM prerequisites.
-# NodePool and EC2NodeClass are intentionally added in a later reviewed step so
-# the controller cannot provision nodes before capacity limits are approved.
+# Stage 2 (NodePool/EC2NodeClass, reviewed and capacity-limited) is in
+# karpenter-nodepool.tf.
 
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
