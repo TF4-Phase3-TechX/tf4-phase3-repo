@@ -27,3 +27,9 @@ components:
         value: jaeger.techx-observability.svc.cluster.local
 
 bastionPortalAccess: { enabled: true }
+
+# App secrets are synced by External Secrets Operator from AWS Secrets Manager.
+# Keep this disabled in base/observability values so only the app release renders
+# SecretStore/ExternalSecret resources in namespace techx-tf4.
+externalSecrets:
+  enabled: true

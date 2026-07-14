@@ -3,7 +3,7 @@
 > **Task:** `[CDO08-SEC-01][P1][Secrets] Move sensitive config candidates out of Helm values`
 > **Owner chính:** Thuỷ (Security)
 > **Branch:** `feature/CDO08-SEC-01-move-secrets`
-> **Trạng thái:** `ANALYSIS & CODE COMPLETE — PRE-DEPLOY VERIFICATION PENDING`
+> **Trạng thái:** `DESIGN + HELM REFERENCES COMPLETE — BLOCKED ON ESO/IRSA/AWS SECRETS PRE-DEPLOY GATES`
 > **Thời gian phân tích:** 2026-07-13T22:00:00+07:00
 > **Cập nhật lần cuối:** 2026-07-14T14:00:00+07:00
 
@@ -58,6 +58,9 @@ Các items sau được phát hiện trong [báo cáo week1](../week1/secrets-co
 | **Lý do chọn** | Production-ready; secret thật không nằm trong Git/Helm/CI; source of truth tập trung tại AWS Secrets Manager; có versioning, rotation, audit; quyền truy cập qua IRSA theo nguyên tắc least privilege |
 | **Phương án đã loại bỏ** | (1) Helm tự tạo Kubernetes Secret từ `.Values.secrets` — Rủi ro lộ secret qua CI log, Git history, Helm values; (2) CD tạo Secret trực tiếp từ GitHub Actions Secrets — Không centralized, khó audit/rotate |
 | **Cách hoạt động** | ESO đồng bộ secret từ AWS Secrets Manager → Kubernetes Secret trong namespace `techx-tf4`. Workload đọc secret qua `secretKeyRef` như trước |
+
+> [!IMPORTANT]
+> Branch này **không tự cài External Secrets Operator, IAM role hoặc IRSA**. Trước khi merge/deploy phải có gate xác nhận ESO CRDs/controller, IAM role, IRSA ServiceAccount và AWS Secrets Manager entries đã tồn tại. Nếu các gate này chưa pass, không chạy Helm deploy vì chart sẽ render `ExternalSecret`/`SecretStore` cho app release và workload sẽ phụ thuộc vào các Kubernetes Secret do ESO sync.
 
 ### 3.2 Mapping Secret → Service → AWS Secrets Manager
 
@@ -155,8 +158,8 @@ Ví dụ:
 |:---|:---|:---|:---|
 | 1 | External Secrets Operator đã cài trên cluster | ⏳ Cần xác nhận | `kubectl -n external-secrets get pods` |
 | 2 | IRSA đã enable trên EKS cluster (OIDC provider) | ⏳ Cần xác nhận | `aws eks describe-cluster --name <cluster> --query "cluster.identity.oidc"` |
-| 3 | IAM role cho ESO đã tạo với least-privilege policy | ⏳ Cần tạo | Xem [eso-iam-policy.json](../../../infra/eso-iam-policy.json) |
-| 4 | IAM role có trust relationship cho IRSA | ⏳ Cần tạo | Xem [eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json) |
+| 3 | IAM role cho ESO đã tạo với least-privilege policy | ⏳ Cần tạo / review | Cần team infra/platform hoặc AWS admin tạo policy chỉ đọc đúng secret path |
+| 4 | IAM role có trust relationship cho IRSA | ⏳ Cần tạo / review | Trust policy phải bind đúng OIDC provider và service account `techx-tf4/external-secrets-sa` |
 | 5 | Service account `external-secrets-sa` có annotation IRSA | ⏳ Cần tạo | `eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>` |
 | 6 | 5 secrets đã tạo trong AWS Secrets Manager | ⏳ Cần tạo | Tạo qua AWS Console hoặc CLI — **không commit giá trị vào repo** |
 | 7 | Team có quyền `secretsmanager:CreateSecret` | ⏳ Cần xác nhận | Cần trước khi tạo secrets |
@@ -213,12 +216,12 @@ aws secretsmanager list-secrets \
 
 ### 5.4 IRSA Setup
 
-**IAM Policy:** Xem [eso-iam-policy.json](../../../infra/eso-iam-policy.json)
+**IAM Policy cần tạo/review:**
 - Chỉ cho phép `secretsmanager:GetSecretValue` và `secretsmanager:DescribeSecret`
 - Resource giới hạn đúng 5 secret ARN paths
 - Không cấp wildcard `secretsmanager:*`
 
-**Trust Policy:** Xem [eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json)
+**Trust Policy cần tạo/review:**
 - Chỉ cho phép service account `external-secrets-sa` trong namespace `techx-tf4`
 - Sử dụng EKS OIDC provider
 
@@ -254,11 +257,11 @@ aws secretsmanager list-secrets \
 |:---|:---|
 | [techx-corp-chart/values.yaml](../../../techx-corp-chart/values.yaml) | 5 biến env giữ `valueFrom.secretKeyRef`; **xóa** block `.Values.secrets` (CHANGE_ME); **thêm** block `.Values.externalSecrets` (chỉ chứa config reference, không chứa secret value) |
 | [techx-corp-chart/values.schema.json](../../../techx-corp-chart/values.schema.json) | **Xóa** schema `secrets`; **thêm** schema `externalSecrets` |
+| [deploy/values-app-stamp.yaml](../../../deploy/values-app-stamp.yaml) | **Bật** `externalSecrets.enabled=true` chỉ cho app release `techx-corp` trong namespace `techx-tf4` |
 | ~~techx-corp-chart/templates/secrets.yaml~~ | **Đã xóa** — Helm template tạo K8s Secrets không còn cần thiết |
 | [techx-corp-chart/templates/secretstore.yaml](../../../techx-corp-chart/templates/secretstore.yaml) | **Mới** — SecretStore namespace-scoped cho AWS Secrets Manager + IRSA |
 | [techx-corp-chart/templates/external-secrets.yaml](../../../techx-corp-chart/templates/external-secrets.yaml) | **Mới** — 5 ExternalSecret resources đồng bộ secret từ AWS SM → K8s Secret |
-| [infra/eso-iam-policy.json](../../../infra/eso-iam-policy.json) | **Mới** — IAM policy least privilege cho ESO |
-| [infra/eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json) | **Mới** — IRSA trust relationship |
+| Infra/IAM policy files | **Chưa nằm trong PR này** — Thuỷ cần tạo review gate/request cho infra/platform hoặc AWS admin nếu các IAM/IRSA resources chưa tồn tại |
 
 ### Chi tiết thay đổi trong values.yaml
 
@@ -278,7 +281,7 @@ aws secretsmanager list-secrets \
 +# Secrets are sourced from AWS Secrets Manager and synced by ESO.
 +# No secret values are stored in this file or in Git.
 +externalSecrets:
-+  enabled: true
++  enabled: false  # base values; app overlay enables this for techx-tf4 only
 +  region: us-east-1
 +  serviceAccountName: external-secrets-sa
 +  refreshInterval: 1h
@@ -288,6 +291,14 @@ aws secretsmanager list-secrets \
 +      secretKey: connection-string
 +    ...
 ```
+
+#### deploy/values-app-stamp.yaml
+```yaml
+externalSecrets:
+  enabled: true
+```
+
+`externalSecrets.enabled` được bật ở app overlay để chỉ app release `techx-corp` render `SecretStore`/`ExternalSecret` trong namespace `techx-tf4`. Observability release không render các app secrets.
 
 #### secretKeyRef references (giữ nguyên, không thay đổi)
 ```yaml
@@ -314,7 +325,38 @@ rg -n "CHANGE_ME|PASSWORD|SECRET|API_KEY|TOKEN|CONNECTION_STRING" \
 
 **Kết quả mong đợi:** Các biến trong scope (5 items) chỉ xuất hiện dưới dạng `secretKeyRef` reference, không còn plaintext value hoặc `CHANGE_ME`.
 
-### 8.2 ESO Verification — Sau khi deploy
+### 8.2 Pre-deploy Gate — ESO, CRDs, IRSA và AWS Secrets
+
+Các gate này phải pass **trước** khi merge/deploy app release:
+
+```bash
+# 1. ESO CRDs đã tồn tại
+kubectl get crd | rg "externalsecrets|secretstores|clustersecretstores"
+
+# 2. ESO controller đang chạy
+kubectl -n external-secrets get pods
+
+# 3. IRSA service account đã tồn tại trong namespace app
+kubectl -n techx-tf4 get sa external-secrets-sa -o yaml | rg "eks.amazonaws.com/role-arn"
+
+# 4. EKS OIDC provider đã bật
+aws eks describe-cluster \
+  --name techx-tf4-cluster \
+  --region us-east-1 \
+  --query "cluster.identity.oidc.issuer" \
+  --output text
+
+# 5. AWS Secrets Manager đã có đủ 5 secret metadata
+aws secretsmanager list-secrets \
+  --region us-east-1 \
+  --filters Key=name,Values=tf4/techx-tf4 \
+  --query "SecretList[].Name" \
+  --output table
+```
+
+Nếu một trong các gate trên chưa pass, dừng deploy và tạo review/request cho team liên quan.
+
+### 8.3 ESO Verification — Sau khi deploy
 
 ```bash
 # 1. Verify External Secrets Operator đang chạy
@@ -336,7 +378,7 @@ kubectl -n techx-tf4 describe externalsecret product-reviews-openai-secret
 kubectl -n techx-tf4 describe externalsecret postgresql-secret
 ```
 
-### 8.3 Kubernetes Secret Verification
+### 8.4 Kubernetes Secret Verification
 
 ```bash
 # 5. Verify Kubernetes Secrets đã được ESO tạo
@@ -351,7 +393,7 @@ kubectl -n techx-tf4 get secret postgresql-secret
 > [!WARNING]
 > **Không được in secret value ra terminal, log hoặc tài liệu evidence.** Chỉ verify sự tồn tại và metadata của secrets.
 
-### 8.4 Runtime Verification — Workload health
+### 8.5 Runtime Verification — Workload health
 
 ```bash
 # 6. Verify rollout status
@@ -382,7 +424,7 @@ git checkout main -- techx-corp-chart/values.yaml
 # Re-deploy Helm chart với values cũ
 helm upgrade --install techx-corp ./techx-corp-chart -n techx-tf4 --create-namespace \
   --set default.image.repository=<ECR_REGISTRY_URL> \
-  -f deploy/values-observability.yaml \
+  -f deploy/values-app-stamp.yaml \
   -f deploy/values-flagd-sync.yaml
 ```
 
@@ -457,17 +499,17 @@ kubectl -n techx-tf4 get externalsecret
 | 2 | Không còn hardcoded sensitive configuration trong Helm values | ✅ Hoàn thành (trên branch) | `.Values.secrets` với `CHANGE_ME` đã bị xóa; chỉ còn `secretKeyRef` references |
 | 3 | Secret thật nằm trong AWS Secrets Manager, không nằm trong Git | ⏳ Chờ tạo secrets trong AWS SM | Cần tạo 5 secrets theo [Section 5.3](#53-tạo-secret-trong-aws-secrets-manager) |
 | 4 | Không sử dụng SSM Parameter Store | ✅ Hoàn thành | Toàn bộ thiết kế dùng AWS Secrets Manager |
-| 5 | ESO đồng bộ thành công secret từ AWS SM → K8s Secret | ⏳ Chờ deploy & runtime verification | Cần: (a) ESO installed, (b) IRSA configured, (c) `helm upgrade`, (d) verify theo [Section 8.2](#82-eso-verification--sau-khi-deploy) |
-| 6 | Workload đọc được secret thông qua secretKeyRef | ⏳ Chờ deploy & runtime verification | Verify theo [Section 8.4](#84-runtime-verification--workload-health) |
-| 7 | Có evidence cho IAM/IRSA theo nguyên tắc least privilege | ✅ Hoàn thành | [eso-iam-policy.json](../../../infra/eso-iam-policy.json) + [eso-irsa-trust-policy.json](../../../infra/eso-irsa-trust-policy.json) |
+| 5 | ESO đồng bộ thành công secret từ AWS SM → K8s Secret | ⏳ Chờ deploy & runtime verification | Cần: (a) ESO installed, (b) IRSA configured, (c) `helm upgrade`, (d) verify theo [Section 8.3](#83-eso-verification--sau-khi-deploy) |
+| 6 | Workload đọc được secret thông qua secretKeyRef | ⏳ Chờ deploy & runtime verification | Verify theo [Section 8.5](#85-runtime-verification--workload-health) |
+| 7 | Có evidence cho IAM/IRSA theo nguyên tắc least privilege | ⏳ Chờ infra/security review | Cần attach IAM policy, trust policy, service account annotation và reviewer approval |
 | 8 | Có rollback và break-glass plan rõ ràng | ✅ Hoàn thành | [Section 9](#9-rollback--break-glass-plan) |
 
 > [!IMPORTANT]
 > **Hành động tiếp theo:**
 > 1. ✅ ~~Phân tích & phân loại secrets~~ — Hoàn thành
 > 2. ✅ ~~Code changes: xóa Helm secrets, thêm ESO manifests~~ — Hoàn thành trên branch
-> 3. ✅ ~~IAM policy & trust policy references~~ — Hoàn thành
-> 4. ⏳ **Xác nhận ESO đã cài trên cluster** — Nếu chưa, cần tạo installation request
+> 3. ⏳ **Xác nhận ESO đã cài trên cluster** — Nếu chưa, cần tạo installation request
+> 4. ⏳ **Tạo/review IAM policy & trust policy** — Không nằm trong PR hiện tại; cần infra/security review nếu chưa tồn tại
 > 5. ⏳ **Tạo IAM role + IRSA** — Apply policy files, tạo service account
 > 6. ⏳ **Tạo secrets trong AWS Secrets Manager** — Thuỷ chủ động coordinate
 > 7. ⏳ **Chờ approval từ PM/Reviewer** để tiến hành deploy
@@ -479,9 +521,9 @@ kubectl -n techx-tf4 get externalsecret
 
 | Vai trò | Người | Hành động cần thiết |
 |:---|:---|:---|
-| Owner | Thuỷ | Đã hoàn thành phân tích, code changes, ESO manifests, IAM policy references |
+| Owner | Thuỷ | Đã hoàn thành phân tích, code changes và ESO manifests; cần coordinate pre-deploy gates |
 | PM | Hải | Review và approve để tiến hành deploy |
-| Security Reviewer | Nhân | Review IAM policy, IRSA trust, ESO configuration |
+| Security Reviewer | Nhân | Review IAM policy, IRSA trust, ESO configuration khi Thuỷ tạo review request/gate |
 | Deploy Operator | — | Hỗ trợ deploy khi có approval |
 | Infra/Platform | — | Xác nhận ESO installed, IRSA enabled; tạo IAM role nếu cần review gate |
 

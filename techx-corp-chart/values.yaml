@@ -1458,7 +1458,7 @@ opensearch:
 # Secrets are sourced from AWS Secrets Manager and synced by ESO.
 # No secret values are stored in this file or in Git.
 externalSecrets:
-  enabled: true
+  enabled: false
   region: us-east-1
   serviceAccountName: external-secrets-sa
   refreshInterval: 1h
