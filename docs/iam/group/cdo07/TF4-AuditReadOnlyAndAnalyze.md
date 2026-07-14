@@ -113,6 +113,58 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
                 "securityhub:DescribeHub"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "SSMAndEC2AuditReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ssm:DescribeInstanceInformation",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Mandate04CloudTrailLogBucketAuditRead",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketPolicyStatus",
+                "s3:GetBucketPolicy",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetBucketLogging"
+            ],
+            "Resource": [
+                "arn:aws:s3:::tf4-cloudtrail-logs-bucket-*",
+                "arn:aws:s3:::tf4-cloudtrail-logs-bucket-*/*"
+            ]
+        },
+        {
+            "Sid": "Mandate04CloudTrailIntegrityRead",
+            "Effect": "Allow",
+            "Action": [
+                "cloudtrail:ListPublicKeys",
+                "cloudtrail:GetInsightSelectors",
+                "cloudtrail:ValidateLogs"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Mandate04CloudWatchAlarmRead",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:DescribeAlarms"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Mandate04IdentityStoreUserRead",
+            "Effect": "Allow",
+            "Action": [
+                "identitystore:DescribeUser",
+                "identitystore:ListUsers"
+            ],
+            "Resource": "*"
         }
     ]
 }
@@ -122,7 +174,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa cao:
+Policy này được cấu thành từ 13 Statements có tính chuyên môn hóa cao:
 
 ### 1. `AuditTrailsAndLogsReadOnly` (Nhật ký Audit & CloudTrail)
 * **Hành động**: Các hàm liên quan đến CloudTrail và CloudWatch Logs.
@@ -146,7 +198,7 @@ Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa 
 * **Mục đích**: Trích xuất báo cáo, snapshot cấu hình hoặc log được lưu trữ dài hạn phục vụ đoàn kiểm toán độc lập.
 
 ### 5. `S3MetadataAudit` (Kiểm tra an toàn cấu hình S3)
-* **Hành động**: `s3:GetBucketVersioning`, `s3:GetBucketObjectLockConfiguration`
+* **Hành động**: `s3:GetBucketVersioning`, `s3:GetBucketObjectLockConfiguration`, `s3:ListAllMyBuckets`, `s3:GetBucketLocation`, `s3:GetEncryptionConfiguration`, `s3:GetBucketPublicAccessBlock`
 * **Mô tả**: Xem trạng thái kích hoạt quản lý phiên bản (Versioning) và khóa bảo mật dữ liệu không cho phép xóa/ghi đè (Object Lock) trên toàn bộ S3.
 * **Mục đích**: Đảm bảo các bucket lưu trữ quan trọng không bị mất mát dữ liệu hoặc giả mạo.
 
@@ -165,6 +217,32 @@ Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa 
 * **Hành động**: `budgets:ViewBudget`, `eks:DescribeCluster`, `rds:DescribeDBInstances`, `guardduty:ListDetectors`, `securityhub:DescribeHub`
 * **Mô tả**: Cho phép đọc thông tin cấu hình và ngân sách (Budget), kiểm tra cụm EKS, RDS DB instances, cũng như đọc kết quả dò quét bảo mật từ GuardDuty và Security Hub.
 * **Mục đích**: Bổ sung quyền giúp Audit Team (CDO07) có thể nghiệm thu đầy đủ các bằng chứng liên quan đến chi phí, workload Kubernetes, Database và an toàn bảo mật chung của tài khoản.
+
+### 9. `SSMAndEC2AuditReadOnly` (Giám sát SSM & EC2)
+* **Hành động**: `ssm:DescribeSessions`, `ssm:GetConnectionStatus`, `ssm:DescribeInstanceInformation`, `ec2:DescribeInstances`
+* **Mô tả**: Cho phép liệt kê lịch sử các session truy cập máy chủ qua SSM Session Manager, trạng thái kết nối, thông tin cấu hình agent của các EC2 Instance mà không cấp quyền truy cập điều khiển (`StartSession`).
+* **Mục đích**: Phục vụ việc đối chiếu, dựng timeline lịch sử SSH/SSM truy cập máy chủ (bastion/nodes) trong quá trình điều tra sự cố.
+
+### 10. `Mandate04CloudTrailLogBucketAuditRead` (Kiểm toán S3 Bucket lưu trữ logs CloudTrail)
+* **Hành động**: `s3:GetBucketPolicyStatus`, `s3:GetBucketPolicy`, `s3:GetLifecycleConfiguration`, `s3:GetBucketLogging`
+* **Tài nguyên**: S3 bucket `tf4-cloudtrail-logs-bucket-*` và toàn bộ các object con của nó.
+* **Mô tả**: Cho phép kiểm tra chính sách bảo vệ bucket policy (anti-tamper/deny-delete), cấu hình quy định vòng đời lưu trữ logs (Lifecycle Configuration), và access logging của log bucket.
+* **Mục đích**: Chứng minh tính toàn vẹn (log integrity) và bảo vệ an toàn cho dữ liệu logs kiểm toán của CloudTrail.
+
+### 11. `Mandate04CloudTrailIntegrityRead` (Kiểm tra tính toàn vẹn CloudTrail logs)
+* **Hành động**: `cloudtrail:ListPublicKeys`, `cloudtrail:GetInsightSelectors`, `cloudtrail:ValidateLogs`
+* **Mô tả**: Cho phép lấy danh sách các khóa công khai (`ListPublicKeys`) phục vụ việc xác thực tính toàn vẹn của tệp tin log (`ValidateLogs`) và kiểm tra các cấu hình phát hiện bất thường CloudTrail Insights.
+* **Mục đích**: Xác thực log files không bị sửa đổi, giả mạo hay xóa bỏ trái phép kể từ khi được ghi nhận.
+
+### 12. `Mandate04CloudWatchAlarmRead` (Kiểm toán Cảnh báo CloudWatch)
+* **Hành động**: `cloudwatch:DescribeAlarms`
+* **Mô tả**: Cho phép đọc danh sách cấu hình và trạng thái của các CloudWatch Alarms.
+* **Mục đích**: Đánh giá và kiểm chứng độ bao phủ của các cảnh báo giám sát hệ thống (alarm/alert coverage) liên quan đến bảo mật và vận hành.
+
+### 13. `Mandate04IdentityStoreUserRead` (Tra cứu danh tính người dùng SSO)
+* **Hành động**: `identitystore:DescribeUser`, `identitystore:ListUsers`
+* **Mô tả**: Cho phép truy vấn thông tin chi tiết và danh sách người dùng trong Identity Store của AWS IAM Identity Center.
+* **Mục đích**: Phục vụ human accountability mapping - map danh tính tài khoản SSO thực tế (SSO User ID) với các hành động ghi nhận trong CloudTrail log.
 
 ---
 [⬅️ Quay lại nhóm CDO07](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)
