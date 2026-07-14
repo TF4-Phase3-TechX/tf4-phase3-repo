@@ -43,6 +43,20 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-Securit
             "Resource": "*"
         },
         {
+            "Sid": "SSMAndEC2Access",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:StartSession",
+                "ssm:ResumeSession",
+                "ssm:TerminateSession",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ssm:DescribeInstanceInformation",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
+        },
+        {
             "Sid": "OrganizationsReadOnly",
             "Effect": "Allow",
             "Action": [
@@ -59,7 +73,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-Securit
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này gồm 4 Statements quản trị quyền hạn và định danh:
+Policy này gồm 5 Statements quản trị quyền hạn và định danh:
 
 ### 1. `IAMManagement` (Quản trị toàn diện IAM)
 * **Hành động**: `iam:*`
@@ -82,7 +96,13 @@ Policy này gồm 4 Statements quản trị quyền hạn và định danh:
 * **Mô tả**: Cho phép cấu hình các "Access Entries" trên Amazon EKS. Tính năng này cho phép ánh xạ (map) trực tiếp các AWS IAM Roles hoặc SSO Users vào Kubernetes RBAC mà không cần sửa file `aws-auth` ConfigMap cũ của Kubernetes.
 * **Mục đích**: Quản lý và phân phối quyền hạn truy cập của lập trình viên và quản trị viên vào sâu bên trong Kubernetes Cluster.
 
-### 4. `OrganizationsReadOnly` (Đọc thông tin AWS Organizations)
+### 4. `SSMAndEC2Access` (Quản lý phiên SSM và tra cứu EC2)
+* **Hành động**: `ssm:StartSession`, `ssm:ResumeSession`, `ssm:TerminateSession`, `ssm:DescribeSessions`, `ssm:GetConnectionStatus`, `ssm:DescribeInstanceInformation`, `ec2:DescribeInstances`
+* **Tài nguyên**: `*`
+* **Mô tả**: Cấp quyền sử dụng SSM Session Manager để kết nối và quản lý phiên làm việc trần máy chủ và Bastion Host. Scope `*` trên resource cho phép quản lý toàn bộ session trong account, phù hợp với vai trò Admin vận hành.
+* **Mục đích**: Hỗ trợ kiểm tra tình trạng hạ tầng, xử lý sự cố và kiểm soát phiên SSM trong quá trình vận hành.
+
+### 5. `OrganizationsReadOnly` (Đọc thông tin AWS Organizations)
 * **Hành động**: `organizations:DescribeOrganization`, `organizations:List*`
 * **Tài nguyên**: `*`
 * **Mô tả**: Quyền chỉ đọc thông tin cấu trúc tổ chức doanh nghiệp AWS Organizations (danh sách các tài khoản AWS thành viên, cấu trúc Organizational Units - OUs).
