@@ -1,0 +1,59 @@
+{
+    "Users": [
+        {
+            "Path": "/",
+            "UserName": "cdo04-an",
+            "UserId": "AIDAXOKZSY7WTTLW3YONF",
+            "Arn": "arn:aws:iam::123456789012:user/cdo04-an",
+            "CreateDate": "2026-06-28T02:58:18+00:00",
+            "PasswordLastUsed": "2026-07-08T04:44:02+00:00"
+        },
+        {
+            "Path": "/",
+            "UserName": "cdo04-huy",
+            "UserId": "AIDAXOKZSY7WY23QPXDQ5",
+            "Arn": "arn:aws:iam::123456789012:user/cdo04-huy",
+            "CreateDate": "2026-06-28T02:58:46+00:00",
+            "PasswordLastUsed": "2026-07-01T23:46:58+00:00"
+        },
+        {
+            "Path": "/",
+            "UserName": "cdo04-ninh",
+            "UserId": "AIDAXOKZSY7WVZRWDBRXP",
+            "Arn": "arn:aws:iam::123456789012:user/cdo04-ninh",
+            "CreateDate": "2026-06-28T02:58:39+00:00",
+            "PasswordLastUsed": "2026-07-01T13:12:12+00:00"
+        },
+        {
+            "Path": "/",
+            "UserName": "cdo04-tin",
+            "UserId": "AIDAXOKZSY7W7B3Y6BKGH",
+            "Arn": "arn:aws:iam::123456789012:user/cdo04-tin",
+            "CreateDate": "2026-06-28T02:58:25+00:00",
+            "PasswordLastUsed": "2026-06-30T08:00:05+00:00"
+        },
+        {
+            "Path": "/",
+            "UserName": "cdo04-tuan",
+            "UserId": "AIDAXOKZSY7W5QSO4CXVW",
+            "Arn": "arn:aws:iam::123456789012:user/cdo04-tuan",
+            "CreateDate": "2026-06-28T02:58:32+00:00",
+            "PasswordLastUsed": "2026-07-01T09:51:07+00:00"
+        },
+        {
+            "Path": "/",
+            "UserName": "cdo04-vinh",
+            "UserId": "AIDAXOKZSY7W7ULSAQVP5",
+            "Arn": "arn:aws:iam::123456789012:user/cdo04-vinh",
+            "CreateDate": "2026-06-28T02:58:11+00:00",
+            "PasswordLastUsed": "2026-07-09T19:14:47+00:00"
+        },
+        {
+            "Path": "/",
+            "UserName": "tin",
+            "UserId": "AIDAXOKZSY7WQKJG6AMD6",
+            "Arn": "arn:aws:iam::123456789012:user/tin",
+            "CreateDate": "2026-06-29T13:37:07+00:00"
+        }
+    ]
+}
