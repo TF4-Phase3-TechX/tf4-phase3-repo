@@ -177,6 +177,9 @@
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"
         },
+        "podDisruptionBudget": {
+          "$ref": "#/definitions/PodDisruptionBudget"
+        },
         "revisionHistoryLimit": {
           "type": "integer"
         },
@@ -294,6 +297,40 @@
         },
         "behavior": {
           "type": "object"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "PodDisruptionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minAvailable": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "maxUnavailable": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string"
+            }
+          ]
         }
       },
       "required": [

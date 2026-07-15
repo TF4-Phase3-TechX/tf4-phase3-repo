@@ -1,0 +1,31 @@
+{{- range $name, $component := .Values.components }}
+{{- $component := set $component "name" ($name | lower) }}
+{{- $component := set $component "Release" $.Release }}
+{{- $component := set $component "Chart" $.Chart }}
+{{- $pdb := $component.podDisruptionBudget | default dict }}
+{{- if and $component.enabled ($pdb.enabled | default false) }}
+{{- if and (hasKey $pdb "minAvailable") (hasKey $pdb "maxUnavailable") }}
+{{- fail (printf "components.%s.podDisruptionBudget must set only one of minAvailable or maxUnavailable" $name) }}
+{{- end }}
+{{- if not (or (hasKey $pdb "minAvailable") (hasKey $pdb "maxUnavailable")) }}
+{{- fail (printf "components.%s.podDisruptionBudget requires minAvailable or maxUnavailable" $name) }}
+{{- end }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name | lower }}
+  labels:
+    {{- include "techx-corp.labels" $component | nindent 4 }}
+spec:
+  {{- if hasKey $pdb "minAvailable" }}
+  minAvailable: {{ $pdb.minAvailable }}
+  {{- end }}
+  {{- if hasKey $pdb "maxUnavailable" }}
+  maxUnavailable: {{ $pdb.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "techx-corp.selectorLabels" $component | nindent 6 }}
+{{- end }}
+{{- end }}

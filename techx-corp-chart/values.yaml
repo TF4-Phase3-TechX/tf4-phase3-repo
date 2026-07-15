@@ -228,6 +228,9 @@ components:
   cart:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -285,6 +288,9 @@ components:
   checkout:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -447,6 +453,9 @@ components:
   frontend:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -536,6 +545,9 @@ components:
   frontend-proxy:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -691,6 +703,9 @@ components:
   payment:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -742,6 +757,9 @@ components:
   product-catalog:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -894,6 +912,9 @@ components:
   shipping:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
