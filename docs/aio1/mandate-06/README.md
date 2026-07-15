@@ -9,6 +9,7 @@ Status: **implementation and real-model bake-off complete; ADR remains Proposed 
 - [Dataset](eval/dataset-v1.jsonl), [runner](eval/run_bakeoff.py), [report](eval/bakeoff-report.json) and [report schema](eval/bakeoff-report.schema.json).
 - [Guardrail configuration](guardrail/create-guardrail.json) and [version evidence](guardrail/evaluation-guardrail-evidence.json).
 - [Nova runtime IAM policy](iam/runtime-policy-nova.json), validated with AWS Access Analyzer.
+- [CDO production handoff runbook](CDO-HANDOFF.md): account, Guardrail, IAM, Pod Identity, deployment, verification and rollback contract.
 - [Runtime evidence checklist](evidence-checklist.md).
 
 ## Verified result
