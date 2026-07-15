@@ -21,6 +21,13 @@ resource "kubernetes_cluster_role_v1" "terraform_plan_crd_reader" {
     resources  = ["nodepools"]
     verbs      = ["get", "list", "watch"]
   }
+
+  # Terraform must read these seeded objects before importing them into state.
+  rule {
+    api_groups = ["rbac.authorization.k8s.io"]
+    resources  = ["clusterroles", "clusterrolebindings"]
+    verbs      = ["get"]
+  }
 }
 
 resource "kubernetes_cluster_role_binding_v1" "terraform_plan_crd_reader" {
