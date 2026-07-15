@@ -14,6 +14,19 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  cluster_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
+  # Karpenter-provisioned nodes select their security group by this same
+  # discovery tag. Without it here, Karpenter falls back to matching the
+  # cluster security group (control-plane traffic only) instead of the node
+  # security group that already allows node-to-node/pod-to-pod traffic,
+  # so new nodes can schedule but can't reach CoreDNS or other pods.
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
   # Bật Control Plane Logging
   cluster_enabled_log_types = ["api", "audit", "authenticator"]
 

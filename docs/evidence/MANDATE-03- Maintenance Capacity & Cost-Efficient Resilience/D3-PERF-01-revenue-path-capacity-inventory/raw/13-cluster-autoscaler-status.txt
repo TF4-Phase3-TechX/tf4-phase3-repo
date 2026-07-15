@@ -1,0 +1,2 @@
+No Cluster Autoscaler deployment was observed in kube-system at 2026-07-14T12:52:09Z.
+No Cluster Autoscaler pod was observed in kube-system at 2026-07-14T12:52:09Z.
