@@ -11,6 +11,48 @@ import time
 from concurrent import futures
 import random
 import re
+from pydantic import BaseModel, Field, field_validator
+
+ALLOWED_TOOLS = {"fetch_product_reviews", "fetch_product_info"}
+
+class AgentToolGuardrail:
+    @staticmethod
+    def validate_and_audit(tool_name: str, tool_args: str, correlation_id: str) -> bool:
+        """
+        Kiểm tra Tool có nằm trong Allow-list không và ghi Audit Log.
+        """
+        if tool_name not in ALLOWED_TOOLS:
+            logger.error(
+                "BLOCKED_TOOL_CALL",
+                extra={
+                    "audit_event": "excessive_agency_blocked",
+                    "tool_name": tool_name,
+                    "correlation_id": correlation_id
+                }
+            )
+            return False
+            
+        logger.info(
+            "ALLOWED_TOOL_CALL",
+            extra={
+                "audit_event": "tool_execution_authorized",
+                "tool_name": tool_name,
+                "arguments": tool_args,
+                "correlation_id": correlation_id
+            }
+        )
+        return True
+
+class FetchProductSchema(BaseModel):
+    product_id: str = Field(..., max_length=50, description="Product ID to fetch")
+
+    @field_validator('product_id', mode='before')
+    def sanitize_sql_injection(cls, v):
+        if not re.match(r'^[\w\s\u00C0-\u1EF9]+$', v):
+            logger.error(f"[SECURITY ALERT] Xâm nhập tham số bị chặn! Input: {v}")
+            safe_v = re.sub(r'[^\w\s\u00C0-\u1EF9]', '', v)
+            return safe_v
+        return v
 
 class CircuitBreaker:
     def __init__(self, failure_threshold=5, time_window=30.0, cooldown=60.0):
@@ -400,13 +442,47 @@ def get_ai_assistant_response(request_product_id, question):
             # Process all tool calls
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
+                function_args_str = tool_call.function.arguments
 
-                logger.info(f"Processing tool call: '{function_name}' with arguments: {function_args}")
+                logger.info(f"Processing tool call: '{function_name}' with arguments: {function_args_str}")
+
+                # [LAYER 1] Agent Tool Guardrail (Allow-list & Audit Log)
+                if not AgentToolGuardrail.validate_and_audit(function_name, function_args_str, str(request_product_id)):
+                    function_response = "Error: Unsupported or restricted action requested by AI. Tool blocked."
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response,
+                        }
+                    )
+                    continue
+
+                # [LAYER 2] Parameter Validation via Pydantic
+                try:
+                    # Pydantic v1/v2 compatibility
+                    if hasattr(FetchProductSchema, 'model_validate_json'):
+                        validated_args = FetchProductSchema.model_validate_json(function_args_str)
+                    else:
+                        validated_args = FetchProductSchema.parse_raw(function_args_str)
+                    safe_product_id = validated_args.product_id
+                except Exception as e:
+                    logger.error(f"Parameter validation failed: {e}")
+                    function_response = "Error: Invalid parameters provided to tool."
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response,
+                        }
+                    )
+                    continue
 
                 if function_name == "fetch_product_reviews":
                     raw_reviews = fetch_product_reviews(
-                        product_id=function_args.get("product_id")
+                        product_id=safe_product_id
                     )
                     
                     # [GUARDRAIL 1] INPUT SANITIZATION: Tước vũ khí & Redact PII
@@ -416,13 +492,13 @@ def get_ai_assistant_response(request_product_id, question):
                     
                     # [GUARDRAIL 2] XML DELIMITERS: Bọc dữ liệu
                     function_response = f"<untrusted_reviews>\n{safe_reviews}\n</untrusted_reviews>"
-                    logger.info("Tool fetch_product_reviews completed for product_id=%s", function_args.get("product_id"))
+                    logger.info("Tool fetch_product_reviews completed for product_id=%s", safe_product_id)
 
                 elif function_name == "fetch_product_info":
                     function_response = fetch_product_info(
-                        product_id=function_args.get("product_id")
+                        product_id=safe_product_id
                     )
-                    logger.info("Tool fetch_product_info completed for product_id=%s", function_args.get("product_id"))
+                    logger.info("Tool fetch_product_info completed for product_id=%s", safe_product_id)
 
                 else:
                     raise Exception(f'Received unexpected tool call request: {function_name}')
