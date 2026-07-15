@@ -143,7 +143,7 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W3 | Validate LLM timeout/error signal | Hậu / Tâm + AIE dependency | AIOps recognizes AI path issue | `TF4AIO-45` To Do |
 | W3 | Write AIOps validation report | Hòa / Nam | What worked, what failed, false positives/limitations | `TF4AIO-46` To Do |
 
-Ghi chú triển khai cho TF4AIO-6: workload detector đã được thêm vào chart Helm như một Deployment liên tục, có giới hạn tài nguyên và không thay đổi flagd/openfeature. Channel đầu ra đầu tiên được chọn là structured JSONL logs (`stdout-jsonl`), với payload schema và owner response path được ghi trong [docs/aio01/TF4AIO-6-detector-evidence.md](./TF4AIO-6-detector-evidence.md).
+Ghi chú triển khai cho TF4AIO-6: workload detector đã được thêm vào chart Helm như một Deployment liên tục, có giới hạn tài nguyên và không thay đổi flagd/openfeature. Channel đầu ra đầu tiên được chọn là structured JSONL logs (`stdout-jsonl`), với payload schema và owner response path được ghi trong [docs/aio01/TF4AIO-6-detector-evidence.md](./TF4AIO-6-detector-evidence.md). Artifact render để review nhanh tại [docs/aio01/evidence/tf4aio6-detector-render-snippet.yaml](./evidence/tf4aio6-detector-render-snippet.yaml). Trạng thái runtime inventory trên cluster `techx-tf4` đang chờ mở khóa credential/kube-context để bổ sung bằng chứng triển khai trực tiếp.
 
 ### 7.3 Operational / PM track
 

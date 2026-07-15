@@ -65,6 +65,47 @@
 - Channel decision + payload schema + owner response path: đã được document rõ ràng.
 - Evidence linked: tài liệu này nối tới chart values và planning doc.
 
-## Lệnh kiểm tra render
-- `helm template techx-corp ./techx-corp-chart > /tmp/rendered.yaml`
-- `grep -n "kind: Deployment\|name: detector\|OUTPUT_CHANNEL\|schema_version" /tmp/rendered.yaml | head -n 40`
+## Evidence update theo review 2026-07-15
+
+### Positive evidence (repo + manifest)
+- Chart values có component detector: [techx-corp-chart/values.yaml](../../techx-corp-chart/values.yaml).
+- Chart schema chấp nhận detector: [techx-corp-chart/values.schema.json](../../techx-corp-chart/values.schema.json).
+- Helm render thành công và sinh Deployment detector kèm env/output schema/resource limits: [docs/aio01/evidence/tf4aio6-detector-render-snippet.yaml](./evidence/tf4aio6-detector-render-snippet.yaml).
+
+### Negative evidence / blocker (cluster runtime)
+- Chưa lấy được bằng chứng live inventory trong namespace `techx-tf4` do local kube context chưa được cấu hình.
+- `kubectl config current-context` trả về `error: current-context is not set`.
+- `kubectl get ns` trả về kết nối mặc định `http://localhost:8080` bị từ chối.
+- `aws sts get-caller-identity` trả về `InvalidClientTokenId` nên chưa chạy được bước cập nhật kubeconfig EKS.
+
+### Bounded conclusion
+- Detector đã ở trạng thái deploy-ready và đáp ứng acceptance kỹ thuật ở mức manifest:
+  - workload chạy tự động dạng continuous Deployment,
+  - có requests/limits,
+  - không có thay đổi flagd/openfeature,
+  - có evidence link và schema output.
+- Cluster deployment impact (pod/deployment inventory thực tế trong `techx-tf4`) đang pending do blocker xác thực hạ tầng, chưa thể xác nhận từ môi trường hiện tại.
+
+## Lệnh verify khi credential sẵn sàng
+
+### 1) Thiết lập kube context EKS
+```bash
+aws eks update-kubeconfig --name <cluster-name> --region <region>
+kubectl config current-context
+```
+
+### 2) Chứng minh detector có mặt trong inventory
+```bash
+kubectl -n techx-tf4 get deploy detector -o wide
+kubectl -n techx-tf4 get pods -l app.kubernetes.io/name=detector -o wide
+kubectl -n techx-tf4 logs deploy/detector --tail=20
+```
+
+### 3) Chứng minh không có flagd mutation
+```bash
+kubectl -n techx-tf4 get deploy flagd -o yaml > /tmp/flagd-current.yaml
+git diff -- techx-corp-chart/values.yaml techx-corp-chart/values.schema.json
+```
+
+## Tham chiếu review drill
+- Tổng hợp positive/negative evidence của silent attack drill: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/138

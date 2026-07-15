@@ -1,0 +1,76 @@
+# Source: techx-corp/templates/component.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: detector
+  labels:
+    helm.sh/chart: techx-corp-0.40.9
+
+    opentelemetry.io/name: detector
+
+    app.kubernetes.io/version: "2.2.0"
+    app.kubernetes.io/component: detector
+    app.kubernetes.io/name: detector
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+
+      opentelemetry.io/name: detector
+  template:
+    metadata:
+      labels:
+
+        opentelemetry.io/name: detector
+
+        app.kubernetes.io/version: "2.2.0"
+        app.kubernetes.io/component: detector
+        app.kubernetes.io/name: detector
+      annotations:
+        resource.opentelemetry.io/service.namespace: techx-corp
+    spec:
+      serviceAccountName: techx-corp
+      containers:
+        - name: detector
+          image: 'busybox:1.36'
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                ts=$(date -u +%FT%TZ)
+                payload=$(printf '{"timestamp":"%s","detector":"aioops-detector","channel":"%s","schema_version":"%s","incident_type":"prometheus_probe","severity":"info","summary":"Prometheus probe executed","evidence":{"prometheus_url":"%s"},"owner":"AIOps-oncall","owner_response_path":"%s"}' "$ts" "${OUTPUT_CHANNEL:-stdout-jsonl}" "${OUTPUT_SCHEMA_VERSION:-1.0}" "${PROMETHEUS_URL:-http://prometheus:9090/api/v1/query?query=up}" "${OWNER_RESPONSE_PATH:-review-runbook-and-create-ticket}")
+                echo "$payload"
+                sleep 60
+              done
+          env:
+            - name: OTEL_SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.labels['app.kubernetes.io/component']
+            - name: OTEL_COLLECTOR_NAME
+              value: otel-collector
+            - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+              value: cumulative
+            - name: PROMETHEUS_URL
+              value: http://prometheus:9090/api/v1/query?query=up
+            - name: OUTPUT_CHANNEL
+              value: stdout-jsonl
+            - name: OUTPUT_SCHEMA_VERSION
+              value: "1.0"
+            - name: OWNER_RESPONSE_PATH
+              value: review-runbook-and-create-ticket
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://$(OTEL_COLLECTOR_NAME):4317
+          resources:
+            limits:
+              cpu: 50m
+              memory: 32Mi
+            requests:
+              cpu: 10m
+              memory: 16Mi
