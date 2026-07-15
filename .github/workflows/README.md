@@ -64,9 +64,11 @@ Then copy the role ARN outputs into GitHub repository secrets.
 
 ## Deployment notes
 
-- `build-and-push.yaml` generates tags from the short Git SHA and updates only changed service image overrides.
-- A push promotes only services changed under `techx-corp-platform/src/<service>/`; all other changes create no images and no promotion PR.
-- Manual dispatch requires an explicit comma-separated service list.
+- `build-and-push.yaml` generates image tags from the short Git SHA and updates only changed service image overrides.
+- A push builds images only for services changed under `techx-corp-platform/src/<service>/`.
+- A push changing `techx-corp-chart/**` opens or updates the GitOps promotion PR with the full immutable source SHA for both chart Applications; it does not build images.
+- A combined service and chart push updates the selected image overrides and both chart source SHA pins in one GitOps promotion PR. Other workflow or deploy-script changes create neither images nor a promotion PR.
+- Manual dispatch requires an explicit comma-separated service list and never advances a chart source pin.
 - The GitHub App opens or updates `promotion/production`; a platform owner reviews and merges the GitOps PR.
 - Argo CD deploys the merged GitOps revision; build CI never invokes direct Helm deployment.
 - `deploy.yaml` is an emergency-only manual fallback and must not run while Argo manages the same release.
