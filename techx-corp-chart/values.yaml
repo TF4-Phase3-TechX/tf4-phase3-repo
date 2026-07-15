@@ -1155,11 +1155,11 @@ components:
           claimName: postgresql-pvc
     resources:
       requests:
-        cpu: 25m
-        memory: 50Mi
+        cpu: 50m
+        memory: 256Mi
       limits:
-        cpu: 100m
-        memory: 100Mi
+        cpu: 500m
+        memory: 512Mi
 
   valkey-cart:
     enabled: true
