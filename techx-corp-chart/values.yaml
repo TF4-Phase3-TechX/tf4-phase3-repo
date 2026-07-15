@@ -1488,16 +1488,18 @@ prometheus:
         - postgresql.table.name
         - postgresql.index.name
     persistentVolume:
-      enabled: false
+      enabled: true
+      storageClass: gp2
+      size: 8Gi
     service:
       servicePort: 9090
     resources:
       requests:
-        cpu: 100m
-        memory: 200Mi
+        cpu: 200m
+        memory: 768Mi
       limits:
-        cpu: 500m
-        memory: 400Mi
+        cpu: 1000m
+        memory: 1Gi
 
 grafana:
   enabled: true
