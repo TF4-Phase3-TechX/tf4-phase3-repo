@@ -17,4 +17,4 @@ Danh sách kiểm toán định kỳ dành riêng cho team Audit (CD007).
 - [ ] Các thay đổi (Change) phát hiện trong AWS Config có map với bất kỳ Architecture Decision Record (ADR) nào đã được duyệt không?
 
 ## 4. Control Plane Audit (EKS)
-- [ ] Kiểm tra xác suất 1 hành động `kubectl` có được ghi vết trong CloudWatch (EKS Audit Logs) hay không.
+- [ ] Kiểm tra xác suất 1 hành động `kubectl` có được ghi vết trong CloudWatch (EKS Audit Logs) hay k hông.
