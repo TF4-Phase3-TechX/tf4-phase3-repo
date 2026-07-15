@@ -39,7 +39,7 @@ spec:
       imagePullSecrets:
         {{- ((.imageOverride).pullSecrets) | default .defaultValues.image.pullSecrets | toYaml | nindent 8}}
       {{- end }}
-      serviceAccountName: {{ include "techx-corp.serviceAccountName" .}}
+      serviceAccountName: {{ .serviceAccountName | default (include "techx-corp.serviceAccountName" .) }}
       {{- $schedulingRules := .schedulingRules | default dict }}
       {{- if or .defaultValues.schedulingRules.nodeSelector $schedulingRules.nodeSelector}}
       nodeSelector:
@@ -52,6 +52,10 @@ spec:
       {{- if or .defaultValues.schedulingRules.tolerations $schedulingRules.tolerations}}
       tolerations:
         {{- $schedulingRules.tolerations | default .defaultValues.schedulingRules.tolerations | toYaml | nindent 8 }}
+      {{- end }}
+      {{- if or .defaultValues.schedulingRules.topologySpreadConstraints $schedulingRules.topologySpreadConstraints}}
+      topologySpreadConstraints:
+        {{- $schedulingRules.topologySpreadConstraints | default .defaultValues.schedulingRules.topologySpreadConstraints | toYaml | nindent 8 }}
       {{- end }}
       {{- if or .defaultValues.podSecurityContext .podSecurityContext }}
       securityContext:

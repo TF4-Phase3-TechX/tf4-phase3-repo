@@ -1,74 +1,67 @@
-# Real LLM Readiness Checklist & Cutover Guide
+# Bedrock readiness and cutover guide
 
-This document defines the official readiness checklist, criteria, and rollback path for transitioning the `product-reviews` and Copilot services from mock LLM behavior to the real LLM endpoint (OpenAI API / AWS Bedrock).
+This document is the consolidated successor to the OpenAI-compatible/mock readiness plan introduced by PR #131. The canonical architecture and current evidence are in [`docs/aio1/mandate-06`](../aio1/mandate-06/README.md).
 
----
+## Current decision
 
-## 1. Prerequisites Checklist
+- Provider: Amazon Bedrock Runtime `Converse`.
+- Evaluated winner: `us.amazon.nova-2-lite-v1:0`.
+- Output contract: forced non-action tool plus application schema/exact-review-quote validation.
+- Guardrail: `e2svpiawj1v5`, pinned version `3` for the evaluated canary configuration.
+- Production authentication: EKS Pod Identity using ServiceAccount `product-reviews-bedrock`; no provider API key.
+- Runtime failure behavior: canonical static unavailable response. The service never silently switches model or falls back to the mock.
+- Operational rollback: CDO reverts the reviewed image/configuration through GitOps/Helm. `flagd` is not changed.
 
-Before enabling the real LLM in production (or shifting canary traffic), all of the following gates must be marked as **PASS**:
+## Readiness gates
 
-### A. Secret & Configuration Management
-- [ ] **Secret Provisioning:** The Kubernetes secret `llm-api-key` is securely created in the corresponding namespace (`techx-aio` or similar) with the actual API key.
-  - *Verify Command:* `kubectl get secret llm-api-key -o jsonpath='{.data.key}' | base64 -d`
-- [ ] **Configuration Isolation:** Dev/Staging environments use isolated, sandbox API keys to prevent production cost leakage.
-- [ ] **Environment Overrides:** `LLM_BASE_URL` and `LLM_MODEL` (e.g., `gpt-4o-mini`) are correctly configured in `values-aio-llm.yaml`.
+### Identity and configuration
 
-### B. Fallback & Timeout Settings
-- [ ] **Client Timeouts:** A strict timeout (e.g., 5.0 seconds) is enforced on all LLM API calls to prevent hanging gRPC threads.
-- [ ] **Safe Fallback Handlers:** If the upstream LLM returns a `429` (Rate Limit), `503` (Service Unavailable), or times out, the service must degrade gracefully to a pre-defined static mock response instead of throwing a generic server error.
-- [ ] **Circuit Breaker:** A circuit breaker is in place to stop calling the LLM API if failure rate exceeds 50% in a 10-second window.
+- [ ] CDO confirms `eks-pod-identity-agent` is healthy.
+- [ ] Role `tf4-product-reviews-bedrock` uses the reviewed Nova-only runtime policy.
+- [ ] Namespace `techx-tf4` and ServiceAccount `product-reviews-bedrock` are associated with the role.
+- [ ] Canary values pin Nova, Guardrail version 3, tool output mode and the current price snapshot.
+- [ ] The leak-detection marker is provisioned outside Git and absent from logs.
 
-### C. Telemetry & Observability
-- [ ] **Custom Span Attributes:** OTel spans record AI-specific metrics including:
-  - `app.llm.latency_seconds`
-  - `app.llm.prompt_tokens`
-  - `app.llm.completion_tokens`
-  - `app.llm.total_tokens`
-  - `app.llm.estimated_cost_usd`
-- [ ] **Logging Compliance:** Prompt content and system parameters are redacted in production logs to avoid leaking sensitive data or system prompts.
+### Reliability and safety
 
-### D. Quality & Safety Evaluation
-- [ ] **Eval Pipeline Run:** The evaluation runner (`eval_runner.py` or similar) has been executed against 5-10 baseline seed cases.
-- [ ] **Min Quality Score:** Groundedness and Faithfulness metrics must exceed `0.85/1.0` on the test suite.
-- [ ] **Prompt Injection Prevention:** System-level instruction guardrails are enabled to neutralize user inputs that attempt to bypass system rules.
+- [x] SDK online retries are zero.
+- [x] Bedrock deadline is 4.5 seconds inside the five-second application budget.
+- [x] Circuit breaker opens after five consecutive provider failures in 30 seconds and cools down for 60 seconds.
+- [x] Existing `llmRateLimitError` and `llmInaccurateResponse` incident flags remain observable; they now produce safe unavailable/insufficient outcomes and never switch to mock.
+- [x] Timeout, malformed output and provider error return a static safe response.
+- [x] Direct action/system-prompt attacks are blocked before provider invocation.
+- [x] Review instructions are quarantined and PII is redacted before provider invocation.
+- [x] Displayed answers require an existing review ID and exact evidence substring.
+- [ ] CDO/mentor repeats the adversarial cases through the deployed storefront path.
 
----
+### Evaluation and observability
 
-## 2. Cutover & Rollout Plan
+- [x] Three models ran 30 cases × 3 repetitions; the report contains 270 metadata-only records.
+- [x] Nova passed supported ≥90%, unsupported 100%, injection quarantine 100% and zero PII/canary leakage.
+- [x] Metric contract from PR #131 is retained: `app_llm_prompt_tokens_total`, `app_llm_completion_tokens_total`, `app_llm_estimated_cost_usd_total`, `app_llm_latency_seconds`, `app_llm_errors_total`, and `app_llm_calls_total`.
+- [x] `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` is set.
+- [ ] Deployed Prometheus series names and Grafana queries are verified.
+- [ ] Storefront SLO before/after and canary logs/traces are attached.
 
-The rollout of the real LLM follows a **Controlled Canary Release** strategy:
+## Controlled cutover
 
-```mermaid
-graph TD
-    A[Baseline Mock LLM] --> B[Readiness Checklist Review]
-    B -->|All Pass| C[Canary Release: 5% Users]
-    C -->|Monitor Latency/Cost/Errors| D{Thresholds Exceeded?}
-    D -->|Yes| E[Automatic Rollback]
-    D -->|No| F[Canary Scale Up: 25% -> 50% -> 100%]
-    F -->|Telemetry Gaps Found| E
-    F -->|Stable 48 hours| G[100% Production Cutover]
+```text
+reviewed image + values + Pod Identity
+  -> CDO internal/isolated canary
+  -> warm output schema/tool path
+  -> mentor adversarial tests
+  -> compare latency, errors, cost and Storefront SLO
+  -> approve wider rollout | revert previous image/config
 ```
 
-1. **Phase 1: Shadow / Canary (5% Traffic)** - Deploy the configuration overrides only to a subset of pods or route a minimal percentage of traffic.
-2. **Phase 2: Gradual Shifting (25% -> 50%)** - Monitor budget burn rate and API latency.
-3. **Phase 3: Full Cutover (100% Traffic)** - Full migration to the real LLM endpoint.
+Abort the canary on any leakage, hard-gate regression, missing Guardrail, content-bearing telemetry, application request over five seconds, or Storefront SLO regression.
 
----
+## Rollback
 
-## 3. Rollback & Emergency Escalation Criteria
+1. Record current and previous image digests and GitOps revisions.
+2. CDO reverts the canary image/configuration to the previous reviewed revision.
+3. Wait for rollout readiness and verify the original product/review page.
+4. Confirm latency/error recovery and record UTC start/end plus recovery time.
+5. Attach sanitized telemetry and the GitHub revision to the evidence package.
 
-A rollback to the mock LLM behavior must be triggered immediately if any of the following **Rollback Gates** fire:
-
-| Symptom / Metric | Threshold | Action |
-| --- | --- | --- |
-| **LLM Latency Spike** | p95 latency > 3.5s for > 5 consecutive minutes | Revert to mock LLM |
-| **API Error Rate** | OTel logs show LLM API HTTP `5xx` / `4xx` > 5% in a 5-minute window | Trigger fallback, temporarily disable real LLM |
-| **Budget Burn Rate** | Combined daily spend exceeds the budgeted threshold ($10/day for staging) | Revoke API key / Revert to mock LLM |
-| **Security Leakage** | System prompts or customer PII detected in output logs | Emergency rollback and regenerate API keys |
-
-### Rollback Execution Steps
-1. AIO raises the rollback recommendation with latency/error/cost evidence. AIO must not mutate `flagd` or production deployment state.
-2. The CDO owner reverts the reviewed `deploy/values-aio-llm.yaml` overlay through the TF4 GitOps/Helm workflow, restoring the chart's default local mock `LLM_BASE_URL`. There is currently no standalone `values-mock-llm.yaml`; do not use an undocumented manual command.
-3. AIO verifies that requests route back to the mock LLM and latency returns to <50ms.
-4. Notify the on-call engineer and PM, and attach the deployment revision plus telemetry evidence.
+Rollback does not select the deterministic mock as a hidden runtime fallback. If a future mock configuration is intentionally deployed, it needs an explicit reviewed rollout and must be visible to operators.
