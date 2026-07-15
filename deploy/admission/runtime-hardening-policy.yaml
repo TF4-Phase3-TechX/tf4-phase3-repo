@@ -1,0 +1,141 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: techx-runtime-hardening-pods
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers"]
+  validations:
+    - expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])).all(c,
+          (has(c.securityContext) && has(c.securityContext.runAsNonRoot) && c.securityContext.runAsNonRoot) ||
+          (has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot))
+      message: "Every container and initContainer must set runAsNonRoot: true at container or pod level."
+    - expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])).all(c,
+          has(c.securityContext) && has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: "Every container and initContainer must set allowPrivilegeEscalation: false."
+    - expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])).all(c,
+          has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(cap, cap == 'ALL'))
+      message: "Every container and initContainer must drop the ALL capability set."
+    - expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])).all(c,
+          (has(c.securityContext) && has(c.securityContext.seccompProfile) &&
+            c.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']) ||
+          (has(object.spec.securityContext) && has(object.spec.securityContext.seccompProfile) &&
+            object.spec.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']))
+      message: "Every container and initContainer must use RuntimeDefault or Localhost seccomp."
+    - expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])).all(c,
+          c.image.matches('^.+@sha256:[a-fA-F0-9]{64}$') ||
+          (c.image.matches('^.+:[^/]+$') && !c.image.endsWith(':latest')))
+      message: "Images must use a fixed tag or sha256 digest; latest and untagged images are forbidden."
+    - expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])).all(c,
+          has(c.resources) && has(c.resources.requests) && has(c.resources.limits) &&
+          has(c.resources.requests.cpu) && has(c.resources.requests.memory) &&
+          has(c.resources.limits.cpu) && has(c.resources.limits.memory))
+      message: "Every container and initContainer must define CPU/memory requests and limits."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: techx-runtime-hardening-workloads
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets", "daemonsets"]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs"]
+  validations:
+    - expression: >-
+        (object.spec.template.spec.containers + (has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : [])).all(c,
+          (has(c.securityContext) && has(c.securityContext.runAsNonRoot) && c.securityContext.runAsNonRoot) ||
+          (has(object.spec.template.spec.securityContext) && has(object.spec.template.spec.securityContext.runAsNonRoot) && object.spec.template.spec.securityContext.runAsNonRoot))
+      message: "Every container and initContainer must set runAsNonRoot: true at container or pod level."
+    - expression: >-
+        (object.spec.template.spec.containers + (has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : [])).all(c,
+          has(c.securityContext) && has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: "Every container and initContainer must set allowPrivilegeEscalation: false."
+    - expression: >-
+        (object.spec.template.spec.containers + (has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : [])).all(c,
+          has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(cap, cap == 'ALL'))
+      message: "Every container and initContainer must drop the ALL capability set."
+    - expression: >-
+        (object.spec.template.spec.containers + (has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : [])).all(c,
+          (has(c.securityContext) && has(c.securityContext.seccompProfile) &&
+            c.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']) ||
+          (has(object.spec.template.spec.securityContext) && has(object.spec.template.spec.securityContext.seccompProfile) &&
+            object.spec.template.spec.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']))
+      message: "Every container and initContainer must use RuntimeDefault or Localhost seccomp."
+    - expression: >-
+        (object.spec.template.spec.containers + (has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : [])).all(c,
+          c.image.matches('^.+@sha256:[a-fA-F0-9]{64}$') ||
+          (c.image.matches('^.+:[^/]+$') && !c.image.endsWith(':latest')))
+      message: "Images must use a fixed tag or sha256 digest; latest and untagged images are forbidden."
+    - expression: >-
+        (object.spec.template.spec.containers + (has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : [])).all(c,
+          has(c.resources) && has(c.resources.requests) && has(c.resources.limits) &&
+          has(c.resources.requests.cpu) && has(c.resources.requests.memory) &&
+          has(c.resources.limits.cpu) && has(c.resources.limits.memory))
+      message: "Every container and initContainer must define CPU/memory requests and limits."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: techx-runtime-hardening-cronjobs
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["cronjobs"]
+  validations:
+    - expression: >-
+        (object.spec.jobTemplate.spec.template.spec.containers + (has(object.spec.jobTemplate.spec.template.spec.initContainers) ? object.spec.jobTemplate.spec.template.spec.initContainers : [])).all(c,
+          (has(c.securityContext) && has(c.securityContext.runAsNonRoot) && c.securityContext.runAsNonRoot) ||
+          (has(object.spec.jobTemplate.spec.template.spec.securityContext) && has(object.spec.jobTemplate.spec.template.spec.securityContext.runAsNonRoot) && object.spec.jobTemplate.spec.template.spec.securityContext.runAsNonRoot))
+      message: "Every container and initContainer must set runAsNonRoot: true at container or pod level."
+    - expression: >-
+        (object.spec.jobTemplate.spec.template.spec.containers + (has(object.spec.jobTemplate.spec.template.spec.initContainers) ? object.spec.jobTemplate.spec.template.spec.initContainers : [])).all(c,
+          has(c.securityContext) && has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: "Every container and initContainer must set allowPrivilegeEscalation: false."
+    - expression: >-
+        (object.spec.jobTemplate.spec.template.spec.containers + (has(object.spec.jobTemplate.spec.template.spec.initContainers) ? object.spec.jobTemplate.spec.template.spec.initContainers : [])).all(c,
+          has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(cap, cap == 'ALL'))
+      message: "Every container and initContainer must drop the ALL capability set."
+    - expression: >-
+        (object.spec.jobTemplate.spec.template.spec.containers + (has(object.spec.jobTemplate.spec.template.spec.initContainers) ? object.spec.jobTemplate.spec.template.spec.initContainers : [])).all(c,
+          (has(c.securityContext) && has(c.securityContext.seccompProfile) &&
+            c.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']) ||
+          (has(object.spec.jobTemplate.spec.template.spec.securityContext) && has(object.spec.jobTemplate.spec.template.spec.securityContext.seccompProfile) &&
+            object.spec.jobTemplate.spec.template.spec.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']))
+      message: "Every container and initContainer must use RuntimeDefault or Localhost seccomp."
+    - expression: >-
+        (object.spec.jobTemplate.spec.template.spec.containers + (has(object.spec.jobTemplate.spec.template.spec.initContainers) ? object.spec.jobTemplate.spec.template.spec.initContainers : [])).all(c,
+          c.image.matches('^.+@sha256:[a-fA-F0-9]{64}$') ||
+          (c.image.matches('^.+:[^/]+$') && !c.image.endsWith(':latest')))
+      message: "Images must use a fixed tag or sha256 digest; latest and untagged images are forbidden."
+    - expression: >-
+        (object.spec.jobTemplate.spec.template.spec.containers + (has(object.spec.jobTemplate.spec.template.spec.initContainers) ? object.spec.jobTemplate.spec.template.spec.initContainers : [])).all(c,
+          has(c.resources) && has(c.resources.requests) && has(c.resources.limits) &&
+          has(c.resources.requests.cpu) && has(c.resources.requests.memory) &&
+          has(c.resources.limits.cpu) && has(c.resources.limits.memory))
+      message: "Every container and initContainer must define CPU/memory requests and limits."

@@ -1,0 +1,37 @@
+# Apply only after review. A namespace must explicitly opt in with:
+# security.techx.io/runtime-hardening=enforce
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: techx-runtime-hardening-pods-enforce
+spec:
+  policyName: techx-runtime-hardening-pods
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        security.techx.io/runtime-hardening: enforce
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: techx-runtime-hardening-workloads-enforce
+spec:
+  policyName: techx-runtime-hardening-workloads
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        security.techx.io/runtime-hardening: enforce
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: techx-runtime-hardening-cronjobs-enforce
+spec:
+  policyName: techx-runtime-hardening-cronjobs
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        security.techx.io/runtime-hardening: enforce

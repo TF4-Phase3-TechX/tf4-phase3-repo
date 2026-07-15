@@ -1,0 +1,37 @@
+# A namespace must opt in with:
+# security.techx.io/runtime-hardening=audit
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: techx-runtime-hardening-pods-audit
+spec:
+  policyName: techx-runtime-hardening-pods
+  validationActions: [Audit, Warn]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        security.techx.io/runtime-hardening: audit
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: techx-runtime-hardening-workloads-audit
+spec:
+  policyName: techx-runtime-hardening-workloads
+  validationActions: [Audit, Warn]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        security.techx.io/runtime-hardening: audit
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: techx-runtime-hardening-cronjobs-audit
+spec:
+  policyName: techx-runtime-hardening-cronjobs
+  validationActions: [Audit, Warn]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        security.techx.io/runtime-hardening: audit

@@ -75,7 +75,7 @@ spec:
             {{- .resources | toYaml | nindent 12 }}
           {{- if or .defaultValues.securityContext .securityContext }}
           securityContext:
-            {{- .securityContext | default .defaultValues.securityContext | toYaml | nindent 12 }}
+            {{- mergeOverwrite (deepCopy (.defaultValues.securityContext | default dict)) (.securityContext | default dict) | toYaml | nindent 12 }}
           {{- end}}
           {{- if .livenessProbe }}
           livenessProbe:
@@ -127,7 +127,7 @@ spec:
           {{- end }}
           {{- if or .defaultValues.securityContext .securityContext }}
           securityContext:
-            {{- .securityContext | default .defaultValues.securityContext | toYaml | nindent 12 }}
+            {{- mergeOverwrite (deepCopy (.defaultValues.securityContext | default dict)) (.securityContext | default dict) | toYaml | nindent 12 }}
           {{- end}}
           {{- if .livenessProbe }}
           livenessProbe:

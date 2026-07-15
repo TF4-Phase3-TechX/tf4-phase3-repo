@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admission-test-latest
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: admission-test-latest }
+  template:
+    metadata:
+      labels: { app: admission-test-latest }
+    spec:
+      containers:
+        - name: test
+          image: busybox:latest
+          command: ["sh", "-c", "sleep 3600"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 5m, memory: 8Mi }
+            limits: { cpu: 25m, memory: 32Mi }

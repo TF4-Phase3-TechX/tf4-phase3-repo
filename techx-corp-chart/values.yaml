@@ -32,8 +32,16 @@ default:
     nodeSelector: {}
     affinity: {}
     tolerations: []
-  # Default securityContext for all components
-  securityContext: {}
+  # Low-risk baseline applied to every application and sidecar container.
+  # runAsNonRoot is enabled per component only after its image USER is verified.
+  # readOnlyRootFilesystem remains opt-in until each write path is tested.
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -190,10 +198,18 @@ components:
       limits:
         cpu: 200m
         memory: 256Mi
+    securityContext:
+      runAsNonRoot: true
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities: { drop: ["ALL"] }
+          seccompProfile: { type: RuntimeDefault }
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -268,8 +284,14 @@ components:
       successThreshold: 1
     initContainers:
       - name: wait-for-valkey-cart
-        image: busybox:latest
+        image: busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
         command: ["sh", "-c", "until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;"]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities: { drop: ["ALL"] }
+          seccompProfile: { type: RuntimeDefault }
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -323,6 +345,8 @@ components:
     resources:
       requests: { cpu: 75m, memory: 48Mi }
       limits: { cpu: 300m, memory: 96Mi }
+    securityContext:
+      runAsNonRoot: true
     livenessProbe:
       grpc:
         port: 8080
@@ -340,8 +364,14 @@ components:
       successThreshold: 1
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities: { drop: ["ALL"] }
+          seccompProfile: { type: RuntimeDefault }
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -420,10 +450,18 @@ components:
       limits:
         cpu: 200m
         memory: 300Mi
+    securityContext:
+      runAsNonRoot: true
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities: { drop: ["ALL"] }
+          seccompProfile: { type: RuntimeDefault }
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -616,6 +654,10 @@ components:
       limits:
         cpu: 50m
         memory: 50Mi
+    securityContext:
+      runAsUser: 101
+      runAsGroup: 101
+      runAsNonRoot: true
 
   load-generator:
     enabled: true
@@ -655,6 +697,10 @@ components:
     resources:
       requests: { cpu: 500m, memory: 768Mi }
       limits: { cpu: "1", memory: 1536Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
 
   payment:
     enabled: true
@@ -726,6 +772,8 @@ components:
     resources:
       requests: { cpu: 50m, memory: 32Mi }
       limits: { cpu: 200m, memory: 64Mi }
+    securityContext:
+      runAsNonRoot: true
     livenessProbe:
       grpc:
         port: 8080
@@ -864,6 +912,8 @@ components:
     resources:
       requests: { cpu: 20m, memory: 16Mi }
       limits: { cpu: 75m, memory: 32Mi }
+    securityContext:
+      runAsNonRoot: true
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -949,8 +999,14 @@ components:
     #         mountPath: /app/data
     initContainers:
       - name: init-config
-        image: busybox
+        image: busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
         command: ["sh", "-c", "cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json"]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities: { drop: ["ALL"] }
+          seccompProfile: { type: RuntimeDefault }
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
