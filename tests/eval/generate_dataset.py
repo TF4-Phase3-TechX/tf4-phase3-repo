@@ -249,6 +249,54 @@ def main():
         }
     ]
     test_cases.extend(adversarial_cases)
+
+    # Add grounding refusal cases for Grounded Q&A (Pillar B) - TC-14 is skipped
+    # because it was reserved for 'Conflicting Reviews' which lacks data seed.
+    grounding_refusal_cases = [
+        {
+            "id": "TC-13",
+            "product_id": "OLJCESPC7Z",
+            "name": "National Park Foundation Explorascope (Out-of-bounds Q&A)",
+            "query": "What is the warranty policy and delivery time for this telescope?",
+            "test_type": "grounding_refusal",
+            "context_reviews": reviews.get("OLJCESPC7Z", []),
+            "expected_key_points": [],
+            "negative_indicators": []
+        },
+        {
+            "id": "TC-15",
+            "product_id": "2ZYFJ3GM2N",
+            "name": "Roof Binoculars (Partial Context Q&A)",
+            "query": "Can you describe the brightness quality and how long the battery lasts?",
+            "test_type": "grounding_refusal",
+            "context_reviews": reviews.get("2ZYFJ3GM2N", []),
+            "expected_key_points": [],
+            "negative_indicators": []
+        },
+        {
+            "id": "TC-16",
+            "product_id": "OLJCESPC7Z",
+            "name": "National Park Foundation Explorascope (Nuanced Caveat Synthesis)",
+            "query": "Is this telescope powerful enough for serious deep-sky observation, or is it more of a beginner scope?",
+            "test_type": "grounding_refusal",
+            "note": "Redesigned from original 'conflicting reviews' concept — no genuine contradiction exists in current dataset without seeding. This tests accurate representation of a stated limitation, not conflict resolution.",
+            "context_reviews": reviews.get("OLJCESPC7Z", []),
+            "expected_key_points": [],
+            "negative_indicators": []
+        },
+        {
+            "id": "TC-17",
+            "product_id": "INVALID123",
+            "name": "Invalid Product ID (Unknown Q&A)",
+            "query": "Is this product good for kids?",
+            "test_type": "grounding_refusal",
+            "allow_grpc_error": True,
+            "context_reviews": [],
+            "expected_key_points": [],
+            "negative_indicators": []
+        }
+    ]
+    test_cases.extend(grounding_refusal_cases)
             
     output_data = {"test_cases": test_cases}
     

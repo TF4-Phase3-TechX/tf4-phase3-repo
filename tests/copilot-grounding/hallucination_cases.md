@@ -2,9 +2,28 @@
 
 Báo cáo này tài liệu hóa chi tiết kết quả chạy kiểm thử đánh giá tính năng **Grounded Q&A** và chống ảo tưởng (hallucination) thuộc Epic **`TF4AIO-4`** (Shopping Copilot MVP), mã task **`TF4AIO-33`**.
 
+> [!IMPORTANT]
+> **Phạm vi Pull Request:** PR này chỉ chứa bộ khung kiểm thử (Evaluation Framework) và dữ liệu bằng chứng đánh giá. Tính năng AI Assistant và luật an toàn (Bedrock Adapter & Safety Rules) thực tế đã được triển khai và gộp riêng trong commit `c16ecbe` (Mandate 06 Bedrock trust and safety).
+
 ---
 
-## 1. Kết quả So Sánh Chi Tiết Before vs After (Thật 100%)
+## 1. Cấu Hình Môi Trường Đánh Giá (Evaluation Environment Config)
+
+Để đảm bảo tính lặp lại (reproducibility) và quy chiếu chính xác, các thông số cấu hình đo lường được thiết lập cố định như sau:
+- **Nhánh & Commit được đánh giá (After)**: `c16ecbe` (Mandate 06 Bedrock trust and safety)
+- **Nhánh & Commit đối chứng (Before/Baseline)**: `01c8fa3` (Commit gốc của main trước khi tích hợp Bedrock safety)
+- **Mô hình AI kiểm thử (Target Model)**:
+  - *Before (Baseline)*: `Qwen2.5-7B-AWQ` (Chạy local mock OpenAI server)
+  - *After*: `us.amazon.nova-lite-v1:0` (Kết nối thực tế Amazon Bedrock)
+- **Mô hình Giám khảo (Judge Model)**: `Qwen2.5-7B-AWQ` (Temperature = `0.0`, cấu hình timeout = 15.0s)
+- **Bộ dữ liệu kiểm thử (Dataset)**: [eval_dataset.json](tests/eval/eval_dataset.json)
+- **Dataset Hash (SHA-256)**: `8c8f7e5d002ed784d2bf23e2f2f0e419b4ec593afc832188d8eb118a531ed970`
+- **Số lần chạy (Repetitions)**: 3 lượt chạy lặp lại trên cùng bộ thiết lập cố định để giảm thiểu sai số bất định (non-determinism).
+- **Mục tiêu đo lường**: Xác minh tính **ngăn ngừa lỗi hồi quy (preventative / no-regression)** của prompt mới. Cả hai phiên bản Before và After đều đạt tỉ lệ Grounding thành công 100% đối với 4 case kiểm thử đặc thù.
+
+---
+
+## 2. Kết quả So Sánh Chi Tiết Before vs After (Thật 100%)
 
 Các test case dưới đây sử dụng dữ liệu thực tế từ database seed [init.sql](techx-corp-platform/src/postgresql/init.sql) và được đánh giá thông qua cơ chế LLM-judge nâng cấp trong [run_eval.py](tests/eval/run_eval.py).
 
@@ -58,7 +77,7 @@ Các test case dưới đây sử dụng dữ liệu thực tế từ database s
 
 ---
 
-## 2. Bảng Đánh Giá Regression (Case-by-Case Regression Check)
+## 3. Bảng Đánh Giá Regression (Case-by-Case Regression Check)
 
 Bảng dưới đây so sánh điểm Completeness của các test case cũ từ `TC-01` đến `TC-12` trước và sau khi áp dụng prompt mới (được chứng thực bởi `eval_results_before.json` và `eval_results_after.json`):
 
@@ -82,7 +101,7 @@ Bảng dưới đây so sánh điểm Completeness của các test case cũ từ
 
 ---
 
-## 3. Các Khoảng Trống Kiểm Thử Chưa Phủ (Known Test Coverage Gaps)
+## 4. Các Khoảng Trống Kiểm Thử Chưa Phủ (Known Test Coverage Gaps)
 
 Do ràng buộc nghiêm ngặt không can thiệp sửa đổi cấu trúc dữ liệu seed (`init.sql` / database) ở Epic này để tránh rủi ro cho môi trường chung, các kịch bản kiểm thử sau chưa được phủ và cần được chuyển tiếp bằng một ticket follow-up riêng:
 

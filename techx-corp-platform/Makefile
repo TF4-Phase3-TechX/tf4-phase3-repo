@@ -249,3 +249,14 @@ endif
 .PHONY: build-react-native-android
 build-react-native-android:
 	docker build -f src/react-native-app/android.Dockerfile --platform=linux/amd64 --output=. src/react-native-app
+
+.PHONY: run-eval
+run-eval:
+	@echo "Determining product-reviews port..."
+	@PORT=$$(docker compose port product-reviews 3551 | cut -d: -f2); \
+	if [ -z "$$PORT" ]; then \
+		echo "Error: product-reviews service is not running." >&2; \
+		exit 1; \
+	fi; \
+	echo "Running AI evaluation against port $$PORT..."; \
+	./src/product-reviews/venv/bin/python ../tests/eval/run_eval.py --port $$PORT --delay 0

@@ -256,7 +256,10 @@ def evaluate_grounding_refusal_llm(client, model, response_text, query, context_
             return {
                 "passed": passed,
                 "reason": "Fallback keyword check for refusal" if passed else "No refusal keyword matched in fallback",
-                "fabricated_details": "" if passed else "Model failed to refuse out-of-bounds query"
+                "fabricated_details": "" if passed else "Model failed to refuse out-of-bounds query",
+                "llm_used": False,
+                "fallback_mode": "keyword",
+                "judge_model": None
             }
         elif tc_id == "TC-15":
             has_brightness = "bright" in response_lower or "clear" in response_lower or "optical" in response_lower
@@ -265,16 +268,29 @@ def evaluate_grounding_refusal_llm(client, model, response_text, query, context_
             return {
                 "passed": passed,
                 "reason": "Fallback keyword check for partial info" if passed else f"Brightness check: {has_brightness}, battery refusal check: {refused_battery}",
-                "fabricated_details": "" if passed else "Model failed to handle partial context correctly"
+                "fabricated_details": "" if passed else "Model failed to handle partial context correctly",
+                "llm_used": False,
+                "fallback_mode": "keyword",
+                "judge_model": None
             }
         elif tc_id == "TC-16":
             passed = "beginner" in response_lower or "kid" in response_lower or "not the most powerful" in response_lower
             return {
                 "passed": passed,
                 "reason": "Fallback keyword check for caveat" if passed else "Caveat keywords not found",
-                "fabricated_details": "" if passed else "Model failed to synthesize caveat"
+                "fabricated_details": "" if passed else "Model failed to synthesize caveat",
+                "llm_used": False,
+                "fallback_mode": "keyword",
+                "judge_model": None
             }
-        return {"passed": True, "reason": "No LLM judge, default pass", "fabricated_details": ""}
+        return {
+            "passed": False,
+            "reason": f"Unknown test case type {tc_id} for grounding fallback",
+            "fabricated_details": "Unknown test case type",
+            "llm_used": False,
+            "fallback_mode": "keyword",
+            "judge_model": None
+        }
 
     import json
     prompt = f"""You are an impartial AI evaluation judge specializing in checking LLM Hallucinations and Grounding.
@@ -322,11 +338,19 @@ Do not output any markdown code blocks, explanation, or extra characters. Just t
         return {
             "passed": res.get("passed", False),
             "reason": res.get("reason", ""),
-            "fabricated_details": res.get("fabricated_details", "")
+            "fabricated_details": res.get("fabricated_details", ""),
+            "llm_used": True,
+            "fallback_mode": None,
+            "judge_model": model
         }
     except Exception as e:
         print(f"  [LLM grounding judge error]: {e}. Falling back to keyword heuristics.")
-        return evaluate_grounding_refusal_llm(None, None, response_text, query, context_reviews, tc_id)
+        res = evaluate_grounding_refusal_llm(None, None, response_text, query, context_reviews, tc_id)
+        res["fallback_mode"] = "keyword"
+        res["judge_error"] = str(e)
+        res["judge_model"] = model
+        res["llm_used"] = False
+        return res
 
 def evaluate_response(response_text, expected_key_points, negative_indicators, client=None, model=None, test_case=None):
     import re
@@ -351,7 +375,7 @@ def evaluate_response(response_text, expected_key_points, negative_indicators, c
         matched_key_points = []
         if refusal_res.get("passed") and refusal_res.get("reason"):
             matched_key_points = [f"Judge: {refusal_res.get('reason')}"]
-        using_llm_completeness = True
+        using_llm_completeness = refusal_res.get("llm_used", False)
         num_expected = 0
     else:
         # 1. Evaluate Completeness (Độ đầy đủ)
@@ -441,7 +465,10 @@ def evaluate_response(response_text, expected_key_points, negative_indicators, c
         "overall_passed": overall_passed,
         "partial_passed": partial_passed,
         "refusal_reason": refusal_res.get("reason", "") if refusal_res else "",
-        "fabricated_details": refusal_res.get("fabricated_details", "") if refusal_res else ""
+        "fabricated_details": refusal_res.get("fabricated_details", "") if refusal_res else "",
+        "judge_model": refusal_res.get("judge_model") if refusal_res else (model if using_llm_completeness else None),
+        "fallback_mode": refusal_res.get("fallback_mode") if refusal_res else ("keyword" if not using_llm_completeness else None),
+        "judge_error": refusal_res.get("judge_error", "") if refusal_res else ""
     }
 
 def main():
