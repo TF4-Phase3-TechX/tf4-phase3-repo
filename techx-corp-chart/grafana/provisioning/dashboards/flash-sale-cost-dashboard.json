@@ -1,0 +1,430 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Number of EKS worker nodes in Ready state.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(k8s_node_condition{condition=\"Ready\"})",
+          "legendFormat": "Ready Nodes",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Worker Nodes Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Estimated hourly cost in USD based on active node count (t3.large baseline), EKS control plane, and NAT Gateway.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "usd"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "(sum(k8s_node_condition{condition=\"Ready\"}) * 0.0832) + 0.10 + 0.045",
+          "legendFormat": "Hourly Cost",
+          "refId": "A"
+        }
+      ],
+      "title": "Estimated Hourly Cluster Cost",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Estimated monthly cost projection in USD (Hourly Cost * 730 hours).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "usd"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 15,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "((sum(k8s_node_condition{condition=\"Ready\"}) * 0.0832) + 0.10 + 0.045) * 730",
+          "legendFormat": "Monthly Estimate",
+          "refId": "A"
+        }
+      ],
+      "title": "Estimated Monthly Cluster Cost",
+      "type": "stat"
+    },
+    {
+      "id": 10,
+      "title": "Cost Trend & Workload Scaling",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Available pod replica count per deployment.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "k8s_deployment_available{k8s_namespace_name=\"techx-tf4\", k8s_deployment_name=~\"frontend|cart|checkout|payment|accounting|product-catalog\"}",
+          "legendFormat": "{{k8s_deployment_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Replicas by Service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Real-time EKS cluster compute cost trend over time ($/hour).",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "usd"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "(sum(k8s_node_condition{condition=\"Ready\"}) * 0.0832) + 0.10 + 0.045",
+          "legendFormat": "Cluster Compute Cost",
+          "refId": "A"
+        }
+      ],
+      "title": "EKS Cluster Cost Trend Over Time",
+      "type": "timeseries"
+    },
+    {
+      "id": 20,
+      "title": "Cost-Efficiency Metrics",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Calculates the USD cost needed to serve 1,000 successful server requests. Under high swarming load, this drops (optimal efficiency). During idle, it spikes.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "usd"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "min"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "(((sum(k8s_node_condition{condition=\"Ready\"}) * 0.0832) + 0.10 + 0.045) / (sum(rate(traces_span_metrics_calls_total{span_kind=\"SPAN_KIND_SERVER\"}[5m])) * 3600)) * 1000",
+          "legendFormat": "Cost/1000 requests",
+          "refId": "A"
+        }
+      ],
+      "title": "Cost per 1,000 Server Requests",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 22,
+      "options": {
+        "content": "### 📊 Cost Modeling & Pricing Assumptions (CDO-04)\n\nDashboard này sử dụng các công thức PromQL động để tính toán chi phí vận hành trực tiếp của cụm EKS theo các giả định giá niêm yết chuẩn của AWS (us-east-1):\n\n1. **EKS Cluster Control Plane:**\n   - Phí cố định: **$0.10 / giờ** ($73.00 / tháng).\n\n2. **NAT Gateway Infrastructure:**\n   - Phí cố định cho 1 NAT Gateway: **$0.045 / giờ** ($32.85 / tháng).\n   - *Lưu ý:* Chưa tính phí data processing ($0.045/GB).\n\n3. **EC2 Compute Nodes (t3.large baseline):**\n   - Phí cho mỗi Node Ready: **$0.0832 / giờ** ($60.74 / tháng).\n   - Tự động phát hiện tăng/giảm chi phí khi Karpenter co giãn Node vật lý.\n\n4. **Chỉ số Hiệu quả (Cost-efficiency):**\n   - `Cost per 1000 requests` phản ánh số USD tiêu tốn để xử lý 1,000 yêu cầu. Chỉ số này càng thấp khi lượng traffic/tải càng lớn, thể hiện tối ưu hóa hạ tầng thành công.",
+        "mode": "markdown"
+      },
+      "title": "Cost Calculations & Assumptions",
+      "type": "text"
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "cdo04",
+    "cost",
+    "optimization"
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Flash Sale Cost Optimization Dashboard",
+  "uid": "flash-sale-cost-dashboard",
+  "version": 1
+}
