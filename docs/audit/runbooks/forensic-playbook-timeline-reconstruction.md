@@ -1,46 +1,46 @@
-# Playbook: Dá»±ng Timeline Forensic tá»« Audit Log / Trace
-## CDO07 â€” Mandate 4 Â· Forensic Drill
+# Playbook: Dựng Timeline Forensic từ Audit Log / Trace
+## CDO07 �?" Mandate 4 · Forensic Drill
 
-> **Má»¥c tiÃªu:** Khi mentor chá»n 1 sá»± kiá»‡n (config change hoáº·c flag toggle), CDO07 dá»±ng láº¡i
-> **ai-lÃ m-gÃ¬-khi-nÃ o** chá»‰ tá»« audit log trong â‰¤10 phÃºt, ngay trÆ°á»›c máº·t.
+> **Mục tiêu:** Khi mentor chọn 1 sự ki�?n (config change hoặc flag toggle), CDO07 dựng lại
+> **ai-làm-gì-khi-nào** ch�? từ audit log trong �?�10 phút, ngay trư�>c mặt.
 >
-> Playbook nÃ y lÃ  tÃ i liá»‡u tÃ¡c chiáº¿n â€” in ra, Ä‘á»ƒ bÃ n, dÃ¹ng khi bá»‹ há»i live.
+> Playbook này là tài li�?u tác chiến �?" in ra, �'�f bàn, dùng khi b�< hỏi live.
 
-| ThÃ´ng tin | GiÃ¡ trá»‹ |
+| Thông tin | Giá tr�< |
 |---|---|
 | Cluster | `techx-tf4-cluster` |
 | Region | `us-east-1` |
 | Profile AWS | `TF4-AuditReadOnlyAndAnalyze` |
 | CloudTrail | `tf4-general-cloudtrail` |
 | K8s Log Group | `/aws/eks/techx-tf4-cluster/cluster` |
-| Namespace á»©ng dá»¥ng | `techx-tf4` |
+| Namespace ứng dụng | `techx-tf4` |
 
 ---
 
-## Pháº§n 1: Chuáº©n bá»‹ trÆ°á»›c khi bá»‹ há»i (â‰¤2 phÃºt)
+## Phần 1: Chuẩn b�< trư�>c khi b�< hỏi (�?�2 phút)
 
-### 1.1 XÃ¡c nháº­n credentials cÃ²n háº¡n
+### 1.1 Xác nhận credentials còn hạn
 
 ```bash
 aws sts get-caller-identity --profile TF4-AuditReadOnlyAndAnalyze-511825856493
 ```
 
-Káº¿t quáº£ pháº£i tráº£ vá» ARN `TF4-AuditReadOnlyAndAnalyze` vÃ  account `511825856493`.
-Náº¿u expired â†’ cháº¡y `aws sso login --profile TF4-AuditReadOnlyAndAnalyze-511825856493` ngay.
+Kết quả phải trả về ARN `TF4-AuditReadOnlyAndAnalyze` và account `511825856493`.
+Nếu expired �?' chạy `aws sso login --profile TF4-AuditReadOnlyAndAnalyze-511825856493` ngay.
 
-### 1.2 XÃ¡c nháº­n kubeconfig
+### 1.2 Xác nhận kubeconfig
 
 ```bash
 aws eks update-kubeconfig --name techx-tf4-cluster --region us-east-1
 kubectl -n techx-tf4 get pods --request-timeout=10s 2>&1 | head -5
 ```
 
-Pháº£i tháº¥y danh sÃ¡ch pods. Náº¿u lá»—i â†’ check VPN / bastion tunnel.
+Phải thấy danh sách pods. Nếu l�-i �?' check VPN / bastion tunnel.
 
-### 1.3 Chuáº©n bá»‹ epoch calculator (dÃ¹ng khi mentor Ä‘Æ°a timestamp)
+### 1.3 Chuẩn b�< epoch calculator (dùng khi mentor �'ưa timestamp)
 
 ```powershell
-# Windows PowerShell â€” Ä‘á»•i timestamp sang epoch milliseconds cho CloudWatch
+# Windows PowerShell �?" �'�.i timestamp sang epoch milliseconds cho CloudWatch
 $t = [DateTimeOffset]::Parse("2026-07-14T07:15:00Z")
 $epochMs = $t.ToUnixTimeMilliseconds()
 Write-Output "Epoch ms: $epochMs"
@@ -53,43 +53,43 @@ date -u -d '2026-07-14 07:15:00' +%s000
 
 ---
 
-## Pháº§n 2: Quy trÃ¬nh 4 bÆ°á»›c â€” â‰¤10 phÃºt
+## Phần 2: Quy trình 4 bư�>c �?" �?�10 phút
 
-Khi mentor Ä‘Æ°a sá»± kiá»‡n, thá»±c hiá»‡n theo Ä‘Ãºng thá»© tá»± nÃ y:
+Khi mentor �'ưa sự ki�?n, thực hi�?n theo �'úng thứ tự này:
 
 ```
-BÆ°á»›c 1: PhÃ¢n loáº¡i sá»± kiá»‡n (1 phÃºt)
-    â†“
-BÆ°á»›c 2: Chá»n nguá»“n log & build query (2 phÃºt)
-    â†“
-BÆ°á»›c 3: Cháº¡y query, Ä‘á»c káº¿t quáº£ (4 phÃºt)
-    â†“
-BÆ°á»›c 4: TrÃ¬nh bÃ y ai-lÃ m-gÃ¬-khi-nÃ o (3 phÃºt)
+Bư�>c 1: Phân loại sự ki�?n (1 phút)
+    �?"
+Bư�>c 2: Chọn ngu�"n log & build query (2 phút)
+    �?"
+Bư�>c 3: Chạy query, �'ọc kết quả (4 phút)
+    �?"
+Bư�>c 4: Trình bày ai-làm-gì-khi-nào (3 phút)
 ```
 
-### BÆ°á»›c 1: PhÃ¢n loáº¡i sá»± kiá»‡n (1 phÃºt)
+### Bư�>c 1: Phân loại sự ki�?n (1 phút)
 
-Mentor nÃ³i gÃ¬ â†’ chá»n nguá»“n log nÃ o:
+Mentor nói gì �?' chọn ngu�"n log nào:
 
-| Loáº¡i sá»± kiá»‡n | Nguá»“n chÃ­nh | Nguá»“n phá»¥ |
+| Loại sự ki�?n | Ngu�"n chính | Ngu�"n phụ |
 |---|---|---|
-| ConfigMap update (K8s config) | K8s Audit Log (CloudWatch) | CloudTrail náº¿u qua API |
-| Flag toggle (flagd) | K8s Audit Log â€” ConfigMap `flagd-config` | â€” |
+| ConfigMap update (K8s config) | K8s Audit Log (CloudWatch) | CloudTrail nếu qua API |
+| Flag toggle (flagd) | K8s Audit Log �?" ConfigMap `flagd-config` | �?" |
 | Node scale / EKS change | CloudTrail | K8s events |
-| SSM bastion access | CloudTrail | â€” |
-| IAM / AWS API call | CloudTrail | â€” |
-| kubectl exec / port-forward | K8s Audit Log | â€” |
-| Pod restart / deployment | K8s events + K8s Audit Log | â€” |
+| SSM bastion access | CloudTrail | �?" |
+| IAM / AWS API call | CloudTrail | �?" |
+| kubectl exec / port-forward | K8s Audit Log | �?" |
+| Pod restart / deployment | K8s events + K8s Audit Log | �?" |
 
-> **Rule nhanh:** HÃ nh Ä‘á»™ng trong cluster â†’ K8s Audit Log. HÃ nh Ä‘á»™ng AWS API â†’ CloudTrail.
+> **Rule nhanh:** Hành �'�Tng trong cluster �?' K8s Audit Log. Hành �'�Tng AWS API �?' CloudTrail.
 
-### BÆ°á»›c 2: Build query (2 phÃºt)
+### Bư�>c 2: Build query (2 phút)
 
-**TrÆ°á»ng há»£p A â€” Sá»± kiá»‡n trong Kubernetes (config change, flag toggle, kubectl action):**
+**Trường hợp A �?" Sự ki�?n trong Kubernetes (config change, flag toggle, kubectl action):**
 
 ```bash
-# Query K8s audit log â€” CloudWatch Logs Insights
-# Äiá»n: START_EPOCH_MS vÃ  END_EPOCH_MS tá»« Pháº§n 1.3
+# Query K8s audit log �?" CloudWatch Logs Insights
+# Điền: START_EPOCH_MS và END_EPOCH_MS từ Phần 1.3
 
 aws logs filter-log-events \
   --log-group-name /aws/eks/techx-tf4-cluster/cluster \
@@ -111,7 +111,7 @@ aws logs filter-log-events \
           }'
 ```
 
-**TrÆ°á»ng há»£p B â€” Flag toggle cá»¥ thá»ƒ (flagd-config ConfigMap):**
+**Trường hợp B �?" Flag toggle cụ th�f (flagd-config ConfigMap):**
 
 ```bash
 aws logs filter-log-events \
@@ -131,26 +131,26 @@ aws logs filter-log-events \
           }'
 ```
 
-**TrÆ°á»ng há»£p C â€” Báº¥t ká»³ hÃ nh Ä‘á»™ng nÃ o cá»§a 1 user cá»¥ thá»ƒ trong K8s:**
+**Trường hợp C �?" Bất kỳ hành �'�Tng nào của 1 user cụ th�f trong K8s:**
 
 ```bash
 aws logs filter-log-events \
   --log-group-name /aws/eks/techx-tf4-cluster/cluster \
   --start-time START_EPOCH_MS \
   --end-time END_EPOCH_MS \
-  --filter-pattern '"TÃŠN_USER"' \
+  --filter-pattern '"T�SN_USER"' \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 \
   | jq '.events[] | .message | fromjson
-        | select(.user.username | test("TÃŠN_USER"; "i"))
+        | select(.user.username | test("T�SN_USER"; "i"))
         | {time: .requestReceivedTimestamp, verb: .verb, resource: .objectRef.resource, name: .objectRef.name}'
 ```
 
-**TrÆ°á»ng há»£p D â€” AWS API call / CloudTrail (infra change, SSM, IAM):**
+**Trường hợp D �?" AWS API call / CloudTrail (infra change, SSM, IAM):**
 
 ```bash
 aws cloudtrail lookup-events \
   --region us-east-1 \
-  --lookup-attributes AttributeKey=EventName,AttributeValue=TÃŠN_EVENT \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=T�SN_EVENT \
   --start-time "2026-07-14T07:00:00Z" \
   --end-time "2026-07-14T08:00:00Z" \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 \
@@ -163,50 +163,50 @@ aws cloudtrail lookup-events \
     }'
 ```
 
-### BÆ°á»›c 3: Äá»c káº¿t quáº£ (4 phÃºt)
+### Bư�>c 3: Đọc kết quả (4 phút)
 
-CÃ¡c trÆ°á»ng cáº§n Ä‘á»c ngay:
+Các trường cần �'ọc ngay:
 
-| TrÆ°á»ng | Ã nghÄ©a | NÆ¡i tÃ¬m |
+| Trường | Ý nghĩa | Nơi tìm |
 |---|---|---|
-| `time` / `requestReceivedTimestamp` | Khi nÃ o xáº£y ra | K8s audit log |
-| `user.username` | Ai lÃ m â€” email SSO hoáº·c role | K8s audit log |
-| `verb` | LÃ m gÃ¬ â€” get/create/update/delete | K8s audit log |
-| `objectRef.name` | TÃ¡c Ä‘á»™ng lÃªn resource nÃ o | K8s audit log |
-| `responseStatus.code` | ThÃ nh cÃ´ng (200/201) hay bá»‹ cháº·n (403) | K8s audit log |
-| `EventTime` | Khi nÃ o xáº£y ra | CloudTrail |
-| `Username` | Ai lÃ m â€” session name = email SSO | CloudTrail |
-| `userIdentity.arn` | Traceable vá» ngÆ°á»i/role | CloudTrail |
-| `sourceIPAddress` | Tá»« Ä‘Ã¢u | CloudTrail |
+| `time` / `requestReceivedTimestamp` | Khi nào xảy ra | K8s audit log |
+| `user.username` | Ai làm �?" email SSO hoặc role | K8s audit log |
+| `verb` | Làm gì �?" get/create/update/delete | K8s audit log |
+| `objectRef.name` | Tác �'�Tng lên resource nào | K8s audit log |
+| `responseStatus.code` | Thành công (200/201) hay b�< chặn (403) | K8s audit log |
+| `EventTime` | Khi nào xảy ra | CloudTrail |
+| `Username` | Ai làm �?" session name = email SSO | CloudTrail |
+| `userIdentity.arn` | Traceable về người/role | CloudTrail |
+| `sourceIPAddress` | Từ �'âu | CloudTrail |
 
-> **Äá»c nhanh:** NhÃ¬n `user.username` vÃ  `time` trÆ°á»›c. Náº¿u khÃ´ng tháº¥y gÃ¬ â†’ má»Ÿ rá»™ng time window thÃªm Â±30 phÃºt.
+> **Đọc nhanh:** Nhìn `user.username` và `time` trư�>c. Nếu không thấy gì �?' m�Y r�Tng time window thêm ±30 phút.
 
-### BÆ°á»›c 4: TrÃ¬nh bÃ y (3 phÃºt)
+### Bư�>c 4: Trình bày (3 phút)
 
-Tráº£ lá»i Ä‘Ãºng 4 cÃ¢u â€” khÃ´ng thÃªm khÃ´ng bá»›t:
+Trả lời �'úng 4 câu �?" không thêm không b�>t:
 
 ```
-WHO:   [email/username/ARN tá»« log]
-WHAT:  [verb] [resource] "[object name]"  â† vÃ­ dá»¥: update ConfigMap "flagd-config"
-WHEN:  [timestamp UTC]  =  [timestamp +07]  â† Ä‘á»•i mÃºi giá» trá»±c tiáº¿p
-HOW:   kubectl / AWS Console / CI/CD (Ä‘á»c tá»« userAgent hoáº·c source IP)
+WHO:   [email/username/ARN từ log]
+WHAT:  [verb] [resource] "[object name]"  �?� ví dụ: update ConfigMap "flagd-config"
+WHEN:  [timestamp UTC]  =  [timestamp +07]  �?� �'�.i múi giờ trực tiếp
+HOW:   kubectl / AWS Console / CI/CD (�'ọc từ userAgent hoặc source IP)
 ```
 
-VÃ­ dá»¥ tráº£ lá»i chuáº©n:
-> "LÃºc 07:30:12 UTC (14:30:12 +07), `phuong@techx-corp.com` Ä‘Ã£ cháº¡y `kubectl port-forward`
-> vÃ o pod grafana trong namespace `techx-tf4`, xÃ¡c nháº­n qua K8s audit log vá»›i verb `create`
-> trÃªn resource `pods/portforward`. Source IP `10.x.x.x` tá»« trong VPC."
+Ví dụ trả lời chuẩn:
+> "Lúc 07:30:12 UTC (14:30:12 +07), `phuong@techx-corp.com` �'ã chạy `kubectl port-forward`
+> vào pod grafana trong namespace `techx-tf4`, xác nhận qua K8s audit log v�>i verb `create`
+> trên resource `pods/portforward`. Source IP `10.x.x.x` từ trong VPC."
 
 ---
 
-## Pháº§n 3: Ká»‹ch báº£n cá»¥ thá»ƒ â€” Ä‘Ã£ Ä‘Æ°á»£c chuáº©n bá»‹ sáºµn
+## Phần 3: K�<ch bản cụ th�f �?" �'ã �'ược chuẩn b�< sẵn
 
-### Scenario A: Config change â€” K8s action (incident 20260714)
+### Scenario A: Config change �?" K8s action (incident 20260714)
 
-**Sá»± kiá»‡n tháº­t:** Team Ä‘iá»u tra sá»± cá»‘ checkout 14/07, `phuong` + `nam` + bastion
-port-forward vÃ o Grafana/Jaeger lÃºc 14:25â€“14:27 +07.
+**Sự ki�?n thật:** Team �'iều tra sự c�' checkout 14/07, `phuong` + `nam` + bastion
+port-forward vào Grafana/Jaeger lúc 14:25�?"14:27 +07.
 
-**CÃ¢u há»i mentor cÃ³ thá»ƒ há»i:** "Ai Ä‘Ã£ truy cáº­p Grafana lÃºc ~14:25 ngÃ y 14/07?"
+**Câu hỏi mentor có th�f hỏi:** "Ai �'ã truy cập Grafana lúc ~14:25 ngày 14/07?"
 
 **Query:**
 
@@ -224,7 +224,7 @@ aws logs filter-log-events \
         | {time: .requestReceivedTimestamp, user: .user.username, verb: .verb, resource: .objectRef.resource, name: .objectRef.name}'
 ```
 
-**Káº¿t quáº£ mong Ä‘á»£i:**
+**Kết quả mong �'ợi:**
 
 ```json
 {
@@ -236,24 +236,24 @@ aws logs filter-log-events \
 }
 ```
 
-**Tráº£ lá»i:** WHO=phuong (TF4-SecReliabilityReadOnlyAudit), WHAT=kubectl port-forward vÃ o Grafana pod,
-WHEN=07:25:39 UTC (14:25:39 +07), HOW=kubectl tá»« bastion.
+**Trả lời:** WHO=phuong (TF4-SecReliabilityReadOnlyAudit), WHAT=kubectl port-forward vào Grafana pod,
+WHEN=07:25:39 UTC (14:25:39 +07), HOW=kubectl từ bastion.
 
 ---
 
-### Scenario B: Flag toggle â€” flagd ConfigMap update
+### Scenario B: Flag toggle �?" flagd ConfigMap update
 
-**Sá»± kiá»‡n tháº­t (hoáº·c test event):** Ai Ä‘Ã³ update ConfigMap `flagd-config`
-Ä‘á»ƒ thay Ä‘á»•i flag value (báº­t/táº¯t feature flag).
+**Sự ki�?n thật (hoặc test event):** Ai �'ó update ConfigMap `flagd-config`
+�'�f thay �'�.i flag value (bật/tắt feature flag).
 
-**CÃ¢u há»i mentor cÃ³ thá»ƒ há»i:** "Ai Ä‘Ã£ thay Ä‘á»•i flagd config?"
+**Câu hỏi mentor có th�f hỏi:** "Ai �'ã thay �'�.i flagd config?"
 
-**Query â€” bÆ°á»›c 1: tÃ¬m má»i update ConfigMap trong 7 ngÃ y:**
+**Query �?" bư�>c 1: tìm mọi update ConfigMap trong 7 ngày:**
 
 ```bash
-# 7 ngÃ y trÆ°á»›c: tÃ­nh epoch cá»§a 2026-07-09T00:00:00Z
+# 7 ngày trư�>c: tính epoch của 2026-07-09T00:00:00Z
 # PowerShell: [DateTimeOffset]::Parse("2026-07-09T00:00:00Z").ToUnixTimeMilliseconds()
-# â†’ 1752019200000
+# �?' 1752019200000
 
 aws logs filter-log-events \
   --log-group-name /aws/eks/techx-tf4-cluster/cluster \
@@ -275,7 +275,7 @@ aws logs filter-log-events \
           }'
 ```
 
-**Query â€” bÆ°á»›c 2 (náº¿u bÆ°á»›c 1 khÃ´ng tháº¥y): má»Ÿ rá»™ng filter:**
+**Query �?" bư�>c 2 (nếu bư�>c 1 không thấy): m�Y r�Tng filter:**
 
 ```bash
 aws logs filter-log-events \
@@ -289,16 +289,16 @@ aws logs filter-log-events \
         | {time: .requestReceivedTimestamp, user: .user.username, object: .objectRef.name, ns: .objectRef.namespace}'
 ```
 
-**Náº¿u flagd sync tá»« central (khi fix xong):** Flag toggle qua HTTP sync â€”
-khÃ´ng tháº¥y trong K8s audit log. DÃ¹ng CloudTrail lookup cho event `PutParameter` (SSM)
-hoáº·c há»i BTC cho audit log cá»§a central flag service.
+**Nếu flagd sync từ central (khi fix xong):** Flag toggle qua HTTP sync �?"
+không thấy trong K8s audit log. Dùng CloudTrail lookup cho event `PutParameter` (SSM)
+hoặc hỏi BTC cho audit log của central flag service.
 
 ---
 
 ### Scenario C: SSM bastion access (CloudTrail)
 
-**Sá»± kiá»‡n tháº­t:** `quang.tranminh` má»Ÿ SSM tunnel vÃ o bastion lÃºc 00:07â€“00:08 UTC ngÃ y 14/07.
-ÄÃ£ cÃ³ evidence táº¡i `SSM-startsession-cloudtrail.md`.
+**Sự ki�?n thật:** `quang.tranminh` m�Y SSM tunnel vào bastion lúc 00:07�?"00:08 UTC ngày 14/07.
+Đã có evidence tại `SSM-startsession-cloudtrail.md`.
 
 **Query:**
 
@@ -318,31 +318,31 @@ aws cloudtrail lookup-events \
     }'
 ```
 
-**Tráº£ lá»i:** WHO=quang.tranminh (AuditReadOnlyAndAnalyze role),
-WHAT=StartSession SSM vÃ o bastion `i-072084d1cf0b2f1c9`,
-WHEN=00:07:14 UTC (07:07:14 +07), HOW=AWS SSM Console/CLI tá»« IP `118.68.56.162`.
+**Trả lời:** WHO=quang.tranminh (AuditReadOnlyAndAnalyze role),
+WHAT=StartSession SSM vào bastion `i-072084d1cf0b2f1c9`,
+WHEN=00:07:14 UTC (07:07:14 +07), HOW=AWS SSM Console/CLI từ IP `118.68.56.162`.
 
 ---
 
-## Pháº§n 4: Xá»­ lÃ½ khi gáº·p sá»± cá»‘ lÃºc drill
+## Phần 4: Xử lý khi gặp sự c�' lúc drill
 
-### KhÃ´ng tháº¥y event nÃ o trong time window
+### Không thấy event nào trong time window
 
 ```
-1. Má»Ÿ rá»™ng window: Â±30 phÃºt, Â±1 giá», Â±1 ngÃ y
-2. Bá» filter phá»¥, chá»‰ giá»¯ filter chÃ­nh
-3. Check láº¡i epoch: Ä‘Ã£ nhÃ¢n 1000 Ä‘á»ƒ ra milliseconds chÆ°a?
-4. Kiá»ƒm tra log stream cÃ³ active khÃ´ng:
+1. M�Y r�Tng window: ±30 phút, ±1 giờ, ±1 ngày
+2. Bỏ filter phụ, ch�? giữ filter chính
+3. Check lại epoch: �'ã nhân 1000 �'�f ra milliseconds chưa?
+4. Ki�fm tra log stream có active không:
    aws logs describe-log-streams \
      --log-group-name /aws/eks/techx-tf4-cluster/cluster \
      --order-by LastEventTime --descending --max-items 3 \
      --profile TF4-AuditReadOnlyAndAnalyze-511825856493
 ```
 
-### jq parse lá»—i
+### jq parse l�-i
 
 ```bash
-# Bá» jq, xem raw text trÆ°á»›c
+# Bỏ jq, xem raw text trư�>c
 aws logs filter-log-events \
   --log-group-name /aws/eks/techx-tf4-cluster/cluster \
   --start-time START_MS \
@@ -351,35 +351,35 @@ aws logs filter-log-events \
   | grep -o '"username":"[^"]*"' | sort | uniq
 ```
 
-### CloudTrail lookup-events cháº­m
+### CloudTrail lookup-events chậm
 
 ```bash
-# DÃ¹ng CloudWatch Logs Insights thay tháº¿ (nhanh hÆ¡n vá»›i large dataset)
-# Log group: /aws/cloudtrail/tf4-general-cloudtrail (náº¿u Ä‘Ã£ setup CWL integration)
-# Hoáº·c dÃ¹ng CloudTrail console filter trá»±c tiáº¿p
+# Dùng CloudWatch Logs Insights thay thế (nhanh hơn v�>i large dataset)
+# Log group: /aws/cloudtrail/tf4-general-cloudtrail (nếu �'ã setup CWL integration)
+# Hoặc dùng CloudTrail console filter trực tiếp
 ```
 
-### Credentials háº¿t háº¡n giá»¯a chá»«ng
+### Credentials hết hạn giữa chừng
 
 ```bash
 aws sso login --profile TF4-AuditReadOnlyAndAnalyze-511825856493
-# Sau Ä‘Ã³ cháº¡y láº¡i query
+# Sau �'ó chạy lại query
 ```
 
 ---
 
-## Pháº§n 5: Chá»©ng minh log khÃ´ng sá»­a Ä‘Æ°á»£c (Tamper-Evident)
+## Phần 5: Chứng minh log không sửa �'ược (Tamper-Evident)
 
-Khi mentor há»i "lÃ m sao tÃ´i tin log nÃ y khÃ´ng bá»‹ sá»­a?":
+Khi mentor hỏi "làm sao tôi tin log này không b�< sửa?":
 
-**Láº­p luáº­n 1 â€” Separation of Duties (ADR-001):**
-> "CDO07 chá»‰ cÃ³ Read-only profile. KhÃ´ng cÃ³ quyá»n write vÃ o CloudWatch Logs, S3 CloudTrail bucket,
-> hoáº·c báº¥t ká»³ resource nÃ o. Operator (CDO04/CDO08) thá»±c thi infrastructure,
-> CDO07 verify Ä‘á»™c láº­p â€” khÃ´ng cÃ³ conflict of interest."
+**Lập luận 1 �?" Separation of Duties (ADR-001):**
+> "CDO07 ch�? có Read-only profile. Không có quyền write vào CloudWatch Logs, S3 CloudTrail bucket,
+> hoặc bất kỳ resource nào. Operator (CDO04/CDO08) thực thi infrastructure,
+> CDO07 verify �'�Tc lập �?" không có conflict of interest."
 
-**Láº­p luáº­n 2 â€” S3 Versioning:**
-> "S3 bucket `tf4-cloudtrail-logs-bucket-511825856493` cÃ³ versioning Enabled.
-> Ngay cáº£ náº¿u file bá»‹ overwrite, version cÅ© váº«n cÃ²n. CÃ³ thá»ƒ verify báº±ng:"
+**Lập luận 2 �?" S3 Versioning:**
+> "S3 bucket `tf4-cloudtrail-logs-bucket-511825856493` có versioning Enabled.
+> Ngay cả nếu file b�< overwrite, version cũ vẫn còn. Có th�f verify bằng:"
 
 ```bash
 aws s3api list-object-versions \
@@ -389,30 +389,30 @@ aws s3api list-object-versions \
   | jq '.Versions | length'
 ```
 
-**Láº­p luáº­n 3 â€” IAM khÃ´ng cÃ³ DeleteObject:**
-> "Operator roles khÃ´ng cÃ³ `s3:DeleteObject`, `cloudtrail:StopLogging`,
-> hay `logs:DeleteLogStream` trong policy. NgÆ°á»i váº­n hÃ nh khÃ´ng tá»± xÃ³a váº¿t cá»§a mÃ¬nh."
+**Lập luận 3 �?" IAM không có DeleteObject:**
+> "Operator roles không có `s3:DeleteObject`, `cloudtrail:StopLogging`,
+> hay `logs:DeleteLogStream` trong policy. Người vận hành không tự xóa vết của mình."
 
-**Äiá»ƒm yáº¿u cáº§n thÃ nh tháº­t nÃªu:**
-> "CloudTrail `LogFileValidationEnabled` hiá»‡n lÃ  `false` â€” chÃºng tÃ´i Ä‘Ã£ táº¡o
-> ticket AUDIT-011 yÃªu cáº§u CDO04 fix Terraform. ÄÃ¢y lÃ  gap Ä‘ang trong quÃ¡ trÃ¬nh fix.
-> Trong thá»i gian chá», S3 versioning + Separation of Duties lÃ  compensating control."
+**Đi�fm yếu cần thành thật nêu:**
+> "CloudTrail `LogFileValidationEnabled` hi�?n là `false` �?" chúng tôi �'ã tạo
+> ticket AUDIT-011 yêu cầu CDO04 fix Terraform. Đây là gap �'ang trong quá trình fix.
+> Trong thời gian chờ, S3 versioning + Separation of Duties là compensating control."
 
 ---
 
-## Pháº§n 6: Checklist trÆ°á»›c khi vÃ o phÃ²ng vá»›i mentor
+## Phần 6: Checklist trư�>c khi vào phòng v�>i mentor
 
-- [ ] AWS SSO login cÃ²n háº¡n (test `aws sts get-caller-identity`)
+- [ ] AWS SSO login còn hạn (test `aws sts get-caller-identity`)
 - [ ] kubeconfig updated
-- [ ] Terminal má»Ÿ sáºµn, profile Ä‘Ã£ set
-- [ ] File nÃ y in ra hoáº·c má»Ÿ sáºµn trÃªn mÃ n hÃ¬nh thá»© 2
-- [ ] Biáº¿t epoch cá»§a 2026-07-14 07:15Z = `1752383700000`
-- [ ] Biáº¿t epoch cá»§a 2026-07-14 07:30Z = `1752384600000`
-- [ ] Incident report `incident-20260714-checkout-payment.md` má»Ÿ sáºµn (Scenario A data)
+- [ ] Terminal m�Y sẵn, profile �'ã set
+- [ ] File này in ra hoặc m�Y sẵn trên màn hình thứ 2
+- [ ] Biết epoch của 2026-07-14 07:15Z = `1752383700000`
+- [ ] Biết epoch của 2026-07-14 07:30Z = `1752384600000`
+- [ ] Incident report `incident-20260714-checkout-payment.md` m�Y sẵn (Scenario A data)
 
 ---
 
 **Playbook version:** 1.0
-**TÃ¡c giáº£:** CDO07 â€” HoÃ ng Kim HÃ¹ng
-**NgÃ y:** 2026-07-15
-**Káº¿ tiáº¿p:** Xem drill log táº¡i `aud-17.2-drill-log.md`
+**Tác giả:** CDO07 �?" Hoàng Kim Hùng
+**Ngày:** 2026-07-15
+**Kế tiếp:** Xem drill log tại `aud-17.2-drill-log.md`
