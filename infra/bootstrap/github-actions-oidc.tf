@@ -221,6 +221,17 @@ data "aws_iam_policy_document" "github_actions_deploy" {
     actions   = ["eks:DescribeCluster"]
     resources = [local.eks_cluster_arn]
   }
+
+  statement {
+    sid    = "ReadTechxEcrImagesForDeployValidation"
+    effect = "Allow"
+
+    actions = [
+      "ecr:DescribeImages"
+    ]
+
+    resources = [local.ecr_repository_arn]
+  }
 }
 
 resource "aws_iam_policy" "github_actions_deploy" {
