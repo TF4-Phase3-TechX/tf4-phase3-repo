@@ -22,7 +22,7 @@ sum(rate(aiops_llm_calls_total{service="product-reviews", status=~"error|timeout
 ```lucene
 kubernetes.labels.app:"product-reviews" AND (message:*timeout* OR message:*429* OR message:*rate limit*) AND message:(*llm* OR *openai* OR *bedrock*)
 ```
-[🔗 View Logs in Grafana](http://grafana.internal/explore?left=%5B%22now-1h%22,%22now%22,%22opensearch%22,%7B%22expr%22:%22kubernetes.labels.app:"product-reviews" AND (message:*timeout* OR message:*429* OR message:*rate limit*) AND message:(*llm* OR *openai* OR *bedrock*)%22%7D%5D)
+[🔗 View Logs in Grafana](http://grafana.internal/explore?left=%5B%22now-1h%22,%22now%22,%22opensearch%22,%7B%22query%22:%22kubernetes.labels.app:"product-reviews" AND (message:*timeout* OR message:*429* OR message:*rate limit*) AND message:(*llm* OR *openai* OR *bedrock*)%22%7D%5D)
 
 ## ⚠️ Limitations & Notes
 - **Trace Context:** Traces might not be linked if the downstream SDK handled the error gracefully without setting the OpenTelemetry span status to ERROR.
