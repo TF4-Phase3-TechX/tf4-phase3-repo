@@ -337,6 +337,7 @@ Lý do: Grafana async-order signal, `flagd` runtime config local demo file, `kaf
 | Action | Owner | Priority | Status |
 |---|---|---:|---|
 | Lưu report và evidence vào Jira incident/subtask | CDO07 | P1 | Open |
+| Refactor `Accounting.Consumer` tạo mới DbContext/Scope cho mỗi message để tránh bị poisoned | Backend | P0 | Open |
 | Bổ sung idempotency/rate-limit cho Kafka consumers | Backend | P1 | Open |
 | Bổ sung alert/trace cho async-order lag và accounting/fraud backlog | Observability / backend | P1 | Open |
 | Ghi nhận checkout/cart `GetCart` và `cartFailure` là signal phụ, không gán root cause | CDO07 | P1 | Open |
