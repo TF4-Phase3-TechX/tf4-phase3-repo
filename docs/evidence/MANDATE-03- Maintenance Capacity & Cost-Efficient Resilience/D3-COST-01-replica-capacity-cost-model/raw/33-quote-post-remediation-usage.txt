@@ -1,0 +1,3 @@
+﻿NAME                    CPU(cores)   MEMORY(bytes)   
+quote-dfd7f7bb7-bml7r   1m           17Mi            
+quote-dfd7f7bb7-fbq6z   1m           18Mi            
