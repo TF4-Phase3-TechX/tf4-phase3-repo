@@ -1,6 +1,6 @@
 # CDO handoff — Bedrock production readiness and controlled deployment
 
-Status: **production resources provisioned; Pod Identity Agent installation, final review and controlled deployment remain pending**.
+Status: **production prerequisites ready; final PR review/merge and controlled deployment remain pending**.
 
 This runbook is the execution contract between AIO1 and CDO for Mandate 06. It is intentionally explicit enough for a CDO engineer or an AI assistant to follow without relying on chat history. Jira tracking: [SCRUM-94](https://tf4-phase3.atlassian.net/browse/SCRUM-94). Implementation review: [PR #155](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/155).
 
@@ -22,6 +22,8 @@ AIO1 has completed the application implementation, local tests and a real-model 
 | Evaluation Guardrail | `e2svpiawj1v5`, version `3`, account `589077667575` |
 | Production Guardrail | `wckqh9dms6qa`, version `1`, `READY` |
 | Pod Identity association | `a-iuw7np6l5niq1k2zt` |
+| Pod Identity Agent | `v1.3.10-eksbuild.3`, `ACTIVE` |
+| Terraform apply revision | `355cd4e94bbda78225b1b0fe10ff749e6f95afe7` |
 | Previous Helm revision | `45` |
 | Previous product-reviews image digest | `sha256:3f14cd7b9cf1395b18bb65e8459fbcae1e58527279a5fcb09674aecca3b98136` |
 | Proposed deployment window | `2026-07-15T07:00:00Z`–`2026-07-15T09:00:00Z` |
@@ -30,7 +32,7 @@ AIO1 has completed the application implementation, local tests and a real-model 
 
 The bake-off ran 30 versioned cases three times against three models, producing 270 sanitized records. Nova 2 Lite was the only model to pass all hard gates. The canonical evidence is the [scorecard](model-selection-scorecard.md) and [machine-readable report](eval/bakeoff-report.json).
 
-The evaluation Guardrail is evidence only. CDO08 provisioned the production Guardrail, runtime role, Pod Identity association and canary Secret in account `511825856493`. IAM Access Analyzer validation was reported as `PASS`. The Pod Identity Agent is not installed yet; the application must not deploy until the Terraform add-on change has completed and the add-on reports `ACTIVE`.
+The evaluation Guardrail is evidence only. CDO08 provisioned the production Guardrail, runtime role, Pod Identity association and canary Secret in account `511825856493`. IAM Access Analyzer validation was reported as `PASS`. CDO08 subsequently applied Terraform revision `355cd4e94bbda78225b1b0fe10ff749e6f95afe7` and reported Pod Identity Agent version `v1.3.10-eksbuild.3` in `ACTIVE` state. Production prerequisites are therefore ready; deployment still requires PR #155 approval/merge and the controlled-deployment gates in this runbook.
 
 ## 2. Meaning of “controlled deployment”
 
@@ -431,7 +433,7 @@ An AI assistant may use this block as a task map. Production identifiers below w
 
 ```yaml
 mandate: 06
-status: waiting_for_cdo_prerequisites
+status: waiting_for_final_review_and_merge
 production:
   account_id: "511825856493"
   region: us-east-1
@@ -448,7 +450,9 @@ production:
   iam_access_analyzer_validation: PASS
   pod_identity_association_id: a-iuw7np6l5niq1k2zt
   pod_identity_association_arn: arn:aws:eks:us-east-1:511825856493:podidentityassociation/techx-tf4-cluster/a-iuw7np6l5niq1k2zt
-  pod_identity_agent_status: PENDING_TERRAFORM_ADDON
+  pod_identity_agent_version: v1.3.10-eksbuild.3
+  pod_identity_agent_status: ACTIVE
+  terraform_apply_revision: 355cd4e94bbda78225b1b0fe10ff749e6f95afe7
   previous_helm_revision: "45"
   previous_product_reviews_image_digest: sha256:3f14cd7b9cf1395b18bb65e8459fbcae1e58527279a5fcb09674aecca3b98136
   deployment_window_utc: 2026-07-15T07:00:00Z/2026-07-15T09:00:00Z

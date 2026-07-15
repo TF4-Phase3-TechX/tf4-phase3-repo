@@ -4,7 +4,7 @@ Only GitHub/PR URLs and sanitized committed artifacts belong in Jira. Do not pas
 
 ## CDO prerequisites
 
-- [ ] Install/confirm `eks-pod-identity-agent`; CDO08 reported it absent and the Terraform add-on change is pending.
+- [x] Install/confirm `eks-pod-identity-agent`; CDO08 reported version `v1.3.10-eksbuild.3` in `ACTIVE` state from Terraform apply revision `355cd4e94bbda78225b1b0fe10ff749e6f95afe7`.
 - [x] Create role `tf4-product-reviews-bedrock`; CDO08 reported IAM Access Analyzer validation `PASS`.
 - [x] Associate namespace `techx-tf4`, ServiceAccount `product-reviews-bedrock`, and the role (`a-iuw7np6l5niq1k2zt`).
 - [x] Create production Guardrail `wckqh9dms6qa`, pin numeric version `1`, and confirm `READY`.
