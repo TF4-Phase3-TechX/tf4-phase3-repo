@@ -1,95 +1,171 @@
 import json
 from datetime import datetime
+from urllib.parse import urlencode, quote
 
 class IncidentSummaryGenerator:
     """
-    Generates a human-readable incident summary MVP from structured detector output.
-    Addresses Task TF4AIO-43 and integrates with Task TF4AIO-38 (RCA Engine).
+    Generates a human-readable incident summary from structured detector output.
+    Addresses Task TF4AIO-43.
+
+    Design:
+    - Reads verification queries directly from detector evidence metadata
+      (no hard-coded queries).
+    - Preserves service, environment, and tenant_id scope from detector output.
+    - URL-encodes all Grafana Explore links.
     """
-    
-    def __init__(self, grafana_base_url="http://grafana.internal", opensearch_datasource_uid="opensearch"):
-        self.grafana_base_url = grafana_base_url
+
+    def __init__(
+        self,
+        grafana_base_url: str = "http://grafana.internal",
+        opensearch_datasource_uid: str = "opensearch",
+    ):
+        self.grafana_base_url = grafana_base_url.rstrip("/")
         self.opensearch_datasource_uid = opensearch_datasource_uid
 
+    def _build_grafana_explore_url(self, query: str) -> str:
+        """Builds a properly URL-encoded Grafana Explore link for OpenSearch."""
+        explore_params = {
+            "left": json.dumps(
+                [
+                    "now-1h",
+                    "now",
+                    self.opensearch_datasource_uid,
+                    {"query": query},
+                ]
+            )
+        }
+        return f"{self.grafana_base_url}/explore?{urlencode(explore_params)}"
+
     def generate_summary(self, detector_output: dict) -> str:
-        # If output comes from Task 38's RCARuleEngine
-        service = detector_output.get("service", "product-reviews")
-        timestamp = detector_output.get("timestamp", datetime.now().isoformat())
-        
-        # Read pre-calculated scores from Task 38
-        metric_score = detector_output.get("metric_anomaly_score", 0.0)
-        trace_score = detector_output.get("trace_error_score", 0.0)
-        log_score = detector_output.get("log_anomaly_score", 0.0)
-        ai_score = detector_output.get("ai_telemetry_score", 0.0)
+        """
+        Generate a Markdown incident summary.
+
+        Reads query metadata, scope labels, and score breakdown directly from
+        detector_output — no reconstruction or hard-coding.
+        """
+        # --- Core scope labels (must be preserved from detector) ---
+        service = detector_output.get("service", "unknown-service")
+        environment = detector_output.get("environment", "unknown-env")
+        tenant_id = detector_output.get("tenant_id", "unknown-tenant")
+        timestamp = detector_output.get("timestamp", datetime.utcnow().isoformat())
+        severity = detector_output.get("severity", "unknown").upper()
+
+        # --- Evidence metadata from detector (Task 38 / Task 41 output) ---
+        evidence = detector_output.get("evidence", {})
+
+        # For Task 38 (RCA engine) output
+        metric_query = evidence.get("metric_query", "N/A")
+        log_query = evidence.get("log_query", "N/A")
+        ai_query = evidence.get("ai_query", "N/A")
+        sources_unavailable = evidence.get("sources_unavailable", 0)
+
+        # For Task 41 (LLM detector) output
+        metrics_found = evidence.get("metrics_found", 0)
+        logs_found = evidence.get("logs_found", 0)
+        metrics_available = evidence.get("metrics_available", True)
+        logs_available = evidence.get("logs_available", True)
+
+        # --- RCA scoring (from Task 38 output) ---
+        metric_score = detector_output.get("metric_anomaly_score")
+        trace_score = detector_output.get("trace_error_score")
+        log_score = detector_output.get("log_anomaly_score")
+        ai_score = detector_output.get("ai_telemetry_score")
         total_score = detector_output.get("total_service_score", 0.0)
+        confidence = detector_output.get("confidence", "unknown")
 
-        # 1. Determine Confidence & RCA Scoring (Phase 3 Requirement)
-        if total_score >= 0.8:
-            confidence = f"High (Service Score: {total_score:.2f})"
-            severity = "HIGH"
-        elif total_score >= 0.4:
-            confidence = f"Medium (Service Score: {total_score:.2f})"
-            severity = "MEDIUM"
+        def fmt_score(s):
+            return f"{s:.2f}" if s is not None else "N/A (source unavailable)"
+
+        # --- Confidence label ---
+        if confidence == "high" and total_score >= 0.8:
+            confidence_label = f"High — score {total_score:.2f}, all sources available"
+        elif confidence == "partial":
+            confidence_label = f"Partial — score {total_score:.2f}, {sources_unavailable} source(s) unavailable"
+        elif confidence == "unknown":
+            confidence_label = "Unknown — all telemetry sources were unavailable during evaluation"
         else:
-            confidence = f"Low (Service Score: {total_score:.2f})"
-            severity = "LOW"
+            confidence_label = f"Low — score {total_score:.2f}"
 
-        # 2. Build Evidence Links / Queries
-        prom_query = f'sum(rate(aiops_llm_calls_total{{service="{service}", status=~"error|timeout|429"}}[5m])) / sum(rate(aiops_llm_calls_total{{service="{service}"}}[5m])) > 0.05'
-        log_query = f'kubernetes.labels.app:"{service}" AND (message:*timeout* OR message:*429* OR message:*rate limit*) AND message:(*llm* OR *openai* OR *bedrock*)'
-        
-        grafana_log_link = f"{self.grafana_base_url}/explore?left=%5B%22now-1h%22,%22now%22,%22{self.opensearch_datasource_uid}%22,%7B%22query%22:%22{log_query}%22%7D%5D"
+        # --- Grafana link (URL-encoded) ---
+        grafana_log_link = self._build_grafana_explore_url(log_query)
 
-        # 3. Format the Markdown Summary
-        summary = f"""# 🚨 AIOps Incident Summary: RCA_THRESHOLD_BREACH
+        summary = f"""# 🚨 AIOps Incident Summary
 
 **Service:** `{service}`
+**Environment:** `{environment}`
+**Tenant:** `{tenant_id}`
 **Severity:** `{severity}`
 **Detected At:** {timestamp}
+**Confidence:** {confidence_label}
 
-## 📊 Overview
-The AIOps detector identified a potential issue crossing the RCA threshold.
-- **Metric Anomaly Score:** {metric_score:.2f}
-- **Log Anomaly Score:** {log_score:.2f}
-- **Trace Error Score:** {trace_score:.2f}
-- **AI Telemetry Score:** {ai_score:.2f}
-- **Confidence Level:** {confidence}
+---
 
-## 🔍 Evidence & Queries
-You can verify the signals using the following queries in the observability stack:
+## 📊 RCA Score Breakdown
+
+| Signal | Score | Weight |
+|---|---|---|
+| Metric Anomaly (HTTP 5xx / app errors) | {fmt_score(metric_score)} | 0.35 |
+| Trace Errors (Jaeger) | {fmt_score(trace_score)} | 0.25 |
+| Log Anomaly (OpenSearch) | {fmt_score(log_score)} | 0.20 |
+| AI Telemetry (app_llm_* errors) | {fmt_score(ai_score)} | 0.20 |
+| **Total Service Score** | **{total_score:.2f}** | — |
+
+---
+
+## 🔍 Verification Queries
+Paste these into your observability stack to reproduce the detector signal.
 
 **Metrics (Prometheus):**
 ```promql
-{prom_query}
+{metric_query}
 ```
 
-**Logs (OpenSearch):**
+**AI Telemetry (Prometheus):**
+```promql
+{ai_query}
+```
+
+**Logs (OpenSearch / Lucene):**
 ```lucene
 {log_query}
 ```
-[🔗 View Logs in Grafana]({grafana_log_link})
+[🔗 View Logs in Grafana (URL-encoded)]({grafana_log_link})
 
-## ⚠️ Limitations & Notes
-- **Trace Context:** Traces might not be linked if the downstream SDK handled the error gracefully without setting the OpenTelemetry span status to ERROR.
-- **Cost Impact:** Rate limits (429) might trigger this alert but do not necessarily indicate a system crash, they might just be a quota exhaustion. Check billing metrics if applicable.
+---
+
+## ⚠️ Limitations & Signal Gaps
+- **Source availability:** {sources_unavailable} telemetry source(s) were unavailable during this evaluation; unavailable sources are excluded from score re-normalisation.
+- **Trace Context:** OTel span status may not reflect LLM errors if the SDK handles failures gracefully without calling `span.set_status(StatusCode.ERROR)`.
+- **Rate Limits vs. Crashes:** A `429 rate_limited` event scores the same as a hard error. Check provider billing dashboard if `ai_score` is the primary driver.
 """
         return summary
 
+
 if __name__ == "__main__":
-    # Mock output exactly as produced by Task 38 RCARuleEngine
-    mock_incident = {
+    # Simulate Task 38 (RCA Engine) output — no hard-coded queries
+    mock_rca_output = {
         "service": "product-reviews",
-        "timestamp": "2026-07-15T15:40:00Z",
-        "metric_anomaly_score": 1.0,
-        "trace_error_score": 0.0,
-        "log_anomaly_score": 1.0,
+        "environment": "production",
+        "tenant_id": "default",
+        "timestamp": "2026-07-15T09:40:00Z",
+        "metric_anomaly_score": 0.9,
+        "trace_error_score": None,           # Jaeger unavailable
+        "log_anomaly_score": 0.6,
         "ai_telemetry_score": 1.0,
-        "total_service_score": 0.75,
-        "is_incident": True
+        "total_service_score": 0.83,
+        "confidence": "partial",
+        "is_incident": True,
+        "evidence": {
+            "metric_query": 'sum(rate(http_server_requests_total{service="product-reviews", status=~"5.."}[5m])) / sum(rate(http_server_requests_total{service="product-reviews"}[5m]))',
+            "log_query": 'kubernetes.labels.app:"product-reviews" AND level:"ERROR"',
+            "ai_query": 'sum(rate(app_llm_requests_total{service="product-reviews", status=~"error|timeout|rate_limited"}[5m]))',
+            "sources_unavailable": 1,
+        },
     }
 
     generator = IncidentSummaryGenerator()
-    report = generator.generate_summary(mock_incident)
+    report = generator.generate_summary(mock_rca_output)
     with open("incident_report.md", "w", encoding="utf-8") as f:
         f.write(report)
     print("Report saved to incident_report.md")
+    print(report)

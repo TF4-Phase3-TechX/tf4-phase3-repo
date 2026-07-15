@@ -1,29 +1,48 @@
-# AIOps Incident Summary: AI_LLM_TIMEOUT_ERROR
+# 🚨 AIOps Incident Summary
 
-**Service:** `tf1-ai-triage-engine`
-**Severity:** `HIGH`
-**Detected At:** 2026-07-14T15:40:00Z
+**Service:** `product-reviews`
+**Environment:** `production`
+**Tenant:** `default`
+**Severity:** `UNKNOWN`
+**Detected At:** 2026-07-15T09:40:00Z
+**Confidence:** Partial — score 0.83, 1 source(s) unavailable
 
-## Overview
-The AIOps detector identified a potential issue matching the rule `ai_llm_timeout_error`.
-- **Metrics triggered:** 1
-- **Logs matched:** 15
-- **Confidence Level:** High (Correlated Metrics and Logs)
+---
 
-## Evidence & Queries
-You can verify the signals using the following queries in the observability stack:
+## 📊 RCA Score Breakdown
+
+| Signal | Score | Weight |
+|---|---|---|
+| Metric Anomaly (HTTP 5xx / app errors) | 0.90 | 0.35 |
+| Trace Errors (Jaeger) | N/A (source unavailable) | 0.25 |
+| Log Anomaly (OpenSearch) | 0.60 | 0.20 |
+| AI Telemetry (app_llm_* errors) | 1.00 | 0.20 |
+| **Total Service Score** | **0.83** | — |
+
+---
+
+## 🔍 Verification Queries
+Paste these into your observability stack to reproduce the detector signal.
 
 **Metrics (Prometheus):**
 ```promql
-sum(rate(aiops_llm_calls_total{service="tf1-ai-triage-engine", status=~"error|timeout|429"}[15m])) > 0
+sum(rate(http_server_requests_total{service="product-reviews", status=~"5.."}[5m])) / sum(rate(http_server_requests_total{service="product-reviews"}[5m]))
 ```
 
-**Logs (Loki):**
-```logql
-{service="tf1-ai-triage-engine"} |~ "(?i)(llm|openai|anthropic).*?(timeout|429|rate limit|failed)"
+**AI Telemetry (Prometheus):**
+```promql
+sum(rate(app_llm_requests_total{service="product-reviews", status=~"error|timeout|rate_limited"}[5m]))
 ```
-[View Logs in Grafana](http://grafana.internal/explore?left=%5B%22now-1h%22,%22now%22,%22loki%22,%7B%22expr%22:%22{service="tf1-ai-triage-engine"} |~ "(?i)(llm|openai|anthropic).*?(timeout|429|rate limit|failed)"%22%7D%5D)
 
-## Limitations & Notes
-- **Trace Context:** Traces might not be linked if the downstream SDK handled the error gracefully without setting the OpenTelemetry span status to ERROR.
-- **Cost Impact:** Rate limits (429) might trigger this alert but do not necessarily indicate a system crash, they might just be a quota exhaustion. Check billing metrics if applicable.
+**Logs (OpenSearch / Lucene):**
+```lucene
+kubernetes.labels.app:"product-reviews" AND level:"ERROR"
+```
+[🔗 View Logs in Grafana (URL-encoded)](http://grafana.internal/explore?left=%5B%22now-1h%22%2C+%22now%22%2C+%22opensearch%22%2C+%7B%22query%22%3A+%22kubernetes.labels.app%3A%5C%22product-reviews%5C%22+AND+level%3A%5C%22ERROR%5C%22%22%7D%5D)
+
+---
+
+## ⚠️ Limitations & Signal Gaps
+- **Source availability:** 1 telemetry source(s) were unavailable during this evaluation; unavailable sources are excluded from score re-normalisation.
+- **Trace Context:** OTel span status may not reflect LLM errors if the SDK handles failures gracefully without calling `span.set_status(StatusCode.ERROR)`.
+- **Rate Limits vs. Crashes:** A `429 rate_limited` event scores the same as a hard error. Check provider billing dashboard if `ai_score` is the primary driver.

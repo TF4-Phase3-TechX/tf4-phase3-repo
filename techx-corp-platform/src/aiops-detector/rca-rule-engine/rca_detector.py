@@ -10,28 +10,30 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # ==========================================
-# 1. OBSERVABILITY LOGGING (Inherited from TF1)
+# 1. OBSERVABILITY LOGGING
 # ==========================================
 class JsonFormatter(logging.Formatter):
-    """Formats logs as JSON for OpenSearch ingestion, similar to TF1 observability.py"""
+    """Formats logs as JSON for OpenSearch ingestion."""
     def format(self, record):
         log_record = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage()
+            "message": record.getMessage(),
         }
-        if hasattr(record, 'rca_context'):
+        if hasattr(record, "rca_context"):
             log_record["rca_context"] = record.rca_context
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_record)
+
 
 logger = logging.getLogger("RCARuleEngine")
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
 
 # ==========================================
 # 2. DATA MODELS
@@ -40,30 +42,35 @@ logger.setLevel(logging.INFO)
 class RCAScoreContext:
     service: str
     timestamp: str
-    metric_anomaly_score: float = 0.0
-    trace_error_score: float = 0.0
-    log_anomaly_score: float = 0.0
-    ai_telemetry_score: float = 0.0
+    # Score components: float = signal value, None = source unavailable
+    metric_anomaly_score: Optional[float] = None
+    trace_error_score: Optional[float] = None
+    log_anomaly_score: Optional[float] = None
+    ai_telemetry_score: Optional[float] = None
+    # Derived fields
     total_service_score: float = 0.0
+    sources_available: int = 0
+    sources_unavailable: int = 0
     is_incident: bool = False
+    confidence: str = "unknown"  # "high" | "partial" | "unknown"
     evidence: Dict[str, Any] = field(default_factory=dict)
 
+
 # ==========================================
-# 3. TELEMETRY CLIENTS (Inherited from TF1 ContextTools)
+# 3. TELEMETRY CLIENTS
 # ==========================================
 class TelemetryClient:
-    """Base client with advanced retry logic & connection pooling."""
+    """Base client with retry logic. Returns None on source failure (not 0.0)."""
+
     def __init__(self, base_url: str, timeout: int = 5, retries: int = 3):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
-        
-        # Exponential backoff strategy for robust cluster communication
         retry_strategy = Retry(
             total=retries,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET", "POST"]
+            allowed_methods=["GET", "POST"],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
@@ -77,113 +84,179 @@ class TelemetryClient:
             return resp.json()
         except requests.exceptions.RequestException as e:
             logger.error(f"HTTP Request failed for {url}: {str(e)}")
-            return None
+            return None  # Explicit None = source unavailable
+
 
 class PrometheusClient(TelemetryClient):
-    def evaluate_promql(self, query: str) -> float:
-        """Evaluates a PromQL query and returns a normalized anomaly score 0.0 - 1.0"""
+    def evaluate_promql(self, query: str) -> Optional[float]:
+        """
+        Returns:
+          float 0.0–1.0  : normalized score from live data
+          None           : source unavailable / query error
+        """
         payload = self._get("/api/v1/query", {"query": query})
-        if payload and payload.get("status") == "success":
-            results = payload.get("data", {}).get("result", [])
-            if results:
-                try:
-                    val = float(results[0]["value"][1])
-                    return min(1.0, val) # Normalize up to 1.0 max severity
-                except (IndexError, ValueError):
-                    pass
-        return 0.0
+        if payload is None:
+            return None  # source unavailable
+        if payload.get("status") != "success":
+            return None
+        results = payload.get("data", {}).get("result", [])
+        if not results:
+            return 0.0  # source healthy, no anomaly
+        try:
+            val = float(results[0]["value"][1])
+            return min(1.0, val)
+        except (IndexError, ValueError, KeyError):
+            return 0.0
+
 
 class OpenSearchClient(TelemetryClient):
-    def evaluate_lucene(self, index: str, query: str) -> float:
-        """Evaluates OpenSearch log anomalies and normalizes to 0.0 - 1.0"""
+    def evaluate_lucene(self, index: str, query: str) -> Optional[float]:
+        """
+        Returns:
+          float 0.0–1.0  : normalized from hit count
+          None           : source unavailable / query error
+        """
         payload = self._get(f"/{index}/_search", {"q": query})
-        if payload and not payload.get("error"):
-            hits = payload.get("hits", {}).get("total", {}).get("value", 0)
-            # Thresholding: e.g. 50 errors is considered full 1.0 anomaly
-            return min(1.0, hits / 50.0)
-        return 0.0
+        if payload is None:
+            return None  # source unavailable
+        if payload.get("error"):
+            return None
+        hits = payload.get("hits", {}).get("total", {}).get("value", 0)
+        return min(1.0, hits / 50.0)
+
 
 class JaegerClient(TelemetryClient):
-    def evaluate_trace_errors(self, service: str) -> float:
-        """Evaluates trace errors via Jaeger API"""
-        payload = self._get("/api/traces", {"service": service, "tags": '{"error":"true"}'})
-        if payload and payload.get("data"):
-            traces = len(payload["data"])
-            return min(1.0, traces / 10.0) # 10 error traces = 1.0 anomaly
-        return 0.0
+    def evaluate_trace_errors(self, service: str) -> Optional[float]:
+        """
+        Returns:
+          float 0.0–1.0  : normalized from error trace count
+          None           : source unavailable / query error
+        """
+        payload = self._get(
+            "/api/traces", {"service": service, "tags": '{"error":"true"}'}
+        )
+        if payload is None:
+            return None  # source unavailable
+        traces = len(payload.get("data", []))
+        return min(1.0, traces / 10.0)
+
 
 # ==========================================
-# 4. CORE ENGINE (Phase 3 Requirement)
+# 4. CORE ENGINE
 # ==========================================
 class RCARuleEngine:
     """
-    Phase 3: RCA Service Score Evaluator 
-    Inherits architectural robustness from TF1 ContextClient/ToolRegistry
+    Phase 3: RCA Service Score Evaluator.
+    Distinguishes telemetry-source failure (None) from healthy zero (0.0).
+    Only available sources contribute to the score calculation.
     """
+
+    # Phase 3 formula weights
+    W_METRIC = 0.35
+    W_TRACE = 0.25
+    W_LOG = 0.20
+    W_AI = 0.20
+
     def __init__(self):
-        # Initialize specialized clients
-        self.prom_client = PrometheusClient(os.getenv("PROMETHEUS_URL", "http://prometheus:9090"))
-        self.os_client = OpenSearchClient(os.getenv("OPENSEARCH_URL", "http://opensearch:9200"))
-        self.jaeger_client = JaegerClient(os.getenv("JAEGER_URL", "http://jaeger:16686"))
-        
+        self.prom_client = PrometheusClient(
+            os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
+        )
+        self.os_client = OpenSearchClient(
+            os.getenv("OPENSEARCH_URL", "http://opensearch:9200")
+        )
+        self.jaeger_client = JaegerClient(
+            os.getenv("JAEGER_URL", "http://jaeger:16686")
+        )
         self.threshold = float(os.getenv("ALERT_THRESHOLD", "0.75"))
-        
-        # Phase 3 Formula Weights
-        self.W_METRIC = 0.35
-        self.W_TRACE = 0.25
-        self.W_LOG = 0.20
-        self.W_AI = 0.20
 
     def evaluate(self, service: str) -> RCAScoreContext:
-        ctx = RCAScoreContext(service=service, timestamp=datetime.now(timezone.utc).isoformat())
-        
-        # 1. Metric Anomaly (HTTP 5xx error rate)
-        prom_query = f'sum(rate(http_requests_total{{service="{service}", status=~"5.."}}[5m])) / sum(rate(http_requests_total{{service="{service}"}}[5m]))'
-        ctx.metric_anomaly_score = self.prom_client.evaluate_promql(prom_query)
-        # Mock fallback for local MVP testing (if API unreachable)
-        if ctx.metric_anomaly_score == 0.0: ctx.metric_anomaly_score = 1.0
-        
-        # 2. Log Anomaly (OpenSearch Error Logs)
-        os_query = f'kubernetes.labels.app:"{service}" AND level:"ERROR"'
-        ctx.log_anomaly_score = self.os_client.evaluate_lucene(f"logs-{service}", os_query)
-        if ctx.log_anomaly_score == 0.0: ctx.log_anomaly_score = 1.0
-        
-        # 3. Trace Error (Jaeger Trace Errors)
-        ctx.trace_error_score = self.jaeger_client.evaluate_trace_errors(service)
-        
-        # 4. AI Telemetry Signal (Task 41 Integration)
-        ai_query = f'sum(rate(aiops_llm_calls_total{{service="{service}", status=~"error|timeout|429"}}[5m]))'
-        ctx.ai_telemetry_score = self.prom_client.evaluate_promql(ai_query)
-        if ctx.ai_telemetry_score == 0.0: ctx.ai_telemetry_score = 1.0
-        
-        # RCA Calculation Application
-        ctx.total_service_score = (
-            (self.W_METRIC * ctx.metric_anomaly_score) +
-            (self.W_TRACE * ctx.trace_error_score) +
-            (self.W_LOG * ctx.log_anomaly_score) +
-            (self.W_AI * ctx.ai_telemetry_score)
+        ctx = RCAScoreContext(
+            service=service,
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        
-        ctx.is_incident = ctx.total_service_score >= self.threshold
+
+        # Define queries (using actual app_llm_* metric family)
+        http_err_query = (
+            f'sum(rate(http_server_requests_total{{'
+            f'service="{service}", status=~"5.."}}[5m])) / '
+            f'sum(rate(http_server_requests_total{{service="{service}"}}[5m]))'
+        )
+        log_query = (
+            f'kubernetes.labels.app:"{service}" AND level:"ERROR"'
+        )
+        ai_query = (
+            f'sum(rate(app_llm_requests_total{{'
+            f'service="{service}", status=~"error|timeout|rate_limited"}}[5m]))'
+        )
+
+        # 1. Metric Anomaly (HTTP 5xx)
+        ctx.metric_anomaly_score = self.prom_client.evaluate_promql(http_err_query)
+
+        # 2. Log Anomaly
+        ctx.log_anomaly_score = self.os_client.evaluate_lucene(f"logs-{service}", log_query)
+
+        # 3. Trace Errors
+        ctx.trace_error_score = self.jaeger_client.evaluate_trace_errors(service)
+
+        # 4. AI Telemetry (app_llm_* — Task 41 integration)
+        ctx.ai_telemetry_score = self.prom_client.evaluate_promql(ai_query)
+
+        # Calculate score only from AVAILABLE sources (do not penalise for outages)
+        components = [
+            (self.W_METRIC, ctx.metric_anomaly_score),
+            (self.W_TRACE, ctx.trace_error_score),
+            (self.W_LOG, ctx.log_anomaly_score),
+            (self.W_AI, ctx.ai_telemetry_score),
+        ]
+
+        available = [(w, s) for w, s in components if s is not None]
+        unavailable = [(w, s) for w, s in components if s is None]
+
+        ctx.sources_available = len(available)
+        ctx.sources_unavailable = len(unavailable)
+
+        if not available:
+            # All sources down — cannot make a call
+            ctx.total_service_score = 0.0
+            ctx.confidence = "unknown"
+            ctx.is_incident = False
+        else:
+            # Re-normalise weights so they sum to 1.0 across available sources
+            total_weight = sum(w for w, _ in available)
+            ctx.total_service_score = sum(
+                (w / total_weight) * s for w, s in available
+            )
+            ctx.confidence = "high" if ctx.sources_unavailable == 0 else "partial"
+            ctx.is_incident = ctx.total_service_score >= self.threshold
+
         ctx.evidence = {
-            "metric_query": prom_query,
-            "log_query": os_query,
-            "ai_query": ai_query
+            "metric_query": http_err_query,
+            "log_query": log_query,
+            "ai_query": ai_query,
+            "sources_unavailable": ctx.sources_unavailable,
         }
-        
+
         return ctx
 
-    def monitor(self, service: str, interval_seconds: int = 5, max_iterations: int = 0):
-        logger.info(f"Engine initialized for service [{service}]. Alert Threshold: {self.threshold}")
+    def monitor(
+        self, service: str, interval_seconds: int = 15, max_iterations: int = 0
+    ):
+        logger.info(
+            f"Engine started for [{service}]. Threshold: {self.threshold}"
+        )
         iterations = 0
         try:
             while True:
                 ctx = self.evaluate(service)
-                if ctx.is_incident:
-                    logger.warning("RCA THRESHOLD BREACHED", extra={"rca_context": ctx.__dict__})
+                log_extra = {"rca_context": ctx.__dict__}
+
+                if ctx.confidence == "unknown":
+                    logger.warning("ALL SOURCES UNAVAILABLE — skipping evaluation", extra=log_extra)
+                elif ctx.is_incident:
+                    logger.warning("RCA THRESHOLD BREACHED", extra=log_extra)
                 else:
-                    logger.info("SERVICE HEALTHY", extra={"rca_context": ctx.__dict__})
-                
+                    logger.info("SERVICE HEALTHY", extra=log_extra)
+
                 iterations += 1
                 if max_iterations > 0 and iterations >= max_iterations:
                     break
@@ -191,6 +264,7 @@ class RCARuleEngine:
         except KeyboardInterrupt:
             logger.info("RCA Engine shutting down gracefully.")
 
+
 if __name__ == "__main__":
     engine = RCARuleEngine()
-    engine.monitor(service="product-reviews", interval_seconds=2, max_iterations=2)
+    engine.monitor(service="product-reviews", interval_seconds=2, max_iterations=1)
