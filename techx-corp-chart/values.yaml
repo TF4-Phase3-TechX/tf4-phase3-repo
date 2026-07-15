@@ -1498,7 +1498,7 @@ jaeger:
       url: http://opensearch:9200
   esIndexCleaner:
     enabled: true
-    numberOfDays: 3
+    numberOfDays: 1
     schedule: "35 23 * * *"
     resources:
       requests:
@@ -1666,7 +1666,7 @@ opensearch:
   opensearchJavaOpts: "-Xms400m -Xmx400m"
   persistence:
     enabled: true
-    size: 8Gi
+    size: 20Gi
     storageClass: "gp2"
   initResources:
     requests:
