@@ -10,6 +10,16 @@
 - Cho phép schema chấp nhận component `detector` trong [techx-corp-chart/values.schema.json](../../techx-corp-chart/values.schema.json).
 - Detector chạy bằng image `busybox:1.36`, query Prometheus mỗi 60 giây và emit structured JSONL to stdout/logs; không sửa flagd hoặc config của service khác.
 
+## Pull request liên quan
+- Implementation PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/136
+- PR title: `TF4AIO-6: add continuous detector workload with resource limits`
+- Commit chính trong PR: `9083977` (`feat(aiops): add detector workload to helm chart`)
+- Nội dung comment mô tả PR đã khớp acceptance kỹ thuật hiện tại:
+  - thêm Helm-based detector workload cho chạy liên tục,
+  - thêm resource requests/limits,
+  - giữ nguyên flagd và incident mechanism hiện có,
+  - thêm evidence documentation và planning links.
+
 ## Quyết định output channel
 - Channel đầu tiên được chọn: `stdout-jsonl` (structured JSON lines trên stdout/logs).
 - Lý do: phù hợp cho W2 minimum, dễ ingest vào logs/OpenSearch và không cần thay đổi service lõi hay flagd.
