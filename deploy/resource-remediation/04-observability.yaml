@@ -1,0 +1,44 @@
+opentelemetry-collector:
+  resources:
+    requests: { cpu: 100m, memory: 160Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+
+jaeger:
+  jaeger:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 768Mi }
+
+prometheus:
+  alertmanager:
+    resources:
+      requests: { cpu: 10m, memory: 50Mi }
+      limits: { cpu: 100m, memory: 128Mi }
+  configmapReload:
+    prometheus:
+      resources:
+        requests: { cpu: 10m, memory: 24Mi }
+        limits: { cpu: 100m, memory: 64Mi }
+  server:
+    resources:
+      requests: { cpu: 100m, memory: 1Gi }
+      limits: { cpu: "1", memory: 1Gi }
+
+grafana:
+  sidecar:
+    resources:
+      requests: { cpu: 10m, memory: 96Mi }
+      limits: { cpu: 150m, memory: 256Mi }
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 768Mi }
+
+opensearch:
+  resources:
+    requests: { cpu: 250m, memory: 1Gi }
+    limits: { cpu: "1", memory: 1100Mi }
+
+metrics-server:
+  resources:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits: { cpu: 100m, memory: 200Mi }

@@ -1,0 +1,23 @@
+# D5-PERF-03 rollout inventory. Resource values come from the reviewed D5-02 matrix.
+waves:
+  low-risk-stateless:
+    namespace: techx-tf4
+    release: techx-corp
+    workloads: [ad, email, image-provider, recommendation, product-reviews, llm]
+  revenue-critical-stateless:
+    namespace: techx-tf4
+    release: techx-corp
+    workloads: [frontend-proxy, frontend, product-catalog, cart, checkout, payment, currency, shipping, quote]
+  stateful-messaging:
+    namespace: techx-tf4
+    release: techx-corp
+    workloads: [kafka, postgresql, valkey-cart, accounting, fraud-detection]
+  observability:
+    namespace: techx-observability
+    release: techx-observability
+    workloads: []
+  remaining-exceptions:
+    namespace: techx-tf4
+    release: techx-corp
+    workloads: [flagd, load-generator]
+
