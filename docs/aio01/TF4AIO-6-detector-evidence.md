@@ -8,7 +8,7 @@
 ## Thay đổi thực hiện
 - Thêm component Helm `detector` trong [techx-corp-chart/values.yaml](../../techx-corp-chart/values.yaml).
 - Cho phép schema chấp nhận component `detector` trong [techx-corp-chart/values.schema.json](../../techx-corp-chart/values.schema.json).
-- Detector chạy bằng image `busybox:1.36`, query Prometheus mỗi 60 giây và emit structured JSONL to stdout/logs; không sửa flagd hoặc config của service khác.
+- Detector chạy bằng image `busybox:1.36`, thực hiện HTTP query Prometheus mỗi 60 giây và emit structured JSONL to stdout/logs theo kết quả probe; không sửa flagd hoặc config của service khác.
 
 ## Pull request liên quan
 - Implementation PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/136
@@ -26,27 +26,67 @@
 - Upgrade path cho W3: có thể chuyển sang Slack webhook, Grafana alert hoặc webhook khác nếu cần.
 
 ## Payload schema
+
+Machine-readable contract: [docs/aio01/evidence/detector-output-schema-v1.json](./evidence/detector-output-schema-v1.json)
+
+Compatibility rule:
+- `schema_version=1.0` giữ backward compatibility cho consumer hiện tại.
+- Field mới chỉ được thêm theo hướng additive; không đổi semantic các field required hiện có trong major `1.x`.
+
+Field contract (`schema_version=1.0`):
+
+| Field | Required | Type | Constraints / Enum | Notes |
+| --- | --- | --- | --- | --- |
+| `timestamp` | yes | string | RFC3339 UTC | thời điểm emit event |
+| `detection_id` | yes | string | non-empty | rule-id + timestamp |
+| `detector` | yes | string | `aioops-detector` | detector identity |
+| `service` | yes | string | non-empty | affected service |
+| `environment` | yes | string | non-empty | runtime env/namespace scope |
+| `channel` | yes | string | `stdout-jsonl` | output channel hiện tại |
+| `schema_version` | yes | string | `1.0` | payload version |
+| `incident_type` | yes | string | `prometheus_probe_ok`/`prometheus_probe_empty`/`prometheus_probe_error` | probe outcome |
+| `severity` | yes | string | `info`/`warning`/`critical` | routing severity |
+| `summary` | yes | string | non-empty | human summary |
+| `observed_value` | yes | string | non-empty | observed metric/result |
+| `threshold` | yes | string | non-empty | rule threshold |
+| `runbook_url` | yes | string | URI | runbook destination |
+| `owner` | yes | string | non-empty | current owner |
+| `owner_response_path` | yes | string | non-empty | escalation action |
+| `evidence.prometheus_url` | no | string | non-empty | query endpoint |
+
+Validation smoke check cho một emitted line:
+```bash
+kubectl -n techx-tf4 logs deploy/detector --tail=1 | jq -e '.timestamp and .detection_id and .service and .environment and .incident_type and .observed_value and .runbook_url'
+```
+
 ```json
 {
   "timestamp": "2026-07-14T07:30:00Z",
+  "detection_id": "prometheus-up-probe-v1-2026-07-14T07:30:00Z",
   "detector": "aioops-detector",
+  "service": "detector",
+  "environment": "techx-tf4",
   "channel": "stdout-jsonl",
   "schema_version": "1.0",
-  "incident_type": "prometheus_probe",
+  "incident_type": "prometheus_probe_ok",
   "severity": "info",
-  "summary": "Prometheus probe executed",
+  "summary": "Prometheus probe succeeded",
+  "observed_value": "1",
+  "threshold": "at_least_one_up_target",
+  "runbook_url": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/tree/main/docs/audit/runbooks",
   "evidence": {
     "prometheus_url": "http://prometheus:9090/api/v1/query?query=up"
   },
   "owner": "AIOps-oncall",
-  "owner_response_path": "review-runbook-and-create-ticket"
+  "owner_response_path": "open-runbook-then-create-incident-ticket"
 }
 ```
 
 ## Owner response path
 - Owner (`AIOps-oncall`) đọc entry detector từ logs.
-- Nếu phát hiện bất thường, owner kiểm tra evidence từ Prometheus/Grafana và cập nhật runbook hoặc tạo ticket phản ứng.
-- Đường dẫn này được ghi trong biến môi trường `OWNER_RESPONSE_PATH` và payload JSON.
+- Nếu `incident_type=prometheus_probe_empty` hoặc `prometheus_probe_error`, owner mở runbook ở `runbook_url` và tạo incident ticket theo `owner_response_path`.
+- Payload đã có các field phục vụ route/escalation trực tiếp: `service`, `environment`, `detection_id`, `observed_value`, `threshold`, `runbook_url`.
+- Đường dẫn escalation được ghi trong biến môi trường `OWNER_RESPONSE_PATH` và payload JSON.
 
 ## Validation plan cho task 3
 - Mục tiêu: validate detector với controlled load test hoặc failure drill phối hợp với CDO.
@@ -81,6 +121,7 @@
 - Chart values có component detector: [techx-corp-chart/values.yaml](../../techx-corp-chart/values.yaml).
 - Chart schema chấp nhận detector: [techx-corp-chart/values.schema.json](../../techx-corp-chart/values.schema.json).
 - Helm render thành công và sinh Deployment detector kèm env/output schema/resource limits: [docs/aio01/evidence/tf4aio6-detector-render-snippet.yaml](./evidence/tf4aio6-detector-render-snippet.yaml).
+- Payload contract machine-readable: [docs/aio01/evidence/detector-output-schema-v1.json](./evidence/detector-output-schema-v1.json).
 
 ### Negative evidence / blocker (cluster runtime)
 - Chưa lấy được bằng chứng live inventory trong namespace `techx-tf4` do local kube context chưa được cấu hình.

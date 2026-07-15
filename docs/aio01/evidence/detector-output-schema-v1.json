@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tf4-phase3-techx.github.io/schemas/detector-output-schema-v1.json",
+  "title": "AIO Detector Output Schema v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "timestamp",
+    "detection_id",
+    "detector",
+    "service",
+    "environment",
+    "channel",
+    "schema_version",
+    "incident_type",
+    "severity",
+    "summary",
+    "observed_value",
+    "threshold",
+    "runbook_url",
+    "owner",
+    "owner_response_path"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "description": "UTC timestamp in RFC3339 format"
+    },
+    "detection_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "detector": {
+      "type": "string",
+      "const": "aioops-detector"
+    },
+    "service": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["stdout-jsonl"]
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "incident_type": {
+      "type": "string",
+      "enum": [
+        "prometheus_probe_ok",
+        "prometheus_probe_empty",
+        "prometheus_probe_error"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warning", "critical"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_value": {
+      "type": "string",
+      "description": "Observed value as string for JSONL compatibility"
+    },
+    "threshold": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runbook_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "prometheus_url": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner_response_path": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

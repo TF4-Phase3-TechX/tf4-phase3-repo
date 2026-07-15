@@ -43,7 +43,30 @@ spec:
             - |
               while true; do
                 ts=$(date -u +%FT%TZ)
-                payload=$(printf '{"timestamp":"%s","detector":"aioops-detector","channel":"%s","schema_version":"%s","incident_type":"prometheus_probe","severity":"info","summary":"Prometheus probe executed","evidence":{"prometheus_url":"%s"},"owner":"AIOps-oncall","owner_response_path":"%s"}' "$ts" "${OUTPUT_CHANNEL:-stdout-jsonl}" "${OUTPUT_SCHEMA_VERSION:-1.0}" "${PROMETHEUS_URL:-http://prometheus:9090/api/v1/query?query=up}" "${OWNER_RESPONSE_PATH:-review-runbook-and-create-ticket}")
+                probe_url="${PROMETHEUS_URL:-http://prometheus:9090/api/v1/query?query=up}"
+                timeout_s="${PROMETHEUS_TIMEOUT_SECONDS:-8}"
+                response="$(wget -q -T "$timeout_s" -O - "$probe_url" 2>/dev/null || true)"
+
+                detection_id="${DETECTOR_RULE_ID:-prometheus-up-probe-v1}-$ts"
+                observed_value="n/a"
+                severity="warning"
+                incident_type="prometheus_probe_error"
+                summary="Prometheus probe failed"
+
+                if [ -n "$response" ] && echo "$response" | grep -q '"status":"success"'; then
+                  observed_value=$(echo "$response" | grep -o '"metric"' | wc -l | tr -d ' ')
+                  if [ "${observed_value:-0}" -ge 1 ]; then
+                    severity="info"
+                    incident_type="prometheus_probe_ok"
+                    summary="Prometheus probe succeeded"
+                  else
+                    severity="warning"
+                    incident_type="prometheus_probe_empty"
+                    summary="Prometheus probe returned no active target"
+                  fi
+                fi
+
+                payload=$(printf '{"timestamp":"%s","detection_id":"%s","detector":"aioops-detector","service":"%s","environment":"%s","channel":"%s","schema_version":"%s","incident_type":"%s","severity":"%s","summary":"%s","observed_value":"%s","threshold":"%s","runbook_url":"%s","evidence":{"prometheus_url":"%s"},"owner":"AIOps-oncall","owner_response_path":"%s"}' "$ts" "$detection_id" "${DETECTOR_SERVICE:-detector}" "${DETECTOR_ENVIRONMENT:-unknown}" "${OUTPUT_CHANNEL:-stdout-jsonl}" "${OUTPUT_SCHEMA_VERSION:-1.0}" "$incident_type" "$severity" "$summary" "$observed_value" "${DETECTOR_THRESHOLD:-at_least_one_up_target}" "${RUNBOOK_URL:-https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/tree/main/docs/audit/runbooks}" "$probe_url" "${OWNER_RESPONSE_PATH:-open-runbook-then-create-incident-ticket}")
                 echo "$payload"
                 sleep 60
               done
@@ -59,12 +82,24 @@ spec:
               value: cumulative
             - name: PROMETHEUS_URL
               value: http://prometheus:9090/api/v1/query?query=up
+            - name: PROMETHEUS_TIMEOUT_SECONDS
+              value: "8"
             - name: OUTPUT_CHANNEL
               value: stdout-jsonl
             - name: OUTPUT_SCHEMA_VERSION
               value: "1.0"
+            - name: DETECTOR_SERVICE
+              value: detector
+            - name: DETECTOR_ENVIRONMENT
+              value: techx-tf4
+            - name: DETECTOR_RULE_ID
+              value: prometheus-up-probe-v1
+            - name: DETECTOR_THRESHOLD
+              value: at_least_one_up_target
+            - name: RUNBOOK_URL
+              value: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/tree/main/docs/audit/runbooks
             - name: OWNER_RESPONSE_PATH
-              value: review-runbook-and-create-ticket
+              value: open-runbook-then-create-incident-ticket
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://$(OTEL_COLLECTOR_NAME):4317
           resources:
