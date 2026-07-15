@@ -98,6 +98,16 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-SecReli
                 "ec2:DescribeInstances"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "AllowECRReadImages",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:DescribeImages",
+                "ecr:DescribeRepositories",
+                "ecr:BatchGetImage"
+            ],
+            "Resource": "arn:aws:ecr:us-east-1:511825856493:repository/techx-corp"
         }
     ]
 }
@@ -107,7 +117,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-SecReli
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này gồm 6 Statements phục vụ cho khía cạnh Hạ tầng Tin cậy (Infrastructure Reliability), Đánh giá An toàn thông tin (Security Assessment) và Cấp quyền truy cập cổng giám sát bảo mật qua SSM Tunnel:
+Policy này gồm 7 Statements phục vụ cho khía cạnh Hạ tầng Tin cậy (Infrastructure Reliability), Đánh giá An toàn thông tin (Security Assessment), Cấp quyền truy cập cổng giám sát bảo mật qua SSM Tunnel, và Quyền đọc ECR:
 
 ### Statement 1: `InfrastructureReliabilityReadOnly` (Độ tin cậy hạ tầng - ReadOnly)
 
@@ -151,6 +161,11 @@ Nhóm quyền này cho phép đội ngũ bảo mật cấu hình, theo dõi và 
 * **Hành động**: `ssm:DescribeInstanceInformation`, `ssm:DescribeSessions`, `ssm:GetConnectionStatus`, `ec2:DescribeInstances`
 * **Tài nguyên**: `*` (áp dụng toàn cục để tra cứu).
 * **Mô tả**: Quyền kiểm tra trạng thái Online của Bastion host trong danh sách SSM và xem các phiên kết nối đang hoạt động.
+
+### Statement 7: `AllowECRReadImages` (Đọc thông tin Container Images từ ECR)
+* **Hành động**: `ecr:DescribeImages`, `ecr:DescribeRepositories`, `ecr:BatchGetImage`
+* **Tài nguyên**: `arn:aws:ecr:us-east-1:511825856493:repository/techx-corp`
+* **Mô tả**: Cho phép đội ngũ bảo mật đọc danh sách ảnh container, metadata và tải metadata của ảnh để kiểm tra tính toàn vẹn và bảo mật của container images trên ECR.
 
 ---
 [⬅️ Quay lại nhóm CDO08](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)
