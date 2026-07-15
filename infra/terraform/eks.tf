@@ -34,10 +34,11 @@ module "eks" {
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns            = {}
-    kube-proxy         = {}
-    vpc-cni            = {}
-    aws-ebs-csi-driver = {}
+    coredns                = {}
+    kube-proxy             = {}
+    vpc-cni                = {}
+    aws-ebs-csi-driver     = {}
+    eks-pod-identity-agent = {}
   }
 
   # EKS access entries are managed explicitly in eks-access-entries.tf.
