@@ -3,444 +3,216 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+"""Product review gRPC service with an application-owned Bedrock safety path."""
 
-# Python
-import os
-import json
-import time
 from concurrent import futures
+import logging
+import os
 import random
 
-# Pip
 import grpc
-from opentelemetry import trace, metrics
+from google.protobuf.json_format import MessageToDict
+from grpc_health.v1 import health_pb2, health_pb2_grpc
+from openfeature import api
+from openfeature.contrib.provider.flagd import FlagdProvider
+from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
-    OTLPLogExporter,
-)
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.trace import Status, StatusCode
 
-# Local
-import logging
+from ai_assistant import AssistantOutcome, GroundedAssistant
+from bedrock_adapter import BedrockAdapter
+from database import fetch_avg_product_review_score_from_db, fetch_product_reviews_from_db
 import demo_pb2
 import demo_pb2_grpc
-from grpc_health.v1 import health_pb2
-from grpc_health.v1 import health_pb2_grpc
-from database import fetch_product_reviews, fetch_product_reviews_from_db, fetch_avg_product_review_score_from_db
+from metrics import init_metrics
+from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
 
-from openfeature import api
-from openfeature.contrib.provider.flagd import FlagdProvider
 
-from metrics import (
-    init_metrics
-)
+logger = logging.getLogger("main")
+tracer = trace.get_tracer("product-reviews")
+product_review_svc_metrics = None
+product_catalog_stub = None
+assistant = None
 
-# OpenAI
-from openai import OpenAI
 
-from google.protobuf.json_format import MessageToJson, MessageToDict
+def must_map_env(key: str) -> str:
+    value = os.environ.get(key)
+    if not value:
+        raise RuntimeError(f"{key} environment variable must be set")
+    return value
 
-llm_host = None
-llm_port = None
-llm_mock_url = None
-llm_base_url = None
-llm_api_key = None
-llm_model = None
-llm_timeout_seconds = float(os.getenv("LLM_TIMEOUT_SECONDS", "5.0"))
 
-# Unknown models still export token usage, but never a misleading cost estimate.
-MODEL_PRICING_USD_PER_MILLION = {
-    "gpt-4o-mini": (0.15, 0.60),
-}
+def check_feature_flag(flag_name: str) -> bool:
+    return api.get_client().get_boolean_value(flag_name, False)
 
-# --- Define the tool for the OpenAI API ---
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "fetch_product_reviews",
-            "description": "Executes a SQL query to retrieve reviews for a particular product.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "product_id": {
-                        "type": "string",
-                        "description": "The product ID to fetch product reviews for.",
-                    }
-                },
-                "required": ["product_id"],
-            },
-        }
-    },
-      {
-          "type": "function",
-          "function": {
-              "name": "fetch_product_info",
-              "description": "Retrieves information for a particular product.",
-              "parameters": {
-                  "type": "object",
-                  "properties": {
-                      "product_id": {
-                          "type": "string",
-                          "description": "The product ID to fetch information for.",
-                      }
-                  },
-                  "required": ["product_id"],
-              },
-          }
-      }
-]
 
 class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
     def GetProductReviews(self, request, context):
-        logger.info(f"Receive GetProductReviews for product id:{request.product_id}")
-        product_reviews = get_product_reviews(request.product_id)
-
-        return product_reviews
+        logger.info("product_reviews_request", extra={"product_id": request.product_id})
+        return get_product_reviews(request.product_id)
 
     def GetAverageProductReviewScore(self, request, context):
-        logger.info(f"Receive GetAverageProductReviewScore for product id:{request.product_id}")
-        product_reviews = get_average_product_review_score(request.product_id)
-
-        return product_reviews
+        logger.info("product_review_score_request", extra={"product_id": request.product_id})
+        return get_average_product_review_score(request.product_id)
 
     def AskProductAIAssistant(self, request, context):
-        logger.info("Receive AskProductAIAssistant for product_id=%s question_length=%s", request.product_id, len(request.question))
-        ai_assistant_response = get_ai_assistant_response(request.product_id, request.question)
-
-        return ai_assistant_response
+        # Question content is intentionally absent from logs and trace attributes.
+        logger.info("ai_assistant_request", extra={"product_id": request.product_id})
+        return get_ai_assistant_response(request.product_id, request.question)
 
     def Check(self, request, context):
-        return health_pb2.HealthCheckResponse(
-            status=health_pb2.HealthCheckResponse.SERVING)
+        return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.SERVING)
 
     def Watch(self, request, context):
-        return health_pb2.HealthCheckResponse(
-            status=health_pb2.HealthCheckResponse.UNIMPLEMENTED)
+        return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.UNIMPLEMENTED)
 
-def get_product_reviews(request_product_id):
 
+def get_product_reviews(request_product_id: str):
     with tracer.start_as_current_span("get_product_reviews") as span:
-
         span.set_attribute("app.product.id", request_product_id)
-
-        product_reviews = demo_pb2.GetProductReviewsResponse()
+        response = demo_pb2.GetProductReviewsResponse()
         records = fetch_product_reviews_from_db(request_product_id)
-
-        for row in records:
-            logger.info(f"  username: {row[0]}, description: {row[1]}, score: {str(row[2])}")
-            product_reviews.product_reviews.add(
-                    username=row[0],
-                    description=row[1],
-                    score=str(row[2])
-            )
-
-        span.set_attribute("app.product_reviews.count", len(product_reviews.product_reviews))
-
-        # Collect metrics for this service
-        product_review_svc_metrics["app_product_review_counter"].add(len(product_reviews.product_reviews), {'product.id': request_product_id})
-
-        return product_reviews
-
-def get_average_product_review_score(request_product_id):
-
-    with tracer.start_as_current_span("get_average_product_review_score") as span:
-
-        span.set_attribute("app.product.id", request_product_id)
-
-        product_review_score = demo_pb2.GetAverageProductReviewScoreResponse()
-        avg_score = fetch_avg_product_review_score_from_db(request_product_id)
-        product_review_score.average_score = avg_score
-
-        span.set_attribute("app.product_reviews.average_score", avg_score)
-
-        return product_review_score
-
-def invoke_llm(client, span, call_name, model, **kwargs):
-    """Invoke one LLM call with consistent timeout, telemetry, and redacted logs."""
-    started = time.perf_counter()
-    outcome = "error"
-    attributes = {'llm.call': call_name, 'llm.model': model}
-    try:
-        response = client.chat.completions.create(model=model, **kwargs)
-        outcome = "success"
-        usage = getattr(response, "usage", None)
-        if usage:
-            prompt_tokens = usage.prompt_tokens
-            completion_tokens = usage.completion_tokens
-            total_tokens = usage.total_tokens
-            span.set_attribute(f"app.llm.{call_name}.prompt_tokens", prompt_tokens)
-            span.set_attribute(f"app.llm.{call_name}.completion_tokens", completion_tokens)
-            span.set_attribute(f"app.llm.{call_name}.total_tokens", total_tokens)
-            product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(prompt_tokens, {'llm.model': model})
-            product_review_svc_metrics["app_llm_completion_tokens_counter"].add(completion_tokens, {'llm.model': model})
-
-            pricing = MODEL_PRICING_USD_PER_MILLION.get(model)
-            if pricing:
-                input_price, output_price = pricing
-                cost = (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000.0
-                span.set_attribute(f"app.llm.{call_name}.estimated_cost_usd", cost)
-                product_review_svc_metrics["app_llm_estimated_cost_counter"].add(cost, {'llm.model': model})
-                logger.info(
-                    "LLM %s usage: model=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s cost_usd=%.6f",
-                    call_name, model, prompt_tokens, completion_tokens, total_tokens, cost,
-                )
-            else:
-                logger.warning("No cost pricing configured for LLM model=%s; token metrics recorded without cost", model)
-        else:
-            logger.info("LLM %s completed without usage data: model=%s", call_name, model)
-        return response
-    except Exception as exc:
-        span.record_exception(exc)
-        span.set_status(Status(StatusCode.ERROR, description=type(exc).__name__))
-        product_review_svc_metrics["app_llm_error_counter"].add(1, attributes)
-        logger.error("LLM %s failed: model=%s error_type=%s", call_name, model, type(exc).__name__)
-        raise
-    finally:
-        latency = time.perf_counter() - started
-        metric_attributes = {**attributes, 'llm.outcome': outcome}
-        span.set_attribute(f"app.llm.{call_name}.latency_seconds", latency)
-        product_review_svc_metrics["app_llm_latency_histogram"].record(latency, metric_attributes)
-        product_review_svc_metrics["app_llm_call_counter"].add(1, metric_attributes)
-
-
-def get_ai_assistant_response(request_product_id, question):
-
-    with tracer.start_as_current_span("get_ai_assistant_response") as span:
-
-        ai_assistant_response = demo_pb2.AskProductAIAssistantResponse()
-
-        span.set_attribute("app.product.id", request_product_id)
-        span.set_attribute("app.product.question_length", len(question))
-
-        llm_rate_limit_error = check_feature_flag("llmRateLimitError")
-        logger.info(f"llmRateLimitError feature flag: {llm_rate_limit_error}")
-        if llm_rate_limit_error:
-            random_number = random.random()
-            logger.info(f"Generated a random number: {str(random_number)}")
-            # return a rate limit error 50% of the time
-            if random_number < 0.5:
-
-                # ensure the mock LLM is always used, since we want to generate a 429 error
-                client = OpenAI(
-                    base_url=f"{llm_mock_url}",
-                    # The OpenAI API requires an api_key to be present, but
-                    # our LLM doesn't use it
-                    api_key=f"{llm_api_key}",
-                    timeout=llm_timeout_seconds,
-                    max_retries=0,
-                )
-
-                user_prompt = f"Answer the following question about product ID:{request_product_id}: {question}"
-                messages = [
-                   {"role": "system", "content": "You are a helpful assistant that answers related to a specific product. Use tools as needed to fetch the product reviews and product information. Keep the response brief with no more than 1-2 sentences. If you don't know the answer, just say you don't know."},
-                   {"role": "user", "content": user_prompt}
-                ]
-                logger.info(f"Invoking mock LLM with model: techx-llm-rate-limit")
-
-                try:
-                    initial_response = invoke_llm(
-                        client, span, "rate_limit_drill", "techx-llm-rate-limit",
-                        messages=messages,
-                        tools=tools,
-                        tool_choice="auto"
-                    )
-                except Exception:
-                    ai_assistant_response.response = "The system is unable to process your response. Please try again later."
-                    return ai_assistant_response
-
-        # otherwise, continue processing the request as normal
-        client = OpenAI(
-            base_url=f"{llm_base_url}",
-            # The OpenAI API requires an api_key to be present, but
-            # our LLM doesn't use it
-            api_key=f"{llm_api_key}",
-            timeout=llm_timeout_seconds,
-            max_retries=0,
+        for _, username, description, score in records:
+            response.product_reviews.add(username=username, description=description, score=str(score))
+        span.set_attribute("app.product_reviews.count", len(response.product_reviews))
+        product_review_svc_metrics["app_product_review_counter"].add(
+            len(response.product_reviews), {"product.id": request_product_id}
         )
+        return response
 
-        user_prompt = f"Answer the following question about product ID:{request_product_id}: {question}"
-        messages = [
-           {"role": "system", "content": "You are a helpful assistant that answers related to a specific product. Use tools as needed to fetch the product reviews and product information. Keep the response brief with no more than 1-2 sentences. If you don't know the answer, just say you don't know."},
-           {"role": "user", "content": user_prompt}
-        ]
 
-        # use the LLM to summarize the product reviews
-        try:
-            initial_response = invoke_llm(
-                client, span, "initial", llm_model,
-                messages=messages,
-                tools=tools,
-                tool_choice="auto"
+def get_average_product_review_score(request_product_id: str):
+    with tracer.start_as_current_span("get_average_product_review_score") as span:
+        span.set_attribute("app.product.id", request_product_id)
+        response = demo_pb2.GetAverageProductReviewScoreResponse()
+        response.average_score = fetch_avg_product_review_score_from_db(request_product_id)
+        return response
+
+
+def fetch_product_info(product_id: str) -> dict:
+    product = product_catalog_stub.GetProduct(demo_pb2.GetProductRequest(id=product_id), timeout=1.0)
+    # The caller further allow-lists fields before the provider boundary.
+    return MessageToDict(product, preserving_proto_field_name=True)
+
+
+def get_ai_assistant_response(request_product_id: str, question: str):
+    with tracer.start_as_current_span("get_ai_assistant_response") as span:
+        span.set_attribute("app.product.id", request_product_id)
+        # Preserve the BTC-owned incident flags at the application boundary.
+        # They exercise safe degradation and output blocking without selecting
+        # a mock provider or allowing intentionally inaccurate content through.
+        inject_rate_limit = check_feature_flag("llmRateLimitError") and random.random() < 0.5
+        if inject_rate_limit:
+            outcome = AssistantOutcome(
+                response=UNAVAILABLE_RESPONSE,
+                outcome="unavailable",
+                error_class="injected_rate_limit",
             )
-        except Exception:
-            ai_assistant_response.response = "The system is unable to process your response. Please try again later."
-            return ai_assistant_response
-
-        response_message = initial_response.choices[0].message
-        tool_calls = response_message.tool_calls
-
-        logger.info("Received initial LLM response: model=%s has_tool_calls=%s", llm_model, bool(tool_calls))
-
-        # Check if the model wants to call a tool
-        if tool_calls:
-            logger.info(f"Model wants to call {len(tool_calls)} tool(s)")
-
-            # Append the assistant's message with tool calls
-            messages.append(response_message)
-
-            # Process all tool calls
-            for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
-
-                logger.info(f"Processing tool call: '{function_name}' with arguments: {function_args}")
-
-                if function_name == "fetch_product_reviews":
-                    function_response = fetch_product_reviews(
-                        product_id=function_args.get("product_id")
-                    )
-                    logger.info("Tool fetch_product_reviews completed for product_id=%s", function_args.get("product_id"))
-
-                elif function_name == "fetch_product_info":
-                    function_response = fetch_product_info(
-                        product_id=function_args.get("product_id")
-                    )
-                    logger.info("Tool fetch_product_info completed for product_id=%s", function_args.get("product_id"))
-
-                else:
-                    raise Exception(f'Received unexpected tool call request: {function_name}')
-
-                # Append the tool response
-                messages.append(
-                    {
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": function_response,
-                    }
-                )
-
-            llm_inaccurate_response = check_feature_flag("llmInaccurateResponse")
-            logger.info(f"llmInaccurateResponse feature flag: {llm_inaccurate_response}")
-
-            if llm_inaccurate_response and request_product_id == "L9ECAV7KIM":
-                logger.info(f"Returning an inaccurate response for product_id: {request_product_id}")
-                # Add a final user message to ask the LLM to return an inaccurate response
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": f"Based on the tool results, answer the original question about product ID, but make the answer inaccurate:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
-                    }
-                )
-            else:
-                # Add a final user message to guide the LLM to synthesize the response
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": f"Based on the tool results, answer the original question about product ID:{request_product_id}. Keep the response brief with no more than 1-2 sentences."
-                    }
-                )
-
-            logger.info("Invoking final LLM call: model=%s message_count=%s", llm_model, len(messages))
-
-            try:
-                final_response = invoke_llm(
-                    client, span, "final", llm_model,
-                    messages=messages
-                )
-            except Exception:
-                ai_assistant_response.response = "The system is unable to process your response. Please try again later."
-                return ai_assistant_response
-
-            result = final_response.choices[0].message.content
-
-            ai_assistant_response.response = result
-
-            logger.info("Returning final AI assistant response: response_length=%s", len(result or ""))
-
         else:
-            logger.info("Returning direct AI assistant response: response_length=%s", len(response_message.content or ""))
-            ai_assistant_response.response = response_message.content
+            outcome = assistant.answer(request_product_id, question)
+            if check_feature_flag("llmInaccurateResponse") and request_product_id == "L9ECAV7KIM":
+                outcome = AssistantOutcome(
+                    response=INSUFFICIENT_RESPONSE,
+                    outcome="insufficient",
+                    latency_ms=outcome.latency_ms,
+                    input_tokens=outcome.input_tokens,
+                    output_tokens=outcome.output_tokens,
+                    error_class="injected_inaccurate_response_blocked",
+                    quarantined_reviews=outcome.quarantined_reviews,
+                )
+        attributes = {
+            "llm.model": assistant.provider.model_id,
+            "llm.call": "converse",
+            "llm.outcome": outcome.outcome,
+            "guardrail.version": assistant.provider.guardrail_version,
+            "error.class": outcome.error_class or "none",
+        }
+        span.set_attribute("gen_ai.request.model", assistant.provider.model_id)
+        span.set_attribute("app.ai.outcome", outcome.outcome)
+        span.set_attribute("app.ai.guardrail.version", assistant.provider.guardrail_version)
+        product_review_svc_metrics["app_ai_assistant_counter"].add(1, attributes)
+        provider_attempted = outcome.outcome != "blocked" or bool(outcome.error_class)
+        if provider_attempted:
+            product_review_svc_metrics["app_llm_call_counter"].add(1, attributes)
+            product_review_svc_metrics["app_llm_latency_histogram"].record(outcome.latency_ms / 1_000, attributes)
+        product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(outcome.input_tokens, attributes)
+        product_review_svc_metrics["app_llm_completion_tokens_counter"].add(outcome.output_tokens, attributes)
+        estimated_cost = (
+            outcome.input_tokens * float(os.environ.get("BEDROCK_INPUT_USD_PER_MILLION", "1"))
+            + outcome.output_tokens * float(os.environ.get("BEDROCK_OUTPUT_USD_PER_MILLION", "5"))
+        ) / 1_000_000
+        product_review_svc_metrics["app_llm_estimated_cost_counter"].add(estimated_cost, attributes)
+        if outcome.outcome in ("unavailable", "blocked"):
+            product_review_svc_metrics["app_ai_fallback_counter"].add(1, attributes)
+        if outcome.outcome == "unavailable":
+            product_review_svc_metrics["app_llm_error_counter"].add(1, attributes)
+        logger.info(
+            "ai_assistant_completed",
+            extra={
+                "model_id": assistant.provider.model_id,
+                "guardrail_version": assistant.provider.guardrail_version,
+                "outcome": outcome.outcome,
+                "latency_ms": round(outcome.latency_ms, 1),
+                "input_tokens": outcome.input_tokens,
+                "output_tokens": outcome.output_tokens,
+                "estimated_cost_usd": round(estimated_cost, 8),
+                "error_class": outcome.error_class or "none",
+                "quarantined_reviews": outcome.quarantined_reviews,
+            },
+        )
+        return demo_pb2.AskProductAIAssistantResponse(response=outcome.response)
 
-        # Collect metrics for this service
-        product_review_svc_metrics["app_ai_assistant_counter"].add(1, {'product.id': request_product_id})
 
-        return ai_assistant_response
+def configure_logging(service_name: str) -> None:
+    provider = LoggerProvider(resource=Resource.create({"service.name": service_name}))
+    set_logger_provider(provider)
+    provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(insecure=True)))
+    logger.addHandler(LoggingHandler(level=logging.NOTSET, logger_provider=provider))
 
-def fetch_product_info(product_id):
-    try:
-        product = product_catalog_stub.GetProduct(demo_pb2.GetProductRequest(id=product_id))
-        logger.info(f"product_catalog_stub.GetProduct returned: '{product}'")
-        json_str = MessageToJson(product)
-        return json_str
-    except Exception as e:
-        return json.dumps({"error": str(e)})
 
-def must_map_env(key: str):
-    value = os.environ.get(key)
-    if value is None:
-        raise Exception(f'{key} environment variable must be set')
-    return value
-
-def check_feature_flag(flag_name: str):
-    # Initialize OpenFeature
-    client = api.get_client()
-    return client.get_boolean_value(flag_name, False)
-
-if __name__ == "__main__":
-    service_name = must_map_env('OTEL_SERVICE_NAME')
-
-    api.set_provider(FlagdProvider(host=os.environ.get('FLAGD_HOST', 'flagd'), port=os.environ.get('FLAGD_PORT', 8013)))
-
-    # Initialize Traces and Metrics
-    tracer = trace.get_tracer_provider().get_tracer(service_name)
-    meter = metrics.get_meter_provider().get_meter(service_name)
-
-    product_review_svc_metrics = init_metrics(meter)
-
-    # Initialize Logs
-    logger_provider = LoggerProvider(
-        resource=Resource.create(
-            {
-                'service.name': service_name,
-            }
-        ),
+def main() -> None:
+    global tracer, product_review_svc_metrics, product_catalog_stub, assistant
+    service_name = must_map_env("OTEL_SERVICE_NAME")
+    api.set_provider(
+        FlagdProvider(host=os.environ.get("FLAGD_HOST", "flagd"), port=int(os.environ.get("FLAGD_PORT", "8013")))
     )
-    set_logger_provider(logger_provider)
-    log_exporter = OTLPLogExporter(insecure=True)
-    logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
-    handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+    tracer = trace.get_tracer_provider().get_tracer(service_name)
+    product_review_svc_metrics = init_metrics(metrics.get_meter_provider().get_meter(service_name))
+    configure_logging(service_name)
 
-    # Attach OTLP handler to logger
-    logger = logging.getLogger('main')
-    logger.addHandler(handler)
+    product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(
+        grpc.insecure_channel(must_map_env("PRODUCT_CATALOG_ADDR"))
+    )
+    system_canary = os.environ.get("BEDROCK_SYSTEM_CANARY", "")
+    provider = BedrockAdapter(
+        model_id=must_map_env("BEDROCK_MODEL_ID"),
+        guardrail_id=must_map_env("BEDROCK_GUARDRAIL_ID"),
+        guardrail_version=must_map_env("BEDROCK_GUARDRAIL_VERSION"),
+        region=os.environ.get("AWS_REGION", "us-east-1"),
+        output_mode=os.environ.get("BEDROCK_OUTPUT_MODE", "json_schema"),
+        deadline_seconds=float(os.environ.get("BEDROCK_DEADLINE_SECONDS", "4.5")),
+        system_canary=system_canary,
+    )
+    assistant = GroundedAssistant(
+        provider=provider,
+        fetch_product=fetch_product_info,
+        fetch_reviews=fetch_product_reviews_from_db,
+        system_canary=system_canary,
+    )
 
-    # Create gRPC server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-
-    # Add class to gRPC server
     service = ProductReviewService()
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
     health_pb2_grpc.add_HealthServicer_to_server(service, server)
-
-    llm_host = must_map_env('LLM_HOST')
-    llm_port = must_map_env('LLM_PORT')
-    llm_mock_url = f"http://{llm_host}:{llm_port}/v1"
-    llm_base_url = must_map_env('LLM_BASE_URL')
-    llm_api_key = must_map_env('OPENAI_API_KEY')
-    llm_model = must_map_env('LLM_MODEL')
-
-    catalog_addr = must_map_env('PRODUCT_CATALOG_ADDR')
-    pc_channel = grpc.insecure_channel(catalog_addr)
-    product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(pc_channel)
-
-    # Start server
-    port = must_map_env('PRODUCT_REVIEWS_PORT')
-    server.add_insecure_port(f'[::]:{port}')
+    port = must_map_env("PRODUCT_REVIEWS_PORT")
+    server.add_insecure_port(f"[::]:{port}")
     server.start()
-    logger.info(f'Product reviews service started, listening on port {port}')
+    logger.info("product_reviews_service_started", extra={"port": port})
     server.wait_for_termination()
+
+
+if __name__ == "__main__":
+    main()
