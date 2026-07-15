@@ -227,7 +227,15 @@ components:
 
   cart:
     enabled: true
-    replicas: 1
+    replicas: 2
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: cart
     useDefault:
       env: true
     service:
@@ -276,10 +284,10 @@ components:
 
   checkout:
     enabled: true
-    replicas: 1
+    replicas: 2
     autoscaling:
       enabled: true
-      minReplicas: 1
+      minReplicas: 2
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
       behavior:
@@ -289,6 +297,14 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
     useDefault:
       env: true
     service:
@@ -430,10 +446,10 @@ components:
 
   frontend:
     enabled: true
-    replicas: 1
+    replicas: 2
     autoscaling:
       enabled: true
-      minReplicas: 1
+      minReplicas: 2
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
       behavior:
@@ -443,6 +459,14 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
     useDefault:
       env: true
     service:
@@ -511,7 +535,15 @@ components:
 
   frontend-proxy:
     enabled: true
-    replicas: 1
+    replicas: 2
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend-proxy
     useDefault:
       env: true
     service:
@@ -658,7 +690,15 @@ components:
 
   payment:
     enabled: true
-    replicas: 1
+    replicas: 2
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: payment
     useDefault:
       env: true
     service:
@@ -701,7 +741,15 @@ components:
 
   product-catalog:
     enabled: true
-    replicas: 1
+    replicas: 2
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: product-catalog
     useDefault:
       env: true
     service:
@@ -845,7 +893,15 @@ components:
 
   shipping:
     enabled: true
-    replicas: 1
+    replicas: 2
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: shipping
     useDefault:
       env: true
     service:
@@ -1495,10 +1551,10 @@ prometheus:
     resources:
       requests:
         cpu: 100m
-        memory: 200Mi
+        memory: 1Gi
       limits:
         cpu: 500m
-        memory: 400Mi
+        memory: 1Gi
 
 grafana:
   enabled: true
