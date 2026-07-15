@@ -201,7 +201,7 @@ jobs:
               assert {'cpu', 'memory'} <= set(container['resources']['requests']), name
               assert {'cpu', 'memory'} <= set(container['resources']['limits']), name
           hpas = {r['metadata']['name']: r for r in resources if r['kind'] == 'HorizontalPodAutoscaler'}
-          assert set(hpas) == {'frontend', 'checkout'}
+          assert set(hpas) == {'frontend', 'checkout', 'currency'}
           for name, hpa in hpas.items():
               assert hpa['spec']['scaleTargetRef']['name'] == name
               assert hpa['spec']['metrics'][0]['resource']['name'] == 'cpu'

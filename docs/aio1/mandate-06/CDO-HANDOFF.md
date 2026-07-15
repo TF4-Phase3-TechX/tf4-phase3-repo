@@ -272,7 +272,7 @@ CDO waits for AIO to complete all of the following before deployment:
 
 1. Replace evaluation account/Guardrail values in the reviewed runtime policy with the production values.
 2. Update [`../../../deploy/values-aio-llm.yaml`](../../../deploy/values-aio-llm.yaml) with the production Guardrail ID/version.
-3. Update the trusted-main deployment path to apply `deploy/values-aio-llm.yaml`.
+3. Ensure the reviewed GitOps production values carry the complete configuration from `deploy/values-aio-llm.yaml`. The current Argo CD application consumes GitOps `app-values.yaml`, `flagd-values.yaml` and `image-revisions.yaml`; it does not consume this repository's deploy overlay directly.
 4. Ensure the merge cannot deploy an old image with new Bedrock configuration as an uncontrolled intermediate state.
 5. Re-run CI and obtain review of the final production-config commit.
 6. Keep ADR-006 in `Proposed` status.
@@ -304,7 +304,9 @@ Evidence must include:
 
 ## 13. Deployment contract
 
-Use the team's trusted GitHub/Helm deployment path after the final commit is reviewed. The application deployment must retain the existing overlays and add the AIO overlay:
+Use the team's reviewed GitOps promotion path after the final commit is reviewed and merged. `build-and-push.yaml` builds the changed `product-reviews` image and opens or updates the `promotion/production` PR in `tf4-phase3-gitops-manifests`; it does not deploy with Helm directly.
+
+Before the GitOps promotion PR is merged, CDO08 must add the complete AIO production override to the GitOps production values, either in `environments/production/app-values.yaml` or a dedicated reviewed values file referenced by the `techx-corp` Argo CD Application. The effective values must be equivalent to:
 
 ```text
 deploy/values-app-stamp.yaml
@@ -312,7 +314,7 @@ deploy/values-flagd-sync.yaml
 deploy/values-aio-llm.yaml
 ```
 
-Equivalent Helm shape, for CDO review only:
+Equivalent Helm shape, for render comparison only:
 
 ```bash
 helm upgrade --install techx-corp ./techx-corp-chart \
@@ -327,7 +329,9 @@ helm upgrade --install techx-corp ./techx-corp-chart \
   --timeout 10m
 ```
 
-This command is not authorization to bypass the normal pipeline. CDO selects the approved execution mechanism and records its run URL/revision.
+This command is not authorization to bypass Argo CD. A direct `helm upgrade` would conflict with the GitOps ownership model and must not be used for this rollout. CDO records the GitOps promotion PR, merged GitOps revision, Argo sync revision and resulting Helm revision.
+
+Stop the promotion when the rendered Deployment contains `BEDROCK_GUARDRAIL_ID=SET_BY_CDO`, omits the canary Secret reference, or does not use ServiceAccount `product-reviews-bedrock`.
 
 ## 14. Immediate rollout verification
 
@@ -475,6 +479,7 @@ no_merge_until:
   - pod_identity_associated
   - canary_secret_exists
   - production_values_updated
+  - gitops_production_values_updated
   - deployment_overlay_applied
   - final_commit_reviewed
 abort_on:
