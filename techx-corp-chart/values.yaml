@@ -1449,6 +1449,7 @@ prometheus:
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
+      - "web.enable-lifecycle"
     retention: 7d
     tsdb:
       out_of_order_time_window: 30m
