@@ -9,6 +9,18 @@ resource "kubernetes_cluster_role_v1" "terraform_plan_crd_reader" {
     resources  = ["customresourcedefinitions"]
     verbs      = ["get", "list", "watch"]
   }
+
+  rule {
+    api_groups = ["karpenter.k8s.aws"]
+    resources  = ["ec2nodeclasses"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    api_groups = ["karpenter.sh"]
+    resources  = ["nodepools"]
+    verbs      = ["get", "list", "watch"]
+  }
 }
 
 resource "kubernetes_cluster_role_binding_v1" "terraform_plan_crd_reader" {
