@@ -108,11 +108,108 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
             "Action": [
                 "budgets:ViewBudget",
                 "eks:DescribeCluster",
+                "eks:ListNodegroups",
+                "eks:DescribeNodegroup",
                 "rds:DescribeDBInstances",
                 "guardduty:ListDetectors",
-                "securityhub:DescribeHub"
+                "securityhub:DescribeHub",
+                "cloudwatch:GetMetricData",
+                "cloudwatch:GetMetricStatistics",
+                "cloudwatch:ListMetrics",
+                "cloudwatch:DescribeAlarms",
+                "elasticloadbalancing:DescribeLoadBalancers",
+                "elasticloadbalancing:DescribeTargetGroups",
+                "elasticloadbalancing:DescribeTargetHealth",
+                "elasticloadbalancing:DescribeListeners",
+                "elasticloadbalancing:DescribeRules"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "SSMAndEC2AuditReadOnly",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ssm:DescribeInstanceInformation",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Mandate04CloudTrailLogBucketAuditRead",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketPolicyStatus",
+                "s3:GetBucketPolicy",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetBucketLogging"
+            ],
+            "Resource": [
+                "arn:aws:s3:::tf4-cloudtrail-logs-bucket-*",
+                "arn:aws:s3:::tf4-cloudtrail-logs-bucket-*/*"
+            ]
+        },
+        {
+            "Sid": "Mandate04CloudTrailIntegrityRead",
+            "Effect": "Allow",
+            "Action": [
+                "cloudtrail:ListPublicKeys",
+                "cloudtrail:GetInsightSelectors",
+                "cloudtrail:ValidateLogs"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Mandate04CloudWatchAlarmRead",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:DescribeAlarms"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Mandate04IdentityStoreUserRead",
+            "Effect": "Allow",
+            "Action": [
+                "identitystore:DescribeUser",
+                "identitystore:ListUsers"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowPortForwardingToApprovedBastion",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:StartSession",
+                "ssm:GetDocument",
+                "ssm:DescribeDocument"
+            ],
+            "Resource": [
+                "arn:aws:ec2:us-east-1:511825856493:instance/i-072084d1cf0b2f1c9",
+                "arn:aws:ssm:us-east-1::document/AWS-StartPortForwardingSession"
+            ]
+        },
+        {
+            "Sid": "AllowSessionDataChannelForOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/${aws:userid}-*"
+            ]
+        },
+        {
+            "Sid": "AllowManageOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:ResumeSession",
+                "ssm:TerminateSession"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/${aws:userid}-*"
+            ]
         }
     ]
 }
@@ -122,7 +219,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa cao:
+Policy này được cấu thành từ 13 Statements phục vụ mục đích kiểm toán toàn diện hệ thống:
 
 ### 1. `AuditTrailsAndLogsReadOnly` (Nhật ký Audit & CloudTrail)
 * **Hành động**: Các hàm liên quan đến CloudTrail và CloudWatch Logs.
@@ -141,12 +238,12 @@ Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa 
 
 ### 4. `EvidenceBucketReadOnly` (Truy xuất bằng chứng lưu trữ)
 * **Hành động**: `s3:GetObject`, `s3:ListBucket`
-* **Tài nguyên**: S3 bucket `tf4-evidence-log-bucket` và toàn bộ các object con của nó.
+* **Tài nguyên**: S3 bucket `tf4-evidence-log-bucket` và toàn bộ các tệp tin con.
 * **Mô tả**: Cho phép liệt kê và tải xuống các tệp tin lưu trữ bằng chứng kiểm toán nằm trong bucket chuyên dụng của dự án.
 * **Mục đích**: Trích xuất báo cáo, snapshot cấu hình hoặc log được lưu trữ dài hạn phục vụ đoàn kiểm toán độc lập.
 
 ### 5. `S3MetadataAudit` (Kiểm tra an toàn cấu hình S3)
-* **Hành động**: `s3:GetBucketVersioning`, `s3:GetBucketObjectLockConfiguration`
+* **Hành động**: `s3:GetBucketVersioning`, `s3:GetBucketObjectLockConfiguration`, `s3:ListAllMyBuckets`, `s3:GetBucketLocation`, `s3:GetEncryptionConfiguration`, `s3:GetBucketPublicAccessBlock`
 * **Mô tả**: Xem trạng thái kích hoạt quản lý phiên bản (Versioning) và khóa bảo mật dữ liệu không cho phép xóa/ghi đè (Object Lock) trên toàn bộ S3.
 * **Mục đích**: Đảm bảo các bucket lưu trữ quan trọng không bị mất mát dữ liệu hoặc giả mạo.
 
@@ -161,10 +258,31 @@ Policy này được cấu thành từ 7 Statements có tính chuyên môn hóa 
 * **Mô tả**: Cho phép kiểm tra chính sách của khóa (Key Policy), trạng thái tự động xoay vòng khóa (Key Rotation). Đặc biệt cho phép hành động `kms:Decrypt` (Giải mã) nhằm cho phép các kiểm toán viên giải mã các tệp tin bằng chứng được mã hóa bằng các KMS Key này.
 * **Mục đích**: Cho phép đọc các log hoặc tài liệu nén đã được mã hóa ở mức lưu trữ (Rest Encryption) khi tiến hành audit.
 
-### 8. `ExtendedAuditReadOnly` (Kiểm toán Bổ sung & Bảo mật)
-* **Hành động**: `budgets:ViewBudget`, `eks:DescribeCluster`, `rds:DescribeDBInstances`, `guardduty:ListDetectors`, `securityhub:DescribeHub`
-* **Mô tả**: Cho phép đọc thông tin cấu hình và ngân sách (Budget), kiểm tra cụm EKS, RDS DB instances, cũng như đọc kết quả dò quét bảo mật từ GuardDuty và Security Hub.
-* **Mục đích**: Bổ sung quyền giúp Audit Team (CDO07) có thể nghiệm thu đầy đủ các bằng chứng liên quan đến chi phí, workload Kubernetes, Database và an toàn bảo mật chung của tài khoản.
+### 8. `ExtendedAuditReadOnly` (Kiểm toán Bổ sung & Giám sát Incident)
+* **Hành động**: Đọc EKS NodeGroups, metric CloudWatch, và mô tả ALB/Target Group.
+* **Mô tả**: Cho phép kiểm tra cấu hình node group, query metric hiệu năng của ALB/EKS/Application, kiểm tra target health để phục vụ việc truy vết các sự cố (như lỗi checkout/payment) và nghiệm thu độ sẵn sàng của hạ tầng.
+* **Mục đích**: Hỗ trợ đắc lực việc kiểm toán các incident phát sinh và nghiệm thu SLO/SLI.
+
+### 9. `SSMAndEC2AuditReadOnly` (Đọc trạng thái SSM và EC2)
+* **Hành động**: `ssm:DescribeSessions`, `ssm:GetConnectionStatus`, `ssm:DescribeInstanceInformation`, `ec2:DescribeInstances`
+* **Mô tả**: Xem thông tin các phiên SSM Session Manager đang hoạt động và xem danh sách máy chủ EC2 bao gồm Bastion Host.
+
+### 10. `Mandate04CloudTrailLogBucketAuditRead` & `Mandate04CloudTrailIntegrityRead` (Forensic CloudTrail & Log Integrity)
+* **Mô tả**: Đọc chi tiết chính sách, lifecycle, log logging của CloudTrail Log Bucket. Cho phép validate CloudTrail logs để xác thực log không bị thay đổi.
+* **Mục đích**: Đáp ứng yêu cầu log integrity kiểm toán của Mandate #4.
+
+### 11. `Mandate04CloudWatchAlarmRead` & `Mandate04IdentityStoreUserRead` (Giám sát cảnh báo & Tra cứu danh tính)
+* **Mô tả**: Đọc cấu hình các alarm để kiểm chứng độ phủ cảnh báo. Cho phép mô tả và tra cứu User trong AWS Identity Store.
+* **Mục đích**: Map danh tính người dùng chịu trách nhiệm thực thi các hoạt động bảo mật.
+
+### 12. `AllowPortForwardingToApprovedBastion` (Mở SSM Tunnel tới Bastion)
+* **Hành động**: `ssm:StartSession`, `ssm:GetDocument`, `ssm:DescribeDocument`
+* **Tài nguyên**: Bastion `i-072084d1cf0b2f1c9` và document `AWS-StartPortForwardingSession`.
+* **Mô tả**: Cho phép thiết lập tunnel port forwarding về localhost cá nhân để truy cập các portal private (Grafana, Jaeger, OpenSearch).
+
+### 13. `AllowSessionDataChannelForOwnSessions` & `AllowManageOwnSessions` (Quản lý SSM Session cá nhân)
+* **Mô tả**: Cho phép thiết lập kênh truyền dữ liệu bảo mật và quản lý (Resume/Terminate) phiên làm việc của cá nhân.
 
 ---
 [⬅️ Quay lại nhóm CDO07](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)
+

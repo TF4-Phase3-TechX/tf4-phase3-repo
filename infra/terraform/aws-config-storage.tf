@@ -218,10 +218,6 @@ resource "aws_s3_bucket_replication_configuration" "config_archive" {
 
       metrics {
         status = "Enabled"
-
-        event_threshold {
-          minutes = 15
-        }
       }
     }
   }

@@ -7,10 +7,15 @@ on:
         description: Optional image tag. Default = short SHA.
         required: false
         type: string
+      services:
+        description: Comma-separated services to build and promote.
+        required: true
+        type: string
   push:
     branches: [main]
     paths:
       - 'techx-corp-platform/**'
+      - 'techx-corp-chart/**'
       - 'deploy/build-push-images.sh'
       - '.github/workflows/build-and-push.yaml'
 
@@ -28,13 +33,71 @@ env:
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
 jobs:
+  changes:
+    name: Select images to build
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.services.outputs.services }}
+      chart_changed: ${{ steps.services.outputs.chart_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select affected services
+        id: services
+        shell: bash
+        run: |
+          set -euo pipefail
+          all=(accounting ad cart checkout currency email fraud-detection frontend frontend-proxy image-provider kafka llm load-generator payment product-catalog product-reviews quote recommendation shipping)
+          input='${{ inputs.services }}'
+
+          chart_changed=false
+          if [[ "${{ github.event_name }}" == workflow_dispatch ]]; then
+            services="$(tr ',' '\n' <<< "$input" | sed '/^$/d' | sort -u)"
+          else
+            base='${{ github.event.before }}'
+            head='${{ github.sha }}'
+            if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+              base="$(git rev-parse "${head}^" 2>/dev/null || true)"
+            fi
+            changed="$(if [[ -n "$base" ]]; then git diff --name-only "$base" "$head"; else git ls-tree -r --name-only "$head"; fi)"
+            if grep -q '^techx-corp-chart/' <<< "$changed"; then
+              chart_changed=true
+            fi
+            services=""
+            while IFS= read -r path; do
+              [[ -n "$path" ]] || continue
+              if [[ "$path" =~ ^techx-corp-platform/src/([^/]+)/ ]]; then
+                service="${BASH_REMATCH[1]}"
+                if printf '%s\n' "${all[@]}" | grep -Fxq "$service"; then
+                  services+="$service"$'\n'
+                fi
+              fi
+            done <<< "$changed"
+            services="$(printf '%s' "$services" | sort -u)"
+          fi
+
+          unknown="$(comm -23 <(printf '%s\n' "$services" | sed '/^$/d' | sort -u) <(printf '%s\n' "${all[@]}" | sort))"
+          [[ -z "$unknown" ]] || { echo "unknown services: $unknown" >&2; exit 1; }
+          services_json="$(printf '%s\n' "$services" | sed '/^$/d' | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          echo "services=$services_json" >> "$GITHUB_OUTPUT"
+          echo "chart_changed=$chart_changed" >> "$GITHUB_OUTPUT"
+          echo "Selected services: $services_json"
+          echo "Chart changed: $chart_changed"
+
   build:
     name: Build and push app images
+    needs: [changes]
+    if: needs.changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
       image_repository: ${{ steps.vars.outputs.image_repository }}
+      source_sha: ${{ github.sha }}
+      services: ${{ needs.changes.outputs.services }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,15 +116,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SHORT_SHA="${GITHUB_SHA::7}"
-          INPUT_TAG="${{ inputs.image_tag }}"
-          IMAGE_TAG="${INPUT_TAG:-$SHORT_SHA}"
-          IMAGE_REPOSITORY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
-
-          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "image_repository=${IMAGE_REPOSITORY}" >> "$GITHUB_OUTPUT"
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
-          echo "IMAGE_REPOSITORY=${IMAGE_REPOSITORY}" >> "$GITHUB_ENV"
+          short_sha="${GITHUB_SHA::7}"
+          input_tag='${{ inputs.image_tag }}'
+          image_tag="${input_tag:-$short_sha}"
+          image_repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "image_repository=$image_repository" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_TAG=$image_tag" >> "$GITHUB_ENV"
+          echo "IMAGE_REPOSITORY=$image_repository" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -74,44 +136,159 @@ jobs:
           IMAGE_VERSION=1.0
           DEMO_VERSION=${IMAGE_TAG}
           EOF
-          cat techx-corp-platform/.env.override
 
       - name: Prepare currency proto build directory
         working-directory: techx-corp-platform
         run: mkdir -p src/currency/proto
 
-      - name: Smoke build checkout image
-        working-directory: techx-corp-platform
-        run: docker compose --env-file .env --env-file .env.override build checkout
-
-      - name: Build and push service images
-        run: bash deploy/build-push-images.sh
-
-      - name: Write build metadata
+      - name: Build and push selected images
+        env:
+          SERVICES_JSON: ${{ needs.changes.outputs.services }}
         shell: bash
         run: |
-          cat > build-metadata.json <<EOF
-          {
-            "image_repository": "${IMAGE_REPOSITORY}",
-            "image_tag": "${IMAGE_TAG}",
-            "example": "${IMAGE_REPOSITORY}:${IMAGE_TAG}-checkout",
-            "git_sha": "${GITHUB_SHA}"
-          }
-          EOF
-          cat build-metadata.json
+          mapfile -t services < <(jq -r '.[]' <<< "$SERVICES_JSON")
+          bash deploy/build-push-images.sh "${services[@]}"
+
+      - name: Verify pushed image digests
+        env:
+          SERVICES_JSON: ${{ needs.changes.outputs.services }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r service; do
+            digest="$(aws ecr describe-images \
+              --repository-name "$ECR_REPOSITORY" \
+              --image-ids imageTag="${IMAGE_TAG}-${service}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text)"
+            test -n "$digest" && test "$digest" != None
+            printf '%s=%s\n' "$service" "$digest"
+          done < <(jq -r '.[]' <<< "$SERVICES_JSON") | tee image-digests.txt
+
+      - name: Write build metadata
+        env:
+          SERVICES_JSON: ${{ needs.changes.outputs.services }}
+        shell: bash
+        run: |
+          jq -n \
+            --arg image_repository "$IMAGE_REPOSITORY" \
+            --arg image_tag "$IMAGE_TAG" \
+            --arg git_sha "$GITHUB_SHA" \
+            --argjson services "$SERVICES_JSON" \
+            '{image_repository: $image_repository, image_tag: $image_tag, git_sha: $git_sha, services: $services}' > build-metadata.json
 
       - name: Upload build metadata
         uses: actions/upload-artifact@v4
         with:
           name: build-metadata-${{ steps.vars.outputs.image_tag }}
-          path: build-metadata.json
+          path: |
+            build-metadata.json
+            image-digests.txt
           if-no-files-found: error
 
-  deploy-after-build:
-    name: Deploy built image
-    needs: [build]
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      image_tag: ${{ needs.build.outputs.image_tag }}
-      deploy_observability: true
-    secrets: inherit
+  promote:
+    name: Open GitOps promotion PR
+    needs: [changes, build]
+    if: >-
+      always() &&
+      (needs.build.result == 'success' ||
+      (needs.changes.outputs.chart_changed == 'true' && needs.changes.outputs.services == '[]'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GITOPS_PROMOTION_APP_ID }}
+          private-key: ${{ secrets.GITOPS_PROMOTION_APP_PRIVATE_KEY }}
+          owner: TF4-Phase3-TechX
+          repositories: tf4-phase3-gitops-manifests
+
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v4
+        with:
+          repository: TF4-Phase3-TechX/tf4-phase3-gitops-manifests
+          token: ${{ steps.app-token.outputs.token }}
+          path: gitops
+
+      - name: Update GitOps revisions
+        env:
+          CHART_CHANGED: ${{ needs.changes.outputs.chart_changed }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          SERVICES_JSON: ${{ needs.changes.outputs.services }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd gitops
+          branch="promotion/production"
+          git config user.name "techx-tf4-gitops-promotion"
+          git config user.email "techx-tf4-gitops-promotion@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            git fetch origin "$branch"
+            git checkout -B "$branch" "origin/$branch"
+            git rebase origin/main
+          else
+            git checkout -B "$branch" origin/main
+          fi
+          cd ..
+          python - <<'PY'
+          from pathlib import Path
+          import json, os, re
+
+          services = json.loads(os.environ["SERVICES_JSON"])
+          if services:
+              path = Path("gitops/environments/production/image-revisions.yaml")
+              text = path.read_text()
+              for service in services:
+                  pattern = rf'(\n  {re.escape(service)}:\n    imageOverride:\n      tag: ")[^"]+(")'
+                  text, count = re.subn(pattern, rf'\g<1>{os.environ["IMAGE_TAG"]}-{service}\g<2>', text)
+                  if count != 1:
+                      raise SystemExit(f"expected one image override for {service}, found {count}")
+              path.write_text(text)
+
+          if os.environ["CHART_CHANGED"] == "true":
+              path = Path("gitops/argocd/root-resources/applications.yaml")
+              text = path.read_text()
+              pattern = (
+                  r"(repoURL: 'https://github.com/TF4-Phase3-TechX/tf4-phase3-repo.git'\n"
+                  r"      targetRevision: )[0-9a-f]{40}"
+              )
+              text, count = re.subn(pattern, rf'\g<1>{os.environ["SOURCE_SHA"]}', text)
+              if count != 2:
+                  raise SystemExit(f"expected two chart source revisions, found {count}")
+              path.write_text(text)
+          PY
+          git -C gitops diff --check
+
+      - name: Create or update promotion PR
+        env:
+          CHART_CHANGED: ${{ needs.changes.outputs.chart_changed }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          SERVICES_JSON: ${{ needs.changes.outputs.services }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="promotion/production"
+          cd gitops
+          if git diff --quiet; then
+            exit 0
+          fi
+          git add environments/production/image-revisions.yaml argocd/root-resources/applications.yaml
+          git commit -m "chore(gitops): promote ${SOURCE_SHA::7}"
+          git push origin "$branch"
+          services="$(jq -r '.[]' <<< "$SERVICES_JSON" | paste -sd, -)"
+          body="Source commit: \`${SOURCE_SHA}\`"
+          if [[ "$SERVICES_JSON" != '[]' ]]; then
+            body+=$'\n\n'"Image tag: \`${IMAGE_TAG}\`"$'\n\n'"Services: \`${services}\`"
+          fi
+          if [[ "$CHART_CHANGED" == 'true' ]]; then
+            body+=$'\n\n'"Chart source SHA: \`${SOURCE_SHA}\` (techx-corp and techx-observability)"
+          fi
+          body+=$'\n\nReview and merge to let Argo CD deploy this release.'
+          gh pr create --base main --head "$branch" --title "chore(gitops): promote ${SOURCE_SHA::7}" --body "$body" || gh pr edit "$branch" --title "chore(gitops): promote ${SOURCE_SHA::7}" --body "$body"
