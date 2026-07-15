@@ -228,12 +228,9 @@ jobs:
           git config user.name "techx-tf4-gitops-promotion"
           git config user.email "techx-tf4-gitops-promotion@users.noreply.github.com"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
-            git fetch origin "$branch"
-            git checkout -B "$branch" "origin/$branch"
-            git rebase origin/main
-          else
-            git checkout -B "$branch" origin/main
+            git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
           fi
+          git checkout -B "$branch" origin/main
           cd ..
           python - <<'PY'
           from pathlib import Path
@@ -281,7 +278,12 @@ jobs:
           fi
           git add environments/production/image-revisions.yaml argocd/root-resources/applications.yaml
           git commit -m "chore(gitops): promote ${SOURCE_SHA::7}"
-          git push origin "$branch"
+          if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+            expected_tip="$(git rev-parse "origin/$branch")"
+            git push --force-with-lease="$branch:$expected_tip" origin "$branch"
+          else
+            git push --force-with-lease="$branch:" origin "$branch"
+          fi
           services="$(jq -r '.[]' <<< "$SERVICES_JSON" | paste -sd, -)"
           body="Source commit: \`${SOURCE_SHA}\`"
           if [[ "$SERVICES_JSON" != '[]' ]]; then
