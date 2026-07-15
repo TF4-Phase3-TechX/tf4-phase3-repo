@@ -1,33 +1,17 @@
 name: deploy
 
 on:
-  workflow_call:
-    inputs:
-      image_tag:
-        description: Image tag to deploy. Required when called by build workflow.
-        required: true
-        type: string
-      deploy_observability:
-        required: false
-        type: boolean
-        default: true
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Optional image tag. Empty = keep current deployed image tag.
+        description: Emergency-only image tag. Empty = keep current deployed image tag.
         required: false
         type: string
       deploy_observability:
-        description: Deploy observability release first.
+        description: "Emergency-only: deploy observability release first."
         required: false
         type: boolean
         default: true
-  push:
-    branches: [main]
-    paths:
-      - 'techx-corp-chart/**'
-      - 'deploy/**'
-      - '!deploy/build-push-images.sh'
 
 permissions:
   contents: read
@@ -47,7 +31,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Helm deploy and smoke
+    name: Emergency Helm deploy and smoke
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -180,7 +164,7 @@ jobs:
           check_release_not_pending "$OBS_NAMESPACE" techx-observability
 
       - name: Decode Alertmanager email configuration
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         env:
           ALERTMANAGER_EMAIL_VALUES_B64: ${{ secrets.ALERTMANAGER_EMAIL_VALUES_B64 }}
         shell: bash
@@ -198,7 +182,7 @@ jobs:
           test -s "$recipient_values"
 
       - name: Apply Alertmanager SMTP credential
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         env:
           ALERTMANAGER_SMTP_PASSWORD: ${{ secrets.ALERTMANAGER_SMTP_PASSWORD }}
         shell: bash
@@ -214,7 +198,7 @@ jobs:
             kubectl apply -f -
 
       - name: Deploy observability
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         run: |
           helm upgrade --install techx-observability ./techx-corp-chart \
             --namespace "$OBS_NAMESPACE" \
@@ -226,7 +210,7 @@ jobs:
             --timeout 10m
 
       - name: Verify Metrics API
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         shell: bash
         run: |
           set -euo pipefail

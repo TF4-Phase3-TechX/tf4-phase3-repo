@@ -35,11 +35,11 @@ resource "aws_ecr_lifecycle_policy" "techx_corp_policy" {
     },
     {
       "rulePriority": 2,
-      "description": "Giữ tối đa 30 ảnh có tag gần nhất",
+      "description": "Giữ tối đa 50 ảnh có tag gần nhất cho promotion và rollback",
       "selection": {
         "tagStatus": "any",
         "countType": "imageCountMoreThan",
-        "countNumber": 30
+        "countNumber": 50
       },
       "action": {
         "type": "expire"
