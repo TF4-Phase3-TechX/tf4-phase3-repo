@@ -1,0 +1,156 @@
+﻿apiVersion: v1
+items:
+- apiVersion: karpenter.k8s.aws/v1
+  kind: EC2NodeClass
+  metadata:
+    annotations:
+      karpenter.k8s.aws/ec2nodeclass-hash: "4689754915429741937"
+      karpenter.k8s.aws/ec2nodeclass-hash-version: v5
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"karpenter.k8s.aws/v1","kind":"EC2NodeClass","metadata":{"annotations":{},"name":"techx-general"},"spec":{"amiSelectorTerms":[{"alias":"al2023@latest"}],"role":"karpenter-node-techx-tf4-cluster","securityGroupSelectorTerms":[{"tags":{"karpenter.sh/discovery":"techx-tf4-cluster"}}],"subnetSelectorTerms":[{"tags":{"karpenter.sh/discovery":"techx-tf4-cluster"}}],"tags":{"Environment":"Phase3","Owner":"CDO_04","Project":"TF4","Team":"CDO_04","karpenter.sh/discovery":"techx-tf4-cluster"}}}
+    creationTimestamp: "2026-07-14T18:16:15Z"
+    finalizers:
+    - karpenter.k8s.aws/termination
+    generation: 2
+    name: techx-general
+    resourceVersion: "2599467"
+    uid: 494beed4-31ef-4383-b1ea-bea5dcdd456b
+  spec:
+    amiSelectorTerms:
+    - alias: al2023@latest
+    metadataOptions:
+      httpEndpoint: enabled
+      httpProtocolIPv6: disabled
+      httpPutResponseHopLimit: 1
+      httpTokens: required
+    role: karpenter-node-techx-tf4-cluster
+    securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: techx-tf4-cluster
+    subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: techx-tf4-cluster
+    tags:
+      Environment: Phase3
+      Owner: CDO_04
+      Project: TF4
+      Team: CDO_04
+      karpenter.sh/discovery: techx-tf4-cluster
+  status:
+    amis:
+    - id: ami-0d9394e8b139a28b6
+      name: amazon-eks-node-al2023-x86_64-nvidia-1.34-v20260709
+      requirements:
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - amd64
+      - key: karpenter.k8s.aws/instance-gpu-count
+        operator: Exists
+    - id: ami-0dedc93449f51334a
+      name: amazon-eks-node-al2023-x86_64-neuron-1.34-v20260709
+      requirements:
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - amd64
+      - key: karpenter.k8s.aws/instance-accelerator-count
+        operator: Exists
+    - id: ami-0fbe307351e46a9c4
+      name: amazon-eks-node-al2023-arm64-nvidia-1.34-v20260709
+      requirements:
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - arm64
+      - key: karpenter.k8s.aws/instance-gpu-count
+        operator: Exists
+    - id: ami-09f62c72654741033
+      name: amazon-eks-node-al2023-x86_64-standard-1.34-v20260709
+      requirements:
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - amd64
+      - key: karpenter.k8s.aws/instance-gpu-count
+        operator: DoesNotExist
+      - key: karpenter.k8s.aws/instance-accelerator-count
+        operator: DoesNotExist
+    - id: ami-0b4566577b77790fe
+      name: amazon-eks-node-al2023-arm64-standard-1.34-v20260709
+      requirements:
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - arm64
+      - key: karpenter.k8s.aws/instance-gpu-count
+        operator: DoesNotExist
+      - key: karpenter.k8s.aws/instance-accelerator-count
+        operator: DoesNotExist
+    conditions:
+    - lastTransitionTime: "2026-07-14T18:16:16Z"
+      message: ""
+      observedGeneration: 2
+      reason: AMIsReady
+      status: "True"
+      type: AMIsReady
+    - lastTransitionTime: "2026-07-14T18:16:16Z"
+      message: ""
+      observedGeneration: 2
+      reason: CapacityReservationsReady
+      status: "True"
+      type: CapacityReservationsReady
+    - lastTransitionTime: "2026-07-14T18:16:16Z"
+      message: ""
+      observedGeneration: 2
+      reason: PlacementGroupReady
+      status: "True"
+      type: PlacementGroupReady
+    - lastTransitionTime: "2026-07-14T18:16:16Z"
+      message: ""
+      observedGeneration: 2
+      reason: SubnetsReady
+      status: "True"
+      type: SubnetsReady
+    - lastTransitionTime: "2026-07-14T18:16:16Z"
+      message: ""
+      observedGeneration: 2
+      reason: SecurityGroupsReady
+      status: "True"
+      type: SecurityGroupsReady
+    - lastTransitionTime: "2026-07-14T18:16:16Z"
+      message: ""
+      observedGeneration: 2
+      reason: InstanceProfileReady
+      status: "True"
+      type: InstanceProfileReady
+    - lastTransitionTime: "2026-07-14T18:16:23Z"
+      message: ""
+      observedGeneration: 2
+      reason: ValidationSucceeded
+      status: "True"
+      type: ValidationSucceeded
+    - lastTransitionTime: "2026-07-14T18:22:56Z"
+      message: ""
+      observedGeneration: 2
+      reason: Ready
+      status: "True"
+      type: Ready
+    instanceProfile: techx-tf4-cluster_6332193992597369731
+    securityGroups:
+    - id: sg-097d1ea5852b31f41
+      name: techx-tf4-cluster-node-20260707090121055000000011
+    - id: sg-0a211109d0c1cfcc5
+      name: techx-tf4-cluster-cluster-20260707090121055000000010
+    - id: sg-0f7bc9275c5bdcca4
+      name: eks-cluster-sg-techx-tf4-cluster-1770466684
+    subnets:
+    - id: subnet-0753e69d90fe8f820
+      zone: us-east-1b
+      zoneID: use1-az2
+    - id: subnet-0280b36e2249f33d8
+      zone: us-east-1a
+      zoneID: use1-az1
+kind: List
+metadata:
+  resourceVersion: ""
