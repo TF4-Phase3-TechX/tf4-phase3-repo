@@ -1,4 +1,4 @@
-﻿# [CDO07] Audit Verification Framework — MANDATE-04 Forensic Audit Trail
+# [CDO07] Audit Verification Framework — MANDATE-04 Forensic Audit Trail
 
 > **Mục đích:** Khung chuẩn cho Hoàng và Ty thực hiện forensic audit trail, chứng minh khả năng truy vết  
 > **ai-làm-gì-khi-nào** từ audit log trong **≤10 phút**.  
@@ -44,8 +44,9 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
 | `aud-17.2-drill-scenarios.md` | ≥5 forensic scenarios designed | Ty |
 | `aud-17.2-drill-log.md` | ≥3 drill results với stopwatch | Ty |
 | `aud-17.3-separation-test.md` | Operator thử xóa log → AccessDenied | Hoàng |
-| `aud-17.3-s3-object-lock-test.md` | Test S3 Object Lock COMPLIANCE config | Hoàng |
+| `aud-17.3-s3-object-lock-test.md` | Test S3 Object Lock COMPLIANCE config (CloudTrail + EKS logs) | Hoàng |
 | `aud-17.3-validate-logs-test.md` | CloudTrail log validation digest test | Hoàng |
+| `aud-17.3-firehose-config.json` | Firehose delivery stream configuration | Hoàng |
 
 **Lệnh lấy evidence (chạy sau khi AUDIT-010 và AUDIT-011 completed):**
 
@@ -67,6 +68,11 @@ aws configservice describe-configuration-recorder-status \
 aws eks describe-cluster --name techx-tf4-cluster \
   --query 'cluster.logging' --profile TF4-AuditReadOnlyAndAnalyze \
   > docs/evidence/aud-17.1-eks-audit-config.json
+
+# [Hoàng] Check Firehose configuration
+aws firehose describe-delivery-stream --delivery-stream-name tf4-eks-audit-logs-firehose \
+  --profile TF4-AuditReadOnlyAndAnalyze \
+  > docs/evidence/aud-17.3-firehose-config.json
 
 # [Ty] IAM users scan (no shared accounts)
 aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
@@ -232,6 +238,34 @@ aws s3 ls s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/Clou
 - [ ] Validate-logs command thành công
 - [ ] Digest files tồn tại trong S3 bucket
 
+### 3.3. EKS Logs Firehose & S3 Object Lock (Hoàng)
+
+Để ngăn chặn lỗ hổng Root account hoặc Administrator có thể xóa EKS Control Plane logs trực tiếp trong CloudWatch Logs, logs được stream qua **Amazon Data Firehose** lưu vào S3 bucket độc lập `tf4-eks-audit-logs-511825856493` bảo vệ bởi **S3 Object Lock COMPLIANCE mode 90 ngày**.
+
+**Check EKS logs S3 Object Lock configuration:**
+
+```bash
+# Check S3 Object Lock configuration
+aws s3api get-object-lock-configuration \
+  --bucket tf4-eks-audit-logs-511825856493 \
+  --profile TF4-AuditReadOnlyAndAnalyze
+# Expected: "Mode": "COMPLIANCE", "Days": 90
+```
+
+**Test operator/admin không xóa được log khỏi S3:**
+
+```bash
+# Operator thử xóa EKS log khỏi S3 → AccessDenied
+aws s3 rm s3://tf4-eks-audit-logs-511825856493/ \
+  --recursive --profile TF4-Developer 2>&1 | grep "AccessDenied"
+# Expected: AccessDenied
+```
+
+**Điều kiện PASS:**
+- [ ] Kinesis Firehose delivery stream `tf4-eks-audit-logs-firehose` ở trạng thái ACTIVE
+- [ ] EKS logs S3 Object Lock mode = "COMPLIANCE" (retention ≥90 ngày)
+- [ ] Operator role AccessDenied khi xóa EKS log trong S3 bucket
+
 ---
 
 ## 4. Chạy Thử Các Bài Test (Forensic Drill Scenarios)
@@ -367,9 +401,13 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 | AWS Config recording enabled | ☐ | Configuration changes tracked |
 | EKS Control Plane audit log enabled | ☐ | CloudWatch Log Group active |
 | **2. Bảo Vệ Chống Xóa Sửa** | | |
-| S3 Object Lock COMPLIANCE mode | ☐ | Mode="COMPLIANCE", ≥90 days |
-| S3 Object Lock config verified | ☐ | get-object-lock-configuration pass |
-| Operator AccessDenied test pass | ☐ | Cannot delete logs |
+| CloudTrail S3 Object Lock COMPLIANCE | ☐ | Mode="COMPLIANCE", ≥90 days |
+| CloudTrail S3 Object Lock verified | ☐ | get-object-lock-configuration pass |
+| CloudTrail Operator AccessDenied test | ☐ | Cannot delete CloudTrail logs |
+| EKS S3 Object Lock COMPLIANCE | ☐ | Mode="COMPLIANCE", ≥90 days (Anti-Root deletion) |
+| EKS S3 Object Lock verified | ☐ | get-object-lock-configuration pass |
+| EKS S3 Operator AccessDenied test | ☐ | Cannot delete EKS logs from S3 |
+| Kinesis Firehose Stream active | ☐ | Stream status ACTIVE |
 | CloudTrail log file validation pass | ☐ | validate-logs command success |
 | CloudTrail digest files exist | ☐ | S3 digest folder has .json.gz files |
 | **3. Forensic Drill Tests** | | |
@@ -393,7 +431,7 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 - [ ] Tất cả file evidence có timestamp thật (không placeholder)
 - [ ] Drill log có ≥3 scenarios pass với stopwatch
 - [ ] IAM separation test log có ≥3 AccessDenied results
-- [ ] S3 Object Lock COMPLIANCE verified + CloudTrail validate-logs pass
+- [ ] S3 Object Lock COMPLIANCE verified (CloudTrail + EKS logs) + CloudTrail validate-logs pass
 - [ ] Identity mapping table có ≥5 hành động với real person
 - [ ] Query patterns documented (tái sử dụng được)
 - [ ] Runbook cho mentor ready: `mentor-forensic-inspection.md`
