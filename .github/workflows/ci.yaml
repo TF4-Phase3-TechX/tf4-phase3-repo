@@ -179,6 +179,7 @@ jobs:
             --set default.image.tag=preview \
             -f deploy/values-app-stamp.yaml \
             -f deploy/values-flagd-sync.yaml \
+            -f deploy/values-aio-llm.yaml \
             > /tmp/techx-corp-app.yaml
 
       - name: Assert application resource and HPA defaults

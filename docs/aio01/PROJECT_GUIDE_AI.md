@@ -1,5 +1,8 @@
 # Hướng Dẫn Kiến Trúc & Vận Hành AI (AIE & AIOps) — Team AIO-01
 
+> [!IMPORTANT]
+> This guide records the Week 1 OpenAI-compatible baseline. It is not the current production decision. Mandate 06 replaces model-owned tools/API-key routing with deterministic application fetch, Bedrock Converse, Pod Identity and exact-evidence validation; see [`docs/aio1/mandate-06/README.md`](../aio1/mandate-06/README.md).
+
 Tài liệu này cung cấp hướng dẫn chuẩn hóa về mặt kiến trúc, lập trình (AIE) và vận hành (AIOps) đối với hệ thống AI của Team AIO-01 trong Phase 3. Tài liệu giúp định hình luồng dữ liệu, phân tích lỗ hổng, xây dựng chốt chặn bảo mật (Guardrails) và thiết lập hệ thống giám sát sự cố (Observability).
 
 ---
