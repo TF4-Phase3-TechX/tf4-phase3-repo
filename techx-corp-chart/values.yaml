@@ -685,8 +685,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      requests: { cpu: 500m, memory: 768Mi }
-      limits: { cpu: "1", memory: 1536Mi }
+      requests: { cpu: 300m, memory: 256Mi }
+      limits: { cpu: 600m, memory: 512Mi }
 
   payment:
     enabled: true
