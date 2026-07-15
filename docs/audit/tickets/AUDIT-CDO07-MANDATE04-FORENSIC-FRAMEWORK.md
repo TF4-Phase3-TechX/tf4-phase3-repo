@@ -348,13 +348,3 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 
 ---
 
-## 8. Checklist trước khi submit PR
-
-- [ ] Evidence files có timestamp thật (không placeholder)
-- [ ] Drill log ≥3 scenarios pass với stopwatch  
-- [ ] S3 Object Lock test documented
-- [ ] Identity mapping table ≥5 entries
-- [ ] Query patterns tested và working
-- [ ] Không có credentials trong evidence files
-- [ ] metadata.json updated với git SHA thật
-- [ ] Hoàng + Ty sign-off
