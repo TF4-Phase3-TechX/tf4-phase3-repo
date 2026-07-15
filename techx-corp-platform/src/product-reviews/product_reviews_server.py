@@ -7,6 +7,7 @@
 # Python
 import os
 import json
+import time
 from concurrent import futures
 import random
 
@@ -48,6 +49,12 @@ llm_mock_url = None
 llm_base_url = None
 llm_api_key = None
 llm_model = None
+llm_timeout_seconds = float(os.getenv("LLM_TIMEOUT_SECONDS", "5.0"))
+
+# Unknown models still export token usage, but never a misleading cost estimate.
+MODEL_PRICING_USD_PER_MILLION = {
+    "gpt-4o-mini": (0.15, 0.60),
+}
 
 # --- Define the tool for the OpenAI API ---
 tools = [
@@ -101,7 +108,7 @@ class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
         return product_reviews
 
     def AskProductAIAssistant(self, request, context):
-        logger.info(f"Receive AskProductAIAssistant for product id:{request.product_id}, question: {request.question}")
+        logger.info("Receive AskProductAIAssistant for product_id=%s question_length=%s", request.product_id, len(request.question))
         ai_assistant_response = get_ai_assistant_response(request.product_id, request.question)
 
         return ai_assistant_response
@@ -152,6 +159,54 @@ def get_average_product_review_score(request_product_id):
 
         return product_review_score
 
+def invoke_llm(client, span, call_name, model, **kwargs):
+    """Invoke one LLM call with consistent timeout, telemetry, and redacted logs."""
+    started = time.perf_counter()
+    outcome = "error"
+    attributes = {'llm.call': call_name, 'llm.model': model}
+    try:
+        response = client.chat.completions.create(model=model, **kwargs)
+        outcome = "success"
+        usage = getattr(response, "usage", None)
+        if usage:
+            prompt_tokens = usage.prompt_tokens
+            completion_tokens = usage.completion_tokens
+            total_tokens = usage.total_tokens
+            span.set_attribute(f"app.llm.{call_name}.prompt_tokens", prompt_tokens)
+            span.set_attribute(f"app.llm.{call_name}.completion_tokens", completion_tokens)
+            span.set_attribute(f"app.llm.{call_name}.total_tokens", total_tokens)
+            product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(prompt_tokens, {'llm.model': model})
+            product_review_svc_metrics["app_llm_completion_tokens_counter"].add(completion_tokens, {'llm.model': model})
+
+            pricing = MODEL_PRICING_USD_PER_MILLION.get(model)
+            if pricing:
+                input_price, output_price = pricing
+                cost = (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000.0
+                span.set_attribute(f"app.llm.{call_name}.estimated_cost_usd", cost)
+                product_review_svc_metrics["app_llm_estimated_cost_counter"].add(cost, {'llm.model': model})
+                logger.info(
+                    "LLM %s usage: model=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s cost_usd=%.6f",
+                    call_name, model, prompt_tokens, completion_tokens, total_tokens, cost,
+                )
+            else:
+                logger.warning("No cost pricing configured for LLM model=%s; token metrics recorded without cost", model)
+        else:
+            logger.info("LLM %s completed without usage data: model=%s", call_name, model)
+        return response
+    except Exception as exc:
+        span.record_exception(exc)
+        span.set_status(Status(StatusCode.ERROR, description=type(exc).__name__))
+        product_review_svc_metrics["app_llm_error_counter"].add(1, attributes)
+        logger.error("LLM %s failed: model=%s error_type=%s", call_name, model, type(exc).__name__)
+        raise
+    finally:
+        latency = time.perf_counter() - started
+        metric_attributes = {**attributes, 'llm.outcome': outcome}
+        span.set_attribute(f"app.llm.{call_name}.latency_seconds", latency)
+        product_review_svc_metrics["app_llm_latency_histogram"].record(latency, metric_attributes)
+        product_review_svc_metrics["app_llm_call_counter"].add(1, metric_attributes)
+
+
 def get_ai_assistant_response(request_product_id, question):
 
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
@@ -159,7 +214,7 @@ def get_ai_assistant_response(request_product_id, question):
         ai_assistant_response = demo_pb2.AskProductAIAssistantResponse()
 
         span.set_attribute("app.product.id", request_product_id)
-        span.set_attribute("app.product.question", question)
+        span.set_attribute("app.product.question_length", len(question))
 
         llm_rate_limit_error = check_feature_flag("llmRateLimitError")
         logger.info(f"llmRateLimitError feature flag: {llm_rate_limit_error}")
@@ -174,7 +229,9 @@ def get_ai_assistant_response(request_product_id, question):
                     base_url=f"{llm_mock_url}",
                     # The OpenAI API requires an api_key to be present, but
                     # our LLM doesn't use it
-                    api_key=f"{llm_api_key}"
+                    api_key=f"{llm_api_key}",
+                    timeout=llm_timeout_seconds,
+                    max_retries=0,
                 )
 
                 user_prompt = f"Answer the following question about product ID:{request_product_id}: {question}"
@@ -185,18 +242,13 @@ def get_ai_assistant_response(request_product_id, question):
                 logger.info(f"Invoking mock LLM with model: techx-llm-rate-limit")
 
                 try:
-                    initial_response = client.chat.completions.create(
-                        model="techx-llm-rate-limit",
+                    initial_response = invoke_llm(
+                        client, span, "rate_limit_drill", "techx-llm-rate-limit",
                         messages=messages,
                         tools=tools,
                         tool_choice="auto"
                     )
-                except Exception as e:
-                    logger.error(f"Caught Exception: {e}")
-                    # Record the exception
-                    span.record_exception(e)
-                    # Set the span status to ERROR
-                    span.set_status(Status(StatusCode.ERROR, description=str(e)))
+                except Exception:
                     ai_assistant_response.response = "The system is unable to process your response. Please try again later."
                     return ai_assistant_response
 
@@ -205,7 +257,9 @@ def get_ai_assistant_response(request_product_id, question):
             base_url=f"{llm_base_url}",
             # The OpenAI API requires an api_key to be present, but
             # our LLM doesn't use it
-            api_key=f"{llm_api_key}"
+            api_key=f"{llm_api_key}",
+            timeout=llm_timeout_seconds,
+            max_retries=0,
         )
 
         user_prompt = f"Answer the following question about product ID:{request_product_id}: {question}"
@@ -215,17 +269,21 @@ def get_ai_assistant_response(request_product_id, question):
         ]
 
         # use the LLM to summarize the product reviews
-        initial_response = client.chat.completions.create(
-            model=llm_model,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto"
-        )
+        try:
+            initial_response = invoke_llm(
+                client, span, "initial", llm_model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto"
+            )
+        except Exception:
+            ai_assistant_response.response = "The system is unable to process your response. Please try again later."
+            return ai_assistant_response
 
         response_message = initial_response.choices[0].message
         tool_calls = response_message.tool_calls
 
-        logger.info(f"Response message: {response_message}")
+        logger.info("Received initial LLM response: model=%s has_tool_calls=%s", llm_model, bool(tool_calls))
 
         # Check if the model wants to call a tool
         if tool_calls:
@@ -245,13 +303,13 @@ def get_ai_assistant_response(request_product_id, question):
                     function_response = fetch_product_reviews(
                         product_id=function_args.get("product_id")
                     )
-                    logger.info(f"Function response for fetch_product_reviews: '{function_response}'")
+                    logger.info("Tool fetch_product_reviews completed for product_id=%s", function_args.get("product_id"))
 
                 elif function_name == "fetch_product_info":
                     function_response = fetch_product_info(
                         product_id=function_args.get("product_id")
                     )
-                    logger.info(f"Function response for fetch_product_info: '{function_response}'")
+                    logger.info("Tool fetch_product_info completed for product_id=%s", function_args.get("product_id"))
 
                 else:
                     raise Exception(f'Received unexpected tool call request: {function_name}')
@@ -287,21 +345,25 @@ def get_ai_assistant_response(request_product_id, question):
                     }
                 )
 
-            logger.info(f"Invoking the LLM with the following messages: '{messages}'")
+            logger.info("Invoking final LLM call: model=%s message_count=%s", llm_model, len(messages))
 
-            final_response = client.chat.completions.create(
-                model=llm_model,
-                messages=messages
-            )
+            try:
+                final_response = invoke_llm(
+                    client, span, "final", llm_model,
+                    messages=messages
+                )
+            except Exception:
+                ai_assistant_response.response = "The system is unable to process your response. Please try again later."
+                return ai_assistant_response
 
             result = final_response.choices[0].message.content
 
             ai_assistant_response.response = result
 
-            logger.info(f"Returning an AI assistant response: '{result}'")
+            logger.info("Returning final AI assistant response: response_length=%s", len(result or ""))
 
         else:
-            logger.info(f"Returning an AI assistant response: '{response_message}'")
+            logger.info("Returning direct AI assistant response: response_length=%s", len(response_message.content or ""))
             ai_assistant_response.response = response_message.content
 
         # Collect metrics for this service
