@@ -56,10 +56,13 @@ resource "kubernetes_manifest" "karpenter_nodepool_general" {
           }
 
           requirements = [
-            { key = "karpenter.k8s.aws/instance-category", operator = "In", values = ["t"] },
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+            { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+            { key = "node.kubernetes.io/instance-type", operator = "In", values = ["t3.large", "t3a.large"] },
           ]
+
+          expireAfter = "720h"
         }
       }
 
@@ -67,6 +70,11 @@ resource "kubernetes_manifest" "karpenter_nodepool_general" {
       # dynamic capacity until a higher limit is separately reviewed.
       limits = {
         cpu = "16"
+      }
+
+      disruption = {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "5m"
       }
     }
   }
