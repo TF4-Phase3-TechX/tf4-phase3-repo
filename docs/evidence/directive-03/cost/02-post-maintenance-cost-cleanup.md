@@ -6,7 +6,7 @@
 **Namespace:** `techx-tf4`
 **Region:** `us-east-1`
 **Thư mục evidence:** `./raw/`
-**Trạng thái:** **PARTIAL — 5/7 tiêu chí đạt (2 có giải trình từ CDO-08/D3-COST-01), 2/7 chưa đạt/không xác nhận được** (chi tiết mục 8, cập nhật sau khi đối chiếu `D3-COST-01`/`CDO08-REL-01`). Không đánh giá/đối chiếu với D3-PERF-04 — nằm ngoài phạm vi task này.
+**Trạng thái:** **PARTIAL — 5/7 tiêu chí đạt (2 có giải trình từ CDO-04/D3-COST-01), 2/7 chưa đạt/không xác nhận được** (chi tiết mục 8, cập nhật sau khi đối chiếu `D3-COST-01`/`CDO08-REL-01`). Không đánh giá/đối chiếu với D3-PERF-04 — nằm ngoài phạm vi task này.
 
 ---
 
@@ -16,34 +16,34 @@ Task `D3-COST-02` độc lập, không phụ thuộc `D3-COST-01`/`D3-PERF-04` (
 
 Verify qua **2 lần đo**, cách nhau ~5h40', đều read-only (`get`/`describe`/`top`/`logs`/`auth can-i`; không `scale`/`create`/`delete`/`apply`/`patch`/`exec`), cộng 1 lần đo bổ sung cho phần cost sau khi đổi role:
 
-| Lần đo | Thời điểm (UTC) | Role AWS |
-|---|---|---|
-| Lần 1 | `2026-07-15T10:49:05Z` | `TF4-BaseReadOnly` |
-| Lần 2 | `2026-07-15T16:29Z` | `TF4-BaseReadOnly` |
-| Lần 3 (cost) | `2026-07-15T16:35Z` | `TF4-CostPerfReadOnlyAlerting` |
+| Lần đo       | Thời điểm (UTC)        | Role AWS                       |
+| ------------ | ---------------------- | ------------------------------ |
+| Lần 1        | `2026-07-15T10:49:05Z` | `TF4-BaseReadOnly`             |
+| Lần 2        | `2026-07-15T16:29Z`    | `TF4-BaseReadOnly`             |
+| Lần 3 (cost) | `2026-07-15T16:35Z`    | `TF4-CostPerfReadOnlyAlerting` |
 
 ---
 
 ## 1. Temporary replicas / HPA quay về baseline
 
-| Service | Baseline `D3-PERF-01` (14/07) | Lần 1 (10:49Z) | Lần 2 (16:29Z) |
-|---|---:|---:|---:|
-| `cart` | 1/1/1 | 2/2/2 | 2/2/2 |
-| `checkout` | 1/1/1, HPA 1–3 | 2/2/2, HPA min=2/max=3 | 2/2/2, HPA min=2/max=3 (44h tuổi) |
-| `currency` | 1/1/1 | 2/2/2, HPA min=2/max=3 (144m tuổi) | 2/2/2, HPA min=2/max=3 (8h tuổi) |
-| `frontend` | 1/1/1, HPA 1–3 | 3/3/3, HPA min=2/max=3, kịch trần | 2/2/2, HPA min=2/max=3 (44h tuổi) |
-| `frontend-proxy` | 1/1/1 | 2/2/2 | 2/2/2 |
-| `payment` | 1/1/1 | 2/2/2 | 2/2/2 |
-| `product-catalog` | 1/1/1 | 2/2/2 | 2/2/2 |
-| `quote` | 1/1/1 | 1/1/1 | **2/2/2** |
-| `shipping` | 1/1/1 | 2/2/2 | 2/2/2 |
+| Service           | Baseline `D3-PERF-01` (14/07) |                     Lần 1 (10:49Z) |                    Lần 2 (16:29Z) |
+| ----------------- | ----------------------------: | ---------------------------------: | --------------------------------: |
+| `cart`            |                         1/1/1 |                              2/2/2 |                             2/2/2 |
+| `checkout`        |                1/1/1, HPA 1–3 |             2/2/2, HPA min=2/max=3 | 2/2/2, HPA min=2/max=3 (44h tuổi) |
+| `currency`        |                         1/1/1 | 2/2/2, HPA min=2/max=3 (144m tuổi) |  2/2/2, HPA min=2/max=3 (8h tuổi) |
+| `frontend`        |                1/1/1, HPA 1–3 |  3/3/3, HPA min=2/max=3, kịch trần | 2/2/2, HPA min=2/max=3 (44h tuổi) |
+| `frontend-proxy`  |                         1/1/1 |                              2/2/2 |                             2/2/2 |
+| `payment`         |                         1/1/1 |                              2/2/2 |                             2/2/2 |
+| `product-catalog` |                         1/1/1 |                              2/2/2 |                             2/2/2 |
+| `quote`           |                         1/1/1 |                              1/1/1 |                         **2/2/2** |
+| `shipping`        |                         1/1/1 |                              2/2/2 |                             2/2/2 |
 
 **Cập nhật — đã tìm thấy giải trình chính thức, quét lại codebase 2026-07-15/16:**
 
 - **7/9 service (`cart`, `checkout`, `frontend`, `frontend-proxy`, `payment`, `product-catalog`, `shipping`) tăng lên 2 replica là thay đổi baseline có chủ đích, đã duyệt** — theo `docs/cdo08/week2/cdo08-rel-01-replica-availability-proposal.md` (`CDO08-REL-01`, owner Hoàng Nam, P0, mục tiêu loại SPOF single-replica trên customer/checkout path). Đề xuất chốt **2 replica làm fixed baseline**, không phải scale tạm cho một lần test. Vậy **mức 2/2/2 quan sát được ở cả 2 lần đo không phải "temporary replicas cần rollback" — đây là baseline mới đã duyệt**, tiêu chí "temporary replicas về baseline" áp dụng đúng hơn cho baseline mới này, không phải baseline `D3-PERF-01` (1/1/1) vốn đã lỗi thời sau `REL-01`.
-- **HPA `frontend`/`checkout` (min=2/max=3) được xác nhận trong `docs/evidence/MANDATE-03- Maintenance Capacity & Cost-Efficient Resilience/D3-COST-01-replica-capacity-cost-model/01-replica-capacity-cost-model.md`** (mục 4.3, 5 — "Reliability input từ CDO-08", dependency đánh dấu **RESOLVED**), cùng nguồn xác nhận PDB `minAvailable=1` cho 8 service. Tài liệu D3-COST-01 có **runtime validation lúc `2026-07-15T11:23:53Z`** (`raw/17-final-validation-metadata.txt` của D3-COST-01) — nằm trong đúng buổi sáng 15/07, khớp thời điểm 2 lần đo của D3-COST-02.
-- **`currency` HPA (min=2/max=3) KHÔNG có trong danh sách D3-COST-01/CDO08-REL-01** — chỉ liệt kê `frontend`/`checkout`. Vẫn **chưa giải trình được**, cần hỏi CDO-08/Vinh riêng cho `currency`.
-- **`quote`**: D3-COST-01 mục 10 ghi rõ **"Quyết định còn chờ: `quote`"** — tại thời điểm validation `11:23:53Z`, `quote` vẫn `1/1`, scope quyết định (thuộc mandatory drain scope hay loại trừ) **còn PENDING CDO-08 REVIEW**, và "Controlled drain chưa được thực hiện cho đến khi quyết định này được chốt." Vậy việc `quote` tăng lên `2/2/2` ở lần đo 2 (16:29Z) của D3-COST-02 — **sau** thời điểm D3-COST-01 còn ghi PENDING — là một thay đổi **chưa có evidence quyết định chính thức đi kèm**. Đây là điểm duy nhất trong mục này vẫn cần escalate.
+- **HPA `frontend`/`checkout` (min=2/max=3) được xác nhận trong `docs/evidence/MANDATE-03- Maintenance Capacity & Cost-Efficient Resilience/D3-COST-01-replica-capacity-cost-model/01-replica-capacity-cost-model.md`** (mục 4.3, 5 — dependency đánh dấu **RESOLVED**), cùng nguồn xác nhận PDB `minAvailable=1` cho 8 service. Tài liệu D3-COST-01 có **runtime validation lúc `2026-07-15T11:23:53Z`** (`raw/17-final-validation-metadata.txt` của D3-COST-01) — nằm trong đúng buổi sáng 15/07, khớp thời điểm 2 lần đo của D3-COST-02.
+- **`currency` HPA (min=2/max=3) KHÔNG có trong danh sách D3-COST-01/CDO08-REL-01** — chỉ liệt kê `frontend`/`checkout`. Vẫn **chưa giải trình được**, cần hỏi CDO-04/Vinh riêng cho `currency`.
+- **`quote`**: D3-COST-01 mục 10 ghi rõ **"Quyết định còn chờ: `quote`"** — tại thời điểm validation `11:23:53Z`, `quote` vẫn `1/1`, scope quyết định (thuộc mandatory drain scope hay loại trừ) **còn PENDING CDO-04 REVIEW**, và "Controlled drain chưa được thực hiện cho đến khi quyết định này được chốt." Vậy việc `quote` tăng lên `2/2/2` ở lần đo 2 (16:29Z) của D3-COST-02 — **sau** thời điểm D3-COST-01 còn ghi PENDING — là một thay đổi **chưa có evidence quyết định chính thức đi kèm**. Đây là điểm duy nhất trong mục này vẫn cần escalate.
 
 **Kết quả: ĐẠT có giải trình cho 7/9 service (theo `CDO08-REL-01` + `D3-COST-01`). Còn 2 điểm hở:** HPA `currency` chưa rõ nguồn, và việc `quote` tăng replica sau khi D3-COST-01 còn ghi "PENDING" chưa có quyết định đi kèm.
 
@@ -86,9 +86,9 @@ Raw: `raw/03-hpa-wide.txt`, `raw/04-deploy-replica-summary.txt` (lần 1) và `r
 - D3-COST-01 mục 7 (Scenario B) chốt **"4 total workers" (2 managed + 2 Karpenter) là minimum maintenance target** cho controlled-drain rehearsal — tức việc có thêm node Karpenter ngoài 2 node ASG **là kế hoạch đã duyệt**, không phải lỗi.
 - Runtime validation của D3-COST-01 lúc `11:23:53Z` ghi nhận **4 node Ready** (2 managed + 2 Karpenter). Lần đo 2 của D3-COST-02 (16:29Z, ~5h sau) chỉ còn **3 node** (2 managed + 1 Karpenter) — tức Karpenter **đã tự co bớt 1 node** đúng theo consolidation policy, một phần scale-down đã xảy ra tự nhiên.
 
-**Điểm còn hở:** D3-COST-01 tự nhận trạng thái cuối là **"READY FOR REVIEW — NOT YET CLOSED"** (mục 11), còn treo mục "actual-cost reconciliation" và quyết định `quote`. Tài liệu đó cũng không định nghĩa rõ **baseline nghỉ cuối cùng sau rehearsal là bao nhiêu node** (chỉ nói 4 node là target *trong lúc* rehearsal) — nên chưa thể khẳng định chắc chắn node Karpenter còn lại ở lần đo 2 (`ip-10-0-10-17`) là "steady-state hợp lệ do REL-01 cần thêm capacity cho 2-replica baseline" hay "phần chưa co hết". `load-generator` (mục 3) đang chạy ngay trên node này cũng cần lưu ý riêng.
+**Điểm còn hở:** D3-COST-01 tự nhận trạng thái cuối là **"READY FOR REVIEW — NOT YET CLOSED"** (mục 11), còn treo mục "actual-cost reconciliation" và quyết định `quote`. Tài liệu đó cũng không định nghĩa rõ **baseline nghỉ cuối cùng sau rehearsal là bao nhiêu node** (chỉ nói 4 node là target _trong lúc_ rehearsal) — nên chưa thể khẳng định chắc chắn node Karpenter còn lại ở lần đo 2 (`ip-10-0-10-17`) là "steady-state hợp lệ do REL-01 cần thêm capacity cho 2-replica baseline" hay "phần chưa co hết". `load-generator` (mục 3) đang chạy ngay trên node này cũng cần lưu ý riêng.
 
-**Kết quả: ĐẠT có giải trình một phần.** Việc có node Karpenter ngoài ASG khớp với kế hoạch đã duyệt trong `D3-COST-01` (không phải resource lạ/rò rỉ), và đã quan sát được Karpenter tự consolidate 4→3 node đúng theo policy. Còn thiếu: xác nhận rõ ràng node Karpenter còn lại ở lần đo 2 là baseline nghỉ hợp lệ hay cần co tiếp — cần Vinh/CDO-08 chốt trong lần cập nhật D3-COST-01 tiếp theo.
+**Kết quả: ĐẠT có giải trình một phần.** Việc có node Karpenter ngoài ASG khớp với kế hoạch đã duyệt trong `D3-COST-01` (không phải resource lạ/rò rỉ), và đã quan sát được Karpenter tự consolidate 4→3 node đúng theo policy. Còn thiếu: xác nhận rõ ràng node Karpenter còn lại ở lần đo 2 là baseline nghỉ hợp lệ hay cần co tiếp — cần Vinh/CDO-04 chốt trong lần cập nhật D3-COST-01 tiếp theo.
 
 ---
 
@@ -96,11 +96,11 @@ Raw: `raw/03-hpa-wide.txt`, `raw/04-deploy-replica-summary.txt` (lần 1) và `r
 
 **CPU/Memory (lần 2, `2026-07-15T16:29Z`):**
 
-| Node | CPU | Memory |
-|---|---:|---:|
+| Node                        |        CPU |       Memory |
+| --------------------------- | ---------: | -----------: |
 | `ip-10-0-10-17` (Karpenter) | 251m (13%) | 3821Mi (53%) |
-| `ip-10-0-10-231` | 286m (14%) | 3338Mi (47%) |
-| `ip-10-0-11-40` | 475m (24%) | 3982Mi (56%) |
+| `ip-10-0-10-231`            | 286m (14%) | 3338Mi (47%) |
+| `ip-10-0-11-40`             | 475m (24%) | 3982Mi (56%) |
 
 Không node nào pressure. (`raw/35-top-nodes-round2.txt`, `raw/36-top-pods-round2.txt`)
 
@@ -116,12 +116,13 @@ Không node nào pressure. (`raw/35-top-nodes-round2.txt`, `raw/36-top-pods-roun
 
 `raw/39-pricing-t3a-large-round2.json`, `raw/40-pricing-t3-large-round2.json`: giá On-Demand Linux, `us-east-1`, hiệu lực `2026-07-01`:
 
-| Instance type | Giá On-Demand (USD/giờ) |
-|---|---:|
-| `t3a.large` (node Karpenter thừa) | `$0.0752` |
-| `t3.large` (2 node ASG baseline) | `$0.0832` |
+| Instance type                     | Giá On-Demand (USD/giờ) |
+| --------------------------------- | ----------------------: |
+| `t3a.large` (node Karpenter thừa) |               `$0.0752` |
+| `t3.large` (2 node ASG baseline)  |               `$0.0832` |
 
 **Ước tính chi phí node Karpenter ngoài ASG chưa giải trình (mục 4):**
+
 - Node hiện tại `ip-10-0-10-17`, launch `2026-07-15T10:52:32Z`, vẫn đang chạy tại thời điểm viết (`16:29:45Z`) → đã chạy **~5h37m** → **~$0.42** tích lũy tính đến lúc đo, và **vẫn đang tiếp tục phát sinh** vì chưa ai thu hồi.
 - Nếu để chạy nguyên ngày không xử lý: `24h × $0.0752 ≈ $1.80/ngày`, tương đương **~$12.63/tuần** — nhỏ so với ngân sách `~$300/tuần/TF`, nhưng là chi phí non-value-add vì không có evidence chính thức nào giải trình mục đích của node này, và đây là node **thứ hai liên tiếp** xuất hiện dạng này (mục 4) — khả năng là một node Karpenter "rớt lại" tái diễn liên tục thay vì một lần tạm thời.
 
@@ -133,16 +134,16 @@ Không node nào pressure. (`raw/35-top-nodes-round2.txt`, `raw/36-top-pods-roun
 
 ## 7. Cleanup checklist có chữ ký operator
 
-| Hạng mục | Baseline (`D3-PERF-01`) | Lần 1 (10:49Z) | Lần 2 (16:29Z) | Kết quả | Verify | Thời gian (UTC) |
-|---|---|---|---|---|---|---|
-| Temporary replicas về baseline | 1/1/1 | 8/9 > baseline | 8/9 > baseline (không đổi so với lần 1) | ✅ Đạt có giải trình (`CDO08-REL-01`, 7/9 service) — `quote` còn hở | Tuấn | 2026-07-15T16:29Z |
-| HPA về min replica | min=1 | min=2 (`frontend`/`checkout`), mới ở `currency` | Không đổi so với lần 1 | ✅ Đạt có giải trình (`D3-COST-01`) cho `frontend`/`checkout` — `currency` chưa rõ nguồn | Tuấn | 2026-07-15T16:29Z |
-| Node group về baseline | desired=2 | desired=2 | desired=2, 2 instance InService | ✅ Đạt | Tuấn | 2026-07-15T16:29Z |
-| Load-generator dừng | N/A | `AUTOSTART=true`, không xác nhận active user | Không đổi | ⚠️ Không xác nhận được | Tuấn | 2026-07-15T16:29Z |
-| Không còn temporary resources | 2 node | 3 node (1 Karpenter thừa) | 3 node (1 Karpenter thừa, instance khác) | ✅ Đạt có giải trình một phần (`D3-COST-01` Scenario B + Karpenter consolidation 4→3 quan sát được) | Tuấn | 2026-07-15T16:29Z |
-| Resource usage bình thường | 93%/80% CPU (2 node) | <90%/<85% (3 node) | 13-24% CPU, 47-56% mem (3 node); quota 93.1% | ✅ Đạt (có điều kiện — quota sát trần) | Tuấn | 2026-07-15T16:29Z |
-| Không phát sinh workload nền ngoài kế hoạch | N/A | `AUTOSTART=true` + node Karpenter thừa | Không đổi | ⚠️ Load-generator vẫn chưa xác nhận idle; node Karpenter đã có giải trình một phần | Tuấn | 2026-07-15T16:29Z |
-| Estimated cost | N/A | Không lấy được (role thiếu quyền) | `t3a.large` $0.0752/h; node thừa ~$0.42 tích lũy, ~$12.63/tuần nếu không xử lý | ✅ Có ước tính (không phải actual billing) | Tuấn | 2026-07-15T16:35Z |
+| Hạng mục                                    | Baseline (`D3-PERF-01`) | Lần 1 (10:49Z)                                  | Lần 2 (16:29Z)                                                                 | Kết quả                                                                                             | Verify | Thời gian (UTC)   |
+| ------------------------------------------- | ----------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------ | ----------------- |
+| Temporary replicas về baseline              | 1/1/1                   | 8/9 > baseline                                  | 8/9 > baseline (không đổi so với lần 1)                                        | ✅ Đạt có giải trình (`CDO08-REL-01`, 7/9 service) — `quote` còn hở                                 | Tuấn   | 2026-07-15T16:29Z |
+| HPA về min replica                          | min=1                   | min=2 (`frontend`/`checkout`), mới ở `currency` | Không đổi so với lần 1                                                         | ✅ Đạt có giải trình (`D3-COST-01`) cho `frontend`/`checkout` — `currency` chưa rõ nguồn            | Tuấn   | 2026-07-15T16:29Z |
+| Node group về baseline                      | desired=2               | desired=2                                       | desired=2, 2 instance InService                                                | ✅ Đạt                                                                                              | Tuấn   | 2026-07-15T16:29Z |
+| Load-generator dừng                         | N/A                     | `AUTOSTART=true`, không xác nhận active user    | Không đổi                                                                      | ⚠️ Không xác nhận được                                                                              | Tuấn   | 2026-07-15T16:29Z |
+| Không còn temporary resources               | 2 node                  | 3 node (1 Karpenter thừa)                       | 3 node (1 Karpenter thừa, instance khác)                                       | ✅ Đạt có giải trình một phần (`D3-COST-01` Scenario B + Karpenter consolidation 4→3 quan sát được) | Tuấn   | 2026-07-15T16:29Z |
+| Resource usage bình thường                  | 93%/80% CPU (2 node)    | <90%/<85% (3 node)                              | 13-24% CPU, 47-56% mem (3 node); quota 93.1%                                   | ✅ Đạt (có điều kiện — quota sát trần)                                                              | Tuấn   | 2026-07-15T16:29Z |
+| Không phát sinh workload nền ngoài kế hoạch | N/A                     | `AUTOSTART=true` + node Karpenter thừa          | Không đổi                                                                      | ⚠️ Load-generator vẫn chưa xác nhận idle; node Karpenter đã có giải trình một phần                  | Tuấn   | 2026-07-15T16:29Z |
+| Estimated cost                              | N/A                     | Không lấy được (role thiếu quyền)               | `t3a.large` $0.0752/h; node thừa ~$0.42 tích lũy, ~$12.63/tuần nếu không xử lý | ✅ Có ước tính (không phải actual billing)                                                          | Tuấn   | 2026-07-15T16:35Z |
 
 ---
 
@@ -157,24 +158,25 @@ Không node nào pressure. (`raw/35-top-nodes-round2.txt`, `raw/36-top-pods-roun
 - [x] Cleanup checklist có chữ ký operator (Tuấn) cho phần đã tự verify.
 
 **Kết luận tổng (cập nhật sau khi quét lại codebase cho giải trình Karpenter/HPA):** `D3-COST-02` đạt **5/7** tiêu chí, trong đó 2 tiêu chí (replica, temporary resources) chuyển từ "không đạt" sang "đạt có giải trình" nhờ tìm thấy `docs/cdo08/week2/cdo08-rel-01-replica-availability-proposal.md` (CDO08-REL-01) và `docs/evidence/MANDATE-03- Maintenance Capacity & Cost-Efficient Resilience/D3-COST-01-replica-capacity-cost-model/01-replica-capacity-cost-model.md` (D3-COST-01) — cả hai đều là tài liệu chính thức trong CDO-04/CDO-08, không phải suy đoán. **Còn lại 3 điểm hở cụ thể, chưa phải "không đạt" toàn diện mà là "cần xác nhận thêm":**
+
 1. HPA `currency` (min=2/max=3) không nằm trong danh sách CDO-08 đã xác nhận — nguồn gốc chưa rõ.
 2. `quote` tăng lên `2/2/2` sau khi D3-COST-01 còn ghi quyết định scope là PENDING — thay đổi chưa có quyết định chính thức đi kèm.
 3. Load-generator vẫn chưa xác nhận idle (`AUTOSTART=true`), và node Karpenter còn lại ở lần đo 2 chưa rõ là baseline nghỉ hợp lệ hay phần chưa co hết.
 
-Không có phần nào trong số này được Tuấn tự sửa/scale — cần CDO-08/Vinh xác nhận nốt 3 điểm trên trong lần cập nhật D3-COST-01 tiếp theo.
+Không có phần nào trong số này được Tuấn tự sửa/scale — cần CDO-04/Vinh xác nhận nốt 3 điểm trên trong lần cập nhật D3-COST-01 tiếp theo.
 
 ---
 
 ## 9. Việc cần làm tiếp / đang chờ ai
 
-| Việc | Cần làm gì | Chờ ai |
-|---|---|---|
-| Xác nhận nguồn gốc HPA `currency` (min=2/max=3) | Không có trong `CDO08-REL-01`/`D3-COST-01` — xác nhận ai tạo và có nên giữ | CDO-08 / Vinh |
-| Chốt quyết định scope `quote` | D3-COST-01 còn ghi PENDING nhưng `quote` đã tăng lên `2/2/2` — cần quyết định chính thức đi kèm | CDO-08 (theo mục 10 của `D3-COST-01`) |
-| Xác nhận node Karpenter còn lại (lần đo 2) là baseline nghỉ hợp lệ hay cần co tiếp | D3-COST-01 chưa định nghĩa rõ baseline nghỉ sau rehearsal | CDO-08 / Vinh (cập nhật `D3-COST-01`) |
-| Xác nhận load-generator có đang phát traffic thật không | Cần quyền `pods/exec` hoặc Grafana access | Ninh/Reliability |
-| Đối chiếu lại estimated cost bằng CE actual billing | Chạy lại `aws ce get-cost-and-usage` sau 24-48h khi CE xử lý xong dữ liệu ngày 15/07 (bucket `t3a.large` hiện còn thiếu) | Tuấn (retry) |
-| Rủi ro quota CPU namespace (93.1%, từng chạm 96.25%) | Đánh giá tăng `techx-quota` hay giảm HPA/replica dư thừa — namespace quota chưa được D3-COST-01 tính vào cost model | CDO-08 / Vinh |
+| Việc                                                                               | Cần làm gì                                                                                                               | Chờ ai                                |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| Xác nhận nguồn gốc HPA `currency` (min=2/max=3)                                    | Không có trong `CDO08-REL-01`/`D3-COST-01` — xác nhận ai tạo và có nên giữ                                               | CDO-04 / Vinh                         |
+| Chốt quyết định scope `quote`                                                      | D3-COST-01 còn ghi PENDING nhưng `quote` đã tăng lên `2/2/2` — cần quyết định chính thức đi kèm                          | CDO-04 (theo mục 10 của `D3-COST-01`) |
+| Xác nhận node Karpenter còn lại (lần đo 2) là baseline nghỉ hợp lệ hay cần co tiếp | D3-COST-01 chưa định nghĩa rõ baseline nghỉ sau rehearsal                                                                | CDO-04 / Vinh (cập nhật `D3-COST-01`) |
+| Xác nhận load-generator có đang phát traffic thật không                            | Cần quyền `pods/exec` hoặc Grafana access                                                                                | Ninh/Reliability                      |
+| Đối chiếu lại estimated cost bằng CE actual billing                                | Chạy lại `aws ce get-cost-and-usage` sau 24-48h khi CE xử lý xong dữ liệu ngày 15/07 (bucket `t3a.large` hiện còn thiếu) | Tuấn (retry)                          |
+| Rủi ro quota CPU namespace (93.1%, từng chạm 96.25%)                               | Đánh giá tăng `techx-quota` hay giảm HPA/replica dư thừa — namespace quota chưa được D3-COST-01 tính vào cost model      | CDO-04 / Vinh                         |
 
 Tài liệu này sẽ được cập nhật (không tạo file mới) khi có thêm evidence — mỗi lần cập nhật ghi rõ ngày UTC và phần nào vừa được bổ sung.
 
