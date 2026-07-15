@@ -107,13 +107,10 @@ Ninh sẽ kiểm tra chéo timestamp của từng ảnh và đặt tên ảnh th
 
 | Checkpoint | Tên file ảnh (Image File Name) | Metric chứng minh (Observed Metric) | Trạng thái (Status) |
 | :--- | :--- | :--- | :--- |
-| **T0 (Pre-maint)** | `01-pre-maint-slo-baseline.png` | Latency, Success Rate và Trạng thái Tải ban đầu | Sẵn sàng |
-| **T0 (Pre-maint)** | `02-pre-maint-resource-baseline.png` | CPU/Memory Node & Pod, Active Nodes = 2 | Sẵn sàng |
-| **T1 (During)** | `03-during-maint-latency-pending.png` | Storefront Latency p95, Đếm số Pending Pods | Sẵn sàng |
-| **T1 (During)** | `04-during-maint-alert-state.png` | Trạng thái Alerts firing/pending lúc chịu tải | Sẵn sàng |
-| **T2 (Post-maint)** | `05-post-maint-slo-verification.png` | Thẩm định Checkout >= 99%, Browse/Cart >= 99.5% | Sẵn sàng |
-| **T2 (Post-maint)** | `06-post-maint-resource-state.png` | CPU/Memory Node còn lại dưới 85%, Restarts | Sẵn sàng |
-| **T3 (Stabilized)** | `07-stabilized-scale-down.png` | Replica co về 1, Node co về baseline, Tải về 0 | Sẵn sàng |
+| **T0 (Trước)** | `01-pre-maint-slo-baseline.jpg` | Latency, Success Rate và Trạng thái Tải ban đầu | Sẵn sàng |
+| **T0 (Trước)** | `02-pre-maint-resource-baseline.jpg` | CPU/Memory Node & Pod, Active Nodes = 3 | Sẵn sàng |
+| **T1 (Sau/Trong khi)** | `03-during-maint-latency-pending.jpg` | Storefront Latency p95/p99 tăng nhẹ, Đếm số Pending Pods | Sẵn sàng |
+| **T1 (Sau/Trong khi)** | `04-during-maint-alert-state.jpg` | Trạng thái HPA scale-up pod, CPU/RAM lúc chịu tải | Sẵn sàng |
 
 ---
 
