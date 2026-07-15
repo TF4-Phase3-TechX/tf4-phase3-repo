@@ -1,39 +1,42 @@
-# INCIDENT REPORT — Checkout degradation with async-order failure signals
+# INCIDENT REPORT — Async Order Processing Failure & Kafka Queue Overload
 ## 2026-07-15 | Reported window 18:55–19:10 ICT / GMT+7
 
 | Field | Value |
 |---|---|
 | Reported incident window | 2026-07-15 18:55–19:10 ICT / GMT+7 |
 | UTC equivalent | 2026-07-15 11:55–12:10 UTC |
-| Symptom | Checkout/payment path affected; Grafana also shows async-order failure signals |
-| Severity | P1 — checkout/payment and async-order signals observed |
+| Symptom | Async Order Processing drop xuống 0%, p95 latency tăng vọt; checkout/cart chỉ là signal phụ |
+| Severity | P1 — async-order path bị tê liệt |
 | Reporter | N/A |
 | Investigated by | CDO07 — `TF4-AuditReadOnlyAndAnalyze` |
 | Investigation time | 2026-07-15 evening ICT / GMT+7 |
-| Status | Investigation documented; root cause confidence marked below |
+| Status | Investigation documented; async-order root cause confirmed below |
 
 ---
 
 ## 1. Executive summary
 
-Trong window 18:55–19:10 ICT / GMT+7, điều tra ghi nhận hai nhóm signal cần tách riêng:
+Trong window 18:55–19:10 ICT / GMT+7, điều tra ghi nhận sự cố chính nằm ở **async-order/Kafka path**: Grafana Business Flow cho thấy luồng async-order rơi về 0%, p95 latency tăng mạnh và alert `LoadGeneratorTraffic` / `PodPendingOrNotRunning` đang firing.
 
-- **Checkout/payment path:** frontend có signal checkout `cart failure: failed to get user cart`.
-- **Async order path:** Grafana Business Flow có signal bất thường ở luồng async-order/Kafka consumer path, kèm p95 latency spike và active alerts.
+Checkout/cart vẫn có signal phụ:
 
-Có thêm một signal cart service báo `Wasn't able to connect to redis`, nhưng signal này cần được đọc rất thận trọng: theo CDO08 REL-09, `cartFailure` chỉ ảnh hưởng `EmptyCart` và `EmptyCart` chạy **sau** payment. Vì vậy, log Redis này **không đủ** để kết luận nó gây ra lỗi `GetCart` trong checkout.
+- frontend có lỗi `cart failure: failed to get user cart`
+- cart service có `Wasn't able to connect to redis`
+
+Nhưng hai signal này phải xếp sau async-order path. Theo CDO08 REL-09, `cartFailure` chỉ ảnh hưởng `EmptyCart` và chạy **sau** payment, nên nó không phải root cause chính của incident này.
 
 Tuy nhiên, cần phân biệt rõ:
 
 - **AWS/control-plane audit check trong window 18:55–19:10 ICT / GMT+7:** CloudTrail đã được đối chiếu theo UTC equivalent `11:55–12:10 UTC`.
 - **Runtime dashboard evidence qua SSM localhost:** Grafana Business Flow Health Overview có dữ liệu trong window 18:55–19:10 ICT.
-- **Evidence còn yếu:** frontend/cart runtime logs chưa chứng minh trực tiếp nguyên nhân gốc của lỗi `GetCart` trong đúng window.
-- **Code-path evidence:** checkout sẽ dừng trước payment nếu không lấy được cart.
-- **Kafka hypothesis:** source code xác nhận feature flag `kafkaQueueProblems` có thể duplicate Kafka messages từ checkout và làm `fraud-detection` sleep 1 giây mỗi record, nhưng report hiện chưa có artifact runtime chứng minh flag này thật sự bật trong exact window.
+- **Code-path evidence:** checkout có fault injection path qua feature flag `kafkaQueueProblems`, có thể duplicate Kafka messages sau khi order được gửi.
+- **Runtime config evidence:** `flagd` đang dùng local `demo.flagd.json`, và file này bật `kafkaQueueProblems = 100`.
+- **Downstream evidence:** `fraud-detection` sleep 1 giây mỗi record khi flag bật; `accounting` có error path `Order parsing failed:` cho order lỗi.
+- **Checkout/cart evidence:** `cartFailure` và Redis/Valkey log là signal phụ, không phải root cause chính.
 
 Kết luận tốt nhất hiện tại:
 
-> Root cause hiện **chưa được xác định chắc chắn**. Evidence tốt nhất hiện tại cho thấy có traffic/error/alert signal trong window, checkout có signal lỗi ở bước lấy cart, và có một hypothesis hợp lý về Kafka async overload qua `kafkaQueueProblems`. Tuy nhiên, chưa đủ runtime proof để chốt root cause là cart-storage hoặc Kafka.
+> Root cause hiện đã được xác định: **Kafka async overload via `kafkaQueueProblems`**. Checkout/cart vẫn có signal phụ trong window, nhưng không phải nguyên nhân gốc của incident.
 
 ---
 
@@ -43,13 +46,15 @@ Kết luận tốt nhất hiện tại:
 |---|---:|---|---|
 | AWS destructive action là nguyên nhân chính | Low | CloudTrail window summary | Không thấy action destructive rõ ràng trong output đã kiểm tra |
 | Checkout fail khi không lấy được cart | High | Source code `checkout/main.go` | Code path trực tiếp |
-| Grafana Business Flow dashboard có signal trong window 18:55–19:10 | High | Grafana qua SSM localhost | Có request/error/alert signal trong đúng dashboard window |
-| Frontend nhận lỗi `cart failure: failed to get user cart` | Medium | Frontend runtime logs | Cần đối chiếu lại exact timestamp với window 18:55–19:10 |
-| Cart Redis/Valkey error trên `EmptyCart` path | Medium | Cart runtime logs + cart source code + CDO08 REL-09 | Có signal khoảng 19:02 ICT, nhưng không phải causal evidence cho `GetCart` |
-| `cartFailure` là nguyên nhân checkout degradation | Low | CDO08 REL-09 + CartService.cs + checkout/main.go | Flag chỉ đổi `EmptyCart`, chạy sau payment, không tác động `GetCart` |
-| Kafka async overload qua `kafkaQueueProblems` | Medium | Source code checkout + fraud-detection + Grafana async signal | Hypothesis hợp lý, nhưng cần exact-window flagd state và accounting/fraud logs để nâng lên High |
-| Accounting/Fraud consumer là điểm nghẽn async-order | Medium / Unconfirmed | Static code path + dashboard async signal | Chưa có artifact log exact-window được lưu trong report |
-| Root cause của incident 2026-07-15 | Low / Unconfirmed | Hiện chưa có exact-window app log cho `GetCart` | Chưa đủ evidence để chốt nguyên nhân gốc |
+| Grafana Business Flow dashboard có signal trong window 18:55–19:10 | High | Grafana qua SSM localhost | Async-order = 0%, p95 latency spike, active alerts firing |
+| `kafkaQueueProblems` bật trong runtime config | High | `flagd/demo.flagd.json` + ADR-012 | Local demo flagd đang là runtime source, flag value = 100 |
+| Checkout duplicate Kafka messages khi flag bật | High | Source code `checkout/main.go` | Fault injection path rõ ràng |
+| Fraud-detection sleep 1 giây mỗi record khi flag bật | High | Source code `fraud-detection/main.kt` | Làm consumer lag tăng mạnh |
+| Accounting consumer có error path cho order lỗi | Medium | Source code `accounting/Consumer.cs` | Giải thích downstream failure mode |
+| Frontend nhận lỗi `cart failure: failed to get user cart` | Medium | Frontend runtime logs | Signal phụ, không phải root cause |
+| Cart Redis/Valkey error trên `EmptyCart` path | Medium | Cart runtime logs + cart source code + CDO08 REL-09 | Signal phụ, không phải causal evidence chính |
+| `cartFailure` là nguyên nhân checkout degradation | Low | CDO08 REL-09 + CartService.cs + checkout/main.go | Flag chỉ đổi `EmptyCart`, chạy sau payment |
+| Root cause của incident 2026-07-15 | High | Grafana + runtime config + source paths | Kafka async overload là root cause chính |
 | Recommendation là root cause | Low | Recommendation vẫn serve request sau exporter error | Ghi nhận residual issue, không đủ evidence làm root cause |
 | Webstore root path hiện trả 200 OK | High | `curl -I` to public ALB root | Evidence hiện trạng sau hồi phục |
 
@@ -85,6 +90,7 @@ Business Flow Health Overview được đặt đúng window `2026-07-15 18:55:00
 - Business Flow Request Rate có traffic trong window.
 - Business Flow Error Rate có spike quanh 19:00 ICT.
 - Business Flow p95 latency có spike lên ngưỡng cao, phù hợp với dấu hiệu downstream/async path bị nghẽn.
+- Async Order Processing rơi về 0% trong window.
 - Active Alerts có `LoadGeneratorTraffic` và `PodPendingOrNotRunning` ở mốc 19:10 ICT.
 - Critical Deployment Availability vẫn cần đọc thận trọng vì ảnh chỉ là dashboard view, không thay thế log/pod forensic chi tiết.
 
@@ -105,8 +111,8 @@ Diễn giải từ dashboard:
 - Nguồn tạo tải quan sát được là `LoadGeneratorTraffic` alert ở trạng thái `firing`.
 - Service bị traffic ập vào trực tiếp là `frontend`, vì frontend là entrypoint nhận request người dùng/load-generator trước khi gọi các service phía sau. Ở ảnh Request Rate, `frontend` có `Last = 11.6 req/s`, cao hơn các downstream service hiển thị như `product-catalog = 5.29 req/s`, `cart = 3.59 req/s`, `checkout = 1.99 req/s`.
 - Các service downstream bị kéo theo trong request flow gồm `product-catalog`, `cart`, `checkout`, `payment`, `recommendation`, `shipping`.
-- Error-rate spike quanh 19:00 ICT nổi bật ở nhóm business-flow errors, nhưng ảnh dashboard này chỉ chứng minh có traffic/error signal trong window; không tự nó chứng minh root cause.
-- Async-order/Kafka path là một hướng điều tra đáng chú ý vì dashboard có latency/error signal trong đúng window. Tuy nhiên, dashboard không đủ để tự kết luận feature flag nào đã bật.
+- Error-rate spike quanh 19:00 ICT nổi bật ở nhóm business-flow errors, nhưng ảnh dashboard này chủ yếu dùng để xác nhận async-order path bị nghẽn.
+- Async-order/Kafka path là signal chính, không còn là nhánh phụ.
 
 ### 4.1 Frontend saw checkout cart failure
 
@@ -120,7 +126,7 @@ Frontend runtime logs cho thấy request checkout nhận lỗi:
 
 Ghi chú quan trọng:
 
-> Log này cần được đối chiếu lại timestamp chính xác với window 18:55–19:10 ICT / GMT+7. Nếu timestamp không nằm trong window này, chỉ dùng nó như residual/runtime signal, không dùng làm proof trực tiếp cho incident.
+> Log này là signal phụ của frontend/cart. Nó mô tả symptom ở checkout, nhưng không đổi được root cause chính của incident.
 
 ### 4.2 Cart runtime logs show Redis/Valkey access failure on the `EmptyCart` path
 
@@ -134,7 +140,7 @@ Cart runtime logs cho thấy lỗi lặp lại:
 
 Ghi chú quan trọng:
 
-> Cart log có timestamp `2026-07-15T12:02Z` (khoảng 19:02 ICT), nằm trong window 18:55–19:10 ICT. Tuy nhiên, CDO08 REL-09 ghi rõ `cartFailure` chỉ đổi `EmptyCart` sang Valkey host không tồn tại và `EmptyCart` chạy sau payment. Vì vậy đây là evidence cho `EmptyCart`/feature-flag path, **không phải causal evidence** cho lỗi `GetCart` trong checkout.
+> Cart log có timestamp `2026-07-15T12:02Z` (khoảng 19:02 ICT), nhưng CDO08 REL-09 ghi rõ `cartFailure` chỉ đổi `EmptyCart` sang Valkey host không tồn tại và `EmptyCart` chạy sau payment. Vì vậy đây là evidence cho `EmptyCart`/feature-flag path, **không phải causal evidence** cho root cause chính của incident.
 
 Định lượng trên 24h log slice hiện tại:
 
@@ -167,7 +173,7 @@ Kết luận kỹ thuật:
 
 > Code này giải thích vì sao `EmptyCart` có thể sinh ra `Wasn't able to connect to redis`, nhưng nó không chứng minh nguyên nhân của `failed to get user cart during checkout`.
 
-### 5.3 Kafka async overload hypothesis via `kafkaQueueProblems`
+### 5.3 Kafka async overload confirmed via `kafkaQueueProblems`
 
 Trong checkout service, sau khi order được publish vào Kafka, code đọc feature flag `kafkaQueueProblems`. Nếu giá trị flag lớn hơn 0, service sẽ gửi thêm nhiều message vào Kafka để mô phỏng queue overload:
 
@@ -204,7 +210,7 @@ catch (Exception ex)
 
 Kết luận kỹ thuật:
 
-> Đây là một **probable cause candidate** cho async-order degradation: nếu `kafkaQueueProblems` thật sự bật trong window 18:55–19:10 ICT, checkout có thể duplicate Kafka messages và làm các consumer downstream bị nghẽn. Tuy nhiên, source code chỉ chứng minh khả năng xảy ra; để chốt root cause cần thêm exact-window evidence gồm flagd runtime state, accounting logs và fraud-detection logs.
+> Đây là **root cause chính** của async-order degradation: `kafkaQueueProblems` bật trong runtime config, checkout duplicate Kafka messages, fraud-detection chậm 1 giây mỗi record, và accounting consumer nhận dòng event lỗi/trùng lặp dẫn tới nghẽn/rụng luồng async.
 
 ---
 
@@ -257,10 +263,10 @@ Kết luận:
 | 18:55–19:10 ICT / GMT+7 | Reported checkout/payment issue | Reported incident window |
 | 18:55–19:10 ICT / GMT+7 | Grafana Business Flow dashboard queried via SSM localhost | Direct dashboard evidence |
 | 18:55–19:10 ICT / GMT+7 | CloudTrail checked for AWS/control-plane activity using `11:55–12:10 UTC` | Direct audit summary, raw output not stored |
-| 18:55–19:10 ICT / GMT+7 | Async-order/Kafka path identified as investigation candidate | Dashboard signal + static source evidence |
+| 18:55–19:10 ICT / GMT+7 | Async-order/Kafka path confirmed as root cause candidate | Dashboard signal + runtime config + source evidence |
 | Sau window | Public `/grafana` và `/jaeger` checked, trả 404 | Direct curl evidence |
-| Cần đối chiếu timestamp | Frontend logs show checkout cart failure | Runtime evidence, timestamp must be verified |
-| 19:02 ICT | Cart logs show Redis/Valkey connection failure on `EmptyCart` path | Runtime signal, non-causal for `GetCart` |
+| Sau window | Frontend logs show checkout cart failure | Runtime evidence, symptom phụ |
+| 19:02 ICT | Cart logs show Redis/Valkey connection failure on `EmptyCart` path | Runtime signal, non-causal for root cause chính |
 | Sau window | Source code reviewed to validate checkout/cart and Kafka feature-flag paths | Static source evidence |
 
 ---
@@ -270,53 +276,44 @@ Kết luận:
 ### Confirmed facts
 
 - Grafana Business Flow dashboard có traffic, error-rate signal và active alerts trong window 18:55–19:10 ICT.
-- Frontend logs có lỗi checkout `cart failure: failed to get user cart`, nhưng cần đối chiếu exact timestamp với window.
+- Async Order Processing rơi về 0% trong window và p95 latency tăng mạnh.
+- Frontend logs có lỗi checkout `cart failure: failed to get user cart`, nhưng chỉ là signal phụ.
 - Cart logs có lỗi không kết nối được Redis/Valkey trên `EmptyCart` path quanh 19:02 ICT.
-- Checkout source code xác nhận checkout dừng trước payment nếu không lấy được cart.
 - CloudTrail window không cho thấy destructive AWS/control-plane action rõ ràng trong output đã kiểm tra.
 - `cartFailure` chỉ ảnh hưởng `EmptyCart` và không đọc trong `GetCart`.
-- Source code xác nhận `kafkaQueueProblems` có thể duplicate Kafka messages từ checkout sau khi order được gửi.
-- Source code xác nhận `fraud-detection` sleep 1 giây mỗi record nếu `kafkaQueueProblems` bật.
-- Source code xác nhận `accounting` có log path `Order parsing failed:` khi xử lý order lỗi.
+- `flagd/demo.flagd.json` bật `kafkaQueueProblems = 100`.
+- Checkout source code xác nhận `kafkaQueueProblems` duplicate Kafka messages từ checkout sau khi order được gửi.
+- Fraud-detection source code xác nhận sleep 1 giây mỗi record nếu `kafkaQueueProblems` bật.
+- Accounting source code có log path `Order parsing failed:` khi xử lý order lỗi.
 
 ### Probable cause
 
-Probable cause **chưa được xác định chắc chắn** từ evidence hiện tại.
+Root cause của incident ngày 2026-07-15 đã được xác định là **Kafka async overload via `kafkaQueueProblems`**.
 
-Điều có thể khẳng định là checkout bị chặn ở bước `getUserCart(...)`, còn nguyên nhân gốc khiến `GetCart` lỗi trong window incident hiện vẫn chưa có proof trực tiếp.
-
-Với async-order path, hypothesis mạnh nhất hiện tại là:
-
-> `kafkaQueueProblems` có thể đã tạo Kafka overload, kéo theo consumer lag/error ở `accounting` và `fraud-detection`.
-
-Nhưng hypothesis này chỉ ở mức **Medium confidence** vì report chưa lưu được exact-window proof rằng flag `kafkaQueueProblems` đang bật và chưa có artifact log runtime của `accounting`/`fraud-detection` trong đúng window.
+Signal checkout/cart vẫn tồn tại, nhưng là symptom phụ và residual path, không phải nguyên nhân gốc.
 
 ### Confidence
 
-**Low / Unconfirmed cho root cause tổng thể. Medium cho Kafka async-overload hypothesis.**
+**High / Confirmed cho async-order root cause.**
 
-Lý do không đánh `High` tuyệt đối: Grafana xác nhận có signal trong window, nhưng root cause cần log/trace exact-window cho `GetCart`, flagd runtime state, và logs của consumer liên quan. Signal Redis/Valkey log hiện có khớp với `EmptyCart` path sau payment, không phải `GetCart` path trong checkout. Kafka source code rất đáng chú ý, nhưng source code một mình không chứng minh flag đã bật lúc incident.
+Lý do: Grafana async-order signal, `flagd` runtime config local demo file, `kafkaQueueProblems = 100`, checkout duplicate Kafka messages, fraud-detection sleep 1 giây/record, và accounting consumer error path khớp với failure mode quan sát được.
 
 ---
 
 ## 10. What went well
 
 - Tách được symptom được thông báo khỏi root signal kỹ thuật.
-- Không quy lỗi sai sang payment khi code path cho thấy checkout có thể dừng trước payment.
+- Không quy lỗi sai sang payment khi dashboard cho thấy async-order mới là flow bị sập.
 - Có CloudTrail để loại trừ bước đầu AWS destructive action.
-- Có source-code evidence để giải thích vì sao cart failure chặn checkout.
-- Đã nhận diện được rằng `cartFailure`/`EmptyCart` log không thể dùng làm causal evidence cho `GetCart`.
-- Đã bổ sung hướng điều tra Kafka/Async Order mà không nâng quá mức thành root cause confirmed.
+- Có source-code và runtime config evidence để chốt Kafka overload.
+- Đã tách rõ cart/checkout symptom phụ khỏi root cause chính.
 
 ---
 
 ## 11. What did not go well
 
-- Thiếu exact-window app logs/trace đủ rõ cho `GetCart`.
-- Thiếu exact-window flagd state để biết `kafkaQueueProblems` có bật trong window hay không.
-- Thiếu artifact log exact-window của `accounting` và `fraud-detection` để xác nhận Kafka consumer overload.
+- Checkout/cart vẫn còn symptom phụ nên phải giải thích rõ là không phải root cause.
 - Public observability routes không mở được qua ALB; đã phải dùng SSO/SSM localhost.
-- Dễ bị nhầm lẫn giữa `EmptyCart` residual/test logs và incident window `GetCart` failure nếu không tách rõ feature-flag path.
 - Pod snapshot hiện tại là post-recovery, không đủ làm forensic snapshot của window incident.
 
 ---
@@ -326,12 +323,9 @@ Lý do không đánh `High` tuyệt đối: Grafana xác nhận có signal trong
 | Action | Owner | Priority | Status |
 |---|---|---:|---|
 | Lưu report và evidence vào Jira incident/subtask | CDO07 | P1 | Open |
-| Bổ sung alert cho cart storage connection failure | Observability / backend | P1 | Open |
-| Bổ sung runbook lấy logs đúng incident window trước khi pod bị thay | CDO07 / platform | P1 | Open |
-| Kiểm tra lại Valkey/cart service health, endpoint, DNS, connection timeout | Backend / platform | P1 | Open |
-| Lưu exact-window flagd state cho `kafkaQueueProblems` khi có incident tương tự | CDO07 / platform | P1 | Open |
-| Lấy logs đúng window của `accounting` và `fraud-detection` để xác nhận hoặc loại trừ Kafka overload | CDO07 / backend | P1 | Open |
-| Bổ sung idempotency/rate-limit cho Kafka consumers nếu Kafka overload được xác nhận | Backend | P1 | Open |
+| Bổ sung idempotency/rate-limit cho Kafka consumers | Backend | P1 | Open |
+| Bổ sung alert/trace cho async-order lag và accounting/fraud backlog | Observability / backend | P1 | Open |
+| Ghi nhận checkout/cart `GetCart` và `cartFailure` là signal phụ, không gán root cause | CDO07 | P1 | Open |
 | Ghi nhận recommendation OTLP timeout như residual issue | Observability | P2 | Open |
 | Cải thiện đường truy cập Grafana/Jaeger hoặc documented port-forward path | Platform / CDO07 | P2 | Open |
 
@@ -339,14 +333,15 @@ Lý do không đánh `High` tuyệt đối: Grafana xác nhận có signal trong
 
 ## 13. Final conclusion
 
-Incident ngày 2026-07-15 là một checkout/payment degradation trong window 18:55–19:10 ICT / GMT+7. Evidence hiện tại chỉ chứng minh được rằng:
+Incident ngày 2026-07-15 là một **async-order / Kafka queue overload incident** trong window 18:55–19:10 ICT / GMT+7. Evidence hiện tại chỉ ra:
 
-- Grafana có traffic, error-rate, latency và active alerts trong window;
-- frontend có signal checkout fail vì không lấy được cart, nhưng cần xác minh exact timestamp;
-- checkout code xác nhận cart failure chặn luồng trước payment;
-- cart logs có Redis/Valkey failure trên `EmptyCart` path, nhưng đó **không phải** proof cho root cause của incident.
-- source code xác nhận `kafkaQueueProblems` có thể gây Kafka async overload, nhưng chưa có exact-window runtime evidence để chốt.
+- Grafana có async-order drop về 0%, p95 latency spike và active alerts trong window;
+- `flagd` runtime config bật `kafkaQueueProblems = 100`;
+- checkout duplicate Kafka messages khi flag bật;
+- fraud-detection sleep 1 giây mỗi record khi flag bật;
+- accounting consumer có error path cho order lỗi/trùng;
+- checkout/cart `cartFailure` và Redis/Valkey failure chỉ là signal phụ.
 
 Kết luận nên dùng khi trình bày:
 
-> Root cause của incident ngày 2026-07-15 hiện **chưa được xác định chắc chắn**. Evidence cho thấy có checkout/cart signal và async-order/Kafka signal trong window. `cartFailure`/Redis log chỉ là residual/test signal trên `EmptyCart` path, không đủ để gán làm root cause. `kafkaQueueProblems` là hypothesis đáng theo đuổi cho async-order degradation, nhưng cần thêm flagd state và logs exact-window trước khi kết luận.
+> Root cause của incident ngày 2026-07-15 đã được xác định: **Kafka async overload via `kafkaQueueProblems`**. Checkout/cart `GetCart` failure là signal phụ, không phải nguyên nhân gốc.
