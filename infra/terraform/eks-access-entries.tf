@@ -39,7 +39,7 @@ locals {
     # PR touching those resources, not just ones that change them.
     github_actions_terraform_plan = {
       arn    = "arn:aws:iam::511825856493:role/tf4-github-actions-plan"
-      groups = []
+      groups = ["terraform-plan-readers"]
     }
   }
 }
