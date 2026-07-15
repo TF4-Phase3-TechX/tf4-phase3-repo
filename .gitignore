@@ -103,3 +103,8 @@ note/
 huong-dan-grafana.md
 docs/aio01/w1_tasks_summary.md
 docs/aio01/w2_tasks_summary.md
+
+# ── Temporary ignores for clean Guides PR ──
+docs/aio01/aiops_detection_rules_specs.md
+docs/aio01/mandate-06/
+techx-corp-platform/src/aiops-detector/
