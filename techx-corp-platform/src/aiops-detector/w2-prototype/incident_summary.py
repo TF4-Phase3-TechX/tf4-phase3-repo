@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlencode, quote
 
 class IncidentSummaryGenerator:
@@ -47,7 +47,7 @@ class IncidentSummaryGenerator:
         service = detector_output.get("service", "unknown-service")
         environment = detector_output.get("environment", "unknown-env")
         tenant_id = detector_output.get("tenant_id", "unknown-tenant")
-        timestamp = detector_output.get("timestamp", datetime.utcnow().isoformat())
+        timestamp = detector_output.get("timestamp", datetime.now(timezone.utc).isoformat())
         severity = detector_output.get("severity", "unknown").upper()
 
         # --- Evidence metadata from detector (Task 38 / Task 41 output) ---
