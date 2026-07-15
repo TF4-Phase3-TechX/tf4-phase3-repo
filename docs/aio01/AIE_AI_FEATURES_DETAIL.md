@@ -1,5 +1,8 @@
 # Chi tiết Các Tính năng & Giải pháp AI của Nhóm AIE (AI Engineering)
 
+> [!IMPORTANT]
+> This is a pre-Mandate-06 design/baseline document. Its OpenAI function-calling, API-key and mock-rollback sections are historical. The current product-review architecture is Amazon Bedrock with deterministic context fetch, Pod Identity and no silent mock fallback; see [`docs/aio1/mandate-06/README.md`](../aio1/mandate-06/README.md).
+
 Tài liệu này tổng hợp chi tiết toàn bộ các tính năng, giải pháp công nghệ và cơ chế an toàn về AI mà nhóm AIE (AI Engineering) đảm nhận phát triển trong Phase 3, được tổng hợp từ các tài liệu quy hoạch dự án và thiết kế hệ thống của AIO1.
 
 ---

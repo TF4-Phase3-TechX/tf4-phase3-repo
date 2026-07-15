@@ -1,41 +1,30 @@
 # Product Reviews Service
 
-This service returns product reviews for a specific product, along with an
-AI-generated summary of the product reviews.
+This gRPC service returns product reviews and answers short questions through a grounded Amazon Bedrock path. The application fetches product/review evidence deterministically, removes unneeded identity fields, redacts PII, quarantines instruction-like reviews, invokes one pinned Bedrock model with a pinned Guardrail, and validates exact review quotes before display. The model has no DB, cart, checkout, or arbitrary tool access.
 
-## Local Build
+## Build and test
 
-To build the protos, run from the root directory:
-
-```sh
-make docker-generate-protobuf
-```
-
-## Docker Build
-
-From the root directory, run:
+From the platform root:
 
 ```sh
 docker compose build product-reviews
+python -m pytest src/product-reviews/tests -q
 ```
 
-## LLM Configuration
+## Runtime configuration
 
-By default, this service uses a mock LLM service, as configured in
-the `.env` file:
+| Variable | Required/default | Purpose |
+|---|---|---|
+| `BEDROCK_MODEL_ID` | required | Pinned foundation model or inference profile ID |
+| `BEDROCK_GUARDRAIL_ID` | required | Guardrail ID/ARN |
+| `BEDROCK_GUARDRAIL_VERSION` | required numeric | Immutable Guardrail version; `DRAFT` is rejected |
+| `BEDROCK_OUTPUT_MODE` | `json_schema` | `json_schema`, or `tool` for Nova 2 Lite |
+| `BEDROCK_DEADLINE_SECONDS` | `4.5` | SDK read and application deadline |
+| `AWS_REGION` | `us-east-1` | Bedrock Runtime region |
+| `BEDROCK_SYSTEM_CANARY` | empty | Optional non-secret leak-detection marker |
 
-``` yaml
-LLM_BASE_URL=http://${LLM_HOST}:${LLM_PORT}/v1
-LLM_MODEL=techx-llm
-OPENAI_API_KEY=dummy
-```
+Production credentials come only from EKS Pod Identity using ServiceAccount `product-reviews-bedrock`; the repo has no provider key. Local real-model evaluation uses temporary AWS SSO credentials.
 
-If desired, the configuration can be changed to point to a real, OpenAI API
-compatible LLM in the file `.env.override`. For example, the following
-configuration can be used to utilize OpenAI's gpt-4o-mini model:
+Provider errors return the static unavailable response. There is no automatic fallback to a mock or different model. Online logs/traces must keep `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` and contain metadata only.
 
-``` yaml
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4o-mini
-OPENAI_API_KEY=<replace with API key>
-```
+The canonical decision, IAM template and evaluation procedure are in [`docs/aio1/mandate-06`](../../../docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md).

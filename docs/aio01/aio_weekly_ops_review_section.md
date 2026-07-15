@@ -1,36 +1,33 @@
-# AIO Weekly Ops Review Section
+# AIO weekly operations review — Week 2
 
-This document maintains the weekly operational status, risk assessments, key metrics, and incident reports for the AI subsystem of project AIO1. It is updated at the end of each sprint week for the Ops Review meeting.
+- Date: 2026-07-14
+- Current release state: Bedrock implementation and offline real-model bake-off complete; cluster canary pending.
+- Proposed model: Nova 2 Lite through `us.amazon.nova-2-lite-v1:0`.
+- ADR state: `Proposed` until canary, SLO, rollback, mentor validation and signatures complete.
 
----
+## Evidence completed
 
-## Week 2 Ops Review (Date: July 14, 2026)
+- 270 metadata-only evaluation records across Haiku, Qwen and Nova.
+- Nova: supported 96.67%, unsupported 100%, stored injection quarantine 100%, PII/canary leakage 0, evaluation p95 1.328 seconds.
+- Static unavailable fallback, 4.5-second deadline, zero online retry and 5-failure circuit breaker are unit tested.
+- PR #131 telemetry contract is preserved for tokens, estimated cost, latency, calls and errors.
+- Prompt/review/response content is excluded from application logs and trace attributes.
 
-### 📊 AI Subsystem Health Summary
-- **Current Mode:** Mock LLM (readying for controlled real LLM migration).
-- **Service Status:** Green (No major degradations observed on mock endpoint).
-- **Average Latency (Mock):** Pending post-deploy Prometheus evidence.
-- **API Error Rate:** Pending controlled drill and post-deploy metric verification.
+## Risks and next actions
 
-### 🔍 Key Metrics & Telemetry Gaps Fixed
-- **Status:** **PASS**
-- **Action Taken:** Instrumented `product_reviews_server.py` with custom OpenTelemetry tracking for token usage, final LLM call latency, and estimated cost.
-- **Evidence:** Custom attributes `app.llm.prompt_tokens`, `app.llm.completion_tokens`, and `app.llm.estimated_cost_usd` are now attached to `get_ai_assistant_response` spans.
+| Risk | Current control | Remaining evidence / owner |
+|---|---|---|
+| Bedrock outage or throttle | Static fallback and circuit breaker | CDO failure drill and deployed metric proof / Văn, Tâm |
+| Cost runaway | Token/cost counters; Nova price variables pinned | Verify PromQL and current price snapshot / Hòa, Thông |
+| Injection or PII leakage | Pre-filter, quarantine, Guardrail v3, exact-quote validator | Mentor storefront attack test / Hậu |
+| Storefront latency regression | One provider call and 4.5-second deadline | Before/after SLO dashboard / Tâm, CDO |
+| Missing detection evidence | Silent-attack review records observability access gaps | Provide private read-only query path / CDO |
 
-### ⚠️ Top Risks & Mitigation Status
+## Operational boundaries
 
-| Risk Description | Severity | Mitigation Status | Next Action / Owner |
-| --- | --- | --- | --- |
-| **LLM Upstream Outage / Timeout** | High | Five-second client timeout and safe fallback implemented; deployment evidence pending. | Test with controlled rate-limiting and latency injection. (Văn) |
-| **LLM API Cost Runaway** | Medium | Defined daily budgets ($10/day for Staging) and alerting thresholds. | Deploy OTel metrics dashboard on Grafana. (Thông) |
-| **Prompt Injection Vulnerability** | Medium | Allow-list of tools and system output filtering are in design. | Implement input validation before invoking completions. (Văn) |
+- AIO does not mutate `flagd`; fault-injection flags remain incident controls.
+- Provider failure does not switch to a mock or another model.
+- CDO owns Pod Identity association, canary deployment and GitOps rollback.
+- Evidence contains metadata and GitHub links only—never credentials, raw prompts, reviews, responses, PII or Guardrail traces.
 
-### 🚨 Week 2 Incident Notes
-- **Incident ID:** None.
-- **Summary:** Controlled Rate Limit drill is planned using the BTC-owned `llmRateLimitError` injection flag. AIO will only observe the injected signal and must not mutate flagd.
-- **Evidence:** Pending reproducible log reference, trace ID, metric query, and observed fallback response after deployment.
-
-### ➡️ Next Actions (Week 3)
-1. Perform canary cutover of real LLM in Staging environment using the newly created [Readiness Checklist](./real_llm_readiness_checklist.md).
-2. Wire rule-based detector to poll OTel token count and alert on Slack channel.
-3. Conduct failure drill with simulated model failure.
+See [Mandate 06 evidence](../aio1/mandate-06/README.md) and the [silent-attack detection review](incidents/2026-07-14-silent-attack-detection-review.md).

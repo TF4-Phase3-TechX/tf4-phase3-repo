@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeOnlyWinningModelOrProfileWithPinnedGuardrail",
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeModel",
+      "Resource": [
+        "arn:aws:bedrock:us-east-1::foundation-model/REPLACE_WINNING_MODEL_ID",
+        "arn:aws:bedrock:us-east-1:REPLACE_ACCOUNT_ID:inference-profile/REPLACE_ONLY_IF_NOVA_WINS"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "bedrock:GuardrailIdentifier": "arn:aws:bedrock:us-east-1:REPLACE_ACCOUNT_ID:guardrail/REPLACE_GUARDRAIL_ID:REPLACE_NUMERIC_VERSION"
+        }
+      }
+    },
+    {
+      "Sid": "UseOnlyPinnedGuardrail",
+      "Effect": "Allow",
+      "Action": "bedrock:ApplyGuardrail",
+      "Resource": "arn:aws:bedrock:us-east-1:REPLACE_ACCOUNT_ID:guardrail/REPLACE_GUARDRAIL_ID"
+    },
+    {
+      "Sid": "DenyInferenceWithoutPinnedGuardrail",
+      "Effect": "Deny",
+      "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "bedrock:GuardrailIdentifier": "arn:aws:bedrock:us-east-1:REPLACE_ACCOUNT_ID:guardrail/REPLACE_GUARDRAIL_ID:REPLACE_NUMERIC_VERSION"
+        }
+      }
+    }
+  ]
+}
