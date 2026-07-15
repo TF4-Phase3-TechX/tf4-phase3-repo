@@ -1,0 +1,596 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "targetBlank": true,
+      "title": "Baseline cost estimate",
+      "type": "link",
+      "url": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/evidence/epic-04-cost-optimization/01-baseline-cost-estimate.md"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Scope and Accuracy",
+      "type": "text",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "content": "This dashboard is the CDO-04 MVP for cost visibility. It shows baseline AWS cost estimates plus Kubernetes workload allocation from Prometheus metrics. It does not read Cost Explorer or CUR yet, so values are estimates until billing permissions are added and actual AWS spend is wired in.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 100,
+      "title": "Baseline AWS Estimate",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "title": "Monthly Fixed Baseline Estimate",
+      "description": "EKS control plane + 2 t3.large nodes + worker root EBS + NAT hourly + ALB hourly. Excludes NAT data, ALB LCU, ECR, CloudWatch ingest, data transfer, and actual billing corrections.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1200 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "vector(${monthly_fixed_estimate_usd})",
+          "legendFormat": "Monthly fixed estimate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Weekly Fixed Baseline Estimate",
+      "description": "Weekly equivalent of the fixed baseline estimate.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 210 },
+              { "color": "red", "value": 300 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "vector(${weekly_fixed_estimate_usd})",
+          "legendFormat": "Weekly fixed estimate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Weekly Budget Used",
+      "description": "Fixed baseline estimate divided by the current TF weekly budget target.",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "orange", "value": 90 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "100 * vector(${weekly_fixed_estimate_usd}) / vector(${weekly_budget_usd})",
+          "legendFormat": "Budget used",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Ready Worker Nodes",
+      "description": "Ready node count from OTEL Kubernetes cluster metrics. If this is above 2, compute burn has likely increased.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "yellow", "value": null },
+              { "color": "green", "value": 2 },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 4 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(k8s_node_condition{condition=\"Ready\"}) or vector(0)",
+          "legendFormat": "Ready nodes",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "title": "Estimated EKS Compute Allocation",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 6,
+      "title": "CPU-Weighted Estimated Compute Cost by Workload (USD/week)",
+      "description": "Allocates the current ready-node EC2 weekly cost by each container's CPU usage share. This is an estimate, not Cost Explorer actual billing.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 11 },
+      "options": { "readOnly": true, "showHeader": true },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(sum by (namespace, container) (rate(container_cpu_usage_seconds_total{namespace=~\"techx-tf4|techx-observability\", container!=\"\", container!=\"POD\"}[$__rate_interval])) / scalar(sum(rate(container_cpu_usage_seconds_total{namespace=~\"techx-tf4|techx-observability\", container!=\"\", container!=\"POD\"}[$__rate_interval])))) * scalar((sum(k8s_node_condition{condition=\"Ready\"}) or vector(2)) * ${node_hourly_usd} * 24 * 7)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{namespace}}/{{container}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "CPU Share by Workload",
+      "description": "Runtime CPU share used to explain the cost allocation table.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 11 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },
+          "unit": "percent",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": [ "mean", "max" ], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "100 * sum by (namespace, container) (rate(container_cpu_usage_seconds_total{namespace=~\"techx-tf4|techx-observability\", container!=\"\", container!=\"POD\"}[$__rate_interval])) / scalar(sum(rate(container_cpu_usage_seconds_total{namespace=~\"techx-tf4|techx-observability\", container!=\"\", container!=\"POD\"}[$__rate_interval])))",
+          "legendFormat": "{{namespace}}/{{container}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "title": "Runtime Cost Drivers",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 8,
+      "title": "Memory Usage by Workload",
+      "description": "Memory footprint helps identify workloads that can force larger nodes or block safe right-sizing.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },
+          "unit": "megabytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": [ "mean", "max" ], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum by (namespace, container) (container_memory_working_set_bytes{namespace=~\"techx-tf4|techx-observability\", container!=\"\", container!=\"POD\"}) / 1024 / 1024",
+          "legendFormat": "{{namespace}}/{{container}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Observability Stack Memory",
+      "description": "Observability is an indirect cost driver because it consumes worker node memory/CPU.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },
+          "unit": "megabytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": [ "mean", "max" ], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum by (container) (container_memory_working_set_bytes{namespace=~\"techx-tf4|techx-observability\", container=~\"grafana|prometheus|jaeger|opensearch|otel-collector|otel-collector-agent\"}) / 1024 / 1024",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Load Generator Activity",
+      "description": "Synthetic traffic can increase trace/log volume and make cost allocation misleading.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"load-generator\"}[5m])) or vector(0)",
+          "legendFormat": "Loadgen activity",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Current Ready-Node EC2 Estimate (USD/day)",
+      "description": "Ready node count multiplied by the configured t3.large hourly price. This captures node count changes, not actual blended billing.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 6 },
+              { "color": "red", "value": 8 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(sum(k8s_node_condition{condition=\"Ready\"}) or vector(2)) * ${node_hourly_usd} * 24",
+          "legendFormat": "Node compute/day",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Storage and Usage-Based Cost Gaps",
+      "type": "text",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 25 },
+      "options": {
+        "content": "Storage and usage charges are partially visible in this MVP. Current chart defines PVCs for PostgreSQL, Valkey, Kafka, and OpenSearch, but exact EBS/PVC actual billing must be reconciled through AWS inventory or Cost Explorer. NAT data processing, ALB LCU, ECR storage, CloudWatch ingest, and data transfer remain outside this dashboard until billing permissions are added.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 103,
+      "title": "Node Pressure and Right-Sizing Guardrails",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 13,
+      "title": "Node CPU Usage %",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 30 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": [ "mean", "max" ], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(max by (k8s_node_name) (k8s_node_cpu_usage) / on (k8s_node_name) label_replace(max by (instance) (machine_cpu_cores{job=\"kubernetes-nodes-cadvisor\"}), \"k8s_node_name\", \"$1\", \"instance\", \"(.*)\")) * 100",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Node Memory Usage %",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 30 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": [ "mean", "max" ], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "max by (k8s_node_name) (k8s_node_memory_usage_bytes / (k8s_node_memory_usage_bytes + k8s_node_memory_available_bytes)) * 100",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "cdo04",
+    "cost",
+    "eks",
+    "estimate"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "300", "value": "300" },
+        "hide": 0,
+        "label": "Weekly budget USD",
+        "name": "weekly_budget_usd",
+        "options": [ { "selected": true, "text": "300", "value": "300" } ],
+        "query": "300",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "246.95", "value": "246.95" },
+        "hide": 0,
+        "label": "Monthly fixed estimate USD",
+        "name": "monthly_fixed_estimate_usd",
+        "options": [ { "selected": true, "text": "246.95", "value": "246.95" } ],
+        "query": "246.95",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "56.83", "value": "56.83" },
+        "hide": 0,
+        "label": "Weekly fixed estimate USD",
+        "name": "weekly_fixed_estimate_usd",
+        "options": [ { "selected": true, "text": "56.83", "value": "56.83" } ],
+        "query": "56.83",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.0832", "value": "0.0832" },
+        "hide": 2,
+        "label": "Node hourly USD",
+        "name": "node_hourly_usd",
+        "options": [ { "selected": true, "text": "0.0832", "value": "0.0832" } ],
+        "query": "0.0832",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.10", "value": "0.10" },
+        "hide": 2,
+        "label": "EKS hourly USD",
+        "name": "eks_hourly_usd",
+        "options": [ { "selected": true, "text": "0.10", "value": "0.10" } ],
+        "query": "0.10",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.045", "value": "0.045" },
+        "hide": 2,
+        "label": "NAT hourly USD",
+        "name": "nat_hourly_usd",
+        "options": [ { "selected": true, "text": "0.045", "value": "0.045" } ],
+        "query": "0.045",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "0.0225", "value": "0.0225" },
+        "hide": 2,
+        "label": "ALB hourly USD",
+        "name": "alb_hourly_usd",
+        "options": [ { "selected": true, "text": "0.0225", "value": "0.0225" } ],
+        "query": "0.0225",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Cost Overview and EKS Allocation",
+  "uid": "cost-overview-eks-allocation",
+  "version": 1
+}
