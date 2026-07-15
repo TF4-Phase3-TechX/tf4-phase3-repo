@@ -18,13 +18,12 @@ module "eks" {
     "karpenter.sh/discovery" = var.cluster_name
   }
 
-  # Karpenter-provisioned nodes select their security group by this same
-  # discovery tag. Without it here, Karpenter falls back to matching the
-  # cluster security group (control-plane traffic only) instead of the node
-  # security group that already allows node-to-node/pod-to-pod traffic,
-  # so new nodes can schedule but can't reach CoreDNS or other pods.
+  # Karpenter-provisioned nodes must select only the EKS node security group.
+  # The shared discovery tag also exists on cluster security groups, which can
+  # make Karpenter attach multiple SGs and break AWS LBC backend reconciliation.
   node_security_group_tags = {
-    "karpenter.sh/discovery" = var.cluster_name
+    "karpenter.sh/discovery"           = var.cluster_name
+    "karpenter.sh/node-security-group" = var.cluster_name
   }
 
   # Bật Control Plane Logging
