@@ -26,7 +26,11 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
   "bastion_instance_id": "<ĐIỀN SAU KHI CDO08 DEPLOY>",
   "git_sha": "<git rev-parse HEAD>",
   "helm_release_revision": "<helm -n techx-tf4 history techx-corp | tail -1>",
+<<<<<<< HEAD
+  "verifier": "CDO07 — Quang + Hùng",
+=======
   "verifier": "CDO07 — Trực + Hùng + Nghĩa",
+>>>>>>> main
   "note": "Evidence thu thập SAU khi CDO08-SEC-05 deploy xong"
 }
 ```
@@ -35,6 +39,16 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
 
 | File | Nội dung | Người làm |
 |---|---|---|
+<<<<<<< HEAD
+| `aud-14-storefront-curl.txt` | curl -I ALB/  → phải ra HTTP 200 | Quang |
+| `aud-15-grafana-curl.txt` | curl -I ALB/grafana/ → phải ra HTTP 404 | Quang |
+| `aud-15-jaeger-curl.txt` | curl -I ALB/jaeger/ui/ → phải ra HTTP 404 | Quang |
+| `aud-15-loadgen-curl.txt` | curl -I ALB/loadgen/ → phải ra HTTP 404 | Quang |
+| `aud-15-feature-curl.txt` | curl -I ALB/feature → phải ra HTTP 404 | Quang |
+| `aud-15-flagservice-curl.txt` | curl -I ALB/flagservice/ → phải ra HTTP 404 | Quang |
+| `aud-15-otlp-curl.txt` | curl -I ALB/otlp-http/ → phải ra HTTP 404 | Quang |
+| `aud-16-argocd-curl.txt` | curl ArgoCD nếu tồn tại → phải ra HTTP 404 | Quang |
+=======
 | `aud-14-storefront-curl.md` | curl -I ALB/  → phải ra HTTP 200 | Nghĩa |
 | `aud-15-grafana-curl.md` | curl -I ALB/grafana/ → phải ra HTTP 404 | Nghĩa |
 | `aud-15-jaeger-curl.md` | curl -I ALB/jaeger/ui/ → phải ra HTTP 404 | Nghĩa |
@@ -43,6 +57,7 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
 | `aud-15-flagservice-curl.txt` | curl -I ALB/flagservice/ → phải ra HTTP 404 | Nghĩa |
 | `aud-15-otlp-curl.txt` | curl -I ALB/otlp-http/ → phải ra HTTP 404 | Nghĩa |
 | `aud-16-argocd-curl.md` | curl ArgoCD nếu tồn tại → phải ra HTTP 404 | Nghĩa |
+>>>>>>> main
 | `aud-17-cloudtrail-startsession.txt` | CloudTrail query StartSession event | Hùng |
 | `aud-18-private-access-screenshot.png` | Screenshot SSM tunnel vào Grafana thành công | Hùng |
 | `aud-19-cost-verification.md` | Xác minh chi phí Bastion vs budget | Hùng |

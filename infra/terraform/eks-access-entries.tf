@@ -39,7 +39,7 @@ locals {
     # PR touching those resources, not just ones that change them.
     github_actions_terraform_plan = {
       arn    = "arn:aws:iam::511825856493:role/tf4-github-actions-plan"
-      groups = []
+      groups = ["terraform-plan-readers"]
     }
   }
 }
@@ -89,9 +89,14 @@ resource "aws_eks_access_policy_association" "view" {
   }
 }
 
-resource "aws_eks_access_policy_association" "sec_reliability_secret_reader" {
+resource "aws_eks_access_policy_association" "secret_reader" {
+  for_each = toset([
+    "sso_sec_reliability_readonly_audit",
+    "github_actions_terraform_plan",
+  ])
+
   cluster_name  = module.eks.cluster_name
-  principal_arn = aws_eks_access_entry.view["sso_sec_reliability_readonly_audit"].principal_arn
+  principal_arn = aws_eks_access_entry.view[each.value].principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSSecretReaderPolicy"
 
   access_scope {
