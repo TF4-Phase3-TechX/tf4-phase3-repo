@@ -21,3 +21,8 @@ moved {
   from = aws_eks_access_policy_association.github_actions_deploy_admin
   to   = aws_eks_access_policy_association.admin["github_actions_deploy"]
 }
+
+moved {
+  from = aws_eks_access_policy_association.sec_reliability_secret_reader
+  to   = aws_eks_access_policy_association.secret_reader["sso_sec_reliability_readonly_audit"]
+}
