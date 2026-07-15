@@ -149,6 +149,20 @@ Ghi chú quan trọng:
 
 Con số này không đại diện riêng cho exact incident window, nhưng cho thấy failure mode này không phải một dòng lỗi đơn lẻ.
 
+### 4.3 Kafka root-cause runtime evidence
+
+Ảnh `flagd` dưới đây xác nhận runtime config trong namespace `techx-tf4` có flag `kafkaQueueProblems` ở trạng thái `ENABLED`, với variant `on = 100`.
+
+![flagd exact-window kafkaQueueProblems evidence](./incident-20260715-flagd-exact-window.png)
+
+Ảnh accounting logs dưới đây được query từ `deploy/accounting` với `--since-time="2026-07-15T11:55:00Z"`, tức đúng đầu window UTC của incident. Log cho thấy lỗi `Unexpected entry.EntityState: Detached` xuất hiện lúc `2026-07-15T11:58:27Z` và `2026-07-15T11:58:28Z`, nằm trong window `11:55–12:10 UTC`.
+
+![accounting exact-window EntityState Detached logs](./incident-20260715-accounting-exact-window-logs.png)
+
+Kết luận:
+
+> Hai ảnh này nâng bằng chứng Kafka/root-cause từ source-code inference lên runtime evidence: flag `kafkaQueueProblems` có trong runtime config, và `accounting` phát sinh lỗi Entity Framework trong đúng incident window.
+
 ---
 
 ## 5. Code-path evidence
