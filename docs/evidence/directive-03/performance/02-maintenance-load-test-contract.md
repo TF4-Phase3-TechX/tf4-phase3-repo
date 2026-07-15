@@ -10,7 +10,7 @@
 
 **Approved harness:** in-cluster `Deployment/load-generator`, Locust headless
 
-**Contract status:** READY FOR REVIEW — execution is forbidden until the change-window fields below are approved
+**Contract status:** Contract complete — execution gated.
 
 ---
 
@@ -198,7 +198,9 @@ Failure of any checklist item prevents test start.
 
 ## 9. Execution command
 
-The existing Task-4 harness is the approved base because it enforces the same
+The maintenance wrapper is the approved entry point. It creates the complete
+artifact tree, captures preflight state, rejects missing execution-gate fields
+or missing `pods/exec`, and delegates to the Task-4 harness, which enforces the same
 `200 users / 60s ramp / 15m steady / 20s ramp-down` profile:
 
 ```bash
@@ -210,9 +212,39 @@ export RAMP_UP=1m
 export STEADY_STATE=15m
 export RAMP_DOWN=20s
 export TOTAL_RUNTIME=16m20s
-export EVIDENCE_DIR="docs/evidence/directive-03/performance/runs/${RUN_ID}/raw-locust"
+export CHANGE_TICKET="CHG-REPLACE-ME"
+export APPROVER="REPLACE-ME"
+export WINDOW_START_UTC="2026-07-16T00:00:00Z"
+export WINDOW_END_UTC="2026-07-16T00:30:00Z"
+export MAINTENANCE_ACTION="rolling restart"
+export MAINTENANCE_TARGET="deployment/frontend"
+export MAINTENANCE_COMMAND="kubectl -n techx-tf4 rollout restart deployment/frontend"
+export ROLLBACK_OWNER="REPLACE-ME"
+export ROLLBACK_COMMAND="kubectl -n techx-tf4 rollout undo deployment/frontend"
 
-bash scripts/run-load-test-task4.sh full
+bash scripts/run-maintenance-load-test.sh full
+```
+
+Replace every placeholder and UTC value with approved values. The wrapper does
+not execute the maintenance command automatically. In a second operator
+terminal, wait until the planned `TEST_T0 + 00:06:00`, record UTC immediately
+before and after the command, then run only the approved command:
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+kubectl -n techx-tf4 rollout restart deployment/frontend
+kubectl -n techx-tf4 rollout status deployment/frontend --timeout=5m
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+For an approved node drain, replace the example with the exact reviewed
+cordon/drain and recovery commands. Never copy the deployment example onto a
+node-drain ticket.
+
+Read-only gate check (never starts Locust or maintenance):
+
+```bash
+bash scripts/run-maintenance-load-test.sh preflight
 ```
 
 The reviewed script honors these environment values. `SPAWN=3.34` reaches 200
@@ -338,3 +370,26 @@ OWNER SIGN-OFF:
 The owner may self-verify rollout, performance and runtime evidence, but must
 label it `single-owner execution` rather than attributing checks to named
 supporters who did not participate.
+
+## 13. Latest live execution-gate evidence
+
+Read-only preflight `maint-20260715T172819Z` was collected on
+`2026-07-15T17:28:49Z` against context `d5-perf05`. Revenue-path remediation is
+live: Cart, Checkout, Frontend, Frontend Proxy, Payment, Product Catalog, Quote,
+Shipping and Currency each reported `2/2` deployment replicas and two Ready
+EndpointSlice addresses. Frontend, Checkout and Currency HPA metrics were
+valid; all nine PDBs reported one allowed disruption; all observed pods were
+Running/Ready with zero restarts; node utilization was below the declared stop
+thresholds.
+
+The official load and maintenance action were **not run**. The execution gate
+failed because the change ticket, approver, absolute UTC window, action/target,
+rollback owner and exact rollback command were not provided. The active IAM
+identity also returned `no` for `create pods/exec`, so it cannot verify the
+Locust process list, start the approved headless harness, or copy raw artifacts.
+No second load process was started.
+
+Raw preflight and gate result:
+`docs/evidence/directive-03/performance/runs/maint-20260715T172819Z/`.
+
+**Current verdict: Contract complete — execution gated.**
