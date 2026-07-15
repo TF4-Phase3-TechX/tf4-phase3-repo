@@ -83,6 +83,18 @@ resource "aws_kms_key" "cloudtrail" {
             "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
           }
         }
+      },
+      {
+        Sid    = "AllowEventBridgeEncryptSNS"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
       }
     ]
   })
