@@ -1,0 +1,75 @@
+﻿LAST SEEN   TYPE      REASON                         OBJECT                                                MESSAGE
+22m         Normal    Scheduled                      pod/product-reviews-7558bd66dd-r4kqw                  Successfully assigned techx-tf4/product-reviews-7558bd66dd-r4kqw to ip-10-0-10-74.ec2.internal
+15m         Normal    Scheduled                      pod/kafka-6f9ff79c54-v45cb                            Successfully assigned techx-tf4/kafka-6f9ff79c54-v45cb to ip-10-0-10-74.ec2.internal
+9m15s       Normal    Scheduled                      pod/currency-f586fcb4-ptxc5                           Successfully assigned techx-tf4/currency-f586fcb4-ptxc5 to ip-10-0-10-231.ec2.internal
+50m         Normal    Scheduled                      pod/postgresql-5b49658ddf-b4p2m                       Successfully assigned techx-tf4/postgresql-5b49658ddf-b4p2m to ip-10-0-10-74.ec2.internal
+19m         Normal    Scheduled                      pod/kafka-6f9ff79c54-qzc7j                            Successfully assigned techx-tf4/kafka-6f9ff79c54-qzc7j to ip-10-0-10-74.ec2.internal
+9m30s       Normal    Scheduled                      pod/currency-f586fcb4-qrhxn                           Successfully assigned techx-tf4/currency-f586fcb4-qrhxn to ip-10-0-10-74.ec2.internal
+22m         Normal    Scheduled                      pod/product-reviews-6b466ffbbd-t2pst                  Successfully assigned techx-tf4/product-reviews-6b466ffbbd-t2pst to ip-10-0-10-231.ec2.internal
+38m         Normal    Scheduled                      pod/valkey-cart-dd686478b-97hdp                       Successfully assigned techx-tf4/valkey-cart-dd686478b-97hdp to ip-10-0-10-74.ec2.internal
+50m         Normal    Killing                        pod/postgresql-5b49658ddf-xqblg                       Stopping container postgresql
+50m         Warning   FailedAttachVolume             pod/postgresql-5b49658ddf-b4p2m                       Multi-Attach error for volume "pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0" Volume is already used by pod(s) postgresql-5b49658ddf-xqblg
+50m         Normal    SuccessfulCreate               replicaset/postgresql-5b49658ddf                      Created pod: postgresql-5b49658ddf-b4p2m
+50m         Normal    SuccessfulAttachVolume         pod/postgresql-5b49658ddf-b4p2m                       AttachVolume.Attach succeeded for volume "pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0"
+50m         Normal    Pulling                        pod/postgresql-5b49658ddf-b4p2m                       Pulling image "postgres:17.6"
+50m         Normal    Pulled                         pod/postgresql-5b49658ddf-b4p2m                       Successfully pulled image "postgres:17.6" in 9.164s (9.164s including waiting). Image size: 161139928 bytes.
+50m         Normal    Created                        pod/postgresql-5b49658ddf-b4p2m                       Created container: postgresql
+50m         Normal    Started                        pod/postgresql-5b49658ddf-b4p2m                       Started container postgresql
+38m         Normal    Killing                        pod/valkey-cart-dd686478b-ms8m8                       Stopping container valkey-cart
+38m         Normal    SuccessfulCreate               replicaset/valkey-cart-dd686478b                      Created pod: valkey-cart-dd686478b-97hdp
+38m         Warning   FailedAttachVolume             pod/valkey-cart-dd686478b-97hdp                       Multi-Attach error for volume "pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3" Volume is already used by pod(s) valkey-cart-dd686478b-ms8m8
+38m         Normal    SuccessfulAttachVolume         pod/valkey-cart-dd686478b-97hdp                       AttachVolume.Attach succeeded for volume "pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3"
+38m         Normal    Pulling                        pod/valkey-cart-dd686478b-97hdp                       Pulling image "valkey/valkey:9.0.1-alpine3.23"
+38m         Normal    Pulled                         pod/valkey-cart-dd686478b-97hdp                       Successfully pulled image "valkey/valkey:9.0.1-alpine3.23" in 1.549s (1.549s including waiting). Image size: 18100885 bytes.
+38m         Normal    Created                        pod/valkey-cart-dd686478b-97hdp                       Created container: valkey-cart
+38m         Normal    Started                        pod/valkey-cart-dd686478b-97hdp                       Started container valkey-cart
+29m         Normal    Created                        pod/kafka-6f9ff79c54-j8brz                            Created container: kafka
+29m         Normal    Pulled                         pod/kafka-6f9ff79c54-j8brz                            Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka" already present on machine
+29m         Normal    Started                        pod/kafka-6f9ff79c54-j8brz                            Started container kafka
+22m         Normal    WaitForFirstConsumer           persistentvolumeclaim/opensearch-opensearch-0         waiting for first consumer to be created before binding
+22m         Normal    ScalingReplicaSet              deployment/product-reviews                            Scaled up replica set product-reviews-7558bd66dd from 0 to 1
+22m         Normal    SuccessfulCreate               replicaset/product-reviews-7558bd66dd                 Created pod: product-reviews-7558bd66dd-r4kqw
+22m         Normal    Pulling                        pod/product-reviews-7558bd66dd-r4kqw                  Pulling image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews"
+22m         Normal    Pulled                         pod/product-reviews-6b466ffbbd-t2pst                  Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews" already present on machine
+22m         Normal    ScalingReplicaSet              deployment/product-reviews                            Scaled down replica set product-reviews-7558bd66dd from 1 to 0
+22m         Normal    SuccessfulCreate               replicaset/product-reviews-6b466ffbbd                 Created pod: product-reviews-6b466ffbbd-t2pst
+22m         Normal    Started                        pod/product-reviews-6b466ffbbd-t2pst                  Started container product-reviews
+22m         Normal    Created                        pod/product-reviews-6b466ffbbd-t2pst                  Created container: product-reviews
+22m         Normal    SuccessfulDelete               replicaset/product-reviews-7558bd66dd                 Deleted pod: product-reviews-7558bd66dd-r4kqw
+22m         Normal    ScalingReplicaSet              deployment/product-reviews                            Scaled up replica set product-reviews-6b466ffbbd from 0 to 1
+22m         Normal    Killing                        pod/product-reviews-5bb99b6c75-j296c                  Stopping container product-reviews
+22m         Normal    SuccessfulDelete               replicaset/product-reviews-5bb99b6c75                 Deleted pod: product-reviews-5bb99b6c75-j296c
+22m         Normal    ScalingReplicaSet              deployment/product-reviews                            Scaled down replica set product-reviews-5bb99b6c75 from 1 to 0
+22m         Normal    Created                        pod/product-reviews-7558bd66dd-r4kqw                  Created container: product-reviews
+22m         Normal    Started                        pod/product-reviews-7558bd66dd-r4kqw                  Started container product-reviews
+22m         Normal    Pulled                         pod/product-reviews-7558bd66dd-r4kqw                  Successfully pulled image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews" in 5.424s (5.424s including waiting). Image size: 46389370 bytes.
+22m         Normal    Killing                        pod/product-reviews-7558bd66dd-r4kqw                  Stopping container product-reviews
+19m         Normal    Killing                        pod/kafka-6f9ff79c54-j8brz                            Stopping container kafka
+19m         Normal    SuccessfulCreate               replicaset/kafka-6f9ff79c54                           Created pod: kafka-6f9ff79c54-qzc7j
+19m         Normal    Started                        pod/kafka-6f9ff79c54-qzc7j                            Started container kafka
+19m         Normal    Created                        pod/kafka-6f9ff79c54-qzc7j                            Created container: kafka
+19m         Normal    Pulled                         pod/kafka-6f9ff79c54-qzc7j                            Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka" already present on machine
+15m         Normal    SuccessfulCreate               replicaset/kafka-6f9ff79c54                           Created pod: kafka-6f9ff79c54-v45cb
+15m         Normal    Killing                        pod/kafka-6f9ff79c54-qzc7j                            Stopping container kafka
+15m         Normal    Pulled                         pod/kafka-6f9ff79c54-v45cb                            Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka" already present on machine
+15m         Normal    Started                        pod/kafka-6f9ff79c54-v45cb                            Started container kafka
+15m         Normal    Created                        pod/kafka-6f9ff79c54-v45cb                            Created container: kafka
+9m30s       Normal    SuccessfulCreate               replicaset/currency-f586fcb4                          Created pod: currency-f586fcb4-qrhxn
+9m30s       Normal    ScalingReplicaSet              deployment/currency                                   Scaled up replica set currency-f586fcb4 from 0 to 1
+9m29s       Normal    Pulling                        pod/currency-f586fcb4-qrhxn                           Pulling image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency"
+9m26s       Normal    Pulled                         pod/currency-f586fcb4-qrhxn                           Successfully pulled image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency" in 3.274s (3.274s including waiting). Image size: 30641900 bytes.
+9m26s       Normal    Created                        pod/currency-f586fcb4-qrhxn                           Created container: currency
+9m25s       Normal    Started                        pod/currency-f586fcb4-qrhxn                           Started container currency
+9m15s       Normal    ScalingReplicaSet              deployment/currency                                   Scaled up replica set currency-f586fcb4 from 1 to 2
+9m15s       Normal    SuccessfulCreate               replicaset/currency-f586fcb4                          Created pod: currency-f586fcb4-ptxc5
+9m15s       Normal    SuccessfulRescale              horizontalpodautoscaler/currency                      New size: 2; reason: Current number of replicas below Spec.MinReplicas
+9m14s       Normal    Pulling                        pod/currency-f586fcb4-ptxc5                           Pulling image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency"
+9m12s       Normal    Started                        pod/currency-f586fcb4-ptxc5                           Started container currency
+9m12s       Normal    Created                        pod/currency-f586fcb4-ptxc5                           Created container: currency
+9m12s       Normal    Pulled                         pod/currency-f586fcb4-ptxc5                           Successfully pulled image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency" in 2.381s (2.381s including waiting). Image size: 30641900 bytes.
+8m51s       Normal    ScalingReplicaSet              deployment/currency                                   Scaled down replica set currency-77cdc749f6 from 1 to 0
+8m51s       Normal    Killing                        pod/currency-77cdc749f6-2njtl                         Stopping container currency
+8m51s       Normal    SuccessfulDelete               replicaset/currency-77cdc749f6                        Deleted pod: currency-77cdc749f6-2njtl
+8m45s       Warning   FailedGetResourceMetric        horizontalpodautoscaler/currency                      failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+8m45s       Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/currency                      invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+84s         Warning   FailedNetworkReconcile         targetgroupbinding/k8s-techxtf4-frontend-2e9cfe94ea   expected exactly one securityGroup tagged with kubernetes.io/cluster/techx-tf4-cluster for eni eni-04ffa09193179e189, got: [sg-097d1ea5852b31f41 sg-0f7bc9275c5bdcca4] (clusterName: techx-tf4-cluster)

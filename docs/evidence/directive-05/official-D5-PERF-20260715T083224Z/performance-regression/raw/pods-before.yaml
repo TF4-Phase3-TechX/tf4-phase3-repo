@@ -1,0 +1,6504 @@
+﻿apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T07:07:15Z"
+    generateName: accounting-5dc867c55b-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: accounting
+      app.kubernetes.io/name: accounting
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: accounting
+      pod-template-hash: 5dc867c55b
+    name: accounting-5dc867c55b-psvmx
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: accounting-5dc867c55b
+      uid: bcbc7056-8921-4dcf-b445-ccb5a9e6e8d4
+    resourceVersion: "2772383"
+    uid: 0921b5d5-52c7-4ce3-aa1c-299dd4e7652e
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: KAFKA_ADDR
+        value: kafka:9092
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: DB_CONNECTION_STRING
+        value: Host=postgresql;Username=otelu;Password=REDACTED;Database=otel
+      - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:4526141-accounting
+      imagePullPolicy: IfNotPresent
+      name: accounting
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zjrkh
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+      image: busybox:latest
+      imagePullPolicy: Always
+      name: wait-for-kafka
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zjrkh
+        readOnly: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-zjrkh
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:07:17Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:07:17Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:07:25Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:07:25Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:07:15Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 256Mi
+      containerID: containerd://b8b56bfc453830f876b30c67af60c6b5cd3d0d23a2ee4dd2a90237e388637937
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:4526141-accounting
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:859ca81653c62ca119a5c929512d56088bd4ea87876d90648056fbc9f5a9121a
+      lastState: {}
+      name: accounting
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T07:07:25Z"
+      user:
+        linux:
+          gid: 1654
+          supplementalGroups:
+          - 1654
+          uid: 1654
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zjrkh
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://c27356d4895b79668f396fb4b0c1cef6d0ef88ca1b246e917e1b1d19cfeeaa37
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: wait-for-kafka
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://c27356d4895b79668f396fb4b0c1cef6d0ef88ca1b246e917e1b1d19cfeeaa37
+          exitCode: 0
+          finishedAt: "2026-07-15T07:07:16Z"
+          reason: Completed
+          startedAt: "2026-07-15T07:07:16Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zjrkh
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.27
+    podIPs:
+    - ip: 10.0.10.27
+    qosClass: Burstable
+    startTime: "2026-07-15T07:07:15Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T03:47:04Z"
+    generateName: ad-6595659799-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: ad
+      app.kubernetes.io/name: ad
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: ad
+      pod-template-hash: "6595659799"
+    name: ad-6595659799-v9wxw
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: ad-6595659799
+      uid: 0ceecf1e-86df-4995-930d-3a5dbdf771ff
+    resourceVersion: "2705072"
+    uid: 04d6652d-0d9b-4029-8d32-e3b4338254d8
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: AD_PORT
+        value: "8080"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: OTEL_LOGS_EXPORTER
+        value: otlp
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-ad
+      imagePullPolicy: IfNotPresent
+      name: ad
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 200m
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 150Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-w2ssz
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-w2ssz
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:41Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:41Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:41Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 150Mi
+      containerID: containerd://03ae461e54e76fffbf7f162152081dac2060c262b3ec1ab95a43dceedf416db4
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-ad
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:e6b646f2b595ee3f26fb27c6eab7502285561e93374aead17e57578ef1b63163
+      lastState: {}
+      name: ad
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 150Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T03:47:40Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-w2ssz
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.116
+    podIPs:
+    - ip: 10.0.10.116
+    qosClass: Burstable
+    startTime: "2026-07-15T03:47:05Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:16:20Z"
+    generateName: cart-6d98c5f7bf-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: cart
+      app.kubernetes.io/name: cart
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: cart
+      pod-template-hash: 6d98c5f7bf
+    name: cart-6d98c5f7bf-gwp4h
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: cart-6d98c5f7bf
+      uid: 8bcfade5-4f6b-434b-a67e-1fd5e0012922
+    resourceVersion: "2754206"
+    uid: a725fca1-bf62-4219-b181-f17f9bdfd3d5
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: CART_PORT
+        value: "8080"
+      - name: ASPNETCORE_URLS
+        value: http://*:$(CART_PORT)
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-cart
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: cart
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: oteldemo.CartService
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9mvqz
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep
+        2; done;
+      image: busybox:latest
+      imagePullPolicy: Always
+      name: wait-for-valkey-cart
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9mvqz
+        readOnly: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: cart
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-9mvqz
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:21Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:21Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:44Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:44Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:20Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 96Mi
+      containerID: containerd://b33b96303ccce803d587d94ce40b01c71b638d55d971aef516725205d0e255f0
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-cart
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:82eca754e24770a8b225a3b74c55866d75c4d1d64836876a13a93140f74a88e8
+      lastState: {}
+      name: cart
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:16:21Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9mvqz
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://b4b9aa5aac6876f29d24280e9e409bab8322cd837e5b16d1182e74aa6285bb74
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: wait-for-valkey-cart
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://b4b9aa5aac6876f29d24280e9e409bab8322cd837e5b16d1182e74aa6285bb74
+          exitCode: 0
+          finishedAt: "2026-07-15T06:16:21Z"
+          reason: Completed
+          startedAt: "2026-07-15T06:16:21Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9mvqz
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.126
+    podIPs:
+    - ip: 10.0.10.126
+    qosClass: Burstable
+    startTime: "2026-07-15T06:16:20Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:15:53Z"
+    generateName: cart-6d98c5f7bf-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: cart
+      app.kubernetes.io/name: cart
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: cart
+      pod-template-hash: 6d98c5f7bf
+    name: cart-6d98c5f7bf-v4kr2
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: cart-6d98c5f7bf
+      uid: 8bcfade5-4f6b-434b-a67e-1fd5e0012922
+    resourceVersion: "2753824"
+    uid: e8ff0238-231c-431c-ad03-f2b6443cb521
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: CART_PORT
+        value: "8080"
+      - name: ASPNETCORE_URLS
+        value: http://*:$(CART_PORT)
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-cart
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: cart
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: oteldemo.CartService
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-wcbwj
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep
+        2; done;
+      image: busybox:latest
+      imagePullPolicy: Always
+      name: wait-for-valkey-cart
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-wcbwj
+        readOnly: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: cart
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-wcbwj
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:55Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:55Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:19Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:19Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 96Mi
+      containerID: containerd://97b3170aefa55df6d501ade7c1758a4488f9d9c34ec89d4f3a4091552085f68e
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-cart
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:82eca754e24770a8b225a3b74c55866d75c4d1d64836876a13a93140f74a88e8
+      lastState: {}
+      name: cart
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:15:56Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-wcbwj
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://52cc808f9231dd7b3614c16f0a24a31e96d51f6254e52a89818b2630ef208285
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: wait-for-valkey-cart
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://52cc808f9231dd7b3614c16f0a24a31e96d51f6254e52a89818b2630ef208285
+          exitCode: 0
+          finishedAt: "2026-07-15T06:15:54Z"
+          reason: Completed
+          startedAt: "2026-07-15T06:15:54Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-wcbwj
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.172
+    podIPs:
+    - ip: 10.0.10.172
+    qosClass: Burstable
+    startTime: "2026-07-15T06:15:53Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:15:53Z"
+    generateName: checkout-d69c4d9d-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: checkout
+      app.kubernetes.io/name: checkout
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: checkout
+      pod-template-hash: d69c4d9d
+    name: checkout-d69c4d9d-6lld6
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: checkout-d69c4d9d
+      uid: 30fb7208-b7df-47cc-8b8b-b893363cfdfb
+    resourceVersion: "2753800"
+    uid: 2242e8f7-f086-44e0-93e4-5e553f795684
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: CHECKOUT_PORT
+        value: "8080"
+      - name: CART_ADDR
+        value: cart:8080
+      - name: CURRENCY_ADDR
+        value: currency:8080
+      - name: EMAIL_ADDR
+        value: http://email:8080
+      - name: PAYMENT_ADDR
+        value: payment:8080
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: SHIPPING_ADDR
+        value: http://shipping:8080
+      - name: KAFKA_ADDR
+        value: kafka:9092
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: GOMEMLIMIT
+        value: 16MiB
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: checkout
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 300m
+          memory: 96Mi
+        requests:
+          cpu: 75m
+          memory: 48Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-drbsn
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+      image: busybox:latest
+      imagePullPolicy: Always
+      name: wait-for-kafka
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-drbsn
+        readOnly: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: checkout
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-drbsn
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:55Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:55Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:18Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:18Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 48Mi
+      containerID: containerd://742498da7766a6c148e44713d2b4ca2338615b69edcb2a1933e928ba9dcb8b75
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:a4d43a5b0cc0fe03cc0ed3435d87fb28e1e469af7f4c37c8390eb9f8f22f16f9
+      lastState: {}
+      name: checkout
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 96Mi
+        requests:
+          cpu: 75m
+          memory: 48Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:15:56Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-drbsn
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://cb9d0b3e4d70011373a8d51b9b0dab03a46b0a14ff380f4078efd0ebfa3b25c2
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: wait-for-kafka
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://cb9d0b3e4d70011373a8d51b9b0dab03a46b0a14ff380f4078efd0ebfa3b25c2
+          exitCode: 0
+          finishedAt: "2026-07-15T06:15:55Z"
+          reason: Completed
+          startedAt: "2026-07-15T06:15:55Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-drbsn
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.212
+    podIPs:
+    - ip: 10.0.10.212
+    qosClass: Burstable
+    startTime: "2026-07-15T06:15:53Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:49:11Z"
+    generateName: checkout-d69c4d9d-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: checkout
+      app.kubernetes.io/name: checkout
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: checkout
+      pod-template-hash: d69c4d9d
+    name: checkout-d69c4d9d-7tk84
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: checkout-d69c4d9d
+      uid: 30fb7208-b7df-47cc-8b8b-b893363cfdfb
+    resourceVersion: "2766545"
+    uid: 9adeb697-8e73-484c-8ab0-aaa07838c86c
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: CHECKOUT_PORT
+        value: "8080"
+      - name: CART_ADDR
+        value: cart:8080
+      - name: CURRENCY_ADDR
+        value: currency:8080
+      - name: EMAIL_ADDR
+        value: http://email:8080
+      - name: PAYMENT_ADDR
+        value: payment:8080
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: SHIPPING_ADDR
+        value: http://shipping:8080
+      - name: KAFKA_ADDR
+        value: kafka:9092
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: GOMEMLIMIT
+        value: 16MiB
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: checkout
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 300m
+          memory: 96Mi
+        requests:
+          cpu: 75m
+          memory: 48Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-ppvh5
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+      image: busybox:latest
+      imagePullPolicy: Always
+      name: wait-for-kafka
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-ppvh5
+        readOnly: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: checkout
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-ppvh5
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:49:14Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:49:14Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:49:36Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:49:36Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:49:11Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 48Mi
+      containerID: containerd://13c3223f9862339362dfccd8b5e4be9d6e3f83254ae34e90a411ee20b480460d
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:a4d43a5b0cc0fe03cc0ed3435d87fb28e1e469af7f4c37c8390eb9f8f22f16f9
+      lastState: {}
+      name: checkout
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 96Mi
+        requests:
+          cpu: 75m
+          memory: 48Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:49:14Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-ppvh5
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://39822fe42e93b2d9b6cc8054480e9f0bc68e52355dd2598b23e8257acf235820
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: wait-for-kafka
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://39822fe42e93b2d9b6cc8054480e9f0bc68e52355dd2598b23e8257acf235820
+          exitCode: 0
+          finishedAt: "2026-07-15T06:49:13Z"
+          reason: Completed
+          startedAt: "2026-07-15T06:49:13Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-ppvh5
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.54
+    podIPs:
+    - ip: 10.0.10.54
+    qosClass: Burstable
+    startTime: "2026-07-15T06:49:11Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T08:24:47Z"
+    generateName: currency-f586fcb4-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: currency
+      app.kubernetes.io/name: currency
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: currency
+      pod-template-hash: f586fcb4
+    name: currency-f586fcb4-ptxc5
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: currency-f586fcb4
+      uid: cdc22fef-c9cf-4570-aa64-017f14247b63
+    resourceVersion: "2798228"
+    uid: e9c6bfae-1a2a-4215-a923-8e6e7372425c
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: CURRENCY_PORT
+        value: "8080"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: VERSION
+        value: 2.2.0
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: currency
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-pn7lx
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: currency
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-pn7lx
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:50Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:47Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:25:11Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:25:11Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:47Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 96Mi
+      containerID: containerd://75631360d0a8652c92f6a793eb9787fc08f2f3c9d8f1ef3aa080c6aaf240be3b
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:405d5b203c0e70b5497c7870ecf53580fcc289cd7c618f8de42765fab7b222a1
+      lastState: {}
+      name: currency
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T08:24:50Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-pn7lx
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.196
+    podIPs:
+    - ip: 10.0.10.196
+    qosClass: Burstable
+    startTime: "2026-07-15T08:24:47Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T08:24:32Z"
+    generateName: currency-f586fcb4-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: currency
+      app.kubernetes.io/name: currency
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: currency
+      pod-template-hash: f586fcb4
+    name: currency-f586fcb4-qrhxn
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: currency-f586fcb4
+      uid: cdc22fef-c9cf-4570-aa64-017f14247b63
+    resourceVersion: "2798151"
+    uid: c88f6e37-0291-4c4f-81ed-cdd41d97b2b6
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: CURRENCY_PORT
+        value: "8080"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: VERSION
+        value: 2.2.0
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: currency
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-vdfcw
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: currency
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-vdfcw
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:37Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:32Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:24:32Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 96Mi
+      containerID: containerd://e87757fc5b12bfa2568b1fcfe58caa22677fbc28f3a105112cce86b87b597685
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:405d5b203c0e70b5497c7870ecf53580fcc289cd7c618f8de42765fab7b222a1
+      lastState: {}
+      name: currency
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T08:24:37Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-vdfcw
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.63
+    podIPs:
+    - ip: 10.0.10.63
+    qosClass: Burstable
+    startTime: "2026-07-15T08:24:32Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T07:20:30Z"
+    generateName: email-7fb5949f98-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: email
+      app.kubernetes.io/name: email
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: email
+      pod-template-hash: 7fb5949f98
+    name: email-7fb5949f98-5j95x
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: email-7fb5949f98
+      uid: 9bb60e8c-8ab2-4241-9d7c-22b49bcc02ba
+    resourceVersion: "2776930"
+    uid: 3b7e9082-b301-4c8e-816f-36650e16fbf4
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: EMAIL_PORT
+        value: "8080"
+      - name: APP_ENV
+        value: production
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-email
+      imagePullPolicy: IfNotPresent
+      name: email
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-l8x74
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-l8x74
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:20:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:20:30Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:20:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:20:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:20:30Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 20m
+        memory: 50Mi
+      containerID: containerd://a36d0c8b36a31bc5953b3fe1e06aeae7fe9f7f0dd77e5a8d9d75292eb25dd090
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-email
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:ae29b7bd26888637d652b0fe594a8ebd2df8d3cbee1df613f4061df5d9f2f85c
+      lastState: {}
+      name: email
+      ready: true
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T07:20:31Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-l8x74
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.4
+    podIPs:
+    - ip: 10.0.10.4
+    qosClass: Burstable
+    startTime: "2026-07-15T07:20:30Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-15T08:04:24+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:15:57Z"
+    generateName: flagd-86bd5f8d76-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: flagd
+      app.kubernetes.io/name: flagd
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: flagd
+      pod-template-hash: 86bd5f8d76
+    name: flagd-86bd5f8d76-jgvqr
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: flagd-86bd5f8d76
+      uid: 01284ebf-c4d0-44d9-ba26-56dfa027cc13
+    resourceVersion: "2753598"
+    uid: f8bc81df-dc7d-410a-95d6-a2af92f9fb19
+  spec:
+    containers:
+    - command:
+      - /flagd-build
+      - start
+      - --port
+      - "8013"
+      - --ofrep-port
+      - "8016"
+      - --sources
+      - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer
+        $(FLAGD_BEARER_TOKEN)"}]'
+      env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: FLAGD_METRICS_EXPORTER
+        value: otel
+      - name: FLAGD_OTEL_COLLECTOR_URI
+        value: $(OTEL_COLLECTOR_NAME):4317
+      - name: GOMEMLIMIT
+        value: 60MiB
+      - name: FLAGD_BEARER_TOKEN
+        valueFrom:
+          secretKeyRef:
+            key: bearer-token
+            name: flagd-bearer-token
+      image: ghcr.io/open-feature/flagd:v0.12.9
+      imagePullPolicy: IfNotPresent
+      name: flagd
+      ports:
+      - containerPort: 8013
+        name: rpc
+        protocol: TCP
+      - containerPort: 8016
+        name: ofrep
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 100m
+          memory: 75Mi
+        requests:
+          cpu: 20m
+          memory: 40Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /etc/flagd
+        name: config-rw
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-c2ldw
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json
+      image: busybox
+      imagePullPolicy: Always
+      name: init-config
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /config-ro
+        name: config-ro
+      - mountPath: /config-rw
+        name: config-rw
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-c2ldw
+        readOnly: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - emptyDir: {}
+      name: config-rw
+    - configMap:
+        defaultMode: 420
+        name: flagd-config
+      name: config-ro
+    - name: kube-api-access-c2ldw
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:57Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 20m
+        memory: 40Mi
+      containerID: containerd://f0a8b5ea72cbae06519b1b66302fa1c10510e06d8ef6c711f5d04c470f160f68
+      image: ghcr.io/open-feature/flagd:v0.12.9
+      imageID: ghcr.io/open-feature/flagd@sha256:e6cca86b29629a06806aa7954b4a9b5f291c30839c6ae4f815dc4ddcee4a0746
+      lastState: {}
+      name: flagd
+      ready: true
+      resources:
+        limits:
+          cpu: 100m
+          memory: 75Mi
+        requests:
+          cpu: 20m
+          memory: 40Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:16:00Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /etc/flagd
+        name: config-rw
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-c2ldw
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://fb8b7d77d856fdcd9c3a63dfd90b071f4f704942e0b6df902d8994fba9b5a347
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: init-config
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://fb8b7d77d856fdcd9c3a63dfd90b071f4f704942e0b6df902d8994fba9b5a347
+          exitCode: 0
+          finishedAt: "2026-07-15T06:15:59Z"
+          reason: Completed
+          startedAt: "2026-07-15T06:15:59Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /config-ro
+        name: config-ro
+      - mountPath: /config-rw
+        name: config-rw
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-c2ldw
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.150
+    podIPs:
+    - ip: 10.0.10.150
+    qosClass: Burstable
+    startTime: "2026-07-15T06:15:57Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T03:47:04Z"
+    generateName: fraud-detection-548484897-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: fraud-detection
+      app.kubernetes.io/name: fraud-detection
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: fraud-detection
+      pod-template-hash: "548484897"
+    name: fraud-detection-548484897-fl4cw
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: fraud-detection-548484897
+      uid: 1d3e4278-2295-4e8d-9399-a8e68f9a9ef5
+    resourceVersion: "2705835"
+    uid: 812b4ba0-aead-49f3-9dc7-74ee068e8dea
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: KAFKA_ADDR
+        value: kafka:9092
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: OTEL_INSTRUMENTATION_KAFKA_EXPERIMENTAL_SPAN_ATTRIBUTES
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
+        value: "true"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-fraud-detection
+      imagePullPolicy: IfNotPresent
+      name: fraud-detection
+      resources:
+        limits:
+          cpu: 200m
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 150Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-j6wm4
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+      image: busybox:latest
+      imagePullPolicy: Always
+      name: wait-for-kafka
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-j6wm4
+        readOnly: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-j6wm4
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:10Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:49:20Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:49:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:49:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 150Mi
+      containerID: containerd://3b9c876894dae8a5b483a8a481064274bc2ff42334467e0a87de2e84705cf7b2
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-fraud-detection
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:102378ce173991d0d4efe6d6b6d2aaa59cf16116cf22af58c9da9d29dc194166
+      lastState: {}
+      name: fraud-detection
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 150Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T03:49:30Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-j6wm4
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    initContainerStatuses:
+    - allocatedResources:
+        cpu: 5m
+        memory: 8Mi
+      containerID: containerd://70d235be5809607af8eca85837826ac63be05fbadd791b40a1f17f9cc35a60e1
+      image: docker.io/library/busybox:latest
+      imageID: docker.io/library/busybox@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+      lastState: {}
+      name: wait-for-kafka
+      ready: true
+      resources:
+        limits:
+          cpu: 25m
+          memory: 32Mi
+        requests:
+          cpu: 5m
+          memory: 8Mi
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: containerd://70d235be5809607af8eca85837826ac63be05fbadd791b40a1f17f9cc35a60e1
+          exitCode: 0
+          finishedAt: "2026-07-15T03:49:20Z"
+          reason: Completed
+          startedAt: "2026-07-15T03:47:10Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 10
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-j6wm4
+        readOnly: true
+        recursiveReadOnly: Disabled
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.88
+    podIPs:
+    - ip: 10.0.10.88
+    qosClass: Burstable
+    startTime: "2026-07-15T03:47:05Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:37:41Z"
+    generateName: frontend-f8c85f89c-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: frontend
+      app.kubernetes.io/name: frontend
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: frontend
+      pod-template-hash: f8c85f89c
+    name: frontend-f8c85f89c-4ck6w
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: frontend-f8c85f89c
+      uid: 019f962e-fcf9-4e9b-96da-7a234984792c
+    resourceVersion: "2762575"
+    uid: f312b3a7-0512-4b28-b8ab-351f90e51c0a
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: FRONTEND_PORT
+        value: "8080"
+      - name: PORT
+        value: $(FRONTEND_PORT)
+      - name: FRONTEND_ADDR
+        value: :8080
+      - name: AD_ADDR
+        value: ad:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: CHECKOUT_ADDR
+        value: checkout:8080
+      - name: CURRENCY_ADDR
+        value: currency:8080
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: PRODUCT_REVIEWS_ADDR
+        value: product-reviews:3551
+      - name: RECOMMENDATION_ADDR
+        value: recommendation:8080
+      - name: SHIPPING_ADDR
+        value: http://shipping:8080
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: ENV_PLATFORM
+        value: kubernetes
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: WEB_OTEL_SERVICE_NAME
+        value: frontend-web
+      - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: http://localhost:8080/otlp-http/v1/traces
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: frontend
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 400m
+          memory: 320Mi
+        requests:
+          cpu: 100m
+          memory: 192Mi
+      securityContext:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kp8fc
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: frontend
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-kp8fc
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:37:42Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:37:41Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:38:03Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:38:03Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:37:41Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 192Mi
+      containerID: containerd://15d084d79de18d7a3be107b286e4787d18e9cd14039d266e04f47ddea22ee9b8
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:3950e0320c981300533db6e6b22470b6235f6919ac6bea51fc075e90013a3a69
+      lastState: {}
+      name: frontend
+      ready: true
+      resources:
+        limits:
+          cpu: 400m
+          memory: 320Mi
+        requests:
+          cpu: 100m
+          memory: 192Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:37:42Z"
+      user:
+        linux:
+          gid: 1001
+          supplementalGroups:
+          - 1001
+          uid: 1001
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kp8fc
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.168
+    podIPs:
+    - ip: 10.0.10.168
+    qosClass: Burstable
+    startTime: "2026-07-15T06:37:41Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:15:53Z"
+    generateName: frontend-f8c85f89c-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: frontend
+      app.kubernetes.io/name: frontend
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: frontend
+      pod-template-hash: f8c85f89c
+    name: frontend-f8c85f89c-kmxff
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: frontend-f8c85f89c
+      uid: 019f962e-fcf9-4e9b-96da-7a234984792c
+    resourceVersion: "2753741"
+    uid: 8eb2bb13-513c-4b2f-bb96-a800c1ee400d
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: FRONTEND_PORT
+        value: "8080"
+      - name: PORT
+        value: $(FRONTEND_PORT)
+      - name: FRONTEND_ADDR
+        value: :8080
+      - name: AD_ADDR
+        value: ad:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: CHECKOUT_ADDR
+        value: checkout:8080
+      - name: CURRENCY_ADDR
+        value: currency:8080
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: PRODUCT_REVIEWS_ADDR
+        value: product-reviews:3551
+      - name: RECOMMENDATION_ADDR
+        value: recommendation:8080
+      - name: SHIPPING_ADDR
+        value: http://shipping:8080
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: ENV_PLATFORM
+        value: kubernetes
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: WEB_OTEL_SERVICE_NAME
+        value: frontend-web
+      - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: http://localhost:8080/otlp-http/v1/traces
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: frontend
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 400m
+          memory: 320Mi
+        requests:
+          cpu: 100m
+          memory: 192Mi
+      securityContext:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-87d4r
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: frontend
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-87d4r
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:55Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:54Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:16Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:16Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:15:54Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 192Mi
+      containerID: containerd://658409e55275efedd273eaee7034e69155a57343befb2a0f72aeb93333342892
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:3950e0320c981300533db6e6b22470b6235f6919ac6bea51fc075e90013a3a69
+      lastState: {}
+      name: frontend
+      ready: true
+      resources:
+        limits:
+          cpu: 400m
+          memory: 320Mi
+        requests:
+          cpu: 100m
+          memory: 192Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:15:55Z"
+      user:
+        linux:
+          gid: 1001
+          supplementalGroups:
+          - 1001
+          uid: 1001
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-87d4r
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.58
+    podIPs:
+    - ip: 10.0.10.58
+    qosClass: Burstable
+    startTime: "2026-07-15T06:15:54Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      io.opentelemetry.discovery.metrics/config: |
+        targets:
+          - endpoint: "http://`endpoint`"
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: httpcheck
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T11:10:14+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:16:37Z"
+    generateName: frontend-proxy-7bd6cc66-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: frontend-proxy
+      app.kubernetes.io/name: frontend-proxy
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: frontend-proxy
+      pod-template-hash: 7bd6cc66
+    name: frontend-proxy-7bd6cc66-2wg6j
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: frontend-proxy-7bd6cc66
+      uid: c4e61450-c349-48b5-b786-d39b1a082229
+    resourceVersion: "2754375"
+    uid: a8bf00cd-924a-4f92-805c-037e65c09349
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: ENVOY_PORT
+        value: "8080"
+      - name: ENVOY_ADDR
+        value: 0.0.0.0
+      - name: ENVOY_ADMIN_PORT
+        value: "10000"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: FLAGD_UI_HOST
+        value: flagd
+      - name: FLAGD_UI_PORT
+        value: "4000"
+      - name: FRONTEND_HOST
+        value: frontend
+      - name: FRONTEND_PORT
+        value: "8080"
+      - name: GRAFANA_HOST
+        value: grafana.techx-observability.svc.cluster.local
+      - name: GRAFANA_PORT
+        value: "80"
+      - name: IMAGE_PROVIDER_HOST
+        value: image-provider
+      - name: IMAGE_PROVIDER_PORT
+        value: "8081"
+      - name: JAEGER_HOST
+        value: jaeger.techx-observability.svc.cluster.local
+      - name: JAEGER_UI_PORT
+        value: "16686"
+      - name: LOCUST_WEB_HOST
+        value: load-generator
+      - name: LOCUST_WEB_PORT
+        value: "8089"
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+      - name: OTEL_COLLECTOR_PORT_GRPC
+        value: "4317"
+      - name: OTEL_COLLECTOR_PORT_HTTP
+        value: "4318"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend-proxy
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: frontend-proxy
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /ready
+          port: 10000
+          scheme: HTTP
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      securityContext:
+        runAsGroup: 101
+        runAsNonRoot: true
+        runAsUser: 101
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9s8bb
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: frontend-proxy
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-9s8bb
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:39Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:37Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:37Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 64Mi
+      containerID: containerd://39866f2384d44ff71653996dd249a2ba59160d4b10294af44fd402fc8bb63ddd
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend-proxy
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:7a2d03dfe155c959febc5bb866a225fd32540ccfb0bc708d2ec6ab3c64111fee
+      lastState: {}
+      name: frontend-proxy
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:16:38Z"
+      user:
+        linux:
+          gid: 101
+          supplementalGroups:
+          - 101
+          uid: 101
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-9s8bb
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.24
+    podIPs:
+    - ip: 10.0.10.24
+    qosClass: Burstable
+    startTime: "2026-07-15T06:16:37Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      io.opentelemetry.discovery.metrics/config: |
+        targets:
+          - endpoint: "http://`endpoint`"
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: httpcheck
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T11:10:14+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:24:06Z"
+    generateName: frontend-proxy-7bd6cc66-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: frontend-proxy
+      app.kubernetes.io/name: frontend-proxy
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: frontend-proxy
+      pod-template-hash: 7bd6cc66
+    name: frontend-proxy-7bd6cc66-whp6j
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: frontend-proxy-7bd6cc66
+      uid: c4e61450-c349-48b5-b786-d39b1a082229
+    resourceVersion: "2757609"
+    uid: 3657fc1a-a354-45fd-bcde-25111a71451e
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: ENVOY_PORT
+        value: "8080"
+      - name: ENVOY_ADDR
+        value: 0.0.0.0
+      - name: ENVOY_ADMIN_PORT
+        value: "10000"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: FLAGD_UI_HOST
+        value: flagd
+      - name: FLAGD_UI_PORT
+        value: "4000"
+      - name: FRONTEND_HOST
+        value: frontend
+      - name: FRONTEND_PORT
+        value: "8080"
+      - name: GRAFANA_HOST
+        value: grafana.techx-observability.svc.cluster.local
+      - name: GRAFANA_PORT
+        value: "80"
+      - name: IMAGE_PROVIDER_HOST
+        value: image-provider
+      - name: IMAGE_PROVIDER_PORT
+        value: "8081"
+      - name: JAEGER_HOST
+        value: jaeger.techx-observability.svc.cluster.local
+      - name: JAEGER_UI_PORT
+        value: "16686"
+      - name: LOCUST_WEB_HOST
+        value: load-generator
+      - name: LOCUST_WEB_PORT
+        value: "8089"
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+      - name: OTEL_COLLECTOR_PORT_GRPC
+        value: "4317"
+      - name: OTEL_COLLECTOR_PORT_HTTP
+        value: "4318"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend-proxy
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: frontend-proxy
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /ready
+          port: 10000
+          scheme: HTTP
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      securityContext:
+        runAsGroup: 101
+        runAsNonRoot: true
+        runAsUser: 101
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-z6jbw
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: frontend-proxy
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-z6jbw
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:15Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:37Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:37Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 64Mi
+      containerID: containerd://2a48b7e9df09abab61a795e2c238c2d72277f38343abb278ecd2d0e8d13b8197
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend-proxy
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:7a2d03dfe155c959febc5bb866a225fd32540ccfb0bc708d2ec6ab3c64111fee
+      lastState: {}
+      name: frontend-proxy
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:24:14Z"
+      user:
+        linux:
+          gid: 101
+          supplementalGroups:
+          - 101
+          uid: 101
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-z6jbw
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.204
+    podIPs:
+    - ip: 10.0.10.204
+    qosClass: Burstable
+    startTime: "2026-07-15T06:24:06Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      io.opentelemetry.discovery.metrics/config: |
+        endpoint: "http://`endpoint`/status"
+        collection_interval: "10s"
+        timeout: "20s"
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: nginx
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T03:47:04Z"
+    generateName: image-provider-c85cf9d65-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: image-provider
+      app.kubernetes.io/name: image-provider
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: image-provider
+      pod-template-hash: c85cf9d65
+    name: image-provider-c85cf9d65-92rfw
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: image-provider-c85cf9d65
+      uid: 20651255-3434-4dac-887a-62d4c7d73a31
+    resourceVersion: "2704979"
+    uid: ea447a07-df33-4538-a807-bcbbac3113c2
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: IMAGE_PROVIDER_PORT
+        value: "8081"
+      - name: OTEL_COLLECTOR_PORT_GRPC
+        value: "4317"
+      - name: OTEL_COLLECTOR_HOST
+        value: $(OTEL_COLLECTOR_NAME)
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-image-provider
+      imagePullPolicy: IfNotPresent
+      name: image-provider
+      ports:
+      - containerPort: 8081
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 50m
+          memory: 50Mi
+        requests:
+          cpu: 10m
+          memory: 25Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-hkh9m
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-hkh9m
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:34Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:34Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:34Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 10m
+        memory: 25Mi
+      containerID: containerd://e5fa4ae6dac8a4875c2fc71be251a70742b48f7c0570fcb4d8aed3fb852d8d57
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-image-provider
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:b4d954db0d5f87279451eca5c1f2a4bf4a56e8c35a658692da3a79857724df09
+      lastState: {}
+      name: image-provider
+      ready: true
+      resources:
+        limits:
+          cpu: 50m
+          memory: 50Mi
+        requests:
+          cpu: 10m
+          memory: 25Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T03:47:33Z"
+      user:
+        linux:
+          gid: 101
+          supplementalGroups:
+          - 101
+          uid: 101
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-hkh9m
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.22
+    podIPs:
+    - ip: 10.0.10.22
+    qosClass: Burstable
+    startTime: "2026-07-15T03:47:05Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T08:18:49Z"
+    generateName: kafka-6f9ff79c54-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: kafka
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: kafka
+      pod-template-hash: 6f9ff79c54
+    name: kafka-6f9ff79c54-v45cb
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: kafka-6f9ff79c54
+      uid: e1fdda4f-896e-4f92-805d-31e823bf9392
+    resourceVersion: "2796087"
+    uid: 7ddefe18-b3b8-44be-b76b-2f789cb8ee36
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: KAFKA_ADVERTISED_LISTENERS
+        value: PLAINTEXT://kafka:9092
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: KAFKA_HEAP_OPTS
+        value: -Xmx400M -Xms400M
+      - name: KAFKA_LISTENERS
+        value: PLAINTEXT://:9092,CONTROLLER://:9093
+      - name: KAFKA_CONTROLLER_LISTENER_NAMES
+        value: CONTROLLER
+      - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+        value: 1@kafka:9093
+      - name: KAFKA_LOG_DIRS
+        value: /tmp/kafka-data/kraft-combined-logs
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka
+      imagePullPolicy: IfNotPresent
+      name: kafka
+      ports:
+      - containerPort: 9092
+        name: plaintext
+        protocol: TCP
+      - containerPort: 9093
+        name: controller
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 500m
+          memory: 700Mi
+        requests:
+          cpu: 100m
+          memory: 700Mi
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /tmp/kafka-data
+        name: kafka-data
+      - mountPath: /tmp/kraft-combined-logs
+        name: kafka-data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-l5f7q
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 1000
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kafka-data
+      persistentVolumeClaim:
+        claimName: kafka-pvc
+    - name: kube-api-access-l5f7q
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:18:52Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:18:49Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:18:52Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:18:52Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:18:49Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 700Mi
+      containerID: containerd://af602aa44e5def279d7974f505c5aa3c5bbd5179a0adf0a368f3b8b043c2fa7d
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:8d045dcb3ccba8a9a57bcfeec4f2f1ef17e238ec1dde25d822e155f2b25ae160
+      lastState: {}
+      name: kafka
+      ready: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 700Mi
+        requests:
+          cpu: 100m
+          memory: 700Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T08:18:51Z"
+      user:
+        linux:
+          gid: 1000
+          supplementalGroups:
+          - 1000
+          uid: 1000
+      volumeMounts:
+      - mountPath: /tmp/kafka-data
+        name: kafka-data
+      - mountPath: /tmp/kraft-combined-logs
+        name: kafka-data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-l5f7q
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.236
+    podIPs:
+    - ip: 10.0.10.236
+    qosClass: Burstable
+    startTime: "2026-07-15T08:18:49Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-14T15:26:51Z"
+    generateName: llm-6c96948c64-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: llm
+      app.kubernetes.io/name: llm
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: llm
+      pod-template-hash: 6c96948c64
+    name: llm-6c96948c64-dnz8f
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: llm-6c96948c64
+      uid: d53a0b5f-156f-46f5-86e9-534a0dce528a
+    resourceVersion: "2444977"
+    uid: fb330af7-1b44-43c9-8ff9-4140e6c5d4c5
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-llm
+      imagePullPolicy: IfNotPresent
+      name: llm
+      ports:
+      - containerPort: 8000
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 250m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-k5h9w
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-k5h9w
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T15:27:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T15:26:51Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T15:27:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T15:27:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T15:26:51Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 96Mi
+      containerID: containerd://dc7459030080cb8a91e1cd347a13355e8833e3197da3b96b4e046ea1fce66cc5
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-llm
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:92bdde8f912c3e773b0b5908e3c17a776c49258e4fab5fdd6df905b723d21fe6
+      lastState: {}
+      name: llm
+      ready: true
+      resources:
+        limits:
+          cpu: 250m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-14T15:26:59Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-k5h9w
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.182
+    podIPs:
+    - ip: 10.0.10.182
+    qosClass: Burstable
+    startTime: "2026-07-14T15:26:51Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-14T11:23:10+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T07:25:31Z"
+    generateName: load-generator-7dbc8d784-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: load-generator
+      app.kubernetes.io/name: load-generator
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: load-generator
+      pod-template-hash: 7dbc8d784
+    name: load-generator-7dbc8d784-dxcq6
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: load-generator-7dbc8d784
+      uid: 00671411-a249-4088-b212-866b785a3f12
+    resourceVersion: "2778659"
+    uid: 9f9f807b-9b99-4081-ba93-c23e1a39a2ae
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: LOCUST_WEB_HOST
+        value: 0.0.0.0
+      - name: LOCUST_WEB_PORT
+        value: "8089"
+      - name: LOCUST_USERS
+        value: "10"
+      - name: LOCUST_SPAWN_RATE
+        value: "1"
+      - name: LOCUST_HOST
+        value: http://frontend-proxy:8080
+      - name: LOCUST_HEADLESS
+        value: "false"
+      - name: LOCUST_AUTOSTART
+        value: "true"
+      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+        value: "false"
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: FLAGD_OFREP_PORT
+        value: "8016"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-load-generator
+      imagePullPolicy: IfNotPresent
+      name: load-generator
+      ports:
+      - containerPort: 8089
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 600m
+          memory: 512Mi
+        requests:
+          cpu: 300m
+          memory: 256Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zn678
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-zn678
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:25:33Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:25:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:25:33Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:25:33Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:25:31Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 300m
+        memory: 256Mi
+      containerID: containerd://5e24862dee8ea479e9f42728ab44323d9a47d814f8c19f8c077724ad19c49268
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-load-generator
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:e5e4bc487617d166001ff834bcc36d500583d50e280141afdc849ba1c479ca8f
+      lastState: {}
+      name: load-generator
+      ready: true
+      resources:
+        limits:
+          cpu: 600m
+          memory: 512Mi
+        requests:
+          cpu: 300m
+          memory: 256Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T07:25:32Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zn678
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.36
+    podIPs:
+    - ip: 10.0.10.36
+    qosClass: Burstable
+    startTime: "2026-07-15T07:25:31Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:17:56Z"
+    generateName: payment-5c5cf4f445-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: payment
+      app.kubernetes.io/name: payment
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: payment
+      pod-template-hash: 5c5cf4f445
+    name: payment-5c5cf4f445-6fg6n
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: payment-5c5cf4f445
+      uid: 212fb016-6e0e-4afa-94de-2cc0921a32c4
+    resourceVersion: "2755137"
+    uid: 3dbd906a-d240-4dd2-ab6c-96e8153e38a9
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: PAYMENT_PORT
+        value: "8080"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: payment
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-svzpc
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: payment
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-svzpc
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:57Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:18:18Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:18:18Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:56Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 64Mi
+      containerID: containerd://ac5da03ab67bca5482d3ca39081cfac87de641621fcdb8efb822a13d62956024
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:3ec5571732aaff07505cb2aa735100e20815279067c4a85448aa79da476abd7e
+      lastState: {}
+      name: payment
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:17:57Z"
+      user:
+        linux:
+          gid: 1000
+          supplementalGroups:
+          - 1000
+          uid: 1000
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-svzpc
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.222
+    podIPs:
+    - ip: 10.0.10.222
+    qosClass: Burstable
+    startTime: "2026-07-15T06:17:56Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:24:05Z"
+    generateName: payment-5c5cf4f445-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: payment
+      app.kubernetes.io/name: payment
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: payment
+      pod-template-hash: 5c5cf4f445
+    name: payment-5c5cf4f445-sx6d2
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: payment-5c5cf4f445
+      uid: 212fb016-6e0e-4afa-94de-2cc0921a32c4
+    resourceVersion: "2757525"
+    uid: c379b539-2c52-4c3f-923e-e5a11bf7480e
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: PAYMENT_PORT
+        value: "8080"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: payment
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-tvvm2
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: payment
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-tvvm2
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:07Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:28Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:28Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 64Mi
+      containerID: containerd://0f197b4de71e011da2cdb5dbb4e488b050d63db0797e2b20ed9701ee075a7f6a
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:3ec5571732aaff07505cb2aa735100e20815279067c4a85448aa79da476abd7e
+      lastState: {}
+      name: payment
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:24:07Z"
+      user:
+        linux:
+          gid: 1000
+          supplementalGroups:
+          - 1000
+          uid: 1000
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-tvvm2
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.217
+    podIPs:
+    - ip: 10.0.10.217
+    qosClass: Burstable
+    startTime: "2026-07-15T06:24:06Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      io.opentelemetry.discovery.metrics/config: |
+        username: root
+        password: REDACTED
+        metrics:
+          postgresql.blks_hit:
+            enabled: true
+          postgresql.blks_read:
+            enabled: true
+          postgresql.tup_fetched:
+            enabled: true
+          postgresql.tup_returned:
+            enabled: true
+          postgresql.tup_inserted:
+            enabled: true
+          postgresql.tup_updated:
+            enabled: true
+          postgresql.tup_deleted:
+            enabled: true
+          postgresql.deadlocks:
+            enabled: true
+        tls:
+          insecure: true
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: postgresql
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T07:43:44Z"
+    generateName: postgresql-5b49658ddf-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: postgresql
+      app.kubernetes.io/name: postgresql
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: postgresql
+      pod-template-hash: 5b49658ddf
+    name: postgresql-5b49658ddf-b4p2m
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: postgresql-5b49658ddf
+      uid: 1657b445-2eef-4711-b765-4e0c1552e94f
+    resourceVersion: "2784713"
+    uid: e9b50106-90b7-4ec1-aee4-4714a27dbba0
+  spec:
+    containers:
+    - env:
+      - name: POSTGRES_USER
+        value: root
+      - name: POSTGRES_PASSWORD
+        value: REDACTED
+      - name: POSTGRES_DB
+        value: otel
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
+      image: postgres:17.6
+      imagePullPolicy: IfNotPresent
+      name: postgresql
+      ports:
+      - containerPort: 5432
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/lib/postgresql/data
+        name: postgresql-data
+      - mountPath: /docker-entrypoint-initdb.d
+        name: postgresql-init
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-ljln2
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - configMap:
+        defaultMode: 420
+        name: postgresql-init
+      name: postgresql-init
+    - name: postgresql-data
+      persistentVolumeClaim:
+        claimName: postgresql-pvc
+    - name: kube-api-access-ljln2
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:44:03Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:43:45Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:44:03Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:44:03Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:43:45Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 256Mi
+      containerID: containerd://22060603efdf0f5f31e1b07d71804fa257f153d10fb96d65c0eb8041d115ef17
+      image: docker.io/library/postgres:17.6
+      imageID: docker.io/library/postgres@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+      lastState: {}
+      name: postgresql
+      ready: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T07:44:02Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/lib/postgresql/data
+        name: postgresql-data
+      - mountPath: /docker-entrypoint-initdb.d
+        name: postgresql-init
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-ljln2
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.218
+    podIPs:
+    - ip: 10.0.10.218
+    qosClass: Burstable
+    startTime: "2026-07-15T07:43:45Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:24:05Z"
+    generateName: product-catalog-5dbccf75c9-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: product-catalog
+      app.kubernetes.io/name: product-catalog
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: product-catalog
+      pod-template-hash: 5dbccf75c9
+    name: product-catalog-5dbccf75c9-8t557
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: product-catalog-5dbccf75c9
+      uid: d6bfd7aa-2bec-4cbf-a13a-b74557ba23a7
+    resourceVersion: "2761521"
+    uid: e19650cb-cba5-468b-b07b-df20687f14a4
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: PRODUCT_CATALOG_PORT
+        value: "8080"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: GOMEMLIMIT
+        value: 16MiB
+      - name: DB_CONNECTION_STRING
+        value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+      - name: OTEL_SEMCONV_STABILITY_OPT_IN
+        value: database
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: product-catalog
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 200m
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 32Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-4w56s
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: product-catalog
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-4w56s
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:09Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:28Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:28Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 32Mi
+      containerID: containerd://34b73e7849f8bfc0aef74a8af81b65456cdda9689ec3e3283dda6536a54c85ab
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:e0c6a86a65e7b872e77a2f1f1ab16d7dc9aa7ba0741de6e1ac95fec964921482
+      lastState:
+        terminated:
+          containerID: containerd://daf3cfbb6b5688c7484182629b2b2ceaf5fef96e1b5189f276fcc953c8982a9b
+          exitCode: 1
+          finishedAt: "2026-07-15T06:30:05Z"
+          reason: Error
+          startedAt: "2026-07-15T06:30:05Z"
+      name: product-catalog
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 32Mi
+      restartCount: 7
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:35:07Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-4w56s
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.19
+    podIPs:
+    - ip: 10.0.10.19
+    qosClass: Burstable
+    startTime: "2026-07-15T06:24:06Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:35:28Z"
+    generateName: product-catalog-5dbccf75c9-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: product-catalog
+      app.kubernetes.io/name: product-catalog
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: product-catalog
+      pod-template-hash: 5dbccf75c9
+    name: product-catalog-5dbccf75c9-bpqvr
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: product-catalog-5dbccf75c9
+      uid: d6bfd7aa-2bec-4cbf-a13a-b74557ba23a7
+    resourceVersion: "2761680"
+    uid: c15cbf89-8f85-462a-9f00-35fffcaa7583
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: PRODUCT_CATALOG_PORT
+        value: "8080"
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: GOMEMLIMIT
+        value: 16MiB
+      - name: DB_CONNECTION_STRING
+        value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+      - name: OTEL_SEMCONV_STABILITY_OPT_IN
+        value: database
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      name: product-catalog
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        grpc:
+          port: 8080
+          service: ""
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 200m
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 32Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-sfkdz
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: product-catalog
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-sfkdz
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:30Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:28Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:51Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:51Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:35:28Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 32Mi
+      containerID: containerd://ab04babd98848f5ac4453b4adeddc1e7cf80cf3ef57efdd0ef151ddbb46fe3a7
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:e0c6a86a65e7b872e77a2f1f1ab16d7dc9aa7ba0741de6e1ac95fec964921482
+      lastState: {}
+      name: product-catalog
+      ready: true
+      resources:
+        limits:
+          cpu: 200m
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 32Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:35:29Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-sfkdz
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.23
+    podIPs:
+    - ip: 10.0.10.23
+    qosClass: Burstable
+    startTime: "2026-07-15T06:35:28Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T08:11:57Z"
+    generateName: product-reviews-6b466ffbbd-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: product-reviews
+      app.kubernetes.io/name: product-reviews
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: product-reviews
+      pod-template-hash: 6b466ffbbd
+    name: product-reviews-6b466ffbbd-t2pst
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: product-reviews-6b466ffbbd
+      uid: cac3c80c-6ff4-49c8-a3b0-63153025475d
+    resourceVersion: "2793797"
+    uid: 832d50a1-5a86-46df-8c1d-c5beb2014548
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: OPENAI_API_KEY
+        value: dummy
+      - name: LLM_MODEL
+        value: techx-llm
+      - name: LLM_TIMEOUT_SECONDS
+        value: "5.0"
+      - name: LLM_HOST
+        value: llm
+      - name: LLM_PORT
+        value: "8000"
+      - name: LLM_BASE_URL
+        value: http://$(LLM_HOST):$(LLM_PORT)/v1
+      - name: PRODUCT_REVIEWS_PORT
+        value: "3551"
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: DB_CONNECTION_STRING
+        value: host=postgresql user=otelu password=REDACTED dbname=otel
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: OTEL_PYTHON_LOG_CORRELATION
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+        value: "true"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews
+      imagePullPolicy: IfNotPresent
+      name: product-reviews
+      ports:
+      - containerPort: 3551
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-hvjcm
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-hvjcm
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:11:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:11:57Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:11:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:11:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T08:11:57Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 96Mi
+      containerID: containerd://0e57953449cc79999cd385b8174bab0cebcdb953c4c418ac3a0b446faefd7ad1
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:3f14cd7b9cf1395b18bb65e8459fbcae1e58527279a5fcb09674aecca3b98136
+      lastState: {}
+      name: product-reviews
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 192Mi
+        requests:
+          cpu: 75m
+          memory: 96Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T08:11:57Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-hvjcm
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.249
+    podIPs:
+    - ip: 10.0.10.249
+    qosClass: Burstable
+    startTime: "2026-07-15T08:11:57Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T03:47:05Z"
+    generateName: quote-85c74d484b-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: quote
+      app.kubernetes.io/name: quote
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: quote
+      pod-template-hash: 85c74d484b
+    name: quote-85c74d484b-m5bbz
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: quote-85c74d484b
+      uid: ef1f68e5-60b9-43f8-82f4-038efc857314
+    resourceVersion: "2705046"
+    uid: 0e5d1a1b-6f6a-4b77-bbbd-900332b60cce
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: QUOTE_PORT
+        value: "8080"
+      - name: OTEL_PHP_AUTOLOAD_ENABLED
+        value: "true"
+      - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
+        value: "true"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4318
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-quote
+      imagePullPolicy: IfNotPresent
+      name: quote
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 50m
+          memory: 40Mi
+        requests:
+          cpu: 10m
+          memory: 20Mi
+      securityContext:
+        runAsGroup: 33
+        runAsNonRoot: true
+        runAsUser: 33
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kws4r
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-kws4r
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:38Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:38Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:38Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T03:47:05Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 10m
+        memory: 20Mi
+      containerID: containerd://0cc83923eb031214629d483b173707fcb42a5b390ee0bc3aaee576079fe9e702
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-quote
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:c0a0caec691cf7bf15580fa8d647ed42b9e495a42a4907c080569da3038a0a7a
+      lastState: {}
+      name: quote
+      ready: true
+      resources:
+        limits:
+          cpu: 50m
+          memory: 40Mi
+        requests:
+          cpu: 10m
+          memory: 20Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T03:47:37Z"
+      user:
+        linux:
+          gid: 33
+          supplementalGroups:
+          - 33
+          uid: 33
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kws4r
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.11
+    podIPs:
+    - ip: 10.0.10.11
+    qosClass: Burstable
+    startTime: "2026-07-15T03:47:05Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-14T17:47:40Z"
+    generateName: recommendation-78948dd47d-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: recommendation
+      app.kubernetes.io/name: recommendation
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: recommendation
+      pod-template-hash: 78948dd47d
+    name: recommendation-78948dd47d-zqjdv
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: recommendation-78948dd47d
+      uid: c00ada0f-18a5-4e65-a6c6-af984ac14bcf
+    resourceVersion: "2488001"
+    uid: d54612ff-ae2f-4a14-a55f-31274916c75e
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: RECOMMENDATION_PORT
+        value: "8080"
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: OTEL_PYTHON_LOG_CORRELATION
+        value: "true"
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-recommendation
+      imagePullPolicy: IfNotPresent
+      name: recommendation
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 300m
+          memory: 256Mi
+        requests:
+          cpu: 75m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-llxdk
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-llxdk
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T17:47:43Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T17:47:40Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T17:47:43Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T17:47:43Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-14T17:47:40Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 75m
+        memory: 128Mi
+      containerID: containerd://ed1e835ec75b13f5eca3b7f63e58f1dd566690a902bf0e814f2f232ab1f5e588
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-recommendation
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:7ed01aa3219141107201be32c389125d4a15e029b4fbda849db330a04a3d82f6
+      lastState: {}
+      name: recommendation
+      ready: true
+      resources:
+        limits:
+          cpu: 300m
+          memory: 256Mi
+        requests:
+          cpu: 75m
+          memory: 128Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-14T17:47:42Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-llxdk
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.41
+    podIPs:
+    - ip: 10.0.10.41
+    qosClass: Burstable
+    startTime: "2026-07-14T17:47:40Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:16:38Z"
+    generateName: shipping-5547c65698-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: shipping
+      app.kubernetes.io/name: shipping
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: shipping
+      pod-template-hash: 5547c65698
+    name: shipping-5547c65698-g9vjx
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: shipping-5547c65698
+      uid: 8c6e4875-f638-4cae-8bd0-5604630163fb
+    resourceVersion: "2754437"
+    uid: 1857adf1-74b6-4244-9d66-0f8f7195909e
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: SHIPPING_PORT
+        value: "8080"
+      - name: QUOTE_ADDR
+        value: http://quote:8080
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: shipping
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 75m
+          memory: 32Mi
+        requests:
+          cpu: 20m
+          memory: 16Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zvzf2
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-231.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: shipping
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-zvzf2
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:40Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:38Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:17:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:16:38Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 20m
+        memory: 16Mi
+      containerID: containerd://1c7eebc3628120f4877fdc2498c063e5622449dc082df9031b14a220b51cdc36
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:496bbb45b40a8750e5928e3fb94b872055caaf01e0232667606d84e7591a95dc
+      lastState: {}
+      name: shipping
+      ready: true
+      resources:
+        limits:
+          cpu: 75m
+          memory: 32Mi
+        requests:
+          cpu: 20m
+          memory: 16Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:16:39Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zvzf2
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.231
+    hostIPs:
+    - ip: 10.0.10.231
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.108
+    podIPs:
+    - ip: 10.0.10.108
+    qosClass: Burstable
+    startTime: "2026-07-15T06:16:38Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T06:24:06Z"
+    generateName: shipping-5547c65698-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: shipping
+      app.kubernetes.io/name: shipping
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: shipping
+      pod-template-hash: 5547c65698
+    name: shipping-5547c65698-sqnwm
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: shipping-5547c65698
+      uid: 8c6e4875-f638-4cae-8bd0-5604630163fb
+    resourceVersion: "2757536"
+    uid: 57fffdf9-3c20-465e-a70c-bec9f40d1cbd
+  spec:
+    containers:
+    - env:
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.labels['app.kubernetes.io/component']
+      - name: OTEL_COLLECTOR_NAME
+        value: otel-collector.techx-observability.svc.cluster.local
+      - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+        value: cumulative
+      - name: SHIPPING_PORT
+        value: "8080"
+      - name: QUOTE_ADDR
+        value: http://quote:8080
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: IPV6_ENABLED
+        value: "false"
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      name: shipping
+      ports:
+      - containerPort: 8080
+        name: service
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 3
+        initialDelaySeconds: 15
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+      resources:
+        limits:
+          cpu: 75m
+          memory: 32Mi
+        requests:
+          cpu: 20m
+          memory: 16Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-2xhjx
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-11-40.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: shipping
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+    volumes:
+    - name: kube-api-access-2xhjx
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:08Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:29Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:29Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T06:24:06Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 20m
+        memory: 16Mi
+      containerID: containerd://b91c39ffae41b86e187228085629d788fda57283752aa47e5334c35c534df805
+      image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping
+      imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:496bbb45b40a8750e5928e3fb94b872055caaf01e0232667606d84e7591a95dc
+      lastState: {}
+      name: shipping
+      ready: true
+      resources:
+        limits:
+          cpu: 75m
+          memory: 32Mi
+        requests:
+          cpu: 20m
+          memory: 16Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T06:24:08Z"
+      user:
+        linux:
+          gid: 65532
+          supplementalGroups:
+          - 65532
+          uid: 65532
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-2xhjx
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.11.40
+    hostIPs:
+    - ip: 10.0.11.40
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.11.139
+    podIPs:
+    - ip: 10.0.11.139
+    qosClass: Burstable
+    startTime: "2026-07-15T06:24:06Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      io.opentelemetry.discovery.metrics/config: |
+        username: valkey
+        collection_interval: 10s
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: redis
+      kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+      resource.opentelemetry.io/service.namespace: techx-corp
+    creationTimestamp: "2026-07-15T07:55:32Z"
+    generateName: valkey-cart-dd686478b-
+    generation: 1
+    labels:
+      app.kubernetes.io/component: valkey-cart
+      app.kubernetes.io/name: valkey-cart
+      app.kubernetes.io/version: 2.2.0
+      opentelemetry.io/name: valkey-cart
+      pod-template-hash: dd686478b
+    name: valkey-cart-dd686478b-97hdp
+    namespace: techx-tf4
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: valkey-cart-dd686478b
+      uid: 1a7c779a-bda1-461b-88c4-d61145334ebb
+    resourceVersion: "2788533"
+    uid: 60417ef1-512e-49d8-96c8-d15e341d581c
+  spec:
+    containers:
+    - command:
+      - valkey-server
+      - --appendonly
+      - "yes"
+      - --dir
+      - /data
+      image: valkey/valkey:9.0.1-alpine3.23
+      imagePullPolicy: IfNotPresent
+      name: valkey-cart
+      ports:
+      - containerPort: 6379
+        name: valkey-cart
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 100m
+          memory: 64Mi
+        requests:
+          cpu: 20m
+          memory: 32Mi
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 999
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /data
+        name: valkey-data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-5jtlk
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: ip-10-0-10-74.ec2.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 999
+    serviceAccount: techx-corp
+    serviceAccountName: techx-corp
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: valkey-data
+      persistentVolumeClaim:
+        claimName: valkey-cart-pvc
+    - name: kube-api-access-5jtlk
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:55:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:55:32Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:55:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:55:53Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-07-15T07:55:32Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 20m
+        memory: 32Mi
+      containerID: containerd://83edcf32bddc7745ac2c271619c3ac0f50e53250b4d18a9aa05931fbea8c88e8
+      image: docker.io/valkey/valkey:9.0.1-alpine3.23
+      imageID: docker.io/valkey/valkey@sha256:c106a0c03bcb23cbdf9febe693114cb7800646b11ca8b303aee7409de005faa8
+      lastState: {}
+      name: valkey-cart
+      ready: true
+      resources:
+        limits:
+          cpu: 100m
+          memory: 64Mi
+        requests:
+          cpu: 20m
+          memory: 32Mi
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2026-07-15T07:55:52Z"
+      user:
+        linux:
+          gid: 1000
+          supplementalGroups:
+          - 999
+          - 1000
+          uid: 999
+      volumeMounts:
+      - mountPath: /data
+        name: valkey-data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-5jtlk
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 10.0.10.74
+    hostIPs:
+    - ip: 10.0.10.74
+    observedGeneration: 1
+    phase: Running
+    podIP: 10.0.10.43
+    podIPs:
+    - ip: 10.0.10.43
+    qosClass: Burstable
+    startTime: "2026-07-15T07:55:32Z"
+kind: List
+metadata:
+  resourceVersion: ""
+
+

@@ -1,0 +1,2897 @@
+﻿apiVersion: v1
+items:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"accounting","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"accounting","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"accounting"},"name":"accounting","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"accounting"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"accounting","app.kubernetes.io/name":"accounting","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"accounting"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"KAFKA_ADDR","value":"kafka:9092"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4318"},{"name":"DB_CONNECTION_STRING","value":"Host=postgresql;Username=otelu;Password=REDACTED;Database=otel"},{"name":"OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED","value":"false"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:4526141-accounting","imagePullPolicy":"IfNotPresent","name":"accounting","resources":{"limits":{"cpu":"200m","memory":"256Mi"},"requests":{"cpu":"50m","memory":"256Mi"}},"volumeMounts":null}],"initContainers":[{"command":["sh","-c","until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"],"image":"busybox:latest","name":"wait-for-kafka","resources":{"limits":{"cpu":"25m","memory":"32Mi"},"requests":{"cpu":"5m","memory":"8Mi"}}}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:46Z"
+    generation: 14
+    labels:
+      app.kubernetes.io/component: accounting
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: accounting
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: accounting
+    name: accounting
+    namespace: techx-tf4
+    resourceVersion: "2772398"
+    uid: 09faa11e-a2fe-474a-8597-de54d133bf7c
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: accounting
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: accounting
+          app.kubernetes.io/name: accounting
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: accounting
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: KAFKA_ADDR
+            value: kafka:9092
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4318
+          - name: DB_CONNECTION_STRING
+            value: Host=postgresql;Username=otelu;Password=REDACTED;Database=otel
+          - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
+            value: "false"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:4526141-accounting
+          imagePullPolicy: IfNotPresent
+          name: accounting
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+          image: busybox:latest
+          imagePullPolicy: Always
+          name: wait-for-kafka
+          resources:
+            limits:
+              cpu: 25m
+              memory: 32Mi
+            requests:
+              cpu: 5m
+              memory: 8Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-15T03:49:30Z"
+      lastUpdateTime: "2026-07-15T03:49:30Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:21Z"
+      lastUpdateTime: "2026-07-15T07:07:26Z"
+      message: ReplicaSet "accounting-5dc867c55b" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 14
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"ad","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"ad","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"ad"},"name":"ad","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"ad"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"ad","app.kubernetes.io/name":"ad","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"ad"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"AD_PORT","value":"8080"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4318"},{"name":"OTEL_LOGS_EXPORTER","value":"otlp"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-ad","imagePullPolicy":"IfNotPresent","name":"ad","ports":[{"containerPort":8080,"name":"service"}],"resources":{"limits":{"cpu":"200m","memory":"300Mi"},"requests":{"cpu":"50m","memory":"150Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:47Z"
+    generation: 14
+    labels:
+      app.kubernetes.io/component: ad
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: ad
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: ad
+    name: ad
+    namespace: techx-tf4
+    resourceVersion: "2776753"
+    uid: f656d3e1-6630-42a7-8f82-3b25fda72f3b
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: ad
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: ad
+          app.kubernetes.io/name: ad
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: ad
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: AD_PORT
+            value: "8080"
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4318
+          - name: OTEL_LOGS_EXPORTER
+            value: otlp
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-ad
+          imagePullPolicy: IfNotPresent
+          name: ad
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 300Mi
+            requests:
+              cpu: 50m
+              memory: 150Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-15T03:47:41Z"
+      lastUpdateTime: "2026-07-15T03:47:41Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:21Z"
+      lastUpdateTime: "2026-07-15T07:20:24Z"
+      message: ReplicaSet "ad-6595659799" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 14
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "15"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"cart","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"cart","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"cart"},"name":"cart","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"cart"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"cart","app.kubernetes.io/name":"cart","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"cart"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"CART_PORT","value":"8080"},{"name":"ASPNETCORE_URLS","value":"http://*:$(CART_PORT)"},{"name":"VALKEY_ADDR","value":"valkey-cart:6379"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-cart","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"initialDelaySeconds":15,"periodSeconds":10,"tcpSocket":{"port":8080},"timeoutSeconds":3},"name":"cart","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"grpc":{"port":8080,"service":"oteldemo.CartService"},"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"300m","memory":"192Mi"},"requests":{"cpu":"75m","memory":"96Mi"}},"volumeMounts":null}],"initContainers":[{"command":["sh","-c","until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;"],"image":"busybox:latest","name":"wait-for-valkey-cart","resources":{"limits":{"cpu":"25m","memory":"32Mi"},"requests":{"cpu":"5m","memory":"8Mi"}}}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:47Z"
+    generation: 17
+    labels:
+      app.kubernetes.io/component: cart
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: cart
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: cart
+    name: cart
+    namespace: techx-tf4
+    resourceVersion: "2754223"
+    uid: f6251145-bd87-47f2-b8d9-7ac80ab5bb4e
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: cart
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: cart
+          app.kubernetes.io/name: cart
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: cart
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: CART_PORT
+            value: "8080"
+          - name: ASPNETCORE_URLS
+            value: http://*:$(CART_PORT)
+          - name: VALKEY_ADDR
+            value: valkey-cart:6379
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-cart
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 3
+          name: cart
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: oteldemo.CartService
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 300m
+              memory: 192Mi
+            requests:
+              cpu: 75m
+              memory: 96Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart;
+            sleep 2; done;
+          image: busybox:latest
+          imagePullPolicy: Always
+          name: wait-for-valkey-cart
+          resources:
+            limits:
+              cpu: 25m
+              memory: 32Mi
+            requests:
+              cpu: 5m
+              memory: 8Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: cart
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-15T06:16:18Z"
+      lastUpdateTime: "2026-07-15T06:16:18Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-15T06:16:44Z"
+      message: ReplicaSet "cart-6d98c5f7bf" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 17
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "15"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"checkout","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"checkout","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"checkout"},"name":"checkout","namespace":"techx-tf4"},"spec":{"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"checkout"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"checkout","app.kubernetes.io/name":"checkout","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"checkout"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"CHECKOUT_PORT","value":"8080"},{"name":"CART_ADDR","value":"cart:8080"},{"name":"CURRENCY_ADDR","value":"currency:8080"},{"name":"EMAIL_ADDR","value":"http://email:8080"},{"name":"PAYMENT_ADDR","value":"payment:8080"},{"name":"PRODUCT_CATALOG_ADDR","value":"product-catalog:8080"},{"name":"SHIPPING_ADDR","value":"http://shipping:8080"},{"name":"KAFKA_ADDR","value":"kafka:9092"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"},{"name":"GOMEMLIMIT","value":"16MiB"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"timeoutSeconds":3},"name":"checkout","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"300m","memory":"96Mi"},"requests":{"cpu":"75m","memory":"48Mi"}},"volumeMounts":null}],"initContainers":[{"command":["sh","-c","until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"],"image":"busybox:latest","name":"wait-for-kafka","resources":{"limits":{"cpu":"25m","memory":"32Mi"},"requests":{"cpu":"5m","memory":"8Mi"}}}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:48Z"
+    generation: 23
+    labels:
+      app.kubernetes.io/component: checkout
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: checkout
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: checkout
+    name: checkout
+    namespace: techx-tf4
+    resourceVersion: "2766549"
+    uid: fe85a793-5db4-498c-a385-d4c6c7c6f22d
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: checkout
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: checkout
+          app.kubernetes.io/name: checkout
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: checkout
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: CHECKOUT_PORT
+            value: "8080"
+          - name: CART_ADDR
+            value: cart:8080
+          - name: CURRENCY_ADDR
+            value: currency:8080
+          - name: EMAIL_ADDR
+            value: http://email:8080
+          - name: PAYMENT_ADDR
+            value: payment:8080
+          - name: PRODUCT_CATALOG_ADDR
+            value: product-catalog:8080
+          - name: SHIPPING_ADDR
+            value: http://shipping:8080
+          - name: KAFKA_ADDR
+            value: kafka:9092
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: GOMEMLIMIT
+            value: 16MiB
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: checkout
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 300m
+              memory: 96Mi
+            requests:
+              cpu: 75m
+              memory: 48Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+          image: busybox:latest
+          imagePullPolicy: Always
+          name: wait-for-kafka
+          resources:
+            limits:
+              cpu: 25m
+              memory: 32Mi
+            requests:
+              cpu: 5m
+              memory: 8Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-15T06:16:19Z"
+      message: ReplicaSet "checkout-d69c4d9d" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T06:49:36Z"
+      lastUpdateTime: "2026-07-15T06:49:36Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 23
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "13"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"currency","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"currency","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"currency"},"name":"currency","namespace":"techx-tf4"},"spec":{"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"currency"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"currency","app.kubernetes.io/name":"currency","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"currency"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"CURRENCY_PORT","value":"8080"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"},{"name":"VERSION","value":"2.2.0"},{"name":"IPV6_ENABLED","value":"false"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"timeoutSeconds":3},"name":"currency","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"300m","memory":"192Mi"},"requests":{"cpu":"75m","memory":"96Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","topologySpreadConstraints":[{"labelSelector":{"matchLabels":{"app.kubernetes.io/component":"currency"}},"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"ScheduleAnyway"}],"volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:48Z"
+    generation: 14
+    labels:
+      app.kubernetes.io/component: currency
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: currency
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: currency
+    name: currency
+    namespace: techx-tf4
+    resourceVersion: "2798245"
+    uid: 858fa290-6583-497e-9b21-64e41aed07ae
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: currency
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: currency
+          app.kubernetes.io/name: currency
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: currency
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: CURRENCY_PORT
+            value: "8080"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: VERSION
+            value: 2.2.0
+          - name: IPV6_ENABLED
+            value: "false"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: currency
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 300m
+              memory: 192Mi
+            requests:
+              cpu: 75m
+              memory: 96Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-15T08:24:58Z"
+      lastUpdateTime: "2026-07-15T08:24:58Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:24Z"
+      lastUpdateTime: "2026-07-15T08:25:11Z"
+      message: ReplicaSet "currency-f586fcb4" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 14
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"email","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"email","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"email"},"name":"email","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"email"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"email","app.kubernetes.io/name":"email","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"email"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"EMAIL_PORT","value":"8080"},{"name":"APP_ENV","value":"production"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4318"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-email","imagePullPolicy":"IfNotPresent","name":"email","ports":[{"containerPort":8080,"name":"service"}],"resources":{"limits":{"cpu":"100m","memory":"100Mi"},"requests":{"cpu":"20m","memory":"50Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:49Z"
+    generation: 14
+    labels:
+      app.kubernetes.io/component: email
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: email
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: email
+    name: email
+    namespace: techx-tf4
+    resourceVersion: "2776945"
+    uid: da22855b-8503-4709-9e7b-711b570d95b3
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: email
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: email
+          app.kubernetes.io/name: email
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: email
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: EMAIL_PORT
+            value: "8080"
+          - name: APP_ENV
+            value: production
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4318
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-email
+          imagePullPolicy: IfNotPresent
+          name: email
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 20m
+              memory: 50Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-15T03:47:36Z"
+      lastUpdateTime: "2026-07-15T03:47:36Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:21Z"
+      lastUpdateTime: "2026-07-15T07:20:31Z"
+      message: ReplicaSet "email-7fb5949f98" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 14
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "15"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"flagd","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"flagd","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"flagd"},"name":"flagd","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"flagd"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"flagd","app.kubernetes.io/name":"flagd","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"flagd"}},"spec":{"containers":[{"command":["/flagd-build","start","--port","8013","--ofrep-port","8016","--sources","[{\"uri\":\"https://122.248.223.194.sslip.io/flags.json\",\"provider\":\"http\",\"authHeader\":\"Bearer $(FLAGD_BEARER_TOKEN)\"}]"],"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"FLAGD_BEARER_TOKEN","valueFrom":{"secretKeyRef":{"key":"bearer-token","name":"flagd-bearer-token"}}}],"image":"ghcr.io/open-feature/flagd:v0.12.9","imagePullPolicy":"IfNotPresent","name":"flagd","ports":[{"containerPort":8013,"name":"rpc"},{"containerPort":8016,"name":"ofrep"}],"resources":{"limits":{"cpu":"100m","memory":"75Mi"},"requests":{"cpu":"20m","memory":"40Mi"}},"volumeMounts":[{"mountPath":"/etc/flagd","name":"config-rw"}]}],"initContainers":[{"command":["sh","-c","cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json \u0026\u0026 cat /config-rw/demo.flagd.json"],"image":"busybox","name":"init-config","resources":{"limits":{"cpu":"25m","memory":"32Mi"},"requests":{"cpu":"5m","memory":"8Mi"}},"volumeMounts":[{"mountPath":"/config-ro","name":"config-ro"},{"mountPath":"/config-rw","name":"config-rw"}]}],"serviceAccountName":"techx-corp","volumes":[{"emptyDir":{},"name":"config-rw"},{"configMap":{"name":"flagd-config"},"name":"config-ro"}]}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:49Z"
+    generation: 15
+    labels:
+      app.kubernetes.io/component: flagd
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: flagd
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: flagd
+    name: flagd
+    namespace: techx-tf4
+    resourceVersion: "2760927"
+    uid: 601447f8-20a8-4baf-822d-7432235f5fb3
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: flagd
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-15T08:04:24+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: flagd
+          app.kubernetes.io/name: flagd
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: flagd
+      spec:
+        containers:
+        - command:
+          - /flagd-build
+          - start
+          - --port
+          - "8013"
+          - --ofrep-port
+          - "8016"
+          - --sources
+          - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer
+            $(FLAGD_BEARER_TOKEN)"}]'
+          env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: FLAGD_METRICS_EXPORTER
+            value: otel
+          - name: FLAGD_OTEL_COLLECTOR_URI
+            value: $(OTEL_COLLECTOR_NAME):4317
+          - name: GOMEMLIMIT
+            value: 60MiB
+          - name: FLAGD_BEARER_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: bearer-token
+                name: flagd-bearer-token
+          image: ghcr.io/open-feature/flagd:v0.12.9
+          imagePullPolicy: IfNotPresent
+          name: flagd
+          ports:
+          - containerPort: 8013
+            name: rpc
+            protocol: TCP
+          - containerPort: 8016
+            name: ofrep
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 75Mi
+            requests:
+              cpu: 20m
+              memory: 40Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/flagd
+            name: config-rw
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - command:
+          - sh
+          - -c
+          - cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json
+          image: busybox
+          imagePullPolicy: Always
+          name: init-config
+          resources:
+            limits:
+              cpu: 25m
+              memory: 32Mi
+            requests:
+              cpu: 5m
+              memory: 8Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /config-ro
+            name: config-ro
+          - mountPath: /config-rw
+            name: config-rw
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: config-rw
+        - configMap:
+            defaultMode: 420
+            name: flagd-config
+          name: config-ro
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-15T03:47:36Z"
+      lastUpdateTime: "2026-07-15T03:47:36Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-15T00:50:47Z"
+      lastUpdateTime: "2026-07-15T06:33:57Z"
+      message: ReplicaSet "flagd-86bd5f8d76" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 15
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "12"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"fraud-detection","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"fraud-detection","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"fraud-detection"},"name":"fraud-detection","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"fraud-detection"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"fraud-detection","app.kubernetes.io/name":"fraud-detection","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"fraud-detection"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"KAFKA_ADDR","value":"kafka:9092"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4318"},{"name":"OTEL_INSTRUMENTATION_KAFKA_EXPERIMENTAL_SPAN_ATTRIBUTES","value":"true"},{"name":"OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED","value":"true"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-fraud-detection","imagePullPolicy":"IfNotPresent","name":"fraud-detection","resources":{"limits":{"cpu":"200m","memory":"300Mi"},"requests":{"cpu":"50m","memory":"150Mi"}},"volumeMounts":null}],"initContainers":[{"command":["sh","-c","until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"],"image":"busybox:latest","name":"wait-for-kafka","resources":{"limits":{"cpu":"25m","memory":"32Mi"},"requests":{"cpu":"5m","memory":"8Mi"}}}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:50Z"
+    generation: 12
+    labels:
+      app.kubernetes.io/component: fraud-detection
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: fraud-detection
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: fraud-detection
+    name: fraud-detection
+    namespace: techx-tf4
+    resourceVersion: "2705837"
+    uid: 4715aad3-b832-4517-93ee-deb45057fc30
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: fraud-detection
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: fraud-detection
+          app.kubernetes.io/name: fraud-detection
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: fraud-detection
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: KAFKA_ADDR
+            value: kafka:9092
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4318
+          - name: OTEL_INSTRUMENTATION_KAFKA_EXPERIMENTAL_SPAN_ATTRIBUTES
+            value: "true"
+          - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
+            value: "true"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-fraud-detection
+          imagePullPolicy: IfNotPresent
+          name: fraud-detection
+          resources:
+            limits:
+              cpu: 200m
+              memory: 300Mi
+            requests:
+              cpu: 50m
+              memory: 150Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;
+          image: busybox:latest
+          imagePullPolicy: Always
+          name: wait-for-kafka
+          resources:
+            limits:
+              cpu: 25m
+              memory: 32Mi
+            requests:
+              cpu: 5m
+              memory: 8Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:24Z"
+      lastUpdateTime: "2026-07-15T00:54:10Z"
+      message: ReplicaSet "fraud-detection-548484897" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T03:49:31Z"
+      lastUpdateTime: "2026-07-15T03:49:31Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 12
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"frontend","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"frontend","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"frontend"},"name":"frontend","namespace":"techx-tf4"},"spec":{"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"frontend"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"frontend","app.kubernetes.io/name":"frontend","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"frontend"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"FRONTEND_PORT","value":"8080"},{"name":"PORT","value":"$(FRONTEND_PORT)"},{"name":"FRONTEND_ADDR","value":":8080"},{"name":"AD_ADDR","value":"ad:8080"},{"name":"CART_ADDR","value":"cart:8080"},{"name":"CHECKOUT_ADDR","value":"checkout:8080"},{"name":"CURRENCY_ADDR","value":"currency:8080"},{"name":"PRODUCT_CATALOG_ADDR","value":"product-catalog:8080"},{"name":"PRODUCT_REVIEWS_ADDR","value":"product-reviews:3551"},{"name":"RECOMMENDATION_ADDR","value":"recommendation:8080"},{"name":"SHIPPING_ADDR","value":"http://shipping:8080"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"ENV_PLATFORM","value":"kubernetes"},{"name":"OTEL_COLLECTOR_HOST","value":"$(OTEL_COLLECTOR_NAME)"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"},{"name":"WEB_OTEL_SERVICE_NAME","value":"frontend-web"},{"name":"PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT","value":"http://localhost:8080/otlp-http/v1/traces"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"initialDelaySeconds":15,"periodSeconds":10,"tcpSocket":{"port":8080},"timeoutSeconds":3},"name":"frontend","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"tcpSocket":{"port":8080},"timeoutSeconds":3},"resources":{"limits":{"cpu":"400m","memory":"320Mi"},"requests":{"cpu":"100m","memory":"192Mi"}},"securityContext":{"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:50Z"
+    generation: 38
+    labels:
+      app.kubernetes.io/component: frontend
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: frontend
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: frontend
+    name: frontend
+    namespace: techx-tf4
+    resourceVersion: "2777631"
+    uid: 73400d3c-0e3c-4e9e-ace1-4470ef15d373
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: frontend
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: frontend
+          app.kubernetes.io/name: frontend
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: frontend
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: FRONTEND_PORT
+            value: "8080"
+          - name: PORT
+            value: $(FRONTEND_PORT)
+          - name: FRONTEND_ADDR
+            value: :8080
+          - name: AD_ADDR
+            value: ad:8080
+          - name: CART_ADDR
+            value: cart:8080
+          - name: CHECKOUT_ADDR
+            value: checkout:8080
+          - name: CURRENCY_ADDR
+            value: currency:8080
+          - name: PRODUCT_CATALOG_ADDR
+            value: product-catalog:8080
+          - name: PRODUCT_REVIEWS_ADDR
+            value: product-reviews:3551
+          - name: RECOMMENDATION_ADDR
+            value: recommendation:8080
+          - name: SHIPPING_ADDR
+            value: http://shipping:8080
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: ENV_PLATFORM
+            value: kubernetes
+          - name: OTEL_COLLECTOR_HOST
+            value: $(OTEL_COLLECTOR_NAME)
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: WEB_OTEL_SERVICE_NAME
+            value: frontend-web
+          - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+            value: http://localhost:8080/otlp-http/v1/traces
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 3
+          name: frontend
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 400m
+              memory: 320Mi
+            requests:
+              cpu: 100m
+              memory: 192Mi
+          securityContext:
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:24Z"
+      lastUpdateTime: "2026-07-15T06:18:17Z"
+      message: ReplicaSet "frontend-f8c85f89c" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T06:38:03Z"
+      lastUpdateTime: "2026-07-15T06:38:03Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 38
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "16"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"frontend-proxy","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"frontend-proxy","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"frontend-proxy"},"name":"frontend-proxy","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"frontend-proxy"}},"template":{"metadata":{"annotations":{"io.opentelemetry.discovery.metrics/config":"targets:\n  - endpoint: \"http://`endpoint`\"\n","io.opentelemetry.discovery.metrics/enabled":"true","io.opentelemetry.discovery.metrics/scraper":"httpcheck","resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"frontend-proxy","app.kubernetes.io/name":"frontend-proxy","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"frontend-proxy"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"ENVOY_PORT","value":"8080"},{"name":"ENVOY_ADDR","value":"0.0.0.0"},{"name":"ENVOY_ADMIN_PORT","value":"10000"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"FLAGD_UI_HOST","value":"flagd"},{"name":"FLAGD_UI_PORT","value":"4000"},{"name":"FRONTEND_HOST","value":"frontend"},{"name":"FRONTEND_PORT","value":"8080"},{"name":"GRAFANA_HOST","value":"grafana.techx-observability.svc.cluster.local"},{"name":"GRAFANA_PORT","value":"80"},{"name":"IMAGE_PROVIDER_HOST","value":"image-provider"},{"name":"IMAGE_PROVIDER_PORT","value":"8081"},{"name":"JAEGER_HOST","value":"jaeger.techx-observability.svc.cluster.local"},{"name":"JAEGER_UI_PORT","value":"16686"},{"name":"LOCUST_WEB_HOST","value":"load-generator"},{"name":"LOCUST_WEB_PORT","value":"8089"},{"name":"OTEL_COLLECTOR_HOST","value":"$(OTEL_COLLECTOR_NAME)"},{"name":"OTEL_COLLECTOR_PORT_GRPC","value":"4317"},{"name":"OTEL_COLLECTOR_PORT_HTTP","value":"4318"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend-proxy","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"initialDelaySeconds":15,"periodSeconds":10,"tcpSocket":{"port":8080},"timeoutSeconds":3},"name":"frontend-proxy","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/ready","port":10000},"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"200m","memory":"128Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"runAsGroup":101,"runAsNonRoot":true,"runAsUser":101},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:51Z"
+    generation: 20
+    labels:
+      app.kubernetes.io/component: frontend-proxy
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: frontend-proxy
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: frontend-proxy
+    name: frontend-proxy
+    namespace: techx-tf4
+    resourceVersion: "2757613"
+    uid: 3e813531-d310-40bd-ad8c-2ae1f818963e
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: frontend-proxy
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          io.opentelemetry.discovery.metrics/config: |
+            targets:
+              - endpoint: "http://`endpoint`"
+          io.opentelemetry.discovery.metrics/enabled: "true"
+          io.opentelemetry.discovery.metrics/scraper: httpcheck
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T11:10:14+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: frontend-proxy
+          app.kubernetes.io/name: frontend-proxy
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: frontend-proxy
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: ENVOY_PORT
+            value: "8080"
+          - name: ENVOY_ADDR
+            value: 0.0.0.0
+          - name: ENVOY_ADMIN_PORT
+            value: "10000"
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: FLAGD_UI_HOST
+            value: flagd
+          - name: FLAGD_UI_PORT
+            value: "4000"
+          - name: FRONTEND_HOST
+            value: frontend
+          - name: FRONTEND_PORT
+            value: "8080"
+          - name: GRAFANA_HOST
+            value: grafana.techx-observability.svc.cluster.local
+          - name: GRAFANA_PORT
+            value: "80"
+          - name: IMAGE_PROVIDER_HOST
+            value: image-provider
+          - name: IMAGE_PROVIDER_PORT
+            value: "8081"
+          - name: JAEGER_HOST
+            value: jaeger.techx-observability.svc.cluster.local
+          - name: JAEGER_UI_PORT
+            value: "16686"
+          - name: LOCUST_WEB_HOST
+            value: load-generator
+          - name: LOCUST_WEB_PORT
+            value: "8089"
+          - name: OTEL_COLLECTOR_HOST
+            value: $(OTEL_COLLECTOR_NAME)
+          - name: OTEL_COLLECTOR_PORT_GRPC
+            value: "4317"
+          - name: OTEL_COLLECTOR_PORT_HTTP
+            value: "4318"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend-proxy
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 3
+          name: frontend-proxy
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ready
+              port: 10000
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            runAsGroup: 101
+            runAsNonRoot: true
+            runAsUser: 101
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend-proxy
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-15T06:17:29Z"
+      message: ReplicaSet "frontend-proxy-7bd6cc66" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T06:24:37Z"
+      lastUpdateTime: "2026-07-15T06:24:37Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 20
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"image-provider","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"image-provider","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"image-provider"},"name":"image-provider","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"image-provider"}},"template":{"metadata":{"annotations":{"io.opentelemetry.discovery.metrics/config":"endpoint: \"http://`endpoint`/status\"\ncollection_interval: \"10s\"\ntimeout: \"20s\"\n","io.opentelemetry.discovery.metrics/enabled":"true","io.opentelemetry.discovery.metrics/scraper":"nginx","resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"image-provider","app.kubernetes.io/name":"image-provider","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"image-provider"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"IMAGE_PROVIDER_PORT","value":"8081"},{"name":"OTEL_COLLECTOR_PORT_GRPC","value":"4317"},{"name":"OTEL_COLLECTOR_HOST","value":"$(OTEL_COLLECTOR_NAME)"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-image-provider","imagePullPolicy":"IfNotPresent","name":"image-provider","ports":[{"containerPort":8081,"name":"service"}],"resources":{"limits":{"cpu":"50m","memory":"50Mi"},"requests":{"cpu":"10m","memory":"25Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:51Z"
+    generation: 14
+    labels:
+      app.kubernetes.io/component: image-provider
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: image-provider
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: image-provider
+    name: image-provider
+    namespace: techx-tf4
+    resourceVersion: "2776912"
+    uid: 2b313f51-6e41-472a-a1c7-12e807449009
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: image-provider
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          io.opentelemetry.discovery.metrics/config: |
+            endpoint: "http://`endpoint`/status"
+            collection_interval: "10s"
+            timeout: "20s"
+          io.opentelemetry.discovery.metrics/enabled: "true"
+          io.opentelemetry.discovery.metrics/scraper: nginx
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: image-provider
+          app.kubernetes.io/name: image-provider
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: image-provider
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: IMAGE_PROVIDER_PORT
+            value: "8081"
+          - name: OTEL_COLLECTOR_PORT_GRPC
+            value: "4317"
+          - name: OTEL_COLLECTOR_HOST
+            value: $(OTEL_COLLECTOR_NAME)
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-image-provider
+          imagePullPolicy: IfNotPresent
+          name: image-provider
+          ports:
+          - containerPort: 8081
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 50m
+              memory: 50Mi
+            requests:
+              cpu: 10m
+              memory: 25Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-15T03:47:34Z"
+      lastUpdateTime: "2026-07-15T03:47:34Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:21Z"
+      lastUpdateTime: "2026-07-15T07:20:30Z"
+      message: ReplicaSet "image-provider-c85cf9d65" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 14
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"kafka","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"kafka","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"kafka"},"name":"kafka","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"kafka"}},"strategy":{"type":"Recreate"},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"kafka","app.kubernetes.io/name":"kafka","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"kafka"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"KAFKA_ADVERTISED_LISTENERS","value":"PLAINTEXT://kafka:9092"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4318"},{"name":"KAFKA_HEAP_OPTS","value":"-Xmx400M -Xms400M"},{"name":"KAFKA_LISTENERS","value":"PLAINTEXT://:9092,CONTROLLER://:9093"},{"name":"KAFKA_CONTROLLER_LISTENER_NAMES","value":"CONTROLLER"},{"name":"KAFKA_CONTROLLER_QUORUM_VOTERS","value":"1@kafka:9093"},{"name":"KAFKA_LOG_DIRS","value":"/tmp/kafka-data/kraft-combined-logs"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka","imagePullPolicy":"IfNotPresent","name":"kafka","ports":[{"containerPort":9092,"name":"plaintext"},{"containerPort":9093,"name":"controller"}],"resources":{"limits":{"cpu":"500m","memory":"700Mi"},"requests":{"cpu":"100m","memory":"700Mi"}},"securityContext":{"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000},"volumeMounts":[{"mountPath":"/tmp/kafka-data","name":"kafka-data"}]}],"securityContext":{"fsGroup":1000},"serviceAccountName":"techx-corp","volumes":[{"name":"kafka-data","persistentVolumeClaim":{"claimName":"kafka-pvc"}}]}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:52Z"
+    generation: 14
+    labels:
+      app.kubernetes.io/component: kafka
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: kafka
+    name: kafka
+    namespace: techx-tf4
+    resourceVersion: "2796091"
+    uid: ca54fa50-f0a6-45aa-8737-66c80c287174
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: kafka
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: kafka
+          app.kubernetes.io/name: kafka
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: kafka
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: KAFKA_ADVERTISED_LISTENERS
+            value: PLAINTEXT://kafka:9092
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4318
+          - name: KAFKA_HEAP_OPTS
+            value: -Xmx400M -Xms400M
+          - name: KAFKA_LISTENERS
+            value: PLAINTEXT://:9092,CONTROLLER://:9093
+          - name: KAFKA_CONTROLLER_LISTENER_NAMES
+            value: CONTROLLER
+          - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+            value: 1@kafka:9093
+          - name: KAFKA_LOG_DIRS
+            value: /tmp/kafka-data/kraft-combined-logs
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-kafka
+          imagePullPolicy: IfNotPresent
+          name: kafka
+          ports:
+          - containerPort: 9092
+            name: plaintext
+            protocol: TCP
+          - containerPort: 9093
+            name: controller
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 700Mi
+            requests:
+              cpu: 100m
+              memory: 700Mi
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /tmp/kafka-data
+            name: kafka-data
+          - mountPath: /tmp/kraft-combined-logs
+            name: kafka-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          fsGroup: 1000
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: kafka-data
+          persistentVolumeClaim:
+            claimName: kafka-pvc
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-15T00:50:47Z"
+      lastUpdateTime: "2026-07-15T00:52:14Z"
+      message: ReplicaSet "kafka-6f9ff79c54" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T08:18:52Z"
+      lastUpdateTime: "2026-07-15T08:18:52Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 14
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "12"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"llm","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"llm","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"llm"},"name":"llm","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"llm"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"llm","app.kubernetes.io/name":"llm","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"llm"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-llm","imagePullPolicy":"IfNotPresent","name":"llm","ports":[{"containerPort":8000,"name":"service"}],"resources":{"limits":{"cpu":"250m","memory":"192Mi"},"requests":{"cpu":"75m","memory":"96Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:52Z"
+    generation: 12
+    labels:
+      app.kubernetes.io/component: llm
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: llm
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: llm
+    name: llm
+    namespace: techx-tf4
+    resourceVersion: "2591390"
+    uid: 8a45d29f-6599-417c-8c8d-986b8fe720d7
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: llm
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: llm
+          app.kubernetes.io/name: llm
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: llm
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-llm
+          imagePullPolicy: IfNotPresent
+          name: llm
+          ports:
+          - containerPort: 8000
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 250m
+              memory: 192Mi
+            requests:
+              cpu: 75m
+              memory: 96Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-08T12:25:10Z"
+      lastUpdateTime: "2026-07-08T12:25:10Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-14T22:38:25Z"
+      message: ReplicaSet "llm-6c96948c64" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 12
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "29"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"load-generator","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"load-generator","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"load-generator"},"name":"load-generator","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"load-generator"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"load-generator","app.kubernetes.io/name":"load-generator","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"load-generator"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"LOCUST_WEB_HOST","value":"0.0.0.0"},{"name":"LOCUST_WEB_PORT","value":"8089"},{"name":"LOCUST_USERS","value":"10"},{"name":"LOCUST_SPAWN_RATE","value":"1"},{"name":"LOCUST_HOST","value":"http://frontend-proxy:8080"},{"name":"LOCUST_HEADLESS","value":"false"},{"name":"LOCUST_AUTOSTART","value":"true"},{"name":"LOCUST_BROWSER_TRAFFIC_ENABLED","value":"false"},{"name":"PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION","value":"python"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"FLAGD_OFREP_PORT","value":"8016"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-load-generator","imagePullPolicy":"IfNotPresent","name":"load-generator","ports":[{"containerPort":8089,"name":"service"}],"resources":{"limits":{"cpu":"600m","memory":"512Mi"},"requests":{"cpu":"300m","memory":"256Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:52Z"
+    generation: 48
+    labels:
+      app.kubernetes.io/component: load-generator
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: load-generator
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: load-generator
+    name: load-generator
+    namespace: techx-tf4
+    resourceVersion: "2778663"
+    uid: 763e0b09-958c-474d-a48e-96af0986ecd6
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: load-generator
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-14T11:23:10+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: load-generator
+          app.kubernetes.io/name: load-generator
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: load-generator
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: LOCUST_WEB_HOST
+            value: 0.0.0.0
+          - name: LOCUST_WEB_PORT
+            value: "8089"
+          - name: LOCUST_USERS
+            value: "10"
+          - name: LOCUST_SPAWN_RATE
+            value: "1"
+          - name: LOCUST_HOST
+            value: http://frontend-proxy:8080
+          - name: LOCUST_HEADLESS
+            value: "false"
+          - name: LOCUST_AUTOSTART
+            value: "true"
+          - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+            value: "false"
+          - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+            value: python
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: FLAGD_OFREP_PORT
+            value: "8016"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-load-generator
+          imagePullPolicy: IfNotPresent
+          name: load-generator
+          ports:
+          - containerPort: 8089
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 600m
+              memory: 512Mi
+            requests:
+              cpu: 300m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-14T17:18:36Z"
+      lastUpdateTime: "2026-07-15T07:17:11Z"
+      message: ReplicaSet "load-generator-7dbc8d784" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T07:25:33Z"
+      lastUpdateTime: "2026-07-15T07:25:33Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 48
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"payment","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"payment","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"payment"},"name":"payment","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"payment"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"payment","app.kubernetes.io/name":"payment","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"payment"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"PAYMENT_PORT","value":"8080"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"},{"name":"IPV6_ENABLED","value":"false"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"timeoutSeconds":3},"name":"payment","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"200m","memory":"128Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"securityContext":{"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:53Z"
+    generation: 18
+    labels:
+      app.kubernetes.io/component: payment
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: payment
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: payment
+    name: payment
+    namespace: techx-tf4
+    resourceVersion: "2757531"
+    uid: 5d85599c-b34e-4a56-948e-8596eb070e06
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: payment
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: payment
+          app.kubernetes.io/name: payment
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: payment
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: PAYMENT_PORT
+            value: "8080"
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: IPV6_ENABLED
+            value: "false"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: payment
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: payment
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-15T06:18:18Z"
+      message: ReplicaSet "payment-5c5cf4f445" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T06:24:28Z"
+      lastUpdateTime: "2026-07-15T06:24:28Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 18
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "12"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"postgresql","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"postgresql","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"postgresql"},"name":"postgresql","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"postgresql"}},"strategy":{"type":"Recreate"},"template":{"metadata":{"annotations":{"io.opentelemetry.discovery.metrics/config":"username: root\npassword: REDACTED\nmetrics:\n  postgresql.blks_hit:\n    enabled: true\n  postgresql.blks_read:\n    enabled: true\n  postgresql.tup_fetched:\n    enabled: true\n  postgresql.tup_returned:\n    enabled: true\n  postgresql.tup_inserted:\n    enabled: true\n  postgresql.tup_updated:\n    enabled: true\n  postgresql.tup_deleted:\n    enabled: true\n  postgresql.deadlocks:\n    enabled: true\ntls:\n  insecure: true\n","io.opentelemetry.discovery.metrics/enabled":"true","io.opentelemetry.discovery.metrics/scraper":"postgresql","resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"postgresql","app.kubernetes.io/name":"postgresql","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"postgresql"}},"spec":{"containers":[{"env":[{"name":"POSTGRES_USER","value":"root"},{"name":"POSTGRES_PASSWORD","value":"REDACTED"},{"name":"POSTGRES_DB","value":"otel"},{"name":"PGDATA","value":"/var/lib/postgresql/data/pgdata"}],"image":"postgres:17.6","imagePullPolicy":"IfNotPresent","name":"postgresql","ports":[{"containerPort":5432,"name":"service"}],"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"256Mi"}},"volumeMounts":[{"mountPath":"/var/lib/postgresql/data","name":"postgresql-data"},{"mountPath":"/docker-entrypoint-initdb.d","name":"postgresql-init"}]}],"serviceAccountName":"techx-corp","volumes":[{"configMap":{"name":"postgresql-init"},"name":"postgresql-init"},{"name":"postgresql-data","persistentVolumeClaim":{"claimName":"postgresql-pvc"}}]}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:53Z"
+    generation: 13
+    labels:
+      app.kubernetes.io/component: postgresql
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: postgresql
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: postgresql
+    name: postgresql
+    namespace: techx-tf4
+    resourceVersion: "2784717"
+    uid: 3177a301-a2d4-43c9-99db-3f01c0472c0b
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: postgresql
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          io.opentelemetry.discovery.metrics/config: |
+            username: root
+            password: REDACTED
+            metrics:
+              postgresql.blks_hit:
+                enabled: true
+              postgresql.blks_read:
+                enabled: true
+              postgresql.tup_fetched:
+                enabled: true
+              postgresql.tup_returned:
+                enabled: true
+              postgresql.tup_inserted:
+                enabled: true
+              postgresql.tup_updated:
+                enabled: true
+              postgresql.tup_deleted:
+                enabled: true
+              postgresql.deadlocks:
+                enabled: true
+            tls:
+              insecure: true
+          io.opentelemetry.discovery.metrics/enabled: "true"
+          io.opentelemetry.discovery.metrics/scraper: postgresql
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: postgresql
+          app.kubernetes.io/name: postgresql
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: postgresql
+      spec:
+        containers:
+        - env:
+          - name: POSTGRES_USER
+            value: root
+          - name: POSTGRES_PASSWORD
+            value: REDACTED
+          - name: POSTGRES_DB
+            value: otel
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+          image: postgres:17.6
+          imagePullPolicy: IfNotPresent
+          name: postgresql
+          ports:
+          - containerPort: 5432
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/postgresql/data
+            name: postgresql-data
+          - mountPath: /docker-entrypoint-initdb.d
+            name: postgresql-init
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - configMap:
+            defaultMode: 420
+            name: postgresql-init
+          name: postgresql-init
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: postgresql-pvc
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-07T18:35:53Z"
+      lastUpdateTime: "2026-07-15T06:33:59Z"
+      message: ReplicaSet "postgresql-5b49658ddf" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T07:44:03Z"
+      lastUpdateTime: "2026-07-15T07:44:03Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 13
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"product-catalog","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"product-catalog","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"product-catalog"},"name":"product-catalog","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"product-catalog"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"product-catalog","app.kubernetes.io/name":"product-catalog","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"product-catalog"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"PRODUCT_CATALOG_PORT","value":"8080"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"GOMEMLIMIT","value":"16MiB"},{"name":"DB_CONNECTION_STRING","value":"postgres://otelu:otelp@postgresql/otel?sslmode=disable"},{"name":"OTEL_SEMCONV_STABILITY_OPT_IN","value":"database"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"timeoutSeconds":3},"name":"product-catalog","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"grpc":{"port":8080},"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"200m","memory":"64Mi"},"requests":{"cpu":"50m","memory":"32Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:54Z"
+    generation: 16
+    labels:
+      app.kubernetes.io/component: product-catalog
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: product-catalog
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: product-catalog
+    name: product-catalog
+    namespace: techx-tf4
+    resourceVersion: "2761695"
+    uid: 50b865d9-5c3a-4bb7-83ff-10daca541824
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: product-catalog
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: product-catalog
+          app.kubernetes.io/name: product-catalog
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: product-catalog
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: PRODUCT_CATALOG_PORT
+            value: "8080"
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: GOMEMLIMIT
+            value: 16MiB
+          - name: DB_CONNECTION_STRING
+            value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+          - name: OTEL_SEMCONV_STABILITY_OPT_IN
+            value: database
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: product-catalog
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            grpc:
+              port: 8080
+              service: ""
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 200m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 32Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: product-catalog
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-15T06:35:28Z"
+      lastUpdateTime: "2026-07-15T06:35:28Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-15T06:35:28Z"
+      lastUpdateTime: "2026-07-15T06:35:51Z"
+      message: ReplicaSet "product-catalog-5dbccf75c9" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 16
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "15"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"product-reviews","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"product-reviews","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"product-reviews"},"name":"product-reviews","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"product-reviews"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"product-reviews","app.kubernetes.io/name":"product-reviews","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"product-reviews"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"OPENAI_API_KEY","value":"dummy"},{"name":"LLM_MODEL","value":"techx-llm"},{"name":"LLM_TIMEOUT_SECONDS","value":"5.0"},{"name":"LLM_HOST","value":"llm"},{"name":"LLM_PORT","value":"8000"},{"name":"LLM_BASE_URL","value":"http://$(LLM_HOST):$(LLM_PORT)/v1"},{"name":"PRODUCT_REVIEWS_PORT","value":"3551"},{"name":"PRODUCT_CATALOG_ADDR","value":"product-catalog:8080"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"DB_CONNECTION_STRING","value":"host=postgresql user=otelu password=REDACTED dbname=otel"},{"name":"PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION","value":"python"},{"name":"OTEL_PYTHON_LOG_CORRELATION","value":"true"},{"name":"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT","value":"true"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews","imagePullPolicy":"IfNotPresent","name":"product-reviews","ports":[{"containerPort":3551,"name":"service"}],"resources":{"limits":{"cpu":"300m","memory":"192Mi"},"requests":{"cpu":"75m","memory":"96Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+    creationTimestamp: "2026-07-07T18:35:54Z"
+    generation: 15
+    labels:
+      app.kubernetes.io/component: product-reviews
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: product-reviews
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: product-reviews
+    name: product-reviews
+    namespace: techx-tf4
+    resourceVersion: "2793812"
+    uid: e32dbcc8-0494-464d-9b14-2ef8a2a6115c
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: product-reviews
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: product-reviews
+          app.kubernetes.io/name: product-reviews
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: product-reviews
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: OPENAI_API_KEY
+            value: dummy
+          - name: LLM_MODEL
+            value: techx-llm
+          - name: LLM_TIMEOUT_SECONDS
+            value: "5.0"
+          - name: LLM_HOST
+            value: llm
+          - name: LLM_PORT
+            value: "8000"
+          - name: LLM_BASE_URL
+            value: http://$(LLM_HOST):$(LLM_PORT)/v1
+          - name: PRODUCT_REVIEWS_PORT
+            value: "3551"
+          - name: PRODUCT_CATALOG_ADDR
+            value: product-catalog:8080
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: DB_CONNECTION_STRING
+            value: host=postgresql user=otelu password=REDACTED dbname=otel
+          - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+            value: python
+          - name: OTEL_PYTHON_LOG_CORRELATION
+            value: "true"
+          - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+            value: "true"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-reviews
+          imagePullPolicy: IfNotPresent
+          name: product-reviews
+          ports:
+          - containerPort: 3551
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 300m
+              memory: 192Mi
+            requests:
+              cpu: 75m
+              memory: 96Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-14T17:47:43Z"
+      lastUpdateTime: "2026-07-14T17:47:43Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-15T08:11:58Z"
+      message: ReplicaSet "product-reviews-6b466ffbbd" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 15
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "12"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"quote","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"quote","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"quote"},"name":"quote","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"quote"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"quote","app.kubernetes.io/name":"quote","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"quote"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"QUOTE_PORT","value":"8080"},{"name":"OTEL_PHP_AUTOLOAD_ENABLED","value":"true"},{"name":"OTEL_PHP_INTERNAL_METRICS_ENABLED","value":"true"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4318"},{"name":"IPV6_ENABLED","value":"false"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-quote","imagePullPolicy":"IfNotPresent","name":"quote","ports":[{"containerPort":8080,"name":"service"}],"resources":{"limits":{"cpu":"50m","memory":"40Mi"},"requests":{"cpu":"10m","memory":"20Mi"}},"securityContext":{"runAsGroup":33,"runAsNonRoot":true,"runAsUser":33},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:55Z"
+    generation: 12
+    labels:
+      app.kubernetes.io/component: quote
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: quote
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: quote
+    name: quote
+    namespace: techx-tf4
+    resourceVersion: "2705050"
+    uid: 8ba9ad3f-4c1c-4ce3-8aa5-5fa2d819b183
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: quote
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: quote
+          app.kubernetes.io/name: quote
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: quote
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: QUOTE_PORT
+            value: "8080"
+          - name: OTEL_PHP_AUTOLOAD_ENABLED
+            value: "true"
+          - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
+            value: "true"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4318
+          - name: IPV6_ENABLED
+            value: "false"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-quote
+          imagePullPolicy: IfNotPresent
+          name: quote
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 50m
+              memory: 40Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          securityContext:
+            runAsGroup: 33
+            runAsNonRoot: true
+            runAsUser: 33
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:24Z"
+      lastUpdateTime: "2026-07-15T00:52:07Z"
+      message: ReplicaSet "quote-85c74d484b" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T03:47:38Z"
+      lastUpdateTime: "2026-07-15T03:47:38Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 12
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "12"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"recommendation","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"recommendation","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"recommendation"},"name":"recommendation","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"recommendation"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"recommendation","app.kubernetes.io/name":"recommendation","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"recommendation"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"RECOMMENDATION_PORT","value":"8080"},{"name":"PRODUCT_CATALOG_ADDR","value":"product-catalog:8080"},{"name":"OTEL_PYTHON_LOG_CORRELATION","value":"true"},{"name":"PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION","value":"python"},{"name":"FLAGD_HOST","value":"flagd"},{"name":"FLAGD_PORT","value":"8013"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-recommendation","imagePullPolicy":"IfNotPresent","name":"recommendation","ports":[{"containerPort":8080,"name":"service"}],"resources":{"limits":{"cpu":"300m","memory":"256Mi"},"requests":{"cpu":"75m","memory":"128Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:55Z"
+    generation: 12
+    labels:
+      app.kubernetes.io/component: recommendation
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: recommendation
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: recommendation
+    name: recommendation
+    namespace: techx-tf4
+    resourceVersion: "2591399"
+    uid: 761de3ad-3822-48cd-96c8-dc22405a1383
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: recommendation
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: recommendation
+          app.kubernetes.io/name: recommendation
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: recommendation
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: RECOMMENDATION_PORT
+            value: "8080"
+          - name: PRODUCT_CATALOG_ADDR
+            value: product-catalog:8080
+          - name: OTEL_PYTHON_LOG_CORRELATION
+            value: "true"
+          - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+            value: python
+          - name: FLAGD_HOST
+            value: flagd
+          - name: FLAGD_PORT
+            value: "8013"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-recommendation
+          imagePullPolicy: IfNotPresent
+          name: recommendation
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 300m
+              memory: 256Mi
+            requests:
+              cpu: 75m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-14T17:47:43Z"
+      lastUpdateTime: "2026-07-14T17:47:43Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-14T22:38:25Z"
+      message: ReplicaSet "recommendation-78948dd47d" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 12
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "14"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"shipping","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"shipping","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"shipping"},"name":"shipping","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"shipping"}},"template":{"metadata":{"annotations":{"resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"shipping","app.kubernetes.io/name":"shipping","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"shipping"}},"spec":{"containers":[{"env":[{"name":"OTEL_SERVICE_NAME","valueFrom":{"fieldRef":{"apiVersion":"v1","fieldPath":"metadata.labels['app.kubernetes.io/component']"}}},{"name":"OTEL_COLLECTOR_NAME","value":"otel-collector.techx-observability.svc.cluster.local"},{"name":"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE","value":"cumulative"},{"name":"SHIPPING_PORT","value":"8080"},{"name":"QUOTE_ADDR","value":"http://quote:8080"},{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://$(OTEL_COLLECTOR_NAME):4317"},{"name":"IPV6_ENABLED","value":"false"}],"image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping","imagePullPolicy":"IfNotPresent","livenessProbe":{"failureThreshold":3,"initialDelaySeconds":15,"periodSeconds":10,"tcpSocket":{"port":8080},"timeoutSeconds":3},"name":"shipping","ports":[{"containerPort":8080,"name":"service"}],"readinessProbe":{"failureThreshold":3,"initialDelaySeconds":15,"periodSeconds":10,"successThreshold":1,"tcpSocket":{"port":8080},"timeoutSeconds":3},"resources":{"limits":{"cpu":"75m","memory":"32Mi"},"requests":{"cpu":"20m","memory":"16Mi"}},"volumeMounts":null}],"serviceAccountName":"techx-corp","volumes":null}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:56Z"
+    generation: 16
+    labels:
+      app.kubernetes.io/component: shipping
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: shipping
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: shipping
+    name: shipping
+    namespace: techx-tf4
+    resourceVersion: "2757540"
+    uid: c88a3e61-482e-43ea-ae17-21fd5f23f6e4
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: shipping
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: shipping
+          app.kubernetes.io/name: shipping
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: shipping
+      spec:
+        containers:
+        - env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: otel-collector.techx-observability.svc.cluster.local
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: SHIPPING_PORT
+            value: "8080"
+          - name: QUOTE_ADDR
+            value: http://quote:8080
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: IPV6_ENABLED
+            value: "false"
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 3
+          name: shipping
+          ports:
+          - containerPort: 8080
+            name: service
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 75m
+              memory: 32Mi
+            requests:
+              cpu: 20m
+              memory: 16Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: shipping
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2026-07-14T22:38:25Z"
+      lastUpdateTime: "2026-07-15T06:17:28Z"
+      message: ReplicaSet "shipping-5547c65698" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T06:24:29Z"
+      lastUpdateTime: "2026-07-15T06:24:29Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 16
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "4"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"valkey-cart","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"valkey-cart","app.kubernetes.io/part-of":"techx-corp","app.kubernetes.io/version":"2.2.0","argocd.argoproj.io/instance":"techx-corp","helm.sh/chart":"techx-corp-0.40.9","opentelemetry.io/name":"valkey-cart"},"name":"valkey-cart","namespace":"techx-tf4"},"spec":{"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"opentelemetry.io/name":"valkey-cart"}},"strategy":{"type":"Recreate"},"template":{"metadata":{"annotations":{"io.opentelemetry.discovery.metrics/config":"username: valkey\ncollection_interval: 10s\n","io.opentelemetry.discovery.metrics/enabled":"true","io.opentelemetry.discovery.metrics/scraper":"redis","resource.opentelemetry.io/service.namespace":"techx-corp"},"labels":{"app.kubernetes.io/component":"valkey-cart","app.kubernetes.io/name":"valkey-cart","app.kubernetes.io/version":"2.2.0","opentelemetry.io/name":"valkey-cart"}},"spec":{"containers":[{"command":["valkey-server","--appendonly","yes","--dir","/data"],"env":[],"image":"valkey/valkey:9.0.1-alpine3.23","imagePullPolicy":"IfNotPresent","name":"valkey-cart","ports":[{"containerPort":6379,"name":"valkey-cart"}],"resources":{"limits":{"cpu":"100m","memory":"64Mi"},"requests":{"cpu":"20m","memory":"32Mi"}},"securityContext":{"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":999},"volumeMounts":[{"mountPath":"/data","name":"valkey-data"}]}],"securityContext":{"fsGroup":999},"serviceAccountName":"techx-corp","volumes":[{"name":"valkey-data","persistentVolumeClaim":{"claimName":"valkey-cart-pvc"}}]}}}}
+      meta.helm.sh/release-name: techx-corp
+      meta.helm.sh/release-namespace: techx-tf4
+    creationTimestamp: "2026-07-07T18:35:56Z"
+    generation: 5
+    labels:
+      app.kubernetes.io/component: valkey-cart
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: valkey-cart
+      app.kubernetes.io/part-of: techx-corp
+      app.kubernetes.io/version: 2.2.0
+      argocd.argoproj.io/instance: techx-corp
+      helm.sh/chart: techx-corp-0.40.9
+      opentelemetry.io/name: valkey-cart
+    name: valkey-cart
+    namespace: techx-tf4
+    resourceVersion: "2788537"
+    uid: d789cd15-ee3a-459a-9ea2-6f548ea9e798
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        opentelemetry.io/name: valkey-cart
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          io.opentelemetry.discovery.metrics/config: |
+            username: valkey
+            collection_interval: 10s
+          io.opentelemetry.discovery.metrics/enabled: "true"
+          io.opentelemetry.discovery.metrics/scraper: redis
+          kubectl.kubernetes.io/restartedAt: "2026-07-09T10:00:20+07:00"
+          resource.opentelemetry.io/service.namespace: techx-corp
+        labels:
+          app.kubernetes.io/component: valkey-cart
+          app.kubernetes.io/name: valkey-cart
+          app.kubernetes.io/version: 2.2.0
+          opentelemetry.io/name: valkey-cart
+      spec:
+        containers:
+        - command:
+          - valkey-server
+          - --appendonly
+          - "yes"
+          - --dir
+          - /data
+          image: valkey/valkey:9.0.1-alpine3.23
+          imagePullPolicy: IfNotPresent
+          name: valkey-cart
+          ports:
+          - containerPort: 6379
+            name: valkey-cart
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 999
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /data
+            name: valkey-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          fsGroup: 999
+        serviceAccount: techx-corp
+        serviceAccountName: techx-corp
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: valkey-data
+          persistentVolumeClaim:
+            claimName: valkey-cart-pvc
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2026-07-14T16:08:05Z"
+      lastUpdateTime: "2026-07-15T00:52:11Z"
+      message: ReplicaSet "valkey-cart-dd686478b" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2026-07-15T07:55:53Z"
+      lastUpdateTime: "2026-07-15T07:55:53Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 5
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+kind: List
+metadata:
+  resourceVersion: ""
+
+
+
