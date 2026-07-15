@@ -32,6 +32,7 @@ Nhóm CDO08 vui lòng bổ sung các quyền sau vào Permission Set `TF4-AuditR
 - **`s3:GetBucketPolicy`**: Đọc bucket policy để xác nhận rule explicitly Deny operator xóa logs.
 - **`s3:GetBucketVersioning`**: Xác nhận versioning đã bật (bắt buộc đối với Object Lock).
 - **`s3:GetBucketLocation`**: Kiểm tra metadata bucket.
+- **`s3:ListBucket` & **`s3:GetObject`**: Đọc và liệt kê danh sách file logs trong bucket `tf4-eks-audit-logs-511825856493` để xác thực log EKS đã được chuyển vào S3 thành công.
 
 ### 2.3 CloudWatch Logs & IAM Roles (Data Pipeline Verification)
 - **`logs:DescribeSubscriptionFilters`**: Xác minh subscription filter của EKS log group đang trỏ chính xác về Firehose stream.
