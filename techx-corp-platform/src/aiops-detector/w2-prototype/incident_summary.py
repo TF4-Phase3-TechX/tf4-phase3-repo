@@ -43,7 +43,7 @@ class IncidentSummaryGenerator:
         prom_query = f'sum(rate(aiops_llm_calls_total{{service="{service}", status=~"error|timeout|429"}}[5m])) / sum(rate(aiops_llm_calls_total{{service="{service}"}}[5m])) > 0.05'
         log_query = f'kubernetes.labels.app:"{service}" AND (message:*timeout* OR message:*429* OR message:*rate limit*) AND message:(*llm* OR *openai* OR *bedrock*)'
         
-        grafana_log_link = f"{self.grafana_base_url}/explore?left=%5B%22now-1h%22,%22now%22,%22{self.opensearch_datasource_uid}%22,%7B%22expr%22:%22{log_query}%22%7D%5D"
+        grafana_log_link = f"{self.grafana_base_url}/explore?left=%5B%22now-1h%22,%22now%22,%22{self.opensearch_datasource_uid}%22,%7B%22query%22:%22{log_query}%22%7D%5D"
 
         # 3. Format the Markdown Summary
         summary = f"""# 🚨 AIOps Incident Summary: {rule.upper()}
