@@ -1552,9 +1552,6 @@ opensearch:
     enabled: true
     size: 8Gi
     storageClass: "gp2"
-    annotations:
-      helm.sh/resource-policy: keep
-      argocd.argoproj.io/sync-options: Prune=false,Delete=false
   initResources:
     requests:
       cpu: 10m
