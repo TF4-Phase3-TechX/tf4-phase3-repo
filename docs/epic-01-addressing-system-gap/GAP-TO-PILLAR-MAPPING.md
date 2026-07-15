@@ -220,7 +220,7 @@ Critical: 0  |  High: 0  |  Medium: 3
 | ----------- | --------- | ---------------------------------------------------- | ------- | ------ | -------------------------------------------------------- |
 | **COST-01** | 🟡 Medium | Load-generator autostarts in default values          | ✅ Yes   | S      | None (values change)                                     |
 | **COST-02** | 🟡 Medium | Observability stack heavy (2.4GB) but non-durable    | Week 2  | M      | Need runtime usage data; Audit verify retention decision |
-| **K8S-03**  | 🟡 Medium | Resource model incomplete; conflicts with quota.yaml | Week 2  | M      | Need `kubectl top` data; Perf provide load baselines     |
+| **K8S-03**  | 🟡 Medium | Resource model incomplete; conflicts with quota.yaml | Week 2  | M      | Need Prometheus/Grafana resource data; Perf provide load baselines |
 
 
 #### Supporting (Secondary)

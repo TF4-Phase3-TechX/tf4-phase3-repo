@@ -25,6 +25,7 @@
 - **Summary:** `[Compliance] Rà soát quyền IAM và đánh giá Access Analyzer`
 - **Assignee:** Member 1
 - **Label:** `Research`, `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Phát hiện user/role dư thừa quyền (over-privileged) dựa trên báo cáo Access Analyzer.
 **✅ Sub-tasks (Definition of Done):**
@@ -38,6 +39,7 @@
 - **Summary:** `[Compliance] Đánh giá thay đổi cấu hình hạ tầng lõi trên AWS Config`
 - **Assignee:** Member 2
 - **Label:** `Research`, `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đối chiếu resource timeline của AWS Config với checklist yêu cầu an toàn.
 **✅ Sub-tasks (Definition of Done):**
@@ -51,6 +53,7 @@
 - **Summary:** `[Docs] Thu thập và lưu vết tài liệu quyết định kiến trúc (ADR)`
 - **Assignee:** Member 3
 - **Label:** `Docs`
+- **Priority:** P2
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Viết tóm tắt các quyết định thay đổi thiết kế và đẩy vào thư mục `/adr`.
 **✅ Sub-tasks (Definition of Done):**
@@ -64,6 +67,7 @@
 - **Summary:** `[Docs] Đóng gói Báo cáo Evidence Audit tuần cho Friday Presentation`
 - **Assignee:** Member 4
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P2
 - **Estimate:** 6h (1.5 SP)
 - **Mục tiêu:** Gom bằng chứng từ các thành viên khác vào ngày chốt báo cáo để xuất file.
 **✅ Sub-tasks (Definition of Done):**
@@ -78,6 +82,7 @@
 - **Summary:** `[Log-Tracking] Nghiệm thu lưu vết CloudTrail an toàn vào S3`
 - **Assignee:** Member 5
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Giao requirement cho DevOps và truy cập S3 kiểm chứng log CloudTrail được ghi nhận.
 **✅ Sub-tasks (Definition of Done):**
@@ -91,6 +96,7 @@
 - **Summary:** `[Log-Tracking] Nghiệm thu log Control Plane EKS trên CloudWatch`
 - **Assignee:** Member 6
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Giao requirement cho DevOps, kiểm tra Log Groups query được log EKS.
 **✅ Sub-tasks (Definition of Done):**
@@ -104,6 +110,7 @@
 - **Summary:** `[Compliance] Xác nhận chính sách Retention vòng đời log OpenSearch`
 - **Assignee:** Member 7
 - **Label:** `Research`, `Need-Review`
+- **Priority:** P2
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Review mã JSON chính sách ISM (Index State Management) do DevOps cung cấp.
 **✅ Sub-tasks (Definition of Done):**
@@ -117,6 +124,7 @@
 - **Summary:** `[Log-Tracking] Phối hợp nghiệm thu biểu đồ log lỗi (401, 403) trên Grafana`
 - **Assignee:** Member 8
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đảm bảo Dashboard hiển thị đúng dữ liệu log truy cập trái phép.
 **✅ Sub-tasks (Definition of Done):**
@@ -131,6 +139,7 @@
 - **Summary:** `[Delegation] Soạn thảo chi tiết các ticket bàn giao cấu hình cho DevOps (CDO08)`
 - **Assignee:** Shared (Các thành viên Nhóm 2)
 - **Label:** `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Viết file requirement Markdown chuyển sang board của team DevOps.
 **✅ Sub-tasks (Definition of Done):**
@@ -138,6 +147,150 @@
   - [ ] Soạn file yêu cầu chi tiết (Markdown) đặt vào `audits/tickets/`.
   - [ ] Bàn giao ticket qua board của DevOps.
   - [ ] **Evidence:** Link tới các file ticket trong repo (nhánh main).
+
+---
+
+## 🔥 MANDATE #4: Forensic Audit Trail (DIRECTIVE #4)
+
+**Epic: AUDIT-CDO07-MANDATE04-FORENSIC-FRAMEWORK**
+- **Issue Type:** Epic
+- **Summary:** `[MANDATE-04] Forensic Audit Trail - Dựng lại sự thật từ dấu vết`
+- **Assignee:** Hoàng + Ty (CDO07)
+- **Label:** `Mandate`, `P0`, `Need-Review`
+- **Priority:** P0 (Critical)
+- **Deadline:** 16/07/2026 (còn 2 ngày)
+- **Estimate:** 17h total (Hoàng: 8h, Ty: 9h)
+- **Mục tiêu:** Chứng minh khả năng dựng lại timeline ai-làm-gì-khi-nào từ audit log trong ≤10 phút, audit log không sửa/xóa được, và truy về danh tính cụ thể.
+
+**Related Files:**
+- Framework: [AUDIT-CDO07-MANDATE04-FORENSIC-FRAMEWORK.md](tickets/AUDIT-CDO07-MANDATE04-FORENSIC-FRAMEWORK.md)
+- Delegated Ticket (IAM): [AUDIT-010-request-forensic-audit-permissions.md](tickets/AUDIT-010-request-forensic-audit-permissions.md)
+- Delegated Ticket (IaC): [AUDIT-011-fix-cloudtrail-terraform.md](tickets/AUDIT-011-fix-cloudtrail-terraform.md)
+- Runbook: [mentor-forensic-inspection.md](runbooks/mentor-forensic-inspection.md)
+
+---
+
+### 📌 MANDATE #4 - Subtasks (Hoàng + Ty)
+
+**Task 19: [Hoàng] Verify Audit Log Coverage (AUD-17.1)**
+- **Issue Type:** Task
+- **Summary:** `[MANDATE-04] Verify CloudTrail + K8s Audit Log Coverage`
+- **Assignee:** Hoàng (Nguyễn Duy Hoàng)
+- **Label:** `Lab`, `Need-Review`, `P0`
+- **Priority:** P0
+- **Deadline:** 14/07/2026 EOD
+- **Estimate:** 4h (1 SP)
+- **Mục tiêu:** Xác nhận CloudTrail và K8s audit log đủ chi tiết để forensic, có log validation và không thể sửa/xóa.
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] CloudTrail: `IsLogging = true`, `LogFileValidationEnabled = true`, `IsMultiRegionTrail = true`.
+  - [ ] CloudTrail: Có ≥1 event trong 1h gần nhất.
+  - [ ] K8s audit log: EKS Control Plane logging enabled, CloudWatch Log Group có stream mới trong 24h.
+  - [ ] K8s audit log: Query thành công, có ≥1 event trong 1h gần nhất.
+  - [ ] Document audit policy level và chi phí estimate.
+  - [ ] **Evidence:** `docs/evidence/aud-17.1-cloudtrail-*.json`, `aud-17.1-eks-*.json`, `aud-17.1-query-test-result.md`.
+
+**Task 20: [Hoàng] Verify Separation of Duties (AUD-17.3)**
+- **Issue Type:** Task
+- **Summary:** `[MANDATE-04] Verify IAM/RBAC Separation - Tamper-Evident`
+- **Assignee:** Hoàng (Nguyễn Duy Hoàng)
+- **Label:** `Research`, `Need-Review`, `P0`
+- **Priority:** P0
+- **Deadline:** 15/07/2026 AM
+- **Estimate:** 4h (1 SP)
+- **Mục tiêu:** Chứng minh operator không xóa được audit log của chính mình (quyền ghi/xóa tách khỏi người vận hành).
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] IAM policy review: operator roles KHÔNG có `logs:Delete*`, `cloudtrail:StopLogging`, `s3:DeleteObject`.
+  - [ ] S3 bucket policy có explicit Deny cho non-admin delete.
+  - [ ] Live test ≥3 scenarios: operator role thử xóa log stream, stop CloudTrail, delete S3 object → tất cả AccessDenied ✅.
+  - [ ] RBAC review (K8s): operator không edit được audit infrastructure.
+  - [ ] **Evidence:** `docs/evidence/aud-17.3-iam-policies-review.json`, `aud-17.3-s3-bucket-policy.json`, `aud-17.3-separation-test-log.md`.
+
+**Task 21: [Ty] Design Forensic Scenarios (AUD-17.2)**
+- **Issue Type:** Task
+- **Summary:** `[MANDATE-04] Thiết kế ≥5 kịch bản forensic + drill execution`
+- **Assignee:** Ty
+- **Label:** `Lab`, `Need-Review`, `P0`
+- **Priority:** P0
+- **Deadline:** 15/07/2026 PM
+- **Estimate:** 5h (1.25 SP)
+- **Mục tiêu:** Thiết kế ≥5 kịch bản forensic và drill ≥3 kịch bản với stopwatch (≤10 phút/sự kiện).
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] ≥5 kịch bản documented: config change, unauthorized access, infra change, on-call action, secrets access.
+  - [ ] Mỗi kịch bản có ground truth + query pattern.
+  - [ ] Drill ≥3 kịch bản pass (≤10 phút mỗi kịch bản).
+  - [ ] Drill log có timestamp thật, stopwatch, pass/fail, lessons learned.
+  - [ ] Query patterns documented cho tái sử dụng.
+  - [ ] **Evidence:** `docs/evidence/aud-17.2-scenario-*.md` (5 files), `aud-17.2-drill-log.md`, `aud-17.2-query-patterns.md`.
+
+**Task 22: [Ty] Identity Mapping (AUD-17.4)**
+- **Issue Type:** Task
+- **Summary:** `[MANDATE-04] Identity Mapping - Truy về danh tính cụ thể`
+- **Assignee:** Ty
+- **Label:** `Research`, `Need-Review`, `P0`
+- **Priority:** P0
+- **Deadline:** 15/07/2026 PM
+- **Estimate:** 4h (1 SP)
+- **Mục tiêu:** Chứng minh mọi thay đổi lớn + on-call truy được về 1 danh tính cụ thể (không dùng chung account).
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] ≥5 hành động gần nhất (trong 7 ngày) mapped thành công: Event → Timestamp → ARN → Real Person.
+  - [ ] Identity mapping table với ≥5 hành động documented.
+  - [ ] Scan IAM users, confirm không có shared account (shared-*, team-*, ops-admin).
+  - [ ] ≥3 hành động on-call traced về person/bot (SSM StartSession).
+  - [ ] **Evidence:** `docs/evidence/aud-17.4-identity-mapping.md`, `aud-17.4-infra-changes-7days.json`, `aud-17.4-bastion-access-7days.json`, `aud-17.4-iam-users-inventory.json`.
+
+**Task 23: [Hoàng + Ty] Final Review & Runbook**
+- **Issue Type:** Task
+- **Summary:** `[MANDATE-04] Final Review + Runbook cho mentor`
+- **Assignee:** Hoàng + Ty
+- **Label:** `Docs`, `Need-Review`, `P0`
+- **Priority:** P0
+- **Deadline:** 16/07/2026 AM
+- **Estimate:** 2h (0.5 SP)
+- **Mục tiêu:** Review toàn bộ evidence quality, hoàn thiện runbook cho mentor, và final drill rehearsal.
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] Review toàn bộ evidence quality: timestamp thật, không placeholder.
+  - [ ] Runbook cho mentor ready: `mentor-forensic-inspection.md`.
+  - [ ] Final drill rehearsal (≥1 lần nữa).
+  - [ ] Chi phí estimate documented: ~$3/week baseline, ~$19/week peak.
+  - [ ] Chuẩn bị cho mentor inspection.
+  - [ ] **Evidence:** All evidence files committed, runbook complete.
+
+**Task 24: [CDO04] Fix CloudTrail Terraform (AUDIT-011) - DELEGATED**
+- **Issue Type:** Task
+- **Summary:** `[DELEGATED to CDO04] Fix CloudTrail Terraform - Tamper-Evident`
+- **Assignee:** CDO04 (DevOps/IaC Owner)
+- **Reporter:** Hoàng (Nguyễn Duy Hoàng) - CDO07
+- **Label:** `Delegation`, `P0`, `Blocker`
+- **Priority:** P0
+- **Deadline:** 15/07/2026
+- **Estimate:** 2h (0.5 SP)
+- **Mục tiêu:** Fix 3 critical issues: `LogFileValidationEnabled = true`, `force_destroy = false`, S3 bucket policy với explicit Deny.
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] Terraform code đã sửa: `enable_log_file_validation = true`.
+  - [ ] Terraform code đã sửa: `force_destroy = false`.
+  - [ ] S3 bucket policy đã thêm: `DenyNonAdminDeleteObject` statement.
+  - [ ] `terraform apply` thành công.
+  - [ ] CDO07 verify bằng AWS CLI: `LogFileValidationEnabled = true`, `force_destroy = false`, bucket policy có Deny.
+  - [ ] **Evidence:** CDO07 lưu evidence sau khi verify.
+  - **Related:** [AUDIT-011-fix-cloudtrail-terraform.md](tickets/AUDIT-011-fix-cloudtrail-terraform.md)
+
+**Task 25: [CDO08] Grant Forensic Audit Permissions (AUDIT-010) - DELEGATED**
+- **Issue Type:** Task
+- **Summary:** `[DELEGATED to CDO08] Grant Forensic Audit Read-Only Permissions`
+- **Assignee:** CDO08 (Security/IAM Owner)
+- **Reporter:** Trần Minh Quang - CDO07
+- **Label:** `Delegation`, `P0`, `Blocker`
+- **Priority:** P0
+- **Deadline:** 15/07/2026
+- **Estimate:** 1h (0.25 SP)
+- **Mục tiêu:** Cấp quyền read-only cho SSO Permission Set `TF4-AuditReadOnlyAndAnalyze` phục vụ forensic audit.
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] Permission Set `TF4-AuditReadOnlyAndAnalyze` đã cập nhật với 11 quyền forensic.
+  - [ ] CDO07 chạy lại được AWS CLI checks không còn `AccessDenied`.
+  - [ ] CDO07 validate CloudTrail log integrity.
+  - [ ] CDO07 map Identity Store user ID về người dùng cụ thể.
+  - [ ] **Evidence:** CDO07 lưu evidence sau khi verify.
+  - **Related:** [AUDIT-010-request-forensic-audit-permissions.md](tickets/AUDIT-010-request-forensic-audit-permissions.md)
 
 ### 📌 Nhóm 3: EPIC-01 Gap Fixes (Primary Owned)
 *Các task mà CDO07 trực tiếp sở hữu (Owned) theo đánh giá rủi ro EPIC-01.*
@@ -147,6 +300,7 @@
 - **Summary:** `[Observability] Thiết lập SLI queries, Grafana alerts và Alertmanager receiver (OBS-01)`
 - **Assignee:** Shared
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 8h (2 SP)
 - **Mục tiêu:** Khắc phục tình trạng missing SLO alerts cho checkout/payment/Kafka/DB.
 **✅ Sub-tasks (Definition of Done):**
@@ -160,6 +314,7 @@
 - **Summary:** `[Observability] Redact dữ liệu nhạy cảm (PII/payment/prompt) trong logs/traces (OBS-02)`
 - **Assignee:** Shared
 - **Label:** `Lab`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 8h (2 SP)
 - **Mục tiêu:** Ẩn các thông tin nhạy cảm (order/payment/email/AI prompt) trong telemetry.
 **✅ Sub-tasks (Definition of Done):**
@@ -173,6 +328,7 @@
 - **Summary:** `[Auditability] Sửa CODEOWNERS và tạo template ADR/runbook/postmortem (OBS-03)`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P2
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đảm bảo CODEOWNERS trỏ đúng đường dẫn và team có đủ template mẫu.
 **✅ Sub-tasks (Definition of Done):**
@@ -189,6 +345,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng Security Gaps (SEC-01, SEC-02) từ CDO-08`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Xác nhận 100% không còn unauthenticated access và không lộ credentials.
 **✅ Sub-tasks (Definition of Done):**
@@ -202,6 +359,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng Reliability/K8S Gaps (REL-01/02/03/06, K8S-01/04) từ CDO-08`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Verify tính toàn vẹn của Kafka event, DB data loss, ADR và độ bền dữ liệu.
 **✅ Sub-tasks (Definition of Done):**
@@ -214,6 +372,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng Cost Gaps (COST-02, K8S-03) từ CDO-04`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Xác nhận quyết định retention cho observability và resource quota compatibility.
 **✅ Sub-tasks (Definition of Done):**
@@ -226,6 +385,7 @@
 - **Summary:** `[Verify] Kiểm chứng bằng chứng AI Gaps (AI-01, AI-02) từ AIO-01`
 - **Assignee:** Shared
 - **Label:** `Docs`, `Need-Review`
+- **Priority:** P1
 - **Estimate:** 2h (0.5 SP)
 - **Mục tiêu:** Xác nhận không lộ prompt/PII và AI eval/fallback document.
 **✅ Sub-tasks (Definition of Done):**
@@ -238,6 +398,7 @@
 - **Summary:** `[Verify] Review toàn bộ evidence file đảm bảo đúng template và naming convention`
 - **Assignee:** Audit Lead / PM
 - **Label:** `Docs`
+- **Priority:** P1
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Đảm bảo tất cả evidence file của EPIC-01 đều có 4 section bắt buộc.
 **✅ Sub-tasks (Definition of Done):**
@@ -245,6 +406,20 @@
   - [ ] Đảm bảo nội dung có đủ 4 mục theo format yêu cầu.
   - [ ] Báo cáo PM/Lead các file lỗi để yêu cầu fix.
   - [ ] **Evidence:** Tick 100% check-list này và để lại link report vào comment Jira.
+
+**Task 18: Kiểm toán KMS CMK (Key Policy & Rotation)**
+- **Issue Type:** Task
+- **Summary:** `[Compliance] Kiểm tra Key Policy và Auto Rotation của KMS CMK cho CloudTrail`
+- **Assignee:** Member 4
+- **Label:** `Research`, `Need-Review`
+- **Priority:** P1
+- **Estimate:** 2h (0.5 SP)
+- **Mục tiêu:** Đảm bảo dữ liệu CloudTrail (và các evidence khác) được mã hóa bằng CMK an toàn, không bị over-privileged quyền Decrypt.
+**✅ Sub-tasks (Definition of Done):**
+  - [ ] Thu thập ARN của KMS CMK từ team DevOps.
+  - [ ] Kiểm tra Key Policy, đảm bảo giới hạn chặt chẽ quyền `kms:Decrypt`.
+  - [ ] Xác nhận tính năng Key Rotation đã được bật (`aws kms get-key-rotation-status`).
+  - [ ] **Evidence:** Screenshot cấu hình Key Policy hoặc output lệnh AWS CLI.
 
 ---
 

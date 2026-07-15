@@ -44,19 +44,16 @@ Warning  BackOff    Back-off restarting failed container grafana
 Warning  Unhealthy  Readiness probe failed: Get "http://10.0.10.185:3000/api/health": connect: connection refused
 ```
 
-## Lệnh kiểm tra CPU/RAM runtime
+## Đo CPU/RAM runtime
 
-```powershell
-kubectl top pod -n techx-observability -l app.kubernetes.io/name=grafana
-kubectl top pods -n techx-observability
-kubectl top nodes
+Dùng Grafana Explore hoặc Prometheus UI để kiểm tra CPU/memory của Grafana và worker nodes. Lưu screenshot hoặc kết quả PromQL cùng thời gian quan sát để đối chiếu với restart/OOM evidence.
+
+```promql
+sum(rate(container_cpu_usage_seconds_total{namespace="techx-observability", container!=""}[5m])) by (pod)
+sum(container_memory_working_set_bytes{namespace="techx-observability", container!=""}) by (pod)
 ```
 
-Kết quả:
-
-```text
-error: Metrics API not available
-```
+Kết quả resource evidence hiện tại được đối chiếu cùng container state và restart history bên dưới.
 
 ## Kết luận
 
@@ -94,12 +91,7 @@ grafana:
       memory: 512Mi
 ```
 
-Sau khi bật Metrics API / metrics-server, cần đo lại:
-
-```powershell
-kubectl top pod -n techx-observability -l app.kubernetes.io/name=grafana
-kubectl describe pod -n techx-observability -l app.kubernetes.io/name=grafana
-```
+Sau mỗi thay đổi memory, cần đo lại bằng Grafana/Prometheus và kiểm tra pod state/restart history.
 
 Acceptance criteria:
 

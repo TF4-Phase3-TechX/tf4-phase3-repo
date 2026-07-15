@@ -12,15 +12,31 @@ Namespace under test:
 - Observability namespace: `techx-observability`
 - Public ALB host: `k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com`
 
+## Task-4 acceptance evidence package
+
+The Task-4 flash-sale load test is prepared for use as acceptance evidence with the following documented controls:
+
+- Traffic mix: browse/discovery, cart, and checkout flows are included; the test does not rely on one lightweight endpoint only.
+- Ramp-up timeline: 1 minute ramp-up to 200 users, 15 minutes steady-state at 200 users, 20 seconds ramp-down; total runtime is 16m20s.
+- Stop conditions: stop early if checkout-related error logs exceed the configured threshold, if CPU or memory guardrails trigger, or if the load-generator shows abnormal resource pressure.
+- Full-run SLO gating: the run script validates checkout success ≥ 99%, browse/cart success ≥ 99.5%, and storefront p95 < 1000ms from `task4-full-stats.csv`.
+- Full-run artifacts: `task4-full-stats.csv`, `task4-full-report.html`, `task4-full-T0.txt`, `task4-full-T1.txt`, and monitor log.
+- Cost evidence: collect a cost-efficiency summary in `task4-cost-efficiency.md` that compares baseline vs full-run capacity and computes cost per request/order.
+- Dashboard mapping: monitor latency, error rate, request rate, and pod/resource metrics in Grafana for namespace `techx-tf4`.
+- Evidence checklist: capture the run script output, Locust stats/report, monitor log, and Grafana screenshots before closing the task.
+
+See [TASK4-EVIDENCE-CHECKLIST.md](TASK4-EVIDENCE-CHECKLIST.md) for the full evidence checklist.
+
 ## Subtask status
 
 | Subtask | Owner | Status | Evidence |
 |---|---|---|---|
 | PERF-04.1: Capture pod status and node placement | Tuấn | Done | `kubectl/pods-wide-2026-07-09.md`, `kubectl/nodes-zones-2026-07-09.md` |
-| PERF-04.2: Capture CPU/memory usage | Huy | Blocked | `kubectl/top-metrics-blocker-2026-07-09.md` |
-| PERF-04.3: Capture Grafana dashboard screenshot | Ninh | Partially done | `grafana/http-check-2026-07-09.md`; screenshots still need browser capture |
-| PERF-04.4: Capture Jaeger trace if available | Huy | Partially done | `jaeger/http-check-2026-07-09.md`; trace screenshots still need browser capture |
-| PERF-04.5: Summarize runtime performance evidence | Huy | Done | This summary |
+| PERF-04.2: Capture CPU/memory usage | Huy | Done | PromQL queries via Prometheus/Grafana Explore. Screenshots: `grafana-pods-cpu.png`, `grafana-pods-memory.png` |
+| PERF-04.3: Capture Grafana dashboard screenshot | Ninh | Done | Screenshots: `grafana-latency.png`, `grafana-error-rate.png`, `grafana-request-rate.png` |
+| PERF-04.4: Capture Jaeger trace if available | Huy | Done | Trace screenshots in `screenshots/` directory, Services dropdown: `jaeger-services-dropdown.png` |
+| PERF-04.5: Summarize runtime performance evidence | Huy | Done | This summary and `04-runtime-performance-evidence.md` |
+| C0G-29: Finalize Flash Sale Verification Dashboard | CDO-04 | Done | `c0g-29/flash-sale-dashboard-design.md`, `techx-corp-chart/grafana/provisioning/dashboards/flash-sale-verification-dashboard.json` |
 
 ## Findings
 
@@ -32,45 +48,15 @@ Namespace under test:
 4. Webstore public endpoint returns `HTTP 200 OK`.
 5. Grafana public route `/grafana/` returns `HTTP 200 OK`.
 6. Jaeger public route `/jaeger/ui/` returns `HTTP 200 OK`.
-7. CPU/memory evidence could not be collected because the Kubernetes Metrics API is not installed or unavailable:
-   - `kubectl top pods` returns `error: Metrics API not available`
-   - `kubectl top nodes` returns `error: Metrics API not available`
-   - `v1beta1.metrics.k8s.io` APIService is not found
+7. CPU/memory evidence has been successfully collected via Prometheus/Grafana PromQL queries.
 8. Runtime warning events should be watched:
    - `accounting` pod has repeated restarts and current BackOff warning.
    - Grafana had a previous readiness probe failure but is currently `4/4 Running`.
 
-## Screenshot status
-
-Screenshot capture is still pending for:
-
-- Grafana latency dashboard
-- Grafana error rate dashboard
-- Grafana request rate dashboard
-- Jaeger checkout trace
-- Jaeger product flow trace
-
-The public UI routes are reachable, so screenshot collection is now unblocked from an application availability perspective. A team member with browser access should capture screenshots into:
-
-- `runtime/grafana/screenshots/`
-- `runtime/jaeger/screenshots/`
-
-## Jira evidence comment
-
-PERF-04 runtime evidence collection has been started after deployment.
-
-Completed:
-
-- Captured pod status and node placement for namespace `techx-tf4`.
-- Captured EKS node zone placement across `us-east-1a` and `us-east-1b`.
-- Verified all application deployments are currently `1/1` available.
-- Verified Webstore, Grafana and Jaeger public routes return `HTTP 200 OK`.
-- Recorded CPU/memory blocker: Metrics API is not available, so `kubectl top pods` and `kubectl top nodes` cannot currently produce usage data.
-
 Key runtime risks:
 
 - `accounting` pod shows repeated restarts and BackOff warning.
-- Metrics-server / Metrics API is missing, blocking CPU and memory evidence required for performance right-sizing.
+- CPU/memory trend still needs the planned 48-72 hour evidence window before performance right-sizing.
 
 Evidence folder:
 

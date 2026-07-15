@@ -46,6 +46,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
@@ -141,7 +142,7 @@ type checkout struct {
 	paymentSvcAddr        string
 	kafkaBrokerSvcAddr    string
 	pb.UnimplementedCheckoutServiceServer
-	KafkaProducerClient     sarama.SyncProducer
+	KafkaProducerClient     sarama.AsyncProducer
 	shippingSvcClient       pb.ShippingServiceClient
 	productCatalogSvcClient pb.ProductCatalogServiceClient
 	cartSvcClient           pb.CartServiceClient
@@ -233,10 +234,8 @@ func main() {
 	if svc.kafkaBrokerSvcAddr != "" {
 		svc.KafkaProducerClient, err = kafka.CreateKafkaProducer([]string{svc.kafkaBrokerSvcAddr}, logger)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create Kafka producer: %v", err))
-			panic(fmt.Sprintf("KAFKA_ADDR is set but producer creation failed: %v", err))
+			logger.Error(err.Error())
 		}
-		defer svc.KafkaProducerClient.Close()
 	}
 
 	logger.Info(fmt.Sprintf("service config: %+v", svc))
@@ -288,7 +287,42 @@ func (cs *checkout) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_W
 	return status.Errorf(codes.Unimplemented, "health check via Watch not implemented")
 }
 
+// retryRead chạy một lời gọi IDEMPOTENT với timeout cho mỗi attempt và tối đa 1
+// retry. Backoff tôn trọng ctx cha (không sleep khi ctx đã done).
+// CHỈ dùng cho read (cart, product-catalog, currency, get-quote).
+// TUYỆT ĐỐI không dùng cho call có side effect (payment, ship-order).
+func retryRead(ctx context.Context, perAttempt, backoff time.Duration, fn func(ctx context.Context) error) error {
+	var err error
+	for attempt := 0; attempt < 2; attempt++ {
+		callCtx, cancel := context.WithTimeout(ctx, perAttempt)
+		err = fn(callCtx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		if attempt == 0 {
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return ctx.Err() // ctx cha cancel/hết hạn → dừng, không sleep tiếp
+			}
+		}
+	}
+	return err
+}
+
 func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
+	// Overall deadline: trần chống-treo cho toàn request (không phải mục tiêu SLO).
+	// Configurable qua env để tune không cần rebuild; mặc định 20s.
+	overall := 20 * time.Second
+	if v := os.Getenv("CHECKOUT_OVERALL_TIMEOUT"); v != "" {
+		if d, perr := time.ParseDuration(v); perr == nil {
+			overall = d
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, overall)
+	defer cancel()
+
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
 		attribute.String("app.user.id", req.UserId),
@@ -315,7 +349,7 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 
 	prep, err := cs.prepareOrderItemsAndShippingQuoteFromCart(ctx, req.UserId, req.UserCurrency, req.Address)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s", err.Error())
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	span.AddEvent("prepared")
 
@@ -326,6 +360,16 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	for _, it := range prep.orderItems {
 		multPrice := money.MultiplySlow(it.Cost, uint32(it.GetItem().GetQuantity()))
 		total = money.Must(money.Sum(total, multPrice))
+	}
+
+	// Chỉ bắt đầu payment nếu còn ĐỦ budget cho toàn bộ write path (payment 5s + ship 3s).
+	// Không dùng ctx.Err() đơn thuần — nó chỉ bắt ctx đã hết hạn hẳn, không bắt ctx sắp hết,
+	// nên không chặn được trường hợp overall deadline cháy GIỮA LÚC Charge đang chạy
+	// (RPC bị cancel client-side nhưng payment server có thể đã trừ tiền).
+	const writePathBudget = 8 * time.Second // payment 5s + ship-order 3s (§4.1)
+	if dl, ok := ctx.Deadline(); ok && time.Until(dl) < writePathBudget {
+		return nil, status.Errorf(codes.DeadlineExceeded,
+			"insufficient budget for payment+shipping (need %s); aborting before charge", writePathBudget)
 	}
 
 	txID, err := cs.chargeCard(ctx, total, req.CreditCard)
@@ -387,9 +431,7 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	// send to kafka only if kafka broker address is set
 	if cs.kafkaBrokerSvcAddr != "" {
 		logger.Info("sending to postProcessor")
-		if err := cs.sendToPostProcessor(ctx, orderResult); err != nil {
-			return nil, status.Errorf(codes.Unavailable, "failed to publish order event: %+v", err)
-		}
+		cs.sendToPostProcessor(ctx, orderResult)
 	}
 
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
@@ -447,6 +489,15 @@ func mustCreateClient(svcAddr string) *grpc.ClientConn {
 	c, err := grpc.NewClient(svcAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		// WithConnectTimeout đã bị xóa khỏi grpc-go (chỉ tồn tại ở bản rất cũ);
+		// WithConnectParams.MinConnectTimeout là API hiện hành tương đương —
+		// giới hạn thời gian mỗi lần thử connect trước khi backoff/attempt tiếp theo.
+		// Phải set Backoff tường minh (backoff.DefaultConfig) — nếu bỏ trống,
+		// ConnectParams.Backoff là zero-value (không phải default), tắt mất backoff thật.
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff:           backoff.DefaultConfig,
+			MinConnectTimeout: 3 * time.Second,
+		}),
 	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("could not connect to %s service, err: %+v", svcAddr, err))
@@ -464,19 +515,32 @@ func (cs *checkout) quoteShipping(ctx context.Context, address *pb.Address, item
 		return nil, fmt.Errorf("failed to marshal ship order request: %+v", err)
 	}
 
-	resp, err := otelhttp.Post(ctx, cs.shippingSvcAddr+"/get-quote", "application/json", bytes.NewBuffer(quotePayload))
+	var shippingQuoteBytes []byte
+	var quoteStatusCode int
+	err = retryRead(ctx, 3*time.Second, 300*time.Millisecond, func(callCtx context.Context) error {
+		// body reader MỚI mỗi attempt — attempt trước đã consume reader cũ.
+		resp, e := otelhttp.Post(callCtx, cs.shippingSvcAddr+"/get-quote", "application/json", bytes.NewReader(quotePayload))
+		if e != nil {
+			return e
+		}
+		defer resp.Body.Close()
+		// Đọc body NGAY TRONG attempt: callCtx bị cancel khi retryRead trả về,
+		// mà ctx của HTTP request bao trùm cả việc đọc body — đọc body sau khi
+		// cancel sẽ lỗi "context canceled".
+		body, e := io.ReadAll(resp.Body)
+		if e != nil {
+			return e
+		}
+		quoteStatusCode = resp.StatusCode
+		shippingQuoteBytes = body
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed POST to shipping service: %+v", err)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed POST to email service: expected 200, got %d", resp.StatusCode)
-	}
-
-	shippingQuoteBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read shipping quote response: %+v", err)
+	if quoteStatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed POST to shipping quote service: expected 200, got %d", quoteStatusCode)
 	}
 
 	var quoteResp struct {
@@ -493,7 +557,12 @@ func (cs *checkout) quoteShipping(ctx context.Context, address *pb.Address, item
 }
 
 func (cs *checkout) getUserCart(ctx context.Context, userID string) ([]*pb.CartItem, error) {
-	cart, err := cs.cartSvcClient.GetCart(ctx, &pb.GetCartRequest{UserId: userID})
+	var cart *pb.Cart
+	err := retryRead(ctx, 2*time.Second, 200*time.Millisecond, func(callCtx context.Context) error {
+		var e error
+		cart, e = cs.cartSvcClient.GetCart(callCtx, &pb.GetCartRequest{UserId: userID})
+		return e
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user cart during checkout: %+v", err)
 	}
@@ -511,7 +580,12 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 	out := make([]*pb.OrderItem, len(items))
 
 	for i, item := range items {
-		product, err := cs.productCatalogSvcClient.GetProduct(ctx, &pb.GetProductRequest{Id: item.GetProductId()})
+		var product *pb.Product
+		err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+			var e error
+			product, e = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: item.GetProductId()})
+			return e
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get product #%q", item.GetProductId())
 		}
@@ -527,13 +601,18 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 }
 
 func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurrency string) (*pb.Money, error) {
-	result, err := cs.currencySvcClient.Convert(ctx, &pb.CurrencyConversionRequest{
-		From:   from,
-		ToCode: toCurrency})
+	var result *pb.Money
+	err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+		var e error
+		result, e = cs.currencySvcClient.Convert(callCtx, &pb.CurrencyConversionRequest{
+			From:   from,
+			ToCode: toCurrency})
+		return e
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert currency: %+v", err)
 	}
-	return result, err
+	return result, nil
 }
 
 func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInfo *pb.CreditCardInfo) (string, error) {
@@ -544,7 +623,10 @@ func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInf
 		paymentService = pb.NewPaymentServiceClient(c)
 	}
 
-	paymentResp, err := paymentService.Charge(ctx, &pb.ChargeRequest{
+	callCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	paymentResp, err := paymentService.Charge(callCtx, &pb.ChargeRequest{
 		Amount:     amount,
 		CreditCard: paymentInfo})
 	if err != nil {
@@ -562,7 +644,10 @@ func (cs *checkout) sendOrderConfirmation(ctx context.Context, email string, ord
 		return fmt.Errorf("failed to marshal order to JSON: %+v", err)
 	}
 
-	resp, err := otelhttp.Post(ctx, cs.emailSvcAddr+"/send_order_confirmation", "application/json", bytes.NewBuffer(emailPayload))
+	callCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resp, err := otelhttp.Post(callCtx, cs.emailSvcAddr+"/send_order_confirmation", "application/json", bytes.NewBuffer(emailPayload))
 	if err != nil {
 		return fmt.Errorf("failed POST to email service: %+v", err)
 	}
@@ -584,14 +669,17 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 		return "", fmt.Errorf("failed to marshal ship order request: %+v", err)
 	}
 
-	resp, err := otelhttp.Post(ctx, cs.shippingSvcAddr+"/ship-order", "application/json", bytes.NewBuffer(shipPayload))
+	callCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	resp, err := otelhttp.Post(callCtx, cs.shippingSvcAddr+"/ship-order", "application/json", bytes.NewBuffer(shipPayload))
 	if err != nil {
 		return "", fmt.Errorf("failed POST to shipping service: %+v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed POST to email service: expected 200, got %d", resp.StatusCode)
+		return "", fmt.Errorf("failed POST to shipping service: expected 200, got %d", resp.StatusCode)
 	}
 
 	trackingRespBytes, err := io.ReadAll(resp.Body)
@@ -612,15 +700,11 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 	return shipResp.TrackingID, nil
 }
 
-func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderResult) error {
-	if cs.KafkaProducerClient == nil {
-		return fmt.Errorf("kafka producer is not initialized")
-	}
-
+func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderResult) {
 	message, err := proto.Marshal(result)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to marshal message to protobuf: %+v", err))
-		return err
+		return
 	}
 
 	msg := sarama.ProducerMessage{
@@ -632,72 +716,54 @@ func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderRes
 	span := createProducerSpan(ctx, &msg)
 	defer span.End()
 
+	// Send message and handle response
 	startTime := time.Now()
-	if err := ctx.Err(); err != nil {
-		span.SetAttributes(
-			attribute.Bool("messaging.kafka.producer.success", false),
-			attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
-		)
-		span.SetStatus(otelcodes.Error, err.Error())
-		return err
-	}
-
-	// SendMessage does not accept a context, so we run it in a goroutine and
-	// race against ctx.Done() to respect the gRPC client deadline.
-	type sendResult struct {
-		partition int32
-		offset    int64
-		err       error
-	}
-	ch := make(chan sendResult, 1)
-	go func() {
-		p, o, e := cs.KafkaProducerClient.SendMessage(&msg)
-		ch <- sendResult{p, o, e}
-	}()
-
-	var partition int32
-	var offset int64
 	select {
-	case res := <-ch:
-		partition, offset, err = res.partition, res.offset, res.err
+	case cs.KafkaProducerClient.Input() <- &msg:
+		select {
+		case successMsg := <-cs.KafkaProducerClient.Successes():
+			span.SetAttributes(
+				attribute.Bool("messaging.kafka.producer.success", true),
+				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
+				attribute.KeyValue(semconv.MessagingKafkaMessageOffset(int(successMsg.Offset))),
+			)
+			logger.Info(fmt.Sprintf("Successful to write message. offset: %v, duration: %v", successMsg.Offset, time.Since(startTime)))
+		case errMsg := <-cs.KafkaProducerClient.Errors():
+			span.SetAttributes(
+				attribute.Bool("messaging.kafka.producer.success", false),
+				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
+			)
+			span.SetStatus(otelcodes.Error, errMsg.Err.Error())
+			logger.Error(fmt.Sprintf("Failed to write message: %v", errMsg.Err))
+		case <-ctx.Done():
+			span.SetAttributes(
+				attribute.Bool("messaging.kafka.producer.success", false),
+				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
+			)
+			span.SetStatus(otelcodes.Error, "Context cancelled: "+ctx.Err().Error())
+			logger.Warn(fmt.Sprintf("Context canceled before success message received: %v", ctx.Err()))
+		}
 	case <-ctx.Done():
-		err = ctx.Err()
-	}
-
-	if err != nil {
 		span.SetAttributes(
 			attribute.Bool("messaging.kafka.producer.success", false),
 			attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
 		)
-		span.SetStatus(otelcodes.Error, err.Error())
-		logger.Error(fmt.Sprintf("Failed to write message: %v", err))
-		return err
+		span.SetStatus(otelcodes.Error, "Failed to send: "+ctx.Err().Error())
+		logger.Error(fmt.Sprintf("Failed to send message to Kafka within context deadline: %v", ctx.Err()))
+		return
 	}
-
-	span.SetAttributes(
-		attribute.Bool("messaging.kafka.producer.success", true),
-		attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
-		attribute.KeyValue(semconv.MessagingKafkaDestinationPartition(int(partition))),
-		attribute.KeyValue(semconv.MessagingKafkaMessageOffset(int(offset))),
-	)
-	logger.Info(fmt.Sprintf("Successful to write message. partition: %v, offset: %v, duration: %v", partition, offset, time.Since(startTime)))
 
 	ffValue := cs.getIntFeatureFlag(ctx, "kafkaQueueProblems")
 	if ffValue > 0 {
 		logger.Info("Warning: FeatureFlag 'kafkaQueueProblems' is activated, overloading queue now.")
-		// Run overload sends in background goroutines to avoid blocking checkout
-		// response (sync producer SendMessage is blocking unlike async Input()).
 		for i := 0; i < ffValue; i++ {
-			go func() {
-				if _, _, sendErr := cs.KafkaProducerClient.SendMessage(&msg); sendErr != nil {
-					logger.Error(fmt.Sprintf("Failed to write overload simulation message: %v", sendErr))
-				}
-			}()
+			go func(i int) {
+				cs.KafkaProducerClient.Input() <- &msg
+				_ = <-cs.KafkaProducerClient.Successes()
+			}(i)
 		}
-		logger.Info(fmt.Sprintf("Dispatched #%d messages for overload simulation.", ffValue))
+		logger.Info(fmt.Sprintf("Done with #%d messages for overload simulation.", ffValue))
 	}
-
-	return nil
 }
 
 func createProducerSpan(ctx context.Context, msg *sarama.ProducerMessage) trace.Span {

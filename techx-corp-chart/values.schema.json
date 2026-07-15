@@ -49,6 +49,25 @@
     },
     "opensearch": {
       "type": "object"
+    },
+    "metrics-server": {
+      "type": "object"
+    },
+    "bastionPortalAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "groupName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "groupName"
+      ]
     }
   },
   "required": [
@@ -155,8 +174,23 @@
         "replicas": {
           "type": "integer"
         },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/Autoscaling"
+        },
+        "podDisruptionBudget": {
+          "$ref": "#/definitions/PodDisruptionBudget"
+        },
         "revisionHistoryLimit": {
           "type": "integer"
+        },
+        "strategy": {
+          "$ref": "#/definitions/DeploymentStrategy"
+        },
+        "persistence": {
+          "$ref": "#/definitions/Persistence"
         },
         "service": {
           "$ref": "#/definitions/Service"
@@ -243,6 +277,101 @@
         "useDefault"
       ],
       "title": "Service"
+    },
+    "Autoscaling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "behavior": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "PodDisruptionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minAvailable": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "maxUnavailable": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "DeploymentStrategy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RollingUpdate",
+            "Recreate"
+          ]
+        }
+      }
+    },
+    "Persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "storageClassName": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "storageClassName",
+        "size"
+      ]
     },
     "Env": {
       "type": "object",
@@ -487,6 +616,10 @@
         "tolerations": {
           "type": "array",
           "items": {}
+        },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "items": {}
         }
       }
     },
@@ -654,8 +787,22 @@
     "LivenessProbe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "httpGet"
+      "oneOf": [
+        {
+          "required": [
+            "httpGet"
+          ]
+        },
+        {
+          "required": [
+            "tcpSocket"
+          ]
+        },
+        {
+          "required": [
+            "grpc"
+          ]
+        }
       ],
       "properties": {
         "httpGet": {
@@ -693,32 +840,87 @@
               }
             },
             "port": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "grpc": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "service": {
+              "type": "string"
             }
           }
         },
         "initialDelaySeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "timeoutSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "periodSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "successThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "const": 1
         },
         "failureThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
     "ReadinessProbe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "httpGet"
+      "oneOf": [
+        {
+          "required": [
+            "httpGet"
+          ]
+        },
+        {
+          "required": [
+            "tcpSocket"
+          ]
+        },
+        {
+          "required": [
+            "grpc"
+          ]
+        }
       ],
       "properties": {
         "httpGet": {
@@ -756,24 +958,65 @@
               }
             },
             "port": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "grpc": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "service": {
+              "type": "string"
             }
           }
         },
         "initialDelaySeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "timeoutSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "periodSeconds": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "successThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "failureThreshold": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         }
       }
     },

@@ -1,0 +1,200 @@
+{
+  "evidenceId": "TF4-CDO07-IAM-CLOUDTRAIL-20260715",
+  "capturedAt": "2026-07-15T18:03:14.3536421+07:00",
+  "collector": {
+    "name": "Ba Huan",
+    "team": "CDO07",
+    "role": "Auditability",
+    "awsProfile": "cdo07-tf4-auditreadonly",
+    "permissionSet": "TF4-AuditReadOnlyAndAnalyze"
+  },
+  "scope": {
+    "accountId": "511825856493",
+    "primaryRegion": "us-east-1",
+    "rootReviewWindowUtc": {
+      "start": "2026-06-15T10:38:04Z",
+      "end": "2026-07-15T10:38:04Z"
+    }
+  },
+  "iam": {
+    "accessAnalyzer": {
+      "name": "tf4-iam-analyzer",
+      "arn": "arn:aws:access-analyzer:us-east-1:511825856493:analyzer/tf4-iam-analyzer",
+      "type": "ACCOUNT",
+      "status": "ACTIVE",
+      "activeFindingCount": 16,
+      "findingTypeVerified": "ExternalAccess",
+      "unusedAccessCoverage": false
+    },
+    "broadRoleFinding": {
+      "roleArn": "arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply",
+      "attachedPolicies": [
+        "arn:aws:iam::aws:policy/IAMFullAccess",
+        "arn:aws:iam::aws:policy/PowerUserAccess"
+      ],
+      "cloudTrailUsage": {
+        "recordsMatched": 3419,
+        "distinctServiceCount": 12,
+        "distinctServiceActionPairCount": 104,
+        "services": [
+          { "name": "ec2.amazonaws.com", "calls": 893, "distinctActions": 25 },
+          { "name": "s3.amazonaws.com", "calls": 840, "distinctActions": 25 },
+          { "name": "iam.amazonaws.com", "calls": 671, "distinctActions": 14 },
+          { "name": "eks.amazonaws.com", "calls": 431, "distinctActions": 9 },
+          { "name": "sts.amazonaws.com", "calls": 167, "distinctActions": 1 },
+          { "name": "kms.amazonaws.com", "calls": 165, "distinctActions": 7 },
+          { "name": "budgets.amazonaws.com", "calls": 72, "distinctActions": 4 },
+          { "name": "logs.amazonaws.com", "calls": 48, "distinctActions": 2 },
+          { "name": "config.amazonaws.com", "calls": 45, "distinctActions": 8 },
+          { "name": "ecr.amazonaws.com", "calls": 39, "distinctActions": 5 },
+          { "name": "cloudtrail.amazonaws.com", "calls": 36, "distinctActions": 3 },
+          { "name": "access-analyzer.amazonaws.com", "calls": 12, "distinctActions": 1 }
+        ]
+      },
+      "accessAdvisorStatus": "BLOCKED",
+      "missingPermission": "iam:GenerateServiceLastAccessedDetails",
+      "evaluation": "FAIL"
+    },
+    "rootAccount": {
+      "identityTypeVerified": "Root",
+      "identityArn": "arn:aws:iam::511825856493:root",
+      "minimumEventCount": 1074,
+      "regionCounts": [
+        { "region": "ap-southeast-1", "minimumCount": 50 },
+        { "region": "ap-southeast-2", "minimumCount": 1 },
+        { "region": "us-east-1", "minimumCount": 1000 },
+        { "region": "us-east-2", "minimumCount": 1 },
+        { "region": "us-west-2", "minimumCount": 22 }
+      ],
+      "representativeEvents": [
+        {
+          "eventId": "b85ce10a-4d50-4e1b-9ea5-0ff4242d8618",
+          "eventTime": "2026-07-14T22:20:45Z",
+          "region": "us-east-1",
+          "eventSource": "ecr.amazonaws.com",
+          "eventName": "ListImages",
+          "readOnly": true
+        },
+        {
+          "eventId": "60538bbd-164f-4708-9aef-8d9a443755a5",
+          "eventTime": "2026-07-14T21:39:01Z",
+          "region": "us-east-1",
+          "eventSource": "secretsmanager.amazonaws.com",
+          "eventName": "CreateSecret",
+          "readOnly": false
+        },
+        {
+          "eventId": "b200090a-4e99-4820-a06e-379ea1dabc85",
+          "eventTime": "2026-07-09T08:41:43Z",
+          "region": "us-east-1",
+          "eventSource": "sso-directory.amazonaws.com",
+          "eventName": "UpdatePassword",
+          "readOnly": false
+        }
+      ],
+      "accountSummary": {
+        "accountMfaEnabled": 1,
+        "accountAccessKeysPresent": 1,
+        "accountSigningCertificatesPresent": 0
+      },
+      "evaluation": "FAIL_CRITICAL"
+    },
+    "eksBootstrapAccess": {
+      "declaredPolicyArn": "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy",
+      "declaredScope": "cluster",
+      "principals": [
+        "arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply",
+        "arn:aws:iam::511825856493:role/tf4-github-actions-eks-deploy",
+        "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-Admin-BreakGlass_99a0fe2c9d050d5d",
+        "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-DeployOperator_eb819e1d80dc6016",
+        "arn:aws:iam::511825856493:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_TF4-SecurityIAMSSOManager_7fec96c816beda10"
+      ],
+      "cloudTrailReconstruction": {
+        "latestSuccessfulListAssociatedAccessPolicies": "2026-07-15T09:39:29Z",
+        "historicalAdminAssociations": [
+          {
+            "principalArn": "arn:aws:iam::511825856493:root",
+            "latestState": "REMOVED",
+            "deleteEventTime": "2026-07-09T01:53:20Z"
+          },
+          {
+            "principalArn": "arn:aws:iam::511825856493:user/cdo04-vinh",
+            "latestState": "REMOVED",
+            "deleteEventTime": "2026-07-08T08:15:15Z"
+          },
+          {
+            "principalArn": "arn:aws:iam::511825856493:user/cdo04-an",
+            "latestState": "POTENTIALLY_ACTIVE_UNMANAGED",
+            "clusterAdminAssociationTime": "2026-07-14T06:36:34Z",
+            "removalEventObserved": false
+          }
+        ]
+      },
+      "runtimeVerification": "BLOCKED",
+      "missingPermissions": [
+        "eks:ListAccessEntries",
+        "eks:DescribeAccessEntry",
+        "eks:ListAssociatedAccessPolicies"
+      ],
+      "evaluation": "FAIL_BLOCKED_DIRECT_CHECK"
+    }
+  },
+  "cloudTrail": {
+    "name": "tf4-general-cloudtrail",
+    "arn": "arn:aws:cloudtrail:us-east-1:511825856493:trail/tf4-general-cloudtrail",
+    "homeRegion": "us-east-1",
+    "isLogging": true,
+    "isMultiRegionTrail": true,
+    "includeGlobalServiceEvents": true,
+    "logFileValidationEnabled": true,
+    "latestDeliveryError": null,
+    "latestCloudWatchLogsDeliveryError": null,
+    "eventSelector": {
+      "readWriteType": "All",
+      "includeManagementEvents": true,
+      "dataResources": []
+    },
+    "cloudWatchCoverage": {
+      "earliestEvent": "2026-07-14T14:16:02.452Z",
+      "latestEvent": "2026-07-15T10:38:04.347Z",
+      "recordCount": 65466
+    },
+    "evaluation": "PASS_MANAGEMENT_PLANE"
+  },
+  "cloudTrailBucket": {
+    "name": "tf4-cloudtrail-logs-bucket-511825856493",
+    "versioning": "Enabled",
+    "mfaDelete": "Disabled",
+    "objectLock": {
+      "enabled": true,
+      "mode": "COMPLIANCE",
+      "retentionDays": 90
+    },
+    "policyIsPublic": false,
+    "publicAccessBlock": {
+      "blockPublicAcls": true,
+      "ignorePublicAcls": true,
+      "blockPublicPolicy": true,
+      "restrictPublicBuckets": true
+    },
+    "encryption": {
+      "algorithm": "aws:kms",
+      "kmsKeyArn": "arn:aws:kms:us-east-1:511825856493:key/4f20f498-949c-4970-9a79-7f34f1497d98",
+      "bucketKeyEnabled": true
+    },
+    "cloudTrailServiceGrantScoped": true,
+    "operatorDeleteException": "arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply",
+    "immutabilityEvaluation": "PASS",
+    "leastPrivilegeEvaluation": "FAIL"
+  },
+  "redaction": {
+    "rawCloudTrailEventsStored": false,
+    "excludedFields": [
+      "AccessKeyId",
+      "userIdentity.accessKeyId",
+      "sessionToken",
+      "CloudTrailEvent"
+    ]
+  },
+  "overallEvaluation": "FAIL_REMEDIATION_REQUIRED"
+}
