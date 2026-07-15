@@ -124,7 +124,7 @@ Dưới đây là 3 phiên on-call gần nhất được trích xuất từ Clou
 *   **Session ID:** `quang.tranminh-ozqjhac5hii6p2szs657iz6yly`
 *   **Hành động thực tế:** Mở cổng forward luồng dữ liệu SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Port 13000).
 
-### Phiên 3: On-call truy cập hệ thống bởi thành viên CDO08 (Hải)
+### Phiên 3: On-call truy cập hệ thống bởi thành viên CDO08 (Hoàng Minh Hải)
 *   **Thời gian (Timestamp):** 2026-07-15T10:56:18Z (17:56:18+07)
 *   **Người thực hiện (Username):** `hai`
 *   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155/hai`
