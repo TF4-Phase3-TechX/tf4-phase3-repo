@@ -1,0 +1,6 @@
+=== kubectl auth can-i create pods/exec -n techx-tf4 ===
+no
+=== kubectl auth can-i create pods/portforward -n techx-tf4 ===
+no
+=== kubectl auth can-i get pods/log -n techx-tf4 ===
+yes

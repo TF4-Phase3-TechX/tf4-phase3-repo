@@ -1,0 +1,24 @@
+$ aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names eks-techx-general-ng-20260707091432750200000017-cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15 --query 'AutoScalingGroups[].{Name:AutoScalingGroupName,Desired:DesiredCapacity,Min:MinSize,Max:MaxSize,Instances:Instances[].{ID:InstanceId,AZ:AvailabilityZone,State:LifecycleState,Health:HealthStatus}}' --output json
+
+[
+    {
+        "Name": "eks-techx-general-ng-20260707091432750200000017-cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15",
+        "Desired": 2,
+        "Min": 2,
+        "Max": 4,
+        "Instances": [
+            {
+                "ID": "i-01b00d955a0af0fac",
+                "AZ": "us-east-1a",
+                "State": "InService",
+                "Health": "Healthy"
+            },
+            {
+                "ID": "i-0825abf366929a005",
+                "AZ": "us-east-1b",
+                "State": "InService",
+                "Health": "Healthy"
+            }
+        ]
+    }
+]

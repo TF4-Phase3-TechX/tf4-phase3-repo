@@ -1,0 +1,7 @@
+Task: D3-COST-02 - Post-Maintenance Scale-Down and Cost Verification
+CollectedAtUTC: 2026-07-15T10:49:05Z
+KubernetesContext: arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+AWSIdentity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan
+Namespace: techx-tf4
+Collector: tuan (CDO-04)
+Note: Read-only verification only. No scale/create/delete commands executed.

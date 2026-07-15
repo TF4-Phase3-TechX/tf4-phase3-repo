@@ -1,0 +1,6 @@
+$ kubectl top nodes
+
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)
+ip-10-0-10-17.ec2.internal    251m         13%      3821Mi          53%
+ip-10-0-10-231.ec2.internal   286m         14%      3338Mi          47%
+ip-10-0-11-40.ec2.internal    475m         24%      3982Mi          56%

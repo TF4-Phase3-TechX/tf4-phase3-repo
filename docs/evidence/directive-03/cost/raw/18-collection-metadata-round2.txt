@@ -1,0 +1,14 @@
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+$ kubectl config current-context
+$ aws sts get-caller-identity --query Arn --output text
+
+Task: D3-COST-02 - Post-Maintenance Scale-Down and Cost Verification (round 2, tied to official RUN_ID)
+RunID: official-20260715-112233
+T0: 2026-07-15T11:05:00Z
+T1: 2026-07-15T11:26:00Z
+CollectedAtUTC: 2026-07-15T16:29:45Z
+KubernetesContext: arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+AWSIdentity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan
+Namespace: techx-tf4
+Collector: tuan (CDO-04)
+Note: Read-only verification only. No scale/create/delete commands executed.
