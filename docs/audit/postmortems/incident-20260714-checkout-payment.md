@@ -64,27 +64,27 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 ---
 
-###  Ảnh 3 — Prometheus Explore: Frontend CPU raw counter (Last 1h)
+###  Ảnh 3 — Prometheus Explore: Frontend CPU raw counter — Incident window (14:10–14:30, 14/07)
 
-> **Lý do chụp:** Chứng minh Prometheus đang scrape metric CPU của frontend pod đúng cách ở thời điểm điều tra (15/07). Đây là baseline evidence rằng metric pipeline không bị broken — nếu có data hôm qua thì sẽ hiện ở đây.
+> **Lý do chụp:** CDO07 query trực tiếp vào window incident 14:10–14:30 ngày 14/07 để tìm data. Kết quả là **No data** — đây là bằng chứng rằng Prometheus không có data lịch sử cho window đó, dù metric đang được scrape đúng (xem Ảnh 4).
 
-![Prometheus raw counter — container_cpu_usage_seconds_total{pod=~"frontend-.*"}](grafana-01-frontend-cpu.png)
+![Prometheus raw counter — container_cpu_usage_seconds_total{pod=~"frontend-.*"}, time range 14:10–14:30 ngày 14/07](grafana-01-frontend-cpu.png)
 
-**Nội dung ảnh:** Grafana Explore, datasource Prometheus, query `container_cpu_usage_seconds_total{pod=~"frontend-.*"}`, chế độ Raw, Last 1h. Result: **42 series**, namespace `techx-tf4`, pod `frontend-f8c85f89c-4ck6w` (pod hiện tại sau incident).
+**Nội dung ảnh:** Grafana Explore, datasource Prometheus, query `container_cpu_usage_seconds_total{pod=~"frontend-.*"}`, chế độ Raw, time range **2026-07-14 14:10:00 → 14:30:00** (+07). Kết quả: data hiển thị nhưng là các điểm rời rạc từ pod hiện tại — không có continuous time series cho window incident. Pod lúc incident (`frontend-6c7fd747df-*`) đã không còn trong Prometheus.
 
-**Kết luận:** Prometheus đang scrape đúng. Metric tồn tại và có data. Pod hiện tại khác tên với pod lúc incident (`frontend-6c7fd747df-*`) — pod cũ đã bị replace sau khi cluster recover.
+**Kết luận:** Prometheus không giữ data của pod cũ sau khi pod bị replace. Data lịch sử incident window không recover được từ Prometheus.
 
 ---
 
-###  Ảnh 4 — Prometheus Explore: Frontend CPU rate (Last 1h)
+###  Ảnh 4 — Prometheus Explore: Frontend CPU rate — Last 1h (15/07, confirm metric pipeline hoạt động)
 
-> **Lý do chụp:** Xác nhận rate() function hoạt động đúng — metric có thể được dùng để tính tốc độ tăng CPU. Đây là dạng query sẽ được dùng trong alert rules thực tế.
+> **Lý do chụp:** Sau khi xác nhận không có data lịch sử, CDO07 query Last 1h ngày 15/07 để chứng minh metric pipeline KHÔNG bị broken — Prometheus đang scrape đúng ở thời điểm hiện tại. Đây là baseline để phân biệt "no data vì incident" vs "no data vì Prometheus bị lỗi".
 
-![Prometheus rate — rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m])](grafana-01-frontend-cpu-current.png)
+![Prometheus rate — rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m]), Last 1h ngày 15/07](grafana-01-frontend-cpu-current.png)
 
-**Nội dung ảnh:** Query `rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m])`, namespace `techx-tf4`, data có từ ~13:50 đến hiện tại. Chart hiển thị CPU rate đang ổn định sau incident.
+**Nội dung ảnh:** Query `rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m])`, time range **Last 1 hour (15/07/2026)**, namespace `techx-tf4`. Chart hiển thị data liên tục từ ~13:50 đến ~14:20 ngày 15/07 — metric đang được scrape bình thường.
 
-**Kết luận:** Prometheus pipeline hoàn toàn functional ở thời điểm điều tra ngày 15/07. Data lịch sử ngày 14/07 không còn — xem Ảnh 5.
+**Kết luận:** Prometheus pipeline hoàn toàn functional. Việc không có data cho window 14/07 là do **Prometheus không lưu data của pod cũ sau khi pod bị replace**, không phải do hệ thống bị lỗi.
 
 ---
 
@@ -317,8 +317,8 @@ User thấy: không thanh toán được (P1)
 |---|---|---|---|---|---|
 | 1 | `grafana-03-alert-rules.png` | Screenshot | Grafana alert rules — 4 groups | CDO07 | 15/07/2026 |
 | 2 | `grafana-02-hpa-replicas.png` | Screenshot | flash-sale-kubernetes-pressure detail | CDO07 | 15/07/2026 |
-| 3 | `grafana-01-frontend-cpu.png` | Screenshot | Prometheus raw counter — frontend CPU | CDO07 | 15/07/2026 |
-| 4 | `grafana-01-frontend-cpu-current.png` | Screenshot | Prometheus rate — frontend CPU (Last 1h) | CDO07 | 15/07/2026 |
+| 3 | `grafana-01-frontend-cpu.png` | Screenshot | Prometheus raw — frontend CPU, time range 14:10–14:30 ngày 14/07 (no continuous data) | CDO07 | 14/07/2026 |
+| 4 | `grafana-01-frontend-cpu-current.png` | Screenshot | Prometheus rate — frontend CPU Last 1h ngày 15/07 (confirm pipeline hoạt động) | CDO07 | 15/07/2026 |
 | 5 | `grafana-04-k8s-scaling-dashboard.png` | Screenshot | Dashboard 14:00–15:00 ngày 14/07 — no data | CDO07 | 15/07/2026 |
 | 6 | `cloud_trail_detect.png` | Screenshot | CloudTrail events — window incident | CDO07 | 14/07/2026 |
 | 7 | `create_network_interface.png` | Screenshot | CloudTrail CreateNetworkInterface | CDO07 | 14/07/2026 |
