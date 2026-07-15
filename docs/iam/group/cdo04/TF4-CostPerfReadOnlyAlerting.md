@@ -73,6 +73,60 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-CostPer
                 "s3:ListStorageLens*"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "AllowSSMTunnelToPortalBastion",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:StartSession"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:511825856493:instance/i-072084d1cf0b2f1c9",
+                "arn:aws:ssm:*::document/AWS-StartPortForwardingSession",
+                "arn:aws:ssm:*::document/SSM-SessionManagerRunShell"
+            ]
+        },
+        {
+            "Sid": "AllowSessionDataChannelForOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:511825856493:session/huy-*"
+            ]
+        },
+        {
+            "Sid": "AllowManageOwnSSMSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:ResumeSession",
+                "ssm:TerminateSession"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/huy-*"
+            ]
+        },
+        {
+            "Sid": "AllowSSMAndEC2Describe",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeInstanceInformation",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowEKSPrescaleNodegroup",
+            "Effect": "Allow",
+            "Action": [
+                "eks:UpdateNodegroupConfig"
+            ],
+            "Resource": [
+                "arn:aws:eks:us-east-1:511825856493:nodegroup/techx-tf4-cluster/*"
+            ]
         }
     ]
 }
@@ -82,7 +136,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-CostPer
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này gồm 2 Statements lớn: `CostManagementAndAlerting` (Quản lý & Cảnh báo Chi phí) và `PerformanceOptimizationAndMonitoring` (Giám sát & Tối ưu Hiệu năng).
+Policy này gồm 3 Statements lớn: `CostManagementAndAlerting` (Quản lý & Cảnh báo Chi phí), `PerformanceOptimizationAndMonitoring` (Giám sát & Tối ưu Hiệu năng) và `AllowEKSPrescaleNodegroup` (Pre-scale EKS Nodegroup).
 
 ### Statement 1: `CostManagementAndAlerting` (Quản lý & Cảnh báo Chi phí)
 
@@ -107,6 +161,14 @@ Nhóm quyền này cho phép theo dõi tài nguyên nhằm phát hiện các tà
 * **AWS Performance Insights (PI)**: Lấy dữ liệu phân tích sâu hiệu suất database RDS (`pi:Get*`, `Describe*`).
 * **Savings Plans**: Kiểm tra các gói cam kết chiết khấu chi phí (`savingsplans:Describe*`).
 * **S3 Storage Lens**: Phân tích dung lượng, xu hướng sử dụng và cấu hình bảo mật của các S3 bucket trên diện rộng (`s3:GetStorageLens*`, `ListStorageLens*`).
+
+---
+
+### Statement 3: `AllowEKSPrescaleNodegroup` (Pre-scale EKS Nodegroup)
+
+Nhóm quyền này cho phép thay đổi capacity của node group phục vụ việc test tải và rollout workload:
+
+* **EKS Nodegroup Scaling**: Cho phép gọi `eks:UpdateNodegroupConfig` để thay đổi `min/desired/max` size của nodegroup thuộc EKS Cluster `techx-tf4-cluster`.
 
 ---
 [⬅️ Quay lại nhóm CDO04](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)

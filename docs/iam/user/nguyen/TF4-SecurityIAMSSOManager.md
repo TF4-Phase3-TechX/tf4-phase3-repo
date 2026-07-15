@@ -50,6 +50,20 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-Securit
                 "organizations:List*"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "SSMAndEC2Access",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:StartSession",
+                "ssm:ResumeSession",
+                "ssm:TerminateSession",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ssm:DescribeInstanceInformation",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
         }
     ]
 }
@@ -59,7 +73,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-Securit
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này gồm 4 Statements quản trị quyền hạn và định danh:
+Policy này gồm 5 Statements quản trị quyền hạn và định danh:
 
 ### 1. `IAMManagement` (Quản trị toàn diện IAM)
 * **Hành động**: `iam:*`
@@ -87,6 +101,14 @@ Policy này gồm 4 Statements quản trị quyền hạn và định danh:
 * **Tài nguyên**: `*`
 * **Mô tả**: Quyền chỉ đọc thông tin cấu trúc tổ chức doanh nghiệp AWS Organizations (danh sách các tài khoản AWS thành viên, cấu trúc Organizational Units - OUs).
 * **Mục đích**: Xác định sơ đồ cấu trúc tài khoản để thực hiện phân phối Permission Sets trong SSO một cách chính xác.
+
+### 5. `SSMAndEC2Access` (Truy cập SSM và EC2)
+* **Hành động**:
+  * Các hành động SSM: `StartSession`, `ResumeSession`, `TerminateSession`, `DescribeSessions`, `GetConnectionStatus`, `DescribeInstanceInformation`.
+  * Các hành động EC2: `DescribeInstances`.
+* **Tài nguyên**: `*`
+* **Mô tả**: Cho phép thiết lập phiên SSM Tunnel qua các EC2 instances trong hệ thống để quản trị và kiểm tra trạng thái hoạt động.
+* **Mục đích**: Hỗ trợ debug, troubleshoot, và truy cập hạ tầng EC2/Bastion thông qua AWS SSM Session Manager.
 
 ---
 [⬅️ Quay lại thông tin user nguyen](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)

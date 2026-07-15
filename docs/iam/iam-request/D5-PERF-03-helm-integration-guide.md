@@ -1,59 +1,23 @@
-{{- if eq .Release.Namespace "techx-observability" }}
-# === RBAC for AI Team (ai-readers) ===
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: ai-observability-reader
-  namespace: techx-observability
-rules:
-  - apiGroups: [""]
-    resources: ["pods/portforward"]
-    verbs: ["create"]
-  - apiGroups: [""]
-    resources: ["services/proxy"]
-    verbs: ["get"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ai-observability-reader-binding
-  namespace: techx-observability
-subjects:
-  - kind: Group
-    name: "ai-readers"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: Role
-  name: ai-observability-reader
-  apiGroup: rbac.authorization.k8s.io
+# Hướng dẫn Tích hợp Quyền RBAC CDO-04 vào Helm Chart (`techx-corp-chart`)
+
+Tài liệu này hướng dẫn cách đưa cấu hình Kubernetes RBAC của yêu cầu **D5-PERF-03** trực tiếp vào file template [team-rbac.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/templates/team-rbac.yaml) trong Helm Chart của hệ thống để quản trị đồng bộ qua GitOps.
 
 ---
-# === RBAC for Security/Reliability Team (security-reliability-auditors) ===
-# 1. ClusterRole and ClusterRoleBinding for Node Capacity and Metrics
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: security-reliability-capacity-readonly
-rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["metrics.k8s.io"]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
+
+## 1. Các bước thực hiện
+
+1. Mở file [techx-corp-chart/templates/team-rbac.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/templates/team-rbac.yaml).
+2. Tích hợp cấu hình YAML tương ứng vào các khối điều kiện `{{- if eq .Release.Namespace "..." }}` như hướng dẫn chi tiết dưới đây.
+3. Commit thay đổi lên Git branch và chạy pipeline deploy Helm Chart.
+
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: security-reliability-capacity-readonly-binding
-subjects:
-  - kind: Group
-    name: "security-reliability-auditors"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: ClusterRole
-  name: security-reliability-capacity-readonly
-  apiGroup: rbac.authorization.k8s.io
+
+## 2. Chi tiết cấu hình YAML cần thêm vào `team-rbac.yaml`
+
+### BƯỚC A: Thêm vào khối namespace `"techx-observability"`
+*Tìm dòng `{{- if eq .Release.Namespace "techx-observability" }}` ở đầu file, cuộn xuống trước từ khóa `{{- end }}` của khối này (khoảng dòng 57) và dán nội dung sau:*
+
+```yaml
 ---
 # === RBAC cho nhóm Cost & Performance CDO-04 (cost-perf-readonly-alerting-users) ===
 # 1. ClusterRole & ClusterRoleBinding để đọc Node allocatable và Metrics (kubectl top)
@@ -96,9 +60,6 @@ rules:
     resources: ["pods", "events", "services", "endpoints", "resourcequotas", "limitranges", "persistentvolumeclaims"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
-    resources: ["pods/portforward"]
-    verbs: ["create"]
-  - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]
   - apiGroups: ["apps"]
@@ -133,70 +94,14 @@ roleRef:
   kind: Role
   name: cdo04-controlled-change-role
   apiGroup: rbac.authorization.k8s.io
-{{- end }}
+```
 
-{{- if eq .Release.Namespace "techx-tf4" }}
-# 2. Namespace Role and RoleBinding for techx-tf4 runtime evidence
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: security-reliability-namespace-readonly
-  namespace: techx-tf4
-rules:
-  - apiGroups: [""]
-    resources: ["pods", "events"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["metrics.k8s.io"]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: security-reliability-namespace-readonly-binding
-  namespace: techx-tf4
-subjects:
-  - kind: Group
-    name: "security-reliability-auditors"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: Role
-  name: security-reliability-namespace-readonly
-  apiGroup: rbac.authorization.k8s.io
----
-# === RBAC for Audit Team (audit-readonly-analyzers) ===
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: audit-namespace-readonly
-  namespace: techx-tf4
-rules:
-  - apiGroups: [""]
-    resources: ["pods", "events", "services", "endpoints", "configmaps"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["pods/log"]
-    verbs: ["get"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: audit-namespace-readonly-binding
-  namespace: techx-tf4
-subjects:
-  - kind: Group
-    name: "audit-readonly-analyzers"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: Role
-  name: audit-namespace-readonly
-  apiGroup: rbac.authorization.k8s.io
+
+### BƯỚC B: Thêm vào khối namespace `"techx-tf4"`
+*Tìm dòng `{{- if eq .Release.Namespace "techx-tf4" }}` (khoảng dòng 59), cuộn xuống trước từ khóa `{{- end }}` cuối file (khoảng dòng 123) và dán nội dung sau:*
+
+```yaml
 ---
 # === RBAC cho nhóm Cost & Performance CDO-04 (cost-perf-readonly-alerting-users) ===
 # Role & RoleBinding phục vụ Helm Rollout/Rollback trong techx-tf4
@@ -244,8 +149,14 @@ roleRef:
   kind: Role
   name: cdo04-controlled-change-role
   apiGroup: rbac.authorization.k8s.io
-{{- end }}
+```
 
+---
+
+### BƯỚC C: Thêm khối mới cho `"techx-admission-test"`
+*Dán đoạn code điều kiện này vào cuối file (sau block của `techx-tf4`):*
+
+```yaml
 {{- if eq .Release.Namespace "techx-admission-test" }}
 # === RBAC cho nhóm Cost & Performance CDO-04 (cost-perf-readonly-alerting-users) ===
 # Role & RoleBinding để tạo/xóa test workloads trong techx-admission-test namespace
@@ -282,4 +193,4 @@ roleRef:
   name: cdo04-admission-test-role
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
-
+```
