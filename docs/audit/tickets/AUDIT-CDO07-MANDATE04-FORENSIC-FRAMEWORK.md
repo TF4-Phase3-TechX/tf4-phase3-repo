@@ -1,4 +1,4 @@
-# [CDO07] Audit Verification Framework — MANDATE-04 Forensic Audit Trail
+﻿# [CDO07] Audit Verification Framework — MANDATE-04 Forensic Audit Trail
 
 > **Mục đích:** Khung chuẩn cho Hoàng và Ty thực hiện forensic audit trail, chứng minh khả năng truy vết  
 > **ai-làm-gì-khi-nào** từ audit log trong **≤10 phút**.  
@@ -7,7 +7,7 @@
 | Thông tin | Giá trị |
 |---|---|
 | Mandate | DIRECTIVE #4 — Forensic Audit Trail |
-| Deadline | Thứ Ba 16/07/2026 |
+| Deadline | Thứ Năm 16/07/2026 |
 | Owner CDO07 | Hoàng + Ty |
 | Prerequisite | AUDIT-010 (audit permissions) + AUDIT-011 (CloudTrail terraform fix) deployed |
 | Pass tối thiểu | Drill ≥3 scenario pass (≤10 phút/scenario); Operator không xóa được log; ≥5 hành động traced về danh tính |
@@ -24,7 +24,8 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
   "utc_window": "YYYY-MM-DDTHH:MM:SSZ — YYYY-MM-DDTHH:MM:SSZ",
   "cloudtrail_name": "tf4-general-cloudtrail",
   "k8s_cluster": "techx-tf4-cluster",
-  "log_group": "/aws/eks/techx-tf4-cluster/cluster",
+  "log_group_k8s": "/aws/eks/techx-tf4-cluster/cluster",
+  "log_group_cloudtrail": "/aws/cloudtrail/tf4-general-cloudtrail",
   "git_sha": "<git rev-parse HEAD>",
   "verifier": "CDO07 — Hoàng + Ty",
   "note": "Evidence thu thập SAU khi AUDIT-010 và AUDIT-011 completed"
@@ -35,20 +36,32 @@ Nơi lưu trữ tập trung raw evidence — chốt metadata trước khi thu th
 
 | File | Nội dung | Người làm |
 |---|---|---|
-| `aud-17.1-cloudtrail-status.json` | CloudTrail status + log validation enabled | Hoàng |
+| `aud-17.1-cloudtrail-config.json` | CloudTrail config + log validation enabled | Hoàng |
+| `aud-17.1-cloudtrail-status.json` | CloudTrail status (IsLogging, IsMultiRegionTrail) | Hoàng |
+| `aud-17.1-aws-config-status.json` | AWS Config recorder và delivery channel status | Hoàng |
 | `aud-17.1-eks-audit-config.json` | EKS Control Plane logging enabled | Hoàng |
 | `aud-17.1-query-test-result.md` | Test query thành công | Hoàng |
 | `aud-17.2-drill-scenarios.md` | ≥5 forensic scenarios designed | Ty |
 | `aud-17.2-drill-log.md` | ≥3 drill results với stopwatch | Ty |
 | `aud-17.3-separation-test.md` | Operator thử xóa log → AccessDenied | Hoàng |
-| `aud-17.3-s3-object-lock-test.md` | Test S3 Object Lock COMPLIANCE | Hoàng |
+| `aud-17.3-s3-object-lock-test.md` | Test S3 Object Lock COMPLIANCE config | Hoàng |
+| `aud-17.3-validate-logs-test.md` | CloudTrail log validation digest test | Hoàng |
 
 **Lệnh lấy evidence (chạy sau khi AUDIT-010 và AUDIT-011 completed):**
 
 ```bash
-# [Hoàng] Check CloudTrail
+# [Hoàng] Check CloudTrail configuration và status
 aws cloudtrail describe-trails --profile TF4-AuditReadOnlyAndAnalyze \
+  > docs/evidence/aud-17.1-cloudtrail-config.json
+
+aws cloudtrail get-trail-status --name tf4-general-cloudtrail \
+  --profile TF4-AuditReadOnlyAndAnalyze \
   > docs/evidence/aud-17.1-cloudtrail-status.json
+
+# [Hoàng] Check AWS Config status
+aws configservice describe-configuration-recorder-status \
+  --profile TF4-AuditReadOnlyAndAnalyze \
+  > docs/evidence/aud-17.1-aws-config-status.json
 
 # [Hoàng] Check EKS audit logging  
 aws eks describe-cluster --name techx-tf4-cluster \
@@ -63,10 +76,20 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 
 **Kết quả mong đợi:**
 ```json
-// CloudTrail phải có
+// CloudTrail config (describe-trails)
+{
+  "trailList": [
+    {
+      "Name": "tf4-general-cloudtrail",
+      "LogFileValidationEnabled": true
+    }
+  ]
+}
+
+// CloudTrail status (get-trail-status)  
 {
   "IsLogging": true,
-  "LogFileValidationEnabled": true
+  "IsMultiRegionTrail": true
 }
 
 // EKS audit log phải enabled
@@ -75,7 +98,8 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 }
 ```
 
-> ⚠️ Nếu `LogFileValidationEnabled = false` → STOP, AUDIT-011 chưa xong.
+> ⚠️ Nếu `LogFileValidationEnabled = false` hoặc `IsLogging = false` → STOP, AUDIT-011 chưa xong.
+
 ---
 
 ## 2. Phần Truy Vết (Audit Trail Coverage)
@@ -85,7 +109,18 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 **Verify CloudTrail logging:**
 
 ```bash
-# Test CloudTrail có ghi event không?
+# Test 1: CloudTrail configuration
+aws cloudtrail describe-trails --profile TF4-AuditReadOnlyAndAnalyze \
+  | jq '.trailList[] | select(.Name=="tf4-general-cloudtrail") | .LogFileValidationEnabled'
+# Kết quả phải là true
+
+# Test 2: CloudTrail status  
+aws cloudtrail get-trail-status --name tf4-general-cloudtrail \
+  --profile TF4-AuditReadOnlyAndAnalyze \
+  | jq '.IsLogging'
+# Kết quả phải là true
+
+# Test 3: CloudTrail có ghi event không?
 aws cloudtrail lookup-events \
   --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRole \
   --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
@@ -103,16 +138,21 @@ aws cloudtrail lookup-events \
 **Check AWS Config enabled:**
 
 ```bash
-# Verify AWS Config recording
-aws configservice describe-configuration-recorders \
-  --profile TF4-AuditReadOnlyAndAnalyze | jq '.ConfigurationRecorders[0].recording'
+# Verify AWS Config recorder status
+aws configservice describe-configuration-recorder-status \
+  --profile TF4-AuditReadOnlyAndAnalyze | jq '.ConfigurationRecordersStatus[0].recording'
 # Kết quả phải là true
+
+# Verify delivery channel status
+aws configservice describe-delivery-channel-status \
+  --profile TF4-AuditReadOnlyAndAnalyze | jq '.DeliveryChannelsStatus[0].configDeliveryInfo.lastStatus'
+# Expected: "Success"
 ```
 
 **Điều kiện PASS:**
-- [ ] AWS Config recorder enabled
+- [ ] AWS Config recorder status `recording = true`
+- [ ] Delivery channel status `lastStatus = "Success"`
 - [ ] Config có ghi configuration changes
-- [ ] Delivery channel hoạt động
 
 ### 2.3. EKS Control Plane Logging - K8s audit (Ty)
 
@@ -132,6 +172,7 @@ aws logs filter-log-events \
 - [ ] EKS Control Plane `audit` log enabled
 - [ ] CloudWatch Log Group có stream mới trong 24h
 - [ ] Query thành công, có ≥1 audit event
+
 ---
 
 ## 3. Bảo Vệ Chống Xóa Sửa Log (Tamper-Evident Protection)
@@ -151,7 +192,13 @@ aws s3api get-object-lock-configuration \
 **Test operator không xóa được log:**
 
 ```bash
-# Test với operator role
+# Test 1: Check S3 Object Lock configuration
+aws s3api get-object-lock-configuration \
+  --bucket tf4-cloudtrail-logs-bucket-511825856493 \
+  --profile TF4-AuditReadOnlyAndAnalyze
+# Expected: "Mode": "COMPLIANCE", "Days": 90
+
+# Test 2: Operator thử xóa log → AccessDenied
 aws s3 rm s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/ \
   --recursive --profile TF4-Developer 2>&1 | grep "AccessDenied"
 # Expected: AccessDenied
@@ -159,20 +206,25 @@ aws s3 rm s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/Clou
 
 **Điều kiện PASS:**
 - [ ] S3 Object Lock mode = "COMPLIANCE" (không phải GOVERNANCE)
+- [ ] Object Lock retention ≥90 ngày
 - [ ] Operator role AccessDenied khi xóa log
-- [ ] Retention period ≥90 ngày
 
 ### 3.2. CloudTrail Log File Validation (Hoàng)
 
 **Verify log integrity:**
 
 ```bash
-# CloudTrail tạo digest file mỗi giờ với hash
+# Test 1: CloudTrail tạo digest file mỗi giờ với hash
 aws cloudtrail validate-logs \
   --trail-arn arn:aws:cloudtrail:us-east-1:511825856493:trail/tf4-general-cloudtrail \
   --start-time $(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ) \
   --profile TF4-AuditReadOnlyAndAnalyze
 # Expected: All log files validated successfully
+
+# Test 2: Check digest files exist in S3
+aws s3 ls s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail-Digest/ \
+  --profile TF4-AuditReadOnlyAndAnalyze | head -5
+# Expected: List of digest files with .json.gz extension
 ```
 
 **Điều kiện PASS:**
@@ -210,6 +262,7 @@ aws cloudtrail validate-logs \
 - Event: SSM StartSession (bastion access)
 - Data source: CloudTrail
 - Query: `StartSession`
+
 ### 4.2. Drill Session Template (≤10 phút/scenario)
 
 Mentor cung cấp: **Event type** + **Time window**  
@@ -274,6 +327,7 @@ aws logs filter-log-events \
   --start-time $(date -u -d '24 hours ago' +%s)000 \
   --filter-pattern '"delete" "pods"'
 ```
+
 ---
 
 ## 5. Identity Mapping (≥5 hành động → danh tính cụ thể)
@@ -314,13 +368,19 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 | EKS Control Plane audit log enabled | ☐ | CloudWatch Log Group active |
 | **2. Bảo Vệ Chống Xóa Sửa** | | |
 | S3 Object Lock COMPLIANCE mode | ☐ | Mode="COMPLIANCE", ≥90 days |
+| S3 Object Lock config verified | ☐ | get-object-lock-configuration pass |
 | Operator AccessDenied test pass | ☐ | Cannot delete logs |
-| CloudTrail log file validation pass | ☐ | Digest files validated |
+| CloudTrail log file validation pass | ☐ | validate-logs command success |
+| CloudTrail digest files exist | ☐ | S3 digest folder has .json.gz files |
 | **3. Forensic Drill Tests** | | |
 | ≥5 scenarios designed | ☐ | Infrastructure, K8s, unauthorized, secrets, on-call |
 | ≥3 scenarios drill pass (≤10 phút) | ☐ | Stopwatch timed |
 | Identity mapping ≥5 actions | ☐ | ARN → real person |
 | Query patterns documented | ☐ | CloudTrail + K8s patterns |
+| **4. Chi phí & Non-Functional** | | |
+| Chi phí audit logging ≤ $300/tuần | ☐ | Baseline ~$3/week, peak ~$19/week |
+| flagd/OpenFeature không bị ảnh hưởng | ☐ | Test checkout sau enable audit log |
+| Timeline evidence thật (không cache) | ☐ | Timestamp fresh, stopwatch thật |
 
 **Kết luận cuối:** ☐ PASS / ☐ FAIL / ☐ BLOCKED (lý do: ___)
 
@@ -328,23 +388,19 @@ aws iam list-users --profile TF4-AuditReadOnlyAndAnalyze \
 
 ---
 
-## 7. Ghi chú về blocker hiện tại
+## 7. Checklist trước khi submit PR
 
-> **Trạng thái:** ⚠️ WAITING FOR DEPENDENCIES  
-> 
-> **Prerequisite dependencies:**
-> - ⚠️ `AUDIT-010` (forensic audit permissions) — CDO08 chưa grant
-> - ⚠️ `AUDIT-011` (CloudTrail terraform fix) — CDO04 chưa apply
->
-> **Action items trước khi bắt đầu:**
-> - [ ] Hoàng: Verify `TF4-AuditReadOnlyAndAnalyze` profile configured
-> - [ ] Hoàng: Test AWS CLI commands với profile này
-> - [ ] Ty: Chuẩn bị test scenarios dựa trên 5 patterns trên
-> - [ ] Both: Daily standup track progress
-
-**Manual verification workaround:**
-- Nếu AWS CLI profile chưa ready → dùng AWS Console để verify
-- Nếu CloudTrail chưa fix → test với current config, note limitations
+- [ ] Tất cả file evidence có timestamp thật (không placeholder)
+- [ ] Drill log có ≥3 scenarios pass với stopwatch
+- [ ] IAM separation test log có ≥3 AccessDenied results
+- [ ] S3 Object Lock COMPLIANCE verified + CloudTrail validate-logs pass
+- [ ] Identity mapping table có ≥5 hành động với real person
+- [ ] Query patterns documented (tái sử dụng được)
+- [ ] Runbook cho mentor ready: `mentor-forensic-inspection.md`
+- [ ] Không có credential, token, private key trong evidence files
+- [ ] metadata.json updated với git SHA thật
+- [ ] Tất cả 4 subtask AUD-17.1 → AUD-17.4 Done
+- [ ] Hoàng + Ty sign-off
 
 ---
 
