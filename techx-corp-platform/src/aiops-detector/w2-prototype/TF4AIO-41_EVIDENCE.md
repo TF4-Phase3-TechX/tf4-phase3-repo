@@ -14,4 +14,4 @@ Phát hiện các sự cố liên quan đến LLM (timeout, error, rate limit - 
 - **Provider Outage:** Nếu API provider sập hoàn toàn (connection reset), hệ thống cần phân biệt giữa network internal và network external.
 
 ## 4. Bằng chứng (Evidence Links)
-- Mã nguồn detector: `capstone/tf4-aiops-/llm_timeout_detector.py`
+- Mã nguồn detector: `techx-corp-platform/src/aiops-detector/w2-prototype/llm_timeout_detector.py`
