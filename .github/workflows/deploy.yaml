@@ -22,12 +22,6 @@ on:
         required: false
         type: boolean
         default: true
-  push:
-    branches: [main]
-    paths:
-      - 'techx-corp-chart/**'
-      - 'deploy/**'
-      - '!deploy/build-push-images.sh'
 
 permissions:
   contents: read
@@ -70,6 +64,50 @@ jobs:
           aws eks update-kubeconfig \
             --region "$AWS_REGION" \
             --name "$EKS_CLUSTER_NAME"
+
+      - name: Verify Mandate 06 production prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_association_id="a-iuw7np6l5niq1k2zt"
+          expected_role_arn="arn:aws:iam::511825856493:role/tf4-product-reviews-bedrock"
+
+          for attempt in {1..30}; do
+            addon_status="$(aws eks describe-addon \
+              --cluster-name "$EKS_CLUSTER_NAME" \
+              --addon-name eks-pod-identity-agent \
+              --region "$AWS_REGION" \
+              --query 'addon.status' \
+              --output text 2>/dev/null || true)"
+
+            if [[ "$addon_status" == "ACTIVE" ]]; then
+              break
+            fi
+
+            if [[ "$attempt" == "30" ]]; then
+              echo "::error::eks-pod-identity-agent is not ACTIVE after 10 minutes (status=${addon_status:-missing})."
+              exit 1
+            fi
+
+            echo "Waiting for eks-pod-identity-agent (attempt ${attempt}/30, status=${addon_status:-missing})..."
+            sleep 20
+          done
+
+          association="$(aws eks describe-pod-identity-association \
+            --cluster-name "$EKS_CLUSTER_NAME" \
+            --association-id "$expected_association_id" \
+            --region "$AWS_REGION" \
+            --query 'association.[namespace,serviceAccount,roleArn]' \
+            --output text)"
+
+          expected_association=$'techx-tf4\tproduct-reviews-bedrock\t'"$expected_role_arn"
+          if [[ "$association" != "$expected_association" ]]; then
+            echo "::error::Mandate 06 Pod Identity association does not match the reviewed namespace, ServiceAccount and role."
+            exit 1
+          fi
+
+          kubectl -n "$APP_NAMESPACE" get secret product-reviews-bedrock-canary >/dev/null
 
       - name: Add Helm repos
         run: |
@@ -217,6 +255,7 @@ jobs:
             --set default.image.tag="$IMAGE_TAG" \
             -f deploy/values-app-stamp.yaml \
             -f deploy/values-flagd-sync.yaml \
+            -f deploy/values-aio-llm.yaml \
             --wait \
             --timeout 10m
 
@@ -226,7 +265,7 @@ jobs:
           kubectl -n "$OBS_NAMESPACE" get pods
           kubectl -n "$APP_NAMESPACE" get pods
 
-          for deploy in frontend frontend-proxy product-catalog cart checkout payment flagd kafka; do
+          for deploy in frontend frontend-proxy product-catalog product-reviews cart checkout payment flagd kafka; do
             kubectl -n "$APP_NAMESPACE" rollout status "deploy/${deploy}" --timeout=180s
           done
 

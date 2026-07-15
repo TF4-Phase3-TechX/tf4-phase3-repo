@@ -103,7 +103,7 @@ Conservative validation can increase insufficient responses. Structured-output s
 | Evidence | Link/status |
 |---|---|
 | Three-model sanitized bake-off | Complete: [`eval/bakeoff-report.json`](eval/bakeoff-report.json), Nova winner |
-| Guardrail version/export | Evaluation Guardrail `e2svpiawj1v5`, version 3, `READY`; templates committed |
+| Guardrail version/export | Evaluation `e2svpiawj1v5:3`; production `wckqh9dms6qa:1`, `READY`; templates committed |
 | Canary/SLO/telemetry | Pending |
 | Rollback drill | Pending |
 | Mentor test record | Pending |

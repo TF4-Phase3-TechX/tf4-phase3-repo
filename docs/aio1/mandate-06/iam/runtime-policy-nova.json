@@ -2,35 +2,35 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "InvokeEvaluatedNovaProfileWithPinnedGuardrail",
+      "Sid": "InvokeProductionNovaProfileWithPinnedGuardrail",
       "Effect": "Allow",
       "Action": "bedrock:InvokeModel",
       "Resource": [
-        "arn:aws:bedrock:us-east-1:589077667575:inference-profile/us.amazon.nova-2-lite-v1:0",
+        "arn:aws:bedrock:us-east-1:511825856493:inference-profile/us.amazon.nova-2-lite-v1:0",
         "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-2-lite-v1:0",
         "arn:aws:bedrock:us-east-2::foundation-model/amazon.nova-2-lite-v1:0",
         "arn:aws:bedrock:us-west-2::foundation-model/amazon.nova-2-lite-v1:0"
       ],
       "Condition": {
         "StringEquals": {
-          "bedrock:GuardrailIdentifier": "arn:aws:bedrock:us-east-1:589077667575:guardrail/e2svpiawj1v5:3"
+          "bedrock:GuardrailIdentifier": "arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa:1"
         }
       }
     },
     {
-      "Sid": "UseOnlyEvaluatedGuardrail",
+      "Sid": "UseOnlyProductionGuardrail",
       "Effect": "Allow",
       "Action": "bedrock:ApplyGuardrail",
-      "Resource": "arn:aws:bedrock:us-east-1:589077667575:guardrail/e2svpiawj1v5"
+      "Resource": "arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa"
     },
     {
-      "Sid": "DenyInferenceWithoutEvaluatedGuardrail",
+      "Sid": "DenyInferenceWithoutProductionGuardrail",
       "Effect": "Deny",
       "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
       "Resource": "*",
       "Condition": {
         "StringNotEquals": {
-          "bedrock:GuardrailIdentifier": "arn:aws:bedrock:us-east-1:589077667575:guardrail/e2svpiawj1v5:3"
+          "bedrock:GuardrailIdentifier": "arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa:1"
         }
       }
     }

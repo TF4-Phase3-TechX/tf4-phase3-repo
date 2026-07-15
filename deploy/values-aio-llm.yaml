@@ -1,4 +1,4 @@
-# Mandate 06 Bedrock canary values pinned to the evaluated model/Guardrail.
+# Mandate 06 Bedrock values pinned to the selected model and production Guardrail.
 # CDO must create the EKS Pod Identity association before rollout.
 components:
   product-reviews:
@@ -9,9 +9,9 @@ components:
       - name: BEDROCK_MODEL_ID
         value: us.amazon.nova-2-lite-v1:0
       - name: BEDROCK_GUARDRAIL_ID
-        value: e2svpiawj1v5
+        value: wckqh9dms6qa
       - name: BEDROCK_GUARDRAIL_VERSION
-        value: "3"
+        value: "1"
       - name: BEDROCK_OUTPUT_MODE
         value: tool
       - name: BEDROCK_DEADLINE_SECONDS

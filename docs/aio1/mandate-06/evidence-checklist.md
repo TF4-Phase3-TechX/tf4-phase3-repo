@@ -4,13 +4,13 @@ Only GitHub/PR URLs and sanitized committed artifacts belong in Jira. Do not pas
 
 ## CDO prerequisites
 
-- [ ] Install/confirm `eks-pod-identity-agent`.
-- [ ] Create role `tf4-product-reviews-bedrock` from the least-privilege template after a winner exists.
-- [ ] Associate namespace `techx-tf4`, ServiceAccount `product-reviews-bedrock`, and the role.
-- [x] Create evaluation Guardrail and pin READY version 3; sanitized metadata committed. CDO must confirm promotion/use for canary.
-- [ ] Create the non-production leak-detection marker Secret `product-reviews-bedrock-canary` without placing its value in Git/Jira/logs.
+- [ ] Install/confirm `eks-pod-identity-agent`; CDO08 reported it absent and the Terraform add-on change is pending.
+- [x] Create role `tf4-product-reviews-bedrock`; CDO08 reported IAM Access Analyzer validation `PASS`.
+- [x] Associate namespace `techx-tf4`, ServiceAccount `product-reviews-bedrock`, and the role (`a-iuw7np6l5niq1k2zt`).
+- [x] Create production Guardrail `wckqh9dms6qa`, pin numeric version `1`, and confirm `READY`.
+- [x] Create the leak-detection marker Secret `product-reviews-bedrock-canary` without placing its value in Git/Jira/logs.
 - [x] Evaluation identity accessed Haiku, Qwen, Nova US profiles/destinations and Guardrail v3. Preferred SSO execution remains a process improvement.
-- [x] Canary overlay pins the evaluated Guardrail ID/version; the reusable chart default intentionally retains `SET_BY_CDO` and must not be deployed alone.
+- [x] Production overlay pins Guardrail `wckqh9dms6qa:1`; the reusable chart default intentionally retains `SET_BY_CDO` and must not be deployed alone.
 - [x] Canary price variables and runtime policy are narrowed to Nova; re-snapshot pricing before CDO rollout.
 
 ## Bake-off record (Vũ, Hậu, Hòa)

@@ -1,6 +1,6 @@
 # CDO handoff — Bedrock production readiness and controlled deployment
 
-Status: **waiting for CDO production prerequisites; do not merge or deploy the current configuration unchanged**.
+Status: **production resources provisioned; Pod Identity Agent installation, final review and controlled deployment remain pending**.
 
 This runbook is the execution contract between AIO1 and CDO for Mandate 06. It is intentionally explicit enough for a CDO engineer or an AI assistant to follow without relying on chat history. Jira tracking: [SCRUM-94](https://tf4-phase3.atlassian.net/browse/SCRUM-94). Implementation review: [PR #155](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/155).
 
@@ -20,12 +20,17 @@ AIO1 has completed the application implementation, local tests and a real-model 
 | Runtime role | `tf4-product-reviews-bedrock` |
 | Selected model/profile | `us.amazon.nova-2-lite-v1:0` |
 | Evaluation Guardrail | `e2svpiawj1v5`, version `3`, account `589077667575` |
+| Production Guardrail | `wckqh9dms6qa`, version `1`, `READY` |
+| Pod Identity association | `a-iuw7np6l5niq1k2zt` |
+| Previous Helm revision | `45` |
+| Previous product-reviews image digest | `sha256:3f14cd7b9cf1395b18bb65e8459fbcae1e58527279a5fcb09674aecca3b98136` |
+| Proposed deployment window | `2026-07-15T07:00:00Z`–`2026-07-15T09:00:00Z` |
 | Application deadline | 4.5 seconds inside a 5-second request budget |
 | Runtime fallback | Static unavailable response; never a silent mock/model switch |
 
 The bake-off ran 30 versioned cases three times against three models, producing 270 sanitized records. Nova 2 Lite was the only model to pass all hard gates. The canonical evidence is the [scorecard](model-selection-scorecard.md) and [machine-readable report](eval/bakeoff-report.json).
 
-The evaluation Guardrail is evidence only. Production must use a Guardrail and runtime role in account `511825856493`. The AIO credential tested in that account is `AIReadOnlyOrLimitedInvoke` and was denied `bedrock:ListGuardrails`; CDO must provision the resources or grant a separately reviewed temporary provisioning identity.
+The evaluation Guardrail is evidence only. CDO08 provisioned the production Guardrail, runtime role, Pod Identity association and canary Secret in account `511825856493`. IAM Access Analyzer validation was reported as `PASS`. The Pod Identity Agent is not installed yet; the application must not deploy until the Terraform add-on change has completed and the add-on reports `ACTIVE`.
 
 ## 2. Meaning of “controlled deployment”
 
@@ -422,7 +427,7 @@ Only after the completion gate and named approvals may AIO change ADR-006 from `
 
 ## 20. Machine-readable handoff contract
 
-An AI assistant may use this block as a task map. Values marked `REQUIRED_FROM_CDO` must not be guessed.
+An AI assistant may use this block as a task map. Production identifiers below were returned by CDO08; the canary marker value remains secret and must not be added here.
 
 ```yaml
 mandate: 06
@@ -435,10 +440,21 @@ production:
   workload: product-reviews
   service_account: product-reviews-bedrock
   model_profile: us.amazon.nova-2-lite-v1:0
-  guardrail_id: REQUIRED_FROM_CDO
-  guardrail_version: REQUIRED_FROM_CDO_NUMERIC
-  runtime_role_arn: REQUIRED_FROM_CDO
-  pod_identity_association_id: REQUIRED_FROM_CDO
+  guardrail_id: wckqh9dms6qa
+  guardrail_version: "1"
+  guardrail_status: READY
+  guardrail_arn: arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa
+  runtime_role_arn: arn:aws:iam::511825856493:role/tf4-product-reviews-bedrock
+  iam_access_analyzer_validation: PASS
+  pod_identity_association_id: a-iuw7np6l5niq1k2zt
+  pod_identity_association_arn: arn:aws:eks:us-east-1:511825856493:podidentityassociation/techx-tf4-cluster/a-iuw7np6l5niq1k2zt
+  pod_identity_agent_status: PENDING_TERRAFORM_ADDON
+  previous_helm_revision: "45"
+  previous_product_reviews_image_digest: sha256:3f14cd7b9cf1395b18bb65e8459fbcae1e58527279a5fcb09674aecca3b98136
+  deployment_window_utc: 2026-07-15T07:00:00Z/2026-07-15T09:00:00Z
+  deployment_owner: CDO08 Team
+  aio_witness: AIO01 Team
+  rollback_owner: CDO08 Team
   canary_secret:
     name: product-reviews-bedrock-canary
     key: marker
@@ -449,6 +465,7 @@ evaluation:
   guardrail_version: "3"
   production_reuse_allowed: false
 no_merge_until:
+  - pod_identity_agent_active
   - production_guardrail_ready
   - runtime_role_validated
   - pod_identity_associated
