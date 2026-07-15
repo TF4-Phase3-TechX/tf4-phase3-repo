@@ -178,6 +178,110 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
             "Resource": "*"
         },
         {
+            "Sid": "ListAWSConfigEvidenceObjects",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:ListBucketVersions"
+            ],
+            "Resource": [
+                "arn:aws:s3:::tf4-aws-config-staging-511825856493-us-east-1",
+                "arn:aws:s3:::tf4-aws-config-worm-archive-511825856493-us-east-1"
+            ],
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "aws-config",
+                        "aws-config/",
+                        "aws-config/*"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "ReadAWSConfigBucketControls",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketPolicy",
+                "s3:GetBucketPolicyStatus",
+                "s3:GetBucketOwnershipControls",
+                "s3:GetLifecycleConfiguration"
+            ],
+            "Resource": [
+                "arn:aws:s3:::tf4-aws-config-staging-511825856493-us-east-1",
+                "arn:aws:s3:::tf4-aws-config-worm-archive-511825856493-us-east-1"
+            ]
+        },
+        {
+            "Sid": "ReadAWSConfigReplication",
+            "Effect": "Allow",
+            "Action": "s3:GetReplicationConfiguration",
+            "Resource": "arn:aws:s3:::tf4-aws-config-staging-511825856493-us-east-1"
+        },
+        {
+            "Sid": "ReadAWSConfigEvidenceObjectMetadata",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:GetObjectAttributes",
+                "s3:GetObjectVersionAttributes"
+            ],
+            "Resource": [
+                "arn:aws:s3:::tf4-aws-config-staging-511825856493-us-east-1/aws-config/*",
+                "arn:aws:s3:::tf4-aws-config-worm-archive-511825856493-us-east-1/aws-config/*"
+            ]
+        },
+        {
+            "Sid": "ReadAWSConfigArchiveRetention",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObjectRetention",
+                "s3:GetObjectLegalHold"
+            ],
+            "Resource": "arn:aws:s3:::tf4-aws-config-worm-archive-511825856493-us-east-1/aws-config/*"
+        },
+        {
+            "Sid": "ReadCloudTrailObjectRetention",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObjectRetention",
+                "s3:GetObjectLegalHold"
+            ],
+            "Resource": "arn:aws:s3:::tf4-cloudtrail-logs-bucket-511825856493/*"
+        },
+        {
+            "Sid": "ReadCoreInfrastructureForCorrelation",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeRouteTables",
+                "ec2:DescribeNetworkAcls",
+                "ec2:DescribeNatGateways",
+                "ec2:DescribeInternetGateways",
+                "eks:ListClusters"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "us-east-1"
+                }
+            }
+        },
+        {
+            "Sid": "ReadIdentityCenterForAccountability",
+            "Effect": "Allow",
+            "Action": [
+                "sso:ListInstances",
+                "identitystore:DescribeUser"
+            ],
+            "Resource": "*"
+        },
+        {
             "Sid": "AllowPortForwardingToApprovedBastion",
             "Effect": "Allow",
             "Action": [
@@ -219,7 +323,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AuditRe
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này được cấu thành từ 13 Statements phục vụ mục đích kiểm toán toàn diện hệ thống:
+Policy này được cấu thành từ 21 Statements phục vụ mục đích kiểm toán toàn diện hệ thống:
 
 ### 1. `AuditTrailsAndLogsReadOnly` (Nhật ký Audit & CloudTrail)
 * **Hành động**: Các hàm liên quan đến CloudTrail và CloudWatch Logs.
@@ -275,12 +379,44 @@ Policy này được cấu thành từ 13 Statements phục vụ mục đích ki
 * **Mô tả**: Đọc cấu hình các alarm để kiểm chứng độ phủ cảnh báo. Cho phép mô tả và tra cứu User trong AWS Identity Store.
 * **Mục đích**: Map danh tính người dùng chịu trách nhiệm thực thi các hoạt động bảo mật.
 
-### 12. `AllowPortForwardingToApprovedBastion` (Mở SSM Tunnel tới Bastion)
+### 12. `ListAWSConfigEvidenceObjects` (Liệt kê Object bằng chứng AWS Config)
+* **Hành động**: `s3:ListBucket`, `s3:ListBucketVersions`
+* **Mô tả**: Liệt kê các file/object cấu hình AWS Config trên staging và worm-archive buckets.
+
+### 13. `ReadAWSConfigBucketControls` (Đọc cấu hình Bucket AWS Config)
+* **Hành động**: `s3:GetBucketPolicy`, `s3:GetBucketPolicyStatus`, `s3:GetBucketOwnershipControls`, `s3:GetLifecycleConfiguration`
+* **Mô tả**: Đọc cấu hình bảo mật và vòng đời (lifecycle) của các bucket AWS Config.
+
+### 14. `ReadAWSConfigReplication` (Đọc cấu hình Replication của AWS Config Staging)
+* **Hành động**: `s3:GetReplicationConfiguration`
+* **Mô tả**: Xác minh cấu hình đồng bộ dữ liệu (replication) từ staging sang WORM archive.
+
+### 15. `ReadAWSConfigEvidenceObjectMetadata` (Đọc metadata Object của AWS Config)
+* **Hành động**: `s3:GetObject`, `s3:GetObjectVersion`, `s3:GetObjectAttributes`, `s3:GetObjectVersionAttributes`
+* **Mô tả**: Đọc metadata chi tiết của cấu hình AWS Config để xác minh ReplicationStatus.
+
+### 16. `ReadAWSConfigArchiveRetention` (Đọc cấu hình Retention của AWS Config Archive)
+* **Hành động**: `s3:GetObjectRetention`, `s3:GetObjectLegalHold`
+* **Mô tả**: Đọc cấu hình lưu trữ immutable (Object Lock Compliance mode) của AWS Config Archive.
+
+### 17. `ReadCloudTrailObjectRetention` (Đọc cấu hình Retention của CloudTrail logs)
+* **Hành động**: `s3:GetObjectRetention`, `s3:GetObjectLegalHold`
+* **Mô tả**: Đọc thông tin Object Lock và thời gian lưu trữ tối thiểu của log CloudTrail.
+
+### 18. `ReadCoreInfrastructureForCorrelation` (Đọc hạ tầng lõi phục vụ Correlation)
+* **Hành động**: Describe Security Groups, Subnets, VPCs, Volumes, Network Interfaces, Route Tables, NACLs, NAT Gateways, Internet Gateways, và List EKS Clusters.
+* **Mô tả**: Xem thông tin hạ tầng để đối chiếu mạng, bảo mật và cluster EKS tại vùng `us-east-1`.
+
+### 19. `ReadIdentityCenterForAccountability` (Đọc thông tin định danh & SSO)
+* **Hành động**: `sso:ListInstances`, `identitystore:DescribeUser`
+* **Mô tả**: Tra cứu các instance SSO và thông tin chi tiết người dùng để đối chiếu danh tính.
+
+### 20. `AllowPortForwardingToApprovedBastion` (Mở SSM Tunnel tới Bastion)
 * **Hành động**: `ssm:StartSession`, `ssm:GetDocument`, `ssm:DescribeDocument`
 * **Tài nguyên**: Bastion `i-072084d1cf0b2f1c9` và document `AWS-StartPortForwardingSession`.
 * **Mô tả**: Cho phép thiết lập tunnel port forwarding về localhost cá nhân để truy cập các portal private (Grafana, Jaeger, OpenSearch).
 
-### 13. `AllowSessionDataChannelForOwnSessions` & `AllowManageOwnSessions` (Quản lý SSM Session cá nhân)
+### 21. `AllowSessionDataChannelForOwnSessions` & `AllowManageOwnSessions` (Quản lý SSM Session cá nhân)
 * **Mô tả**: Cho phép thiết lập kênh truyền dữ liệu bảo mật và quản lý (Resume/Terminate) phiên làm việc của cá nhân.
 
 ---
