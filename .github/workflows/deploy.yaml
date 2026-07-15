@@ -1,33 +1,17 @@
 name: deploy
 
 on:
-  workflow_call:
-    inputs:
-      image_tag:
-        description: Image tag to deploy. Required when called by build workflow.
-        required: true
-        type: string
-      deploy_observability:
-        required: false
-        type: boolean
-        default: true
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Optional image tag. Empty = keep current deployed image tag.
+        description: Emergency-only image tag. Empty = keep current deployed image tag.
         required: false
         type: string
       deploy_observability:
-        description: Deploy observability release first.
+        description: "Emergency-only: deploy observability release first."
         required: false
         type: boolean
         default: true
-  push:
-    branches: [main]
-    paths:
-      - 'techx-corp-chart/**'
-      - 'deploy/**'
-      - '!deploy/build-push-images.sh'
 
 permissions:
   contents: read
@@ -47,7 +31,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Helm deploy and smoke
+    name: Emergency Helm deploy and smoke
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -78,6 +62,7 @@ jobs:
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana-community https://grafana-community.github.io/helm-charts
           helm repo add opensearch https://opensearch-project.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
           helm repo update
           helm dependency build ./techx-corp-chart
 
@@ -88,16 +73,53 @@ jobs:
           set -euo pipefail
           INPUT_TAG="${{ inputs.image_tag }}"
 
+          image_tag_exists() {
+            local candidate="$1"
+            local service
+            for service in checkout kafka frontend-proxy shipping; do
+              aws ecr describe-images \
+                --repository-name "$ECR_REPOSITORY" \
+                --image-ids "imageTag=${candidate}-${service}" \
+                >/dev/null 2>&1 || return 1
+            done
+          }
+
+          CHART_DEFAULT_TAG="$(awk '
+            $1 == "image:" && in_default { in_image=1; next }
+            $1 == "components:" { in_default=0; in_image=0 }
+            $1 == "tag:" && in_default && in_image {
+              gsub(/"/, "", $2)
+              print $2
+              exit
+            }
+            $1 == "default:" { in_default=1 }
+          ' techx-corp-chart/values.yaml)"
+
           if [[ -n "$INPUT_TAG" ]]; then
             IMAGE_TAG="$INPUT_TAG"
           else
             IMAGE_TAG="$(helm -n "$APP_NAMESPACE" get values techx-corp -o json 2>/dev/null | jq -r '.default.image.tag // empty')"
             if [[ -z "$IMAGE_TAG" ]]; then
-              echo "No image_tag input and no current Helm release image tag found." >&2
-              echo "Run build-and-push.yaml first, or dispatch deploy.yaml with image_tag." >&2
-              exit 1
+              IMAGE_TAG="$CHART_DEFAULT_TAG"
+              echo "No current Helm release image tag found; using chart default image tag: ${IMAGE_TAG}"
+            elif ! image_tag_exists "$IMAGE_TAG"; then
+              echo "Current Helm release image tag '${IMAGE_TAG}' is missing required ECR images." >&2
+              IMAGE_TAG="$CHART_DEFAULT_TAG"
+              echo "Falling back to chart default image tag: ${IMAGE_TAG}"
             fi
           fi
+
+          if [[ -z "$IMAGE_TAG" ]]; then
+            echo "Unable to resolve image tag from input, Helm release, or chart default." >&2
+            exit 1
+          fi
+
+          if ! image_tag_exists "$IMAGE_TAG"; then
+            echo "Resolved image tag '${IMAGE_TAG}' is missing required ECR images." >&2
+            echo "Run build-and-push.yaml first, or dispatch deploy.yaml with a valid image_tag." >&2
+            exit 1
+          fi
+
           echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
           echo "Resolved image tag: ${IMAGE_TAG}"
@@ -141,16 +163,71 @@ jobs:
           check_release_not_pending "$APP_NAMESPACE" techx-corp
           check_release_not_pending "$OBS_NAMESPACE" techx-observability
 
+      - name: Decode Alertmanager email configuration
+        if: ${{ inputs.deploy_observability != false }}
+        env:
+          ALERTMANAGER_EMAIL_VALUES_B64: ${{ secrets.ALERTMANAGER_EMAIL_VALUES_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          : "${ALERTMANAGER_EMAIL_VALUES_B64:?Missing ALERTMANAGER_EMAIL_VALUES_B64}"
+
+          recipient_values="$RUNNER_TEMP/alertmanager-email-values.yaml"
+
+          printf '%s' "$ALERTMANAGER_EMAIL_VALUES_B64" |
+            base64 --decode > "$recipient_values"
+
+          test -s "$recipient_values"
+
+      - name: Apply Alertmanager SMTP credential
+        if: ${{ inputs.deploy_observability != false }}
+        env:
+          ALERTMANAGER_SMTP_PASSWORD: ${{ secrets.ALERTMANAGER_SMTP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : "${ALERTMANAGER_SMTP_PASSWORD:?Missing ALERTMANAGER_SMTP_PASSWORD}"
+
+          kubectl -n "$OBS_NAMESPACE" create secret generic alertmanager-smtp-auth \
+            --from-literal=auth_password="$ALERTMANAGER_SMTP_PASSWORD" \
+            --dry-run=client \
+            -o yaml |
+            kubectl apply -f -
+
       - name: Deploy observability
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         run: |
           helm upgrade --install techx-observability ./techx-corp-chart \
             --namespace "$OBS_NAMESPACE" \
             --create-namespace \
             -f deploy/values-observability.yaml \
             -f deploy/values-flagd-sync.yaml \
+            -f "$RUNNER_TEMP/alertmanager-email-values.yaml" \
             --wait \
             --timeout 10m
+
+      - name: Verify Metrics API
+        if: ${{ inputs.deploy_observability != false }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$OBS_NAMESPACE" rollout status deployment/metrics-server --timeout=180s
+          kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=180s
+
+          for attempt in {1..12}; do
+            if kubectl top nodes && kubectl -n "$APP_NAMESPACE" top pods; then
+              exit 0
+            fi
+
+            echo "Metrics Server is ready but metrics are not available yet; retrying (${attempt}/12)..."
+            sleep 10
+          done
+
+          echo "::error::Metrics API did not return node and application pod metrics."
+          exit 1
 
       - name: Deploy app
         run: |
@@ -179,7 +256,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p evidence
-          kubectl -n "$APP_NAMESPACE" get deploy,svc,pods -o wide > evidence/app-resources.txt || true
+          kubectl -n "$APP_NAMESPACE" get deploy,svc,pods,hpa -o wide > evidence/app-resources.txt || true
+          kubectl -n "$APP_NAMESPACE" get events --sort-by=.lastTimestamp > evidence/app-events.txt || true
+          kubectl -n "$APP_NAMESPACE" describe hpa > evidence/app-hpa.txt || true
+          kubectl top nodes > evidence/node-metrics.txt || true
+          kubectl -n "$APP_NAMESPACE" top pods > evidence/app-pod-metrics.txt || true
           kubectl -n "$OBS_NAMESPACE" get deploy,svc,pods -o wide > evidence/observability-resources.txt || true
           helm -n "$APP_NAMESPACE" status techx-corp > evidence/helm-app-status.txt || true
           helm -n "$OBS_NAMESPACE" status techx-observability > evidence/helm-observability-status.txt || true

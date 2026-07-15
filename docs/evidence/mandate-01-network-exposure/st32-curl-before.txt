@@ -1,0 +1,41 @@
+ST-3.2 TRƯỚC KHI DEPLOY - Curl test từ mạng ngoài (baseline trước khi CDO08 deploy SEC-05)
+Task 23 - Kiểm tra độc lập - Mandate-01
+============================================================
+GHI CHÚ: Đây là trạng thái TRƯỚC KHI FIX - ghi nhận các route nào đang bị lộ ra internet.
+Sau khi CDO08 deploy SEC-05 xong, chạy lại và ghi vào file st32-curl-after.txt
+============================================================
+
+Thời điểm : 2026-07-13T15:58:17Z
+IP nguồn   : 42.118.54.254
+ALB        : http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com
+
+--- Kết quả kiểm tra từng route ---
+
+GET /             -> HTTP 200   OK - storefront công khai (đúng yêu cầu)
+GET /grafana/     -> HTTP 200   ĐANG LỘ - CDO08 cần block
+GET /grafana      -> HTTP 301   ĐANG LỘ (redirect sang /grafana/) - CDO08 cần block
+GET /jaeger/ui/   -> HTTP 200   ĐANG LỘ - CDO08 cần block
+GET /jaeger/      -> HTTP 404   Đã 404 (backend không phản hồi trên path này)
+GET /loadgen/     -> HTTP 200   ĐANG LỘ - CDO08 cần block
+GET /feature      -> HTTP 503   Backend chưa chạy nhưng route vẫn tồn tại công khai - CDO08 cần block
+GET /flagservice/ -> HTTP 404   Đã 404 (backend trả 404)
+GET /otlp-http/   -> HTTP 404   Đã 404 (backend trả 404)
+
+--- Tổng kết ---
+
+Routes đang lộ từ internet (HTTP 200): 3
+  - /grafana/    -> 200 (Grafana UI có thể truy cập công khai)
+  - /jaeger/ui/  -> 200 (Jaeger UI có thể truy cập công khai)
+  - /loadgen/    -> 200 (Locust UI có thể truy cập công khai)
+
+Route tồn tại nhưng backend chưa chạy (503): 1
+  - /feature     -> 503 (flagd-ui chưa deploy, nhưng route vẫn công khai)
+
+Đã trả mã không phải 200 (vẫn có thể bị lộ nếu backend khởi động): 2
+  - /flagservice/ -> 404
+  - /otlp-http/   -> 404
+
+Hành động cần thiết: CDO08 phải deploy SEC-05 (Envoy direct_response 404) để block toàn bộ 6 routes.
+Sau khi fix, tất cả internal routes phải trả 404 từ Envoy trước khi đến backend.
+
+TRẠNG THÁI: Đã ghi nhận baseline TRƯỚC KHI FIX. Xác nhận 3 routes đang bị lộ từ internet công khai.

@@ -9,6 +9,8 @@ import simplejson as json
 
 # Postgres
 import psycopg2
+from psycopg2 import pool
+from contextlib import contextmanager
 
 def must_map_env(key: str):
     value = os.environ.get(key)
@@ -19,6 +21,17 @@ def must_map_env(key: str):
 # Retrieve Postgres environment variables
 db_connection_str = must_map_env('DB_CONNECTION_STRING')
 
+# Initialize Threaded Connection Pool
+db_pool = pool.ThreadedConnectionPool(minconn=1, maxconn=20, dsn=db_connection_str)
+
+@contextmanager
+def get_db_connection():
+    conn = db_pool.getconn()
+    try:
+        yield conn
+    finally:
+        db_pool.putconn(conn)
+
 def fetch_product_reviews(product_id):
     try:
         return json.dumps(fetch_product_reviews_from_db(product_id), use_decimal=True)
@@ -26,12 +39,8 @@ def fetch_product_reviews(product_id):
         return json.dumps({"error": str(e)})
 
 def fetch_product_reviews_from_db(request_product_id):
-
-    connection = None
-
     try:
-        with psycopg2.connect(db_connection_str) as connection:
-
+        with get_db_connection() as connection:
             with connection.cursor() as cursor:
                 # Define the SQL query
                 query = "SELECT username, description, score FROM reviews.productreviews WHERE product_id= %s"
@@ -45,20 +54,10 @@ def fetch_product_reviews_from_db(request_product_id):
 
     except Exception as e:
         raise e
-    finally:
-        if connection is not None:
-            try:
-                connection.close()
-            except Exception as e:
-                pass
 
 def fetch_avg_product_review_score_from_db(request_product_id):
-
-    connection = None
-
     try:
-        with psycopg2.connect(db_connection_str) as connection:
-
+        with get_db_connection() as connection:
             with connection.cursor() as cursor:
                 # Define the SQL query
                 query = "SELECT AVG(score) FROM reviews.productreviews WHERE product_id= %s"
@@ -70,21 +69,15 @@ def fetch_avg_product_review_score_from_db(request_product_id):
                 records = cursor.fetchall()
 
                 # Extract the average score
-                if records:
+                if records and records[0][0] is not None:
                     # records will be a list like [(average_score,)]
                     average_score = records[0][0]
+                    # return the score as a string rounded to 1 decimal place
+                    return f"{average_score:.1f}"
                 else:
                     # Handle the case where no records are returned (e.g., no reviews for the product)
-                    average_score = None
-
-                # return the score as a string rounded to 1 decimal place
-                return f"{average_score:.1f}"
+                    return None
 
     except Exception as e:
         raise e
-    finally:
-        if connection is not None:
-            try:
-                connection.close()
-            except Exception as e:
-                pass
+

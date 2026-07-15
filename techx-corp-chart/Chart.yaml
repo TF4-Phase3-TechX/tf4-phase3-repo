@@ -27,3 +27,7 @@ dependencies:
     version: 3.6.0
     repository: https://opensearch-project.github.io/helm-charts/
     condition: opensearch.enabled
+  - name: metrics-server
+    version: 3.13.1
+    repository: https://kubernetes-sigs.github.io/metrics-server
+    condition: metrics-server.enabled

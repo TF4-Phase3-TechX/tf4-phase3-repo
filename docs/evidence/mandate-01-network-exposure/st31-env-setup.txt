@@ -1,0 +1,12 @@
+ST-3.1 - Chuẩn bị môi trường test bên ngoài
+Task 23 - Kiểm tra độc lập - Mandate-01
+================================================
+
+Thời điểm : 2026-07-13T15:56:38Z
+IP công khai : 42.118.54.254
+Công cụ      : PowerShell Invoke-WebRequest (Windows - curl.exe bị xung đột alias)
+Shell        : PowerShell 5.1 trên Windows
+Mạng         : External - không dùng VPN, không dùng kubectl port-forward
+Xác nhận     : IP 42.118.54.254 không phải dải nội bộ (10.x / 172.x / 192.168.x)
+
+TRẠNG THÁI: PASS
