@@ -1,33 +1,17 @@
 name: deploy
 
 on:
-  workflow_call:
-    inputs:
-      image_tag:
-        description: Image tag to deploy. Required when called by build workflow.
-        required: true
-        type: string
-      deploy_observability:
-        required: false
-        type: boolean
-        default: true
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Optional image tag. Empty = keep current deployed image tag.
+        description: Emergency-only image tag. Empty = keep current deployed image tag.
         required: false
         type: string
       deploy_observability:
-        description: Deploy observability release first.
+        description: "Emergency-only: deploy observability release first."
         required: false
         type: boolean
         default: true
-  push:
-    branches: [main]
-    paths:
-      - 'techx-corp-chart/**'
-      - 'deploy/**'
-      - '!deploy/build-push-images.sh'
 
 permissions:
   contents: read
@@ -47,7 +31,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Helm deploy and smoke
+    name: Emergency Helm deploy and smoke
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -92,29 +76,11 @@ jobs:
           image_tag_exists() {
             local candidate="$1"
             local service
-            local output
-            local status
-
             for service in checkout kafka frontend-proxy shipping; do
-              set +e
-              output="$(aws ecr describe-images \
+              aws ecr describe-images \
                 --repository-name "$ECR_REPOSITORY" \
-                --image-ids "imageTag=${candidate}-${service}" 2>&1)"
-              status=$?
-              set -e
-
-              if [[ "$status" -eq 0 ]]; then
-                continue
-              fi
-
-              if grep -q "ImageNotFoundException" <<< "$output"; then
-                echo "ECR image tag is missing: ${candidate}-${service}" >&2
-                return 1
-              fi
-
-              echo "Unable to validate ECR image tag ${candidate}-${service}." >&2
-              echo "$output" >&2
-              exit "$status"
+                --image-ids "imageTag=${candidate}-${service}" \
+                >/dev/null 2>&1 || return 1
             done
           }
 
@@ -133,9 +99,9 @@ jobs:
             IMAGE_TAG="$INPUT_TAG"
           else
             IMAGE_TAG="$(helm -n "$APP_NAMESPACE" get values techx-corp -o json 2>/dev/null | jq -r '.default.image.tag // empty')"
-            if [[ -z "$IMAGE_TAG" || "$IMAGE_TAG" == "1.0" ]]; then
+            if [[ -z "$IMAGE_TAG" ]]; then
               IMAGE_TAG="$CHART_DEFAULT_TAG"
-              echo "No usable current Helm release image tag found; using chart default image tag: ${IMAGE_TAG}"
+              echo "No current Helm release image tag found; using chart default image tag: ${IMAGE_TAG}"
             elif ! image_tag_exists "$IMAGE_TAG"; then
               echo "Current Helm release image tag '${IMAGE_TAG}' is missing required ECR images." >&2
               IMAGE_TAG="$CHART_DEFAULT_TAG"
@@ -198,7 +164,7 @@ jobs:
           check_release_not_pending "$OBS_NAMESPACE" techx-observability
 
       - name: Decode Alertmanager email configuration
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         env:
           ALERTMANAGER_EMAIL_VALUES_B64: ${{ secrets.ALERTMANAGER_EMAIL_VALUES_B64 }}
         shell: bash
@@ -216,7 +182,7 @@ jobs:
           test -s "$recipient_values"
 
       - name: Apply Alertmanager SMTP credential
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         env:
           ALERTMANAGER_SMTP_PASSWORD: ${{ secrets.ALERTMANAGER_SMTP_PASSWORD }}
         shell: bash
@@ -232,7 +198,7 @@ jobs:
             kubectl apply -f -
 
       - name: Deploy observability
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         run: |
           helm upgrade --install techx-observability ./techx-corp-chart \
             --namespace "$OBS_NAMESPACE" \
@@ -244,7 +210,7 @@ jobs:
             --timeout 10m
 
       - name: Verify Metrics API
-        if: ${{ github.event_name == 'push' || inputs.deploy_observability != false }}
+        if: ${{ inputs.deploy_observability != false }}
         shell: bash
         run: |
           set -euo pipefail
