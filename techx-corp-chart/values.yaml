@@ -228,6 +228,9 @@ components:
   cart:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -285,6 +288,9 @@ components:
   checkout:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -364,6 +370,30 @@ components:
 
   currency:
     enabled: true
+    replicas: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
     useDefault:
       env: true
     service:
@@ -380,8 +410,23 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      requests: { cpu: 20m, memory: 24Mi }
-      limits: { cpu: 75m, memory: 48Mi }
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 192Mi }
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   email:
     enabled: true
@@ -447,6 +492,9 @@ components:
   frontend:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -536,6 +584,9 @@ components:
   frontend-proxy:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -685,12 +736,15 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      requests: { cpu: 500m, memory: 768Mi }
-      limits: { cpu: "1", memory: 1536Mi }
+      requests: { cpu: 300m, memory: 256Mi }
+      limits: { cpu: 600m, memory: 512Mi }
 
   payment:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -742,6 +796,9 @@ components:
   product-catalog:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -894,6 +951,9 @@ components:
   shipping:
     enabled: true
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1

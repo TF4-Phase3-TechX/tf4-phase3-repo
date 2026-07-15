@@ -19,7 +19,7 @@ ARG TARGETARCH
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Accounting.csproj" -r linux-$TARGETARCH -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 USER app
