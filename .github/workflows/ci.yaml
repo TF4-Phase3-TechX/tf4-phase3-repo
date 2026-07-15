@@ -200,7 +200,7 @@ jobs:
               assert {'cpu', 'memory'} <= set(container['resources']['requests']), name
               assert {'cpu', 'memory'} <= set(container['resources']['limits']), name
           hpas = {r['metadata']['name']: r for r in resources if r['kind'] == 'HorizontalPodAutoscaler'}
-          assert set(hpas) == {'frontend', 'checkout'}
+          assert set(hpas) == {'frontend', 'checkout', 'currency'}
           for name, hpa in hpas.items():
               assert hpa['spec']['scaleTargetRef']['name'] == name
               assert hpa['spec']['metrics'][0]['resource']['name'] == 'cpu'
@@ -217,7 +217,7 @@ jobs:
           if-no-files-found: error
 
   app-smoke-build:
-    name: Docker smoke build checkout
+    name: Docker smoke build checkout + shipping
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.app == 'true'
@@ -238,6 +238,8 @@ jobs:
           EOF
           cat techx-corp-platform/.env.override
 
-      - name: Build checkout image only
+      # shipping (Rust) build included here: without it, a Rust compile failure would
+      # only surface after merge in build-and-push.yaml, not at PR-gate time.
+      - name: Build checkout + shipping images
         working-directory: techx-corp-platform
-        run: docker compose --env-file .env --env-file .env.override build checkout
+        run: docker compose --env-file .env --env-file .env.override build checkout shipping
