@@ -1495,10 +1495,10 @@ prometheus:
     resources:
       requests:
         cpu: 100m
-        memory: 200Mi
+        memory: 1Gi
       limits:
         cpu: 500m
-        memory: 400Mi
+        memory: 1Gi
 
 grafana:
   enabled: true
@@ -1552,6 +1552,9 @@ opensearch:
     enabled: true
     size: 8Gi
     storageClass: "gp2"
+    annotations:
+      helm.sh/resource-policy: keep
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
   initResources:
     requests:
       cpu: 10m
