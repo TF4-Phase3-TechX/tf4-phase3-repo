@@ -1,4 +1,4 @@
-# TF4AIO-6 detector evidence
+# TF4AIO-40 detector evidence
 
 ## Mục tiêu
 - Triển khai detector dưới dạng workload Kubernetes liên tục mà không ảnh hưởng tới service lõi hoặc cơ chế flagd.
@@ -11,14 +11,15 @@
 - Detector chạy bằng image `busybox:1.36`, thực hiện HTTP query Prometheus mỗi 60 giây và emit structured JSONL to stdout/logs theo kết quả probe; không sửa flagd hoặc config của service khác.
 
 ## Pull request liên quan
-- Implementation PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/136
-- PR title: `TF4AIO-6: add continuous detector workload with resource limits`
-- Commit chính trong PR: `9083977` (`feat(aiops): add detector workload to helm chart`)
+- Implementation PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/137
+- PR title: `TF4AIO-40: define detector output channel and payload schema`
+- Reviewed head: `115a6bf4429aaf89a21a7d285cac0f06a7007013`
 - Nội dung comment mô tả PR đã khớp acceptance kỹ thuật hiện tại:
   - thêm Helm-based detector workload cho chạy liên tục,
   - thêm resource requests/limits,
   - giữ nguyên flagd và incident mechanism hiện có,
-  - thêm evidence documentation và planning links.
+  - thêm evidence documentation và planning links,
+  - bổ sung contract schema và validation thực sự.
 
 ## Quyết định output channel
 - Channel đầu tiên được chọn: `stdout-jsonl` (structured JSON lines trên stdout/logs).
@@ -56,7 +57,7 @@ Field contract (`schema_version=1.0`):
 
 Validation smoke check cho một emitted line:
 ```bash
-kubectl -n techx-tf4 logs deploy/detector --tail=1 | jq -e '.timestamp and .detection_id and .service and .environment and .incident_type and .observed_value and .runbook_url'
+kubectl -n techx-tf4 logs deploy/detector --tail=1 | c:/Users/LENOVO/Desktop/Phase3_Capstone_AI]/.venv/Scripts/python.exe scripts/validate-detector-output.py --schema docs/aio01/evidence/detector-output-schema-v1.json
 ```
 
 ```json
@@ -64,18 +65,18 @@ kubectl -n techx-tf4 logs deploy/detector --tail=1 | jq -e '.timestamp and .dete
   "timestamp": "2026-07-14T07:30:00Z",
   "detection_id": "prometheus-up-probe-v1-2026-07-14T07:30:00Z",
   "detector": "aioops-detector",
-  "service": "detector",
-  "environment": "techx-tf4",
+  "service": "prometheus",
+  "environment": "techx-observability",
   "channel": "stdout-jsonl",
   "schema_version": "1.0",
   "incident_type": "prometheus_probe_ok",
   "severity": "info",
-  "summary": "Prometheus probe succeeded",
+  "summary": "Prometheus probe succeeded with up==1",
   "observed_value": "1",
   "threshold": "at_least_one_up_target",
-  "runbook_url": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/tree/main/docs/audit/runbooks",
+  "runbook_url": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/detector-prometheus-probe.md",
   "evidence": {
-    "prometheus_url": "http://prometheus:9090/api/v1/query?query=up"
+    "prometheus_url": "http://prometheus.techx-observability.svc.cluster.local:9090/api/v1/query?query=up%20%3D%3D%201"
   },
   "owner": "AIOps-oncall",
   "owner_response_path": "open-runbook-then-create-incident-ticket"
@@ -120,8 +121,10 @@ kubectl -n techx-tf4 logs deploy/detector --tail=1 | jq -e '.timestamp and .dete
 ### Positive evidence (repo + manifest)
 - Chart values có component detector: [techx-corp-chart/values.yaml](../../techx-corp-chart/values.yaml).
 - Chart schema chấp nhận detector: [techx-corp-chart/values.schema.json](../../techx-corp-chart/values.schema.json).
-- Helm render thành công và sinh Deployment detector kèm env/output schema/resource limits: [docs/aio01/evidence/tf4aio6-detector-render-snippet.yaml](./evidence/tf4aio6-detector-render-snippet.yaml).
+- Helm render thành công và sinh Deployment detector kèm env/output schema/resource limits: [docs/aio01/evidence/tf4aio40-detector-render-snippet.yaml](./evidence/tf4aio40-detector-render-snippet.yaml).
 - Payload contract machine-readable: [docs/aio01/evidence/detector-output-schema-v1.json](./evidence/detector-output-schema-v1.json).
+- Validation script: [scripts/validate-detector-output.py](../../scripts/validate-detector-output.py).
+- Concrete runbook: [docs/audit/runbooks/detector-prometheus-probe.md](../../docs/audit/runbooks/detector-prometheus-probe.md).
 
 ### Negative evidence / blocker (cluster runtime)
 - Chưa lấy được bằng chứng live inventory trong namespace `techx-tf4` do local kube context chưa được cấu hình.
