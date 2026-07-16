@@ -1,7 +1,7 @@
 # 📝 ARCHITECTURE & IMPLEMENTATION PROPOSAL
 **Dự án:** Task Force 4 · Mặt trận XBrain  
 **Chủ đề:** Triển khai Amazon Athena cho Phân tích Forensics Thời gian thực trên Audit Trail  
-**Người yêu cầu:** Đội CDO-07 (Auditability) & CDO-08 (Operational Excellence)  
+**Người yêu cầu:** Đội CDO-07 (Auditability) 
 **Trạng thái:** Đề xuất triển khai (Implementation Proposal)  
 
 ---
@@ -289,17 +289,17 @@ ORDER BY aws.eventtime DESC
 
 ## IV. ROADMAP TRIỂN KHAI (IMPLEMENTATION ROADMAP)
 
-### Phase 1: Thiết lập Data Catalog (1 tuần)
+### Phase 1: Thiết lập Data Catalog (1 ngày)
 - [ ] Tạo Glue Database `tf4_audit_forensics`
 - [ ] Deploy 3 Glue Tables với schema định nghĩa ở trên
 - [ ] Test partition discovery với `MSCK REPAIR TABLE`
 
-### Phase 2: Query Templates & Documentation (1 tuần)  
+### Phase 2: Query Templates & Documentation (1 ngày)  
 - [ ] Tạo bộ 15+ query templates cho common security analytics scenarios
 - [ ] Documentation về Athena best practices cho team
 - [ ] Training session cho security analysts
 
-### Phase 3: Automation & Integration (2 tuần)
+### Phase 3: Automation & Integration (1 ngày)
 - [ ] Automated partition creation via Lambda (daily schedule)
 - [ ] Grafana dashboard integration cho security analytics metrics
 - [ ] Slack/Teams bot integration cho emergency queries
