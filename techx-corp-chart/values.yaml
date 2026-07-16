@@ -192,7 +192,7 @@ components:
         memory: 256Mi
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
         resources:
           requests: { cpu: 5m, memory: 8Mi }
@@ -279,7 +279,7 @@ components:
       successThreshold: 1
     initContainers:
       - name: wait-for-valkey-cart
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;"]
         resources:
           requests: { cpu: 5m, memory: 8Mi }
@@ -362,7 +362,7 @@ components:
       successThreshold: 1
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
         resources:
           requests: { cpu: 5m, memory: 8Mi }
@@ -483,7 +483,7 @@ components:
         memory: 300Mi
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
         resources:
           requests: { cpu: 5m, memory: 8Mi }
@@ -1097,7 +1097,7 @@ components:
     #         mountPath: /app/data
     initContainers:
       - name: init-config
-        image: busybox
+        image: busybox:1.36.1
         command: ["sh", "-c", "cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json"]
         resources:
           requests: { cpu: 5m, memory: 8Mi }
@@ -1700,6 +1700,8 @@ opensearch:
     enabled: true
     size: 20Gi
     storageClass: "gp2"
+    image: busybox
+    imageTag: "1.36.1"
   initResources:
     requests:
       cpu: 10m
