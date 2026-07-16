@@ -23,6 +23,7 @@ Sổ ghi nhận các quyết định liên quan đến kiến trúc, bảo mật
 | ADR-011 | 2026-07-09 | Checkout partial-success sau payment, không có idempotency | Complexity cao — deferred Week 2-3 | Accepted — Deferred | CDO-08 | [ADR-011](./adr/011-checkout-partial-success-post-payment.md) |
 | ADR-012 | 2026-07-09 | flagd Central Flag Sync bị deferred — risk ghi nhận | flagd image v0.12.9 crash khi dùng /bin/sh wrapper | **URGENT — Fix ngay** | CDO-04 | [ADR-012](./adr/012-flagd-central-sync-deferred.md) |
 | ADR-013 | 2026-07-09 | Multi-AZ chỉ áp dụng cho EKS compute layer | Cost control — stateful workload HA chưa claim | Accepted | CDO-04 | [ADR-013](./adr/013-multi-az-eks-compute-layer-only.md) |
+| ADR-015 | 2026-07-16 | Business Flow Grafana Dashboards cho OBS-01 | Chuẩn hóa evidence health/SLO theo 5 business flow chính | Accepted — Implemented | CDO-07 | [ADR-015](./adr/015-business-flow-grafana-dashboards.md) |
 
 ---
 
