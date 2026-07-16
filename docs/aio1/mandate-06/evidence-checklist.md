@@ -25,6 +25,12 @@ Only GitHub/PR URLs and sanitized committed artifacts belong in Jira. Do not pas
 
 Record UTC window, Git SHA, image digest, model/profile ID, Guardrail version, deployment owner, baseline window and canary window.
 
+The failed-canary root cause, sanitized pre-fix metrics and coordinated
+promotion/rollback constraints are recorded in
+[`INCIDENT-2026-07-16-nova-tool-contract.md`](./INCIDENT-2026-07-16-nova-tool-contract.md).
+That record remains pre-fix evidence until PR #248 is promoted and the same
+application-path gates pass on the new pod revision.
+
 - [ ] Warm the structured schema before latency measurement.
 - [ ] Verify counters/histogram: outcome, fallback, latency, input/output tokens, error class, quarantine count.
 - [ ] Verify logs/traces contain metadata only and content capture is false.

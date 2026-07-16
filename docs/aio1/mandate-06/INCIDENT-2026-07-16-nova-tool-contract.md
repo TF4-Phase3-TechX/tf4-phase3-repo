@@ -54,12 +54,60 @@ layer.
   response-contract stage. No prompt, review, response, tool input, request
   ID, or canary is emitted as a metric label or log field.
 
+## Pre-fix audit snapshot
+
+This is a **failed-canary baseline**, not evidence that the remediation has
+passed. The snapshot was read at `2026-07-16 14:45:56 +07:00` before this
+change was merged or deployed.
+
+| Item | Recorded value |
+|---|---|
+| Source remediation PR | `TF4-Phase3-TechX/tf4-phase3-repo#248` |
+| Remediation commit | `b46da10212e72b11ad01eaaf986440b0ac2cb74a` |
+| Local verification | product-reviews suite: `26 passed` |
+| GitHub checks | changed-area detection, YAML parse, Helm render and Docker smoke build: `SUCCESS` |
+| Review state at snapshot | `REVIEW_REQUIRED`; no production promotion yet |
+| Running Deployment | `product-reviews`, revision `20`, Ready `1/1`, zero pod restarts |
+| Running image | `511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:c16ecbe-product-reviews` |
+| Kubernetes identity | ServiceAccount `techx-tf4/product-reviews-bedrock` |
+| Temporary canary route | source account `511825856493` Pod Identity association targeting approved account `589077667575` |
+| Model and Guardrail | `us.amazon.nova-2-lite-v1:0`, `e2svpiawj1v5:3`, forced tool mode |
+
+The cumulative Prometheus snapshot for the running pre-fix workload was:
+
+- calls: `17` answered, `152` unavailable/`invalid_response`, `18`
+  unavailable/`circuit_open`, and `2`
+  unavailable/`connectionclosederror`;
+- usage: `24,740` prompt tokens and `5,033` completion tokens;
+- estimated cost: `$0.0200045` using the configured price counters; and
+- rolling 10-minute aggregate p95 latency: approximately `2.0 seconds`.
+
+These are cumulative multi-outcome counters and must not be used as the
+post-fix success denominator. The post-fix record must filter by the new pod,
+image/revision and controlled test window.
+
+## Promotion and rollback control
+
+- Merging this source PR does not itself change production. A separate image
+  build and GitOps promotion are required.
+- The new image must first run in a time-bounded canary with the load window,
+  owner and image identifier recorded.
+- The existing rollback PR changes the Guardrail back to the source account.
+  It must not be merged while the Pod Identity association still contains the
+  cross-account `targetRoleArn`; CDO must restore the source-only association
+  first or explicitly approve continuation of the temporary canary route.
+- If the post-fix application-path hard gates fail, the service must continue
+  returning the canonical static unavailable response and CDO must execute the
+  coordinated identity-plus-GitOps rollback. No real-to-mock fallback is
+  permitted.
+
 ## Required next canary gates
 
 1. Run a non-routing synthetic preflight using the exact application-shaped
    tool request, rather than a plain-text Bedrock ping.
-2. Deploy only after the cross-account rollback is complete and a fresh
-   approval is recorded.
+2. Deploy only after either the cross-account rollback is complete or CDO has
+   explicitly approved a short extension of the current temporary canary
+   route.
 3. Verify `tool_use` plus schema/citation validation on the application path,
    p95 latency under the existing 5-second request budget, and non-zero token
    and estimated-cost Prometheus counters.
