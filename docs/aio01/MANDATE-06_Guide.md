@@ -62,7 +62,7 @@ product_reviews_server.py
 
 ### Phải làm gì?
 
-1. **Kết nối LLM thật:** Kết nối `product_reviews_server.py` với endpoint Amazon Bedrock Converse API sử dụng mô hình **Nova 2 Lite** (`amazon.nova-2-lite-v1:0` tại `us-east-1` để có quota requests thực tế ổn định thay vì cross-region profile bị giới hạn).
+1. **Kết nối LLM thật:** Kết nối `product_reviews_server.py` với Amazon Bedrock Converse API qua US inference profile **Nova 2 Lite** đã được ADR, IAM và production config pin: `us.amazon.nova-2-lite-v1:0` tại `us-east-1`. Không tự đổi sang direct/global model ID nếu chưa có quota, IAM, eval và rollout evidence riêng.
 2. **Thiết lập fallback khi model lỗi:**
    - Client timeout cứng: `4.5 giây` (để không vượt SLO p95 gRPC).
    - Safe fallback response: Trả về `"Hiện tại tính năng AI không khả dụng"` thay vì crash.
@@ -76,24 +76,17 @@ product_reviews_server.py
 
 ### Quy Trình Kiểm Thử Sự Cố Kiểm Soát (Controlled Drill)
 
-Để tránh ghi đè làm mất các cấu hình flagd khác trên môi trường chung, **KHÔNG sử dụng lệnh kubectl patch thô bạo**. Hãy áp dụng quy trình controlled drill sau:
+Production dùng GitOps nên **không chạy `kubectl edit/patch` trực tiếp**. Controlled drill phải có CDO/flag owner, deployment window và rollback owner:
 
 ```bash
-# 1. Lưu snapshot trạng thái flagd hiện tại
-kubectl get configmap flagd-config -n techx-tf4 -o jsonpath='{.data.demo\.flagd\.json}' > pre_drill_flagd.json
-
-# 2. Sử dụng kubectl edit để sửa đổi an toàn
-kubectl edit configmap flagd-config -n techx-tf4
-# Chỉnh sửa trường "defaultVariant" của "llmRateLimitError" từ "off" thành "on"
-
-# 3. Gửi request tới AI endpoint thông qua grpcurl để kiểm chứng fallback
+# 1. Ghi pre-state: GitOps commit, Argo revision, flag value và pod/image revision.
+# 2. Tạo Promotion/GitOps PR chỉ đổi llmRateLimitError off -> on.
+# 3. CDO/flag owner approve + merge trong deployment window; chờ Argo Synced/Healthy.
+# 4. Gửi request tới AI endpoint để kiểm chứng fallback.
 grpcurl -d '{"product_id": "OLJCESPC7Z"}' \
   localhost:8080 oteldemo.ProductReviewService/AskProductAIAssistant
-
-# 4. Xác nhận response trả về fallback message ngay lập tức và không treo.
-
-# 5. Phục hồi cấu hình cũ (Rollback) từ file snapshot
-kubectl patch configmap flagd-config -n techx-tf4 --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat pre_drill_flagd.json | jq -c . | jq -R .)}}"
+# 5. Xác nhận fallback, latency/error telemetry và không có raw content trong log.
+# 6. Revert GitOps PR (on -> off); chờ Argo Synced/Healthy và xác nhận đúng pre-state.
 ```
 
 ---
@@ -214,22 +207,19 @@ Tạo file ADR (Architecture Decision Record) ký tên lưu tại `docs/aio1/man
   AWS_PROFILE=511825856493_TF4-AIReadOnlyOrLimitedInvoke PYTHONPATH=techx-corp-platform/src/product-reviews/ ./techx-corp-platform/src/product-reviews/.venv/bin/python3 docs/aio1/mandate-06/eval/run_bakeoff.py --guardrail-id wckqh9dms6qa --guardrail-version 1
   ```
 - Kiểm thử Fallback (Controlled Drill):
-  - Dùng `kubectl edit configmap flagd-config -n techx-tf4` để set variant của `llmRateLimitError` thành `on`.
+  - Link Promotion/GitOps PR đã được CDO/flag owner phê duyệt để set `llmRateLimitError=on`; ghi deployment window và Argo revision.
   - Gọi gRPC endpoint: `grpcurl -d '{"product_id": "OLJCESPC7Z"}' localhost:8080 oteldemo.ProductReviewService/AskProductAIAssistant`
+  - Link rollback/revert PR và bằng chứng Argo `Synced/Healthy` sau khi trả flag về pre-state.
 
 **3. Bằng chứng chạy thật:**
 - [Đính kèm các ảnh chụp màn hình/logs thực tế chạy trên cluster tại đây]
   - (a) Logs/Screenshot của Bedrock Guardrail chặn prompt injection thành công.
   - (b) Logs/Response của AI trả về "Dựa trên các đánh giá hiện có, không có thông tin..." khi hỏi câu hỏi ngoài phạm vi.
   - (c) Logs cho thấy các thông tin email/SĐT bị che thành `[EMAIL_REDACTED]` / `[PHONE_REDACTED]`.
-  - (d) Kết quả đầu ra của `bakeoff-report.json`:
-    - Completeness: 100%
-    - Faithfulness accuracy: 100%
-    - Injection block rate: 100%
-    - Average latency: ~450ms
+  - (d) Link `bakeoff-report.json` machine-readable và chép nguyên kết quả/gate thực tế; không dùng số ước lượng hoặc kết quả từ troubleshooting run.
 
 **4. ADR:**
-- [ADR-006-bedrock-model-and-safety.md](file:///Users/trandinhthong/Downloads/AWS/xbrain-learners/tf4-phase3-repo/docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md)
+- [ADR-006-bedrock-model-and-safety.md](../aio1/mandate-06/ADR-006-bedrock-model-and-safety.md)
 ```
 
 ---

@@ -254,16 +254,12 @@ Detection · implement + phân tích
 ### Phải làm gì?
 
 1. **Deploy alert rules lên cluster Prometheus.**
-    - Sử dụng quy trình Controlled Drill để sửa đổi `flagd-config` an toàn (tránh ghi đè hoàn toàn configmap):
+    - Sử dụng quy trình Controlled Drill qua GitOps; không sửa trực tiếp ConfigMap production:
       ```bash
-      # 1. Lưu snapshot demo.flagd.json hiện tại
-      kubectl get configmap flagd-config -n techx-tf4 -o jsonpath='{.data.demo\.flagd\.json}' > pre_drill_flagd.json
-
-      # 2. Sử dụng kubectl edit để sửa đổi an toàn, chuyển defaultVariant của llmRateLimitError thành "on"
-      kubectl edit configmap flagd-config -n techx-tf4
-
-      # 3. Phục hồi trạng thái cũ sau khi drill kết thúc
-      kubectl patch configmap flagd-config -n techx-tf4 --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat pre_drill_flagd.json | jq -c . | jq -R .)}}"
+      # 1. Ghi GitOps commit/Argo revision/flag pre-state và deployment window.
+      # 2. Tạo PR chỉ đổi llmRateLimitError=on; CDO/flag owner approve + merge.
+      # 3. Chờ Argo Synced/Healthy, chạy probe và thu detector/alert evidence.
+      # 4. Revert PR về pre-state; chờ Argo Synced/Healthy và verify flag/pod revision.
       ```
     - Hoặc tạo load test gây latency spike.
 
@@ -352,7 +348,7 @@ Detection · chạy thật + đo đạc
 ### 1. Ảnh/Log Detector Kêu E2E
 - [Ảnh Alertmanager khi bơm sự cố]
 - [Ảnh Grafana dashboard khi bơm sự cố]
-- **Cách chạy lại:** Xem quy trình Controlled Drill chỉnh sửa `flagd-config` an toàn bằng `kubectl edit` tại docs/aio01/MANDATE-07_Guide.md.
+- **Cách chạy lại:** Link Promotion/GitOps drill PR, approval/deployment window, Argo revision, probe command và rollback PR theo controlled-drill section của guide này.
 
 ### 2. Số Precision/Recall/Lead-Time
 | Metric | Giá trị |
