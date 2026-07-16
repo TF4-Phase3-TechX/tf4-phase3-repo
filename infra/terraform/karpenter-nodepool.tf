@@ -14,22 +14,21 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass_general" {
     spec = {
       role = module.karpenter.node_iam_role_name
 
-      # Karpenter v1 EC2NodeClass requires amiSelectorTerms explicitly; an
-      # alias term both selects the latest AL2023 AMI and implies amiFamily,
-      # so amiFamily itself is no longer set here.
+      # Karpenter v1 EC2NodeClass requires amiSelectorTerms explicitly.
+      # Pin the AL2023 AMI release currently resolved in runtime to avoid
+      # unreviewed node image drift from a moving alias.
       amiSelectorTerms = [
-        { alias = "al2023@latest" }
+        { alias = "al2023@v20260709" }
       ]
 
       subnetSelectorTerms = [
         { tags = { "karpenter.sh/discovery" = var.cluster_name } }
       ]
 
-      # Matches node_security_group_tags in eks.tf. Selecting by tag here
-      # (rather than the cluster security group id) keeps this in sync with
-      # whichever security group the EKS-managed node group actually uses.
+      # Select only the EKS node security group. The shared discovery tag is
+      # also present on cluster SGs and must not be used for SG selection.
       securityGroupSelectorTerms = [
-        { tags = { "karpenter.sh/discovery" = var.cluster_name } }
+        { tags = { "karpenter.sh/node-security-group" = var.cluster_name } }
       ]
 
       tags = merge(var.tags, {

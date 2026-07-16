@@ -1,0 +1,32 @@
+NAME                               READY   STATUS    RESTARTS        AGE     IP            NODE                          NOMINATED NODE   READINESS GATES
+accounting-5dc867c55b-psvmx        1/1     Running   0               3h42m   10.0.10.27    ip-10-0-10-231.ec2.internal   <none>           <none>
+ad-6595659799-v9wxw                1/1     Running   0               7h2m    10.0.10.116   ip-10-0-10-74.ec2.internal    <none>           <none>
+cart-6d98c5f7bf-gwp4h              1/1     Running   0               4h33m   10.0.10.126   ip-10-0-10-74.ec2.internal    <none>           <none>
+cart-6d98c5f7bf-v4kr2              1/1     Running   0               4h33m   10.0.10.172   ip-10-0-10-231.ec2.internal   <none>           <none>
+checkout-d69c4d9d-6lld6            1/1     Running   0               4h33m   10.0.10.212   ip-10-0-10-231.ec2.internal   <none>           <none>
+checkout-d69c4d9d-7tk84            1/1     Running   0               4h      10.0.10.54    ip-10-0-10-74.ec2.internal    <none>           <none>
+currency-f586fcb4-ptxc5            1/1     Running   0               144m    10.0.10.196   ip-10-0-10-231.ec2.internal   <none>           <none>
+currency-f586fcb4-qrhxn            1/1     Running   0               144m    10.0.10.63    ip-10-0-10-74.ec2.internal    <none>           <none>
+email-7fb5949f98-5j95x             1/1     Running   0               3h28m   10.0.10.4     ip-10-0-10-74.ec2.internal    <none>           <none>
+flagd-86bd5f8d76-jgvqr             1/1     Running   0               4h33m   10.0.10.150   ip-10-0-10-231.ec2.internal   <none>           <none>
+fraud-detection-548484897-fl4cw    1/1     Running   0               7h2m    10.0.10.88    ip-10-0-10-74.ec2.internal    <none>           <none>
+frontend-f8c85f89c-4b48z           1/1     Running   0               5m53s   10.0.10.184   ip-10-0-10-231.ec2.internal   <none>           <none>
+frontend-f8c85f89c-4ck6w           1/1     Running   0               4h11m   10.0.10.168   ip-10-0-10-231.ec2.internal   <none>           <none>
+frontend-f8c85f89c-kmxff           1/1     Running   0               4h33m   10.0.10.58    ip-10-0-10-74.ec2.internal    <none>           <none>
+frontend-proxy-7bd6cc66-2wg6j      1/1     Running   0               4h32m   10.0.10.24    ip-10-0-10-231.ec2.internal   <none>           <none>
+frontend-proxy-7bd6cc66-whp6j      1/1     Running   0               4h25m   10.0.10.204   ip-10-0-10-74.ec2.internal    <none>           <none>
+image-provider-c85cf9d65-92rfw     1/1     Running   0               7h2m    10.0.10.22    ip-10-0-10-74.ec2.internal    <none>           <none>
+kafka-6f9ff79c54-v45cb             1/1     Running   0               150m    10.0.10.236   ip-10-0-10-74.ec2.internal    <none>           <none>
+llm-6c96948c64-dnz8f               1/1     Running   0               19h     10.0.10.182   ip-10-0-10-231.ec2.internal   <none>           <none>
+load-generator-7dbc8d784-dxcq6     1/1     Running   0               3h23m   10.0.10.36    ip-10-0-10-74.ec2.internal    <none>           <none>
+payment-5c5cf4f445-6fg6n           1/1     Running   0               4h31m   10.0.10.222   ip-10-0-10-74.ec2.internal    <none>           <none>
+payment-5c5cf4f445-sx6d2           1/1     Running   0               4h25m   10.0.10.217   ip-10-0-10-231.ec2.internal   <none>           <none>
+postgresql-5b49658ddf-b4p2m        1/1     Running   0               3h5m    10.0.10.218   ip-10-0-10-74.ec2.internal    <none>           <none>
+product-catalog-5dbccf75c9-8t557   1/1     Running   7 (4h19m ago)   4h25m   10.0.10.19    ip-10-0-10-74.ec2.internal    <none>           <none>
+product-catalog-5dbccf75c9-bpqvr   1/1     Running   0               4h13m   10.0.10.23    ip-10-0-10-231.ec2.internal   <none>           <none>
+product-reviews-6b466ffbbd-t2pst   1/1     Running   0               157m    10.0.10.249   ip-10-0-10-231.ec2.internal   <none>           <none>
+quote-85c74d484b-m5bbz             1/1     Running   0               7h2m    10.0.10.11    ip-10-0-10-74.ec2.internal    <none>           <none>
+recommendation-78948dd47d-zqjdv    1/1     Running   0               17h     10.0.10.41    ip-10-0-10-231.ec2.internal   <none>           <none>
+shipping-5547c65698-g9vjx          1/1     Running   0               4h32m   10.0.10.108   ip-10-0-10-231.ec2.internal   <none>           <none>
+shipping-5547c65698-sqnwm          1/1     Running   0               4h25m   10.0.11.139   ip-10-0-11-40.ec2.internal    <none>           <none>
+valkey-cart-dd686478b-97hdp        1/1     Running   0               173m    10.0.10.43    ip-10-0-10-74.ec2.internal    <none>           <none>

@@ -1,0 +1,39 @@
+NAME                              READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/accounting        1/1     1            1           7d22h
+deployment.apps/ad                1/1     1            1           7d22h
+deployment.apps/cart              2/2     2            2           7d22h
+deployment.apps/checkout          2/2     2            2           7d22h
+deployment.apps/currency          2/2     2            2           7d22h
+deployment.apps/email             1/1     1            1           7d22h
+deployment.apps/flagd             1/1     1            1           7d22h
+deployment.apps/fraud-detection   1/1     1            1           7d22h
+deployment.apps/frontend          2/2     2            2           7d22h
+deployment.apps/frontend-proxy    2/2     2            2           7d22h
+deployment.apps/image-provider    1/1     1            1           7d22h
+deployment.apps/kafka             1/1     1            1           7d22h
+deployment.apps/llm               1/1     1            1           7d22h
+deployment.apps/load-generator    1/1     1            1           7d22h
+deployment.apps/payment           2/2     2            2           7d22h
+deployment.apps/postgresql        1/1     1            1           7d22h
+deployment.apps/product-catalog   2/2     2            2           7d22h
+deployment.apps/product-reviews   1/1     1            1           7d22h
+deployment.apps/quote             2/2     2            2           7d22h
+deployment.apps/recommendation    1/1     1            1           7d22h
+deployment.apps/shipping          2/2     2            2           7d22h
+deployment.apps/valkey-cart       1/1     1            1           7d22h
+
+NAME                                           REFERENCE             TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/checkout   Deployment/checkout   cpu: 4%/70%    2         3         2          45h
+horizontalpodautoscaler.autoscaling/currency   Deployment/currency   cpu: 2%/70%    2         3         2          9h
+horizontalpodautoscaler.autoscaling/frontend   Deployment/frontend   cpu: 15%/70%   2         3         2          45h
+
+NAME                                         MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+poddisruptionbudget.policy/cart              1               N/A               1                     9h
+poddisruptionbudget.policy/checkout          1               N/A               1                     9h
+poddisruptionbudget.policy/currency          1               N/A               1                     9h
+poddisruptionbudget.policy/frontend          1               N/A               1                     9h
+poddisruptionbudget.policy/frontend-proxy    1               N/A               1                     9h
+poddisruptionbudget.policy/payment           1               N/A               1                     9h
+poddisruptionbudget.policy/product-catalog   1               N/A               1                     9h
+poddisruptionbudget.policy/quote             1               N/A               1                     130m
+poddisruptionbudget.policy/shipping          1               N/A               1                     9h

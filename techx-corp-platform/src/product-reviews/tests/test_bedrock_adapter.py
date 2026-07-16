@@ -1,0 +1,90 @@
+import json
+
+import pytest
+
+from bedrock_adapter import BedrockAdapter, CircuitBreaker, CircuitOpen, ProviderFailure
+
+
+class FakeClient:
+    def __init__(self, response=None, error=None):
+        self.response = response
+        self.error = error
+        self.request = None
+
+    def converse(self, **request):
+        self.request = request
+        if self.error:
+            raise self.error
+        return self.response
+
+
+def response_with(payload):
+    return {
+        "stopReason": "end_turn",
+        "output": {"message": {"content": [{"text": json.dumps(payload)}]}},
+        "usage": {"inputTokens": 100, "outputTokens": 20},
+    }
+
+
+def adapter(client, **kwargs):
+    return BedrockAdapter(
+        model_id="model",
+        guardrail_id="guardrail",
+        guardrail_version="3",
+        client=client,
+        **kwargs,
+    )
+
+
+def test_converse_is_single_call_pinned_guardrail_and_structured_output():
+    payload = {"decision": "insufficient", "answer": "", "citations": []}
+    client = FakeClient(response_with(payload))
+    result = adapter(client).converse("question", {"id": "p1"}, [{"review_id": 1, "description": "safe"}])
+
+    assert result.payload == payload
+    assert result.input_tokens == 100
+    assert client.request["guardrailConfig"] == {
+        "guardrailIdentifier": "guardrail",
+        "guardrailVersion": "3",
+        "trace": "disabled",
+    }
+    assert client.request["inferenceConfig"] == {"temperature": 0, "maxTokens": 300}
+    assert client.request["outputConfig"]["textFormat"]["type"] == "json_schema"
+
+
+def test_guardrail_intervention_is_a_safe_provider_failure():
+    client = FakeClient({"stopReason": "guardrail_intervened"})
+    breaker = CircuitBreaker(threshold=1)
+    with pytest.raises(ProviderFailure, match="guardrail_intervened"):
+        adapter(client, circuit_breaker=breaker).converse("q", {}, [{}])
+    # An intervention is a policy result, not a provider outage.
+    breaker.before_call(0)
+
+
+def test_nova_tool_mode_only_accepts_forced_non_action_tool():
+    client = FakeClient({
+        "stopReason": "tool_use",
+        "output": {"message": {"content": [{"toolUse": {
+            "name": "emit_grounded_answer",
+            "input": {"decision": "insufficient", "answer": "", "citations": []},
+        }}]}},
+        "usage": {},
+    })
+    result = adapter(client, output_mode="tool").converse("q", {}, [{}])
+    assert result.payload["decision"] == "insufficient"
+    assert client.request["toolConfig"]["toolChoice"] == {"tool": {"name": "emit_grounded_answer"}}
+
+
+def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
+    breaker = CircuitBreaker(threshold=5, window_seconds=30, cooldown_seconds=60)
+    for now in range(5):
+        breaker.before_call(now)
+        breaker.failure(now)
+    with pytest.raises(CircuitOpen):
+        breaker.before_call(5)
+    breaker.before_call(65)
+
+
+def test_rejects_draft_guardrail():
+    with pytest.raises(ValueError, match="numeric"):
+        BedrockAdapter("model", "guardrail", "DRAFT", client=FakeClient())

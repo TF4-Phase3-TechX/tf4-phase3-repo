@@ -1,0 +1,12 @@
+NAME                                     READY   STATUS      RESTARTS        AGE
+grafana-5bfd99cc46-28km9                 4/4     Running     0               6h48m
+jaeger-5f589cc9f6-qp4ft                  1/1     Running     34 (105s ago)   6h48m
+jaeger-es-index-cleaner-29733095-76mdx   0/1     Completed   0               35h
+jaeger-es-index-cleaner-29734535-7bcfm   0/1     Completed   0               11h
+metrics-server-74c879746b-5trfz          1/1     Running     0               5h6m
+opensearch-0                             1/1     Running     0               6h48m
+otel-collector-agent-4cd74               1/1     Running     0               6h48m
+otel-collector-agent-8fh4l               1/1     Running     0               6h48m
+otel-collector-agent-ndm7d               1/1     Running     0               5h5m
+prometheus-5c799696f6-9982j              2/2     Running     0               6h18m
+techx-observability-alertmanager-0       1/1     Running     0               6h48m

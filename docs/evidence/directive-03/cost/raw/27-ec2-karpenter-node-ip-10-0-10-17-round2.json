@@ -1,0 +1,73 @@
+$ aws ec2 describe-instances --instance-ids i-05a5387fbf39a3e02 --query 'Reservations[].Instances[].{ID:InstanceId,PrivateIP:PrivateIpAddress,State:State.Name,Launch:LaunchTime,Type:InstanceType,Tags:Tags}' --output json
+
+[
+    {
+        "ID": "i-05a5387fbf39a3e02",
+        "PrivateIP": "10.0.10.17",
+        "State": "running",
+        "Launch": "2026-07-15T10:52:32+00:00",
+        "Type": "t3a.large",
+        "Tags": [
+            {
+                "Key": "karpenter.sh/discovery",
+                "Value": "techx-tf4-cluster"
+            },
+            {
+                "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                "Value": "owned"
+            },
+            {
+                "Key": "Environment",
+                "Value": "Phase3"
+            },
+            {
+                "Key": "aws:ec2launchtemplate:id",
+                "Value": "lt-000d678312a697c0a"
+            },
+            {
+                "Key": "Name",
+                "Value": "ip-10-0-10-17.ec2.internal"
+            },
+            {
+                "Key": "aws:eks:cluster-name",
+                "Value": "techx-tf4-cluster"
+            },
+            {
+                "Key": "eks:eks-cluster-name",
+                "Value": "techx-tf4-cluster"
+            },
+            {
+                "Key": "Project",
+                "Value": "TF4"
+            },
+            {
+                "Key": "karpenter.k8s.aws/ec2nodeclass",
+                "Value": "techx-general"
+            },
+            {
+                "Key": "Team",
+                "Value": "CDO_04"
+            },
+            {
+                "Key": "aws:ec2launchtemplate:version",
+                "Value": "1"
+            },
+            {
+                "Key": "Owner",
+                "Value": "CDO_04"
+            },
+            {
+                "Key": "karpenter.sh/nodeclaim",
+                "Value": "techx-general-b6lx5"
+            },
+            {
+                "Key": "karpenter.sh/nodepool",
+                "Value": "techx-general"
+            },
+            {
+                "Key": "aws:ec2:fleet-id",
+                "Value": "fleet-db3511ae-218e-46bc-0490-ad8073eb6831"
+            }
+        ]
+    }
+]

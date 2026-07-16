@@ -32,6 +32,30 @@
         "create"
       ]
     },
+    "prometheusRetainStorageClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provisioner": {
+          "type": "string"
+        },
+        "allowVolumeExpansion": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "name",
+        "provisioner",
+        "allowVolumeExpansion"
+      ]
+    },
     "components": {
       "$ref": "#/definitions/Components"
     },
@@ -173,6 +197,9 @@
         },
         "replicas": {
           "type": "integer"
+        },
+        "serviceAccountName": {
+          "type": "string"
         },
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"

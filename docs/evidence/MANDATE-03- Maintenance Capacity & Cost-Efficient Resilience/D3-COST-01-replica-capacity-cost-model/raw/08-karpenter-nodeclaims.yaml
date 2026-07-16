@@ -1,0 +1,146 @@
+﻿apiVersion: v1
+items:
+- apiVersion: karpenter.sh/v1
+  kind: NodeClaim
+  metadata:
+    annotations:
+      compatibility.karpenter.k8s.aws/cluster-name-tagged: "true"
+      karpenter.k8s.aws/ec2nodeclass-hash: "4689754915429741937"
+      karpenter.k8s.aws/ec2nodeclass-hash-version: v5
+      karpenter.k8s.aws/instance-profile-name: techx-tf4-cluster_6332193992597369731
+      karpenter.k8s.aws/tagged: "true"
+      karpenter.sh/nodeclaim-min-values-relaxed: "false"
+      karpenter.sh/nodepool-hash: "10581740522941538598"
+      karpenter.sh/nodepool-hash-version: v3
+    creationTimestamp: "2026-07-15T03:46:24Z"
+    finalizers:
+    - karpenter.sh/termination
+    generateName: techx-general-
+    generation: 1
+    labels:
+      karpenter.k8s.aws/ec2nodeclass: techx-general
+      karpenter.k8s.aws/instance-capability-flex: "false"
+      karpenter.k8s.aws/instance-category: t
+      karpenter.k8s.aws/instance-cpu: "2"
+      karpenter.k8s.aws/instance-cpu-manufacturer: amd
+      karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz: "2200"
+      karpenter.k8s.aws/instance-ebs-bandwidth: "2780"
+      karpenter.k8s.aws/instance-encryption-in-transit-supported: "false"
+      karpenter.k8s.aws/instance-family: t3a
+      karpenter.k8s.aws/instance-generation: "3"
+      karpenter.k8s.aws/instance-hypervisor: nitro
+      karpenter.k8s.aws/instance-memory: "8192"
+      karpenter.k8s.aws/instance-network-bandwidth: "512"
+      karpenter.k8s.aws/instance-size: large
+      karpenter.k8s.aws/instance-tenancy: default
+      karpenter.sh/capacity-type: on-demand
+      karpenter.sh/nodepool: techx-general
+      kubernetes.io/arch: amd64
+      kubernetes.io/os: linux
+      node.kubernetes.io/instance-type: t3a.large
+      topology.k8s.aws/zone-id: use1-az1
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1a
+    name: techx-general-jx8w9
+    ownerReferences:
+    - apiVersion: karpenter.sh/v1
+      blockOwnerDeletion: true
+      kind: NodePool
+      name: techx-general
+      uid: d6b4c398-4df9-41e1-bb7d-e7eb8ea74e8f
+    resourceVersion: "2775829"
+    uid: 65faabd7-9ac7-49bb-8dfa-cd8e2fb54280
+  spec:
+    expireAfter: 720h
+    nodeClassRef:
+      group: karpenter.k8s.aws
+      kind: EC2NodeClass
+      name: techx-general
+    requirements:
+    - key: topology.kubernetes.io/region
+      operator: In
+      values:
+      - us-east-1
+    - key: topology.kubernetes.io/zone
+      operator: In
+      values:
+      - us-east-1a
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values:
+      - on-demand
+    - key: kubernetes.io/arch
+      operator: In
+      values:
+      - amd64
+    - key: karpenter.k8s.aws/ec2nodeclass
+      operator: In
+      values:
+      - techx-general
+    - key: karpenter.sh/nodepool
+      operator: In
+      values:
+      - techx-general
+    - key: node.kubernetes.io/instance-type
+      operator: In
+      values:
+      - t3.large
+      - t3a.large
+    - key: kubernetes.io/os
+      operator: In
+      values:
+      - linux
+    resources:
+      requests:
+        cpu: 1135m
+        memory: 2433Mi
+        pods: "16"
+  status:
+    allocatable:
+      cpu: 1930m
+      ephemeral-storage: 17Gi
+      memory: 7270828Ki
+      pods: "35"
+    capacity:
+      cpu: "2"
+      ephemeral-storage: 20Gi
+      memory: 8028588Ki
+      pods: "35"
+    conditions:
+    - lastTransitionTime: "2026-07-15T03:56:26Z"
+      message: ""
+      observedGeneration: 1
+      reason: ConsistentStateFound
+      status: "True"
+      type: ConsistentStateFound
+    - lastTransitionTime: "2026-07-15T03:47:04Z"
+      message: ""
+      observedGeneration: 1
+      reason: Initialized
+      status: "True"
+      type: Initialized
+    - lastTransitionTime: "2026-07-15T03:46:26Z"
+      message: ""
+      observedGeneration: 1
+      reason: Launched
+      status: "True"
+      type: Launched
+    - lastTransitionTime: "2026-07-15T03:47:04Z"
+      message: ""
+      observedGeneration: 1
+      reason: Ready
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2026-07-15T03:46:49Z"
+      message: ""
+      observedGeneration: 1
+      reason: Registered
+      status: "True"
+      type: Registered
+    imageID: ami-09f62c72654741033
+    lastPodEventTime: "2026-07-15T07:17:42Z"
+    nodeName: ip-10-0-10-74.ec2.internal
+    providerID: aws:///us-east-1a/i-029d41ebaa83f4358
+kind: List
+metadata:
+  resourceVersion: ""

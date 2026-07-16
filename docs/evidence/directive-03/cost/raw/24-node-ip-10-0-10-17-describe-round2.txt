@@ -1,0 +1,86 @@
+$ kubectl describe node ip-10-0-10-17.ec2.internal
+
+Name:               ip-10-0-10-17.ec2.internal
+Roles:              <none>
+Labels:             beta.kubernetes.io/arch=amd64
+                    beta.kubernetes.io/instance-type=t3a.large
+                    beta.kubernetes.io/os=linux
+                    failure-domain.beta.kubernetes.io/region=us-east-1
+                    failure-domain.beta.kubernetes.io/zone=us-east-1a
+                    k8s.io/cloud-provider-aws=dbfbf66b3070c50226f070a19bccb812
+                    karpenter.k8s.aws/ec2nodeclass=techx-general
+                    karpenter.k8s.aws/instance-capability-flex=false
+                    karpenter.k8s.aws/instance-category=t
+                    karpenter.k8s.aws/instance-cpu=2
+                    karpenter.k8s.aws/instance-cpu-manufacturer=amd
+                    karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz=2200
+                    karpenter.k8s.aws/instance-ebs-bandwidth=2780
+                    karpenter.k8s.aws/instance-encryption-in-transit-supported=false
+                    karpenter.k8s.aws/instance-family=t3a
+                    karpenter.k8s.aws/instance-generation=3
+                    karpenter.k8s.aws/instance-hypervisor=nitro
+                    karpenter.k8s.aws/instance-memory=8192
+                    karpenter.k8s.aws/instance-network-bandwidth=512
+                    karpenter.k8s.aws/instance-size=large
+                    karpenter.k8s.aws/instance-tenancy=default
+                    karpenter.sh/capacity-type=on-demand
+                    karpenter.sh/do-not-sync-taints=true
+                    karpenter.sh/initialized=true
+                    karpenter.sh/nodepool=techx-general
+                    karpenter.sh/registered=true
+                    kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=ip-10-0-10-17.ec2.internal
+                    kubernetes.io/os=linux
+                    node.kubernetes.io/instance-type=t3a.large
+                    topology.ebs.csi.aws.com/zone=us-east-1a
+                    topology.k8s.aws/zone-id=use1-az1
+                    topology.kubernetes.io/region=us-east-1
+                    topology.kubernetes.io/zone=us-east-1a
+Annotations:        alpha.kubernetes.io/provided-node-ip: 10.0.10.17
+                    csi.volume.kubernetes.io/nodeid: {"ebs.csi.aws.com":"i-05a5387fbf39a3e02"}
+                    karpenter.k8s.aws/ec2nodeclass-hash: 4689754915429741937
+                    karpenter.k8s.aws/ec2nodeclass-hash-version: v5
+                    karpenter.k8s.aws/instance-profile-name: techx-tf4-cluster_6332193992597369731
+                    karpenter.sh/nodeclaim-min-values-relaxed: false
+                    karpenter.sh/nodepool-hash: 10581740522941538598
+                    karpenter.sh/nodepool-hash-version: v3
+                    node.alpha.kubernetes.io/ttl: 0
+                    volumes.kubernetes.io/controller-managed-attach-detach: true
+CreationTimestamp:  Wed, 15 Jul 2026 17:52:56 +0700
+Taints:             <none>
+Unschedulable:      false
+Lease:              Failed to get lease: leases.coordination.k8s.io "ip-10-0-10-17.ec2.internal" is forbidden: User "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan" cannot get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease"
+Conditions:
+  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----             ------  -----------------                 ------------------                ------                       -------
+  MemoryPressure   False   Wed, 15 Jul 2026 23:32:29 +0700   Wed, 15 Jul 2026 17:52:53 +0700   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure     False   Wed, 15 Jul 2026 23:32:29 +0700   Wed, 15 Jul 2026 17:52:53 +0700   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure      False   Wed, 15 Jul 2026 23:32:29 +0700   Wed, 15 Jul 2026 17:52:53 +0700   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready            True    Wed, 15 Jul 2026 23:32:29 +0700   Wed, 15 Jul 2026 17:53:09 +0700   KubeletReady                 kubelet is posting ready status
+Addresses:
+  InternalIP:   10.0.10.17
+  InternalDNS:  ip-10-0-10-17.ec2.internal
+  Hostname:     ip-10-0-10-17.ec2.internal
+Capacity:
+  cpu:                2
+  ephemeral-storage:  20893676Ki
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             8028596Ki
+  pods:               35
+Allocatable:
+  cpu:                1930m
+  ephemeral-storage:  18181869946
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             7270836Ki
+  pods:               35
+System Info:
+  Machine ID:                 ec22c5f509a5f8e9c809f24d52135630
+  System UUID:                ec22c5f5-09a5-f8e9-c809-f24d52135630
+  Boot ID:                    7c572c61-dde9-421e-88d3-35fdc5ab31aa
+  Kernel Version:             6.12.90-120.164.amzn2023.x86_64
+  OS Image:                   Amazon Linux 2023.12.20260611
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime V
