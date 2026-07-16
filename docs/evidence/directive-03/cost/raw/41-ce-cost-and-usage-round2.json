@@ -1,0 +1,273 @@
+$ aws ce get-cost-and-usage --time-period Start=2026-07-14,End=2026-07-16 --granularity DAILY --metrics "UnblendedCost" "UsageQuantity" --filter '{"Dimensions":{"Key":"SERVICE","Values":["Amazon Elastic Compute Cloud - Compute"]}}' --group-by Type=DIMENSION,Key=USAGE_TYPE
+
+{
+    "GroupDefinitions": [
+        {
+            "Type": "DIMENSION",
+            "Key": "USAGE_TYPE"
+        }
+    ],
+    "ResultsByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2026-07-14",
+                "End": "2026-07-15"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "BoxUsage:t3.large"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3.nano"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "23.975556",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3.small"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "1.283611",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3a.large"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "3.846667",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3a.medium"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.816389",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3a.small"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "6.099167",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "DataTransfer-In-Bytes"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.3190167951",
+                            "Unit": "GB"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "DataTransfer-Out-Bytes"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.0019745979",
+                            "Unit": "GB"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "USE1-CloudFront-In-Bytes"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.1589733512",
+                            "Unit": "GB"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "USE1-CloudFront-Out-Bytes"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.0001778687",
+                            "Unit": "GB"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-15",
+                "End": "2026-07-16"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "BoxUsage:t3.large"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "7.992222",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3.nano"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "3.56",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3a.medium"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "2.953056",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "BoxUsage:t3a.small"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "6.542777",
+                            "Unit": "Hrs"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "DataTransfer-In-Bytes"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.2192759185",
+                            "Unit": "GB"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "DataTransfer-Out-Bytes"
+                    ],
+                    "Metrics": {
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UsageQuantity": {
+                            "Amount": "0.0010085423",
+                            "Unit": "GB"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        }
+    ],
+    "DimensionValueAttributes": []
+}
