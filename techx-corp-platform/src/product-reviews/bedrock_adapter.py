@@ -37,8 +37,11 @@ OUTPUT_SCHEMA = {
 }
 
 # Nova tool definitions accept only type/properties/required at the top level.
-# Keep the stricter full schema for application validation and native
-# structured-output models, while sending Nova a provider-compatible view.
+# The documented restriction is top-level only, so nested constraints such as
+# citations.items.additionalProperties remain in the provider view and are
+# independently enforced by the application validator. Keep the stricter full
+# schema for native structured-output models while sending Nova a
+# provider-compatible top-level view.
 NOVA_TOOL_INPUT_SCHEMA = {
     "type": OUTPUT_SCHEMA["type"],
     "properties": OUTPUT_SCHEMA["properties"],
@@ -214,9 +217,10 @@ class BedrockAdapter:
                     {"guardContent": {"text": {"text": question, "qualifiers": ["query"]}}},
                 ],
             }],
-            # Nova can require more than 300 tokens to finish a forced tool
-            # payload containing exact evidence quotes. 512 remains bounded
-            # while avoiding malformed_tool_use from truncation.
+            # The observed valid citation payload required 328 tokens. A cap
+            # of 512 provides about 1.56x headroom for small evidence-length
+            # variation while remaining bounded and avoiding the 300-token
+            # malformed_tool_use truncation reproduced in the canary.
             "inferenceConfig": {"temperature": 0, "maxTokens": 512},
             "guardrailConfig": {
                 "guardrailIdentifier": self.guardrail_id,
