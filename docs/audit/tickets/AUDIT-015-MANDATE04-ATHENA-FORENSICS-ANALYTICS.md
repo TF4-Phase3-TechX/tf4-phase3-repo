@@ -270,26 +270,16 @@ ORDER BY aws.eventtime DESC
 * **Phí truy vấn:** **$5.00 / TB** dữ liệu được scan (minimum **10 MB** mỗi query)
 * **Phí AWS Glue Data Catalog:** **$1.00 / 1,000,000 requests** — **1 triệu requests đầu tiên miễn phí mỗi tháng**
 
-### 2. Ước tính dung lượng dữ liệu thực tế trên S3
-
-> **Lưu ý:** Athena tính phí dựa trên dung lượng **nén trên S3** (bytes đọc từ S3), không phải dung lượng giải nén. Tuy nhiên mỗi query có minimum charge **10 MB** dù data thực tế scan nhỏ hơn.
-
-| Nguồn dữ liệu | Dung lượng raw/ngày | Dung lượng nén trên S3/ngày | Dung lượng S3/tháng | Ghi chú |
-| :--- | :--- | :--- | :--- | :--- |
-| **CloudTrail Logs** | ~5 MB | **~5 MB** (GZIP bởi CloudTrail) | **~150 MB** | KMS encrypted, GZIP native |
-| **AWS Config History** | ~2 MB | **~2 MB** (JSON, AES256) | **~60 MB** | Chưa nén thêm |
-| **EKS Audit Logs** | **~170 MB** (CW Logs ingestion) | **~25 MB** (GZIP bởi Firehose) | **~750 MB** | Firehose `compression_format = "GZIP"`, tỉ lệ nén JSON ~5-10x |
-| **TỔNG CỘNG** | ~177 MB | **~32 MB** | **~960 MB** | |
-
-### 3. Chi phí vận hành chi tiết (Pay-per-scan model)
+### 2. Chi phí vận hành chi tiết (Pay-per-scan model)
 
 **Kịch bản investigation thực tế:**
 - **1 investigation** = 3-5 queries × 3 ngày data = ~15 queries
-- **Athena minimum charge:** 10 MB/query → 15 queries × 10 MB = 150 MB scanned (minimum)
-- **Athena scan cost:** 150 MB ÷ 1,048,576 MB/TB × $5.00 = **~$0.0007** per investigation
+- **EKS scan/query (partitioned by hour, 3h window):** ~3.4 MB × 3h = ~10 MB → đúng minimum 10 MB
+- **CloudTrail + Config scan/query:** < 10 MB → áp minimum 10 MB
+- **Athena scan cost:** 15 queries × 10 MB × $5.00/TB = 15 × 10 / 1,048,576 × $5.00 = **~$0.0007** per investigation
 - **Với 10 investigations/tháng:** **~$0.007**
 
-> Thực tế nếu query scan nhiều hơn 10 MB (ví dụ full-day EKS scan ~25 MB), cost sẽ cao hơn minimum nhưng vẫn dưới **$0.01/investigation**.
+> Nếu query scan toàn bộ 1 ngày EKS (~82 MB), cost per query sẽ là 82 / 1,048,576 × $5.00 ≈ **$0.0004**. Vẫn rất thấp.
 
 **Chi phí infrastructure bổ sung (monthly):**
 - **S3 storage (existing):** $0 (CloudTrail, Config, EKS buckets đã có) 
