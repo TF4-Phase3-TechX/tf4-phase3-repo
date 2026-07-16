@@ -1558,6 +1558,10 @@ prometheus:
         secretName: alertmanager-smtp-auth
         mountPath: /etc/alertmanager/secrets
         readOnly: true
+      - name: slack-webhook
+        secretName: alertmanager-slack-webhook
+        mountPath: /etc/alertmanager/slack
+        readOnly: true
     config:
       global:
         resolve_timeout: 5m
@@ -1576,7 +1580,7 @@ prometheus:
         - name: 'combined-notifications'
           slack_configs:
             - channel: '#tf4-alerts'
-              api_url: 'http://localhost:8080/dummy-slack-webhook'
+              api_url_file: '/etc/alertmanager/slack/webhook-url'
               send_resolved: true
           email_configs:
             - to: 'buithanhnghia@dtu.edu.vn'
