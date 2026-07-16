@@ -117,6 +117,25 @@ def test_nova_tool_mode_rejects_unexpected_contract_shape_without_content(respon
     assert failure.value.contract_stage == expected_stage
 
 
+def test_response_after_deadline_fails_closed_and_preserves_billable_usage():
+    clock_values = iter((0.0, 4.6, 4.6))
+
+    with pytest.raises(ProviderFailure) as failure:
+        adapter(
+            FakeClient(tool_response_with({"decision": "insufficient", "answer": "", "citations": []})),
+            output_mode="tool",
+            deadline_seconds=4.5,
+            clock=lambda: next(clock_values),
+        ).converse("q", {}, [{}])
+
+    assert failure.value.error_class == "deadline_exceeded"
+    assert failure.value.latency_ms == pytest.approx(4_600)
+    assert failure.value.input_tokens == 101
+    assert failure.value.output_tokens == 21
+    assert failure.value.stop_reason == "tool_use"
+    assert failure.value.contract_stage == "deadline_exceeded"
+
+
 def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
     breaker = CircuitBreaker(threshold=5, window_seconds=30, cooldown_seconds=60)
     for now in range(5):

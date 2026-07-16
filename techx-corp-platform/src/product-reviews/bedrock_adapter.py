@@ -222,8 +222,6 @@ class BedrockAdapter:
         try:
             response = self.client.converse(**self._request(question, product, reviews))
             elapsed = self.clock() - started
-            if elapsed > self.deadline_seconds:
-                raise ProviderFailure("deadline_exceeded")
             if not isinstance(response, dict):
                 raise ProviderFailure(
                     "invalid_response",
@@ -234,6 +232,18 @@ class BedrockAdapter:
             usage = response.get("usage", {})
             input_tokens = int(usage.get("inputTokens", 0))
             output_tokens = int(usage.get("outputTokens", 0))
+            if elapsed > self.deadline_seconds:
+                # Fail closed after the application deadline, but retain only
+                # billable metadata from the already-received response so
+                # token/cost telemetry remains accurate.
+                raise ProviderFailure(
+                    "deadline_exceeded",
+                    latency_ms=elapsed * 1_000,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    stop_reason=stop_reason,
+                    contract_stage="deadline_exceeded",
+                )
             if stop_reason == "guardrail_intervened":
                 raise ProviderFailure(
                     "guardrail_intervened",

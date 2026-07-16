@@ -48,8 +48,10 @@ layer.
 - Preserve `temperature=0`, one provider call, no SDK retries, 4.5-second
   deadline, forced non-action tool use, pinned numeric Guardrail, and all
   deterministic output validation.
-- Preserve token/latency usage from a provider response even when its response
-  contract fails, so Prometheus cost telemetry is not falsely zero.
+- Preserve token/latency usage from an already-received provider response even
+  when its response contract fails or it arrives after the application
+  deadline, so Prometheus cost telemetry is not falsely zero. The response is
+  still rejected after the deadline.
 - Emit only finite, non-content diagnostic enums: provider stop reason and
   response-contract stage. No prompt, review, response, tool input, request
   ID, or canary is emitted as a metric label or log field.
