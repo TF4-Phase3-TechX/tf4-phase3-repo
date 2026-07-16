@@ -1,6 +1,6 @@
-# CDO08-SEC-11 test manifest — vi phạm cả 2 luật của Mandate-05 #1:
-# thiếu runAsNonRoot (luật sec11-no-root-containers) VÀ thiếu capabilities.drop
-# (luật sec11-drop-all-capabilities).
+# Test manifest — vi phạm cả 2 luật nhóm non-root:
+# thiếu runAsNonRoot (policy require-run-as-nonroot) VÀ thiếu capabilities.drop
+# (policy require-drop-all-capabilities).
 # Apply vào techx-admission-test (binding Deny) -> BỊ REJECT (mentor thấy tận mắt).
 # Đổi namespace sang techx-tf4 (binding Audit) -> PASS + audit annotation. Xem plan §0/§6/§7.
 apiVersion: v1

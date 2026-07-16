@@ -1,4 +1,4 @@
-# CDO08-SEC-11 test manifest — vi phạm Mandate-05 #3 (thiếu requests/limits).
+# Test manifest — vi phạm luật resources (thiếu requests/limits).
 # Set sẵn runAsNonRoot + capabilities.drop + image pin để CÔ LẬP đúng 1 luật vi phạm (resources).
 # Apply vào techx-admission-test (binding Deny) -> BỊ REJECT do thiếu resources.
 apiVersion: v1

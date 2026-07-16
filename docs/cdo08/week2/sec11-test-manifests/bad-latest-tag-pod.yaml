@@ -1,4 +1,4 @@
-# CDO08-SEC-11 test manifest — vi phạm Mandate-05 #2 (image tag latest/mutable).
+# Test manifest — vi phạm luật image tag (latest/mutable).
 # Set sẵn runAsNonRoot + capabilities.drop để CÔ LẬP đúng 1 luật vi phạm (tag).
 # Apply vào techx-admission-test (binding Deny) -> BỊ REJECT do image tag.
 apiVersion: v1
