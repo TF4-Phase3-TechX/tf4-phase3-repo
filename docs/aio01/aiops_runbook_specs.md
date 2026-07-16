@@ -33,19 +33,42 @@ AIOps MVP **does not**:
 
 ### Output contract (for TF4AIO-42/43 summary field)
 
-Each mapping below is intended to populate a structured **runbook hint**, not a free-form remediation essay:
+Each mapping below is intended to populate a structured **runbook hint**, not a free-form remediation essay.
+
+**Contract rule:** the incident summary generator / detector **must emit exactly these fields and formats**. Free-form prose may appear only in human-facing renderers; the structured payload is the machine contract. Mismatched field names, casing, or invented action IDs break downstream consumers.
 
 ```text
-incident_type
-symptoms_summary
+incident_type              # snake_case enum: latency_spike | error_rate_spike | llm_timeout_error
+symptoms_summary           # short human string (optional in machine payload)
 evidence_checks[]          # queries / UI paths operator should run
-suggested_actions[]        # human/CDO-approved options only; ordered by safety
-do_not[]                   # explicit anti-patterns
+suggested_actions[]        # snake_case action IDs only; ordered by safety; allow-list per MVP type
+do_not[]                   # snake_case anti-pattern IDs; allow-list per MVP type
 escalation:
-  primary
-  secondary
-known_limitations[]
+  primary                  # snake_case owner id (e.g. aio01_oncall, aie_owner_aio01)
+  secondary                # snake_case owner id
+known_limitations[]        # optional strings / ids
 ```
+
+#### `runbook_hint` field contract (YAML / JSON)
+
+Nested under the incident summary as `runbook_hint`:
+
+| Field | Type | Format / rules |
+| --- | --- | --- |
+| `incident_type` | string | One of: `latency_spike`, `error_rate_spike`, `llm_timeout_error` |
+| `suggested_actions` | string[] | **snake_case action IDs only** (e.g. `verify_p95_and_trace_outliers`). Do **not** emit free-text sentences, Title Case, or kebab-case. Order = safety priority (safest first). IDs must come from the allow-list in each MVP §F example (or the matching §C table mapping). |
+| `do_not` | string[] | **snake_case anti-pattern IDs only** (e.g. `patch_or_rewrite_flagd`). Same casing rules as `suggested_actions`. |
+| `escalation.primary` | string | snake_case owner id from §E |
+| `escalation.secondary` | string | snake_case owner id from §E |
+
+**Generator / detector conformance:**
+
+1. Copy action / do-not IDs **verbatim** from the curated allow-list for the classified `incident_type` — do not paraphrase into natural language inside the structured fields.
+2. Prefer emitting the full ordered allow-list for that type (or a evidence-gated subset) rather than inventing new IDs such as `ScaleOutNow` or `verify-p95`.
+3. Human-readable labels (for UI) may be derived by a separate presentation layer; they are **not** substitutes for the snake_case IDs in the payload.
+4. If evidence is incomplete, still use the same schema: keep IDs, set confidence/limitations, and avoid inventing mutate-style actions outside the allow-list.
+
+Canonical examples: §2.F, §3.F, §4.F.
 
 ---
 
@@ -139,7 +162,9 @@ kubectl rollout undo deployment/<service-name> -n <namespace>
 | Cluster capacity, node pressure, data-store platform | CDO platform / DevOps on-call | AIO on-call (evidence package) |
 | AI path latency (`product-reviews` → LLM / Bedrock) | AIE owner (AIO01) | CDO if infra/network to provider |
 
-### F. Example `runbook_hint` payload
+### F. Canonical `runbook_hint` payload (allow-list)
+
+> Generator must emit these **snake_case IDs** (or an evidence-gated subset in the same order). Do not rewrite as free text.
 
 ```yaml
 incident_type: latency_spike
@@ -268,7 +293,9 @@ kubectl rollout undo deployment/<service-name> -n <namespace>
 | Data plane, networking, node, shared PostgreSQL platform | CDO platform on-call | AIO on-call (evidence only) |
 | Cross-service mesh of failures | CDO platform (coordination) | Service owners per failing dependency |
 
-### F. Example `runbook_hint` payload
+### F. Canonical `runbook_hint` payload (allow-list)
+
+> Generator must emit these **snake_case IDs** (or an evidence-gated subset in the same order). Do not rewrite as free text.
 
 ```yaml
 incident_type: error_rate_spike
@@ -298,9 +325,15 @@ Alert `AIOpsLLMIntegrationFailureCritical` (AI span error rate > 0.5/s **or** AI
 
 1. **Prometheus — AI path isolation** (same signals as detection):
 
+   > **Metric name drift (read before trusting empty series):** names below are **pinned for MVP alignment with detection rules**. They can lag the AI Engine codebase (e.g. LLM cost/error family such as `app_llm_errors_total`, `app_llm_calls_total` may be added or renamed while this runbook still cites `app_ai_assistant_counter_total`). Before treating a PromQL result as “no traffic / no errors”, re-verify series names against `product-reviews` instrumentation and live Prometheus (`/api/v1/label/__name__/values` or Grafana explorer). See §6 item 3 and detection open items.
+
    ```promql
-   # AI assistant throughput (confirm exact series name under load; see detection open items)
+   # AI assistant throughput — pinned name; re-verify under load if series is missing
    sum(rate(app_ai_assistant_counter_total[3m]))
+
+   # Optional cross-check (AIE LLM telemetry family; names may evolve independently)
+   # sum(rate(app_llm_errors_total[3m]))
+   # sum(rate(app_llm_calls_total[3m]))
 
    # Errors on AI span only (avoids mixing with generic product-reviews errors)
    rate(
@@ -371,7 +404,9 @@ Alert `AIOpsLLMIntegrationFailureCritical` (AI span error rate > 0.5/s **or** AI
 | Bedrock quota / provider outage / integration contract | AIE owner (AIO01) | CDO if account/IAM/network platform |
 | Cluster identity (Pod Identity), DNS, egress, deploy pipeline | CDO platform | AIE owner |
 
-### F. Example `runbook_hint` payload
+### F. Canonical `runbook_hint` payload (allow-list)
+
+> Generator must emit these **snake_case IDs** (or an evidence-gated subset in the same order). Do not rewrite as free text.
 
 ```yaml
 incident_type: llm_timeout_error
@@ -392,16 +427,23 @@ escalation:
 
 ---
 
-## 5. Cross-cutting: how the detector may use this map
+## 5. Cross-cutting: how the detector / summary generator must use this map
 
-| Detector output field | Source in this doc |
-| --- | --- |
-| `incident_type` | MVP-1 / MVP-2 / MVP-3 |
-| `evidence[]` | Section B queries (copy links/queries into summary) |
-| `runbook_hint.suggested_actions` | Section C table (IDs / short strings only) |
-| `runbook_hint.do_not` | Section D |
-| `runbook_hint.escalation` | Section E |
-| `confidence` / `limitations` | From detection rules + known gaps (idle metrics, inject-flag noise, quantile bucket limits) |
+| Detector / summary field | Source in this doc | Format constraint |
+| --- | --- | --- |
+| `incident_type` | MVP-1 → `latency_spike`; MVP-2 → `error_rate_spike`; MVP-3 → `llm_timeout_error` | snake_case enum only |
+| `evidence[]` / `evidence_checks[]` | Section B queries (copy links/queries into summary) | structured checks; not free-form remediation |
+| `runbook_hint.suggested_actions` | Section C (safety order) + §F allow-list IDs | **snake_case action IDs only** (e.g. `verify_p95_and_trace_outliers`); no free-text sentences |
+| `runbook_hint.do_not` | Section D + §F allow-list IDs | **snake_case IDs only** |
+| `runbook_hint.escalation` | Section E | `primary` / `secondary` as snake_case owner ids |
+| `confidence` / `limitations` | Detection rules + §6 known gaps (idle metrics, inject-flag noise, metric-name drift, quantile bucket limits) | optional but preferred when signals are thin |
+
+**Contract enforcement (TF4AIO-42/43):**
+
+- The incident summary generator and detector are **producers** of `runbook_hint`; this document is the **allow-list source of truth** for action / do-not IDs.
+- Emit the same schema as §0 and the §F YAML samples. Do not rename fields (`suggestedActions`, `suggested-actions`, `actions`) or change ID casing.
+- UI copy may map IDs → display strings; the stored/API payload keeps snake_case IDs so consumers do not diverge from the contract.
+- Reject or drop unknown action IDs rather than accepting LLM-invented mutate steps.
 
 AIOps may **render** optional `kubectl` examples for humans; it must **never** run them.
 
@@ -411,9 +453,11 @@ AIOps may **render** optional `kubectl` examples for humans; it must **never** r
 
 1. **Idle cluster / missing series:** PromQL may return no data without traffic; hints should say “signal not confirmable” rather than invent actions.
 2. **Inject-flag noise:** `llmRateLimitError` drills will fire MVP-3 by design; runbook treats this as degradation proof, not a license to mutate flagd.
-3. **Metric name drift:** `app_ai_assistant_counter_total` and span names must stay aligned with AIE telemetry; re-verify under load (see detection open items).
+3. **Metric name drift (pinned PromQL risk):** This runbook and detection rules **pin** Prometheus series such as `app_ai_assistant_counter_total`, span label `get_ai_assistant_response`, and related RED span metrics. The AI Engine / `product-reviews` instrumentation can change independently (example: LLM telemetry family uses names like `app_llm_errors_total`, `app_llm_calls_total`, token/cost series — which may be added, renamed, or preferred over older counters). **Impact:** suggested PromQL that still cites a stale name returns empty results and can be misread as “no load / no errors.”
+   - **Mitigation:** periodically re-verify pinned names against the live codebase (`techx-corp-platform/src/product-reviews/metrics.py` or current equivalent) and Prometheus series under real AI traffic; keep this doc and [aiops_detection_rules_specs.md](./aiops_detection_rules_specs.md) in lockstep when AIE renames metrics; treat empty series as “unconfirmed name or idle” until re-checked (see detection open items on `app_ai_assistant_counter`).
 4. **Namespace/context:** Commands use `<namespace>` placeholders — confirm live context (`techx-tf4` or current TF namespace) before any human execution.
 5. **No claim of automated remediation readiness:** Safety gates, allow-lists, dry-run, and CDO RBAC for future automation are **out of MVP scope**.
+6. **Runbook hint contract drift:** If the summary generator emits free-text actions or non-snake_case IDs, consumers of `runbook_hint.suggested_actions` will mismatch this spec. Keep generator templates / schemas synchronized with §0 and §F allow-lists.
 
 ---
 
@@ -427,6 +471,8 @@ AIOps may **render** optional `kubectl` examples for humans; it must **never** r
 | Escalation owner | Yes (§E), AIO01 / AIE / CDO mapped |
 | Conservative / no auto infra-impacting claim | Yes (§0 non-goals, §1 principles) |
 | No flagd mutation / no default DB restart in allow-list | Yes |
+| `runbook_hint` field/format contract for summary generator | Yes (§0 contract + §5 + §F snake_case IDs) |
+| Metric-name drift called out for pinned PromQL | Yes (§4.B note + §6.3) |
 
 ---
 
@@ -434,5 +480,6 @@ AIOps may **render** optional `kubectl` examples for humans; it must **never** r
 
 | Date | Change |
 | --- | --- |
+| 2026-07-16 | Review follow-up: formalize `runbook_hint` output contract (snake_case action / do-not IDs; generator must not invent field names or free-text actions); expand metric-name drift risk for pinned PromQL (e.g. `app_ai_assistant_counter_total` vs evolving `app_llm_*` family) with periodic re-verify guidance |
 | 2026-07-16 | Rewrite for TF4AIO-44 review: remove flagd patch / invented `llmFallbackMode`; remove default PostgreSQL restart; reframe kubectl as CDO-optional; align evidence with detection rules; Bedrock/Pod Identity-aware LLM path; structured `runbook_hint` examples |
 | (prior) | Initial draft with executable-style scale/rollback/restart/flagd actions |
