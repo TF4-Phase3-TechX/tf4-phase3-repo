@@ -44,6 +44,12 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+prometheusRetainStorageClass:
+  enabled: true
+  name: gp2-retain
+  provisioner: kubernetes.io/aws-ebs
+  allowVolumeExpansion: false
+
 components:
   ## Demo Components are named objects (services) with several properties
   # demoService:
@@ -1696,6 +1702,37 @@ prometheus:
         secretName: alertmanager-smtp-auth
         mountPath: /etc/alertmanager/secrets
         readOnly: true
+      - name: slack-webhook
+        secretName: alertmanager-slack-webhook
+        mountPath: /etc/alertmanager/slack
+        readOnly: true
+    config:
+      global:
+        resolve_timeout: 5m
+        smtp_smarthost: 'smtp.gmail.com:587'
+        smtp_from: 'tf4-on-call-email@gmail.com'
+        smtp_auth_username: 'tf4-on-call-email@gmail.com'
+        smtp_auth_password_file: '/etc/alertmanager/secrets/password'
+        smtp_require_tls: true
+      route:
+        group_by: ['alertname']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 1h
+        receiver: 'combined-notifications'
+      receivers:
+        - name: 'combined-notifications'
+          slack_configs:
+            - channel: '#tf4-alerts'
+              api_url_file: '/etc/alertmanager/slack/webhook-url'
+              send_resolved: true
+          email_configs:
+            - to: 'buithanhnghia@dtu.edu.vn'
+              send_resolved: true
+            - to: 'vanphutin2902@gmail.com'
+              send_resolved: true
+            - to: 'ngonguyentruongan2907@gmail.com'
+              send_resolved: true
   configmapReload:
     prometheus:
       enabled: true
@@ -1784,7 +1821,12 @@ prometheus:
         - postgresql.table.name
         - postgresql.index.name
     persistentVolume:
-      enabled: false
+      enabled: true
+      storageClass: gp2-retain
+      size: 20Gi
+      annotations:
+        helm.sh/resource-policy: keep
+        argocd.argoproj.io/sync-options: Prune=false,Delete=false
     service:
       servicePort: 9090
     resources:
