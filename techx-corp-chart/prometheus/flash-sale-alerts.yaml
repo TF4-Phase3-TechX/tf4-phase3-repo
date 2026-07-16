@@ -149,6 +149,78 @@ groups:
           description: Customer-facing frontend errors exceeded five percent for two minutes with sufficient traffic to avoid low-volume noise.
           runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#frontenderrorratehigh
 
+      - alert: CheckoutLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(traces_span_metrics_duration_milliseconds_bucket{
+                service_name="frontend",
+                span_kind="SPAN_KIND_SERVER",
+                span_name="POST /api/checkout"
+              }[5m])
+            )
+          ) > 1000
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: checkout
+        annotations:
+          summary: Checkout p95 latency is above the one-second SLO
+          description: End-to-end checkout p95 latency remained above 1000 ms for five minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#checkoutlatencyp95high
+
+      - alert: PaymentSuccessRateLow
+        expr: |
+          (
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="payment",
+              span_kind="SPAN_KIND_SERVER",
+              status_code!="STATUS_CODE_ERROR"
+            }[5m]))
+            /
+            sum(rate(traces_span_metrics_calls_total{
+              service_name="payment",
+              span_kind="SPAN_KIND_SERVER"
+            }[5m]))
+          ) < 0.99
+          and
+          sum(increase(traces_span_metrics_calls_total{
+            service_name="payment",
+            span_kind="SPAN_KIND_SERVER"
+          }[5m])) >= 20
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: payment
+        annotations:
+          summary: Payment success rate is below the 99 percent SLO
+          description: Payment success rate remained below 99 percent for five minutes with at least 20 requests in the evaluation window.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#paymentsuccessratelow
+
+      - alert: PaymentLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(traces_span_metrics_duration_milliseconds_bucket{
+                service_name="payment",
+                span_kind="SPAN_KIND_SERVER"
+              }[5m])
+            )
+          ) > 1000
+        for: 5m
+        labels:
+          severity: critical
+          owner: tf4-webstore
+          component: payment
+        annotations:
+          summary: Payment p95 latency is above the one-second SLO
+          description: Payment p95 latency remained above 1000 ms for five minutes.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#paymentlatencyp95high
+
   - name: flash-sale-kubernetes-pressure
     interval: 30s
     rules:
@@ -314,6 +386,45 @@ groups:
           summary: Jaeger is unavailable
           description: The Jaeger deployment has had no available replica for two minutes.
           runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#jaegerunavailable
+
+      - alert: PostgreSqlDown
+        expr: |
+          k8s_deployment_available{k8s_namespace_name="techx-tf4", k8s_deployment_name="postgresql"} < 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: tf4-platform
+          component: postgresql
+        annotations:
+          summary: PostgreSQL database is unavailable
+          description: The postgresql deployment has no available replicas for 1 minute.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#postgresqldown
+
+      - alert: ValkeyCartDown
+        expr: |
+          k8s_deployment_available{k8s_namespace_name="techx-tf4", k8s_deployment_name="valkey-cart"} < 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: tf4-platform
+          component: valkey-cart
+        annotations:
+          summary: Valkey-cart cache is unavailable
+          description: The valkey-cart deployment has no available replicas for 1 minute.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#valkeycartdown
+
+      - alert: KafkaDown
+        expr: |
+          k8s_deployment_available{k8s_namespace_name="techx-tf4", k8s_deployment_name="kafka"} < 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: tf4-platform
+          component: kafka
+        annotations:
+          summary: Kafka queue is unavailable
+          description: The kafka deployment has no available replicas for 1 minute.
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#kafkadown
 
   - name: flash-sale-test-window
     interval: 30s
