@@ -1,0 +1,17 @@
+# CDO08-SEC-11 test manifest — vi phạm Mandate-05 #2 (image tag latest/mutable).
+# Luật này ở enforce mode (validationActions: [Deny]) — apply phải bị REJECT.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sec11-test-bad-tag
+  namespace: techx-tf4
+spec:
+  containers:
+  - name: app
+    image: nginx:latest
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+    resources:
+      requests: {cpu: "50m", memory: "64Mi"}
+      limits: {cpu: "100m", memory: "128Mi"}

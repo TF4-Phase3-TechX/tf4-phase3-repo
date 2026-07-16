@@ -1,0 +1,15 @@
+# CDO08-SEC-11 test manifest — vi phạm Mandate-05 #1 (không set runAsNonRoot).
+# Luật này đang ở audit mode (validationActions: [Audit, Warn]) — apply sẽ PASS
+# nhưng phát sinh Warning + ValidatingAdmissionPolicyAudit event. Xem plan §0/§4/§9.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sec11-test-bad-root
+  namespace: techx-tf4
+spec:
+  containers:
+  - name: app
+    image: nginx:1.27.0
+    resources:
+      requests: {cpu: "50m", memory: "64Mi"}
+      limits: {cpu: "100m", memory: "128Mi"}
