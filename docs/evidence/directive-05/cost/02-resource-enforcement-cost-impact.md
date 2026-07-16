@@ -25,35 +25,35 @@ Báo cáo phân tích này tách biệt rõ ràng các thông số CPU Requests/
 
 ### 2.1. Ma trận Phân bổ Tài nguyên CPU (CPU Allocation Matrix)
 
-| STT | Dịch vụ (Service) | Current CPU Req | Current CPU Limit | Observed Peak CPU | Proposed CPU Req | Proposed CPU Limit | Lý do đề xuất (CPU Rationale) |
+| STT | Dịch vụ (Service) | Current CPU Req | Current CPU Limit | Observed snapshot CPU (Pod 1 / Pod 2) | Proposed CPU Req | Proposed CPU Limit | Lý do đề xuất (CPU Rationale) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `kafka` | `100m` | `500m` | **13m** | `100m` | `500m` | Hoạt động ổn định, tải CPU thấp. Giữ nguyên cấu hình hiện tại. |
-| 2 | `ad` | `50m` | `200m` | **2m** | `50m` | `200m` | CPU thực tế rất thấp. Giữ nguyên requests/limits. |
-| 3 | `fraud-detection` | `50m` | `200m` | **7m** | `50m` | `200m` | CPU thực tế thấp. Giữ nguyên. |
-| 4 | `accounting` | `50m` | `200m` | **6m** | `50m` | `200m` | CPU thực tế thấp. Giữ nguyên. |
-| 5 | `payment` | `50m` | `200m` | **16m** | `50m` | `200m` | Giữ nguyên để gánh tải luồng thanh toán gRPC. |
-| 6 | `frontend` | `100m` | `400m` | **30m** | `100m` | `400m` | Giữ nguyên để phục vụ SSR và định tuyến. |
-| 7 | `product-reviews` | `75m` | `300m` | **14m** | `50m` | `200m` | Tối ưu hóa: giảm CPU Request xuống 50m và limit xuống 200m dựa trên thực tế. |
+| 1 | `kafka` | `100m` | `500m` | **13m** | `100m` | `500m` | Tải CPU thực tế thấp. Đề xuất giữ nguyên cấu hình hiện tại để đảm bảo an toàn baseline. |
+| 2 | `ad` | `50m` | `200m` | **2m** | `50m` | `200m` | CPU thực tế thấp. Giữ nguyên làm mức tối thiểu phòng ngừa (precaution). |
+| 3 | `fraud-detection` | `50m` | `200m` | **7m** | `50m` | `200m` | Giữ nguyên cấu hình hiện tại. |
+| 4 | `accounting` | `50m` | `200m` | **6m** | `50m` | `200m` | Giữ nguyên cấu hình hiện tại. |
+| 5 | `payment` | `50m` | `200m` | **10m / 16m** | `50m` | `200m` | Giữ nguyên đề phòng tải gRPC tăng đột biến. |
+| 6 | `frontend` | `100m` | `400m` | **7m / 30m** | `100m` | `400m` | Giữ nguyên cấu hình hiện tại để phục vụ SSR định tuyến. |
+| 7 | `product-reviews` | `75m` | `300m` | **14m** | `50m` | `200m` | Đề xuất giảm CPU Request xuống 50m và limit xuống 200m dựa trên dữ liệu snapshot. |
 | 8 | `llm` (Mock) | `75m` | `250m` | **14m** | `75m` | `250m` | Giữ nguyên cấu hình mock. |
-| 9 | `cart` | `75m` | `300m` | **13m** | `50m` | `200m` | Tối ưu hóa: giảm CPU Request từ 75m xuống 50m dựa trên thực tế. |
-| 10 | `checkout` | `75m` | `300m` | **5m** | `50m` | `200m` | Tối ưu hóa: giảm CPU Request từ 75m xuống 50m để tiết kiệm CPU. |
-| 11 | Các services khác* | Varies | Varies | **< 15m** | `50m` | `100m` | Chuẩn hóa baseline CPU requests/limits của các services phụ trợ khác. |
+| 9 | `cart` | `75m` | `300m` | **7m / 13m** | `50m` | `200m` | Đề xuất tối ưu giảm CPU Request xuống 50m. |
+| 10 | `checkout` | `75m` | `300m` | **1m / 5m** | `50m` | `200m` | Đề xuất tối ưu giảm CPU Request xuống 50m. |
+| 11 | Các services khác* | Varies | Varies | **< 15m** | `50m` | `100m` | Chuẩn hóa baseline CPU của các services phụ trợ khác. |
 
 ### 2.2. Ma trận Phân bổ Tài nguyên Memory (Memory Allocation Matrix)
 
-| STT | Dịch vụ (Service) | Current RAM Req | Current RAM Limit | Observed Peak RAM | Proposed RAM Req | Proposed RAM Limit | Lý do đề xuất (Memory Rationale) |
+| STT | Dịch vụ (Service) | Current RAM Req | Current RAM Limit | Observed snapshot RAM (Pod 1 / Pod 2) | Proposed RAM Req | Proposed RAM Limit | Lý do đề xuất (Memory Rationale) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `kafka` | `700Mi` | `700Mi` | **506Mi** | `512Mi` | `700Mi` | Tải thực tế 506Mi. Đặt request 512Mi để khớp sát tải, limit 700Mi bảo vệ OOM. |
-| 2 | `ad` | `150Mi` | `300Mi` | **215Mi** | `150Mi` | `300Mi` | RAM thực tế vượt mức request. Cần giữ limit 300Mi để không bị OOMKilled. |
-| 3 | `fraud-detection` | `150Mi` | `300Mi` | **208Mi** | `150Mi` | `300Mi` | RAM thực tế cao. Giữ nguyên ranh giới 300Mi để bảo vệ an toàn cụm. |
-| 4 | `accounting` | `256Mi` | `256Mi` | **128Mi** | `128Mi` | `256Mi` | RAM thực tế là 128Mi. Tối ưu giảm request từ 256Mi xuống 128Mi. |
-| 5 | `payment` | `64Mi` | `128Mi` | **96Mi** | `96Mi` | `128Mi` | RAM thực tế đạt 96Mi. Tăng request lên 96Mi để tránh overcommit. |
-| 6 | `frontend` | `192Mi` | `320Mi` | **78Mi** | `128Mi` | `320Mi` | Tối ưu giảm request từ 192Mi xuống 128Mi dựa trên thực tế. |
-| 7 | `product-reviews` | `96Mi` | `192Mi` | **67Mi** | `80Mi` | `192Mi` | Tối ưu giảm request từ 96Mi xuống 80Mi. |
+| 1 | `kafka` | `700Mi` | `700Mi` | **506Mi** | `512Mi` | `700Mi` | Đề xuất hạ request xuống 512Mi để khớp sát snapshot thực tế, giữ limit 700Mi để phòng ngừa rủi ro OOM cho JVM. |
+| 2 | `ad` | `150Mi` | `300Mi` | **215Mi** | `150Mi` | `300Mi` | RAM thực tế vượt mức request. Đề xuất giữ limit 300Mi làm giải pháp phòng ngừa OOMKilled khi có tải. |
+| 3 | `fraud-detection` | `150Mi` | `300Mi` | **208Mi** | `150Mi` | `300Mi` | RAM thực tế cao. Đề xuất duy trì limit 300Mi để đảm bảo độ tin cậy của container. |
+| 4 | `accounting` | `256Mi` | `256Mi` | **128Mi** | `128Mi` | `256Mi` | Đề xuất tối ưu giảm request từ 256Mi xuống 128Mi dựa trên thực tế. |
+| 5 | `payment` | `64Mi` | `128Mi` | **92Mi / 96Mi** | `96Mi` | `128Mi` | RAM snapshot vượt request 64Mi. Đề xuất nâng request lên 96Mi tránh overcommit. |
+| 6 | `frontend` | `192Mi` | `320Mi` | **70Mi / 78Mi** | `128Mi` | `320Mi` | Đề xuất tối ưu giảm request xuống 128Mi dựa trên thực tế. |
+| 7 | `product-reviews` | `96Mi` | `192Mi` | **67Mi** | `80Mi` | `192Mi` | Đề xuất tối ưu giảm request xuống 80Mi. |
 | 8 | `llm` (Mock) | `96Mi` | `192Mi` | **68Mi** | `96Mi` | `192Mi` | Giữ nguyên. |
-| 9 | `cart` | `96Mi` | `192Mi` | **58Mi** | `64Mi` | `128Mi` | Tối ưu giảm request xuống 64Mi và limit xuống 128Mi. |
-| 10 | `checkout` | `48Mi` | `96Mi` | **11Mi** (18.2Mi tải) | `30Mi` | `60Mi` | Tối ưu giảm xuống 30Mi request / 60Mi limit dựa trên thực tế. |
-| 11 | Các services khác* | Varies | Varies | **< 20Mi** | `32Mi` | `64Mi` | Các service rất nhẹ (như `shipping` dùng 3Mi, `valkey-cart` dùng 4Mi) có thể hạ tiếp xuống `32Mi / 64Mi`. |
+| 9 | `cart` | `96Mi` | `192Mi` | **45Mi / 58Mi** | `64Mi` | `128Mi` | Đề xuất tối ưu giảm request xuống 64Mi và limit xuống 128Mi. |
+| 10 | `checkout` | `48Mi` | `96Mi` | **9Mi / 11Mi** | `30Mi` | `60Mi` | Đề xuất giảm xuống 30Mi request / 60Mi limit làm biên an toàn phòng ngừa heap spike của Go runtime. |
+| 11 | Các services khác* | Varies | Varies | **< 20Mi** | `32Mi` | `64Mi` | Chuẩn hóa baseline của các services phụ trợ khác. |
 
 *\*Các dịch vụ phụ trợ còn lại bao gồm: `currency`, `email`, `flagd`, `image-provider`, `product-catalog`, `quote`, `recommendation`, `shipping`, `valkey-cart`, `frontend-proxy`, `postgresql` (PostgreSQL request: 50m/256Mi, limit: 500m/512Mi).*
 
@@ -66,7 +66,7 @@ Báo cáo phân tích này tách biệt rõ ràng các thông số CPU Requests/
 1.  **Workload Components (Thành phần cấu hình Helm):** **22** components được định nghĩa trực tiếp trong file `values.yaml` (gồm 17 business services + 5 middleware/infra services là `postgresql`, `valkey-cart`, `kafka`, `load-generator` và `frontend-proxy`).
 2.  **Running Application Pods (Số lượng Pod chạy baseline thực tế):** **31** Pods đang chạy thực tế trong namespace `techx-tf4`. 
     *   *Công thức khớp số liệu:* 22 baseline pods (mỗi component chạy tối thiểu 1 Pod) + 9 Pods phụ trợ do cấu hình chạy mặc định 2 replicas ở file `values.yaml` (gồm `cart` [+1], `checkout` [+1], `currency` [+1], `frontend` [+1], `frontend-proxy` [+1], `payment` [+1], `product-catalog` [+1], `quote` [+1], `shipping` [+1]). 
-    *   *Xác thực lịch sử:* Số lượng 31 Pods này hoàn toàn trùng khớp với dữ liệu giám sát thực tế được ghi nhận tại mục `status.used.pods` của ResourceQuota: [37-resourcequota-round2.yaml](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/raw/37-resourcequota-round2.yaml#L35).
+    *   *Xác thực lịch sử:* Số lượng 31 Pods này hoàn toàn trùng khớp với dữ liệu giám sát thực tế được ghi nhận tại mục `status.used.pods` của ResourceQuota: [37-resourcequota-round2.yaml](../../directive-03/cost/raw/37-resourcequota-round2.yaml#L35).
 
 ---
 
@@ -80,7 +80,7 @@ Dựa trên số lượng 31 Pods chạy baseline ở trên, tổng tài nguyên
     *   👉 **Tổng Memory Requests:** **3,491 MiB (~3.41 GiB)**
     *   👉 **Tổng CPU Limits:** **7.450 Cores** (7,450m)
     *   👉 **Tổng Memory Limits:** **5,893 MiB (~5.75 GiB)**
-    *(Số liệu này được đối soát trùng khớp 100% với ResourceQuota thực tế đang sử dụng tại [37-resourcequota-round2.yaml:L33-37](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/raw/37-resourcequota-round2.yaml#L33-L37)).*
+    *(Số liệu này được đối soát trùng khớp 100% với ResourceQuota thực tế đang sử dụng tại [37-resourcequota-round2.yaml:L33-37](../../directive-03/cost/raw/37-resourcequota-round2.yaml#L33-L37)).*
 *   **Kịch bản đỉnh tải lý thuyết tối đa (HPA Max Scale-up):**
     Nếu 3 dịch vụ có cấu hình HPA đồng loạt scale lên mức tối đa (`frontend` tăng thêm 1 Pod [+100m CPU limit, +320Mi RAM limit], `checkout` tăng thêm 1 Pod [+300m CPU limit, +96Mi RAM limit], và `currency` tăng thêm 1 Pod [+300m CPU limit, +192Mi RAM limit]):
     *   👉 **Tổng CPU Requests tối đa:** **2.155 Cores** (2,155m)
@@ -90,20 +90,25 @@ Dựa trên số lượng 31 Pods chạy baseline ở trên, tổng tài nguyên
 
 > [!WARNING]
 > **Blocker về ResourceQuota:**
-> Theo cấu hình cứng được định nghĩa tại [quota.yaml](file:///d:/tf4-phase3-repo/deploy/quota.yaml#L8) và log kiểm chứng thực tế [37-resourcequota-round2.yaml#L20](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/raw/37-resourcequota-round2.yaml#L20), namespace `techx-tf4` đang bị giới hạn trần cứng là **`limits.cpu: "8"`**. 
+> Theo cấu hình cứng được định nghĩa tại [quota.yaml](../../../../deploy/quota.yaml#L8) và log kiểm chứng thực tế [37-resourcequota-round2.yaml#L20](../../directive-03/cost/raw/37-resourcequota-round2.yaml#L20), namespace `techx-tf4` đang bị giới hạn trần cứng là **`limits.cpu: "8"`**. 
 > Do đó, kịch bản HPA Max chạm **8.450 Cores CPU Limits** ở trên chỉ là **kịch bản giả định (hypothetical scenario)** và không thể triển khai được (non-deployable) trong thực tế dưới quota hiện hành. Nếu xảy ra đỉnh tải lớn kích hoạt HPA scale tối đa, Kubernetes Admission sẽ từ chối khởi tạo các Pod mới vì vượt quá quota 8.0 Cores. Để chạy được kịch bản này, cần cập nhật quota `limits.cpu` lên ít nhất **9.0 Cores**.
 
 ---
 
 ### 2.5. Đối soát với Năng lực đáp ứng của Node (Per-Node Allocatable State)
 
-*   **Hạ tầng Node:** Dựa trên dữ liệu cấu hình thực tế tại [node-conditions.json](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/runs/maint-20260715T172819Z/preflight/node-conditions.json), cụm EKS đang chạy baseline tĩnh gồm **3 Nodes** (2x t3.large và 1x t3a.large).
+*   **Hạ tầng Node:** Dựa trên dữ liệu cấu hình thực tế tại [node-conditions.json](../../directive-03/performance/runs/maint-20260715T172819Z/preflight/node-conditions.json), cụm EKS đang chạy gồm **3-4 Nodes** động (2x t3.large làm baseline và các node t3a.large/t3.large do Karpenter scale-up khi có tải).
 *   **Tài nguyên khả dụng (Node Allocatable):**
     Mỗi máy chủ t3.large/t3a.large có cấu hình vật lý 2 vCPUs và 8 GiB RAM. Sau khi trừ đi phần EKS reservation, tài nguyên khả dụng thực tế gán cho ứng dụng là:
     *   *CPU Allocatable:* Khoảng **1.93 Cores** / Node (Tổng 3 Nodes = **5.79 Cores**).
     *   *Memory Allocatable:* Khoảng **7.2 GiB** (~7,370 MiB) / Node (Tổng 3 Nodes = **21.6 GiB**).
-*   **Kịch bản lỗi mất 1 Node (Failover N-1):** 
-    Nếu 1 Node vật lý gặp sự cố, cụm còn lại 2 Nodes (Tổng năng lực allocatable: 3.86 Cores CPU, 14.4 GiB RAM). Lượng tài nguyên yêu cầu tối đa thực tế bị giới hạn dưới ResourceQuota (đỉnh CPU limit = 8.0 Cores, CPU request = 2.155 Cores) vẫn hoàn toàn được đáp ứng tốt trên 2 Nodes còn lại, không gây sập cụm.
+*   **Kịch bản lỗi mất 1 Node (Failover N-1 - Đánh giá lý thuyết):**
+    *   *Aggregate Headroom:* Về mặt lý thuyết tổng thể, lượng tài nguyên yêu cầu thực tế (đỉnh CPU request HPA max = 2.155 Cores, RAM request = 3.74 GiB) có đủ khoảng trống tổng tài nguyên lý thuyết (aggregate request headroom) để chạy trên 2 Nodes còn lại (tổng năng lực allocatable của 2 nodes còn lại là 3.86 Cores CPU, 14.4 GiB RAM).
+    *   *Ràng buộc Scheduler thực tế:* Tuy nhiên, việc phân bổ Pod khi sập node trong thực tế không chỉ phụ thuộc vào dung lượng tổng, mà bị chi phối mạnh mẽ bởi các quy tắc lập lịch. Logs hệ thống của Karpenter (truy xuất tại namespace `kube-system`) ghi nhận các cảnh báo:
+        > `pod(s) have a preferred TopologySpreadConstraint which can prevent consolidation` đối với các pod `payment`, `checkout`, `frontend-proxy`, `cart`, `currency`, `frontend`.
+        > `pod(s) have a preferred Anti-Affinity which can prevent consolidation` đối với pod `opensearch-0`.
+    *   *Kết luận:* Do các ràng buộc Topology Spread Constraints (rải Pod đều trên các host) và Anti-Affinity này, Kubernetes Scheduler bị hạn chế trong việc dồn chung (bin-pack) các Pod lên số ít node. 
+    *   *Giới hạn kiểm chứng thực tế:* Do tài khoản IAM/SSO hiện tại của nhóm dự án (`AWSReservedSSO_TF4-CostPerfReadOnlyAlerting`) chỉ có quyền Read-Only và bị chặn quyền Patch Node (`nodes is forbidden: User cannot patch resource nodes in API group "" at the cluster scope`), các thử nghiệm thực tế như chạy lệnh `cordon/drain` chưa thể thực hiện được. Kết luận N-1 ở đây được ghi nhận là giả thuyết lý thuyết (theoretical aggregate headroom) và cần được kiểm chứng bằng scheduler-placement validation thực tế bởi tài khoản có quyền quản trị cao hơn.
 
 ---
 
@@ -149,28 +154,28 @@ valkey-cart-64779877c-5fmtj        4m           4Mi
 ```
 
 > [!WARNING]
-> **Giới hạn của Snapshot:** Dữ liệu `kubectl top` trên chỉ là ảnh chụp tức thời (instant snapshot) tại một thời điểm baseline. Mọi kết luận về nguy cơ OOMKilled và co giãn Node (Autoscaling) được nhóm đúc kết dựa trên phân tích dòng dữ liệu liên tục (time-series) trên Grafana/Prometheus xuyên suốt các bài kiểm thử tải nặng (xem báo cáo kiểm thử đầy đủ tại [D3-PERF-02-evidence.md](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/performance/D3-PERF-02-evidence.md) và ảnh minh chứng [grafana-resources-load.png](file:///d:/tf4-phase3-repo/docs/evidence/epic-03-performance-efficiency/screenshots/grafana-resources-load.png)) chứ không chỉ suy luận đơn lẻ từ snapshot này.
+> **Giới hạn của Snapshot:** Dữ liệu `kubectl top` trên chỉ là ảnh chụp tức thời (instant snapshot) tại một thời điểm baseline. Mọi kết luận về nguy cơ OOMKilled và co giãn Node (Autoscaling) được nhóm đúc kết dựa trên phân tích dòng dữ liệu liên tục (time-series) trên Grafana/Prometheus xuyên suốt các bài kiểm thử tải nặng (xem báo cáo kiểm thử đầy đủ tại [D3-PERF-02-evidence.md](../../directive-03/performance/D3-PERF-02-evidence.md) và ảnh minh chứng [grafana-resources-load.png](../../epic-03-performance-efficiency/screenshots/grafana-resources-load.png)) chứ không chỉ suy luận đơn lẻ từ snapshot này.
 
 ---
 
 ## 3. Tác Động Hạ Tầng & Mô Hình Chi Phí AWS (AWS Cost Model)
 
-### 3.1. Số lượng Node vật lý (Node Count Impact)
-Việc cấu hình tài nguyên an toàn cho các Pods giúp Kubernetes lập lịch phân bổ đồng đều. Số lượng máy chủ chạy baseline cố định là **3 Nodes** và không tăng thêm dưới tải tĩnh.
+### 3.1. Số lượng Node vật lý (Node Count Impact - Giả định Kịch bản)
+Trong thực tế, Karpenter tự động tắt/bật các Node máy chủ tùy theo tải (ví dụ: `t3a.large` được Karpenter quản lý linh hoạt, số liệu giờ chạy của `t3a.large` tại dữ liệu CE cho thấy có những ngày chạy 3.8 giờ và có ngày không chạy). Do đó, phân tích này giả định một **kịch bản phân bổ tĩnh minh họa gồm 3 Nodes (2× t3.large + 1× t3a.large)** để ước tính giới hạn chi phí trần, không phản ánh lượng Node chạy cố định 100% thời gian thực tế.
 
 ### 3.2. Ước tính chi phí AWS (AWS Cost Estimation)
 
-Dưới đây là mô hình ước tính chi phí tính toán hàng tháng ( monthly estimate) cho hạ tầng EKS của dự án dựa trên dữ liệu biểu giá thật được ghi nhận tại [39-pricing-t3a-large-round2.json](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/raw/39-pricing-t3a-large-round2.json) và [40-pricing-t3-large-round2.json](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/raw/40-pricing-t3-large-round2.json):
+Dưới đây là mô hình chi phí ước tính hàng tháng theo **Kịch bản minh họa 730 giờ hoạt động (730-hour illustrative scenario: 2× t3.large + 1× t3a.large)**. Mô hình này sử dụng dữ liệu đơn giá từ [39-pricing-t3a-large-round2.json](../../directive-03/cost/raw/39-pricing-t3a-large-round2.json) và [40-pricing-t3-large-round2.json](../../directive-03/cost/raw/40-pricing-t3-large-round2.json):
 
-| Thành phần tài nguyên | Công thức tính chi phí (AWS Pricing) | Chi phí Ước tính hàng tháng | Ghi chú (Estimate Notes) |
+| Thành phần tài nguyên | Công thức tính chi phí (AWS Pricing) | Chi phí Ước tính hàng tháng | Ghi chú (Scenario Notes) |
 | :--- | :--- | :--- | :--- |
-| **EKS Control Plane** | `$0.10 / giờ` | **`$73.00`** | Cố định của AWS cho 1 Cluster |
-| **NAT Gateway** | `$0.045 / giờ / gateway` | **`$32.85`** | Phục vụ kết nối Internet ra ngoài |
-| **Node t3.large (x2)** | `$0.0832 / giờ / instance` (x2) | **`$119.81`** | Máy chủ Intel chạy workload chính |
-| **Node t3a.large (x1)** | `$0.0752 / giờ / instance` (x1) | **`$54.14`** | Máy chủ AMD giá rẻ, tiết kiệm ~10% |
-| **Tổng chi phí ước tính**| | **`$279.80 / tháng`**| **Đây chỉ là số liệu ước tính (Estimate)** |
+| **EKS Control Plane** | `$0.10 / giờ` × 730 giờ | **`$73.00`** | Cố định cho 1 Cluster |
+| **NAT Gateway** | `$0.045 / giờ / gateway` × 730 giờ | **`$32.85`** | Kết nối mạng nội bộ ra ngoài |
+| **Node t3.large (x2)** | `$0.0832 / giờ / instance` × 2 × 730 giờ | **`$121.47`** | Cặp máy chủ Intel chạy baseline |
+| **Node t3a.large (x1)** | `$0.0752 / giờ / instance` × 730 giờ | **`$54.90`** | Máy chủ AMD chạy dự phòng linh hoạt |
+| **Tổng chi phí kịch bản**| | **`$282.22 / tháng`**| **Dữ liệu ước tính theo kịch bản (Scenario Estimate)** |
 
-*Lưu ý:* Chi phí thực tế hàng tháng có thể biến động nhẹ phụ thuộc vào dung lượng ổ đĩa EBS volume gắn thêm, lượng dữ liệu truyền qua NAT Gateway (đối soát lịch sử chi phí thực tế tại [41-ce-cost-and-usage-round2.json](file:///d:/tf4-phase3-repo/docs/evidence/directive-03/cost/raw/41-ce-cost-and-usage-round2.json)).
+*Lưu ý quan trọng:* Bảng trên là **mô hình ước tính kịch bản (scenario estimate)** để lập kế hoạch tài nguyên, không phải là đối soát hóa đơn thực tế (billing reconciliation). Dữ liệu Cost Explorer (CE) thực tế tại [41-ce-cost-and-usage-round2.json](../../directive-03/cost/raw/41-ce-cost-and-usage-round2.json) phản ánh chi phí toàn bộ tài khoản AWS EC2 (account-wide query) chứ không giới hạn riêng phạm vi của cluster/NAT gateway này.
 
 ---
 
