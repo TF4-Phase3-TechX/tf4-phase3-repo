@@ -43,15 +43,47 @@ For every answered claim, cite review_id and copy an exact evidence_quote substr
 Never provide hidden reasoning or chain-of-thought."""
 
 
+_KNOWN_STOP_REASONS = frozenset({
+    "tool_use",
+    "end_turn",
+    "max_tokens",
+    "stop_sequence",
+    "guardrail_intervened",
+    "content_filtered",
+    "malformed_model_output",
+    "malformed_tool_use",
+    "model_context_window_exceeded",
+})
+
+
+def _safe_stop_reason(value: Any) -> str:
+    """Return a finite label value; never retain provider response content."""
+    return value if isinstance(value, str) and value in _KNOWN_STOP_REASONS else "missing_or_unknown"
+
+
 class ProviderFailure(RuntimeError):
-    def __init__(self, error_class: str):
+    def __init__(
+        self,
+        error_class: str,
+        *,
+        latency_ms: float = 0,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        stop_reason: str = "not_received",
+        contract_stage: str = "not_applicable",
+    ):
         super().__init__(error_class)
         self.error_class = error_class
+        self.latency_ms = latency_ms
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.stop_reason = stop_reason
+        self.contract_stage = contract_stage
 
 
 class CircuitOpen(ProviderFailure):
     def __init__(self):
-        super().__init__("circuit_open")
+        super().__init__("circuit_open", contract_stage="circuit_open")
 
 
 @dataclass(frozen=True)
@@ -61,6 +93,8 @@ class BedrockResult:
     input_tokens: int
     output_tokens: int
     guardrail_intervened: bool
+    stop_reason: str = "not_applicable"
+    contract_stage: str = "not_applicable"
 
 
 class CircuitBreaker:
@@ -144,7 +178,10 @@ class BedrockAdapter:
                     {"guardContent": {"text": {"text": question, "qualifiers": ["query"]}}},
                 ],
             }],
-            "inferenceConfig": {"temperature": 0, "maxTokens": 300},
+            # Nova can require more than 300 tokens to finish a forced tool
+            # payload containing exact evidence quotes. 512 remains bounded
+            # while avoiding malformed_tool_use from truncation.
+            "inferenceConfig": {"temperature": 0, "maxTokens": 512},
             "guardrailConfig": {
                 "guardrailIdentifier": self.guardrail_id,
                 "guardrailVersion": self.guardrail_version,
@@ -187,30 +224,137 @@ class BedrockAdapter:
             elapsed = self.clock() - started
             if elapsed > self.deadline_seconds:
                 raise ProviderFailure("deadline_exceeded")
-            stop_reason = response.get("stopReason", "")
-            if stop_reason == "guardrail_intervened":
-                raise ProviderFailure("guardrail_intervened")
-            content = response["output"]["message"]["content"]
-            if self.output_mode == "json_schema":
-                text_blocks = [block["text"] for block in content if "text" in block]
-                if len(text_blocks) != 1:
-                    raise ProviderFailure("invalid_response")
-                payload = json.loads(text_blocks[0])
-            else:
-                tool_blocks = [block["toolUse"] for block in content if "toolUse" in block]
-                if len(tool_blocks) != 1 or tool_blocks[0].get("name") != "emit_grounded_answer":
-                    raise ProviderFailure("invalid_response")
-                payload = tool_blocks[0]["input"]
-            if not isinstance(payload, dict):
-                raise ProviderFailure("invalid_response")
+            if not isinstance(response, dict):
+                raise ProviderFailure(
+                    "invalid_response",
+                    latency_ms=elapsed * 1_000,
+                    contract_stage="response_envelope",
+                )
+            stop_reason = _safe_stop_reason(response.get("stopReason"))
             usage = response.get("usage", {})
+            input_tokens = int(usage.get("inputTokens", 0))
+            output_tokens = int(usage.get("outputTokens", 0))
+            if stop_reason == "guardrail_intervened":
+                raise ProviderFailure(
+                    "guardrail_intervened",
+                    latency_ms=elapsed * 1_000,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    stop_reason=stop_reason,
+                    contract_stage="guardrail_intervened",
+                )
+            try:
+                content = response["output"]["message"]["content"]
+            except (KeyError, TypeError) as exc:
+                raise ProviderFailure(
+                    "invalid_response",
+                    latency_ms=elapsed * 1_000,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    stop_reason=stop_reason,
+                    contract_stage="response_envelope",
+                ) from exc
+            if not isinstance(content, list):
+                raise ProviderFailure(
+                    "invalid_response",
+                    latency_ms=elapsed * 1_000,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    stop_reason=stop_reason,
+                    contract_stage="content_list",
+                )
+            if self.output_mode == "json_schema":
+                text_blocks = [
+                    block["text"]
+                    for block in content
+                    if isinstance(block, dict) and "text" in block
+                ]
+                if len(text_blocks) != 1:
+                    raise ProviderFailure(
+                        "invalid_response",
+                        latency_ms=elapsed * 1_000,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        stop_reason=stop_reason,
+                        contract_stage="text_block_count",
+                    )
+                try:
+                    payload = json.loads(text_blocks[0])
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    raise ProviderFailure(
+                        "invalid_response",
+                        latency_ms=elapsed * 1_000,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        stop_reason=stop_reason,
+                        contract_stage="text_json_parse",
+                    ) from exc
+                contract_stage = "text_json"
+            else:
+                if stop_reason != "tool_use":
+                    raise ProviderFailure(
+                        "invalid_response",
+                        latency_ms=elapsed * 1_000,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        stop_reason=stop_reason,
+                        contract_stage="tool_stop_reason",
+                    )
+                tool_blocks = [
+                    block["toolUse"]
+                    for block in content
+                    if isinstance(block, dict) and "toolUse" in block
+                ]
+                if len(tool_blocks) != 1:
+                    raise ProviderFailure(
+                        "invalid_response",
+                        latency_ms=elapsed * 1_000,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        stop_reason=stop_reason,
+                        contract_stage="tool_block_count",
+                    )
+                tool_block = tool_blocks[0]
+                if not isinstance(tool_block, dict) or tool_block.get("name") != "emit_grounded_answer":
+                    raise ProviderFailure(
+                        "invalid_response",
+                        latency_ms=elapsed * 1_000,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        stop_reason=stop_reason,
+                        contract_stage="tool_name",
+                    )
+                tool_input = tool_block.get("input")
+                if isinstance(tool_input, dict):
+                    payload = tool_input
+                    contract_stage = "tool_input_dict"
+                else:
+                    raise ProviderFailure(
+                        "invalid_response",
+                        latency_ms=elapsed * 1_000,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        stop_reason=stop_reason,
+                        contract_stage="tool_input_type",
+                    )
+            if not isinstance(payload, dict):
+                raise ProviderFailure(
+                    "invalid_response",
+                    latency_ms=elapsed * 1_000,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    stop_reason=stop_reason,
+                    contract_stage="payload_type",
+                )
             self.breaker.success()
             return BedrockResult(
                 payload=payload,
                 latency_ms=elapsed * 1_000,
-                input_tokens=int(usage.get("inputTokens", 0)),
-                output_tokens=int(usage.get("outputTokens", 0)),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
                 guardrail_intervened=False,
+                stop_reason=stop_reason,
+                contract_stage=contract_stage,
             )
         except ProviderFailure as exc:
             # A policy intervention is a successful provider/Guardrail decision,

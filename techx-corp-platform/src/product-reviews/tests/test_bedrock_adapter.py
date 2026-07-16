@@ -26,6 +26,17 @@ def response_with(payload):
     }
 
 
+def tool_response_with(tool_input, *, stop_reason="tool_use", tool_name="emit_grounded_answer"):
+    return {
+        "stopReason": stop_reason,
+        "output": {"message": {"content": [{"toolUse": {
+            "name": tool_name,
+            "input": tool_input,
+        }}]}},
+        "usage": {"inputTokens": 101, "outputTokens": 21},
+    }
+
+
 def adapter(client, **kwargs):
     return BedrockAdapter(
         model_id="model",
@@ -48,7 +59,7 @@ def test_converse_is_single_call_pinned_guardrail_and_structured_output():
         "guardrailVersion": "3",
         "trace": "disabled",
     }
-    assert client.request["inferenceConfig"] == {"temperature": 0, "maxTokens": 300}
+    assert client.request["inferenceConfig"] == {"temperature": 0, "maxTokens": 512}
     assert client.request["outputConfig"]["textFormat"]["type"] == "json_schema"
 
 
@@ -62,17 +73,48 @@ def test_guardrail_intervention_is_a_safe_provider_failure():
 
 
 def test_nova_tool_mode_only_accepts_forced_non_action_tool():
-    client = FakeClient({
-        "stopReason": "tool_use",
-        "output": {"message": {"content": [{"toolUse": {
-            "name": "emit_grounded_answer",
-            "input": {"decision": "insufficient", "answer": "", "citations": []},
-        }}]}},
-        "usage": {},
-    })
+    client = FakeClient(tool_response_with({"decision": "insufficient", "answer": "", "citations": []}))
     result = adapter(client, output_mode="tool").converse("q", {}, [{}])
     assert result.payload["decision"] == "insufficient"
+    assert result.stop_reason == "tool_use"
+    assert result.contract_stage == "tool_input_dict"
     assert client.request["toolConfig"]["toolChoice"] == {"tool": {"name": "emit_grounded_answer"}}
+
+
+@pytest.mark.parametrize(
+    ("tool_input", "expected_stage"),
+    [
+        ("not-json", "tool_input_type"),
+        ("[]", "tool_input_type"),
+        (42, "tool_input_type"),
+    ],
+)
+def test_nova_tool_mode_rejects_non_object_or_invalid_tool_input_safely(tool_input, expected_stage):
+    with pytest.raises(ProviderFailure) as failure:
+        adapter(FakeClient(tool_response_with(tool_input)), output_mode="tool").converse("q", {}, [{}])
+
+    assert failure.value.error_class == "invalid_response"
+    assert failure.value.contract_stage == expected_stage
+    assert failure.value.stop_reason == "tool_use"
+    assert failure.value.input_tokens == 101
+    assert failure.value.output_tokens == 21
+
+
+@pytest.mark.parametrize(
+    ("response", "expected_stage"),
+    [
+        (tool_response_with({}, stop_reason="end_turn"), "tool_stop_reason"),
+        (tool_response_with({}, stop_reason="max_tokens"), "tool_stop_reason"),
+        (tool_response_with({}, tool_name="unexpected_tool"), "tool_name"),
+        ({"stopReason": "tool_use", "output": {"message": {"content": []}}, "usage": {}}, "tool_block_count"),
+    ],
+)
+def test_nova_tool_mode_rejects_unexpected_contract_shape_without_content(response, expected_stage):
+    with pytest.raises(ProviderFailure) as failure:
+        adapter(FakeClient(response), output_mode="tool").converse("q", {}, [{}])
+
+    assert failure.value.error_class == "invalid_response"
+    assert failure.value.contract_stage == expected_stage
 
 
 def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
