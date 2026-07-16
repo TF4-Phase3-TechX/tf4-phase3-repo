@@ -1,0 +1,37 @@
+LAST SEEN   TYPE      REASON                   OBJECT                                                MESSAGE
+6m45s       Normal    Scheduled                pod/frontend-f8c85f89c-4b48z                          Successfully assigned techx-tf4/frontend-f8c85f89c-4b48z to ip-10-0-10-231.ec2.internal
+15m         Normal    Scheduled                pod/currency-f586fcb4-bxfhb                           Successfully assigned techx-tf4/currency-f586fcb4-bxfhb to ip-10-0-10-74.ec2.internal
+36m         Normal    Scheduled                pod/currency-f586fcb4-zqqvt                           Successfully assigned techx-tf4/currency-f586fcb4-zqqvt to ip-10-0-10-231.ec2.internal
+36m         Normal    SuccessfulCreate         replicaset/currency-f586fcb4                          Created pod: currency-f586fcb4-zqqvt
+36m         Normal    Created                  pod/currency-f586fcb4-zqqvt                           Created container: currency
+36m         Normal    Started                  pod/currency-f586fcb4-zqqvt                           Started container currency
+36m         Normal    Pulled                   pod/currency-f586fcb4-zqqvt                           Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency" already present on machine
+31m         Normal    Killing                  pod/currency-f586fcb4-zqqvt                           Stopping container currency
+31m         Normal    SuccessfulDelete         replicaset/currency-f586fcb4                          Deleted pod: currency-f586fcb4-zqqvt
+15m         Normal    SuccessfulRescale        horizontalpodautoscaler/currency                      New size: 3; reason: cpu resource utilization (percentage of request) above target
+15m         Normal    ScalingReplicaSet        deployment/currency                                   Scaled up replica set currency-f586fcb4 from 2 to 3
+15m         Normal    SuccessfulCreate         replicaset/currency-f586fcb4                          Created pod: currency-f586fcb4-bxfhb
+15m         Normal    Started                  pod/currency-f586fcb4-bxfhb                           Started container currency
+15m         Normal    Pulled                   pod/currency-f586fcb4-bxfhb                           Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-currency" already present on machine
+15m         Normal    Created                  pod/currency-f586fcb4-bxfhb                           Created container: currency
+9m30s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 3; reason: cpu resource utilization (percentage of request) above target
+9m30s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-djt5g" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m30s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-7sgtd" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m30s       Normal    ScalingReplicaSet        deployment/frontend                                   Scaled up replica set frontend-f8c85f89c from 2 to 3
+9m30s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-c7cq6" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m30s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-b6m2h" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m30s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-r5d5l" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m30s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-gs2qr" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m29s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-9ggnx" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m29s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-mz97c" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+9m28s       Warning   FailedCreate             replicaset/frontend-f8c85f89c                         Error creating: pods "frontend-f8c85f89c-6t44k" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+8m8s        Warning   FailedCreate             replicaset/frontend-f8c85f89c                         (combined from similar events): Error creating: pods "frontend-f8c85f89c-bgx58" is forbidden: exceeded quota: techx-quota, requested: limits.cpu=400m, used: limits.cpu=7700m, limited: limits.cpu=8
+8m          Normal    ScalingReplicaSet        deployment/currency                                   Scaled down replica set currency-f586fcb4 from 3 to 2
+8m          Normal    Killing                  pod/currency-f586fcb4-bxfhb                           Stopping container currency
+8m          Normal    SuccessfulRescale        horizontalpodautoscaler/currency                      New size: 2; reason: All metrics below target
+8m          Normal    SuccessfulDelete         replicaset/currency-f586fcb4                          Deleted pod: currency-f586fcb4-bxfhb
+6m46s       Normal    SuccessfulCreate         replicaset/frontend-f8c85f89c                         Created pod: frontend-f8c85f89c-4b48z
+6m45s       Normal    Started                  pod/frontend-f8c85f89c-4b48z                          Started container frontend
+6m45s       Normal    Created                  pod/frontend-f8c85f89c-4b48z                          Created container: frontend
+6m45s       Normal    Pulled                   pod/frontend-f8c85f89c-4b48z                          Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend" already present on machine
+2m41s       Warning   FailedNetworkReconcile   targetgroupbinding/k8s-techxtf4-frontend-2e9cfe94ea   expected exactly one securityGroup tagged with kubernetes.io/cluster/techx-tf4-cluster for eni eni-04ffa09193179e189, got: [sg-097d1ea5852b31f41 sg-0f7bc9275c5bdcca4] (clusterName: techx-tf4-cluster)

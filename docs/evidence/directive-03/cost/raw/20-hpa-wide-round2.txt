@@ -1,0 +1,6 @@
+$ kubectl get hpa -n techx-tf4 -o wide
+
+NAME       REFERENCE             TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+checkout   Deployment/checkout   cpu: 4%/70%    2         3         2          44h
+currency   Deployment/currency   cpu: 2%/70%    2         3         2          8h
+frontend   Deployment/frontend   cpu: 21%/70%   2         3         2          44h

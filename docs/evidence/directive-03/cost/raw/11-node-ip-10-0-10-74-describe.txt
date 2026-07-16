@@ -1,0 +1,129 @@
+Name:               ip-10-0-10-74.ec2.internal
+Roles:              <none>
+Labels:             beta.kubernetes.io/arch=amd64
+                    beta.kubernetes.io/instance-type=t3a.large
+                    beta.kubernetes.io/os=linux
+                    failure-domain.beta.kubernetes.io/region=us-east-1
+                    failure-domain.beta.kubernetes.io/zone=us-east-1a
+                    k8s.io/cloud-provider-aws=dbfbf66b3070c50226f070a19bccb812
+                    karpenter.k8s.aws/ec2nodeclass=techx-general
+                    karpenter.k8s.aws/instance-capability-flex=false
+                    karpenter.k8s.aws/instance-category=t
+                    karpenter.k8s.aws/instance-cpu=2
+                    karpenter.k8s.aws/instance-cpu-manufacturer=amd
+                    karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz=2200
+                    karpenter.k8s.aws/instance-ebs-bandwidth=2780
+                    karpenter.k8s.aws/instance-encryption-in-transit-supported=false
+                    karpenter.k8s.aws/instance-family=t3a
+                    karpenter.k8s.aws/instance-generation=3
+                    karpenter.k8s.aws/instance-hypervisor=nitro
+                    karpenter.k8s.aws/instance-memory=8192
+                    karpenter.k8s.aws/instance-network-bandwidth=512
+                    karpenter.k8s.aws/instance-size=large
+                    karpenter.k8s.aws/instance-tenancy=default
+                    karpenter.sh/capacity-type=on-demand
+                    karpenter.sh/do-not-sync-taints=true
+                    karpenter.sh/initialized=true
+                    karpenter.sh/nodepool=techx-general
+                    karpenter.sh/registered=true
+                    kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=ip-10-0-10-74.ec2.internal
+                    kubernetes.io/os=linux
+                    node.kubernetes.io/instance-type=t3a.large
+                    topology.ebs.csi.aws.com/zone=us-east-1a
+                    topology.k8s.aws/zone-id=use1-az1
+                    topology.kubernetes.io/region=us-east-1
+                    topology.kubernetes.io/zone=us-east-1a
+Annotations:        alpha.kubernetes.io/provided-node-ip: 10.0.10.74
+                    csi.volume.kubernetes.io/nodeid: {"ebs.csi.aws.com":"i-029d41ebaa83f4358"}
+                    karpenter.k8s.aws/ec2nodeclass-hash: 4689754915429741937
+                    karpenter.k8s.aws/ec2nodeclass-hash-version: v5
+                    karpenter.k8s.aws/instance-profile-name: techx-tf4-cluster_6332193992597369731
+                    karpenter.sh/nodeclaim-min-values-relaxed: false
+                    karpenter.sh/nodepool-hash: 10581740522941538598
+                    karpenter.sh/nodepool-hash-version: v3
+                    node.alpha.kubernetes.io/ttl: 0
+                    volumes.kubernetes.io/controller-managed-attach-detach: true
+CreationTimestamp:  Wed, 15 Jul 2026 10:46:49 +0700
+Taints:             <none>
+Unschedulable:      false
+Lease:              Failed to get lease: leases.coordination.k8s.io "ip-10-0-10-74.ec2.internal" is forbidden: User "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan" cannot get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease"
+Conditions:
+  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----             ------  -----------------                 ------------------                ------                       -------
+  MemoryPressure   False   Wed, 15 Jul 2026 17:50:04 +0700   Wed, 15 Jul 2026 10:46:46 +0700   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure     False   Wed, 15 Jul 2026 17:50:04 +0700   Wed, 15 Jul 2026 10:46:46 +0700   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure      False   Wed, 15 Jul 2026 17:50:04 +0700   Wed, 15 Jul 2026 10:46:46 +0700   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready            True    Wed, 15 Jul 2026 17:50:04 +0700   Wed, 15 Jul 2026 10:47:01 +0700   KubeletReady                 kubelet is posting ready status
+Addresses:
+  InternalIP:   10.0.10.74
+  InternalDNS:  ip-10-0-10-74.ec2.internal
+  Hostname:     ip-10-0-10-74.ec2.internal
+Capacity:
+  cpu:                2
+  ephemeral-storage:  20893676Ki
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             8028588Ki
+  pods:               35
+Allocatable:
+  cpu:                1930m
+  ephemeral-storage:  18181869946
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             7270828Ki
+  pods:               35
+System Info:
+  Machine ID:                 ec23f24722e3e41cec9cd50479dbc351
+  System UUID:                ec23f247-22e3-e41c-ec9c-d50479dbc351
+  Boot ID:                    181faad5-a49d-4370-a9a6-b304c980869a
+  Kernel Version:             6.12.90-120.164.amzn2023.x86_64
+  OS Image:                   Amazon Linux 2023.12.20260611
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime Version:  containerd://2.2.4+unknown
+  Kubelet Version:            v1.34.9-eks-8f14419
+  Kube-Proxy Version:         
+ProviderID:                   aws:///us-east-1a/i-029d41ebaa83f4358
+Non-terminated Pods:          (25 in total)
+  Namespace                   Name                                  CPU Requests  CPU Limits   Memory Requests  Memory Limits  Age
+  ---------                   ----                                  ------------  ----------   ---------------  -------------  ---
+  kube-system                 aws-node-tmzrq                        50m (2%)      0 (0%)       0 (0%)           0 (0%)         7h3m
+  kube-system                 ebs-csi-node-g9qbj                    30m (1%)      0 (0%)       104Mi (1%)       320Mi (4%)     7h3m
+  kube-system                 eks-pod-identity-agent-2zdpq          0 (0%)        0 (0%)       0 (0%)           0 (0%)         126m
+  kube-system                 kube-proxy-gwtzd                      100m (5%)     0 (0%)       0 (0%)           0 (0%)         7h3m
+  techx-observability         grafana-5bfd99cc46-28km9              160m (8%)     950m (49%)   704Mi (9%)       1536Mi (21%)   6h48m
+  techx-observability         jaeger-5f589cc9f6-qp4ft               100m (5%)     500m (25%)   768Mi (10%)      768Mi (10%)    6h47m
+  techx-observability         otel-collector-agent-ndm7d            50m (2%)      200m (10%)   100Mi (1%)       200Mi (2%)     5h5m
+  techx-observability         prometheus-5c799696f6-9982j           210m (10%)    1050m (54%)  1056Mi (14%)     1088Mi (15%)   6h17m
+  techx-observability         techx-observability-alertmanager-0    10m (0%)      100m (5%)    50Mi (0%)        100Mi (1%)     6h48m
+  techx-tf4                   ad-6595659799-v9wxw                   50m (2%)      200m (10%)   150Mi (2%)       300Mi (4%)     7h3m
+  techx-tf4                   cart-6d98c5f7bf-gwp4h                 75m (3%)      300m (15%)   96Mi (1%)        192Mi (2%)     4h33m
+  techx-tf4                   checkout-d69c4d9d-7tk84               75m (3%)      300m (15%)   48Mi (0%)        96Mi (1%)      4h1m
+  techx-tf4                   currency-f586fcb4-qrhxn               75m (3%)      300m (15%)   96Mi (1%)        192Mi (2%)     145m
+  techx-tf4                   email-7fb5949f98-5j95x                20m (1%)      100m (5%)    50Mi (0%)        100Mi (1%)     3h29m
+  techx-tf4                   fraud-detection-548484897-fl4cw       50m (2%)      200m (10%)   150Mi (2%)       300Mi (4%)     7h3m
+  techx-tf4                   frontend-f8c85f89c-kmxff              100m (5%)     400m (20%)   192Mi (2%)       320Mi (4%)     4h34m
+  techx-tf4                   frontend-proxy-7bd6cc66-whp6j         50m (2%)      200m (10%)   64Mi (0%)        128Mi (1%)     4h26m
+  techx-tf4                   image-provider-c85cf9d65-92rfw        10m (0%)      50m (2%)     25Mi (0%)        50Mi (0%)      7h3m
+  techx-tf4                   kafka-6f9ff79c54-v45cb                100m (5%)     500m (25%)   700Mi (9%)       700Mi (9%)     151m
+  techx-tf4                   load-generator-7dbc8d784-dxcq6        300m (15%)    600m (31%)   256Mi (3%)       512Mi (7%)     3h24m
+  techx-tf4                   payment-5c5cf4f445-6fg6n              50m (2%)      200m (10%)   64Mi (0%)        128Mi (1%)     4h32m
+  techx-tf4                   postgresql-5b49658ddf-b4p2m           50m (2%)      500m (25%)   256Mi (3%)       512Mi (7%)     3h6m
+  techx-tf4                   product-catalog-5dbccf75c9-8t557      50m (2%)      200m (10%)   32Mi (0%)        64Mi (0%)      4h26m
+  techx-tf4                   quote-85c74d484b-m5bbz                10m (0%)      50m (2%)     20Mi (0%)        40Mi (0%)      7h3m
+  techx-tf4                   valkey-cart-dd686478b-97hdp           20m (1%)      100m (5%)    32Mi (0%)        64Mi (0%)      174m
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests      Limits
+  --------           --------      ------
+  cpu                1795m (93%)   7 (362%)
+  memory             5013Mi (70%)  7710Mi (108%)
+  ephemeral-storage  0 (0%)        0 (0%)
+  hugepages-1Gi      0 (0%)        0 (0%)
+  hugepages-2Mi      0 (0%)        0 (0%)
+Events:
+  Type    Reason            Age                   From       Message
+  ----    ------            ----                  ----       -------
+  Normal  Unconsolidatable  26m (x21 over 6h57m)  karpenter  Can't replace with a cheaper node
+  Normal  Unconsolidatable  10m (x3 over 4h21m)   karpenter  Can't remove without creating 2 candidates

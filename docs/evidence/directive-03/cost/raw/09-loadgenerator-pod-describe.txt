@@ -1,0 +1,73 @@
+Name:             load-generator-7dbc8d784-dxcq6
+Namespace:        techx-tf4
+Priority:         0
+Service Account:  techx-corp
+Node:             ip-10-0-10-74.ec2.internal/10.0.10.74
+Start Time:       Wed, 15 Jul 2026 14:25:31 +0700
+Labels:           app.kubernetes.io/component=load-generator
+                  app.kubernetes.io/name=load-generator
+                  app.kubernetes.io/version=2.2.0
+                  opentelemetry.io/name=load-generator
+                  pod-template-hash=7dbc8d784
+Annotations:      kubectl.kubernetes.io/restartedAt: 2026-07-14T11:23:10+07:00
+                  resource.opentelemetry.io/service.namespace: techx-corp
+Status:           Running
+IP:               10.0.10.36
+IPs:
+  IP:           10.0.10.36
+Controlled By:  ReplicaSet/load-generator-7dbc8d784
+Containers:
+  load-generator:
+    Container ID:   containerd://5e24862dee8ea479e9f42728ab44323d9a47d814f8c19f8c077724ad19c49268
+    Image:          511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-load-generator
+    Image ID:       511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:e5e4bc487617d166001ff834bcc36d500583d50e280141afdc849ba1c479ca8f
+    Port:           8089/TCP (service)
+    Host Port:      0/TCP (service)
+    State:          Running
+      Started:      Wed, 15 Jul 2026 14:25:32 +0700
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     600m
+      memory:  512Mi
+    Requests:
+      cpu:     300m
+      memory:  256Mi
+    Environment:
+      OTEL_SERVICE_NAME:                                   (v1:metadata.labels['app.kubernetes.io/component'])
+      OTEL_COLLECTOR_NAME:                                otel-collector.techx-observability.svc.cluster.local
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:  cumulative
+      LOCUST_WEB_HOST:                                    0.0.0.0
+      LOCUST_WEB_PORT:                                    8089
+      LOCUST_USERS:                                       10
+      LOCUST_SPAWN_RATE:                                  1
+      LOCUST_HOST:                                        http://frontend-proxy:8080
+      LOCUST_HEADLESS:                                    false
+      LOCUST_AUTOSTART:                                   true
+      LOCUST_BROWSER_TRAFFIC_ENABLED:                     false
+      PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION:             python
+      FLAGD_HOST:                                         flagd
+      FLAGD_PORT:                                         8013
+      FLAGD_OFREP_PORT:                                   8016
+      OTEL_EXPORTER_OTLP_ENDPOINT:                        http://$(OTEL_COLLECTOR_NAME):4317
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-zn678 (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-zn678:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:                      <none>

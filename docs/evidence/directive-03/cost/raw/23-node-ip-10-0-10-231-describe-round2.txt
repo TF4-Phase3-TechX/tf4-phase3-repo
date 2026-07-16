@@ -1,0 +1,78 @@
+$ kubectl describe node ip-10-0-10-231.ec2.internal
+
+Name:               ip-10-0-10-231.ec2.internal
+Roles:              <none>
+Labels:             beta.kubernetes.io/arch=amd64
+                    beta.kubernetes.io/instance-type=t3.large
+                    beta.kubernetes.io/os=linux
+                    eks.amazonaws.com/capacityType=ON_DEMAND
+                    eks.amazonaws.com/nodegroup=techx-general-ng-20260707091432750200000017
+                    eks.amazonaws.com/nodegroup-image=ami-0cd4f51323a764d21
+                    eks.amazonaws.com/sourceLaunchTemplateId=lt-05e3a0ff616d44b30
+                    eks.amazonaws.com/sourceLaunchTemplateVersion=2
+                    failure-domain.beta.kubernetes.io/region=us-east-1
+                    failure-domain.beta.kubernetes.io/zone=us-east-1a
+                    k8s.io/cloud-provider-aws=dbfbf66b3070c50226f070a19bccb812
+                    kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=ip-10-0-10-231.ec2.internal
+                    kubernetes.io/os=linux
+                    node.kubernetes.io/instance-type=t3.large
+                    role=worker
+                    topology.ebs.csi.aws.com/zone=us-east-1a
+                    topology.k8s.aws/zone-id=use1-az1
+                    topology.kubernetes.io/region=us-east-1
+                    topology.kubernetes.io/zone=us-east-1a
+Annotations:        alpha.kubernetes.io/provided-node-ip: 10.0.10.231
+                    csi.volume.kubernetes.io/nodeid: {"ebs.csi.aws.com":"i-01b00d955a0af0fac"}
+                    node.alpha.kubernetes.io/ttl: 0
+                    volumes.kubernetes.io/controller-managed-attach-detach: true
+CreationTimestamp:  Thu, 09 Jul 2026 08:54:48 +0700
+Taints:             <none>
+Unschedulable:      false
+Lease:              Failed to get lease: leases.coordination.k8s.io "ip-10-0-10-231.ec2.internal" is forbidden: User "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan" cannot get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease"
+Conditions:
+  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----             ------  -----------------                 ------------------                ------                       -------
+  MemoryPressure   False   Wed, 15 Jul 2026 23:31:24 +0700   Thu, 09 Jul 2026 08:54:45 +0700   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure     False   Wed, 15 Jul 2026 23:31:24 +0700   Thu, 09 Jul 2026 08:54:45 +0700   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure      False   Wed, 15 Jul 2026 23:31:24 +0700   Thu, 09 Jul 2026 08:54:45 +0700   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready            True    Wed, 15 Jul 2026 23:31:24 +0700   Thu, 09 Jul 2026 08:55:00 +0700   KubeletReady                 kubelet is posting ready status
+Addresses:
+  InternalIP:   10.0.10.231
+  InternalDNS:  ip-10-0-10-231.ec2.internal
+  Hostname:     ip-10-0-10-231.ec2.internal
+Capacity:
+  cpu:                2
+  ephemeral-storage:  20893676Ki
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             8006060Ki
+  pods:               35
+Allocatable:
+  cpu:                1930m
+  ephemeral-storage:  18181869946
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             7248300Ki
+  pods:               35
+System Info:
+  Machine ID:                 ec2674aba87047fbca868c1e109face4
+  System UUID:                ec2674ab-a870-47fb-ca86-8c1e109face4
+  Boot ID:                    280af3e9-8e1f-482e-81ac-b3fd9f918a6c
+  Kernel Version:             6.12.92-122.166.amzn2023.x86_64
+  OS Image:                   Amazon Linux 2023.12.20260622
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime Version:  containerd://2.2.4+unknown
+  Kubelet Version:            v1.34.9-eks-7d6f6ec
+  Kube-Proxy Version:         
+ProviderID:                   aws:///us-east-1a/i-01b00d955a0af0fac
+Non-terminated Pods:          (23 in total)
+  Namespace                   Name                                  CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+  ---------                   ----                                  ------------  ----------  ---------------  -------------  ---
+  kube-system                 aws-node-jz5r5                        50m (2%)      0 (0%)      0 (0%)           0 (0%)         2d4h
+  kube-system                 ebs-csi-node-229c2                    30m (1%)      0 (0%)      104Mi (1%)       320Mi (4%)     2d4h
+  kube-system                 eks-pod-identity-agent-5rrm8          0 (0%)        0 (0%)      0 (0%)           0 (0%)         7h48m
+  kube-system                 karpenter-5c5f54d586-m4wqd            500m (25%)    1 (51%)     512Mi (7%)       1Gi (14%)      5h24m
+  kube-system                 kube-proxy-nnxgb                      100m (5%)     0 (0%)      0 (0%)           0 (0%)         2d4h
+  techx-observability         otel-collector-agent-4cd74            50m (2%)      200m (10%)  100Mi (1%)       200Mi (2%)    
