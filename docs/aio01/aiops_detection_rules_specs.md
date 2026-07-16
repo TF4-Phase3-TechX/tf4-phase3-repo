@@ -354,7 +354,7 @@ Total spans: 836,476 (window 2026-07-13T22:43:00Z — 22:58:00Z)
    - *Lệnh thực hiện:* Sử dụng cờ cấu hình để ép ngắt kết nối tạm thời đến DB.
    - *Outcome:* Tỷ lệ lỗi gRPC span `status_code="STATUS_CODE_ERROR"` sẽ lập tức xuất hiện trong Prometheus metric `calls_total`.
 3. **Trigger LLM HTTP 429 (Rate Limit):**
-   - *Quy trình thực hiện:* Thực hiện theo quy trình Controlled Drill để sửa đổi `flagd-config` an toàn bằng `kubectl edit` để thay defaultVariant của flag `llmRateLimitError` thành `on` (tránh ghi đè hoàn toàn configmap). Rollback về trạng thái ban đầu sau khi kiểm thử kết thúc.
+   - *Quy trình thực hiện:* Thực hiện theo quy trình **Controlled Drill via GitOps** (thay đổi `defaultVariant` của cờ `llmRateLimitError` từ `off` sang `on` trực tiếp trên file cấu hình Git `techx-corp-chart/flagd/demo.flagd.json`, commit, push và merge để đồng bộ qua ArgoCD). Tiến hành rollback bằng cách revert commit sau khi kiểm thử kết thúc để ArgoCD đồng bộ lại cấu hình gốc.
    - *Outcome:* Hệ thống sẽ ngay lập tức sinh ra log `"Returning a rate limit error"` trên pod `llm`, kích hoạt khớp OpenSearch DSL Query và Alert Rule `AIOpsLLMIntegrationFailureWarning` trong vòng 3 phút.
 
 

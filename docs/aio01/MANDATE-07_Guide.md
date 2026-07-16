@@ -254,18 +254,14 @@ Detection · implement + phân tích
 ### Phải làm gì?
 
 1. **Deploy alert rules lên cluster Prometheus.**
-    - Sử dụng quy trình Controlled Drill để sửa đổi `flagd-config` an toàn (tránh ghi đè hoàn toàn configmap):
-      ```bash
-      # 1. Lưu snapshot demo.flagd.json hiện tại
-      kubectl get configmap flagd-config -n techx-tf4 -o jsonpath='{.data.demo\.flagd\.json}' > pre_drill_flagd.json
-
-      # 2. Sử dụng kubectl edit để sửa đổi an toàn, chuyển defaultVariant của llmRateLimitError thành "on"
-      kubectl edit configmap flagd-config -n techx-tf4
-
-      # 3. Phục hồi trạng thái cũ sau khi drill kết thúc
-      kubectl patch configmap flagd-config -n techx-tf4 --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat pre_drill_flagd.json | jq -c . | jq -R .)}}"
-      ```
-    - Hoặc tạo load test gây latency spike.
+    - Thay vì sửa đổi trực tiếp trên EKS, hãy sử dụng quy trình **Controlled Drill via GitOps**:
+      1. Lưu cờ tính năng hiện trạng, xác lập deployment window được phê duyệt.
+      2. Cập nhật `defaultVariant` của flag `llmRateLimitError` thành `"on"` trực tiếp trong file cấu hình Git repo (ví dụ: `techx-corp-chart/flagd/demo.flagd.json`).
+      3. Commit, push và merge để kích hoạt đồng bộ qua ArgoCD.
+      4. Verify trạng thái đồng bộ thành công của configmap qua ArgoCD dashboard.
+      5. Gây lỗi hoặc chạy Locust load test để tạo sự cố kiểm chứng.
+      6. Phục hồi cấu hình bằng cách tạo revert commit (`git revert`) trên Git và push để ArgoCD đồng bộ ngược lại.
+      7. Xác nhận hậu phục hồi (Post-restore verification) để đảm bảo hệ thống trở lại bình thường.
 
 3. **Chụp ảnh/log cho thấy detector kêu:**
    - Alertmanager UI hiển thị alert firing.
