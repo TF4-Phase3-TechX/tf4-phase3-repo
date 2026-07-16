@@ -108,6 +108,7 @@ service ProductReviewService {
   rpc GetProductReviews(GetProductReviewsRequest) returns (GetProductReviewsResponse){}
   rpc GetAverageProductReviewScore(GetAverageProductReviewScoreRequest) returns (GetAverageProductReviewScoreResponse){}
   rpc AskProductAIAssistant(AskProductAIAssistantRequest) returns (AskProductAIAssistantResponse){}
+  rpc SearchProductsAIAssistant(SearchProductsAIAssistantRequest) returns (SearchProductsAIAssistantResponse){}
 }
 
 message ProductReview {
@@ -139,6 +140,23 @@ message AskProductAIAssistantRequest {
 
 message AskProductAIAssistantResponse {
     string response = 1;
+}
+
+message SearchProductsAIAssistantRequest {
+    string query = 1;
+}
+
+message SearchProductsAIAssistantResponse {
+    repeated Product results = 1;
+    SearchEvidenceTrace trace = 2;
+}
+
+message SearchEvidenceTrace {
+    string parsed_intent = 1;
+    string filter_applied = 2;
+    int32 candidate_count_before = 3;
+    int32 candidate_count_after = 4;
+    bool refused = 5;
 }
 
 // ---------------Shipping Service----------

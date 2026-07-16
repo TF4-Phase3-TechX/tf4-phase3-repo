@@ -85,3 +85,22 @@ def test_canonicalizes_insufficient_and_rejects_canary_leak():
             [{"review_id": 1, "description": "safe", "score": "5"}],
             "CANARY-42",
         )
+
+
+def test_validate_filters_additional_properties():
+    reviews = [{"review_id": 1, "description": "This is safe.", "score": "5"}]
+    result = validate_grounded_output(
+        {
+            "decision": "answered",
+            "answer": "This is safe.",
+            "citations": [{"review_id": 1, "evidence_quote": "This is safe.", "extra_field": "unallowed"}],
+            "extra_root_field": 123
+        },
+        reviews,
+        "CANARY-42",
+    )
+    assert result == {
+        "decision": "answered",
+        "answer": "This is safe.",
+        "citations": [{"review_id": 1, "evidence_quote": "This is safe."}]
+    }

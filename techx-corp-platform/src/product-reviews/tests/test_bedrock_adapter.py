@@ -163,3 +163,19 @@ def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
 def test_rejects_draft_guardrail():
     with pytest.raises(ValueError, match="numeric"):
         BedrockAdapter("model", "guardrail", "DRAFT", client=FakeClient())
+
+
+def test_disabled_guardrail():
+    payload = {"decision": "insufficient", "answer": "", "citations": []}
+    client = FakeClient(response_with(payload))
+    adapter = BedrockAdapter(
+        model_id="model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        client=client,
+    )
+    result = adapter.converse("question", {"id": "p1"}, [{"review_id": 1, "description": "safe"}])
+    assert result.payload == payload
+    assert "guardrailConfig" not in client.request
+    assert "guardContent" not in client.request["messages"][0]["content"][0]
+    assert "text" in client.request["messages"][0]["content"][0]
