@@ -1,4 +1,4 @@
-{{- if .Values.prometheusRetainStorageClass.enabled }}
+{{- if and .Values.prometheus.enabled .Values.prometheusRetainStorageClass.enabled }}
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
