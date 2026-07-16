@@ -1,6 +1,6 @@
 # 📝 ARCHITECTURE & IMPLEMENTATION PROPOSAL
 **Dự án:** Task Force 4 · Mặt trận XBrain  
-**Chủ đề:** Triển khai Amazon Athena cho Phân tích Forensics Thời gian thực trên Audit Trail  
+**Chủ đề:** Triển khai Amazon Athena cho Phân tích Bảo mật Thời gian thực trên Audit Trail  
 **Người yêu cầu:** Đội CDO-07 (Auditability) 
 **Trạng thái:** Đề xuất triển khai (Implementation Proposal)  
 
@@ -11,9 +11,9 @@
 Để nâng cao năng lực phân tích bảo mật chuyên sâu (Security Analytics) trong **Directive #4 (Forensic Audit Challenge)**, hệ thống cần khả năng truy vấn SQL tương tác trên khối lượng lớn audit logs mà không cần tải dữ liệu về máy cục bộ. Hiện tại, team đã có đầy đủ 3 nguồn dữ liệu audit được lưu trữ bất biến:
 
 ### Nguồn dữ liệu Audit hiện có
-1. **AWS CloudTrail Logs** → `s3://tf4-cloudtrail-logs-bucket-{account}/AWSLogs/{account}/CloudTrail/`
-2. **AWS Config History** → `s3://tf4-aws-config-staging-{account}-us-east-1/aws-config/`  
-3. **EKS Control Plane Audit Logs** → `s3://tf4-eks-audit-logs-{account}/`
+1. **AWS CloudTrail Logs** → `s3://tf4-cloudtrail-logs-bucket-{account-id}/AWSLogs/{account-id}/CloudTrail/`
+2. **AWS Config History** → `s3://tf4-aws-config-staging-{account-id}-us-east-1/aws-config/`  
+3. **EKS Control Plane Audit Logs** → `s3://tf4-eks-audit-logs-{account-id}/`
 
 ### Tại sao cần Amazon Athena?
 **Thách thức hiện tại:** Việc tải log nguyên thủy (định dạng .json.gz) từ S3 về máy cục bộ để giải nén và tìm kiếm thủ công là "cơn ác mộng" khi thực hiện phân tích bảo mật. S3 rất tuyệt vời làm kho lưu trữ bất biến (WORM), nhưng không được thiết kế để đọc và phân tích trực tiếp.
@@ -64,9 +64,11 @@ PARTITIONED BY (
     month string,
     day string
 )
+ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
 STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
 OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION 's3://tf4-cloudtrail-logs-bucket-{account}/AWSLogs/{account}/CloudTrail/us-east-1/'
+-- Scope: chỉ us-east-1. Trail là multi-region, mở rộng path nếu cần cross-region analysis
+LOCATION 's3://tf4-cloudtrail-logs-bucket-{account-id}/AWSLogs/{account-id}/CloudTrail/us-east-1/'
 ```
 
 #### AWS Config History Table
@@ -107,9 +109,10 @@ PARTITIONED BY (
     month string,
     day string
 )
+ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
 STORED AS INPUTFORMAT 'org.apache.hadoop.mapred.TextInputFormat'
 OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION 's3://tf4-aws-config-staging-{account}-us-east-1/aws-config/'
+LOCATION 's3://tf4-aws-config-staging-{account-id}-us-east-1/aws-config/'
 ```
 
 #### EKS Audit Logs Table
@@ -164,9 +167,12 @@ PARTITIONED BY (
     day string,
     hour string
 )
+ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+WITH SERDEPROPERTIES ('ignore.malformed.json' = 'true')
 STORED AS INPUTFORMAT 'org.apache.hadoop.mapred.TextInputFormat'
 OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION 's3://tf4-eks-audit-logs-{account}/'
+LOCATION 's3://tf4-eks-audit-logs-{account-id}/'
+TBLPROPERTIES ('compressionType' = 'gzip')
 ```
 
 ### 2. Query Templates cho Security Analytics Scenarios
@@ -233,7 +239,7 @@ suspicious_k8s_actions AS (
     user.username,
     sourceips[1] as source_ip,
     verb,
-    objectref.resource
+    objectref.resource as resource
   FROM eks_audit_events
   WHERE verb IN ('create', 'delete')
     AND objectref.resource IN ('secrets', 'configmaps', 'clusterroles')
@@ -245,7 +251,7 @@ SELECT
   aws.eventname,
   aws.eventtime,
   k8s.verb,
-  k8s.objectref.resource,
+  k8s.resource,
   k8s.requestreceivedtimestamp
 FROM suspicious_aws_actions aws
 INNER JOIN suspicious_k8s_actions k8s 
@@ -261,29 +267,45 @@ ORDER BY aws.eventtime DESC
 ## III. PHÂN TÍCH CHI PHÍ DỰ KIẾN (COST ANALYSIS)
 
 ### 1. Mô hình Pricing Amazon Athena (us-east-1)
-* **Phí truy vấn:** **$5.00 / TB** dữ liệu được scan
-* **Phí AWS Glue Data Catalog:** **$1.00 / 100,000 requests** (để truy vấn metadata)
+* **Phí truy vấn:** **$5.00 / TB** dữ liệu được scan (minimum **10 MB** mỗi query)
+* **Phí AWS Glue Data Catalog:** **$1.00 / 1,000,000 requests** — **1 triệu requests đầu tiên miễn phí mỗi tháng**
 
-### 2. Ước tính dung lượng dữ liệu và chi phí thực tế
+### 2. Ước tính dung lượng dữ liệu thực tế trên S3
 
-| Nguồn dữ liệu | Dung lượng/ngày (nén) | Dung lượng/tháng | Chi phí scan 1 security investigation |
-| :--- | :--- | :--- | :--- |
-| **CloudTrail Logs** | **~5 MB** (KMS encrypted + GZIP) | **~150 MB** | **~$0.001** |
-| **AWS Config History** | **~2 MB** (AES256 + JSON) | **~60 MB** | **~$0.0003** |
-| **EKS Audit Logs** | **~170 MB** (GZIP compressed) | **~5.1 GB** | **~$0.025** |
-| **TỔNG CỘNG** | **~177 MB** | **~5.31 GB** | **~$0.027** |
+> **Lưu ý:** Athena tính phí dựa trên dung lượng **nén trên S3** (bytes đọc từ S3), không phải dung lượng giải nén. Tuy nhiên mỗi query có minimum charge **10 MB** dù data thực tế scan nhỏ hơn.
 
-### 3. Chi phí vận hành thực tế
-**Kịch bản phân tích bảo mật thực tế:**
-- Mỗi investigation thường scan **2-5 ngày dữ liệu** (emergency response)
-- Chi phí scan: **$0.027 × 3 ngày = ~$0.081** per investigation
-- **Với 20 investigations/tháng:** **~$1.62**
+| Nguồn dữ liệu | Dung lượng raw/ngày | Dung lượng nén trên S3/ngày | Dung lượng S3/tháng | Ghi chú |
+| :--- | :--- | :--- | :--- | :--- |
+| **CloudTrail Logs** | ~5 MB | **~5 MB** (GZIP bởi CloudTrail) | **~150 MB** | KMS encrypted, GZIP native |
+| **AWS Config History** | ~2 MB | **~2 MB** (JSON, AES256) | **~60 MB** | Chưa nén thêm |
+| **EKS Audit Logs** | **~170 MB** (CW Logs ingestion) | **~25 MB** (GZIP bởi Firehose) | **~750 MB** | Firehose `compression_format = "GZIP"`, tỉ lệ nén JSON ~5-10x |
+| **TỔNG CỘNG** | ~177 MB | **~32 MB** | **~960 MB** | |
 
-**So sánh với giải pháp thay thế:**
-- **Tải xuống S3 + phân tích local:** **$0** (cost) + **2-4 giờ** (time) per investigation
-- **Amazon Athena:** **$0.081** (cost) + **5-10 phút** (time) per investigation
+### 3. Chi phí vận hành chi tiết (Pay-per-scan model)
 
-> **Kết luận:** ROI cực kỳ tích cực - tiết kiệm 95% thời gian chỉ với chi phí **~$2/tháng**
+**Kịch bản investigation thực tế:**
+- **1 investigation** = 3-5 queries × 3 ngày data = ~15 queries
+- **Athena minimum charge:** 10 MB/query → 15 queries × 10 MB = 150 MB scanned (minimum)
+- **Athena scan cost:** 150 MB ÷ 1,048,576 MB/TB × $5.00 = **~$0.0007** per investigation
+- **Với 10 investigations/tháng:** **~$0.007**
+
+> Thực tế nếu query scan nhiều hơn 10 MB (ví dụ full-day EKS scan ~25 MB), cost sẽ cao hơn minimum nhưng vẫn dưới **$0.01/investigation**.
+
+**Chi phí infrastructure bổ sung (monthly):**
+- **S3 storage (existing):** $0 (CloudTrail, Config, EKS buckets đã có) 
+- **Glue Data Catalog:** $0.00 (dưới 1 triệu requests/tháng → **free tier**)
+- **Athena result storage:** ~$0.02 (query results cache trên S3, ~1 GB/tháng)
+- **Lambda partition crawler:** ~$0.02 (daily partition discovery)
+- **CloudWatch Logs:** ~$0.08 (existing log groups cho Grafana)
+
+**Tổng chi phí incremental:** **~$0.12** (new Athena components) + **~$0.007** (10 investigations) = **~$0.13/tháng**
+
+**So sánh với alternative approaches:**
+- **Manual S3 download:** $0 (direct cost) + 2-4 giờ engineer time per investigation  
+- **Athena approach:** ~$0.001 per investigation + 5-10 phút analyst time
+- **Third-party SIEM:** $500-2000/tháng + vendor lock-in
+
+> **Kết luận:** ROI tích cực — tiết kiệm 95% thời gian với chi phí infrastructure tối thiểu (~$0.13/tháng)
 
 ---
 
@@ -317,7 +339,7 @@ Amazon Athena sẽ biến khối dữ liệu audit "chết cứng" trên S3 thà
 
 **Lợi ích chính:**
 - ✅ **Giảm 95% thời gian** phân tích bảo mật (từ 2-4 giờ xuống 5-10 phút)
-- ✅ **Chi phí cực thấp** (~$2/tháng cho unlimited investigations)  
+- ✅ **Chi phí incremental cực thấp** (~$0.13/tháng cho new Athena capabilities)  
 - ✅ **Zero infrastructure maintenance** (serverless)
 - ✅ **SQL-friendly** cho security analysts không cần học syntax mới
 
