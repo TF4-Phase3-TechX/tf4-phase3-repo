@@ -5,13 +5,13 @@ metadata:
 spec:
   role: karpenter-node-techx-tf4-cluster
   amiSelectorTerms:
-    - alias: al2023@latest
+    - alias: al2023@v20260709
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: techx-tf4-cluster
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: techx-tf4-cluster
+        karpenter.sh/node-security-group: techx-tf4-cluster
   tags:
     Owner: CDO_04
     Team: CDO_04
