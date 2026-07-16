@@ -1,0 +1,3 @@
+$ kubectl logs -n techx-tf4 deploy/load-generator --since=15m --tail=50
+
+(không có output — lệnh chạy thành công, log rỗng trong 15 phút gần nhất)

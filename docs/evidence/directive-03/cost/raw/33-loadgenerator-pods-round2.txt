@@ -1,0 +1,4 @@
+$ kubectl get pods -n techx-tf4 -l app.kubernetes.io/name=load-generator -o wide
+
+NAME                             READY   STATUS    RESTARTS   AGE     IP            NODE                         NOMINATED NODE   READINESS GATES
+load-generator-7dbc8d784-gsmdf   1/1     Running   0          6h10m   10.0.10.194   ip-10-0-10-17.ec2.internal   <none>           <none>

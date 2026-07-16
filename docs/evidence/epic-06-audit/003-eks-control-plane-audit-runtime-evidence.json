@@ -1,0 +1,88 @@
+{
+  "evidenceId": "TF4-CDO07-EKS-AUDIT-20260715",
+  "capturedAt": "2026-07-15T17:16:08.715+07:00",
+  "collector": {
+    "name": "Ba Huan",
+    "team": "CDO07",
+    "role": "Auditability",
+    "awsProfile": "cdo07-tf4-auditreadonly",
+    "permissionSet": "TF4-AuditReadOnlyAndAnalyze"
+  },
+  "scope": {
+    "accountId": "511825856493",
+    "region": "us-east-1",
+    "clusterName": "techx-tf4-cluster",
+    "clusterArn": "arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster",
+    "kubernetesContext": "techx-tf4-cdo07"
+  },
+  "clusterLogging": {
+    "clusterStatus": "ACTIVE",
+    "enabledLogTypes": [
+      "api",
+      "audit",
+      "authenticator"
+    ],
+    "logGroupName": "/aws/eks/techx-tf4-cluster/cluster",
+    "retentionInDays": 90,
+    "storedBytesAtCollection": 1429930700,
+    "customerManagedKmsKeyId": null
+  },
+  "controlledAction": {
+    "command": "kubectl get namespace default -o json --request-timeout=30s",
+    "readOnly": true,
+    "exitCode": 0,
+    "observedResource": "namespaces/default",
+    "searchWindowUtc": {
+      "start": "2026-07-15T10:15:30Z",
+      "end": "2026-07-15T10:17:30Z"
+    }
+  },
+  "matchedAuditEvent": {
+    "auditId": "3dc75ebd-d27c-477b-9a30-007db785c867",
+    "stage": "ResponseComplete",
+    "requestReceivedTimestamp": "2026-07-15T10:16:04.940063Z",
+    "stageTimestamp": "2026-07-15T10:16:04.953908Z",
+    "verb": "get",
+    "requestUri": "/api/v1/namespaces/default?timeout=30s",
+    "objectRef": {
+      "resource": "namespaces",
+      "namespace": "default",
+      "name": "default",
+      "apiVersion": "v1"
+    },
+    "username": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/huan.huynh",
+    "groups": [
+      "audit-readonly-analyzers",
+      "system:authenticated"
+    ],
+    "sourceIps": [
+      "14.236.16.56"
+    ],
+    "userAgent": "kubectl.exe/v1.34.1 (windows/amd64) kubernetes/93248f9",
+    "responseCode": 200,
+    "authorizationDecision": "allow",
+    "authorizationPolicy": "AmazonEKSViewPolicy",
+    "logStreamName": "kube-apiserver-audit-723a34970c59cd07043f7e0adc9ffdb9",
+    "cloudWatchEventTimestamp": "2026-07-15T10:16:05.213Z",
+    "cloudWatchIngestionTime": "2026-07-15T10:16:08.715Z",
+    "cloudWatchEventId": "39786995120821565952291245355809504984740494502298517513"
+  },
+  "evaluation": {
+    "sampleCount": 1,
+    "matchedCompletedAuditEventCount": 1,
+    "result": "PASS",
+    "conclusion": "The controlled kubectl request is traceable to an individual SSO identity with who, what, when, source IP, authorization decision and API response."
+  },
+  "redaction": {
+    "rawEventStored": false,
+    "excludedFields": [
+      "user.extra.accessKeyId"
+    ],
+    "reason": "The excluded field is not required to prove the control and should not be stored in Git."
+  },
+  "limitations": [
+    "This is point-in-time evidence for one read-only request, not a statistical delivery guarantee.",
+    "CloudWatch Logs delivery is asynchronous.",
+    "This control does not prove tamper evidence or separation of duties."
+  ]
+}

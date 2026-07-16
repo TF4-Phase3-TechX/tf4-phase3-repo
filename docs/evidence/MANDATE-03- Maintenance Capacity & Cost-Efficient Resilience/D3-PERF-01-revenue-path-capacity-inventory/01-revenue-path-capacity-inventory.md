@@ -7,13 +7,13 @@
 **Namespace:** `techx-tf4`  
 **Region:** `us-east-1`  
 **Thư mục evidence:** `./raw/`  
-**Trạng thái:** Hoàn tất kiểm kê runtime, đã phát hiện rủi ro năng lực bảo trì  
+**Trạng thái:** Hoàn tất kiểm kê runtime và revalidation sau remediation; sẵn sàng cho controlled-drain rehearsal  
 
 ---
 
 ## 1. Mục tiêu
 
-Task này kiểm kê trạng thái runtime hiện tại của các service ảnh hưởng trực tiếp đến luồng doanh thu:
+Task này kiểm kê trạng thái runtime của các service ảnh hưởng trực tiếp đến luồng doanh thu:
 
 ```text
 frontend-proxy
@@ -25,21 +25,26 @@ frontend-proxy
 
 Mục tiêu:
 
-- Xác định replica desired, current và ready.
+- Xác định replica desired, ready và available.
 - Xác định CPU/memory requests và limits.
-- Xác định HPA.
-- Xác định pod-to-node placement.
-- Xác định service chỉ có một replica.
-- Đánh giá khả năng chịu lỗi khi drain một worker node.
-- Phân loại synchronous và asynchronous.
-- Xác định tổng requested CPU/memory trên từng node.
-- Đánh giá static capacity hiện tại có đủ cho planned maintenance hay không.
+- Xác định HPA và PodDisruptionBudget.
+- Xác định pod-to-node placement và serving endpoints.
+- Kiểm tra redundancy của revenue path.
+- Xác nhận remediation của `quote`.
+- Đánh giá trạng thái pre-check trước controlled node drain.
+- Phân loại synchronous/asynchronous.
+- Ghi nhận node/pod utilization sau remediation.
 
-Kết luận trong tài liệu này dựa trên trạng thái runtime Kubernetes và cấu hình EKS, không dựa riêng vào Helm values.
+Kết luận trong tài liệu dựa trên trạng thái Kubernetes live sau khi CDO-08 merge và apply remediation.
 
 ---
 
-## 2. Bối cảnh thu thập evidence
+## 2. Bối cảnh và hai mốc evidence
+
+Tài liệu giữ lại hai mốc:
+
+1. **Initial inventory:** trạng thái cũ với hai worker nodes, nhiều service một replica, chưa có PDB cho `quote`.
+2. **Post-remediation revalidation:** trạng thái mới với bốn worker nodes, các service revenue path đạt hai replicas, có PDB và placement phân tán.
 
 ```text
 Cluster: techx-tf4-cluster
@@ -48,9 +53,7 @@ Region: us-east-1
 Kube context: arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
 ```
 
-Đã xác minh quyền read-only cho Deployments, Pods, HPA, Nodes và PodDisruptionBudgets.
-
-Timestamp, kube context, namespace và collector được lưu tại:
+Initial collection metadata:
 
 [raw/00-collection-metadata.txt](raw/00-collection-metadata.txt)
 
@@ -58,88 +61,146 @@ Timestamp, kube context, namespace và collector được lưu tại:
 
 ## 3. Danh sách evidence
 
+### Initial inventory
+
 | Nội dung | File |
 |---|---|
 | Timestamp và collection context | [raw/00-collection-metadata.txt](raw/00-collection-metadata.txt) |
-| Replica state | [raw/02-replica-summary.txt](raw/02-replica-summary.txt) |
-| Pod-to-node placement | [raw/03-pod-placement-summary.txt](raw/03-pod-placement-summary.txt) |
+| Replica state ban đầu | [raw/02-replica-summary.txt](raw/02-replica-summary.txt) |
+| Pod placement ban đầu | [raw/03-pod-placement-summary.txt](raw/03-pod-placement-summary.txt) |
 | HPA runtime state | [raw/04-hpa-wide.txt](raw/04-hpa-wide.txt) |
-| Node `ip-10-0-10-231` allocated resources | [raw/06-node-10-0-10-231-allocated.txt](raw/06-node-10-0-10-231-allocated.txt) |
-| Node `ip-10-0-11-40` allocated resources | [raw/06-node-10-0-11-40-allocated.txt](raw/06-node-10-0-11-40-allocated.txt) |
-| Worker node inventory | [raw/06-nodes-wide.txt](raw/06-nodes-wide.txt) |
-| CPU/memory requests và limits | [raw/10-resource-requests-limits.txt](raw/10-resource-requests-limits.txt) |
+| Node allocated resources | [raw/06-node-10-0-10-231-allocated.txt](raw/06-node-10-0-10-231-allocated.txt) |
+| Node allocated resources | [raw/06-node-10-0-11-40-allocated.txt](raw/06-node-10-0-11-40-allocated.txt) |
+| Worker node inventory ban đầu | [raw/06-nodes-wide.txt](raw/06-nodes-wide.txt) |
+| Requests và limits ban đầu | [raw/10-resource-requests-limits.txt](raw/10-resource-requests-limits.txt) |
 | Node-group scaling configuration | [raw/12-nodegroup-scaling-config.json](raw/12-nodegroup-scaling-config.json) |
-| Autoscaler và scale-out assessment | [raw/13-cluster-autoscaler-and-scaleout-status.txt](raw/13-cluster-autoscaler-and-scaleout-status.txt) |
+| Autoscaler/scale-out assessment | [raw/13-cluster-autoscaler-and-scaleout-status.txt](raw/13-cluster-autoscaler-and-scaleout-status.txt) |
 | Cluster Autoscaler lookup | [raw/13-cluster-autoscaler-status.txt](raw/13-cluster-autoscaler-status.txt) |
 
-Kết quả kiểm tra PDB:
+### Post-remediation
+
+| Nội dung | File |
+|---|---|
+| Deployment replica/readiness state | [raw/14-post-remediation-deployments.txt](raw/14-post-remediation-deployments.txt) |
+| Pod readiness và placement | [raw/15-post-remediation-pods-wide.txt](raw/15-post-remediation-pods-wide.txt) |
+| PDB runtime state | [raw/16-post-remediation-pdb-wide.txt](raw/16-post-remediation-pdb-wide.txt) |
+| `quote` EndpointSlice | [raw/17-quote-endpointslice.txt](raw/17-quote-endpointslice.txt) |
+| `quote` live Deployment | [raw/18-quote-live-deployment.yaml](raw/18-quote-live-deployment.yaml) |
+| Worker node utilization | [raw/19-post-remediation-node-top.txt](raw/19-post-remediation-node-top.txt) |
+| Pod utilization | [raw/20-post-remediation-pod-top.txt](raw/20-post-remediation-pod-top.txt) |
+
+---
+
+## 4. Revenue-path runtime inventory sau remediation
+
+| Service | Desired / Ready | HPA | PDB | Placement | Loại luồng | Verdict |
+|---|---:|---|---|---|---|---|
+| `frontend-proxy` | `2 / 2` | Không thấy | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `frontend` | `2 / 2` | Min `2`, max `3` | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `product-catalog` | `2 / 2` | Không thấy | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `cart` | `2 / 2` | Không thấy | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `checkout` | `2 / 2` | Min `2`, max `3` | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `payment` | `2 / 2` | Không thấy | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `currency` | `2 / 2` | Min `2`, max `3` | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `shipping` | `2 / 2` | Không thấy | `minAvailable=1` | Nhiều node | Synchronous | PASS |
+| `quote` | `2 / 2` | Không | `minAvailable=1` | 2 node, 2 AZ | Synchronous | PASS |
+
+> Replica/readiness state phải được thu lại nếu runtime thay đổi trước mentor witness.
+
+---
+
+## 5. Xác nhận remediation của `quote`
+
+CDO-08 xác nhận `quote` thuộc mandatory drain/SLO scope vì nằm trên critical synchronous path:
 
 ```text
-No resources found in techx-tf4 namespace.
+checkout → shipping GetQuote → quote /getquote
 ```
 
-Nên lưu kết quả này tại [raw/05-pdb-wide.txt](raw/05-pdb-wide.txt).
+Trước remediation, `quote` là singleton và chưa có đầy đủ PDB, topology spread, probes và requests.
+
+### Cấu hình live đã xác minh
+
+```text
+replicas: 2
+PDB minAvailable: 1
+PDB allowedDisruptions: 1
+topologyKey: kubernetes.io/hostname
+maxSkew: 1
+livenessProbe: tcpSocket:8080
+readinessProbe: tcpSocket:8080
+CPU request/limit: 10m / 50m
+Memory request/limit: 20Mi / 40Mi
+```
+
+TCP probe được sử dụng thay vì `/getquote` vì `/getquote` là POST nghiệp vụ có side effect và không phù hợp làm health check.
+
+### Endpoint và placement
+
+| Pod | IP | Node | Zone | Ready |
+|---|---|---|---|---|
+| `quote-dfd7f7bb7-fbq6z` | `10.0.10.23` | `ip-10-0-10-231.ec2.internal` | `us-east-1a` | `true` |
+| `quote-dfd7f7bb7-26jkn` | `10.0.11.53` | `ip-10-0-11-207.ec2.internal` | `us-east-1b` | `true` |
+
+### Verdict
+
+```text
+Quote singleton risk: RESOLVED
+Quote resource-request gap: RESOLVED
+Quote PDB gap: RESOLVED
+Quote topology-spread gap: RESOLVED
+Quote health-probe gap: RESOLVED
+Quote runtime remediation: PASS
+```
 
 ---
 
-## 4. Revenue-path runtime inventory
+## 6. Pod-to-node placement sau remediation
 
-| Service | Desired / Current / Ready | CPU request | CPU limit | Memory request | Memory limit | HPA | Runtime node | Loại luồng | Rủi ro chính |
-|---|---:|---:|---:|---:|---:|---|---|---|---|
-| `frontend-proxy` | `1 / 1 / 1` | `50m` | `200m` | `64Mi` | `128Mi` | Không thấy | `ip-10-0-10-231.ec2.internal` | Synchronous | Một Ready replica |
-| `frontend` | `1 / 1 / 1` | `100m` | `400m` | `192Mi` | `320Mi` | Min `1`, max `3` | `ip-10-0-10-231.ec2.internal` | Synchronous | HPA min vẫn là một |
-| `product-catalog` | `1 / 1 / 1` | `50m` | `200m` | `32Mi` | `64Mi` | Không thấy | `ip-10-0-10-231.ec2.internal` | Synchronous | Một Ready replica |
-| `cart` | `1 / 1 / 1` | `75m` | `300m` | `96Mi` | `192Mi` | Không thấy | `ip-10-0-10-231.ec2.internal` | Synchronous | Một Ready replica |
-| `checkout` | `1 / 1 / 1` | `75m` | `300m` | `48Mi` | `96Mi` | Min `1`, max `3` | `ip-10-0-11-40.ec2.internal` | Synchronous | HPA min vẫn là một |
-| `payment` | `1 / 1 / 1` | `50m` | `200m` | `64Mi` | `128Mi` | Không thấy | `ip-10-0-11-40.ec2.internal` | Synchronous | Một Ready replica |
-| `currency` | `1 / 1 / 1` | `20m` | `75m` | `24Mi` | `48Mi` | Không thấy | `ip-10-0-11-40.ec2.internal` | Synchronous | Một Ready replica |
-| `shipping` | `1 / 1 / 1` | `20m` | `75m` | `16Mi` | `32Mi` | Không thấy | `ip-10-0-11-40.ec2.internal` | Synchronous | Một Ready replica |
-| `quote` | `1 / 1 / 1` | Thiếu | Thiếu | Thiếu | `40Mi` | Không thấy | `ip-10-0-10-231.ec2.internal` | Synchronous candidate | Thiếu requests và một replica |
+Revenue-path replicas được phân bố trên bốn worker nodes:
 
-> Nếu runtime thay đổi trước review hoặc mentor witness, phải thu thập lại evidence.
+```text
+ip-10-0-10-17.ec2.internal
+ip-10-0-10-231.ec2.internal
+ip-10-0-11-207.ec2.internal
+ip-10-0-11-40.ec2.internal
+```
 
----
+Các service critical có hai pod Running và Ready. Evidence cho thấy các cặp replica được phân tán trên nhiều node.
 
-## 5. Pod-to-node placement
+Ví dụ:
 
-### Node `ip-10-0-10-231.ec2.internal`
-
-- `frontend`
-- `frontend-proxy`
-- `product-catalog`
-- `cart`
-- `quote`
-
-### Node `ip-10-0-11-40.ec2.internal`
-
-- `checkout`
-- `payment`
-- `currency`
-- `shipping`
+- `cart`: `ip-10-0-10-17` và `ip-10-0-11-207`
+- `checkout`: `ip-10-0-10-231` và `ip-10-0-11-207`
+- `frontend`: `ip-10-0-10-17` và `ip-10-0-10-231`
+- `frontend-proxy`: `ip-10-0-10-231` và `ip-10-0-11-207`
+- `payment`: `ip-10-0-10-17` và `ip-10-0-11-207`
+- `product-catalog`: `ip-10-0-10-231` và `ip-10-0-11-207`
+- `quote`: `ip-10-0-10-231` và `ip-10-0-11-207`
+- `shipping`: `ip-10-0-11-40` và `ip-10-0-11-207`
 
 ### Kết luận placement
 
-Revenue path hiện được chia trên hai worker node, nhưng mỗi critical service chỉ có một pod Ready.
+```text
+Replica redundancy: PASS
+Multi-node placement: PASS
+Quote multi-AZ placement: PASS
+Controlled-drain behavior: PENDING REHEARSAL
+```
 
-- Drain node `ip-10-0-10-231` có thể làm mất frontend, product catalog, cart và quote cho đến khi pod mới Ready.
-- Drain node `ip-10-0-11-40` có thể làm mất checkout, payment, currency và shipping cho đến khi pod mới Ready.
-- Mỗi node đều chứa service bắt buộc cho customer transaction.
-- Không có replica redundancy sẵn cho từng revenue-path service.
-
-Kết luận phù hợp:
-
-> Runtime evidence cho thấy mỗi revenue-path service chỉ có một Ready replica. Khi node bị drain hoặc pod restart, service có nguy cơ mất endpoint tạm thời trong thời gian reschedule và readiness recovery.
-
-Không kết luận “confirmed SPOF” chỉ từ Helm values hoặc replica count.
+Placement hiện tại loại bỏ phần lớn singleton risk, nhưng chỉ controlled drain mới chứng minh được availability thực tế trong voluntary disruption.
 
 ---
 
-## 6. Cấu hình HPA
+## 7. Cấu hình HPA
+
+Runtime hiện có HPA cho:
 
 | HPA target | Current CPU | Target CPU | Min replicas | Max replicas | Current replicas |
 |---|---:|---:|---:|---:|---:|
-| `Deployment/checkout` | Khoảng `2%` | `70%` | `1` | `3` | `1` |
-| `Deployment/frontend` | Khoảng `21%` | `70%` | `1` | `3` | `1` |
+| `Deployment/checkout` | Khoảng `2%` | `70%` | `2` | `3` | `2` |
+| `Deployment/currency` | Khoảng `2%` | `70%` | `2` | `3` | `2` |
+| `Deployment/frontend` | Khoảng `18%` | `70%` | `2` | `3` | `2` |
 
 Không thấy HPA cho:
 
@@ -147,109 +208,128 @@ Không thấy HPA cho:
 - `product-catalog`
 - `cart`
 - `payment`
-- `currency`
 - `shipping`
 - `quote`
 
-Hai HPA hiện tại không tạo sẵn redundancy cho planned disruption vì `minReplicas = 1` và runtime vẫn chỉ có một replica. HPA không thay thế pre-scale hoặc minimum availability configuration.
+HPA không thay thế PDB và topology spread, nhưng `minReplicas=2` của các workload có HPA hiện tạo sẵn redundancy tốt hơn trạng thái ban đầu.
 
 ---
 
-## 7. Review CPU/memory requests và limits
+## 8. Review CPU/memory requests và limits
 
-### Node `ip-10-0-10-231.ec2.internal`
+Riêng `quote` hiện có:
 
-| Service | CPU request | Memory request |
+| Resource | Request | Limit |
 |---|---:|---:|
-| `frontend` | `100m` | `192Mi` |
-| `frontend-proxy` | `50m` | `64Mi` |
-| `product-catalog` | `50m` | `32Mi` |
-| `cart` | `75m` | `96Mi` |
-| `quote` | Thiếu | Thiếu |
-| **Tổng đã biết** | **`275m`** | **`384Mi`** |
+| CPU | `10m` | `50m` |
+| Memory | `20Mi` | `40Mi` |
 
-### Node `ip-10-0-11-40.ec2.internal`
+Pod metrics quan sát được:
 
-| Service | CPU request | Memory request |
+| Pod | CPU | Memory |
 |---|---:|---:|
-| `checkout` | `75m` | `48Mi` |
-| `payment` | `50m` | `64Mi` |
-| `currency` | `20m` | `24Mi` |
-| `shipping` | `20m` | `16Mi` |
-| **Tổng** | **`165m`** | **`152Mi`** |
+| `quote-dfd7f7bb7-26jkn` | `1m` | `15Mi` |
+| `quote-dfd7f7bb7-fbq6z` | `1m` | `15Mi` |
 
-`quote` thiếu CPU request, CPU limit và memory request. Điều này làm scheduler reservation và drain-headroom analysis kém chính xác, đồng thời tạo rủi ro tranh chấp tài nguyên.
+Kết luận:
+
+```text
+Quote scheduler reservation: PRESENT
+Quote current usage below limits: YES
+Right-sizing concern blocking maintenance: NOT OBSERVED
+```
 
 ---
 
-## 8. Tổng requested resources theo node
+## 9. Trạng thái PodDisruptionBudget
 
-| Node | CPU requests | CPU limits | Memory requests | Memory limits |
+Runtime có PDB cho toàn bộ revenue-path service được kiểm tra:
+
+| Service | Min available | Allowed disruptions |
+|---|---:|---:|
+| `cart` | `1` | `1` |
+| `checkout` | `1` | `1` |
+| `currency` | `1` | `1` |
+| `frontend` | `1` | `1` |
+| `frontend-proxy` | `1` | `1` |
+| `payment` | `1` | `1` |
+| `product-catalog` | `1` | `1` |
+| `quote` | `1` | `1` |
+| `shipping` | `1` | `1` |
+
+### Kết luận PDB
+
+```text
+PDB protection: PASS
+One voluntary disruption currently allowed: YES
+```
+
+PDB bảo vệ minimum availability cho voluntary disruption, nhưng không tự chứng minh checkout SLO. Controlled-drain validation vẫn bắt buộc.
+
+---
+
+## 10. Node utilization sau remediation
+
+| Node | CPU | CPU % | Memory | Memory % |
 |---|---:|---:|---:|---:|
-| `ip-10-0-10-231.ec2.internal` | `1800m` (`93%`) | `3460m` (`176%`) | `1736Mi` (`66%`) | `7846Mi` (`110%`) |
-| `ip-10-0-11-40.ec2.internal` | `1555m` (`80%`) | `750m` (`38%`) | `2739Mi` (`38%`) | `5387Mi` (`76%`) |
+| `ip-10-0-10-17.ec2.internal` | `326m` | `16%` | `4088Mi` | `57%` |
+| `ip-10-0-10-231.ec2.internal` | `159m` | `8%` | `2791Mi` | `39%` |
+| `ip-10-0-11-207.ec2.internal` | `247m` | `12%` | `1066Mi` | `15%` |
+| `ip-10-0-11-40.ec2.internal` | `194m` | `10%` | `3945Mi` | `55%` |
 
-Kubernetes scheduler chủ yếu sử dụng requests khi quyết định placement.
+Observed range:
 
-Approximate CPU request headroom:
+```text
+CPU: 8%–16%
+Memory: 15%–57%
+```
 
-| Node | Headroom |
-|---|---:|
-| `ip-10-0-10-231.ec2.internal` | Khoảng `135m` |
-| `ip-10-0-11-40.ec2.internal` | Khoảng `390m` |
+Runtime utilization cho thấy cluster không bị saturation tại thời điểm collection.
 
-CPU reservation là giới hạn chính cho node drain. CPU limits trên 100% thể hiện overcommit nhưng không trực tiếp block scheduling.
+Tuy nhiên:
+
+- `kubectl top` phản ánh usage, không phải scheduler requests.
+- Usage thấp không đủ để tự kết luận drain sẽ PASS.
+- Drain vẫn phải kiểm tra PDB behavior, rescheduling và SLO.
 
 ---
 
-## 9. Đánh giá capacity khi drain node
+## 11. Đánh giá capacity trước controlled drain
 
-### Drain `ip-10-0-10-231.ec2.internal`
+### Initial state
 
-```text
-CPU requests cần reschedule: khoảng 1800m
-CPU headroom node còn lại: khoảng 390m
-```
-
-**Verdict: FAIL — không đủ CPU request headroom.**
-
-Revenue-path service bị ảnh hưởng:
-
-- `frontend`
-- `frontend-proxy`
-- `product-catalog`
-- `cart`
-- `quote`
-
-### Drain `ip-10-0-11-40.ec2.internal`
+Snapshot ban đầu với hai nodes có CPU requests cao và không đủ static headroom để hấp thụ toàn bộ workload của node còn lại:
 
 ```text
-CPU requests cần reschedule: khoảng 1555m
-CPU headroom node còn lại: khoảng 135m
+Initial two-node static drain capacity: FAIL
 ```
 
-**Verdict: FAIL — không đủ CPU request headroom.**
+### Post-remediation state
 
-Revenue-path service bị ảnh hưởng:
+Sau remediation:
 
-- `checkout`
-- `payment`
-- `currency`
-- `shipping`
+- Cluster có bốn worker nodes.
+- Critical revenue-path services có hai replicas.
+- PDB cho phép một disruption.
+- Pod replicas được phân tán trên nhiều node.
+- Node CPU/memory usage không ở trạng thái saturation.
+- `quote` có hai serving endpoints trên hai node và hai AZ.
 
-### Kết luận static capacity
+### Verdict
 
 ```text
-Current static node-drain capacity: FAIL
+Post-remediation capacity pre-check: PASS
+Ready for controlled-drain rehearsal: YES
+Controlled node-drain capacity: PENDING EXECUTION
 ```
 
-Không worker node nào có đủ CPU request headroom để hấp thụ toàn bộ workload từ node còn lại.
-
-Kết luận này phản ánh current static capacity, không khẳng định cluster không thể phục hồi nếu chủ động thêm node trước maintenance.
+Không ghi “node drain PASS” trước khi có actual drain evidence.
 
 ---
 
-## 10. Khả năng scale-out của EKS node group
+## 12. Khả năng scale-out
+
+Initial evidence cho thấy managed node group:
 
 | Setting | Value |
 |---|---:|
@@ -257,42 +337,19 @@ Kết luận này phản ánh current static capacity, không khẳng định cl
 | `desiredSize` | `2` |
 | `maxSize` | `4` |
 
-Node group cho phép bổ sung tối đa hai node so với trạng thái hiện tại.
-
-Không quan sát thấy Cluster Autoscaler Deployment hoặc Pod trong `kube-system`.
+Post-remediation runtime đã có bốn worker nodes. Điều này xác nhận capacity đã được pre-scale/provision thêm so với initial snapshot.
 
 ```text
-Automatic node scale-out: NOT OBSERVED
-Manual node-group scale-out: AVAILABLE
+Current worker nodes: 4
+Manual/pre-provisioned scale-out: OBSERVED
+Automatic Cluster Autoscaler: NOT OBSERVED IN INITIAL CHECK
 ```
 
-`maxSize > desiredSize` chỉ chứng minh node group cho phép scale-out, không chứng minh cluster sẽ tự thêm node khi pod Pending.
-
-Trước official maintenance test, CDO-08 nên:
-
-1. Pre-scale từ hai lên ít nhất ba worker node.
-2. Chờ node mới `Ready`.
-3. Thu thập lại allocatable và requested resources.
-4. Xác minh pod placement.
-5. Xác minh critical service có redundancy phù hợp.
-6. Chạy controlled dry-run.
-7. Chỉ scale down sau khi post-check PASS.
+Tài liệu này không khẳng định bốn node đều thuộc cùng một managed node group; source node/instance evidence phải được dùng khi cần phân biệt managed nodes và Karpenter nodes.
 
 ---
 
-## 11. Trạng thái PodDisruptionBudget
-
-Runtime query không tìm thấy PodDisruptionBudget trong namespace `techx-tf4`.
-
-> Hiện không có PDB-based minimum availability guarantee cho voluntary disruption trên revenue-path workloads.
-
-Không có PDB không tự động chứng minh tất cả service chắc chắn bị rớt. Ảnh hưởng thực tế còn phụ thuộc replica count, placement, readiness, rescheduling duration, remaining capacity và rollout strategy.
-
-Tuy nhiên, kết hợp với một Ready replica mỗi service, đây là reliability gap đáng kể.
-
----
-
-## 12. Phân loại synchronous và asynchronous
+## 13. Phân loại synchronous và asynchronous
 
 | Service | Phân loại | Lý do |
 |---|---|---|
@@ -302,45 +359,29 @@ Tuy nhiên, kết hợp với một Ready replica mỗi service, đây là relia
 | `cart` | Synchronous | Cần cho cart operations |
 | `checkout` | Synchronous | Điều phối order placement |
 | `payment` | Synchronous | Cần để hoàn tất checkout |
-| `currency` | Synchronous | Có thể cần trong browse hoặc checkout |
-| `shipping` | Synchronous | Cần cho shipping option/cost |
-| `quote` | Synchronous candidate | Cần trace xác nhận |
+| `currency` | Synchronous | Pricing/checkout dependency |
+| `shipping` | Synchronous | Shipping option/cost dependency |
+| `quote` | Synchronous | Được `shipping GetQuote` gọi đồng bộ trên checkout path |
 
-Các workload như `email`, `fraud-detection`, `recommendation`, `product-reviews` và Kafka-related workloads có thể thuộc post-order hoặc async flow, nhưng phải xác minh bằng Jaeger, source code hoặc architecture diagram.
-
-Không phân loại async chỉ vì workload dùng Kafka. Nếu customer request phải chờ kết quả, service vẫn thuộc synchronous path.
+Các workload như `email`, `fraud-detection`, `recommendation`, `product-reviews` và Kafka-related workloads nằm ngoài mandatory inventory này trừ khi trace/source evidence cho thấy customer request chờ kết quả của chúng.
 
 ---
 
-## 13. Single-replica risk register
+## 14. Risk register sau remediation
 
-| Service | Runtime state | Rủi ro | Severity |
+| Risk | Trạng thái | Severity hiện tại | Follow-up |
 |---|---|---|---|
-| `frontend-proxy` | Một Ready replica | Entry-point endpoint có thể mất khi drain | Critical |
-| `frontend` | Một Ready replica, HPA min 1 | Endpoint có thể mất trước khi HPA phản ứng | Critical |
-| `product-catalog` | Một Ready replica | Browse/product path có nguy cơ gián đoạn | High |
-| `cart` | Một Ready replica | Cart operations có nguy cơ gián đoạn | Critical |
-| `checkout` | Một Ready replica, HPA min 1 | Order placement có nguy cơ gián đoạn | Critical |
-| `payment` | Một Ready replica | Payment completion có nguy cơ gián đoạn | Critical |
-| `currency` | Một Ready replica | Pricing/checkout dependency có nguy cơ gián đoạn | High |
-| `shipping` | Một Ready replica | Shipping calculation có nguy cơ gián đoạn | High |
-| `quote` | Một Ready replica, thiếu requests | Availability và scheduling reservation risk | Critical |
-
----
-
-## 14. Tổng hợp rủi ro
-
-| Risk | Evidence | Severity | Owner đề xuất |
-|---|---|---|---|
-| Node còn lại không đủ CPU headroom | CPU requests `93%` và `80%` | Critical | CDO-04 + CDO-08 |
-| Revenue-path service chỉ có một Ready pod | Replica và placement evidence | Critical | CDO-08 |
-| Không có PDB | Runtime PDB query | High | CDO-08 |
-| Frontend/checkout HPA min bằng một | HPA evidence | High | CDO-04 + CDO-08 |
-| Phần lớn service không có HPA | HPA evidence | Medium/High | CDO-04 + CDO-08 |
-| Quote thiếu requests | Deployment resource evidence | High | CDO-04 |
-| Không thấy Cluster Autoscaler | `kube-system` lookup | High | CDO-08 |
-| Node group chỉ chứng minh manual scale-out | EKS scaling config | Medium | CDO-08 |
-| Không có replica redundancy sẵn | Replica/placement evidence | Critical | CDO-08 |
+| `quote` chỉ có một replica | RESOLVED | Closed | Không |
+| `quote` thiếu requests/limits | RESOLVED | Closed | Không |
+| `quote` không có PDB | RESOLVED | Closed | Không |
+| `quote` không có topology spread | RESOLVED | Closed | Không |
+| `quote` không có probes | RESOLVED | Closed | Không |
+| Revenue path thiếu replica redundancy | RESOLVED trong snapshot hiện tại | Low | Theo dõi trước witness |
+| PDB behavior khi drain | PENDING | High | Controlled drain |
+| Pod reschedule time | PENDING | High | Controlled drain |
+| Checkout success rate trong drain | PENDING | Critical | SLO dashboard |
+| Checkout p95 latency trong drain | PENDING | High | SLO dashboard |
+| Post-maintenance scale-down/cost | PENDING | Medium | Cost evidence |
 
 ---
 
@@ -349,18 +390,19 @@ Không phân loại async chỉ vì workload dùng Kafka. Nếu customer request
 | Hạng mục | Verdict |
 |---|---|
 | Runtime inventory | PASS |
-| Replica evidence | PASS |
+| Post-remediation deployment replicas | PASS |
 | Requests và limits evidence | PASS |
 | HPA evidence | PASS |
 | Pod-to-node placement | PASS |
-| Node requested-resource evidence | PASS |
-| Single-replica risk identification | PASS |
-| Static node-drain capacity | FAIL |
-| Manual pre-scale capability | AVAILABLE |
-| Automatic node scale-out | NOT OBSERVED |
-| PDB protection | NOT PRESENT |
-| Official maintenance readiness | NOT READY |
-| Controlled maintenance validation | PENDING CDO-08 remediation và dry-run |
+| PDB protection | PASS |
+| `quote` remediation | PASS |
+| `quote` 2 serving endpoints | PASS |
+| `quote` probes | PASS |
+| `quote` topology spread | PASS |
+| Four-node runtime capacity pre-check | PASS |
+| Official controlled-drain readiness | READY |
+| Controlled maintenance execution | PENDING |
+| Controlled maintenance SLO validation | PENDING |
 
 ---
 
@@ -368,23 +410,20 @@ Không phân loại async chỉ vì workload dùng Kafka. Nếu customer request
 
 ### CDO-04 Performance và Cost
 
-- Bổ sung requests/limits cho `quote`.
-- Tính cost delta của temporary third worker node.
-- Thu thập lại requested resources sau pre-scale.
-- Kiểm tra lại requests sau right-sizing.
-- Validate SLO trong controlled maintenance test.
-- Ghi nhận post-maintenance scale-down và cost delta.
+- Chụp dashboard trước, trong và sau controlled drain.
+- Theo dõi checkout success rate, error rate và p95 latency.
+- Xác minh `quote` luôn còn ít nhất một serving endpoint.
+- Thu thập pod placement và resource usage sau reschedule.
+- Ghi nhận maintenance start/end timestamps.
+- Ghi nhận node-hours và cost delta của temporary capacity.
+- Xác minh scale-down sau maintenance.
 
 ### CDO-08 Reliability
 
-- Review minimum replicas cho revenue-path services.
-- Review HPA `minReplicas` của `frontend` và `checkout`.
-- Bổ sung hoặc giải trình PDB.
-- Review readiness, rolling update và graceful termination.
-- Pre-scale trước official maintenance.
-- Xác minh node mới `Ready`.
-- Thực hiện drain/rolling restart theo runbook.
-- Công bố maintenance timestamps.
+- Thực hiện controlled drain hoặc rolling restart theo runbook.
+- Xác nhận PDB không block ngoài dự kiến.
+- Theo dõi pod eviction, reschedule và readiness recovery.
+- Công bố node target và maintenance timestamps.
 - Xác nhận admission policy không block pod recreation.
 
 ---
@@ -392,55 +431,59 @@ Không phân loại async chỉ vì workload dùng Kafka. Nếu customer request
 ## 17. Acceptance Criteria assessment
 
 - [x] Có inventory cho từng service revenue-critical.
-- [x] Có desired/current/ready replica runtime.
+- [x] Có desired/ready replica runtime.
 - [x] Có CPU/memory requests và limits.
 - [x] Có HPA configuration.
 - [x] Có pod-to-node placement.
-- [x] Có tổng requested CPU/memory theo node.
-- [x] Có danh sách single-replica risk.
-- [x] Có current static node-drain capacity assessment.
-- [x] Không kết luận chỉ từ Helm values.
-- [x] Có timestamp và source evidence.
-- [x] Có preliminary synchronous/async classification.
-- [ ] Có Jaeger hoặc source-code evidence để xác nhận final path classification.
-- [ ] Reliability remediation hoàn tất.
-- [ ] Controlled node-drain dry-run hoàn tất.
+- [x] Có PDB runtime evidence.
+- [x] Có serving-endpoint evidence.
+- [x] Có final synchronous classification cho `quote`.
+- [x] Có remediation verification cho `quote`.
+- [x] Có node và pod utilization sau remediation.
+- [x] Reliability remediation hoàn tất.
+- [x] Sẵn sàng cho controlled-drain rehearsal.
+- [ ] Controlled node-drain rehearsal hoàn tất.
 - [ ] Official maintenance SLO validation hoàn tất.
+- [ ] Post-maintenance scale-down và cost validation hoàn tất.
 
-D3-PERF-01 hoàn tất ở phạm vi runtime inventory và capacity-risk assessment.
+D3-PERF-01 hoàn tất ở phạm vi runtime inventory, remediation verification và pre-drain capacity readiness.
 
-Official Directive #3 maintenance validation vẫn phụ thuộc reliability remediation, pre-scaling và controlled maintenance test.
+Directive #3 chỉ được kết luận PASS sau controlled maintenance và SLO validation.
 
 ---
 
 ## 18. Kết luận cuối
 
-Tại collection timestamp, namespace `techx-tf4` đang chạy chín revenue-path service với một pod Running và Ready cho mỗi service trên hai EKS worker node.
+Sau remediation, revenue path hiện có hai replicas Ready cho các service critical trên bốn worker nodes.
+
+Riêng `quote` đã được xác minh:
+
+- Deployment `2/2 Ready`.
+- Hai pod Running trên hai worker nodes khác nhau.
+- Hai pod nằm ở hai Availability Zones khác nhau.
+- PDB `minAvailable=1`, `allowedDisruptions=1`.
+- Hai EndpointSlice endpoints đều `ready=true`.
+- Topology spread theo `kubernetes.io/hostname`.
+- Readiness và liveness probes qua `tcpSocket:8080`.
+- CPU request/limit là `10m/50m`.
+- Memory request/limit là `20Mi/40Mi`.
+
+Node utilization sau remediation:
 
 ```text
-Node ip-10-0-10-231: CPU requests 93%
-Node ip-10-0-11-40: CPU requests 80%
+CPU: 8%–16%
+Memory: 15%–57%
 ```
 
-Node còn lại không đủ CPU request headroom để hấp thụ toàn bộ pod từ node bị drain.
+Final status:
 
 ```text
-Current two-node static maintenance capacity: FAIL
-Manual pre-scale: AVAILABLE
-Automatic scale-out: NOT OBSERVED
+Initial two-node static capacity: FAIL
+Post-remediation inventory: PASS
+Quote runtime remediation: PASS
+PDB protection: PASS
+Ready for controlled-drain rehearsal: YES
+Controlled-drain SLO validation: PENDING
 ```
 
-Các rủi ro chính:
-
-- Mỗi revenue-path service chỉ có một Ready replica.
-- Không có PDB.
-- HPA min replica của frontend và checkout bằng một.
-- Phần lớn revenue service không có HPA.
-- `quote` thiếu CPU request, CPU limit và memory request.
-- Static two-node capacity không đủ cho node drain.
-
-Môi trường hiện chưa sẵn sàng cho official node-drain maintenance test trong trạng thái hai node hiện tại.
-
-CDO-08 cần pre-scale và xử lý reliability gaps trước controlled maintenance session.
-
-CDO-04 cần revalidate capacity, SLO và temporary cost sau khi pre-scale.
+D3-PERF-01 có thể được chuyển sang **Done** với ghi chú rằng controlled drain thuộc bước validation kế tiếp, không phải evidence còn thiếu của inventory task.

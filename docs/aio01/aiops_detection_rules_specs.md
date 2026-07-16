@@ -2,7 +2,7 @@
 
 - **Epic:** [TF4AIO-6](https://aio1-xbrain.atlassian.net/browse/TF4AIO-6) — EPIC-AIOPS-02: Anomaly Detection MVP
 - **Jira Task:** [TF4AIO-37](https://aio1-xbrain.atlassian.net/browse/TF4AIO-37) — \[W2\]\[AIOPS\] Define detection rules and thresholds
-- **Status:** ✅ Completed — Reviewed, Validated & Live-Verified on EKS cluster `techx-tf4-cluster` (2026-07-15)
+- **Status:** ✅ Completed — Reviewed, Validated & Live-Verified (schema verified, metrics traffic verification pending due to idle cluster) (2026-07-15)
 - **Planning Doc:** [docs/planning/AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md](../../planning/AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md)
 
 ---
@@ -218,7 +218,7 @@ groups:
           rate(traces_span_metrics_calls_total{service_name="product-reviews", span_name="get_ai_assistant_response", status_code="STATUS_CODE_ERROR"}[3m]) > 0.5
           or
           (
-            sum(rate(app_ai_assistant_counter_total[3m])) == 0
+            ((sum(rate(app_ai_assistant_counter_total[3m])) or vector(0)) == 0)
             and on()
             sum(rate(traces_span_metrics_calls_total{service_name="product-reviews", span_name="get_ai_assistant_response"}[3m])) > 0
           )

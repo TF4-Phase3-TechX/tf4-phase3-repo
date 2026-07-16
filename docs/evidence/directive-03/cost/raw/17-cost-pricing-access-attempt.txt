@@ -1,0 +1,14 @@
+=== aws pricing get-products (t3a.large us-east-1) ===
+
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the GetProducts operation: User: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan is not authorized to perform: pricing:GetProducts because no identity-based policy allows the pricing:GetProducts action
+
+=== aws ce get-cost-and-usage ===
+
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan is not authorized to perform: ce:GetCostAndUsage on resource: arn:aws:ce:us-east-1:511825856493:/GetCostAndUsage because no identity-based policy allows the ce:GetCostAndUsage action
+
+=== current AWS identity at time of these calls ===
+{
+    "UserId": "AROAXOKZSY7WZSY2FYO2C:tuan",
+    "Account": "511825856493",
+    "Arn": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan"
+}

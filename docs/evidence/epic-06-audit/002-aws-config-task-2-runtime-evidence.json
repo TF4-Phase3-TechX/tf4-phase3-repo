@@ -1,0 +1,208 @@
+{
+  "schemaVersion": "1.0",
+  "evidenceId": "TF4-CDO07-TASK2-20260715",
+  "capturedAt": "2026-07-15T17:06:52.3409693+07:00",
+  "accountId": "511825856493",
+  "region": "us-east-1",
+  "profile": "cdo07-tf4-auditreadonly",
+  "callerArn": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/huan.huynh",
+  "sourceCommands": [
+    "aws sts get-caller-identity",
+    "aws configservice describe-configuration-recorder-status",
+    "aws configservice describe-delivery-channel-status",
+    "aws configservice describe-configuration-recorders",
+    "aws configservice get-discovered-resource-counts",
+    "aws ec2 describe-instances",
+    "aws configservice get-resource-config-history"
+  ],
+  "recorderStatus": {
+    "arn": "arn:aws:config:us-east-1:511825856493:configuration-recorder/tf4-aws-config-recorder/ndfp4r8tdcu1lgiq",
+    "name": "tf4-aws-config-recorder",
+    "lastStartTime": "2026-07-15T00:16:38.648000+07:00",
+    "recording": true,
+    "lastStatus": "SUCCESS",
+    "lastStatusChangeTime": "2026-07-15T15:14:07.360000+07:00",
+    "lastErrorCode": null
+  },
+  "deliveryStatus": {
+    "name": "tf4-aws-config-delivery",
+    "configSnapshotDeliveryInfo": {
+      "lastStatus": "SUCCESS",
+      "lastAttemptTime": "2026-07-15T00:34:38.338000+07:00",
+      "lastSuccessfulTime": "2026-07-15T00:34:38.338000+07:00",
+      "nextDeliveryTime": "2026-07-16T00:34:37.260000+07:00",
+      "lastErrorCode": null
+    },
+    "configHistoryDeliveryInfo": {
+      "lastStatus": "SUCCESS",
+      "lastAttemptTime": "2026-07-15T11:10:52.581000+07:00",
+      "lastSuccessfulTime": "2026-07-15T11:10:52.581000+07:00",
+      "lastErrorCode": null
+    },
+    "configStreamDeliveryInfo": {
+      "lastStatus": "NOT_APPLICABLE",
+      "lastStatusChangeTime": "2026-07-15T15:48:13.191000+07:00"
+    }
+  },
+  "recorderConfiguration": {
+    "roleArn": "arn:aws:iam::511825856493:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig",
+    "allSupported": false,
+    "includeGlobalResourceTypes": false,
+    "recordingStrategy": "INCLUSION_BY_RESOURCE_TYPES",
+    "recordingFrequency": "CONTINUOUS",
+    "recordingScope": "PAID",
+    "resourceTypeCount": 32,
+    "resourceTypes": [
+      "AWS::EC2::NetworkInterface",
+      "AWS::IAM::Policy",
+      "AWS::EC2::LaunchTemplate",
+      "AWS::EC2::SecurityGroup",
+      "AWS::EKS::Addon",
+      "AWS::ECR::Repository",
+      "AWS::EC2::Instance",
+      "AWS::KMS::Key",
+      "AWS::AccessAnalyzer::Analyzer",
+      "AWS::IAM::OIDCProvider",
+      "AWS::EC2::Volume",
+      "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "AWS::EC2::RouteTable",
+      "AWS::S3::BucketPolicy",
+      "AWS::AutoScaling::AutoScalingGroup",
+      "AWS::EC2::NatGateway",
+      "AWS::EKS::Cluster",
+      "AWS::IAM::InstanceProfile",
+      "AWS::Logs::LogGroup",
+      "AWS::SSM::Document",
+      "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "AWS::DynamoDB::Table",
+      "AWS::CloudTrail::Trail",
+      "AWS::EC2::InternetGateway",
+      "AWS::EC2::NetworkAcl",
+      "AWS::SSM::ManagedInstanceInventory",
+      "AWS::EKS::Nodegroup",
+      "AWS::EC2::Subnet",
+      "AWS::IAM::Role",
+      "AWS::S3::Bucket",
+      "AWS::ElasticLoadBalancingV2::Listener",
+      "AWS::EC2::VPC"
+    ]
+  },
+  "selectedCoreResourceCounts": {
+    "totalDiscoveredResources": 54,
+    "resourceCounts": [
+      {
+        "resourceType": "AWS::IAM::Role",
+        "count": 42
+      },
+      {
+        "resourceType": "AWS::EKS::Addon",
+        "count": 5
+      },
+      {
+        "resourceType": "AWS::EC2::Instance",
+        "count": 4
+      },
+      {
+        "resourceType": "AWS::EKS::Nodegroup",
+        "count": 1
+      },
+      {
+        "resourceType": "AWS::EKS::Cluster",
+        "count": 1
+      },
+      {
+        "resourceType": "AWS::EC2::VPC",
+        "count": 1
+      }
+    ]
+  },
+  "bastionResourceId": "i-072084d1cf0b2f1c9",
+  "bastionCurrentState": {
+    "state": "running",
+    "privateIp": "10.0.10.55",
+    "publicIp": null,
+    "vpcId": "vpc-0a4e2abe9fbb70451",
+    "subnetId": "subnet-0280b36e2249f33d8",
+    "securityGroups": [
+      "sg-024a16eb3e916f47a"
+    ],
+    "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+    "volumes": [
+      "vol-0169fd931357644bf"
+    ]
+  },
+  "bastionConfigurationHistory": [
+    {
+      "captureTime": "2026-07-15T15:46:12.462000+07:00",
+      "status": "OK",
+      "state": "running",
+      "privateIp": "10.0.10.55",
+      "publicIp": null,
+      "vpcId": "vpc-0a4e2abe9fbb70451",
+      "subnetId": "subnet-0280b36e2249f33d8",
+      "securityGroups": ["sg-024a16eb3e916f47a"],
+      "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+      "volumes": ["vol-0169fd931357644bf"]
+    },
+    {
+      "captureTime": "2026-07-15T10:48:43.676000+07:00",
+      "status": "OK",
+      "state": "running",
+      "privateIp": "10.0.10.55",
+      "publicIp": null,
+      "vpcId": "vpc-0a4e2abe9fbb70451",
+      "subnetId": "subnet-0280b36e2249f33d8",
+      "securityGroups": ["sg-024a16eb3e916f47a"],
+      "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+      "volumes": ["vol-0169fd931357644bf"]
+    },
+    {
+      "captureTime": "2026-07-15T10:46:30.263000+07:00",
+      "status": "OK",
+      "state": "stopping",
+      "privateIp": "10.0.10.55",
+      "publicIp": null,
+      "vpcId": "vpc-0a4e2abe9fbb70451",
+      "subnetId": "subnet-0280b36e2249f33d8",
+      "securityGroups": ["sg-024a16eb3e916f47a"],
+      "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+      "volumes": ["vol-0169fd931357644bf"]
+    },
+    {
+      "captureTime": "2026-07-15T04:34:48.358000+07:00",
+      "status": "OK",
+      "state": "running",
+      "privateIp": "10.0.10.55",
+      "publicIp": null,
+      "vpcId": "vpc-0a4e2abe9fbb70451",
+      "subnetId": "subnet-0280b36e2249f33d8",
+      "securityGroups": ["sg-024a16eb3e916f47a"],
+      "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+      "volumes": ["vol-0169fd931357644bf"]
+    },
+    {
+      "captureTime": "2026-07-15T04:32:37.903000+07:00",
+      "status": "OK",
+      "state": "stopping",
+      "privateIp": "10.0.10.55",
+      "publicIp": null,
+      "vpcId": "vpc-0a4e2abe9fbb70451",
+      "subnetId": "subnet-0280b36e2249f33d8",
+      "securityGroups": ["sg-024a16eb3e916f47a"],
+      "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+      "volumes": ["vol-0169fd931357644bf"]
+    },
+    {
+      "captureTime": "2026-07-15T00:16:49.770000+07:00",
+      "status": "ResourceDiscovered",
+      "state": "running",
+      "privateIp": "10.0.10.55",
+      "publicIp": null,
+      "vpcId": "vpc-0a4e2abe9fbb70451",
+      "subnetId": "subnet-0280b36e2249f33d8",
+      "securityGroups": ["sg-024a16eb3e916f47a"],
+      "instanceProfile": "arn:aws:iam::511825856493:instance-profile/tf4-portal-bastion-instance-profile",
+      "volumes": ["vol-0169fd931357644bf"]
+    }
+  ]
+}

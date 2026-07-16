@@ -1,0 +1,2 @@
+﻿NAME    REPLICAS   READY   CPU_REQ   CPU_LIMIT   MEM_REQ   MEM_LIMIT
+quote   2          2       10m       50m         20Mi      40Mi
