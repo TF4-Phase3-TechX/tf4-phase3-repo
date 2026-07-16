@@ -190,10 +190,28 @@ components:
       limits:
         cpu: 200m
         memory: 256Mi
+    securityContext:
+      runAsUser: 1654  # app
+      runAsGroup: 1654
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     initContainers:
       - name: wait-for-kafka
         image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -281,6 +299,15 @@ components:
       - name: wait-for-valkey-cart
         image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -345,6 +372,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 48Mi }
       limits: { cpu: 300m, memory: 96Mi }
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       grpc:
         port: 8080
@@ -364,6 +400,15 @@ components:
       - name: wait-for-kafka
         image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -481,10 +526,28 @@ components:
       limits:
         cpu: 200m
         memory: 300Mi
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     initContainers:
       - name: wait-for-kafka
         image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -580,6 +643,11 @@ components:
       runAsUser: 1001  # nextjs
       runAsGroup: 1001
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   frontend-proxy:
     enabled: true
@@ -670,6 +738,11 @@ components:
       runAsUser: 101  # envoy
       runAsGroup: 101
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   image-provider:
     enabled: true
@@ -699,6 +772,15 @@ components:
       limits:
         cpu: 50m
         memory: 50Mi
+    securityContext:
+      runAsUser: 101  # nginx
+      runAsGroup: 101
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   load-generator:
     enabled: true
@@ -792,6 +874,11 @@ components:
       runAsUser: 1000  # node
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   product-catalog:
     enabled: true
@@ -831,6 +918,15 @@ components:
     resources:
       requests: { cpu: 50m, memory: 32Mi }
       limits: { cpu: 200m, memory: 64Mi }
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       grpc:
         port: 8080
@@ -894,6 +990,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      readOnlyRootFilesystem: true
+      seccompProfile:
+        type: RuntimeDefault
 
   quote:
     enabled: true
@@ -952,6 +1057,11 @@ components:
       runAsUser: 33  # www-data
       runAsGroup: 33
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   recommendation:
     enabled: true
@@ -1012,6 +1122,15 @@ components:
     resources:
       requests: { cpu: 20m, memory: 16Mi }
       limits: { cpu: 75m, memory: 32Mi }
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -1165,6 +1284,11 @@ components:
       runAsUser: 1000  # appuser
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   llm:
     enabled: true
@@ -1303,6 +1427,11 @@ components:
       runAsUser: 999  # valkey
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
 metrics-server:
   enabled: false
@@ -1446,6 +1575,15 @@ jaeger:
   jaeger:
     storage:
       type: elasticsearch
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     extraEnv:
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
@@ -1561,6 +1699,15 @@ prometheus:
   configmapReload:
     prometheus:
       enabled: true
+      containerSecurityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault
       resources:
         requests:
           cpu: 10m
@@ -1647,6 +1794,15 @@ prometheus:
       limits:
         cpu: 500m
         memory: 1Gi
+    containerSecurityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
 grafana:
   enabled: true
