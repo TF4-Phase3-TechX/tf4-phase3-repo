@@ -258,5 +258,50 @@ run-eval:
 		echo "Error: product-reviews service is not running." >&2; \
 		exit 1; \
 	fi; \
+	if [ ! -d "./src/product-reviews/venv" ]; then \
+		echo "Creating virtual environment and installing dependencies..."; \
+		python3 -m venv ./src/product-reviews/venv && \
+		./src/product-reviews/venv/bin/pip install --upgrade pip && \
+		./src/product-reviews/venv/bin/pip install grpcio grpcio-tools; \
+	fi; \
 	echo "Running AI evaluation against port $$PORT..."; \
 	./src/product-reviews/venv/bin/python ../tests/eval/run_eval.py --port $$PORT --delay 0
+
+.PHONY: run-eval-offline
+run-eval-offline:
+	@if [ ! -d "./src/product-reviews/venv" ]; then \
+		echo "Creating virtual environment and installing dependencies..."; \
+		python3 -m venv ./src/product-reviews/venv && \
+		./src/product-reviews/venv/bin/pip install --upgrade pip && \
+		./src/product-reviews/venv/bin/pip install grpcio grpcio-tools; \
+	fi; \
+	echo "Running offline AI evaluation..."; \
+	./src/product-reviews/venv/bin/python ../tests/eval/run_eval.py --offline --delay 0
+
+.PHONY: run-nl-eval
+run-nl-eval:
+	@echo "Determining product-reviews port..."
+	@PORT=$$(docker compose port product-reviews 3551 | cut -d: -f2); \
+	if [ -z "$$PORT" ]; then \
+		echo "Error: product-reviews service is not running." >&2; \
+		exit 1; \
+	fi; \
+	if [ ! -d "./src/product-reviews/venv" ]; then \
+		echo "Creating virtual environment and installing dependencies..."; \
+		python3 -m venv ./src/product-reviews/venv && \
+		./src/product-reviews/venv/bin/pip install --upgrade pip && \
+		./src/product-reviews/venv/bin/pip install -r ./src/product-reviews/requirements.txt; \
+	fi; \
+	echo "Running Natural-Language Search evaluation against port $$PORT..."; \
+	./src/product-reviews/venv/bin/python ../tests/eval_natural_language_product_search_mvp/run_eval.py --port $$PORT --runtime-env local
+
+.PHONY: generate-nl-dataset
+generate-nl-dataset:
+	@if [ ! -d "./src/product-reviews/venv" ]; then \
+		echo "Creating virtual environment and installing dependencies..."; \
+		python3 -m venv ./src/product-reviews/venv && \
+		./src/product-reviews/venv/bin/pip install --upgrade pip && \
+		./src/product-reviews/venv/bin/pip install -r ./src/product-reviews/requirements.txt; \
+	fi; \
+	./src/product-reviews/venv/bin/python ../tests/eval_natural_language_product_search_mvp/generate_dataset.py --source sql --sql-file src/postgresql/init.sql
+

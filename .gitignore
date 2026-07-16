@@ -103,3 +103,5 @@ note/
 huong-dan-grafana.md
 docs/aio01/w1_tasks_summary.md
 docs/aio01/w2_tasks_summary.md
+.env
+.env.override
