@@ -69,3 +69,23 @@ def test_provider_error_never_falls_back_to_mock():
     assert outcome.response == UNAVAILABLE_RESPONSE
     assert outcome.outcome == "unavailable"
     assert outcome.error_class == "timeout"
+
+
+def test_provider_contract_failure_preserves_sanitized_usage_metadata():
+    error = ProviderFailure(
+        "invalid_response",
+        latency_ms=321,
+        input_tokens=101,
+        output_tokens=21,
+        stop_reason="tool_use",
+        contract_stage="tool_stop_reason",
+    )
+    outcome = make_assistant(Provider(error=error)).answer("p1", "Is it good?")
+
+    assert outcome.response == UNAVAILABLE_RESPONSE
+    assert outcome.error_class == "invalid_response"
+    assert outcome.latency_ms == 321
+    assert outcome.input_tokens == 101
+    assert outcome.output_tokens == 21
+    assert outcome.provider_stop_reason == "tool_use"
+    assert outcome.response_contract_stage == "tool_stop_reason"
