@@ -5,10 +5,13 @@
 
 # Python
 import os
+import logging
 import simplejson as json
 
 # Postgres
 import psycopg2
+from psycopg2 import pool
+from contextlib import contextmanager
 
 def must_map_env(key: str):
     value = os.environ.get(key)
@@ -16,8 +19,30 @@ def must_map_env(key: str):
         raise Exception(f'{key} environment variable must be set')
     return value
 
-# Retrieve Postgres environment variables
 db_connection_str = must_map_env('DB_CONNECTION_STRING')
+
+
+try:
+    db_pool = pool.ThreadedConnectionPool(
+        minconn=1, 
+        maxconn=20, 
+        dsn=db_connection_str
+    )
+    logging.info("Khởi tạo ThreadedConnectionPool thành công (maxconn=20).")
+except Exception as e:
+    logging.critical(f"Lỗi khởi tạo DB Pool: {e}")
+    raise e
+
+
+@contextmanager
+def get_db_connection():
+    """Context manager để mượn và trả kết nối tự động từ Pool."""
+    conn = db_pool.getconn()
+    try:
+        yield conn
+    finally:
+        db_pool.putconn(conn)
+
 
 def fetch_product_reviews(product_id):
     try:
@@ -25,66 +50,37 @@ def fetch_product_reviews(product_id):
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
 def fetch_product_reviews_from_db(request_product_id):
-
-    connection = None
-
     try:
-        with psycopg2.connect(db_connection_str) as connection:
-
+        with get_db_connection() as connection:
             with connection.cursor() as cursor:
-                # Define the SQL query
                 query = "SELECT id, username, description, score FROM reviews.productreviews WHERE product_id= %s ORDER BY id"
-
-                # Execute the query
                 cursor.execute(query, (request_product_id, ))
-
-                # Fetch all the rows from the query result
                 records = cursor.fetchall()
                 return records
-
     except Exception as e:
         raise e
-    finally:
-        if connection is not None:
-            try:
-                connection.close()
-            except Exception:
-                pass
+
 
 def fetch_avg_product_review_score_from_db(request_product_id):
-
-    connection = None
-
     try:
-        with psycopg2.connect(db_connection_str) as connection:
-
+        with get_db_connection() as connection:
             with connection.cursor() as cursor:
                 # Define the SQL query
                 query = "SELECT AVG(score) FROM reviews.productreviews WHERE product_id= %s"
-
-                # Execute the query
                 cursor.execute(query, (request_product_id, ))
-
-                # Fetch all the rows from the query result
                 records = cursor.fetchall()
 
                 # Extract the average score
-                if records:
-                    # records will be a list like [(average_score,)]
+                if records and records[0][0] is not None:
                     average_score = records[0][0]
                 else:
-                    # Handle the case where no records are returned (e.g., no reviews for the product)
                     average_score = None
 
                 # return the score as a string rounded to 1 decimal place
-                return f"{average_score:.1f}"
-
+                if average_score is not None:
+                    return f"{average_score:.1f}"
+                return None
     except Exception as e:
         raise e
-    finally:
-        if connection is not None:
-            try:
-                connection.close()
-            except Exception:
-                pass
