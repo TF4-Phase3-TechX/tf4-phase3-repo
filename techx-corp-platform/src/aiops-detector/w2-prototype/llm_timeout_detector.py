@@ -29,10 +29,10 @@ class LLMTimeoutDetector:
         opensearch_url: Optional[str] = None,
     ):
         self.prometheus_url = prometheus_url or os.getenv(
-            "PROMETHEUS_URL", "http://prometheus:9090"
+            "PROMETHEUS_URL", "http://prometheus.techx-observability.svc.cluster.local:9090"
         )
         self.opensearch_url = opensearch_url or os.getenv(
-            "OPENSEARCH_URL", "http://opensearch:9200"
+            "OPENSEARCH_URL", "http://opensearch.techx-observability.svc.cluster.local:9200"
         )
         self.timeout_seconds = int(os.getenv("AIOPS_DETECTOR_TIMEOUT", "5"))
 
@@ -99,22 +99,21 @@ class LLMTimeoutDetector:
         logger.info(f"Running LLM Error Detector for {service} (env: {environment}, tenant: {tenant_id})")
 
         # 1. Prometheus — app_llm_* metric family (actual signal emitted by product-reviews)
-        metric_query = (
-            f'sum(rate(app_llm_requests_total{{'
-            f'service="{service}", environment="{environment}", tenant_id="{tenant_id}", '
-            f'status=~"error|timeout|rate_limited"'
-            f'}}[{lookback_minutes}m])) > 0'
-        )
+        # The production product-reviews instrumentation emits
+        # app_llm_errors_total. It does not emit app_llm_requests_total or
+        # service/environment/tenant labels on this instrument.
+        metric_query = f'sum(rate(app_llm_errors_total[{lookback_minutes}m])) > 0'
         metric_results = self.query_prometheus(metric_query)
 
         # 2. OpenSearch — Lucene query for LLM failure keywords
         log_query = (
-            f'kubernetes.labels.app:"{service}" '
-            f'AND kubernetes.labels.environment:"{environment}" '
+            f'resource.service.name:"{service}" '
+            f'AND resource.deployment.environment:"{environment}" '
             f'AND (message:*timeout* OR message:*rate_limited* OR message:*429*) '
             f'AND (message:*llm* OR message:*openai* OR message:*bedrock*)'
         )
-        log_results = self.query_opensearch(f"logs-{service}", log_query)
+        log_index = "otel-logs-*"
+        log_results = self.query_opensearch(log_index, log_query)
 
         # 3. Determine severity — clearly separate unavailable from healthy zero
         metric_hit = len(metric_results) > 0 if metric_results is not None else None
@@ -141,7 +140,7 @@ class LLMTimeoutDetector:
             "evidence": {
                 "metric_query": metric_query,
                 "log_query": log_query,
-                "log_index": f"logs-{service}",
+                "log_index": log_index,
                 "metrics_available": metric_results is not None,
                 "logs_available": log_results is not None,
                 "metrics_found": len(metric_results) if metric_results is not None else 0,

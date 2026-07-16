@@ -100,7 +100,9 @@ class TestLLMTimeoutDetector(unittest.TestCase):
     def test_uses_app_llm_metric_family(self, mock_get):
         mock_get.side_effect = [_make_response(self._prom_empty()), _make_response(self._os_empty())]
         result = self._detector().detect("product-reviews", "production", "default")
-        self.assertIn("app_llm_requests_total", result["evidence"]["metric_query"])
+        self.assertIn("app_llm_errors_total", result["evidence"]["metric_query"])
+        self.assertNotIn("app_llm_requests_total", result["evidence"]["metric_query"])
+        self.assertEqual(result["evidence"]["log_index"], "otel-logs-*")
 
     @patch("requests.get")
     def test_log_query_scope_includes_environment(self, mock_get):
@@ -165,7 +167,8 @@ class TestRCARuleEngine(unittest.TestCase):
         engine.jaeger_client.evaluate_trace_errors.return_value = 0.0
         engine.evaluate("product-reviews")
         calls = [str(c) for c in engine.prom_client.evaluate_promql.call_args_list]
-        self.assertIn("app_llm_requests_total", " ".join(calls))
+        self.assertIn("app_llm_errors_total", " ".join(calls))
+        self.assertIn("traces_span_metrics_calls_total", " ".join(calls))
 
 
 # ===========================================================
@@ -189,8 +192,8 @@ class TestIncidentSummaryGenerator(unittest.TestCase):
             "is_incident": True,
             "evidence": {
                 "metric_query": 'sum(...)',
-                "log_query": 'kubernetes.labels.app:"product-reviews"',
-                "ai_query": 'sum(rate(app_llm_requests_total...))',
+                "log_query": 'resource.service.name:"product-reviews"',
+                "ai_query": 'sum(rate(app_llm_errors_total...))',
                 "sources_unavailable": 0,
             },
         }
@@ -204,7 +207,7 @@ class TestIncidentSummaryGenerator(unittest.TestCase):
         self.assertIn("default", output)
 
     def test_summary_uses_detector_query_not_hardcoded(self):
-        custom_query = 'sum(rate(app_llm_requests_total{service="other-svc"}[5m]))'
+        custom_query = 'sum(rate(app_llm_errors_total[5m]))'
         data = self._base_rca_output()
         data["evidence"]["ai_query"] = custom_query
         gen = IncidentSummaryGenerator()

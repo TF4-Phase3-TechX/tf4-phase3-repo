@@ -159,10 +159,10 @@ class RCARuleEngine:
 
     def __init__(self):
         self.prom_client = PrometheusClient(
-            os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
+            os.getenv("PROMETHEUS_URL", "http://prometheus.techx-observability.svc.cluster.local:9090")
         )
         self.os_client = OpenSearchClient(
-            os.getenv("OPENSEARCH_URL", "http://opensearch:9200")
+            os.getenv("OPENSEARCH_URL", "http://opensearch.techx-observability.svc.cluster.local:9200")
         )
         self.jaeger_client = JaegerClient(
             os.getenv("JAEGER_URL", "http://jaeger:16686")
@@ -177,23 +177,20 @@ class RCARuleEngine:
 
         # Define queries (using actual app_llm_* metric family)
         http_err_query = (
-            f'sum(rate(http_server_requests_total{{'
-            f'service="{service}", status=~"5.."}}[5m])) / '
-            f'sum(rate(http_server_requests_total{{service="{service}"}}[5m]))'
+            f'sum(rate(traces_span_metrics_calls_total{{service_name="{service}", '
+            f'status_code="STATUS_CODE_ERROR"}}[5m])) / '
+            f'sum(rate(traces_span_metrics_calls_total{{service_name="{service}"}}[5m]))'
         )
         log_query = (
-            f'kubernetes.labels.app:"{service}" AND level:"ERROR"'
+            f'resource.service.name:"{service}" AND severity.text:"ERROR"'
         )
-        ai_query = (
-            f'sum(rate(app_llm_requests_total{{'
-            f'service="{service}", status=~"error|timeout|rate_limited"}}[5m]))'
-        )
+        ai_query = 'sum(rate(app_llm_errors_total[5m]))'
 
         # 1. Metric Anomaly (HTTP 5xx)
         ctx.metric_anomaly_score = self.prom_client.evaluate_promql(http_err_query)
 
         # 2. Log Anomaly
-        ctx.log_anomaly_score = self.os_client.evaluate_lucene(f"logs-{service}", log_query)
+        ctx.log_anomaly_score = self.os_client.evaluate_lucene("otel-logs-*", log_query)
 
         # 3. Trace Errors
         ctx.trace_error_score = self.jaeger_client.evaluate_trace_errors(service)

@@ -156,9 +156,9 @@ if __name__ == "__main__":
         "confidence": "partial",
         "is_incident": True,
         "evidence": {
-            "metric_query": 'sum(rate(http_server_requests_total{service="product-reviews", status=~"5.."}[5m])) / sum(rate(http_server_requests_total{service="product-reviews"}[5m]))',
-            "log_query": 'kubernetes.labels.app:"product-reviews" AND level:"ERROR"',
-            "ai_query": 'sum(rate(app_llm_requests_total{service="product-reviews", status=~"error|timeout|rate_limited"}[5m]))',
+            "metric_query": 'sum(rate(traces_span_metrics_calls_total{service_name="product-reviews", status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(traces_span_metrics_calls_total{service_name="product-reviews"}[5m]))',
+            "log_query": 'resource.service.name:"product-reviews" AND severity.text:"ERROR"',
+            "ai_query": 'sum(rate(app_llm_errors_total[5m]))',
             "sources_unavailable": 1,
         },
     }

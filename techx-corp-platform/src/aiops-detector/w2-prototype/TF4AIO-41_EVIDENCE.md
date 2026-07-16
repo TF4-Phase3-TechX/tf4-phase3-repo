@@ -5,8 +5,8 @@ Phát hiện các sự cố liên quan đến LLM (timeout, error, rate limit - 
 
 ## 2. Triển khai (Implementation)
 Đã tạo module `llm_timeout_detector.py` sử dụng logic truy vấn kết hợp:
-* **Metrics (Prometheus):** Tìm kiếm tốc độ tăng (rate) của `aiops_llm_calls_total` với các nhãn trạng thái `status=~"error|timeout|429"`.
-* **Logs (OpenSearch):** Sử dụng Lucene query `kubernetes.labels.app:"{service}" AND (message:*timeout* OR message:*429* OR message:*rate limit*) AND message:(*llm* OR *openai* OR *bedrock*)` để bắt các ngoại lệ (exceptions) sinh ra do model provider.
+* **Metrics (Prometheus):** Tìm tốc độ tăng của instrument production `app_llm_errors_total`. Instrument này không có các label `service`, `environment`, `tenant_id` hoặc `status`; phạm vi service được xác định bởi deployment/resource và được giữ trong output detector.
+* **Logs (OpenSearch):** Truy vấn index `otel-logs-*` bằng các field đã xác minh `resource.service.name`, `resource.deployment.environment` và message keywords cho timeout/rate-limit/Bedrock.
 
 ## 3. Khoảng trống tín hiệu (Missing Signal Gaps & Limitations)
 - **Traces (Jaeger):** Mặc dù Jaeger đang có mặt trong stack (theo task TF4AIO-12), OpenTelemetry span events cho LLM failures đôi khi không mang `status_code = error` nếu SDK bên thứ ba tự động fallback (handled gracefully). Cần phải đảm bảo ứng dụng set `span.set_status(Status(StatusCode.ERROR))` khi request đến LLM thất bại thì trace mới hữu dụng.

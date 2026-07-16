@@ -26,19 +26,19 @@ Paste these into your observability stack to reproduce the detector signal.
 
 **Metrics (Prometheus):**
 ```promql
-sum(rate(http_server_requests_total{service="product-reviews", status=~"5.."}[5m])) / sum(rate(http_server_requests_total{service="product-reviews"}[5m]))
+sum(rate(traces_span_metrics_calls_total{service_name="product-reviews", status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(traces_span_metrics_calls_total{service_name="product-reviews"}[5m]))
 ```
 
 **AI Telemetry (Prometheus):**
 ```promql
-sum(rate(app_llm_requests_total{service="product-reviews", status=~"error|timeout|rate_limited"}[5m]))
+sum(rate(app_llm_errors_total[5m]))
 ```
 
 **Logs (OpenSearch / Lucene):**
 ```lucene
-kubernetes.labels.app:"product-reviews" AND level:"ERROR"
+resource.service.name:"product-reviews" AND severity.text:"ERROR"
 ```
-[🔗 View Logs in Grafana (URL-encoded)](http://grafana.internal/explore?left=%5B%22now-1h%22%2C+%22now%22%2C+%22opensearch%22%2C+%7B%22query%22%3A+%22kubernetes.labels.app%3A%5C%22product-reviews%5C%22+AND+level%3A%5C%22ERROR%5C%22%22%7D%5D)
+The runtime generator builds the Grafana Explore link from the exact `evidence.log_query` above and URL-encodes the complete payload.
 
 ---
 
