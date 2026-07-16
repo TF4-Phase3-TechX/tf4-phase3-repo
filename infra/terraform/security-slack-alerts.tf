@@ -7,5 +7,5 @@ module "security_slack_alerts" {
   sns_topic_name               = "audit-security-alerts"
   lambda_runtime               = "python3.12"
 
-  tags = local.tags
+  tags = var.tags
 }

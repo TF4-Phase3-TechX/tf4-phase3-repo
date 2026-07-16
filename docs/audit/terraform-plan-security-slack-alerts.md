@@ -145,9 +145,19 @@ Root module (tại `infra/terraform/security-slack-alerts.tf`) sẽ gọi: `modu
 - [ ] Có thể trigger thử (bằng cách xóa trail hoặc login root trên sandbox) và Slack nhận được tin trong vòng vài giây.
 - [ ] Xác nhận không sinh thêm chi phí kéo log (ingestion) bằng cách kiểm tra việc không dùng CloudWatch Log Filters hay chức năng polling của Lambda.
 
-## 11. Lưu ý về Chi phí
-EventBridge + SNS + Lambda chỉ thu phí theo số lượng lần chạy (invocation) — không có chi phí cơ sở (baseline) khi rảnh rỗi, không tốn phí nạp log vào CloudWatch Logs, hoàn toàn thỏa mãn yêu cầu "chi phí gần mức $0" của hệ thống này.
+## 11. Chi phí (Cost Estimation)
+Kiến trúc này được thiết kế theo mô hình Serverless hoàn toàn, tính phí theo mức độ sử dụng (pay-as-you-go) và phần lớn nằm trong Free Tier của AWS. Do các sự kiện bảo mật (như xóa Trail, đăng nhập Root) rất hiếm khi xảy ra, **tổng chi phí ước tính mỗi tháng là ~$0.00**.
 
+| Dịch vụ AWS | Yếu tố tính phí | Đơn giá | Ước tính chi phí / tháng |
+|---|---|---|---|
+| **EventBridge** | Custom Events Matching | $1.00 / 1 triệu sự kiện | **$0.00** (Chỉ match sự kiện hiếm) |
+| **SNS** | Số tin nhắn gửi đi | $0.50 / 1 triệu tin | **$0.00** (Nằm trong Free Tier) |
+| **Lambda** | Số lần gọi (Invocations) & Thời gian chạy | $0.20 / 1 triệu requests | **$0.00** (Nằm trong Free Tier) |
+| **SSM Parameter Store** | Standard Parameters (SecureString) | Miễn phí | **$0.00** |
+| **KMS** | Số lượng KMS Keys (Customer Managed) | $1.00 / Key / tháng | **$0.00** (Dùng lại KMS key có sẵn) |
+| **Tổng cộng** | | | **~$0.00 / tháng** |
+
+Hoàn toàn thỏa mãn yêu cầu tối ưu chi phí của hệ thống (không tốn phí nạp log vào CloudWatch Logs, không chạy server ngầm).
 ## 12. Không thuộc phạm vi thực hiện (Out of Scope)
 - Tạo CloudTrail trail (đã có sẵn).
 - Nhân bản cảnh báo ra đa vùng (nếu cần sẽ tạo thêm các module instance sau này).
