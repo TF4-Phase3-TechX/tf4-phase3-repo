@@ -139,6 +139,17 @@ def test_response_after_deadline_fails_closed_and_preserves_billable_usage():
     assert failure.value.contract_stage == "deadline_exceeded"
 
 
+def test_diagnostic_dimensions_reject_unbounded_provider_values():
+    failure = ProviderFailure(
+        "invalid_response",
+        stop_reason="provider-returned-content",
+        contract_stage="dynamic-untrusted-stage",
+    )
+
+    assert failure.stop_reason == "missing_or_unknown"
+    assert failure.contract_stage == "missing_or_unknown"
+
+
 def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
     breaker = CircuitBreaker(threshold=5, window_seconds=30, cooldown_seconds=60)
     for now in range(5):

@@ -62,12 +62,39 @@ _KNOWN_STOP_REASONS = frozenset({
     "malformed_model_output",
     "malformed_tool_use",
     "model_context_window_exceeded",
+    "not_applicable",
+    "not_received",
+    "missing_or_unknown",
+})
+
+_KNOWN_CONTRACT_STAGES = frozenset({
+    "not_applicable",
+    "circuit_open",
+    "response_envelope",
+    "deadline_exceeded",
+    "guardrail_intervened",
+    "content_list",
+    "text_block_count",
+    "text_json_parse",
+    "text_json",
+    "tool_stop_reason",
+    "tool_block_count",
+    "tool_name",
+    "tool_input_type",
+    "tool_input_dict",
+    "payload_type",
+    "missing_or_unknown",
 })
 
 
 def _safe_stop_reason(value: Any) -> str:
     """Return a finite label value; never retain provider response content."""
     return value if isinstance(value, str) and value in _KNOWN_STOP_REASONS else "missing_or_unknown"
+
+
+def _safe_contract_stage(value: Any) -> str:
+    """Return a bounded internal response-contract label."""
+    return value if isinstance(value, str) and value in _KNOWN_CONTRACT_STAGES else "missing_or_unknown"
 
 
 class ProviderFailure(RuntimeError):
@@ -86,8 +113,8 @@ class ProviderFailure(RuntimeError):
         self.latency_ms = latency_ms
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
-        self.stop_reason = stop_reason
-        self.contract_stage = contract_stage
+        self.stop_reason = _safe_stop_reason(stop_reason)
+        self.contract_stage = _safe_contract_stage(contract_stage)
 
 
 class CircuitOpen(ProviderFailure):
@@ -373,7 +400,7 @@ class BedrockAdapter:
                 output_tokens=output_tokens,
                 guardrail_intervened=False,
                 stop_reason=stop_reason,
-                contract_stage=contract_stage,
+                contract_stage=_safe_contract_stage(contract_stage),
             )
         except ProviderFailure as exc:
             # A policy intervention is a successful provider/Guardrail decision,
