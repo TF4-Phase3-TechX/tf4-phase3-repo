@@ -21,9 +21,9 @@ When executing the validation script, the detector successfully correlates the s
   "tenant_id": "default",
   "severity": "high",
   "evidence": {
-    "metric_query": "sum(rate(app_llm_requests_total{service=\"product-reviews\", environment=\"production\", tenant_id=\"default\", status=~\"error|timeout|rate_limited\"}[15m])) > 0",
+    "metric_query": "sum(rate(app_llm_errors_total[15m])) > 0",
     "log_query": "kubernetes.labels.app:\"product-reviews\" AND kubernetes.labels.environment:\"production\" AND (message:*timeout* OR message:*rate_limited* OR message:*429*) AND (message:*llm* OR message:*openai* OR message:*bedrock*)",
-    "log_index": "logs-product-reviews",
+    "log_index": "otel-logs-*",
     "metrics_available": true,
     "logs_available": true,
     "metrics_found": 1,
@@ -31,7 +31,7 @@ When executing the validation script, the detector successfully correlates the s
     "metric_details": [
       {
         "metric": {
-          "__name__": "app_llm_requests_total"
+          "__name__": "app_llm_errors_total"
         },
         "value": [
           1600000000,
@@ -51,4 +51,4 @@ When executing the validation script, the detector successfully correlates the s
 ```
 
 ## Conclusion
-The AIOps detector successfully identifies the signal and explicit dependency on AIE telemetry (`app_llm_requests_total` and log messages) is verified.
+The AIOps detector successfully identifies the signal and explicit dependency on AIE telemetry (`app_llm_errors_total` and log messages) is verified.

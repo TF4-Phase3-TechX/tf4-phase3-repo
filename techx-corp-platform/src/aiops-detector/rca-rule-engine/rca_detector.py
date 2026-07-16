@@ -121,7 +121,8 @@ class OpenSearchClient(TelemetryClient):
             return None  # source unavailable
         if payload.get("error"):
             return None
-        hits = payload.get("hits", {}).get("total", {}).get("value", 0)
+        total = payload.get("hits", {}).get("total", 0)
+        hits = total.get("value", 0) if isinstance(total, dict) else total
         return min(1.0, hits / 50.0)
 
 

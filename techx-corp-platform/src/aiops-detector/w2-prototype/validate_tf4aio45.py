@@ -21,7 +21,7 @@ def test_high_severity():
                 return MockResponse({
                     "status": "success",
                     "data": {
-                        "result": [{"metric": {"__name__": "app_llm_requests_total"}, "value": [1600000000, "1.5"]}]
+                        "result": [{"metric": {"__name__": "app_llm_errors_total"}, "value": [1600000000, "1.5"]}]
                     }
                 })
             elif "opensearch" in url:
