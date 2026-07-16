@@ -31,6 +31,13 @@ promotion/rollback constraints are recorded in
 That record remains pre-fix evidence until PR #248 is promoted and the same
 application-path gates pass on the new pod revision.
 
+- [x] Record a metadata-only direct account-589 contract probe for the proposed
+  cap and Nova-compatible tool schema: 3/3 synthetic runs returned `tool_use`
+  and passed the application validator. This is code-level evidence only.
+- [ ] Pass CI and required human review on the final PR #248 head.
+- [ ] Complete the current failed-canary identity-plus-GitOps rollback before
+  opening a fresh canary window.
+
 - [ ] Warm the structured schema before latency measurement.
 - [ ] Verify counters/histogram: outcome, fallback, latency, input/output tokens, error class, quarantine count.
 - [ ] Verify logs/traces contain metadata only and content capture is false.
