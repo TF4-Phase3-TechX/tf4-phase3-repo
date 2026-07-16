@@ -43,7 +43,7 @@ def fetch_product_reviews_from_db(request_product_id):
         with get_db_connection() as connection:
             with connection.cursor() as cursor:
                 # Define the SQL query
-                query = "SELECT username, description, score FROM reviews.productreviews WHERE product_id= %s"
+                query = "SELECT id, username, description, score FROM reviews.productreviews WHERE product_id= %s ORDER BY id"
 
                 # Execute the query
                 cursor.execute(query, (request_product_id, ))
@@ -80,4 +80,3 @@ def fetch_avg_product_review_score_from_db(request_product_id):
 
     except Exception as e:
         raise e
-

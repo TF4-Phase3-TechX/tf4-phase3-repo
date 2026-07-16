@@ -1,0 +1,12 @@
+# AUD-16 — ArgoCD public access test
+# ⚠️ File này là PLACEHOLDER CŨ — domain giả (argocd.tf4.techx.vn không tồn tại)
+#
+# Thực tế: ArgoCD KHÔNG ĐƯỢC DEPLOY trong hệ thống này
+# Confirmed từ CDO08-SEC-05 runbook:
+#   "ArgoCD/CD UI — Không có namespace/service/deploy/pod — Chưa deploy"
+#
+# Kết quả đúng: N/A — ArgoCD chưa tồn tại, không cần test
+# CDO07 ghi nhận: không có ArgoCD exposure risk vì service chưa deploy
+#
+# Nếu ArgoCD được deploy sau này → phải private ngay, không public
+STATUS: N/A — ArgoCD not deployed in techx-tf4 cluster
