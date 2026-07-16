@@ -1,11 +1,13 @@
-# CDO08-SEC-11 test manifest — vi phạm Mandate-05 #1 (không set runAsNonRoot).
-# Luật này đang ở audit mode (validationActions: [Audit, Warn]) — apply sẽ PASS
-# nhưng phát sinh Warning + ValidatingAdmissionPolicyAudit event. Xem plan §0/§4/§9.
+# CDO08-SEC-11 test manifest — vi phạm cả 2 luật của Mandate-05 #1:
+# thiếu runAsNonRoot (luật sec11-no-root-containers) VÀ thiếu capabilities.drop
+# (luật sec11-drop-all-capabilities).
+# Apply vào techx-admission-test (binding Deny) -> BỊ REJECT (mentor thấy tận mắt).
+# Đổi namespace sang techx-tf4 (binding Audit) -> PASS + audit annotation. Xem plan §0/§6/§7.
 apiVersion: v1
 kind: Pod
 metadata:
   name: sec11-test-bad-root
-  namespace: techx-tf4
+  namespace: techx-admission-test
 spec:
   containers:
   - name: app

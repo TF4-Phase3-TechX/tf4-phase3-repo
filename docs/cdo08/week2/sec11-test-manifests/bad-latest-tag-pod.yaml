@@ -1,10 +1,11 @@
 # CDO08-SEC-11 test manifest — vi phạm Mandate-05 #2 (image tag latest/mutable).
-# Luật này ở enforce mode (validationActions: [Deny]) — apply phải bị REJECT.
+# Set sẵn runAsNonRoot + capabilities.drop để CÔ LẬP đúng 1 luật vi phạm (tag).
+# Apply vào techx-admission-test (binding Deny) -> BỊ REJECT do image tag.
 apiVersion: v1
 kind: Pod
 metadata:
   name: sec11-test-bad-tag
-  namespace: techx-tf4
+  namespace: techx-admission-test
 spec:
   containers:
   - name: app
@@ -12,6 +13,7 @@ spec:
     securityContext:
       runAsNonRoot: true
       runAsUser: 101
+      capabilities: {drop: ["ALL"]}
     resources:
       requests: {cpu: "50m", memory: "64Mi"}
       limits: {cpu: "100m", memory: "128Mi"}
