@@ -27,8 +27,12 @@ Các workload đã patch trong `techx-corp-chart/values.yaml`:
 | Namespace dự kiến | Workload | UID/GID | Lý do patch |
 | --- | --- | --- | --- |
 | `techx-tf4` | `accounting` | `1654:1654` | Runtime `id` trả về user `app`, non-root |
+| `techx-tf4` | `accounting` init `wait-for-kafka` | `65534:65534` | Busybox init chỉ chạy `nc` wait TCP, không cần root |
 | `techx-tf4` | `checkout` | `65532:65532` | Dockerfile dùng `gcr.io/distroless/static-debian12:nonroot` |
+| `techx-tf4` | `checkout` init `wait-for-kafka` | `65534:65534` | Busybox init chỉ chạy `nc` wait TCP, không cần root |
 | `techx-tf4` | `fraud-detection` | `65532:65532` | Dockerfile dùng `gcr.io/distroless/java17-debian12:nonroot` |
+| `techx-tf4` | `fraud-detection` init `wait-for-kafka` | `65534:65534` | Busybox init chỉ chạy `nc` wait TCP, không cần root |
+| `techx-tf4` | `cart` init `wait-for-valkey-cart` | `65534:65534` | Busybox init chỉ chạy `nc` wait TCP, không cần root |
 | `techx-tf4` | `frontend` | `1001:1001` | Đã có UID non-root, bổ sung missing controls |
 | `techx-tf4` | `frontend-proxy` | `101:101` | Dockerfile `USER envoy`, đã có UID non-root, bổ sung missing controls |
 | `techx-tf4` | `image-provider` | `101:101` | Dockerfile `USER 101`; runtime `id` là nginx |
@@ -54,6 +58,7 @@ File thay đổi:
 Thay đổi chính:
 
 - Thêm `securityContext` cho workload app non-root ready.
+- Thêm `securityContext` cho init containers `wait-for-kafka` và `wait-for-valkey-cart`.
 - Bổ sung `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `seccompProfile: RuntimeDefault` cho workload đã có `runAsUser/runAsNonRoot`.
 - Thêm `jaeger.jaeger.securityContext`.
 - Thêm `prometheus.server.containerSecurityContext`.
@@ -65,6 +70,10 @@ Thay đổi chính:
 Lý do không đặt global `default.securityContext`:
 
 Một số workload hiện tại đang chạy root thật (`ad`, `cart`, `currency`, `email`, `llm`, `load-generator`) hoặc stateful cần audit (`postgresql`). Nếu set global `runAsNonRoot` sẽ làm rollout chết trước khi image được rebuild hoặc UID/GID được xác nhận.
+
+Lý do harden các init `wait-for-*` bằng `65534:65534`:
+
+Các init này dùng `busybox` chỉ để chạy `nc` kiểm tra TCP readiness của dependency (`kafka` hoặc `valkey-cart`) rồi thoát. Chúng không ghi vào volume, không bind port thấp và không cần Linux capability đặc biệt, nên có thể chạy non-root với user `nobody` (`65534`) cùng baseline `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `seccompProfile: RuntimeDefault`.
 
 ## 3. Lệnh đã chạy và output
 
@@ -360,6 +369,18 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 
+name: wait-for-kafka
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  runAsGroup: 65534
+  runAsNonRoot: true
+  runAsUser: 65534
+  seccompProfile:
+    type: RuntimeDefault
+
 name: checkout
 securityContext:
   allowPrivilegeEscalation: false
@@ -369,6 +390,18 @@ securityContext:
   runAsGroup: 65532
   runAsNonRoot: true
   runAsUser: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+name: wait-for-valkey-cart
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  runAsGroup: 65534
+  runAsNonRoot: true
+  runAsUser: 65534
   seccompProfile:
     type: RuntimeDefault
 
