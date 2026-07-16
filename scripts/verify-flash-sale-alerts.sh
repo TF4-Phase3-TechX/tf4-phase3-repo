@@ -3,7 +3,7 @@
 set -euo pipefail
 
 OBS_NAMESPACE="${OBS_NAMESPACE:-techx-observability}"
-EXPECTED_RULE_COUNT="${EXPECTED_RULE_COUNT:-15}"
+EXPECTED_RULE_COUNT="${EXPECTED_RULE_COUNT:-20}"
 
 PROMETHEUS_RULES_PATH="/api/v1/namespaces/${OBS_NAMESPACE}/services/http:prometheus:9090/proxy/api/v1/rules"
 ALERTMANAGER_ALERTS_PATH="/api/v1/namespaces/${OBS_NAMESPACE}/services/http:techx-observability-alertmanager:9093/proxy/api/v2/alerts"
