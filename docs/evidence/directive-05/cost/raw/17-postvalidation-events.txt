@@ -1,0 +1,2 @@
+LAST SEEN   TYPE      REASON                   OBJECT                                                MESSAGE
+42s         Warning   FailedNetworkReconcile   targetgroupbinding/k8s-techxtf4-frontend-2e9cfe94ea   expected exactly one securityGroup tagged with kubernetes.io/cluster/techx-tf4-cluster for eni eni-090f38323e75ff71f, got: [sg-097d1ea5852b31f41 sg-0f7bc9275c5bdcca4] (clusterName: techx-tf4-cluster)
