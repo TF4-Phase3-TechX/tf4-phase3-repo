@@ -1,0 +1,15 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "vector",
+    "result": [
+      {
+        "metric": {
+          "job": "prometheus",
+          "instance": "prometheus-0"
+        },
+        "value": ["1721012345.1", "1"]
+      }
+    ]
+  }
+}

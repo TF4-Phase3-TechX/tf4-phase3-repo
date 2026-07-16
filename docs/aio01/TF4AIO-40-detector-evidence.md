@@ -10,6 +10,11 @@
 - Cho phép schema chấp nhận component `detector` trong [techx-corp-chart/values.schema.json](../../techx-corp-chart/values.schema.json).
 - Detector chạy bằng image `busybox:1.36`, thực hiện HTTP query Prometheus mỗi 60 giây và emit structured JSONL to stdout/logs theo kết quả probe; không sửa flagd hoặc config của service khác.
 
+## Reproducible validation setup
+- Cài dependency validation: `python -m pip install -r scripts/requirements-detector.txt`
+- Chạy validator portable: `python scripts/validate-detector-output.py --schema docs/aio01/evidence/detector-output-schema-v1.json --line '<one JSONL line>'`
+- Chạy fixture/test deterministic: `python scripts/test_detector_fixtures.py`
+
 ## Pull request liên quan
 - Implementation PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/137
 - PR title: `TF4AIO-40: define detector output channel and payload schema`
@@ -57,7 +62,7 @@ Field contract (`schema_version=1.0`):
 
 Validation smoke check cho một emitted line:
 ```bash
-kubectl -n techx-tf4 logs deploy/detector --tail=1 | c:/Users/LENOVO/Desktop/Phase3_Capstone_AI]/.venv/Scripts/python.exe scripts/validate-detector-output.py --schema docs/aio01/evidence/detector-output-schema-v1.json
+kubectl -n techx-tf4 logs deploy/detector --tail=1 | python scripts/validate-detector-output.py --schema docs/aio01/evidence/detector-output-schema-v1.json
 ```
 
 ```json
@@ -124,6 +129,8 @@ kubectl -n techx-tf4 logs deploy/detector --tail=1 | c:/Users/LENOVO/Desktop/Pha
 - Helm render thành công và sinh Deployment detector kèm env/output schema/resource limits: [docs/aio01/evidence/tf4aio40-detector-render-snippet.yaml](./evidence/tf4aio40-detector-render-snippet.yaml).
 - Payload contract machine-readable: [docs/aio01/evidence/detector-output-schema-v1.json](./evidence/detector-output-schema-v1.json).
 - Validation script: [scripts/validate-detector-output.py](../../scripts/validate-detector-output.py).
+- Deterministic fixture test: [scripts/test_detector_fixtures.py](../../scripts/test_detector_fixtures.py).
+- Validation dependency manifest: [scripts/requirements-detector.txt](../../scripts/requirements-detector.txt).
 - Concrete runbook: [docs/audit/runbooks/detector-prometheus-probe.md](../../docs/audit/runbooks/detector-prometheus-probe.md).
 
 ### Negative evidence / blocker (cluster runtime)
