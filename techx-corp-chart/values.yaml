@@ -242,6 +242,15 @@ components:
       limits:
         cpu: 200m
         memory: 300Mi
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   cart:
     enabled: true
@@ -279,6 +288,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -457,6 +475,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       grpc:
         port: 8080
@@ -499,6 +526,15 @@ components:
       limits:
         cpu: 100m
         memory: 100Mi
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   fraud-detection:
     enabled: true
@@ -817,9 +853,22 @@ components:
         value: "8016"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: HOME
+        value: /tmp
+      - name: PYTHONDONTWRITEBYTECODE
+        value: "1"
     resources:
       requests: { cpu: 300m, memory: 256Mi }
       limits: { cpu: 600m, memory: 512Mi }
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   payment:
     enabled: true
@@ -1086,9 +1135,22 @@ components:
         value: "8013"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: HOME
+        value: /tmp
+      - name: PYTHONDONTWRITEBYTECODE
+        value: "1"
     resources:
       requests: { cpu: 75m, memory: 128Mi }
       limits: { cpu: 300m, memory: 256Mi }
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   shipping:
     enabled: true
@@ -1303,9 +1365,22 @@ components:
         value: flagd
       - name: FLAGD_PORT
         value: "8013"
+      - name: HOME
+        value: /tmp
+      - name: PYTHONDONTWRITEBYTECODE
+        value: "1"
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 250m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001  # app
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   postgresql:
     enabled: true

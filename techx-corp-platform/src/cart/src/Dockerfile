@@ -34,8 +34,12 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine3.22
 
 WORKDIR /usr/src/app/
 COPY --from=builder /cart/ ./
+RUN addgroup -S -g 10001 app && \
+    adduser -S -D -H -u 10001 -G app app && \
+    chown -R app:app /usr/src/app
 
 ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
 
 EXPOSE ${CART_PORT}
+USER 10001:10001
 ENTRYPOINT [ "./cart" ]

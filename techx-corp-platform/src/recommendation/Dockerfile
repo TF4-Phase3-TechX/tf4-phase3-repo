@@ -25,6 +25,10 @@ COPY ./src/recommendation/demo_pb2.py demo_pb2.py
 COPY ./src/recommendation/logger.py logger.py
 COPY ./src/recommendation/metrics.py metrics.py
 COPY ./src/recommendation/recommendation_server.py recommendation_server.py
+RUN addgroup -S -g 10001 app && \
+    adduser -S -D -H -u 10001 -G app app && \
+    chown -R app:app /app /venv
 
 EXPOSE ${RECOMMENDATION_PORT}
+USER 10001:10001
 ENTRYPOINT [ "/venv/bin/opentelemetry-instrument", "/venv/bin/python", "recommendation_server.py" ]

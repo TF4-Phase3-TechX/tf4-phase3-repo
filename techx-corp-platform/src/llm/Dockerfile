@@ -21,6 +21,10 @@ WORKDIR /app
 COPY ./src/llm/app.py app.py
 COPY ./src/llm/product-review-summaries/product-review-summaries.json product-review-summaries.json
 COPY ./src/llm/product-review-summaries/inaccurate-product-review-summaries.json inaccurate-product-review-summaries.json
+RUN addgroup -S -g 10001 app && \
+    adduser -S -D -H -u 10001 -G app app && \
+    chown -R app:app /app /venv
 
 EXPOSE ${LLM_PORT}
+USER 10001:10001
 ENTRYPOINT [ "/venv/bin/python", "app.py" ]

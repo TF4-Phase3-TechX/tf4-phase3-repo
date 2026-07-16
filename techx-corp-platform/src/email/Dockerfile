@@ -23,6 +23,10 @@ COPY ./src/email/.ruby-version .ruby-version
 COPY ./src/email/Gemfile Gemfile
 COPY ./src/email/Gemfile.lock Gemfile.lock
 COPY ./src/email/email_server.rb email_server.rb
+RUN addgroup -S -g 10001 app && \
+    adduser -S -D -H -u 10001 -G app app && \
+    chown -R app:app /email_server /usr/local/bundle
 
 EXPOSE ${EMAIL_PORT}
+USER 10001:10001
 ENTRYPOINT ["bundle", "exec", "ruby", "email_server.rb"]

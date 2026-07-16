@@ -19,4 +19,9 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
 RUN playwright install --with-deps chromium
 COPY ./src/load-generator/locustfile.py .
 COPY ./src/load-generator/people.json .
+RUN groupadd --system --gid 10001 app && \
+    useradd --system --uid 10001 --gid app --home-dir /tmp --shell /usr/sbin/nologin app && \
+    chown -R app:app /usr/src/app /opt/pw-browsers
+ENV HOME=/tmp
+USER 10001:10001
 ENTRYPOINT ["locust", "--skip-log-setup"]
