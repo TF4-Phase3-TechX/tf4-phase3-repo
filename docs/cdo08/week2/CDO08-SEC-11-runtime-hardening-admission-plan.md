@@ -343,6 +343,30 @@ Mỗi lần flip: đổi đúng 1 field `validationActions: [Audit, Warn]` → `
 
 Vì hạn Mandate-05 là 17/07/2026 (ngày mai), **Phase 1 làm trong hôm nay** (đủ để nộp: admission đã lên, demo reject thật, evidence vi phạm rõ ràng). Phase 2 là follow-up có điều kiện — ADR (§9) ghi rõ luật nào chưa enforce và vì sao, đúng định dạng "Phải nộp" của mandate ("luật nào enforce, luật nào audit và vì sao").
 
+### 6.2 Observability & Notification — làm sao biết khi có warn/deny
+
+Vì Phase 1 để **tất cả luật ở audit**, nếu không có kênh quan sát thì audit = **mù** (không ai thấy vi phạm). Mỗi loại `validationActions` surface ra một kênh khác nhau — phải bắt đủ cả ba:
+
+| Action | Surface ở đâu | Kênh nhận thông báo (tận dụng component có sẵn) |
+|---|---|---|
+| **Deny** | API reject → **ArgoCD sync fail** | **ArgoCD Notifications** (`argocd-notifications-controller` đang chạy): trigger `on-sync-failed`/`on-health-degraded` → Slack/webhook, kèm message reject của VAP. Thêm alert Prometheus `argocd_app_info{sync_status="OutOfSync"}`. |
+| **Warn** | Warning header trên API response (không fail) | Hiện trong `argocd app get`/UI (sync condition) và `kubectl` stderr. Không tự bắn alert → dựa vào metric bên dưới. |
+| **Audit** | **Chỉ** API server audit log + metric (KHÔNG có Event, KHÔNG về client) | (a) metric API server (dưới); (b) EKS control-plane audit log → CloudWatch (ADR-005 đã bật) → filter annotation `validation.policy.admission.k8s.io/validation_failure` → CloudWatch alarm/SNS. |
+
+**Nguồn tin cậy nhất — metric API server** (phủ cả deny + audit + lỗi CEL, độc lập ArgoCD). Prometheus (đã chạy) scrape `https://kubernetes.default.svc/metrics`, alert qua Alertmanager (đã chạy):
+
+```
+# Có vi phạm bị policy đánh trượt (deny hoặc would-deny ở audit):
+sum by (policy) (rate(apiserver_validating_admission_policy_check_total{enforcement_action="deny"}[5m])) > 0
+
+# Policy tự lỗi CEL runtime (nguy hiểm — cần bắt sớm, nhất là khi failurePolicy: Fail):
+sum by (policy) (rate(apiserver_validating_admission_policy_check_total{error_type!="no_error"}[5m])) > 0
+```
+
+> Cần xác nhận Prometheus của cluster có quyền RBAC scrape endpoint `/metrics` của kube-apiserver (metric `apiserver_validating_admission_policy_*` chỉ có từ đó). Nếu chưa, thêm ServiceMonitor/scrape config + RBAC `nonResourceURLs: ["/metrics"]` cho SA của Prometheus — đây là việc nhỏ, không thêm hạ tầng.
+
+**Khuyến nghị tối thiểu cho Phase 1:** (1) alert Prometheus theo 2 rule trên → Alertmanager; (2) khi sang Phase 2 (flip Deny) bật thêm ArgoCD `on-sync-failed`. Có (1) thì audit mode mới thực sự "thấy" được vi phạm để lấy evidence và để biết khi nào đủ điều kiện flip (§6.1).
+
 ---
 
 ## 7. Manifest test vi phạm — cho mentor apply
@@ -418,24 +442,26 @@ kubectl apply --server-side --dry-run=server -f docs/cdo08/week2/sec11-test-mani
 # → mỗi lệnh trả error kèm message tương ứng (runAsNonRoot / image tag / requests+limits)
 
 # (2) PRODUCTION AUDIT — cùng manifest nhưng đổi namespace sang techx-tf4 (binding Audit)
-#     → KHÔNG bị reject, chỉ Warning + audit annotation (chứng minh production không bị chặn)
+#     → KHÔNG bị reject (chứng minh production không bị chặn); chỉ trả warning header.
 sed 's/namespace: techx-admission-test/namespace: techx-tf4/' \
-  docs/cdo08/week2/sec11-test-manifests/bad-latest-tag-pod.yaml \
+  docs/cdo08/week2/sec11-test-manifests/bad-root-pod.yaml \
   | kubectl apply --server-side --dry-run=server -f -
-kubectl get events -n techx-tf4 --field-selector reason=ValidatingAdmissionPolicyAudit
+# ⚠️ audit-mode KHÔNG tạo Event object → `kubectl get events` sẽ RỖNG, đừng dùng.
+#    Vi phạm audit chỉ ghi vào API server audit log (annotation
+#    validation.policy.admission.k8s.io/validation_failure) + metric apiserver_validating_admission_policy_check_total.
+#    Cách nhận thông báo audit/warn/deny: xem §6.2.
 
-# (3) Xác nhận workload thật không bị chặn nhầm (kể cả khi sau này flip Deny)
-helm template techx-corp ./techx-corp-chart -n techx-tf4 -f deploy/values-app-stamp.yaml -f deploy/values-flagd-sync.yaml \
+# (3) PRE-FLIP GATE — chạy TRƯỚC khi flip một luật sang Deny (Phase 2).
+#     Render workload thật rồi dry-run trong namespace test (binding Deny) để chắc KHÔNG bị reject.
+helm template techx-corp ./techx-corp-chart -n techx-admission-test -f deploy/values-app-stamp.yaml -f deploy/values-flagd-sync.yaml \
   | kubectl apply --server-side --dry-run=server -f -
-helm template techx-observability ./techx-corp-chart -n techx-observability -f deploy/values-observability.yaml \
-  | kubectl apply --server-side --dry-run=server -f -
-# LƯU Ý: bước (3) hiện sẽ báo vi phạm tag ở init container busybox (opensearch/flagd/…) —
-# ĐÚNG như §2.1; đây là bằng chứng vì sao luật tag CHƯA được flip Deny trên production.
+# Hiện tại: resources + tag sạch (busybox đã pin qua #235) → pass; non-root/caps còn service
+# chờ #233 rollout → sẽ báo, đó là lý do 2 luật đó chưa flip (§6.1).
 ```
 
 **Điểm cần nói rõ với mentor (không giấu):**
 - Trong `techx-admission-test` (Deny): cả 3 manifest **bị reject thật** — mentor tận mắt thấy, thỏa yêu cầu "apply thử một manifest vi phạm và thấy bị từ chối" của mandate.
-- Trên **production** (`techx-tf4`/`techx-observability`): cả 4 luật đang **audit-only**, không chặn workload nào — có chủ đích (§0). Sau pull: resources + tag đã 0 vi phạm; non-root + caps còn vi phạm ở ~12 service đang chờ #233 rollout (§2.1). Bằng chứng vi phạm còn lại nằm ở audit annotation.
+- Trên **production** (`techx-tf4`/`techx-observability`): cả 4 luật đang **audit-only**, không chặn workload nào — có chủ đích (§0). Sau pull: resources + tag đã 0 vi phạm; non-root + caps còn vi phạm ở ~12 service đang chờ #233 rollout (§2.1). Vi phạm audit **không** hiện qua `kubectl get events` — theo dõi qua metric/audit log (§6.2).
 - Do đó nửa sau của mandate ("cluster không còn workload vi phạm") **chưa đạt tuần này** — nêu thẳng, không claim vượt thực tế; điều kiện đạt nằm ở §6.1.
 
 ---
@@ -482,8 +508,9 @@ Tạo `docs/audit/adr/015-runtime-hardening-admission-policy.md` (tiếp số sa
 - [ ] Namespace `techx-tf4` và `techx-observability` đã label `techx.io/policy-scope=enforced`; `techx-admission-test` **KHÔNG** label; không namespace hệ thống/add-on nào bị dính
 - [ ] **Cả 4 luật ở `[Audit, Warn]` trên production** — không chặn workload nào (đúng quyết định "chưa deny ngay")
 - [ ] 3 manifest test apply vào `techx-admission-test` → **cả 3 bị reject thật** (mentor thấy tận mắt, thỏa mandate)
-- [ ] Cùng manifest apply vào `techx-tf4` → **không** bị reject, chỉ audit annotation (chứng minh production an toàn)
-- [ ] `helm template` dry-run cả 2 release qua policy: ghi nhận đúng vi phạm tag ở busybox init (bằng chứng cho §6.1), không có vi phạm resources
+- [ ] Cùng manifest apply vào `techx-tf4` → **không** bị reject (production an toàn); vi phạm audit theo dõi qua metric/audit log (§6.2), KHÔNG qua `kubectl get events`
+- [ ] `helm template` dry-run: resources + tag sạch (busybox đã pin #235); non-root/caps còn báo cho service chờ #233 rollout (bằng chứng cho §6.1)
+- [ ] **Notification (§6.2) đã bật:** alert Prometheus trên `apiserver_validating_admission_policy_check_total` (deny + error_type) → Alertmanager; xác nhận Prometheus có RBAC scrape `/metrics` của apiserver
 - [ ] Full sweep runtime ghi nhận vi phạm theo từng luật (input cho điều kiện flip §6.1)
 - [ ] ADR-015 ký tên (Quân) + review (Nguyên): 4 luật audit, demo Deny, điều kiện flip từng luật
 - [ ] Thông báo tf4-leads: admission đã lên audit-only trên production, demo Deny ở test ns
