@@ -3,7 +3,7 @@
 - **Epic:** [TF4AIO-6](https://aio1-xbrain.atlassian.net/browse/TF4AIO-6) — EPIC-AIOPS-02: Anomaly Detection MVP
 - **Jira Task:** [TF4AIO-37](https://aio1-xbrain.atlassian.net/browse/TF4AIO-37) — \[W2\]\[AIOPS\] Define detection rules and thresholds
 - **Status:** ✅ Completed — Reviewed, Validated & Live-Verified (schema verified, metrics traffic verification pending due to idle cluster) (2026-07-15)
-- **Planning Doc:** [docs/planning/AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md](../../planning/AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md)
+- **Planning Doc:** [AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md](./AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md)
 
 ---
 
@@ -354,12 +354,9 @@ Total spans: 836,476 (window 2026-07-13T22:43:00Z — 22:58:00Z)
    - *Lệnh thực hiện:* Sử dụng cờ cấu hình để ép ngắt kết nối tạm thời đến DB.
    - *Outcome:* Tỷ lệ lỗi gRPC span `status_code="STATUS_CODE_ERROR"` sẽ lập tức xuất hiện trong Prometheus metric `calls_total`.
 3. **Trigger LLM HTTP 429 (Rate Limit):**
-   - *Lệnh thực hiện:* Thay đổi Feature Flag của `flagd` trực tiếp trong cluster:
-
-     ```bash
-     kubectl patch configmap flagd-config -n techx-tf4 --type merge -p '{"data":{"demo.flagd.json": "{\"flags\":{\"llmRateLimitError\":{\"defaultVariant\":\"on\",\"variants\":{\"on\":true,\"off\":false},\"state\":\"ENABLED\"}}}"}}' 
-     ```
+   - *Quy trình thực hiện:* Dùng Promotion/GitOps PR chỉ đổi `llmRateLimitError=on`, có CDO/flag owner phê duyệt và deployment window. Ghi pre-state/Argo revision, chờ `Synced/Healthy`, chạy probe, rồi revert bằng rollback PR và xác nhận khôi phục đúng pre-state. Không sửa trực tiếp ConfigMap production.
    - *Outcome:* Hệ thống sẽ ngay lập tức sinh ra log `"Returning a rate limit error"` trên pod `llm`, kích hoạt khớp OpenSearch DSL Query và Alert Rule `AIOpsLLMIntegrationFailureWarning` trong vòng 3 phút.
+
 
 ---
 
