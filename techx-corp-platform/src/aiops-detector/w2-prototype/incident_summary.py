@@ -158,7 +158,7 @@ if __name__ == "__main__":
         "evidence": {
             "metric_query": 'sum(rate(http_server_requests_total{service="product-reviews", status=~"5.."}[5m])) / sum(rate(http_server_requests_total{service="product-reviews"}[5m]))',
             "log_query": 'kubernetes.labels.app:"product-reviews" AND level:"ERROR"',
-            "ai_query": 'sum(rate(app_llm_requests_total{service="product-reviews", status=~"error|timeout|rate_limited"}[5m]))',
+            "ai_query": 'sum(rate(app_llm_errors_total{service="product-reviews"}[5m]))',
             "sources_unavailable": 1,
         },
     }

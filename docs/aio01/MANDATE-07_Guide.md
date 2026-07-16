@@ -254,13 +254,18 @@ Detection · implement + phân tích
 ### Phải làm gì?
 
 1. **Deploy alert rules lên cluster Prometheus.**
-2. **Bơm 1 sự cố thật:**
-   - Sử dụng `flagd` Feature Flag để ép LLM lỗi:
-     ```bash
-     kubectl patch configmap flagd-config -n techx-tf4 --type merge \
-       -p '{"data":{"demo.flagd.json": "{\"flags\":{\"llmRateLimitError\":{\"defaultVariant\":\"on\",\"variants\":{\"on\":true,\"off\":false},\"state\":\"ENABLED\"}}}"}}'
-     ```
-   - Hoặc tạo load test gây latency spike.
+    - Sử dụng quy trình Controlled Drill để sửa đổi `flagd-config` an toàn (tránh ghi đè hoàn toàn configmap):
+      ```bash
+      # 1. Lưu snapshot demo.flagd.json hiện tại
+      kubectl get configmap flagd-config -n techx-tf4 -o jsonpath='{.data.demo\.flagd\.json}' > pre_drill_flagd.json
+
+      # 2. Sử dụng kubectl edit để sửa đổi an toàn, chuyển defaultVariant của llmRateLimitError thành "on"
+      kubectl edit configmap flagd-config -n techx-tf4
+
+      # 3. Phục hồi trạng thái cũ sau khi drill kết thúc
+      kubectl patch configmap flagd-config -n techx-tf4 --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat pre_drill_flagd.json | jq -c . | jq -R .)}}"
+      ```
+    - Hoặc tạo load test gây latency spike.
 
 3. **Chụp ảnh/log cho thấy detector kêu:**
    - Alertmanager UI hiển thị alert firing.
@@ -347,7 +352,7 @@ Detection · chạy thật + đo đạc
 ### 1. Ảnh/Log Detector Kêu E2E
 - [Ảnh Alertmanager khi bơm sự cố]
 - [Ảnh Grafana dashboard khi bơm sự cố]
-- **Cách chạy lại:** `kubectl patch configmap flagd-config ...` → đợi 3m → xem Alertmanager
+- **Cách chạy lại:** Xem quy trình Controlled Drill chỉnh sửa `flagd-config` an toàn bằng `kubectl edit` tại docs/aio01/MANDATE-07_Guide.md.
 
 ### 2. Số Precision/Recall/Lead-Time
 | Metric | Giá trị |

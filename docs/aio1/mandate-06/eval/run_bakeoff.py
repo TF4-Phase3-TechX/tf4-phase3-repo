@@ -43,7 +43,7 @@ MODELS = {
         "output_usd_per_million": 1.20,
     },
     "nova-2-lite": {
-        "model_id": "us.amazon.nova-2-lite-v1:0",
+        "model_id": "amazon.nova-2-lite-v1:0",
         "output_mode": "tool",
         "input_usd_per_million": 0.30,
         "output_usd_per_million": 2.50,
