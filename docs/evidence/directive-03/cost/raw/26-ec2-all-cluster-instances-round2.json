@@ -1,0 +1,20 @@
+$ aws ec2 describe-instances --filters "Name=tag:eks:cluster-name,Values=techx-tf4-cluster" --query 'Reservations[].Instances[].{ID:InstanceId,PrivateIP:PrivateIpAddress,State:State.Name,Launch:LaunchTime,Type:InstanceType,Name:Tags[?Key==`Name`]|[0].Value}' --output json
+
+[
+    {
+        "ID": "i-0825abf366929a005",
+        "PrivateIP": "10.0.11.40",
+        "State": "running",
+        "Launch": "2026-07-09T01:54:31+00:00",
+        "Type": "t3.large",
+        "Name": "techx-general-ng"
+    },
+    {
+        "ID": "i-01b00d955a0af0fac",
+        "PrivateIP": "10.0.10.231",
+        "State": "running",
+        "Launch": "2026-07-09T01:54:31+00:00",
+        "Type": "t3.large",
+        "Name": "techx-general-ng"
+    }
+]

@@ -1,0 +1,58 @@
+$ aws eks list-nodegroups --cluster-name techx-tf4-cluster --query 'nodegroups[0]' --output text
+$ aws eks describe-nodegroup --cluster-name techx-tf4-cluster --nodegroup-name techx-general-ng-20260707091432750200000017
+
+{
+    "nodegroup": {
+        "nodegroupName": "techx-general-ng-20260707091432750200000017",
+        "nodegroupArn": "arn:aws:eks:us-east-1:511825856493:nodegroup/techx-tf4-cluster/techx-general-ng-20260707091432750200000017/cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15",
+        "clusterName": "techx-tf4-cluster",
+        "version": "1.34",
+        "releaseVersion": "1.34.9-20260625",
+        "createdAt": "2026-07-07T16:16:55.923000+07:00",
+        "modifiedAt": "2026-07-15T23:25:18.427000+07:00",
+        "status": "ACTIVE",
+        "capacityType": "ON_DEMAND",
+        "scalingConfig": {
+            "minSize": 2,
+            "maxSize": 4,
+            "desiredSize": 2
+        },
+        "instanceTypes": [
+            "t3.large"
+        ],
+        "subnets": [
+            "subnet-0280b36e2249f33d8",
+            "subnet-0753e69d90fe8f820"
+        ],
+        "amiType": "AL2023_x86_64_STANDARD",
+        "nodeRole": "arn:aws:iam::511825856493:role/techx-general-ng-eks-node-group-20260707090040487500000002",
+        "labels": {
+            "role": "worker"
+        },
+        "resources": {
+            "autoScalingGroups": [
+                {
+                    "name": "eks-techx-general-ng-20260707091432750200000017-cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15"
+                }
+            ]
+        },
+        "health": {
+            "issues": []
+        },
+        "updateConfig": {
+            "maxUnavailablePercentage": 33
+        },
+        "launchTemplate": {
+            "name": "general-20260707091425392800000015",
+            "version": "2",
+            "id": "lt-05e3a0ff616d44b30"
+        },
+        "tags": {
+            "Project": "TF4",
+            "Environment": "Phase3",
+            "Owner": "CDO_04",
+            "Team": "CDO_04",
+            "Name": "techx-general-ng"
+        }
+    }
+}

@@ -67,6 +67,49 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AIReadO
                 "arn:aws:s3:::tf4-ai-eval-bucket",
                 "arn:aws:s3:::tf4-ai-eval-bucket/*"
             ]
+        },
+        {
+            "Sid": "AllowPortForwardingToApprovedBastion",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:StartSession"
+            ],
+            "Resource": [
+                "arn:aws:ec2:us-east-1:511825856493:instance/i-072084d1cf0b2f1c9",
+                "arn:aws:ssm:us-east-1::document/AWS-StartPortForwardingSession"
+            ]
+        },
+        {
+            "Sid": "AllowSessionDataChannelForOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/${aws:userid}-*"
+            ]
+        },
+        {
+            "Sid": "AllowManageOwnSessions",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:ResumeSession",
+                "ssm:TerminateSession"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:511825856493:session/${aws:userid}-*"
+            ]
+        },
+        {
+            "Sid": "AllowReadOnlySessionAndInstanceDiscovery",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeInstanceInformation",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
         }
     ]
 }
@@ -76,7 +119,7 @@ Tài liệu này chi tiết hóa quyền hạn của Permission Set `TF4-AIReadO
 
 ## 🔍 Giải thích chi tiết Quyền hạn
 
-Policy này gồm 4 Statements với mục đích cụ thể:
+Policy này gồm 8 Statements phục vụ mục đích kiểm toán, gọi mô hình AI, và cấp quyền truy cập cổng giám sát bảo mật qua SSM Tunnel:
 
 ### 1. `AIServiceObservabilityReadOnly` (Giám sát hoạt động AI)
 * **Hành động**: Các phương thức đọc logs/metrics trên CloudWatch, CloudWatch Logs và mô tả EKS Cluster.
@@ -102,6 +145,28 @@ Policy này gồm 4 Statements với mục đích cụ thể:
 * **Tài nguyên**: Bucket `tf4-ai-eval-bucket` và các đối tượng bên trong (`arn:aws:s3:::tf4-ai-eval-bucket`, `arn:aws:s3:::tf4-ai-eval-bucket/*`).
 * **Mô tả**: Cấp quyền đọc, ghi (tạo mới/ghi đè) và liệt kê tệp tin trong bucket dành riêng cho kiểm thử và đánh giá kết quả AI.
 * **Mục đích**: Lưu trữ dữ liệu test cases, kết quả đầu ra của mô hình và các báo cáo đánh giá (Evaluation reports).
+
+---
+
+### 5. `AllowPortForwardingToApprovedBastion` (Cấp quyền mở SSM Port Forward)
+* **Hành động**: `ssm:StartSession`
+* **Tài nguyên**: Giới hạn ở Bastion Host `arn:aws:ec2:us-east-1:511825856493:instance/i-072084d1cf0b2f1c9` và tài liệu SSM Port-Forwarding chuẩn `arn:aws:ssm:us-east-1::document/AWS-StartPortForwardingSession`.
+* **Mô tả**: Cho phép thiết lập đường truyền cổng vận hành (Grafana, Jaeger, Prometheus, OpenSearch) về localhost của máy cá nhân. Quyền này tuyệt đối **không** cho phép mở phiên shell tương tác (không cấp `SSM-SessionManagerRunShell` hay `AWS-StartSSHSession`).
+
+### 6. `AllowSessionDataChannelForOwnSessions` (Mở kênh truyền dữ liệu)
+* **Hành động**: `ssmmessages:OpenDataChannel`
+* **Tài nguyên**: Giới hạn ở session ID được định danh theo User ID hiện tại của chính người tạo (`session/${aws:userid}-*`).
+* **Mô tả**: Cho phép thiết lập kênh truyền dữ liệu bảo mật hai chiều thông qua SSM.
+
+### 7. `AllowManageOwnSessions` (Quản trị phiên kết nối cá nhân)
+* **Hành động**: `ssm:ResumeSession`, `ssm:TerminateSession`
+* **Tài nguyên**: Giới hạn ở session ID của chính người dùng đó (`session/${aws:userid}-*`).
+* **Mô tả**: Cho phép người dùng tự khôi phục phiên kết nối khi bị rớt mạng (`ResumeSession`) và đóng sạch session để dọn dẹp sau khi kiểm thử xong (`TerminateSession`).
+
+### 8. `AllowReadOnlySessionAndInstanceDiscovery` (Tra cứu thông tin phiên & Trạng thái Bastion)
+* **Hành động**: `ssm:DescribeInstanceInformation`, `ssm:DescribeSessions`, `ssm:GetConnectionStatus`, `ec2:DescribeInstances`
+* **Tài nguyên**: `*` (áp dụng toàn cục để tra cứu).
+* **Mô tả**: Quyền kiểm tra trạng thái Online của Bastion host trong danh sách SSM và xem các phiên kết nối đang hoạt động.
 
 ---
 [⬅️ Quay lại nhóm AIO01](README.md) | [🏡 Quay lại trang chủ IAM Docs](../../README.md)

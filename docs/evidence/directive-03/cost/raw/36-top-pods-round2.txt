@@ -1,0 +1,34 @@
+$ kubectl top pods -n techx-tf4
+
+NAME                               CPU(cores)   MEMORY(bytes)
+accounting-5dc867c55b-7dbr7        3m           127Mi
+ad-6595659799-l75zg                2m           213Mi
+cart-558f8ddccd-hc77v              4m           58Mi
+cart-558f8ddccd-n75m4              5m           58Mi
+checkout-7c9cc66579-48h6f          1m           12Mi
+checkout-7c9cc66579-dhbsx          3m           12Mi
+currency-f586fcb4-ftbxg            2m           8Mi
+currency-f586fcb4-r5vdb            2m           3Mi
+email-7fb5949f98-77q8r             2m           51Mi
+flagd-86bd5f8d76-7bzbg             2m           24Mi
+fraud-detection-548484897-tjbw4    4m           224Mi
+frontend-b86b99679-4jgcp           31m          76Mi
+frontend-b86b99679-mt5mg           16m          79Mi
+frontend-proxy-bf5c65b9-8mvgb      6m           16Mi
+frontend-proxy-bf5c65b9-bszvc      7m           16Mi
+image-provider-c85cf9d65-qp9rv     1m           4Mi
+kafka-6f9ff79c54-qf976             12m          559Mi
+llm-6c96948c64-kqdpd               14m          68Mi
+load-generator-7dbc8d784-gsmdf     19m          97Mi
+payment-55bb959685-fxmd7           11m          92Mi
+payment-55bb959685-jtlsp           10m          93Mi
+postgresql-5b49658ddf-wbjjv        9m           41Mi
+product-catalog-748d99d999-jjcfn   6m           12Mi
+product-catalog-748d99d999-tdm2b   1m           9Mi
+product-reviews-5f8bbdbfc7-jrnx8   19m          67Mi
+quote-dfd7f7bb7-bml7r              1m           16Mi
+quote-dfd7f7bb7-fbq6z              1m           18Mi
+recommendation-78948dd47d-6ldkw    9m           40Mi
+shipping-7b7cd9484f-wlxl2          1m           2Mi
+shipping-7b7cd9484f-zwgmm          1m           2Mi
+valkey-cart-dd686478b-txjjb        3m           4Mi

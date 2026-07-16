@@ -1,0 +1,3 @@
+NAME                         READY   STATUS    RESTARTS   AGE
+karpenter-5c5f54d586-rjssq   1/1     Running   0          18h
+karpenter-5c5f54d586-wbv8x   1/1     Running   0          18h
