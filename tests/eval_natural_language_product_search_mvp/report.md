@@ -8,8 +8,8 @@
 
 | Metric | Latest Run Value |
 | :--- | :--- |
-| **Timestamp (UTC)** | `2026-07-16T09:26:13.729570+00:00` |
-| **Git SHA** | `96705b2837f0a82a3b698cc4c9dcb27f49df6fc0` |
+| **Timestamp (UTC)** | `2026-07-16T10:24:13.752467+00:00` |
+| **Git SHA** | `0a431f1a317d2899b4b6677cb929918518ebbd23` |
 | **Runtime Environment** | `local` |
 | **Model ID** | `us-east-1-bedrock-model` |
 | **Dataset SHA-256** | `8be4f60a443f94ce3a85f4f4c64010032e35decedba75a4e314eeb07bd7fffca` |
@@ -20,10 +20,13 @@
 
 ## Historical Run Records
 
-Found 3 execution log file(s) on disk.
+Found 6 execution log file(s) on disk.
 
 | Evidence File | Timestamp (UTC) | Git SHA | Environment | Model ID | Passed/Total | Pass Rate |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `results_0a431f1a317d2899b4b6677cb929918518ebbd23_20260716_102413.json` | 2026-07-16T10:24:13.752467+00:00 | `0a431f1a` | local | `us-east-1-bedrock-model` | 17/17 | 100.0% |
+| `results_24057427e310263d09ae27a164b793589b7a9390_20260716_102318.json` | 2026-07-16T10:23:18.943932+00:00 | `24057427` | local | `us-east-1-bedrock-model` | 16/17 | 94.1% |
+| `results_cb21637af5b3c2b09b0b0ab989f158c90217f8c8_20260716_102035.json` | 2026-07-16T10:20:35.346235+00:00 | `cb21637a` | local | `unknown` | 0/17 | 0.0% |
 | `results_96705b2837f0a82a3b698cc4c9dcb27f49df6fc0_20260716_092613.json` | 2026-07-16T09:26:13.729570+00:00 | `96705b28` | local | `us-east-1-bedrock-model` | 17/17 | 100.0% |
 | `results_96705b2837f0a82a3b698cc4c9dcb27f49df6fc0_20260716_092408.json` | 2026-07-16T09:24:08.533909+00:00 | `96705b28` | local | `us-east-1-bedrock-model` | 15/17 | 88.2% |
 | `results_96705b2837f0a82a3b698cc4c9dcb27f49df6fc0_20260716_090859.json` | 2026-07-16T09:08:59.073720+00:00 | `96705b28` | local | `unknown` | 0/17 | 0.0% |

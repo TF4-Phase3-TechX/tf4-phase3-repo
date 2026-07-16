@@ -266,8 +266,8 @@ class BedrockAdapter:
                 "guardrailVersion": self.guardrail_version,
                 # Full traces can contain sensitive text. Intervention is visible
                 # via stopReason without retaining trace content.
-                "trace": "disabled",
-            }
+            },
+        }
         if self.output_mode == "json_schema":
             request["outputConfig"] = {
                 "textFormat": {

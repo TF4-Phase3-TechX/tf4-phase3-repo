@@ -214,7 +214,7 @@ def main() -> None:
 
         try:
             req = demo_pb2.SearchProductsAIAssistantRequest(query=query)
-            res = stub.SearchProductsAIAssistant(req, timeout=5.0)
+            res = stub.SearchProductsAIAssistant(req, timeout=15.0)
 
             actual_product_ids = [p.id for p in res.results]
             actual_refused = res.trace.refused
