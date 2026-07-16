@@ -4,10 +4,10 @@ set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-techx-tf4}"
 MODE="${1:-dry-run}"
-RAMP_UP="1m"
-STEADY_STATE="15m"
-RAMP_DOWN="20s"
-TOTAL_RUNTIME="16m20s"
+RAMP_UP="${RAMP_UP:-1m}"
+STEADY_STATE="${STEADY_STATE:-15m}"
+RAMP_DOWN="${RAMP_DOWN:-20s}"
+TOTAL_RUNTIME="${TOTAL_RUNTIME:-16m20s}"
 
 if command -v kubectl >/dev/null 2>&1; then
   KUBECTL_BIN="$(command -v kubectl)"
@@ -40,8 +40,8 @@ case "$MODE" in
     echo "=== DRY-RUN: ${USERS} users, ${RUN_TIME} ==="
     ;;
   full)
-    USERS=200
-    SPAWN=5
+    USERS="${USERS:-200}"
+    SPAWN="${SPAWN:-3.34}"
     RUN_TIME="${TOTAL_RUNTIME}"
     echo "=== FULL TEST: ${USERS} users | ramp-up ${RAMP_UP} | steady-state ${STEADY_STATE} | ramp-down ${RAMP_DOWN} | total ${RUN_TIME} ==="
     ;;
@@ -98,7 +98,8 @@ else
   echo "WARN: Current identity cannot scale deployment/load-generator. Continuing in read-only mode."
 fi
 
-EVIDENCE_DIR="docs/evidence/epic-03-performance-efficiency/runtime"
+EVIDENCE_DIR="${EVIDENCE_DIR:-docs/evidence/epic-03-performance-efficiency/runtime}"
+export EVIDENCE_DIR
 mkdir -p "$EVIDENCE_DIR"
 MONITOR_LOG="$EVIDENCE_DIR/load-test-monitor-${MODE}-$(date -u +%Y%m%dT%H%M%SZ).log"
 echo "[3/7] Starting monitor... (log: $MONITOR_LOG)"
@@ -107,7 +108,7 @@ MONITOR_PID=$!
 trap 'kill $MONITOR_PID 2>/dev/null; "$KUBECTL_BIN" scale deployment/load-generator --replicas=0 -n "$NAMESPACE" 2>/dev/null || true' EXIT
 
 T0=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-echo "T0 (test start): $T0" | tee "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-T0.txt"
+echo "T0 (test start): $T0" | tee "$EVIDENCE_DIR/task4-${MODE}-T0.txt"
 echo "Timeline: ramp-up ${RAMP_UP} -> steady-state ${STEADY_STATE} -> ramp-down ${RAMP_DOWN} (total ${RUN_TIME})"
 
 if [[ "$MODE" == "full" ]]; then
@@ -135,15 +136,21 @@ else
 fi
 
 T1=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-echo "T1 (test end): $T1" | tee "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-T1.txt"
+echo "T1 (test end): $T1" | tee "$EVIDENCE_DIR/task4-${MODE}-T1.txt"
 
 echo "[5/7] Capturing evidence..."
 LOADGEN_POD=$("$KUBECTL_BIN" get pod -n "$NAMESPACE" -l app.kubernetes.io/name=load-generator -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
 if [[ -n "$LOADGEN_POD" ]]; then
   "$KUBECTL_BIN" cp "$NAMESPACE/$LOADGEN_POD":/tmp/task4-results_stats.csv \
-    "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-stats.csv" 2>/dev/null || true
+    "$EVIDENCE_DIR/task4-${MODE}-stats.csv" 2>/dev/null || true
+  "$KUBECTL_BIN" cp "$NAMESPACE/$LOADGEN_POD":/tmp/task4-results_stats_history.csv \
+    "$EVIDENCE_DIR/task4-${MODE}-stats-history.csv" 2>/dev/null || true
+  "$KUBECTL_BIN" cp "$NAMESPACE/$LOADGEN_POD":/tmp/task4-results_failures.csv \
+    "$EVIDENCE_DIR/task4-${MODE}-failures.csv" 2>/dev/null || true
+  "$KUBECTL_BIN" cp "$NAMESPACE/$LOADGEN_POD":/tmp/task4-results_exceptions.csv \
+    "$EVIDENCE_DIR/task4-${MODE}-exceptions.csv" 2>/dev/null || true
   "$KUBECTL_BIN" cp "$NAMESPACE/$LOADGEN_POD":/tmp/task4-report.html \
-    "docs/evidence/epic-03-performance-efficiency/runtime/task4-${MODE}-report.html" 2>/dev/null || true
+    "$EVIDENCE_DIR/task4-${MODE}-report.html" 2>/dev/null || true
 else
   echo "WARN: No load-generator pod found to copy stats and HTML report from."
 fi
@@ -151,9 +158,9 @@ fi
 if [[ "$MODE" == "full" ]]; then
   echo "[5.1/7] Validating full-run SLOs..."
   "$PYTHON_BIN" - <<'PY'
-import csv, re, sys
+import csv, os, re, sys
 from pathlib import Path
-path = Path('docs/evidence/epic-03-performance-efficiency/runtime/task4-full-stats.csv')
+path = Path(os.environ['EVIDENCE_DIR']) / 'task4-full-stats.csv'
 if not path.exists():
     print('ERROR: CSV result file not found:', path)
     sys.exit(1)
@@ -228,7 +235,7 @@ echo "[6/7] Scale down load-generator..."
 "$KUBECTL_BIN" scale deployment/load-generator --replicas=0 -n "$NAMESPACE"
 
 echo "[7/7] Done. Review:"
-echo "  - Locust stats: runtime/task4-${MODE}-stats.csv"
+echo "  - Locust stats: $EVIDENCE_DIR/task4-${MODE}-stats.csv"
 echo "  - Monitor log: load-test-monitor-*.log"
 echo "  - Grafana: /grafana/ → namespace techx-tf4"
 echo "  - Jaeger: /jaeger/ → filter synthetic_request=true"

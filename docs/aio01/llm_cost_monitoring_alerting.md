@@ -7,18 +7,22 @@ This document outlines the strategy, thresholds, tools, and operational procedur
 ## 1. Strategy & Metrics Source
 
 ### A. Telemetry-Based Cost Approximation
-Since actual billing details from OpenAI / AWS Bedrock are only updated periodically on the provider's billing dashboard, we use **real-time OpenTelemetry trace instrumentation** inside `product_reviews_server.py` to approximate token costs.
+Since AWS billing aggregation is not an online request-control signal, we use **real-time OpenTelemetry metrics** inside `product_reviews_server.py` to estimate Bedrock token cost.
 - **Instrumented Fields:**
-  - `app.llm.prompt_tokens`
-  - `app.llm.completion_tokens`
-  - `app.llm.estimated_cost_usd`
-- **Cost Calculation Formula (GPT-4o-Mini Baseline):**
-  $$\text{Estimated Cost (USD)} = \frac{\text{Prompt Tokens} \times \$0.15 + \text{Completion Tokens} \times \$0.60}{1,000,000}$$
+  - `app_llm_prompt_tokens_total`
+  - `app_llm_completion_tokens_total`
+  - `app_llm_estimated_cost_usd_total`
+  - `app_llm_latency_seconds`
+  - `app_llm_errors_total`
+- **Cost Calculation Formula (Nova 2 Lite evaluated snapshot):**
+  $$\text{Estimated Cost (USD)} = \frac{\text{Input Tokens} \times \$0.30 + \text{Output Tokens} \times \$2.50}{1,000,000}$$
+
+The price variables are deployment configuration and must be re-snapshotted before canary. Guardrail charges are not included in this token-only estimate.
 
 ### B. Aggregated Billing Source
-- **Primary Source:** OpenAI Organization Usage/Billing Dashboard.
-- **Access Role:** Admin/Billing Viewer (held by PM/TL).
-- **Update Frequency:** Hourly aggregation on the billing API.
+- **Primary Source:** AWS Bedrock pricing plus Cost Explorer/billing data.
+- **Access Role:** approved AWS billing viewer held by PM/TL/CDO.
+- **Update Frequency:** provider-dependent aggregation; reconcile daily during canary.
 
 ---
 
@@ -47,11 +51,11 @@ graph LR
 
 ### Alert Rules Specification
 - **Rule 1: High Hourly Spend Rate**
-  - *Condition:* `sum(increase(app_llm_estimated_cost_usd[1h])) > 2.0`
+  - *Condition:* `sum(increase(app_llm_estimated_cost_usd_total[1h])) > 2.0`
   - *Action:* Warning alert sent to Slack `#aio-alerts`.
 - **Rule 2: Daily Budget Exhaustion**
-  - *Condition:* `sum(increase(app_llm_estimated_cost_usd[24h])) > 10.0`
-  - *Action:* Critical alert. Freeze further rollout and request the CDO owner to execute the approved real-to-mock cutover procedure. AIO does not mutate runtime flags or deployment state.
+  - *Condition:* `sum(increase(app_llm_estimated_cost_usd_total[24h])) > 10.0`
+  - *Action:* Critical alert. Freeze further rollout and request the CDO owner to revert the previous reviewed image/configuration. AIO does not mutate runtime flags or deployment state.
 
 > **Metric-name verification gate:** The PromQL names above are provisional until the first deployment confirms the exact OTel-to-Prometheus translated series names in Grafana/Prometheus. Do not enable an alert from this document until its query returns the expected live series.
 
@@ -73,7 +77,7 @@ graph LR
 If a **Hard Limit Threshold** is breached or a **Daily Budget Alert** fires:
 
 1. **Immediate Containment:** AIO raises a critical alert, freezes further rollout, and sends the evidence to the CDO deployment owner. AIO must not change `flagd`; `llmRateLimitError` is an incident-injection flag, not a real/mock traffic switch.
-2. **Investigation:** Query the verified Prometheus cost/token series grouped by the bounded `llm.model` label, then use correlated trace IDs to inspect expensive request paths. API keys and user IDs must not be exported as metric labels.
+2. **Investigation:** Query the verified Prometheus cost/token series grouped by the bounded `llm.model` label, then use correlated trace IDs to inspect expensive request paths. Credentials and user IDs must not be exported as metric labels.
 3. **Loop Detection:** Check for high repetition of identical tool calls or traces showing excessively long tool-use loops.
 4. **Resolution:** Apply a reviewed request/iteration limit or disable further real-LLM rollout through the CDO-owned deployment procedure.
-5. **Approved Cutover/Recovery:** CDO executes the reviewed GitOps/Helm configuration revert to the chart's mock-LLM defaults. PM/TL approval and AIO verification are required before CDO restores real-LLM traffic.
+5. **Approved Recovery:** CDO executes the reviewed GitOps/Helm revert to the previous image/configuration. PM/TL approval and AIO verification are required before another rollout.

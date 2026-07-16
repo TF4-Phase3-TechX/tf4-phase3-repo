@@ -116,6 +116,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
+      "firehose:DescribeDeliveryStream",
+      "firehose:ListTagsForDeliveryStream",
       "iam:Get*",
       "iam:List*",
       "kms:DescribeKey",

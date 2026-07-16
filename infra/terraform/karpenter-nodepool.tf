@@ -25,11 +25,10 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass_general" {
         { tags = { "karpenter.sh/discovery" = var.cluster_name } }
       ]
 
-      # Matches node_security_group_tags in eks.tf. Selecting by tag here
-      # (rather than the cluster security group id) keeps this in sync with
-      # whichever security group the EKS-managed node group actually uses.
+      # Select only the EKS node security group. The shared discovery tag is
+      # also present on cluster SGs and must not be used for SG selection.
       securityGroupSelectorTerms = [
-        { tags = { "karpenter.sh/discovery" = var.cluster_name } }
+        { tags = { "karpenter.sh/node-security-group" = var.cluster_name } }
       ]
 
       tags = merge(var.tags, {

@@ -849,6 +849,7 @@ components:
 
   product-reviews:
     enabled: true
+    serviceAccountName: product-reviews-bedrock
     useDefault:
       env: true
     service:
@@ -856,18 +857,22 @@ components:
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
-      - name: OPENAI_API_KEY
-        value: dummy
-      - name: LLM_MODEL
-        value: techx-llm
-      - name: LLM_TIMEOUT_SECONDS
-        value: "5.0"
-      - name: LLM_HOST
-        value: llm
-      - name: LLM_PORT
-        value: "8000"
-      - name: LLM_BASE_URL
-        value: http://$(LLM_HOST):$(LLM_PORT)/v1
+      - name: AWS_REGION
+        value: us-east-1
+      - name: BEDROCK_MODEL_ID
+        value: us.amazon.nova-2-lite-v1:0
+      - name: BEDROCK_GUARDRAIL_ID
+        value: SET_BY_CDO
+      - name: BEDROCK_GUARDRAIL_VERSION
+        value: "1"
+      - name: BEDROCK_OUTPUT_MODE
+        value: tool
+      - name: BEDROCK_DEADLINE_SECONDS
+        value: "4.5"
+      - name: BEDROCK_INPUT_USD_PER_MILLION
+        value: "0.30"
+      - name: BEDROCK_OUTPUT_USD_PER_MILLION
+        value: "2.50"
       - name: PRODUCT_REVIEWS_PORT
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
@@ -883,7 +888,7 @@ components:
       - name: OTEL_PYTHON_LOG_CORRELATION
         value: "true"
       - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
-        value: "true"
+        value: "false"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
@@ -892,6 +897,18 @@ components:
 
   quote:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: quote
     useDefault:
       env: true
     service:
@@ -916,6 +933,21 @@ components:
       limits:
         cpu: 50m
         memory: 40Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 33  # www-data
       runAsGroup: 33
@@ -1498,7 +1530,7 @@ jaeger:
       url: http://opensearch:9200
   esIndexCleaner:
     enabled: true
-    numberOfDays: 3
+    numberOfDays: 1
     schedule: "35 23 * * *"
     resources:
       requests:
@@ -1526,6 +1558,37 @@ prometheus:
         secretName: alertmanager-smtp-auth
         mountPath: /etc/alertmanager/secrets
         readOnly: true
+      - name: slack-webhook
+        secretName: alertmanager-slack-webhook
+        mountPath: /etc/alertmanager/slack
+        readOnly: true
+    config:
+      global:
+        resolve_timeout: 5m
+        smtp_smarthost: 'smtp.gmail.com:587'
+        smtp_from: 'tf4-on-call-email@gmail.com'
+        smtp_auth_username: 'tf4-on-call-email@gmail.com'
+        smtp_auth_password_file: '/etc/alertmanager/secrets/password'
+        smtp_require_tls: true
+      route:
+        group_by: ['alertname']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 1h
+        receiver: 'combined-notifications'
+      receivers:
+        - name: 'combined-notifications'
+          slack_configs:
+            - channel: '#tf4-alerts'
+              api_url_file: '/etc/alertmanager/slack/webhook-url'
+              send_resolved: true
+          email_configs:
+            - to: 'buithanhnghia@dtu.edu.vn'
+              send_resolved: true
+            - to: 'vanphutin2902@gmail.com'
+              send_resolved: true
+            - to: 'ngonguyentruongan2907@gmail.com'
+              send_resolved: true
   configmapReload:
     prometheus:
       enabled: true
@@ -1666,7 +1729,7 @@ opensearch:
   opensearchJavaOpts: "-Xms400m -Xmx400m"
   persistence:
     enabled: true
-    size: 8Gi
+    size: 20Gi
     storageClass: "gp2"
   initResources:
     requests:
