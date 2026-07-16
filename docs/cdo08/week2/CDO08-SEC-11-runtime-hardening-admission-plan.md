@@ -130,7 +130,7 @@ kubectl get ns --show-labels | grep -v "techx-tf4\|techx-observability"
 
 ### 5.2 4 `ValidatingAdmissionPolicy` — một file cho mỗi luật
 
-File đề xuất: `techx-corp-chart/templates/admission/sec11-runtime-hardening-vap.yaml` (deploy độc lập ngoài vòng đời app release — xem lý do ở §6.1).
+File: `deploy/admission/sec11-runtime-hardening-vap.yaml` — deploy **độc lập** (raw manifest, `kubectl apply -f`/ArgoCD app riêng), **KHÔNG** nhúng vào `techx-corp-chart/templates/`: VAP là cluster-scoped, mà chart cài 2 release (app + observability) → nếu nằm trong templates sẽ bị render 2 lần → ownership conflict. Đặt cạnh các raw cluster manifest khác trong `deploy/` (`ingress.yaml`, `quota.yaml`, `karpenter/`).
 
 ```yaml
 # Luật 1 — Mandate-05 #1: cấm chạy root
@@ -474,7 +474,7 @@ Phase 1 (tuần này) không enforce production nên **gần như không có gì
 |---|---|---|
 | (Phase 2) Sau khi flip `Deny`, luật chặn nhầm workload production | `kubectl patch validatingadmissionpolicybinding <name> --type merge -p '{"spec":{"validationActions":["Audit","Warn"]}}'` — đổi ngay `Deny` → `Audit` | Không cần xóa policy, không mất lịch sử vi phạm đang audit, revert 1 field, có hiệu lực ngay (admission là đồng bộ, không cần rollout) |
 | Policy tự nó lỗi (CEL runtime error, chặn mọi request) | `kubectl delete validatingadmissionpolicybinding <name>` (giữ policy, xóa binding) hoặc `kubectl delete validatingadmissionpolicy <name>` nếu cần gỡ hẳn | Xóa binding là đủ để tắt hiệu lực — không cần đụng workload đang chạy |
-| Cần tắt toàn bộ admission SEC-11 khẩn cấp | `kubectl delete -f techx-corp-chart/templates/admission/sec11-runtime-hardening-vap.yaml` | Toàn bộ 4 policy + 4 binding nằm 1 file — rollback 1 lệnh, không ảnh hưởng app release (deploy tách rời — xem §6.1 lý do không nhúng vào chart chính) |
+| Cần tắt toàn bộ admission SEC-11 khẩn cấp | `kubectl delete -f deploy/admission/sec11-runtime-hardening-vap.yaml` | Toàn bộ 4 policy + 8 binding nằm 1 file — rollback 1 lệnh, không ảnh hưởng app release (deploy tách rời) |
 
 **Nguyên tắc:** Không bao giờ rollback bằng cách sửa `failurePolicy: Fail` → `Ignore` để "cho qua tạm" — làm vậy tắt mất bảo vệ khi API server có sự cố khác, dùng đúng field `validationActions` để hạ enforce xuống audit thay vì tắt failurePolicy.
 

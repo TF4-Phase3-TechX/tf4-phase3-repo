@@ -1,0 +1,186 @@
+# CDO08-SEC-11 — Runtime hardening policy-as-code (Mandate-05 #4)
+#
+# Cluster-scoped ValidatingAdmissionPolicy + binding. Deploy ĐỘC LẬP, KHÔNG nhúng
+# vào techx-corp-chart/templates/ (chart cài 2 release app + observability → cluster
+# object bị render 2 lần → ownership conflict). Apply/rollback:
+#   kubectl apply -f deploy/admission/sec11-runtime-hardening-vap.yaml
+#   kubectl delete -f deploy/admission/sec11-runtime-hardening-vap.yaml
+#
+# Phase 1 (hiện tại): 4 luật để [Audit, Warn] trên production (namespace gắn label
+# techx.io/policy-scope=enforced), và [Deny] chỉ trong namespace test techx-admission-test.
+# Flip Deny production: đổi validationActions của binding "-binding" tương ứng (xem plan §6.1).
+#
+# Bootstrap label (một lần, xem plan §5.1):
+#   kubectl label namespace techx-tf4 techx.io/policy-scope=enforced --overwrite
+#   kubectl label namespace techx-observability techx.io/policy-scope=enforced --overwrite
+
+# ── Policy 1 — Mandate-05 #1: cấm chạy root ─────────────────────────────────────
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: sec11-no-root-containers
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  # EFFECTIVE runAsNonRoot: container-level override pod-level (đúng ngữ nghĩa K8s).
+  - expression: >
+      (object.spec.containers + object.spec.?initContainers.orValue([])).all(c,
+        c.?securityContext.?runAsNonRoot.orValue(
+          object.spec.?securityContext.?runAsNonRoot.orValue(false)) == true)
+    message: "Container/initContainer must run as non-root: set runAsNonRoot=true at pod or container level."
+---
+# ── Policy 2 — Mandate-05 #2: cấm image tag trôi ────────────────────────────────
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: sec11-no-mutable-image-tag
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  - expression: >
+      (object.spec.containers + object.spec.?initContainers.orValue([])).all(c,
+        c.image.contains(':') && !c.image.endsWith(':latest'))
+    message: "Image must pin a fixed tag or digest (repo:tag or repo@sha256:...); ':latest' or untagged images are not allowed."
+---
+# ── Policy 3 — Mandate-05 #3: bắt buộc requests/limits ──────────────────────────
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: sec11-resources-required
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  - expression: >
+      (object.spec.containers + object.spec.?initContainers.orValue([])).all(c,
+        has(c.resources) &&
+        has(c.resources.requests) && has(c.resources.requests.cpu) && has(c.resources.requests.memory) &&
+        has(c.resources.limits) && has(c.resources.limits.cpu) && has(c.resources.limits.memory))
+    message: "Container/initContainer must define both requests and limits for cpu and memory."
+---
+# ── Policy 4 — Mandate-05 #1 (phần 2): drop capability thừa ─────────────────────
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: sec11-drop-all-capabilities
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  # drop ALL rồi add lại cái cần — chỉ enforce phần drop: [ALL].
+  - expression: >
+      (object.spec.containers + object.spec.?initContainers.orValue([])).all(c,
+        c.?securityContext.?capabilities.?drop.orValue([]).exists(d, d == 'ALL'))
+    message: "Container/initContainer must drop all capabilities: set securityContext.capabilities.drop: [\"ALL\"] (add back only what is required)."
+---
+# ── Production bindings — AUDIT (không chặn; namespace có label policy-scope=enforced) ──
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-no-root-containers-binding
+spec:
+  policyName: sec11-no-root-containers
+  validationActions: [Audit, Warn]   # chờ SEC-09 (#233) rollout xong
+  matchResources:
+    namespaceSelector:
+      matchLabels: { techx.io/policy-scope: enforced }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-drop-all-capabilities-binding
+spec:
+  policyName: sec11-drop-all-capabilities
+  validationActions: [Audit, Warn]   # chờ SEC-09 (#233) rollout xong
+  matchResources:
+    namespaceSelector:
+      matchLabels: { techx.io/policy-scope: enforced }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-no-mutable-image-tag-binding
+spec:
+  policyName: sec11-no-mutable-image-tag
+  validationActions: [Audit, Warn]   # 0 vi phạm (§2.1); chờ review để flip Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels: { techx.io/policy-scope: enforced }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-resources-required-binding
+spec:
+  policyName: sec11-resources-required
+  validationActions: [Audit, Warn]   # 0 vi phạm (§2.1); chờ review để flip Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels: { techx.io/policy-scope: enforced }
+---
+# ── Demo bindings — DENY, chỉ trong techx-admission-test (mentor thấy reject thật) ──
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-no-root-containers-deny
+spec:
+  policyName: sec11-no-root-containers
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels: { kubernetes.io/metadata.name: techx-admission-test }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-no-mutable-image-tag-deny
+spec:
+  policyName: sec11-no-mutable-image-tag
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels: { kubernetes.io/metadata.name: techx-admission-test }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-resources-required-deny
+spec:
+  policyName: sec11-resources-required
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels: { kubernetes.io/metadata.name: techx-admission-test }
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: sec11-drop-all-capabilities-deny
+spec:
+  policyName: sec11-drop-all-capabilities
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels: { kubernetes.io/metadata.name: techx-admission-test }
