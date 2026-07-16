@@ -79,6 +79,9 @@ def test_nova_tool_mode_only_accepts_forced_non_action_tool():
     assert result.stop_reason == "tool_use"
     assert result.contract_stage == "tool_input_dict"
     assert client.request["toolConfig"]["toolChoice"] == {"tool": {"name": "emit_grounded_answer"}}
+    tool_schema = client.request["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"]
+    assert set(tool_schema) == {"type", "properties", "required"}
+    assert tool_schema["type"] == "object"
 
 
 @pytest.mark.parametrize(
