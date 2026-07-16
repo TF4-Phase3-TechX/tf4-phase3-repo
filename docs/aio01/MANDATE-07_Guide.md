@@ -254,6 +254,7 @@ Detection · implement + phân tích
 ### Phải làm gì?
 
 1. **Deploy alert rules lên cluster Prometheus.**
+<<<<<<< HEAD
     - Thay vì sửa đổi trực tiếp trên EKS, hãy sử dụng quy trình **Controlled Drill via GitOps**:
       1. Lưu cờ tính năng hiện trạng, xác lập deployment window được phê duyệt.
       2. Cập nhật `defaultVariant` của flag `llmRateLimitError` thành `"on"` trực tiếp trong file cấu hình Git repo (ví dụ: `techx-corp-chart/flagd/demo.flagd.json`).
@@ -262,6 +263,16 @@ Detection · implement + phân tích
       5. Gây lỗi hoặc chạy Locust load test để tạo sự cố kiểm chứng.
       6. Phục hồi cấu hình bằng cách tạo revert commit (`git revert`) trên Git và push để ArgoCD đồng bộ ngược lại.
       7. Xác nhận hậu phục hồi (Post-restore verification) để đảm bảo hệ thống trở lại bình thường.
+=======
+    - Sử dụng quy trình Controlled Drill qua GitOps; không sửa trực tiếp ConfigMap production:
+      ```bash
+      # 1. Ghi GitOps commit/Argo revision/flag pre-state và deployment window.
+      # 2. Tạo PR chỉ đổi llmRateLimitError=on; CDO/flag owner approve + merge.
+      # 3. Chờ Argo Synced/Healthy, chạy probe và thu detector/alert evidence.
+      # 4. Revert PR về pre-state; chờ Argo Synced/Healthy và verify flag/pod revision.
+      ```
+    - Hoặc tạo load test gây latency spike.
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
 
 3. **Chụp ảnh/log cho thấy detector kêu:**
    - Alertmanager UI hiển thị alert firing.
@@ -348,7 +359,7 @@ Detection · chạy thật + đo đạc
 ### 1. Ảnh/Log Detector Kêu E2E
 - [Ảnh Alertmanager khi bơm sự cố]
 - [Ảnh Grafana dashboard khi bơm sự cố]
-- **Cách chạy lại:** Xem quy trình Controlled Drill chỉnh sửa `flagd-config` an toàn bằng `kubectl edit` tại docs/aio01/MANDATE-07_Guide.md.
+- **Cách chạy lại:** Link Promotion/GitOps drill PR, approval/deployment window, Argo revision, probe command và rollback PR theo controlled-drill section của guide này.
 
 ### 2. Số Precision/Recall/Lead-Time
 | Metric | Giá trị |

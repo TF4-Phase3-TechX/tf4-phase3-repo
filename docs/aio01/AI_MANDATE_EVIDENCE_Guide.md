@@ -116,7 +116,7 @@ Evidence được viết vào **comment** của ticket (không phải Descriptio
 
 | Cần ghi | Ví dụ |
 | --- | --- |
-| URL của PR hoặc commit chứa code mandate | `PR #182: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/182` |
+| URL của PR hoặc commit chứa code mandate | `PR #155: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/155` |
 
 **Vì sao cần:**
 - **Nối ticket ↔ repo.** Mentor click link → thấy code diff → xác nhận implementation có thật.
@@ -126,8 +126,13 @@ Evidence được viết vào **comment** của ticket (không phải Descriptio
 
 | Cần ghi | Ví dụ |
 | --- | --- |
+<<<<<<< HEAD
 | Lệnh/script để mentor tự bật lại tính năng và kiểm tra | `cd tests/eval && python run_eval.py` |
 | Cách bơm sự cố (nếu bộ dò lỗi AIOps) | Thực hiện theo quy trình **Controlled Drill via GitOps** (Commit & push đổi defaultVariant trong file Git `demo.flagd.json` và đồng bộ qua ArgoCD) |
+=======
+| Lệnh/script để mentor tự chạy lại | Dùng chính command versioned trong `docs/aio1/mandate-06/README.md`; ghi model/profile, Guardrail version và AWS profile tạm thời |
+| Cách bơm sự cố (nếu mandate detection) | Link Promotion/GitOps PR đã được owner phê duyệt → ghi Argo revision → chạy drill → revert bằng rollback PR |
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
 
 **Vì sao cần:**
 - **Mentor phải tự chạy lại được.** "Tin nhưng phải xác minh" — mentor không tin ảnh chụp, họ muốn tự chạy.
@@ -219,6 +224,7 @@ Một mandate có thể chia nhiều chặng, **mỗi chặng = 1 ticket riêng*
 - (a) Guardrail chặn injection: [PLACEHOLDER — Đính kèm ảnh log/screenshot của Bedrock Guardrail chặn prompt injection thành công]
 - (b) AI từ chối bịa: [PLACEHOLDER — Đính kèm ảnh response "Dựa trên các đánh giá hiện có, không có thông tin..."]
 - (c) PII bị che: [PLACEHOLDER — Đính kèm ảnh log/response cho thấy email/SĐT bị che thành [EMAIL_REDACTED] / [PHONE_REDACTED]]
+<<<<<<< HEAD
 - (d) Eval chạy ra số: [PLACEHOLDER — Đính kèm ảnh chụp/JSON output report canonical bakeoff-report.json]
   - Model Winner: nova-2-lite (Weighted score: 92.02)
   - Grounded/Faithfulness Quality: 96.67%
@@ -227,6 +233,12 @@ Một mandate có thể chia nhiều chặng, **mỗi chặng = 1 ticket riêng*
 
 **4. ADR:**
 - [ADR-006-bedrock-model-and-safety.md](docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md) (commit c16ecbe)
+=======
+- (d) Eval chạy ra số: [PLACEHOLDER — Link đúng machine-readable report và chép nguyên các gate/score thực tế; không điền số ước lượng]
+
+**4. ADR:**
+- [ADR-006-bedrock-model-and-safety.md](../aio1/mandate-06/ADR-006-bedrock-model-and-safety.md) (implementation commit `c16ecbe`)
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
 ```
 
 ### Comment Evidence cho `AI MANDATE #7a`:

@@ -62,7 +62,11 @@ product_reviews_server.py
 
 ### Phải làm gì?
 
+<<<<<<< HEAD
 1. **Kết nối LLM thật:** Kết nối `product_reviews_server.py` với endpoint Amazon Bedrock Converse API sử dụng mô hình **Nova 2 Lite** (sử dụng cross-region inference profile `us.amazon.nova-2-lite-v1:0` theo đúng cấu hình sản xuất đã được phê duyệt).
+=======
+1. **Kết nối LLM thật:** Kết nối `product_reviews_server.py` với Amazon Bedrock Converse API qua US inference profile **Nova 2 Lite** đã được ADR, IAM và production config pin: `us.amazon.nova-2-lite-v1:0` tại `us-east-1`. Không tự đổi sang direct/global model ID nếu chưa có quota, IAM, eval và rollout evidence riêng.
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
 2. **Thiết lập fallback khi model lỗi:**
    - Client timeout cứng: `4.5 giây` (để không vượt SLO p95 gRPC).
    - Safe fallback response: Trả về `"Hiện tại tính năng AI không khả dụng"` thay vì crash.
@@ -76,6 +80,7 @@ product_reviews_server.py
 
 ### Quy Trình Diễn Tập Sự Cố Kiểm Soát (Controlled Drill via GitOps)
 
+<<<<<<< HEAD
 Để đảm bảo tuân thủ nguyên tắc vận hành Production, **tuyệt đối KHÔNG thực hiện thay đổi trực tiếp (direct mutation) bằng lệnh kubectl patch hoặc kubectl edit lên cluster**. Mọi thay đổi cấu hình Feature Flags phải đi qua luồng GitOps tiêu chuẩn:
 
 1. **Xin phê duyệt và xác định cửa sổ (Deployment Window):** Thông báo cho CDO/Platform Owners trước khi bắt đầu.
@@ -98,6 +103,20 @@ product_reviews_server.py
    - Kiểm tra ArgoCD đồng bộ thành công về trạng thái cũ.
 6. **Xác nhận sau khôi phục (Post-restore Verification):**
    - Gửi gRPC request lần nữa và xác nhận API AI đã phục hồi hoạt động bình thường.
+=======
+Production dùng GitOps nên **không chạy `kubectl edit/patch` trực tiếp**. Controlled drill phải có CDO/flag owner, deployment window và rollback owner:
+
+```bash
+# 1. Ghi pre-state: GitOps commit, Argo revision, flag value và pod/image revision.
+# 2. Tạo Promotion/GitOps PR chỉ đổi llmRateLimitError off -> on.
+# 3. CDO/flag owner approve + merge trong deployment window; chờ Argo Synced/Healthy.
+# 4. Gửi request tới AI endpoint để kiểm chứng fallback.
+grpcurl -d '{"product_id": "OLJCESPC7Z"}' \
+  localhost:8080 oteldemo.ProductReviewService/AskProductAIAssistant
+# 5. Xác nhận fallback, latency/error telemetry và không có raw content trong log.
+# 6. Revert GitOps PR (on -> off); chờ Argo Synced/Healthy và xác nhận đúng pre-state.
+```
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
 
 ---
 
@@ -217,10 +236,16 @@ Tạo file ADR (Architecture Decision Record) ký tên lưu tại `docs/aio1/man
   AWS_PROFILE=511825856493_TF4-AIReadOnlyOrLimitedInvoke PYTHONPATH=techx-corp-platform/src/product-reviews/ ./techx-corp-platform/src/product-reviews/.venv/bin/python3 docs/aio1/mandate-06/eval/run_bakeoff.py --guardrail-id wckqh9dms6qa --guardrail-version 1
   ```
 - Kiểm thử Fallback (Controlled Drill):
+<<<<<<< HEAD
   - Kích hoạt thông qua quy trình **Controlled Drill via GitOps** (Commit đổi `defaultVariant` của flag `llmRateLimitError` thành `"on"` và đồng bộ qua ArgoCD).
+=======
+  - Link Promotion/GitOps PR đã được CDO/flag owner phê duyệt để set `llmRateLimitError=on`; ghi deployment window và Argo revision.
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
   - Gọi gRPC endpoint: `grpcurl -d '{"product_id": "OLJCESPC7Z"}' localhost:8080 oteldemo.ProductReviewService/AskProductAIAssistant`
+  - Link rollback/revert PR và bằng chứng Argo `Synced/Healthy` sau khi trả flag về pre-state.
 
 **3. Bằng chứng chạy thật:**
+<<<<<<< HEAD
   - (d) Kết quả từ file report canonical `bakeoff-report.json`:
     - Model Winner: nova-2-lite (Weighted score: 92.02)
     - Grounded/Faithfulness Quality: 96.67%
@@ -229,6 +254,16 @@ Tạo file ADR (Architecture Decision Record) ký tên lưu tại `docs/aio1/man
 
 **4. ADR:**
 - [ADR-006-bedrock-model-and-safety.md](docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md)
+=======
+- [Đính kèm các ảnh chụp màn hình/logs thực tế chạy trên cluster tại đây]
+  - (a) Logs/Screenshot của Bedrock Guardrail chặn prompt injection thành công.
+  - (b) Logs/Response của AI trả về "Dựa trên các đánh giá hiện có, không có thông tin..." khi hỏi câu hỏi ngoài phạm vi.
+  - (c) Logs cho thấy các thông tin email/SĐT bị che thành `[EMAIL_REDACTED]` / `[PHONE_REDACTED]`.
+  - (d) Link `bakeoff-report.json` machine-readable và chép nguyên kết quả/gate thực tế; không dùng số ước lượng hoặc kết quả từ troubleshooting run.
+
+**4. ADR:**
+- [ADR-006-bedrock-model-and-safety.md](../aio1/mandate-06/ADR-006-bedrock-model-and-safety.md)
+>>>>>>> c08af2137e13d439efcd98ae7bc1a9fdc19e465a
 ```
 
 ---
