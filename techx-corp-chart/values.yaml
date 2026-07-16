@@ -44,6 +44,12 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+prometheusRetainStorageClass:
+  enabled: true
+  name: gp2-retain
+  provisioner: kubernetes.io/aws-ebs
+  allowVolumeExpansion: false
+
 components:
   ## Demo Components are named objects (services) with several properties
   # demoService:
@@ -1815,7 +1821,12 @@ prometheus:
         - postgresql.table.name
         - postgresql.index.name
     persistentVolume:
-      enabled: false
+      enabled: true
+      storageClass: gp2-retain
+      size: 20Gi
+      annotations:
+        helm.sh/resource-policy: keep
+        argocd.argoproj.io/sync-options: Prune=false,Delete=false
     service:
       servicePort: 9090
     resources:
