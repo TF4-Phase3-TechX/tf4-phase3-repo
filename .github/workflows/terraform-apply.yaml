@@ -6,6 +6,7 @@ on:
     paths:
       - 'infra/terraform/**'
       - '.github/workflows/terraform-apply.yaml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -95,8 +96,11 @@ jobs:
           set -euo pipefail
           if [[ -n "${ALERTMANAGER_SLACK_WEBHOOK:-}" ]]; then
             echo "Updating Alertmanager Webhook in Secrets Manager..."
-            aws secretsmanager put-secret-value --secret-id techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK" || \
-            aws secretsmanager create-secret --name techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK"
+            if aws secretsmanager describe-secret --secret-id techx/tf4/alertmanager-slack-webhook >/dev/null 2>&1; then
+              aws secretsmanager put-secret-value --secret-id techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK"
+            else
+              aws secretsmanager create-secret --name techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK"
+            fi
           fi
           if [[ -n "${SECURITY_SLACK_WEBHOOK:-}" ]]; then
             echo "Updating Security Alerts Webhook in SSM..."
