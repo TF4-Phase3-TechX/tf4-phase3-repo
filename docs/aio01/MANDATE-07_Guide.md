@@ -81,7 +81,7 @@ Chọn tối thiểu 3 metrics từ các service nằm trên **critical path** (
 | --- | --- | --- | --- | --- |
 | 1 | **p95 Latency** | `product-reviews`, `checkout`, `cart` | `histogram_quantile(0.95, sum by (le, service_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~"product-reviews\|checkout\|cart"}[3m])))` | Latency spike = user thấy trang chậm → churn. Đây là triệu chứng user-visible rõ nhất |
 | 2 | **Error Rate** | `product-reviews`, `checkout`, `cart` | `sum(rate(traces_span_metrics_calls_total{service_name=~"product-reviews\|checkout\|cart", status_code="STATUS_CODE_ERROR"}[3m])) / sum(rate(traces_span_metrics_calls_total{service_name=~"product-reviews\|checkout\|cart"}[3m]))` | Error rate tăng = request fail → user thấy lỗi. Đo burn-rate SLO trực tiếp |
-| 3 | **LLM Throughput Drop** | `product-reviews` (AI) | `rate(app_ai_assistant_counter_total[3m])` | Throughput rớt về 0 trong khi có traffic = LLM chết âm thầm. Nếu chỉ đo error rate thì miss trường hợp LLM im lặng (không trả lời gì cả) |
+| 3 | **LLM Provider Failure Rate** | `product-reviews` (AI) | `sum(rate(app_llm_errors_total[3m]))` | Ứng dụng có thể trả safe fallback với HTTP/gRPC thành công trong khi Bedrock lỗi; metric provider riêng phát hiện outage bị che bởi fallback |
 
 ### Vì sao phải làm bước này?
 
@@ -91,7 +91,7 @@ Chọn tối thiểu 3 metrics từ các service nằm trên **critical path** (
 
 > **Lưu ý quan trọng về tên metric:**
 > - Span metrics có prefix `traces_span_metrics_` (ví dụ: `traces_span_metrics_calls_total`, KHÔNG phải `calls_total`).
-> - OTel counter tự thêm hậu tố `_total` khi export sang Prometheus (ví dụ: `app_ai_assistant_counter` → `app_ai_assistant_counter_total`).
+> - Product-reviews hiện khai báo trực tiếp `app_llm_calls_total`, `app_llm_errors_total` và `app_llm_latency_seconds`. Dùng đúng contract này; không dùng metric không tồn tại như `app_llm_requests_total`.
 
 ---
 
@@ -103,9 +103,11 @@ Với mỗi metric đã chọn, xác định **khoảng giá trị bình thườ
 
 | Metric | Baseline "bình thường" | Cách xác định | Vì sao chọn khoảng này? |
 | --- | --- | --- | --- |
-| p95 Latency (product-reviews) | 200–800ms | Quan sát Grafana spanmetrics dashboard trong 48h traffic bình thường | Dưới 200ms = tải rất thấp (off-peak). Trên 800ms = bắt đầu gần ngưỡng SLO 2000ms |
-| Error Rate (checkout) | 0–2% | Baseline từ flash-sale-alerts.yaml hiện tại | Dưới 2% = noise level bình thường (retry, transient failures) |
-| LLM Throughput | > 0.1 req/s khi có traffic | Đo từ `app_ai_assistant_counter_total` trong giờ có load | Throughput > 0 chứng minh LLM đang hoạt động. = 0 khi có traffic = dead |
+| p95 Latency (product-reviews) | Candidate 200–800ms | Baseline kỹ thuật ban đầu; cần hiệu chuẩn bằng normal window ở #7b | Đây là giả thuyết vận hành, **không phải** số đã đo từ 48h production |
+| Error Rate (checkout) | Candidate 0–1% | Khớp với warning threshold trong rule spec; cần hiệu chuẩn bằng normal window ở #7b | Minimum-traffic guard loại bỏ tỷ lệ nhiễu khi mẫu quá ít |
+| LLM Provider Failure Rate | 0 errors/s trong healthy provider window | `rate(app_llm_errors_total[3m])`, đối chiếu với `app_llm_calls_total` | Safe fallback có thể che provider outage khỏi storefront success rate |
+
+> **Evidence rule:** Trước khi có raw query export từ normal window, phải ghi các khoảng trên là `candidate`, `initial` hoặc `provisional`. Không được mô tả là baseline production đã đo.
 
 ### Vì sao phải làm bước này?
 
@@ -124,8 +126,8 @@ Với mỗi metric, xác định **thế nào thì coi là bất thường** (tr
 | Metric | Ngưỡng Warning | Ngưỡng Critical | Sustained Duration | Vì sao? |
 | --- | --- | --- | --- | --- |
 | p95 Latency | > 1000ms | > 2000ms | 3 phút (`for: 3m`) | Warning ở 1000ms cho thời gian phản ứng. Critical ở 2000ms = SLO vi phạm. 3 phút loại bỏ cold-start noise |
-| Error Rate | > 5% | > 10% | 3 phút | 5% = đáng lo. 10% = user bị ảnh hưởng rõ ràng. 3 phút loại bỏ transient spikes |
-| LLM Throughput | — | == 0 khi có traffic | 3 phút | Throughput = 0 + traffic > 0 = LLM chết. Không có warning vì 0 là binary (chết hoặc sống) |
+| Error Rate | > 1% | > 5% | 2 phút, minimum 10 requests | Khớp rule spec hiện tại; volume guard tránh false positive ở low traffic |
+| LLM Provider Failure Rate | > 0.1 errors/s | > 0.5 errors/s | 3 phút | Dùng provider error counter thật và corroborate bằng sanitized error-class logs |
 
 ### Vì sao phải làm bước này?
 
@@ -225,24 +227,24 @@ Detection · implement + phân tích
 
 #### Metric 1: p95 Latency (product-reviews, checkout, cart)
 - **Vì sao chọn:** Latency spike là triệu chứng user-visible rõ nhất...
-- **Baseline bình thường:** 200–800ms (đo từ Grafana spanmetrics 48h bình thường)
+- **Baseline bình thường:** candidate 200–800ms; chưa claim là baseline production đã đo, sẽ hiệu chuẩn ở #7b
 - **Ngưỡng bất thường:** Warning > 1000ms, Critical > 2000ms, sustained 3m
 - **Phương pháp:** Static threshold trên histogram_quantile PromQL
 
 #### Metric 2: Error Rate (product-reviews, checkout, cart)
 - **Vì sao chọn:** Error rate tăng = SLO error budget bị đốt nhanh...
-- **Baseline bình thường:** 0–2%
-- **Ngưỡng bất thường:** Warning > 5%, Critical > 10%, sustained 3m
+- **Baseline bình thường:** candidate 0–1%; sẽ hiệu chuẩn ở #7b
+- **Ngưỡng bất thường:** Warning > 1%, Critical > 5%, minimum 10 requests, sustained 2m
 - **Phương pháp:** Ratio rate() PromQL
 
-#### Metric 3: LLM Throughput Drop
-- **Vì sao chọn:** LLM chết âm thầm không tạo error...
-- **Baseline bình thường:** > 0.1 req/s khi có traffic vào product-reviews
-- **Ngưỡng bất thường:** == 0 khi traffic > 0, sustained 3m
-- **Phương pháp:** Correlation 2 tín hiệu (throughput + traffic) trong PromQL
+#### Metric 3: LLM Provider Failure Rate
+- **Vì sao chọn:** Safe fallback có thể che Bedrock/provider outage khỏi storefront success rate
+- **Baseline bình thường:** 0 errors/s trong healthy provider window
+- **Ngưỡng bất thường:** Warning > 0.1 errors/s, Critical > 0.5 errors/s, sustained 3m
+- **Phương pháp:** `rate(app_llm_errors_total[3m])`, đối chiếu `app_llm_calls_total` và sanitized OpenSearch error-class logs
 
 ### 3. ADR
-- [Link ADR](link-to-adr-file)
+- [ADR-M07: Rule-based, per-service anomaly detection](./mandate-07/ADR-M07-rule-based-aiops-detection.md)
 ```
 
 ---
