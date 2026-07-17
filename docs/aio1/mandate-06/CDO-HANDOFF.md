@@ -380,7 +380,7 @@ Verify the deployed Prometheus contract:
 
 - `app_llm_prompt_tokens_total`
 - `app_llm_completion_tokens_total`
-- `app_llm_estimated_cost_usd_total`
+- `app_llm_estimated_cost_usd_USD_total` (deployed OTel/Prometheus series; SDK instrument name is `app_llm_estimated_cost_usd_total`)
 - `app_llm_latency_seconds`
 - `app_llm_errors_total`
 - `app_llm_calls_total`
