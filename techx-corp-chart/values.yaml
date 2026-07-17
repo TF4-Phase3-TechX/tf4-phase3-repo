@@ -192,10 +192,10 @@ components:
     resources:
       requests:
         cpu: 50m
-        memory: 256Mi
+        memory: 512Mi
       limits:
         cpu: 200m
-        memory: 256Mi
+        memory: 512Mi
     securityContext:
       runAsUser: 1654  # app
       runAsGroup: 1654
@@ -1705,26 +1705,26 @@ jaeger:
     resources:
       requests:
         cpu: 100m
-        memory: 768Mi
+        memory: 1Gi
       limits:
         cpu: 500m
-        memory: 768Mi
+        memory: 1Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [batch]
+          processors: [memory_limiter, batch]
           exporters: [jaeger_storage_exporter]
       telemetry:
         resource:
           service.name: jaeger
         metrics:
-          level: detailed
+          level: normal
           readers:
             - periodic:
-                interval: 10000
+                interval: 30000
                 timeout: 5000
                 exporter:
                   otlp:
@@ -1762,7 +1762,14 @@ jaeger:
             endpoint: ${env:JAEGER_HOST}:${env:JAEGER_GRPC_PORT}
 
     processors:
-      batch: {}
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 15
+      batch:
+        send_batch_size: 512
+        send_batch_max_size: 1024
+        timeout: 5s
 
     exporters:
       jaeger_storage_exporter:
@@ -2016,11 +2023,11 @@ opensearch:
   nodeGroup: techx-corp
   singleNode: true
   protocol: http
-  opensearchJavaOpts: "-Xms400m -Xmx400m"
+  opensearchJavaOpts: "-Xms800m -Xmx800m"
   persistence:
     enabled: true
     enableInitChown: false
-    size: 20Gi
+    size: 40Gi
     storageClass: "gp2"
     image: busybox
     imageTag: "1.36.1"
@@ -2039,9 +2046,12 @@ opensearch:
     - name: "DISABLE_SECURITY_PLUGIN"
       value: "true"
   resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
     limits:
       cpu: 1000m
-      memory: 1100Mi
+      memory: 2Gi
 
 bastionPortalAccess:
   enabled: false
