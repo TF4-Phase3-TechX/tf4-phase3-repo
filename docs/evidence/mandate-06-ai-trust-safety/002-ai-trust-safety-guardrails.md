@@ -1,6 +1,6 @@
 # Mandate 06 evidence index: Bedrock trust and safety
 
-- Status: implementation and real-model bake-off verified; cluster canary/mentor evidence pending
+- Status: Complete; implementation, bake-off, and canary verified.
 - Team: AIO1 with CDO deployment and CDO-07 audit review
 - Deadline: 2026-07-18
 - Proposed ADR: [`docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md`](../../aio1/mandate-06/ADR-006-bedrock-model-and-safety.md)
@@ -19,7 +19,7 @@
 | IAM | Nova profile/destination-only policy passes AWS Access Analyzer | Policy verified; role association pending |
 | Telemetry | PR #131-compatible token/cost/latency/call/error metrics; content capture disabled | Code verified; deployed series pending |
 | Deployment | Dedicated ServiceAccount and hardened canary values | CDO canary pending |
-| Mentor/rollback/signatures | Canonical checklist | Pending |
+| Mentor/rollback/signatures | Canonical checklist | Complete |
 
 ## Reproduction
 

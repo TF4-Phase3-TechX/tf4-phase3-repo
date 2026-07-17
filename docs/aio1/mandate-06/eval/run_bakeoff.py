@@ -227,10 +227,20 @@ def main() -> int:
     parser.add_argument("--inter-request-delay", type=float, default=1.0)
     parser.add_argument("--dataset", type=Path, default=HERE / "dataset-v1.jsonl")
     parser.add_argument("--output", type=Path, default=HERE / "bakeoff-report.json")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="allow replacing an existing output file (disabled by default)",
+    )
     parser.add_argument("--recompute-from", type=Path)
     args = parser.parse_args()
     if args.guardrail_version == "DRAFT":
         parser.error("use a pinned numeric Guardrail version")
+    if args.output.exists() and not args.force:
+        parser.error(
+            f"refusing to overwrite existing report: {args.output}; "
+            "choose a versioned --output path or pass --force explicitly"
+        )
     cases = load_cases(args.dataset)
     if len(cases) != 30:
         parser.error(f"dataset must contain exactly 30 cases, found {len(cases)}")
