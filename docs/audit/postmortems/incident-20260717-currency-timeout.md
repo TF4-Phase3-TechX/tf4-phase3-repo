@@ -4,7 +4,7 @@
 **Ngày xảy ra sự cố:** 2026-07-17  
 **Thời gian phát hiện:** Khoảng 03:40 - 06:30 UTC (10:40 - 13:30 GMT+7)  
 **Chỉ huy xử lý sự cố:** CDO07 Auditability Team  
-**Người viết:** Bá Huân / CDO07 Auditability  
+**Người viết:** Võ Hồng Đức/ CDO07 Auditability  
 **Jira liên quan:** AUDIT-018 (Nghi ngờ nghẽn dịch vụ giám sát và quá tải tài nguyên)  
 **PR/rollback liên quan:** N/A  
 
