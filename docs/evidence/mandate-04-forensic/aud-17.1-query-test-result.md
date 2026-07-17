@@ -2,7 +2,7 @@
 ## AUD-17.1 · CDO07 · Mandate 4
 
 > **Mục đích:** Verify CloudTrail và EKS audit log có thể query thành công, có events trong thời gian gần.
-> **Test date:** 2026-07-15
+> **Test date:** 2026-07-17
 > **Performer:** Nguyễn Duy Hoàng (CDO07)
 
 | Thông tin | Giá trị |
@@ -11,7 +11,7 @@
 | CloudTrail name | `tf4-general-cloudtrail` |
 | EKS cluster | `techx-tf4-cluster` |
 | EKS log group | `/aws/eks/techx-tf4-cluster/cluster` |
-| Test window | 2026-07-15T00:00:00Z → 2026-07-15T10:00:00Z |
+| Test window | 2026-07-17T00:00:00Z → 2026-07-17T10:00:00Z |
 
 ---
 
@@ -35,9 +35,9 @@ aws cloudtrail lookup-events \
 
 ```json
 {
-  "UserId": "AROLEFAKEUSERIDEXAMPLE:hung.hoangkim",
-  "Account": "511825856493", 
-  "Arn": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_.../hung.hoangkim"
+    "UserId": "AROAXOKZSY7W74IQD5ZRM:hoang.nguyenduy",
+    "Account": "511825856493",
+    "Arn": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/hoang.nguyenduy"
 }
 ```
 
@@ -115,14 +115,18 @@ aws eks describe-cluster \
 {
   "clusterLogging": [
     {
-      "types": ["api", "audit", "authenticator", "controllerManager", "scheduler"],
+      "types": ["api", "audit", "authenticator"],
       "enabled": true
+    },
+    {
+      "types": ["controllerManager", "scheduler"],
+      "enabled": false
     }
   ]
 }
 ```
 
-**✅ PASS:** EKS Control Plane logging enabled với tất cả log types bao gồm `audit`.
+**✅ PASS:** EKS Control Plane logging enabled với tất cả core log types bao gồm `audit`.
 
 ---
 
@@ -143,9 +147,20 @@ aws logs describe-log-streams \
 ### Test result
 
 ```json
-{ "streamName": "kube-apiserver-audit-2026071509", "lastEventTime": 1752456789123 }
-{ "streamName": "kube-apiserver-2026071509", "lastEventTime": 1752456785456 }  
-{ "streamName": "authenticator-2026071509", "lastEventTime": 1752456782789 }
+[
+  {
+    "streamName": "kube-apiserver-audit-91d33ef53713dc8d79c753a0d3a5a725",
+    "lastEventTime": 1784252305734
+  },
+  {
+    "streamName": "kube-apiserver-91d33ef53713dc8d79c753a0d3a5a725",
+    "lastEventTime": 1784252204000
+  },
+  {
+    "streamName": "authenticator-6db66abec68dbf2170570fa0f80fabf9",
+    "lastEventTime": 1784251964930
+  }
+]
 ```
 
 **✅ PASS:** Log streams có hoạt động trong 24h gần nhất (lastEventTime recent).
@@ -169,6 +184,6 @@ Cả CloudTrail và EKS audit log đều có thể query thành công và có ev
 ---
 
 **Test performed by:** Nguyễn Duy Hoàng (CDO07)
-**Date:** 2026-07-15
+**Date:** 2026-07-17
 **Profile used:** TF4-AuditReadOnlyAndAnalyze-511825856493
 **Status:** ✅ COMPLETED
