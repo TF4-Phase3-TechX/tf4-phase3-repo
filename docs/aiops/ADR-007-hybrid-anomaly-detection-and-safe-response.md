@@ -75,9 +75,9 @@ Prometheus / OpenSearch / Jaeger
 | Evidence/gate | Status |
 |---|---|
 | Unified implementation and review | [PR #281](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281) |
-| Unit/integration tests | 18 passing on 2026-07-17 |
+| Unit/integration tests | 20 passing on 2026-07-17 |
 | RCAEval-v2 60-case benchmark | Top-1 0.7667, Top-3 0.9333, MRR 0.8644; [report](evidence/RCAEVAL_V2_BARO_LITE_BENCHMARK.md) |
-| Read-only observability adapters and status probe | Implemented; live probe pending valid cluster credentials |
+| Read-only observability adapters and status probe | Implemented; shared production access to Prometheus/OpenSearch/Jaeger verified on 2026-07-17; live AIOps component probe remains pending 7b deployment |
 | Alertmanager notification rule | Implemented; live delivery evidence pending 7b |
 | Live E2E injection, precision, recall and lead time | Pending Mandate 7b (due 2026-07-25) |
 | Live remediation | Disabled; requires reviewed GitOps values, CDO/on-call approval and controlled drill |
