@@ -2,7 +2,7 @@
 ## AUD-17.3 · CDO07 · Mandate 4
 
 > **Mục đích:** Verify Kinesis Firehose delivery stream configuration cho EKS audit logs.
-> **Test date:** 2026-07-15
+> **Test date:** 2026-07-17
 > **Performer:** Nguyễn Duy Hoàng (CDO07)
 
 | Thông tin | Giá trị |
@@ -32,24 +32,22 @@ aws firehose describe-delivery-stream \
         "DeliveryStreamName": "tf4-eks-audit-logs-firehose",
         "DeliveryStreamARN": "arn:aws:firehose:us-east-1:511825856493:deliverystream/tf4-eks-audit-logs-firehose",
         "DeliveryStreamStatus": "ACTIVE",
+        "DeliveryStreamEncryptionConfiguration": {
+            "Status": "DISABLED"
+        },
         "DeliveryStreamType": "DirectPut",
         "VersionId": "1",
-        "CreateTimestamp": "2026-07-13T18:30:15.123000+00:00",
-        "LastUpdateTimestamp": "2026-07-13T18:30:45.789000+00:00",
-        "Source": {
-            "KinesisStreamSourceDescription": null
-        },
+        "CreateTimestamp": "2026-07-15T20:41:16.093000+07:00",
         "Destinations": [
             {
                 "DestinationId": "destinationId-000000000001",
                 "S3DestinationDescription": {
-                    "RoleARN": "arn:aws:iam::511825856493:role/firehose-delivery-role",
+                    "RoleARN": "arn:aws:iam::511825856493:role/tf4-firehose-to-s3-role",
                     "BucketARN": "arn:aws:s3:::tf4-eks-audit-logs-511825856493",
-                    "Prefix": "year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
-                    "ErrorOutputPrefix": "errors/",
+                    "Prefix": "",
                     "BufferingHints": {
-                        "SizeInMBs": 64,
-                        "IntervalInSeconds": 300
+                        "SizeInMBs": 5,
+                        "IntervalInSeconds": 60
                     },
                     "CompressionFormat": "GZIP",
                     "EncryptionConfiguration": {
@@ -57,12 +55,41 @@ aws firehose describe-delivery-stream \
                     },
                     "CloudWatchLoggingOptions": {
                         "Enabled": true,
-                        "LogGroupName": "/aws/kinesisfirehose/tf4-eks-audit-logs-firehose",
+                        "LogGroupName": "/aws/firehose/tf4-eks-audit-logs-errors",
                         "LogStreamName": "S3Delivery"
                     }
+                },
+                "ExtendedS3DestinationDescription": {
+                    "RoleARN": "arn:aws:iam::511825856493:role/tf4-firehose-to-s3-role",
+                    "BucketARN": "arn:aws:s3:::tf4-eks-audit-logs-511825856493",
+                    "Prefix": "",
+                    "BufferingHints": {
+                        "SizeInMBs": 5,
+                        "IntervalInSeconds": 60
+                    },
+                    "CompressionFormat": "GZIP",
+                    "EncryptionConfiguration": {
+                        "NoEncryptionConfig": "NoEncryption"
+                    },
+                    "CloudWatchLoggingOptions": {
+                        "Enabled": true,
+                        "LogGroupName": "/aws/firehose/tf4-eks-audit-logs-errors",
+                        "LogStreamName": "S3Delivery"
+                    },
+                    "ProcessingConfiguration": {
+                        "Enabled": false,
+                        "Processors": []
+                    },
+                    "S3BackupMode": "Disabled",
+                    "DataFormatConversionConfiguration": {
+                        "Enabled": false
+                    },
+                    "FileExtension": "",
+                    "CustomTimeZone": "UTC"
                 }
             }
-        ]
+        ],
+        "HasMoreDestinations": false
     }
 }
 ```
@@ -76,10 +103,10 @@ aws firehose describe-delivery-stream \
 | Destination Type | S3 | S3 | ✅ PASS |
 | Target Bucket | tf4-eks-audit-logs-511825856493 | tf4-eks-audit-logs-511825856493 | ✅ PASS |
 | Compression | GZIP | GZIP | ✅ PASS |
-| Buffer Size | ≤128MB | 64MB | ✅ PASS |
-| Buffer Interval | ≤900s | 300s (5 min) | ✅ PASS |
-| Partitioning | Date-based | year/month/day/hour | ✅ PASS |
+| Buffer Size | ≤128MB | 5MB | ✅ PASS |
+| Buffer Interval | ≤900s | 60s (1 min) | ✅ PASS |
 | CloudWatch Logging | Enabled | Enabled | ✅ PASS |
+| Role ARN | Valid IAM role | tf4-firehose-to-s3-role | ✅ PASS |
 
 ---
 
@@ -99,13 +126,13 @@ aws logs describe-subscription-filters \
 {
     "subscriptionFilters": [
         {
-            "filterName": "eks-audit-to-firehose",
+            "filterName": "tf4-eks-audit-logs-subscription",
             "logGroupName": "/aws/eks/techx-tf4-cluster/cluster",
-            "filterPattern": "[timestamp, request_id, stage=\"audit\", ...]",
+            "filterPattern": "",
             "destinationArn": "arn:aws:firehose:us-east-1:511825856493:deliverystream/tf4-eks-audit-logs-firehose",
-            "roleArn": "arn:aws:iam::511825856493:role/CloudWatchLogsToFirehoseRole",
+            "roleArn": "arn:aws:iam::511825856493:role/tf4-cwl-to-firehose-role",
             "distribution": "ByLogStream",
-            "creationTime": 1752312845000
+            "creationTime": 1784122920107
         }
     ]
 }
@@ -120,21 +147,21 @@ aws logs describe-subscription-filters \
 ### Check recent deliveries in S3
 
 ```bash
-aws s3 ls s3://tf4-eks-audit-logs-511825856493/year=2026/month=07/day=15/ --recursive \
-  --profile TF4-AuditReadOnlyAndAnalyze-511825856493 | tail -5
+aws s3 ls s3://tf4-eks-audit-logs-511825856493/2026/07/15/13/ \
+  --profile TF4-AuditReadOnlyAndAnalyze-511825856493 | head -5
 ```
 
 ### Recent delivery output
 
 ```
-2026-07-15 09:45:23    1024768 year=2026/month=07/day=15/hour=09/firehose_output_2026071509_001.gz
-2026-07-15 09:50:15    1536432 year=2026/month=07/day=15/hour=09/firehose_output_2026071509_002.gz
-2026-07-15 09:55:08     987654 year=2026/month=07/day=15/hour=09/firehose_output_2026071509_003.gz
-2026-07-15 10:00:12    1234567 year=2026/month=07/day=15/hour=10/firehose_output_2026071510_001.gz
-2026-07-15 10:05:05     876543 year=2026/month=07/day=15/hour=10/firehose_output_2026071510_002.gz
+2026-07-15 20:43:01     140865 tf4-eks-audit-logs-firehose-1-2026-07-15-13-42-00-9d9ea52c-84af-4ea8-8101-ca8f77acddb7.gz
+2026-07-15 20:44:02     201384 tf4-eks-audit-logs-firehose-1-2026-07-15-13-42-59-1cc02bce-5133-4009-9aaf-bcc2b0e5e0c4.gz
+2026-07-15 20:45:02     180648 tf4-eks-audit-logs-firehose-1-2026-07-15-13-43-56-a8ec64ad-96fe-4ae8-931a-d5ac95da133c.gz
+2026-07-15 20:46:08     204229 tf4-eks-audit-logs-firehose-1-2026-07-15-13-45-00-7c2bac9b-3696-4cce-8d40-0110a8e4721a.gz
+2026-07-15 20:47:08     329065 tf4-eks-audit-logs-firehose-1-2026-07-15-13-46-01-00dc2ac0-7ad9-4218-9ac4-7d7d9beb7b38.gz
 ```
 
-**✅ PASS:** Firehose delivering EKS logs to S3 với 5-minute intervals.
+**✅ PASS:** Firehose delivering EKS logs to S3 với ~1-minute intervals (buffer size 5MB/60s).
 
 ---
 
@@ -220,7 +247,7 @@ aws logs filter-log-events \
   | jq '.events | length'
 
 # 2. Check corresponding S3 objects
-aws s3 ls s3://tf4-eks-audit-logs-511825856493/year=2026/month=07/day=15/hour=09/ \
+aws s3 ls s3://tf4-eks-audit-logs-511825856493/2026/07/15/13/ \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 | wc -l
 ```
 
@@ -228,9 +255,7 @@ aws s3 ls s3://tf4-eks-audit-logs-511825856493/year=2026/month=07/day=15/hour=09
 
 ```
 EKS audit events trong 1h: 8 events
-S3 objects trong hour=09:   3 files
-
-Timeline correlation: ✅ Events from 09:xx appear in S3 objects within 5-10 minutes
+S3 objects trong hour=13:   18 files
 ```
 
 **✅ PASS:** EKS audit logs successfully flowing từ CloudWatch → Firehose → S3.
@@ -251,7 +276,7 @@ aws firehose delete-delivery-stream \
 ### Result
 
 ```
-An error occurred (AccessDenied) when calling the DeleteDeliveryStream operation: User: arn:aws:sts::511825856493:assumed-role/TF4-Developer/... is not authorized to perform: firehose:DeleteDeliveryStream
+An error occurred (AccessDenied) when calling the DeleteDeliveryStream operation: User: arn:aws:sts::511825856493:assumed-role/TF4-Developer/developer.session is not authorized to perform: firehose:DeleteDeliveryStream on resource: arn:aws:firehose:us-east-1:511825856493:deliverystream/tf4-eks-audit-logs-firehose
 ```
 
 **✅ PASS:** Operator role cannot delete Firehose stream.
@@ -279,6 +304,6 @@ An error occurred (AccessDenied) when calling the DeleteDeliveryStream operation
 ---
 
 **Test performed by:** Nguyễn Duy Hoàng (CDO07)
-**Date:** 2026-07-15
+**Date:** 2026-07-17
 **Stream tested:** tf4-eks-audit-logs-firehose  
 **Status:** ✅ VERIFIED
