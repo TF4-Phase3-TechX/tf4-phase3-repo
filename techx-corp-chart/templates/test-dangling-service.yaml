@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-dangling-service
+spec:
+  selector:
+    app: non-existent-app-for-testing-kube-linter
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

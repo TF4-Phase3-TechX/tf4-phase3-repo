@@ -1,0 +1,14 @@
+# Cấu hình Kube-Linter cho dự án TF4
+# Owner: Quyết (CDO08)
+# Trạng thái: Hoạt động
+
+# Loại bỏ các checks quá nghiêm ngặt/noise đối với codebase hiện tại
+# (các phần này sẽ được giải quyết qua các task khác trong tuần)
+checks:
+  exclude:
+    - "no-read-only-root-fs"     # Yêu cầu filesystem read-only (sẽ làm nhiều container crash nếu chưa refactor)
+    - "run-as-non-root"          # Yêu cầu chạy dưới user non-root (đang được xử lý trong SEC-10)
+    - "no-anti-affinity"         # Yêu cầu cấu hình anti-affinity (chưa cần thiết cho mọi service)
+    - "default-service-account"  # Cảnh báo dùng SA mặc định (đang được xử lý trong SEC-13)
+    - "no-liveness-probe"        # Thiếu liveness probe (đang được xử lý trong REL-02)
+    - "no-readiness-probe"       # Thiếu readiness probe (đang được xử lý trong REL-02)

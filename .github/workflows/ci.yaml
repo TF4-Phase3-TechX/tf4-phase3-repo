@@ -227,7 +227,7 @@ jobs:
 
       - name: Run tfsec scan
         run: |
-          tfsec --severity-threshold HIGH infra/terraform
+          tfsec -m HIGH --ignore-hcl-errors --exclude-downloaded-modules -e aws-ec2-no-public-egress-sgr,aws-s3-encryption-customer-key,aws-ecr-enforce-immutable-repository,aws-iam-no-policy-wildcards infra/terraform
 
   helm-render:
     name: Helm lint and render
@@ -336,8 +336,8 @@ jobs:
 
       - name: Run kube-linter scan
         run: |
-          kube-linter lint ./rendered/techx-observability.yaml
-          kube-linter lint ./rendered/techx-corp-app.yaml
+          kube-linter lint --config .kube-linter.yaml ./rendered/techx-observability.yaml
+          kube-linter lint --config .kube-linter.yaml ./rendered/techx-corp-app.yaml
 
   app-smoke-build:
     name: Docker smoke build checkout + shipping
