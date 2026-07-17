@@ -102,6 +102,21 @@ jobs:
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
           echo "Resolved image tag: ${IMAGE_TAG}"
 
+      - name: Resolve AIOps deployment state
+        id: aiops
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_TAG="${{ inputs.image_tag }}"
+          if [[ -n "$INPUT_TAG" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "A build/manual image tag was supplied; AIOps will be deployed with that tag."
+          else
+            CURRENT_ENABLED="$(helm -n "$APP_NAMESPACE" get values techx-corp -o json 2>/dev/null | jq -r '.components.aiops.enabled // false')"
+            echo "enabled=${CURRENT_ENABLED}" >> "$GITHUB_OUTPUT"
+            echo "Standalone chart deploy preserves current AIOps enabled state: ${CURRENT_ENABLED}."
+          fi
+
       - name: Create namespaces
         run: |
           kubectl create namespace "$OBS_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
@@ -159,6 +174,7 @@ jobs:
             --create-namespace \
             --set default.image.repository="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" \
             --set default.image.tag="$IMAGE_TAG" \
+            --set components.aiops.enabled="${{ steps.aiops.outputs.enabled }}" \
             -f deploy/values-app-stamp.yaml \
             -f deploy/values-flagd-sync.yaml \
             --wait \
@@ -170,7 +186,11 @@ jobs:
           kubectl -n "$OBS_NAMESPACE" get pods
           kubectl -n "$APP_NAMESPACE" get pods
 
-          for deploy in frontend frontend-proxy product-catalog cart checkout payment flagd kafka; do
+          DEPLOYMENTS=(frontend frontend-proxy product-catalog cart checkout payment flagd kafka)
+          if [[ "${{ steps.aiops.outputs.enabled }}" == "true" ]]; then
+            DEPLOYMENTS+=(aiops)
+          fi
+          for deploy in "${DEPLOYMENTS[@]}"; do
             kubectl -n "$APP_NAMESPACE" rollout status "deploy/${deploy}" --timeout=180s
           done
 

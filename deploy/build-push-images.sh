@@ -14,6 +14,7 @@ set +a
 
 # Danh sách dịch vụ trong compose cần build và push
 SERVICES=(
+  aiops
   accounting
   ad
   cart

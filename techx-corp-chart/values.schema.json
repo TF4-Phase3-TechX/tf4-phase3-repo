@@ -35,6 +35,13 @@
     "components": {
       "$ref": "#/definitions/Components"
     },
+    "aiopsRemediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "liveEnabled": { "type": "boolean" }
+      }
+    },
     "opentelemetry-collector": {
       "type": "object"
     },
@@ -60,6 +67,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "aiops": {
+          "$ref": "#/definitions/Component"
+        },
         "accounting": {
           "$ref": "#/definitions/Component"
         },
@@ -178,6 +188,9 @@
           "items": {
             "$ref": "#/definitions/Env"
           }
+        },
+        "serviceAccountName": {
+          "type": "string"
         },
         "command": {
           "type": "array",

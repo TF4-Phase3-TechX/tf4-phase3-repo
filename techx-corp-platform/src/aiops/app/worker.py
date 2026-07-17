@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+
+from prometheus_client import Counter, Gauge
+
+from .config import Settings
+from .detection import Detector, error_rate_query, latency_query, llm_error_query
+from .models import Evidence, Incident
+from .remediation import RemediationController
+from .store import IncidentStore
+from .telemetry import TelemetryClient, TelemetryError
+
+log = logging.getLogger("aiops.worker")
+poll_failures = Counter("aiops_telemetry_poll_failures_total", "Telemetry poll failures", ["source"])
+incidents_created = Counter("aiops_incidents_created_total", "Incidents created", ["incident_type", "service"])
+last_poll_success = Gauge("aiops_last_poll_success_unixtime", "Last successful telemetry polling time")
+
+
+class AIOpsWorker:
+    def __init__(self, settings: Settings, telemetry: TelemetryClient, detector: Detector, store: IncidentStore, remediation: RemediationController):
+        self.settings = settings
+        self.telemetry = telemetry
+        self.detector = detector
+        self.store = store
+        self.remediation = remediation
+        self.running = False
+
+    async def poll_once(self) -> None:
+        import time
+
+        logs = await self.telemetry.search_logs(self.settings.llm_services, ("timeout", "rate_limit", "deadline", "error"))
+        decisions = []
+        for service in self.settings.services:
+            query = latency_query(service)
+            decisions.append(self.detector.latency(service, await self.telemetry.query_range(query), query))
+            query = error_rate_query(service)
+            decisions.append(self.detector.error_rate(service, await self.telemetry.query_range(query), query))
+        for service in self.settings.llm_services:
+            query = llm_error_query(service)
+            decisions.append(
+                self.detector.llm_error(
+                    service,
+                    await self.telemetry.query_range(query),
+                    query,
+                    len(logs) if logs is not None else None,
+                )
+            )
+        for decision in decisions:
+            if not decision.anomalous:
+                continue
+            incident = Incident(
+                incident_type=decision.incident_type,
+                severity=decision.severity,
+                affected_service=decision.service,
+                confidence=decision.confidence,
+                suspected_root_cause=decision.root_cause,
+                evidence=decision.evidence,
+                rca_candidates=decision.candidates,
+                runbook_id=decision.runbook_id,
+                recommended_action=decision.recommended_action,
+            )
+            traces = await self.telemetry.find_traces(decision.service)
+            if traces is None:
+                incident.evidence.append(
+                    Evidence(
+                        source="jaeger",
+                        query=f"service={decision.service}",
+                        window=f"{self.settings.lookback_minutes}m",
+                        value="unavailable",
+                    )
+                )
+            elif traces:
+                trace_id = traces[0].get("traceID") or traces[0].get("traceId")
+                incident.evidence.append(Evidence(
+                    source="jaeger", query=f"service={decision.service}", window=f"{self.settings.lookback_minutes}m",
+                    value=len(traces), reference=str(trace_id) if trace_id else None,
+                ))
+            stored, created = await self.store.upsert(incident)
+            if created:
+                incidents_created.labels(incident.incident_type, incident.affected_service).inc()
+                self.remediation.request_approval(stored)
+                log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
+        last_poll_success.set(time.time())
+
+    async def run(self) -> None:
+        self.running = True
+        while self.running:
+            try:
+                await self.poll_once()
+            except TelemetryError as exc:
+                poll_failures.labels("prometheus").inc()
+                log.error(json.dumps({"event": "telemetry_degraded", "error": str(exc)}))
+            except Exception:
+                log.exception("unexpected polling failure")
+            await asyncio.sleep(self.settings.poll_seconds)
+
+    def stop(self) -> None:
+        self.running = False

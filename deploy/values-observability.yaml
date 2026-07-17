@@ -6,6 +6,7 @@ grafana: { enabled: true }
 opensearch: { enabled: true }
 
 components:
+  aiops: { enabled: false }
   accounting: { enabled: false }
   ad: { enabled: false }
   cart: { enabled: false }
