@@ -40,7 +40,53 @@ should be last.
 {{-   $allEnvs = append $allEnvs $resourceAttributesEnv }}
 {{- end }}
 
+{{/*
+CDO08-SEC-13D: When managedData.<type>.enabled=true, replace the matching
+plaintext env var with a secretKeyRef pointing to the ESO-synced K8s Secret.
+All flags default to false — no change to existing behavior until explicitly flipped.
+*/}}
+{{- $md := .managedData | default dict }}
+
+{{- if (($md.postgresql | default dict).enabled | default false) }}
+{{-   $pgSecret := ($md.postgresql).secretName | default "rds-postgres-secret" }}
+{{-   $pgKeyMap := dict "accounting" "dotnet-conn-string" "product-catalog" "go-conn-string" "product-reviews" "python-conn-string" }}
+{{-   if hasKey $pgKeyMap .name }}
+{{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "DB_CONNECTION_STRING" "secretName" $pgSecret "secretKey" (index $pgKeyMap .name)) | mustFromJson }}
+{{-   end }}
+{{- end }}
+
+{{- if (($md.valkey | default dict).enabled | default false) }}
+{{-   $valkeySecret := ($md.valkey).secretName | default "elasticache-valkey-secret" }}
+{{-   if eq .name "cart" }}
+{{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "VALKEY_ADDR" "secretName" $valkeySecret "secretKey" "valkey-address") | mustFromJson }}
+{{-   end }}
+{{- end }}
+
+{{- if (($md.kafka | default dict).enabled | default false) }}
+{{-   $kafkaSecret := ($md.kafka).secretName | default "msk-kafka-secret" }}
+{{-   if has .name (list "accounting" "checkout" "fraud-detection") }}
+{{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_ADDR" "secretName" $kafkaSecret "secretKey" "kafka-address") | mustFromJson }}
+{{-   end }}
+{{- end }}
+
 {{- tpl (toYaml $allEnvs) . }}
+{{- end }}
+
+{{/*
+Helper: replace a named env var in an env list with a secretKeyRef entry.
+Input dict keys: envList, envName, secretName, secretKey.
+Returns a JSON array suitable for mustFromJson chaining.
+*/}}
+{{- define "techx-corp.replaceEnvWithSecretRef" -}}
+{{- $out := list }}
+{{- range .envList }}
+{{-   if eq .name $.envName }}
+{{-     $out = append $out (dict "name" $.envName "valueFrom" (dict "secretKeyRef" (dict "name" $.secretName "key" $.secretKey))) }}
+{{-   else }}
+{{-     $out = append $out . }}
+{{-   end }}
+{{- end }}
+{{- $out | toJson }}
 {{- end }}
 
 
