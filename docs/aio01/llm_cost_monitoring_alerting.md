@@ -11,7 +11,8 @@ Since AWS billing aggregation is not an online request-control signal, we use **
 - **Instrumented Fields:**
   - `app_llm_prompt_tokens_total`
   - `app_llm_completion_tokens_total`
-  - `app_llm_estimated_cost_usd_total`
+  - SDK instrument: `app_llm_estimated_cost_usd_total`
+  - Deployed Prometheus series: `app_llm_estimated_cost_usd_USD_total` (OTel appends the `USD` unit)
   - `app_llm_latency_seconds`
   - `app_llm_errors_total`
 - **Cost Calculation Formula (Nova 2 Lite evaluated snapshot):**
@@ -51,13 +52,13 @@ graph LR
 
 ### Alert Rules Specification
 - **Rule 1: High Hourly Spend Rate**
-  - *Condition:* `sum(increase(app_llm_estimated_cost_usd_total[1h])) > 2.0`
+  - *Condition:* `sum(increase(app_llm_estimated_cost_usd_USD_total[1h])) > 2.0`
   - *Action:* Warning alert sent to Slack `#aio-alerts`.
 - **Rule 2: Daily Budget Exhaustion**
-  - *Condition:* `sum(increase(app_llm_estimated_cost_usd_total[24h])) > 10.0`
+  - *Condition:* `sum(increase(app_llm_estimated_cost_usd_USD_total[24h])) > 10.0`
   - *Action:* Critical alert. Freeze further rollout and request the CDO owner to revert the previous reviewed image/configuration. AIO does not mutate runtime flags or deployment state.
 
-> **Metric-name verification gate:** The PromQL names above are provisional until the first deployment confirms the exact OTel-to-Prometheus translated series names in Grafana/Prometheus. Do not enable an alert from this document until its query returns the expected live series.
+> **Metric-name verification gate:** The exported cost series was verified on 2026-07-17 as `app_llm_estimated_cost_usd_USD_total`. Re-verify after any collector naming/view change before enabling or modifying an alert.
 
 ---
 
