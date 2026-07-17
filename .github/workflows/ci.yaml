@@ -261,13 +261,15 @@ jobs:
 
       - name: Render observability release
         run: |
+          mkdir -p rendered
           helm template techx-observability ./techx-corp-chart \
             --namespace techx-observability \
             -f deploy/values-observability.yaml \
-            > /tmp/techx-observability.yaml
+            > rendered/techx-observability.yaml
 
       - name: Render app release
         run: |
+          mkdir -p rendered
           helm template techx-corp ./techx-corp-chart \
             --namespace techx-tf4 \
             --set default.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY} \
@@ -275,7 +277,7 @@ jobs:
             -f deploy/values-app-stamp.yaml \
             -f deploy/values-flagd-sync.yaml \
             -f deploy/values-aio-llm.yaml \
-            > /tmp/techx-corp-app.yaml
+            > rendered/techx-corp-app.yaml
 
       - name: Assert application resource and HPA defaults
         run: |
@@ -283,7 +285,7 @@ jobs:
           from pathlib import Path
           import yaml
 
-          resources = [r for r in yaml.safe_load_all(Path('/tmp/techx-corp-app.yaml').read_text()) if r]
+          resources = [r for r in yaml.safe_load_all(Path('rendered/techx-corp-app.yaml').read_text()) if r]
           expected = {
               'frontend-proxy', 'frontend', 'cart', 'product-catalog', 'recommendation',
               'product-reviews', 'llm', 'checkout', 'currency', 'payment', 'shipping',
@@ -307,9 +309,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rendered-manifests
-          path: |
-            /tmp/techx-observability.yaml
-            /tmp/techx-corp-app.yaml
+          path: rendered/
           if-no-files-found: error
 
   helm-manifest-scan:
@@ -336,8 +336,17 @@ jobs:
 
       - name: Run kube-linter scan
         run: |
-          kube-linter lint --config .kube-linter.yaml ./rendered/techx-observability.yaml
-          kube-linter lint --config .kube-linter.yaml ./rendered/techx-corp-app.yaml
+          kube-linter lint --config .kube-linter.yaml ./rendered/techx-observability.yaml > kube-linter-obs.txt 2>&1 || obs_failed=1
+          kube-linter lint --config .kube-linter.yaml ./rendered/techx-corp-app.yaml > kube-linter-app.txt 2>&1 || app_failed=1
+          
+          echo "=== Observability Linter Output ==="
+          cat kube-linter-obs.txt
+          echo "=== App Linter Output ==="
+          cat kube-linter-app.txt
+          
+          if [ -n "$obs_failed" ] || [ -n "$app_failed" ]; then
+            exit 1
+          fi
 
   app-smoke-build:
     name: Docker smoke build checkout + shipping
