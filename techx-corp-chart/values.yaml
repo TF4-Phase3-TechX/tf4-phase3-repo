@@ -50,6 +50,28 @@ prometheusRetainStorageClass:
   provisioner: kubernetes.io/aws-ebs
   allowVolumeExpansion: false
 
+cloudflareAccess:
+  enabled: false
+  namespace: cloudflare-access
+  createNamespace: true
+  replicas: 2
+  image:
+    repository: cloudflare/cloudflared
+    tag: "2025.7.0"
+    pullPolicy: IfNotPresent
+  tokenSecret:
+    name: cloudflare-tunnel-token
+    key: token
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  metrics:
+    port: 2000
+
 components:
   ## Demo Components are named objects (services) with several properties
   # demoService:
