@@ -1,6 +1,6 @@
 # Mandate 8 - Valkey Migration Decisions & ADR Record
 
-* **Trạng thái:** Chờ điền thông tin và ký duyệt (Draft)
+* **Trạng thái:** Đã điền phân tích, chờ ký duyệt (Tech Lead: Quân)
 
 Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trúc (ADR format) trống dạng bảng so sánh để cá nhân Tech Lead tự điền nghiên cứu độc lập. Khung hướng dẫn triển khai chỉ yêu cầu mô tả quy trình chung và các lưu ý phòng ngừa lỗi cho phương án được chọn ở các quyết định kỹ thuật phức tạp.
 
@@ -17,8 +17,8 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Ảnh hưởng Trải nghiệm Khách hàng (SLO) |
 | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `[ ]` | `[Điền phân tích lý do chọn, các mặt lợi/hại]` | `[Điền đánh giá tác động tới SLO đặt hàng]` |
-| **BỊ LOẠI BỎ** | `[ ]` | `[Điền phân tích lý do loại bỏ]` | `[N/A]` |
+| **ĐÃ CHỌN** | `B` | Cart hiện chỉ lưu duy nhất 1 field (`"cart"`, protobuf) theo key `userId` và **luôn set TTL 60 phút mỗi lần ghi** (`ValkeyCartStore.cs`) — bản chất dữ liệu là tạm thời, không phải state cần bảo toàn dài hạn. Cold cutover không cần dual-write/migration tool, không đổi code `cart` service, rủi ro kỹ thuật thấp nhất, thời gian thực hiện ngắn — phù hợp deadline Mandate 8 (2026-07-20). Nhược điểm: user đang có cart hoạt động tại thời điểm cutover sẽ thấy giỏ trống, phải add lại item. | Không ảnh hưởng **success rate checkout** (metric SLO chính) một cách trực tiếp — checkout fail chỉ xảy ra khi *đang* thao tác giữa lúc repoint (ngắn, vài giây) chứ không phải do mất dữ liệu cart cũ tự nó. Cắt giảm blast radius bằng cách cutover trong **low-traffic window**: vì TTL là 60 phút, chỉ user thao tác trong ~1 giờ trước cutover bị ảnh hưởng — giỏ đã idle quá TTL vốn dĩ cũng đã tự hết hạn, không phải "mất thêm" so với hành vi bình thường của hệ thống. |
+| **BỊ LOẠI BỎ** | `A` | Active Cart Migration cần dual-write hoặc export/import trong lúc hệ thống vẫn nhận traffic — phát sinh độ phức tạp (đồng bộ 2 chiều, xử lý race condition read-modify-write giữa 2 store) để bảo toàn dữ liệu vốn dĩ **tự thiết kế là ephemeral** (TTL 60 phút). Chi phí kỹ thuật không tương xứng với giá trị dữ liệu bảo toàn được — cart mất tự nhiên sau 1 giờ dù có migrate hay không. | N/A |
 
 ---
 
@@ -34,8 +34,9 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Phân tích Chi phí (Cost) | Khả năng Sẵn sàng (HA) |
 | :--- | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `[ ]` | `[Điền phân tích lý do chọn, các mặt lợi/hại]` | `[Điền phân tích chi phí]` | `[Điền đánh giá khả năng failover]` |
-| **BỊ LOẠI BỎ** | `[ ]` | `[Điền phân tích lý do loại bỏ]` | `[Điền chi phí so sánh]` | `[N/A]` |
+| **ĐÃ CHỌN** | `1` | Khác với Kafka (producer fire-and-forget, async), **`checkout` phụ thuộc đồng bộ vào Valkey qua `cart` service** để đọc item trước khi tạo đơn — Valkey unreachable = checkout fail ngay lập tức trên đường găng (critical path). `cart` service tuy chạy `replicas: 2` + PDB nhưng cả 2 pod đều trỏ về **cùng 1 backend Valkey** — redundancy ở tầng app không giúp gì nếu tầng cache chết. Hiện tại (in-cluster) đây vốn đã là 1 single point of failure (1 pod, `Recreate`); chuyển sang Multi-AZ ElastiCache là **cải thiện** so với hiện trạng, không phải thêm rủi ro mới. | Chênh lệch chi phí giữa Single-Node và Multi-AZ chỉ khoảng **~$12/tháng (~$2.7/tuần)** — nhỏ không đáng kể so với trần `$300/tuần` và cực nhỏ so với phần MSK (`~$14-15/tuần`, cấu phần đắt nhất của cả migration). Chi phí không phải rào cản ở quyết định này. | Multi-AZ có automatic failover (ElastiCache tự phát hiện & chuyển sang replica, thường trong khoảng vài chục giây), giảm thời gian gián đoạn checkout khi node/AZ gặp sự cố so với chờ AWS tự phục hồi single-node (không có failover, downtime kéo dài hơn tới khi node được thay thế). |
+| **BỊ LOẠI BỎ** | `2` | Rẻ nhất nhưng **không có failover** — một sự cố node/AZ sẽ làm checkout ngừng hoạt động hoàn toàn (tương tự rủi ro hiện tại) cho tới khi AWS tự phục hồi. Vì Valkey nằm trên đường găng checkout (không giống Kafka fire-and-forget), chấp nhận risk này chỉ để tiết kiệm ~$2.7/tuần là đánh đổi không hợp lý khi ngân sách còn nhiều headroom (`~$243/tuần` sau khi cộng cả 3 managed service ở mức cost-first). | Rẻ hơn Phương án 1 nhưng chênh lệch không đáng kể (xem cột trước). | Không có auto-failover; RTO phụ thuộc AWS tự thay node — không kiểm soát được, rủi ro cao hơn cho 1 dependency nằm trên critical path checkout. |
+| **BỊ LOẠI BỎ** | `3` | Cart hiện chỉ tiêu thụ **32-64Mi RAM** ở mức resource limit hiện tại (`values.yaml`), dữ liệu mỗi entry rất nhỏ (1 field protobuf/user, TTL 60 phút nên không tích luỹ). Instance lớn hơn (`cache.m7g.large`+) hoặc nhiều replica hơn không giải quyết vấn đề nào đang tồn tại — over-provision so với workload thực tế, tốn chi phí không cần thiết. | Đắt hơn đáng kể so với `t4g.micro` mà không có lợi ích tương xứng với quy mô dữ liệu cart hiện tại. | Không cải thiện gì thêm so với Phương án 1 cho khối lượng dữ liệu này — thừa capacity, không thừa an toàn. |
 
 ---
 
@@ -48,14 +49,16 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 ### 2. Phân tích & Lựa chọn của Tech Lead
 
+> Vì VK-01 đã chọn **Cold Cutover** (không bảo toàn cart đang hoạt động), quyết định này thực chất chỉ còn ý nghĩa **dự phòng/kiểm thử** (vd seed dữ liệu mẫu để smoke-test kết nối ElastiCache trước cutover), không phải để di trú cart thật của khách hàng.
+
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Yêu cầu sửa đổi Code ứng dụng | Độ phức tạp Vận hành |
 | :--- | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `[ ]` | `[Điền phân tích lý do chọn, các mặt lợi/hại]` | `[Điền đánh giá can thiệp code]` | `[Điền đánh giá vận hành]` |
-| **BỊ LOẠI BỎ** | `[ ]` | `[Điền phân tích lý do loại bỏ]` | `[N/A]` | `[N/A]` |
+| **ĐÃ CHỌN** | `A` | RDB export/import là thao tác vận hành thuần (dump từ pod `valkey-cart` → restore vào ElastiCache), không đụng tới code `cart` service — nhất quán với triết lý cold-cutover ở VK-01 (không cần pipeline sống). Chỉ dùng để: (1) kiểm thử kết nối/permission trước cutover thật (pre-flight), (2) tuỳ chọn seed vài key mẫu để smoke test end-to-end (add→get→checkout) trên ElastiCache trước khi repoint traffic thật. | Không cần — hoàn toàn ở tầng vận hành/hạ tầng. | Thấp — 1 lệnh dump + 1 lệnh restore, chạy 1 lần trong 1 Job ngắn hạn (VAP-compliant: non-root, pinned tag, requests+limits, drop ALL). |
+| **BỊ LOẠI BỎ** | `B` | Dual-Write & SCAN Backfill chỉ có giá trị nếu VK-01 chọn Active Cart Migration (bảo toàn cart sống) — nhưng quyết định đó đã bị loại. Áp dụng phương án này ở đây là over-engineering: đòi sửa code `cart` service để ghi song song 2 backend, thêm rủi ro (race condition, backend nào là source of truth trong lúc chuyển tiếp), tốn thời gian implement/test không cần thiết cho dữ liệu TTL 60 phút. | Có — phải sửa `ValkeyCartStore.cs` để ghi đồng thời 2 nơi, thêm logic backfill SCAN. | Cao — cần vận hành 2 backend song song, theo dõi đồng bộ, rollback phức tạp hơn nếu backfill lỗi giữa chừng. |
 
 #### Kế hoạch Triển khai cho Phương án Đã Chọn:
-* **Cách triển khai đề xuất:** `[Tech Lead mô tả quy trình các bước thực hiện ở mức tổng quan]`
-* **Lưu ý & Biện pháp phòng ngừa lỗi:** `[Tech Lead nêu các lưu ý quan trọng để tránh lỗi trong quá trình thực hiện]`
+* **Cách triển khai đề xuất:** (1) Provision ElastiCache (Multi-AZ theo VK-02) trong private subnet, security group chỉ mở từ EKS node SG. (2) Chạy Job pre-flight (VAP-compliant) test connectivity/TLS/auth từ trong `techx-tf4` tới endpoint mới. (3) Tuỳ chọn: `redis-cli --rdb` dump từ `valkey-cart` pod, restore vào ElastiCache để smoke-test (không phải để bảo toàn cart thật). (4) Trong low-traffic window, repoint `VALKEY_ADDR` sang ElastiCache + credential/TLS mới qua Secret, rolling restart `cart` (giữ `replicas: 2`). (5) Chạy cart smoke test end-to-end (add item → get cart → checkout) qua trace Jaeger để verify.
+* **Lưu ý & Biện pháp phòng ngừa lỗi:** Không bao giờ repoint khi chưa pass pre-flight connectivity test. Giữ pod + PVC `valkey-cart` cũ **warm** (không xoá) cho tới khi bake xong (24-48h ổn định) — theo `resource-policy: keep` sẵn có. Thông báo trước cho PM/business về việc user online sẽ mất cart tại thời điểm cutover (cần sign-off, không tự quyết).
 
 ---
 
@@ -71,12 +74,13 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Thời gian Rollback (RTO) | Mức độ mất mát dữ liệu giỏ hàng |
 | :--- | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `[ ]` | `[Điền phân tích lý do chọn, các mặt lợi/hại]` | `[Điền đánh giá thời gian rollback]` | `[Điền đánh giá rủi ro mất giỏ]` |
-| **BỊ LOẠI BỎ** | `[ ]` | `[Điền phân tích lý do loại bỏ]` | `[N/A]` | `[N/A]` |
+| **ĐÃ CHỌN** | `C` | Nhất quán với VK-01/VK-03 (cold cutover, không có pipeline dual-write) — pod + PVC `valkey-cart` cũ vẫn còn giữ nguyên (`resource-policy: keep`), nên rollback chỉ là repoint env về lại `valkey-cart:6379` + rolling restart `cart`. Đơn giản, nhanh, rủi ro vận hành thấp nhất — đúng tinh thần "đã chấp nhận mất cart 1 lần khi cutover forward, thì rollback cũng chấp nhận mất cart 1 lần theo chiều ngược lại" thay vì cố bảo toàn 1 chiều mà không bảo toàn chiều kia. | **Rất nhanh** — chỉ là thay đổi 1 biến môi trường (`VALKEY_ADDR`) + rolling restart Deployment `cart`, tính bằng phút (không cần chờ data sync). | Cart được tạo/sửa trên ElastiCache trong khoảng thời gian giữa cutover và rollback sẽ mất — chấp nhận được vì (1) dữ liệu vốn ephemeral TTL 60 phút, (2) đã có business sign-off cho việc mất cart ở VK-01, (3) window cutover→rollback thường ngắn (phát hiện lỗi qua observability gate gần như ngay lập tức). |
+| **BỊ LOẠI BỎ** | `A` | Chỉ khả thi nếu đã triển khai dual-write (VK-03 phương án B) — nhưng dual-write đã bị loại vì over-engineering so với giá trị dữ liệu. Chọn A ở đây sẽ mâu thuẫn với quyết định VK-03. | N/A (phụ thuộc dual-write chưa có) | N/A |
+| **BỊ LOẠI BỎ** | `B` | Về mặt kỹ thuật khả thi (SCAN toàn bộ key trên ElastiCache, ghi ngược vào Valkey cũ) nhưng tốn effort xây script + thời gian chạy scan/backfill — không tương xứng với giá trị dữ liệu ephemeral cần bảo toàn (cart TTL 60 phút, phần lớn key backfill xong cũng gần hết hạn). Làm rollback **chậm hơn** đúng lúc cần nhanh nhất (rollback nghĩa là đang có sự cố). | Chậm hơn C — phụ thuộc số lượng key cần SCAN + backfill. | Thấp hơn C về lý thuyết, nhưng lợi ích không đáng kể so với chi phí thời gian rollback tăng thêm khi hệ thống đang gặp sự cố. |
 
 #### Kế hoạch Triển khai cho Phương án Đã Chọn:
-* **Cách triển khai đề xuất:** `[Tech Lead mô tả quy trình các bước thực hiện ở mức tổng quan]`
-* **Lưu ý & Biện pháp phòng ngừa lỗi:** `[Tech Lead nêu các lưu ý quan trọng để tránh lỗi trong quá trình thực hiện]`
+* **Cách triển khai đề xuất:** Trigger rollback khi chạm 1 trong các ngưỡng ở §6.3 (checkout success rate < 99%, cart smoke test fail, ElastiCache lỗi kết nối/TLS): (1) repoint `VALKEY_ADDR` env về `valkey-cart:6379` trong `values.yaml`/overlay, (2) rollout `cart` deployment (rolling, giữ `replicas: 2` luôn có bản phục vụ), (3) verify lại cart smoke test trên Valkey in-cluster, (4) thông báo Slack/incident channel + ghi nhận trong evidence (REL-19).
+* **Lưu ý & Biện pháp phòng ngừa lỗi:** Không debug trên production khi đã chạm ngưỡng — repoint ngay, điều tra sau (pattern REL-09 runbook). Không xoá pod/PVC `valkey-cart` cũ cho tới khi đã bake ổn định 24-48h trên ElastiCache (REL-18 chỉ chạy sau mốc này).
 
 ---
 
@@ -91,5 +95,6 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Thời gian Phản ứng của Platform | Rủi ro mất key do Eviction |
 | :--- | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `[ ]` | `[Điền phân tích lý do chọn, các mặt lợi/hại]` | `[Điền đánh giá thời gian phản ứng]` | `[Điền đánh giá rủi ro mất giỏ]` |
-| **BỊ LOẠI BỎ** | `[ ]` | `[Điền phân tích lý do loại bỏ]` | `[N/A]` | `[N/A]` |
+| **ĐÃ CHỌN** | `1` | Cache chứa dữ liệu **user-facing** (giỏ hàng đang hoạt động) — nếu bị evict *trước* khi TTL 60 phút tự nhiên hết hạn (do memory pressure, vd traffic spike bất thường hoặc key size tăng đột biến), khách hàng mất giỏ hàng **sớm hơn dự kiến** một cách không kiểm soát được — khác về bản chất với việc mất cart do cutover đã được thông báo/chấp nhận trước (VK-01/VK-04). Cảnh báo sớm ở 80% cho platform team nhiều thời gian phản ứng hơn (điều tra nguyên nhân tăng memory, scale instance nếu cần) trước khi chạm ngưỡng eviction thật. Đánh đổi: nhiều cảnh báo hơn Phương án 2 (bao gồm một số false alarm khi có traffic spike ngắn hạn tự nhiên, vd Locust load-generator test). | Nhanh hơn — có buffer ~20% dung lượng để platform xử lý trước khi bắt đầu evict. | Thấp hơn — do được cảnh báo sớm, có thời gian scale/điều tra trước khi ElastiCache bắt đầu evict key theo policy (`volatile-lru`/`allkeys-lru` tuỳ cấu hình `maxmemory-policy`), giảm rủi ro khách hàng mất giỏ hàng ngoài ý muốn. |
+| **BỊ LOẠI BỎ** | `2` | Ít cảnh báo giả hơn (đỡ nhiễu cho platform team), nhưng chỉ còn ~10% buffer để phản ứng trước khi bắt đầu evict — với dữ liệu ảnh hưởng trực tiếp tới trải nghiệm khách hàng (không phải cache thuần kỹ thuật, không quan trọng), đánh đổi giảm nhiễu lấy rủi ro cao hơn là hợp lý ngược lại. | Chậm hơn — ít thời gian phản ứng hơn trước ngưỡng eviction thật. | Cao hơn — buffer hẹp hơn đồng nghĩa nhiều khả năng bắt đầu evict trước khi platform kịp scale, ảnh hưởng trực tiếp tới khách hàng đang có giỏ hàng hoạt động (khác cart timeout tự nhiên mà khách đã ngầm chấp nhận). |
+
