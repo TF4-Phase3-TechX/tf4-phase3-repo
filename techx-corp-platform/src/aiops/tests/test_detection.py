@@ -1,5 +1,12 @@
 from app.config import Settings
-from app.detection import Detector, anomaly_scores, error_rate_query, llm_error_query, torai_lite_score
+from app.detection import (
+    Detector,
+    adaptive_breach,
+    anomaly_scores,
+    error_rate_query,
+    llm_error_query,
+    torai_lite_score,
+)
 
 
 def settings(**overrides):
@@ -34,6 +41,8 @@ def test_error_rate_uses_per_service_span_metrics_and_requires_sustained_polls()
     series = [{"values": [[i, str(v)] for i, v in enumerate([0.005] * 8 + [0.12])]}]
     query = error_rate_query("checkout")
     assert 'service_name="checkout"' in query
+    assert "increase(" in query
+    assert ">= 20" in query
     assert detector.error_rate("checkout", series, query).anomalous is False
     assert detector.error_rate("checkout", series, query).anomalous is True
 
@@ -43,6 +52,33 @@ def test_llm_query_uses_instrumented_app_metric_family():
     assert "app_llm_errors_total" in query
     assert "app_llm_calls_total" in query
     assert "app_llm_requests_total" not in query
+    assert ">= 5" in query
+
+
+def test_llm_error_requires_adaptive_metric_breach_and_treats_logs_as_evidence_only():
+    detector = Detector(settings(sustained_polls=1, llm_error_threshold=0.05))
+    healthy = [{"values": [[i, str(v)] for i, v in enumerate([0.01] * 8 + [0.01])]}]
+    assert detector.llm_error("product-reviews", healthy, "q", log_count=99).anomalous is False
+
+    degraded = [{"values": [[i, str(v)] for i, v in enumerate([0.01] * 8 + [0.08])]}]
+    decision = detector.llm_error("product-reviews", degraded, "q", log_count=1)
+    assert decision.anomalous is True
+    assert decision.service == "product-reviews"
+    assert [candidate["service"] for candidate in decision.candidates] == ["product-reviews"]
+
+
+def test_robust_baseline_prevents_noise_spike_from_masking_a_separate_incident():
+    scores = anomaly_scores([100, 101, 99, 100, 5000, 102, 98, 101, 160])
+    assert scores["ratio"] >= 1.5
+    assert adaptive_breach(scores) is True
+
+
+def test_high_but_stable_service_load_does_not_fire_on_small_shift():
+    detector = Detector(settings(sustained_polls=1, latency_threshold_ms=900))
+    busy_healthy = [
+        {"values": [[i, str(v)] for i, v in enumerate([990, 1000, 1010, 995, 1005, 1000, 990, 1010, 1100])]}
+    ]
+    assert detector.latency("checkout", busy_healthy, "q").anomalous is False
 
 
 def test_torai_lite_renormalizes_available_sources_and_records_missing_sources():

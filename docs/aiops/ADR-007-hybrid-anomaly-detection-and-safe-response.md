@@ -32,11 +32,11 @@ These ranges are the 7a design baselines used to seed the implementation. They a
 
 | Signal and scope | Why it matters | Initial normal range | Anomaly rule | Method |
 |---|---|---|---|---|
-| p95 span latency for `frontend`, `checkout`, `product-reviews`, `llm` | Direct user-visible degradation and dependency slowdown | 200–800 ms; service-specific rolling mean remains primary | Current p95 ≥1,000 ms **and** ≥1.5× baseline, z-score ≥3, or EWMA residual score ≥1; sustained two polls. Severity becomes critical-equivalent at ≥2,000 ms | PromQL histogram quantile + ratio/z-score/EWMA; Isolation Forest evidence |
-| Error rate for the same critical services | Measures failed requests and error-budget burn before customers report | 0–2% in a healthy window | Current rate ≥5% **and** ≥1.5× baseline, z-score ≥3, or EWMA residual score ≥1; sustained two polls. Severity becomes critical-equivalent at ≥10% | Error calls / all calls from OTel span metrics + rolling statistical baseline |
-| LLM/provider error rate for `product-reviews` and `llm` | AI-path provider failure can silently degrade review assistance while the storefront remains up | 0–2%; isolated provider failures may occur without forming an incident | Error rate ≥5% or at least three scoped timeout/rate-limit/error logs; sustained two polls. ≥25% is critical-equivalent | Application counters + OpenSearch correlation + TORAI-lite evidence score |
+| p95 span latency for `frontend`, `checkout`, `product-reviews`, `llm` | Direct user-visible degradation and dependency slowdown | 200–800 ms; service-specific rolling baseline remains primary | Current p95 ≥1,000 ms safety floor **and** either ≥1.5× its own robust baseline or both z-score ≥3 and EWMA residual score ≥1; sustained two polls. Severity becomes critical-equivalent at ≥2,000 ms | PromQL histogram quantile + robust ratio/z-score/EWMA; Isolation Forest evidence |
+| Error rate for the same critical services | Measures failed requests and error-budget burn before customers report | 0–2% in a healthy window | At least 20 requests in five minutes, current rate ≥5% safety floor, and the same per-service adaptive gate; sustained two polls. Severity becomes critical-equivalent at ≥10% | Error calls / all calls from OTel span metrics + robust rolling statistical baseline |
+| Global LLM/provider error rate owned by `product-reviews` | AI-path provider failure can silently degrade review assistance while the storefront remains up | 0–2%; isolated provider failures may occur without forming an incident | At least five calls in five minutes, error rate ≥5% safety floor, and the same adaptive gate; sustained two polls. Logs enrich confidence but cannot fire alone. ≥25% is critical-equivalent | Application counters + OpenSearch correlation + TORAI-lite evidence score |
 
-The detector currently queries `traces_span_metrics_duration_milliseconds_bucket`, `traces_span_metrics_calls_total`, `app_llm_calls_total`, and `app_llm_errors_total`. Query windows are five minutes inside the 30-minute lookback. Thresholds are configurable so 7b calibration can change values without rewriting the algorithm.
+The detector currently queries `traces_span_metrics_duration_milliseconds_bucket`, `traces_span_metrics_calls_total`, `app_llm_calls_total`, and `app_llm_errors_total`. Query windows are five minutes inside the 30-minute lookback. The absolute values are configurable safety floors; they are not shared baselines. Each latency/error series is scored against that service's own history. A median/MAD filter removes isolated historical spikes before scoring so one noisy sample cannot mask a separate incident. A small z-score alone is insufficient: the signal must have a meaningful ratio shift or agree with the EWMA residual. The global `app_llm_*` family has one configurable incident owner to prevent duplicate incidents.
 
 ## End-to-end control flow
 
@@ -66,6 +66,8 @@ Prometheus / OpenSearch / Jaeger
 
 - Absolute floors plus adaptive evidence reduce noise, but a slow drift that never crosses a floor may be missed.
 - Two-poll sustain and cooldown reduce spam at the cost of additional detection delay.
+- Minimum request/call gates prevent low-denominator error-rate alerts; they can delay detection on very low-traffic services.
+- Robust baseline filtering resists isolated masking noise, but labelled 7b/15 replay remains required to calibrate long-running incident contamination.
 - Missing-source renormalization preserves degraded operation, but confidence must expose which sources were absent.
 - In-memory incidents keep the MVP inexpensive, but pod restart loses API history; structured stdout remains available in OpenSearch.
 - Offline RCAEval-v2 results demonstrate deterministic service localization, not TF4 live precision/recall or causal correctness.
@@ -75,7 +77,7 @@ Prometheus / OpenSearch / Jaeger
 | Evidence/gate | Status |
 |---|---|
 | Unified implementation and review | [PR #281](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281) |
-| Unit/integration tests | 20 passing on 2026-07-17 |
+| Unit/integration tests | 24 passing on 2026-07-17, including masking-noise, busy-healthy and single-owner LLM cases |
 | RCAEval-v2 60-case benchmark | Top-1 0.7667, Top-3 0.9333, MRR 0.8644; [report](evidence/RCAEVAL_V2_BARO_LITE_BENCHMARK.md) |
 | Read-only observability adapters and status probe | Implemented; shared production access to Prometheus/OpenSearch/Jaeger verified on 2026-07-17; live AIOps component probe remains pending 7b deployment |
 | Alertmanager notification rule | Implemented; live delivery evidence pending 7b |

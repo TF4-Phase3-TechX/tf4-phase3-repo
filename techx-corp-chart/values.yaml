@@ -207,6 +207,12 @@ components:
         valueFrom:
           fieldRef:
             fieldPath: metadata.namespace
+      - name: AIOPS_LLM_SIGNAL_OWNER
+        value: product-reviews
+      - name: AIOPS_MINIMUM_REQUEST_COUNT
+        value: "20"
+      - name: AIOPS_LLM_MINIMUM_CALL_COUNT
+        value: "5"
       - name: AIOPS_APPROVAL_TOKEN
         valueFrom:
           secretKeyRef:

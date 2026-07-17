@@ -19,6 +19,15 @@ Jaeger traces ----------+                         --> deterministic RCA
 
 Prometheus is the primary detector. Logs and traces increase confidence and provide investigation references. Prometheus scrapes the worker's `/metrics` endpoint; a newly created, cooldown-deduplicated incident increments a severity-labelled counter, and the committed `AIOpsIncidentDetected` rule routes it through the existing Alertmanager Slack/email receivers. The service never mutates flagd. LLM output is not allowed to select or execute an action.
 
+Detector decisions use a configurable absolute safety floor plus a robust
+baseline derived independently from each service's own recent series. An
+isolated historical spike is removed with a median/MAD filter so it cannot
+mask a separate degradation. Error-rate signals also require a minimum request
+denominator. The current `app_llm_*` metric family is global, so it is evaluated
+once and assigned to `AIOPS_LLM_SIGNAL_OWNER` (default `product-reviews`);
+OpenSearch logs are corroborating evidence and never fire an LLM incident by
+themselves.
+
 The design decision, initial three-signal baseline analysis, trade-offs and activation boundary are recorded in [ADR-007](./ADR-007-hybrid-anomaly-detection-and-safe-response.md).
 
 ## Run locally

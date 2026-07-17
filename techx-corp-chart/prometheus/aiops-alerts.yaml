@@ -8,6 +8,7 @@ groups:
             increase(aiops_incidents_created_total[3m])
           ) > 0
         labels:
+          severity: "{{ $labels.severity }}"
           owner: aio01
           component: aiops-detector
         annotations:

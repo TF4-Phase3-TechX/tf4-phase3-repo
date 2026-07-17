@@ -40,18 +40,19 @@ class AIOpsWorker:
         for service in self.settings.services:
             query = latency_query(service)
             decisions.append(self.detector.latency(service, await self.telemetry.query_range(query), query))
-            query = error_rate_query(service)
+            query = error_rate_query(service, self.settings.minimum_request_count)
             decisions.append(self.detector.error_rate(service, await self.telemetry.query_range(query), query))
-        for service in self.settings.llm_services:
-            query = llm_error_query(service)
-            decisions.append(
-                self.detector.llm_error(
-                    service,
-                    await self.telemetry.query_range(query),
-                    query,
-                    len(logs) if logs is not None else None,
-                )
+        # app_llm_* is a single global metric family today, so it has exactly
+        # one configured incident owner. llm_services remains the log scope.
+        query = llm_error_query(self.settings.llm_signal_owner, self.settings.llm_minimum_call_count)
+        decisions.append(
+            self.detector.llm_error(
+                self.settings.llm_signal_owner,
+                await self.telemetry.query_range(query),
+                query,
+                len(logs) if logs is not None else None,
             )
+        )
         for decision in decisions:
             if not decision.anomalous:
                 continue

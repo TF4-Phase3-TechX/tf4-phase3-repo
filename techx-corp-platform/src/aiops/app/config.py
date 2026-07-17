@@ -22,9 +22,14 @@ class Settings:
     lookback_minutes: int = int(os.getenv("AIOPS_LOOKBACK_MINUTES", "30"))
     sustained_polls: int = int(os.getenv("AIOPS_SUSTAINED_POLLS", "2"))
     cooldown_seconds: int = int(os.getenv("AIOPS_COOLDOWN_SECONDS", "600"))
+    minimum_request_count: int = int(os.getenv("AIOPS_MINIMUM_REQUEST_COUNT", "20"))
+    llm_minimum_call_count: int = int(os.getenv("AIOPS_LLM_MINIMUM_CALL_COUNT", "5"))
+    # These are safety floors, not the primary anomaly gate. Each service is
+    # compared with its own robust rolling baseline by Detector.
     latency_threshold_ms: float = float(os.getenv("AIOPS_LATENCY_THRESHOLD_MS", "1000"))
     error_rate_threshold: float = float(os.getenv("AIOPS_ERROR_RATE_THRESHOLD", "0.05"))
     llm_error_threshold: float = float(os.getenv("AIOPS_LLM_ERROR_THRESHOLD", "0.05"))
+    llm_signal_owner: str = os.getenv("AIOPS_LLM_SIGNAL_OWNER", "product-reviews")
     remediation_mode: str = os.getenv("REMEDIATION_MODE", "dry-run")
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
