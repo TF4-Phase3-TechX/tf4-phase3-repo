@@ -243,8 +243,21 @@ jobs:
               for service in services:
                   pattern = rf'(\n  {re.escape(service)}:\n    imageOverride:\n      tag: ")[^"]+(")'
                   text, count = re.subn(pattern, rf'\g<1>{os.environ["IMAGE_TAG"]}-{service}\g<2>', text)
-                  if count != 1:
-                      raise SystemExit(f"expected one image override for {service}, found {count}")
+                  if count == 0:
+                      entry_pattern = rf'(?m)^  {re.escape(service)}:\s*$'
+                      if re.search(entry_pattern, text):
+                          raise SystemExit(f"malformed image override for existing service {service}")
+                      header = "components:\n"
+                      if text.count(header) != 1:
+                          raise SystemExit("expected exactly one components mapping")
+                      block = (
+                          f'  {service}:\n'
+                          '    imageOverride:\n'
+                          f'      tag: "{os.environ["IMAGE_TAG"]}-{service}"\n'
+                      )
+                      text = text.replace(header, header + block, 1)
+                  elif count != 1:
+                      raise SystemExit(f"expected at most one image override for {service}, found {count}")
               path.write_text(text)
 
           if os.environ["CHART_CHANGED"] == "true":
