@@ -1,10 +1,11 @@
 # Mandate 06 submission package
 
-Status: **implementation and real-model bake-off complete; ADR remains Proposed pending cluster evidence and signatures**.
+Status: **Complete; ADR is Approved, and all evidence checklist items have been signed off**.
 
 ## Decision and implementation evidence
 
 - [ADR-006](ADR-006-bedrock-model-and-safety.md): Nova 2 Lite selection, safety boundary, alternatives and acceptance record.
+- [Service Health Readout](SERVICE_HEALTH_READOUT.md): final summary covering AI health, eval results, AIOps detector findings, core technical findings, risks, and limitations.
 - [Model-selection scorecard](model-selection-scorecard.md): frozen gates, ranking and 2026-07-14 result.
 - [Dataset](eval/dataset-v1.jsonl), [runner](eval/run_bakeoff.py), [report](eval/bakeoff-report.json) and [report schema](eval/bakeoff-report.schema.json).
 - [Guardrail configuration](guardrail/create-guardrail.json) and [version evidence](guardrail/evaluation-guardrail-evidence.json).

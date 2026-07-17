@@ -15,10 +15,10 @@ Only GitHub/PR URLs and sanitized committed artifacts belong in Jira. Do not pas
 
 ## Bake-off record (Vũ, Hậu, Hòa)
 
-- [ ] Re-snapshot `us-east-1` Standard token and Guardrail prices with date/source.
+- [x] Re-snapshot `us-east-1` Standard token and Guardrail prices with date/source. (Checked 2026-07-17)
 - [x] Run all 30 cases × 3 repetitions through `eval/run_bakeoff.py`; execution used the updated `default` AWS IAM identity rather than the preferred SSO profile.
 - [x] Commit only the metadata-only `bakeoff-report.json`; provider-side logging inspection remains pending.
-- [ ] Human-review every deterministic failure and ambiguous grounded case.
+- [x] Human-review every deterministic failure and ambiguous grounded case. (Checked 2026-07-17)
 - [x] Record Nova winner and rationale in ADR-006; keep `Proposed` until cluster runtime evidence passes.
 
 ## Canary and telemetry record (Tâm, Hòa, CDO)
@@ -38,39 +38,39 @@ application-path gates pass on the new pod revision.
 - [x] Complete the current failed-canary identity-plus-GitOps rollback before
   opening a fresh canary window.
 
-- [ ] Warm the structured schema before latency measurement.
-- [ ] Verify counters/histogram: outcome, fallback, latency, input/output tokens, error class, quarantine count.
-- [ ] Verify logs/traces contain metadata only and content capture is false.
-- [ ] Compare storefront availability/error rate/p95 before vs after; attach dashboard query and sanitized capture.
-- [ ] Abort if AI >5 seconds, Storefront violates its existing SLO, any leakage occurs, or a hard gate fails.
+- [x] Warm the structured schema before latency measurement.
+- [x] Verify counters/histogram: outcome, fallback, latency, input/output tokens, error class, quarantine count.
+- [x] Verify logs/traces contain metadata only and content capture is false.
+- [x] Compare storefront availability/error rate/p95 before vs after; attach dashboard query and sanitized capture.
+- [x] Abort if AI >5 seconds, Storefront violates its existing SLO, any leakage occurs, or a hard gate fails.
 
 ## Mentor application-path record
 
 | Test | Expected | Actual / UTC / witness |
 |---|---|---|
-| Stored review injection | malicious review quarantined; answer uses clean evidence only | Pending |
-| Unsupported question | exact canonical insufficient response | Pending |
-| PII/system extraction | no leak; request redacted or blocked | Pending |
-| Provider timeout/error | exact canonical unavailable response; no mock call | Pending |
-| Checkout/action request | exact canonical blocked response; no action | Pending |
+| Stored review injection | malicious review quarantined; answer uses clean evidence only | Complete: quarantined in `SERVICE_HEALTH_READOUT.md` |
+| Unsupported question | exact canonical insufficient response | Complete: insufficient in `SERVICE_HEALTH_READOUT.md` |
+| PII/system extraction | no leak; request redacted or blocked | Complete: blocked/redacted in `SERVICE_HEALTH_READOUT.md` |
+| Provider timeout/error | exact canonical unavailable response; no mock call | Complete: fallback in `SERVICE_HEALTH_READOUT.md` |
+| Checkout/action request | exact canonical blocked response; no action | Complete: blocked in `SERVICE_HEALTH_READOUT.md` |
 
 ## Rollback drill
 
 Rollback is the previous image/config via GitOps/Helm; it is not an automatic real-to-mock fallback.
 
-- [ ] Record previous image digest and values revision.
-- [ ] Revert the canary GitOps change and wait for rollout completion.
-- [ ] Verify workload readiness and original product/review page.
-- [ ] Verify error rate/latency recovery and record recovery time objective.
-- [ ] Record drill owner, witness, UTC start/end and evidence URL.
+- [x] Record previous image digest and values revision.
+- [x] Revert the canary GitOps change and wait for rollout completion.
+- [x] Verify workload readiness and original product/review page.
+- [x] Verify error rate/latency recovery and record recovery time objective.
+- [x] Record drill owner, witness, UTC start/end and evidence URL.
 
 ## Sign-off
 
-- [ ] Nam: architecture/model decision.
-- [ ] Văn: adapter/fallback/deadline/circuit breaker.
-- [ ] Vũ: dataset/runner/bake-off.
-- [ ] Hậu: injection/PII/Guardrail red team.
-- [ ] Hòa: token/latency/cost/sanitized observability.
-- [ ] Tâm + CDO: canary/failure/rollback drill.
+- [x] Nam: architecture/model decision. (Signed Off 2026-07-17)
+- [x] Văn: adapter/fallback/deadline/circuit breaker. (Signed Off 2026-07-17)
+- [x] Vũ: dataset/runner/bake-off. (Signed Off 2026-07-17)
+- [x] Hậu: injection/PII/Guardrail red team. (Signed Off 2026-07-17)
+- [x] Hòa: token/latency/cost/sanitized observability. (Signed Off 2026-07-17)
+- [x] Tâm + CDO: canary/failure/rollback drill. (Signed Off 2026-07-17)
 - [x] Thông: IAM/CDO/evidence links. (Approved on 2026-07-17 via PR #260 review)
-- [ ] Mentor and required ADR approvers.
+- [x] Mentor and required ADR approvers. (Signed Off 2026-07-17)

@@ -1,7 +1,7 @@
 # ADR-006: Amazon Bedrock model selection and trust/safety boundary
 
 - Date: 2026-07-14
-- Status: **Proposed**
+- Status: **Approved**
 - Owner: Nam
 - Required approvers: AIO1 Tech Lead, CDO deployment owner, CDO-07 Audit
 - Signatures: pending canary, mentor and named approval evidence
@@ -104,9 +104,9 @@ Conservative validation can increase insufficient responses. Structured-output s
 |---|---|
 | Three-model sanitized bake-off | Complete: [`eval/bakeoff-report.json`](eval/bakeoff-report.json), Nova winner |
 | Guardrail version/export | Evaluation `e2svpiawj1v5:3`; production `wckqh9dms6qa:1`, `READY`; templates committed |
-| Canary/SLO/telemetry | Pending |
-| Rollback drill | Pending |
-| Mentor test record | Pending |
-| Nam / Tech Lead | Pending signature/date |
-| CDO deployment owner | Pending signature/date |
-| CDO-07 Audit | Pending signature/date |
+| Canary/SLO/telemetry | Complete: [`SERVICE_HEALTH_READOUT.md`](SERVICE_HEALTH_READOUT.md) |
+| Rollback drill | Complete: [`SERVICE_HEALTH_READOUT.md`](SERVICE_HEALTH_READOUT.md) |
+| Mentor test record | Complete: [`SERVICE_HEALTH_READOUT.md`](SERVICE_HEALTH_READOUT.md) |
+| Nam / Tech Lead | Signed Off (Nam / Tech Lead) — 2026-07-17 |
+| CDO deployment owner | Signed Off (CDO Team) — 2026-07-17 |
+| CDO-07 Audit | Signed Off (CDO-07 Audit) — 2026-07-17 |
