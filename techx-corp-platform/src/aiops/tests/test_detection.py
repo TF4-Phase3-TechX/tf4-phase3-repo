@@ -4,6 +4,7 @@ from app.detection import (
     adaptive_breach,
     anomaly_scores,
     error_rate_query,
+    latency_query,
     llm_error_query,
     torai_lite_score,
 )
@@ -41,10 +42,42 @@ def test_error_rate_uses_per_service_span_metrics_and_requires_sustained_polls()
     series = [{"values": [[i, str(v)] for i, v in enumerate([0.005] * 8 + [0.12])]}]
     query = error_rate_query("checkout")
     assert 'service_name="checkout"' in query
+    assert 'span_kind="SPAN_KIND_SERVER"' in query
+    assert 'span_name="oteldemo.CheckoutService/PlaceOrder"' in query
     assert "increase(" in query
     assert ">= 20" in query
     assert detector.error_rate("checkout", series, query).anomalous is False
     assert detector.error_rate("checkout", series, query).anomalous is True
+
+
+def test_frontend_latency_query_reuses_user_visible_slo_routes():
+    query = latency_query("frontend")
+    assert 'span_kind="SPAN_KIND_SERVER"' in query
+    assert 'span_name=~"GET /|GET /product.*' in query
+    assert "POST /api/checkout" not in query
+
+
+def test_frontend_error_query_uses_canonical_all_server_span_boundary():
+    query = error_rate_query("frontend")
+    assert 'span_kind="SPAN_KIND_SERVER"' in query
+    assert "span_name" not in query
+
+
+def test_empty_latency_series_is_unavailable_not_healthy():
+    detector = Detector(settings(sustained_polls=1))
+    decision = detector.latency("frontend", [], "q")
+    assert decision.coverage_status == "unavailable"
+    assert decision.breached is False
+    assert decision.anomalous is False
+    assert decision.evidence[0].value == "unavailable"
+
+
+def test_thin_latency_series_above_floor_can_fire_while_warming():
+    detector = Detector(settings(sustained_polls=1, latency_threshold_ms=1000))
+    decision = detector.latency("checkout", [{"values": [[0, "5000"]]}], "q")
+    assert decision.coverage_status == "warming"
+    assert decision.breached is True
+    assert decision.anomalous is True
 
 
 def test_llm_query_uses_instrumented_app_metric_family():

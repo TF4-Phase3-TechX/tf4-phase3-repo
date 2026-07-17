@@ -20,6 +20,16 @@ incidents_created = Counter(
     "Incidents created",
     ["incident_type", "service", "severity"],
 )
+incidents_resolved = Counter(
+    "aiops_incidents_auto_resolved_total",
+    "Incidents resolved after consecutive fully covered healthy polls",
+    ["incident_type", "service"],
+)
+coverage_degraded = Counter(
+    "aiops_telemetry_coverage_degraded_total",
+    "Detector observations without a complete ready baseline",
+    ["source", "signal", "service", "state"],
+)
 last_poll_success = Gauge("aiops_last_poll_success_unixtime", "Last successful telemetry polling time")
 
 
@@ -36,24 +46,81 @@ class AIOpsWorker:
         import time
 
         logs = await self.telemetry.search_logs(self.settings.llm_services, ("timeout", "rate_limit", "deadline", "error"))
+        if logs is None:
+            poll_failures.labels("opensearch").inc()
+            log.warning(json.dumps({"event": "telemetry_degraded", "source": "opensearch"}))
+
+        prometheus_ok = True
+
+        async def query_range(query: str):
+            nonlocal prometheus_ok
+            try:
+                return await self.telemetry.query_range(query)
+            except TelemetryError as exc:
+                prometheus_ok = False
+                poll_failures.labels("prometheus").inc()
+                log.error(json.dumps({"event": "telemetry_degraded", "source": "prometheus", "error": str(exc)}))
+                return []
+
         decisions = []
         for service in self.settings.services:
             query = latency_query(service)
-            decisions.append(self.detector.latency(service, await self.telemetry.query_range(query), query))
+            decisions.append(self.detector.latency(service, await query_range(query), query))
             query = error_rate_query(service, self.settings.minimum_request_count)
-            decisions.append(self.detector.error_rate(service, await self.telemetry.query_range(query), query))
+            decisions.append(self.detector.error_rate(service, await query_range(query), query))
         # app_llm_* is a single global metric family today, so it has exactly
         # one configured incident owner. llm_services remains the log scope.
         query = llm_error_query(self.settings.llm_signal_owner, self.settings.llm_minimum_call_count)
         decisions.append(
             self.detector.llm_error(
                 self.settings.llm_signal_owner,
-                await self.telemetry.query_range(query),
+                await query_range(query),
                 query,
                 len(logs) if logs is not None else None,
             )
         )
         for decision in decisions:
+            if decision.coverage_status != "available":
+                coverage_degraded.labels(
+                    "prometheus",
+                    decision.incident_type,
+                    decision.service,
+                    decision.coverage_status,
+                ).inc()
+                await self.store.reset_recovery(decision.incident_type, decision.service)
+                log.warning(
+                    json.dumps(
+                        {
+                            "event": "signal_coverage_degraded",
+                            "signal": decision.incident_type,
+                            "service": decision.service,
+                            "state": decision.coverage_status,
+                        }
+                    )
+                )
+            elif not decision.breached:
+                resolved = await self.store.observe_recovery(
+                    decision.incident_type,
+                    decision.service,
+                    self.settings.recovery_polls,
+                )
+                if resolved:
+                    incidents_resolved.labels(
+                        resolved.incident_type, resolved.affected_service
+                    ).inc()
+                    log.info(
+                        json.dumps(
+                            {
+                                "event": "incident_auto_resolved",
+                                "incident_id": resolved.incident_id,
+                                "incident_type": resolved.incident_type,
+                                "service": resolved.affected_service,
+                            }
+                        )
+                    )
+            else:
+                await self.store.reset_recovery(decision.incident_type, decision.service)
+
             if not decision.anomalous:
                 continue
             incident = Incident(
@@ -71,6 +138,8 @@ class AIOpsWorker:
             )
             traces = await self.telemetry.find_traces(decision.service)
             if traces is None:
+                poll_failures.labels("jaeger").inc()
+                log.warning(json.dumps({"event": "telemetry_degraded", "source": "jaeger", "service": decision.service}))
                 incident.evidence.append(
                     Evidence(
                         source="jaeger",
@@ -95,7 +164,8 @@ class AIOpsWorker:
                 ).inc()
                 self.remediation.request_approval(stored)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
-        last_poll_success.set(time.time())
+        if prometheus_ok:
+            last_poll_success.set(time.time())
 
     async def run(self) -> None:
         self.running = True

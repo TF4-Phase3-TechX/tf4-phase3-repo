@@ -19,9 +19,9 @@ Adopt a hybrid, auditable detector rather than a single opaque model:
 
 1. Prometheus is the required detection source. Each `service × signal` has its own rolling 30-minute baseline and absolute safety floor.
 2. Ratio, z-score and EWMA residual gates must agree with the absolute floor. Isolation Forest is retained as supporting evidence, not the sole firing condition.
-3. A breach must persist for two polls (45 seconds per poll by default). Incident upsert and a 10-minute cooldown suppress duplicate notifications.
-4. OpenSearch logs and Jaeger traces enrich evidence and confidence. An unreachable source is recorded as `unavailable`, never as a healthy empty result.
-5. TORAI-lite combines available metric/log/trace/deployment/AI evidence using declared weights and renormalizes when a source is missing. BARO-lite ranks likely services from baseline-versus-incident metric deviation. Both names mean research-inspired subsets, not paper reproductions.
+3. A breach must persist for two polls (45 seconds per poll by default). Incident upsert and a 10-minute cooldown suppress duplicate notifications. An inactive-remediation incident resolves after two consecutive fully covered healthy polls; missing or warming telemetry breaks recovery, and a later post-cooldown breach creates a new incident.
+4. OpenSearch logs and Jaeger traces enrich evidence and confidence. Empty primary telemetry is `unavailable`, never a healthy zero. A one-to-three-point primary baseline is `warming` and uses a floor-only gate; neither state counts as recovery.
+5. At runtime, TORAI-lite combines available evidence for one detector decision and the breached service is exposed as the sole RCA candidate. Cross-service BARO-lite ranking is implemented only in the offline RCAEval-v2 benchmark. Neither name claims a full paper reproduction.
 6. New incidents expose structured evidence, RCA candidates, confidence, a runbook and a recommended action. A severity-labelled Prometheus event counter feeds the existing Alertmanager Slack/email route.
 7. Automatic action is allowed only for a bounded, allowlisted rollback runbook after per-incident human approval. Dry-run is the default. A live action requires a separate Helm RBAC gate, rollout verification and SLO verification; failure restores the original pod template and escalates.
 8. LLM output cannot select or execute an action. The detector never changes or disables flagd.
@@ -32,7 +32,7 @@ These ranges are the 7a design baselines used to seed the implementation. They a
 
 | Signal and scope | Why it matters | Initial normal range | Anomaly rule | Method |
 |---|---|---|---|---|
-| p95 span latency for `frontend`, `checkout`, `product-reviews`, `llm` | Direct user-visible degradation and dependency slowdown | 200–800 ms; service-specific rolling baseline remains primary | Current p95 ≥1,000 ms safety floor **and** either ≥1.5× its own robust baseline or both z-score ≥3 and EWMA residual score ≥1; sustained two polls. Severity becomes critical-equivalent at ≥2,000 ms | PromQL histogram quantile + robust ratio/z-score/EWMA; Isolation Forest evidence |
+| p95 server-span latency for `frontend`, `checkout`, `product-reviews`, `llm` | User-visible degradation on normalized `frontend` browse routes and dependency/service health elsewhere | 200–800 ms; service-specific rolling baseline remains primary | Current p95 ≥1,000 ms safety floor **and** either ≥1.5× its own robust baseline or both z-score ≥3 and EWMA residual score ≥1; sustained two polls. Severity becomes critical-equivalent at ≥2,000 ms | Route-aware `SPAN_KIND_SERVER` PromQL + robust ratio/z-score/EWMA; Isolation Forest evidence |
 | Error rate for the same critical services | Measures failed requests and error-budget burn before customers report | 0–2% in a healthy window | At least 20 requests in five minutes, current rate ≥5% safety floor, and the same per-service adaptive gate; sustained two polls. Severity becomes critical-equivalent at ≥10% | Error calls / all calls from OTel span metrics + robust rolling statistical baseline |
 | Global LLM/provider error rate owned by `product-reviews` | AI-path provider failure can silently degrade review assistance while the storefront remains up | 0–2%; isolated provider failures may occur without forming an incident | At least five calls in five minutes, error rate ≥5% safety floor, and the same adaptive gate; sustained two polls. Logs enrich confidence but cannot fire alone. ≥25% is critical-equivalent | Application counters + OpenSearch correlation + TORAI-lite evidence score |
 
@@ -44,7 +44,7 @@ The detector currently queries `traces_span_metrics_duration_milliseconds_bucket
 Prometheus / OpenSearch / Jaeger
   -> per-service rolling baseline
   -> sustained anomaly decision
-  -> evidence bundle + BARO/TORAI-lite candidates
+  -> evidence bundle + per-decision candidate / TORAI-lite confidence
   -> bounded incident store and audit log
   -> Prometheus incident counter
   -> Alertmanager -> Slack/email on-call notification
@@ -72,12 +72,20 @@ Prometheus / OpenSearch / Jaeger
 - In-memory incidents keep the MVP inexpensive, but pod restart loses API history; structured stdout remains available in OpenSearch.
 - Offline RCAEval-v2 results demonstrate deterministic service localization, not TF4 live precision/recall or causal correctness.
 
+## Deferred 7b / Mandate 15 gates
+
+- Capture labelled normal-window snapshots for the three signal families, recording UTC window, exact PromQL, service, sample count and observed min/p50/p95/max before calibrating floors.
+- Add impact severity based on multi-window error-budget burn-rate; 7a severity is provisional floor-based routing only.
+- Expand standing coverage to `cart` and `product-catalog` and add at least one validated saturation or queue signal.
+- Add external-scenario replay, committed labelled detection cases, precision/recall/lead-time and MTTD before/after.
+- Prove the detector as an enabled in-cluster workload and deliver the generated incident summary—not only a generic alert annotation—to the real on-call channel.
+
 ## Evidence and activation gates
 
 | Evidence/gate | Status |
 |---|---|
 | Unified implementation and review | [PR #281](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281) |
-| Unit/integration tests | 24 passing on 2026-07-17, including masking-noise, busy-healthy and single-owner LLM cases |
+| Unit/integration tests | 32 passing on 2026-07-17, including lifecycle recovery/re-notification, missing/warming coverage, source-failure counters, SLO selectors, masking-noise, busy-healthy and single-owner LLM cases |
 | RCAEval-v2 60-case benchmark | Top-1 0.7667, Top-3 0.9333, MRR 0.8644; [report](evidence/RCAEVAL_V2_BARO_LITE_BENCHMARK.md) |
 | Read-only observability adapters and status probe | Implemented; shared production access to Prometheus/OpenSearch/Jaeger verified on 2026-07-17; live AIOps component probe remains pending 7b deployment |
 | Alertmanager notification rule | Implemented; live delivery evidence pending 7b |

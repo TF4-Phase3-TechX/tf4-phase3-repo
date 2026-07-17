@@ -213,6 +213,8 @@ components:
         value: "20"
       - name: AIOPS_LLM_MINIMUM_CALL_COUNT
         value: "5"
+      - name: AIOPS_RECOVERY_POLLS
+        value: "2"
       - name: AIOPS_APPROVAL_TOKEN
         valueFrom:
           secretKeyRef:

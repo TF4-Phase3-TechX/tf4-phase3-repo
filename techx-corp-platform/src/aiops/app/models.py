@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -71,6 +71,8 @@ class Decision(BaseModel):
     anomalous: bool
     incident_type: str
     service: str
+    breached: bool = False
+    coverage_status: Literal["available", "warming", "unavailable"] = "available"
     severity: str = "medium"
     confidence: float = 0.0
     root_cause: str = "Insufficient evidence"

@@ -1,6 +1,6 @@
 # TF4 AI Ops Safe MVP
 
-The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements the first two agreed incident families: LLM timeout/error and service latency spike.
+The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements three runtime signal families: per-service p95 latency, per-service error rate, and the global LLM/provider error rate owned by `product-reviews`.
 
 ## Runtime flow
 
@@ -27,6 +27,16 @@ denominator. The current `app_llm_*` metric family is global, so it is evaluated
 once and assigned to `AIOPS_LLM_SIGNAL_OWNER` (default `product-reviews`);
 OpenSearch logs are corroborating evidence and never fire an LLM incident by
 themselves.
+
+Each span-metric detector requires `SPAN_KIND_SERVER`; `frontend` p95 uses the
+production browse-route selector while its error SLI covers normalized
+frontend server operations, and `checkout` uses the documented `PlaceOrder`
+server operation. Empty telemetry is `unavailable`,
+not healthy. A one-to-three-point baseline is `warming` and may fire only on
+the absolute floor. Neither state can auto-resolve an incident. An active
+incident auto-resolves only after `AIOPS_RECOVERY_POLLS` consecutive fully
+available, non-breaching polls; a later breach creates and notifies a new
+incident after the cooldown. Cart-specific coverage remains a 7b expansion.
 
 The design decision, initial three-signal baseline analysis, trade-offs and activation boundary are recorded in [ADR-007](./ADR-007-hybrid-anomaly-detection-and-safe-response.md).
 
@@ -91,6 +101,11 @@ paper reproduction:
   Forest evidence for sustained metric anomalies.
 - **TORAI-lite:** normalized metric/log/trace/deployment/AI evidence weights,
   with missing sources reported and excluded from the denominator.
+
+Runtime scope is intentionally narrower than the offline benchmark: each
+detector decision exposes the breached service as its single RCA candidate; it
+does not cross-rank all TF4 services. The Top-1/Top-3/MRR figures below apply
+only to the offline RCAEval-v2 service-localization runner.
 
 The deterministic offline BARO-lite service-localization benchmark was run on
 a 60-case RCAEval-v2 sample stratified across three systems and all available

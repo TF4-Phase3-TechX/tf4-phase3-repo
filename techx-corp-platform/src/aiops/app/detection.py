@@ -19,6 +19,14 @@ TORAI_LITE_WEIGHTS = {
     "ai": 0.10,
 }
 
+# These route selectors reuse the production user-visible SLO definitions.
+# Services without a route selector still require a server span, avoiding
+# client/internal-span double counting while retaining generic coverage.
+LATENCY_SPAN_NAMES = {
+    "frontend": r"GET /|GET /product.*|GET /api/products.*|GET /api/data.*",
+    "checkout": "oteldemo.CheckoutService/PlaceOrder",
+}
+
 
 def values(series: dict[str, Any]) -> list[float]:
     return [float(point[1]) for point in series.get("values", []) if point[1] not in {"NaN", None}]
@@ -80,6 +88,35 @@ def adaptive_breach(scores: dict[str, float]) -> bool:
     return scores["ratio"] >= 1.5 or (scores["zscore"] >= 3 and scores["ewma"] >= 1)
 
 
+def signal_gate(points: list[float], floor: float) -> tuple[bool, str, dict[str, float]]:
+    """Return raw breach, coverage state and adaptive scores.
+
+    Empty telemetry is unavailable, not healthy. A thin baseline is explicitly
+    warming and uses a conservative floor-only gate so a severe first-window
+    spike is not silently discarded.
+    """
+
+    scores = anomaly_scores(points)
+    if not points:
+        return False, "unavailable", scores
+    if len(points) < 4:
+        return points[-1] >= floor, "warming", scores
+    return points[-1] >= floor and adaptive_breach(scores), "available", scores
+
+
+def span_matchers(
+    service: str, *, error_only: bool = False, include_operation: bool = True
+) -> str:
+    matchers = [f'service_name="{service}"', 'span_kind="SPAN_KIND_SERVER"']
+    span_name = LATENCY_SPAN_NAMES.get(service) if include_operation else None
+    if span_name:
+        operator = "=" if service == "checkout" else "=~"
+        matchers.append(f'span_name{operator}"{span_name}"')
+    if error_only:
+        matchers.append('status_code="STATUS_CODE_ERROR"')
+    return ",".join(matchers)
+
+
 def torai_lite_score(**signals: float | None) -> dict[str, Any]:
     """Normalize available evidence into an auditable multi-source score.
 
@@ -114,20 +151,34 @@ class Detector:
     def latency(self, service: str, series: list[dict[str, Any]], query: str) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
-        scores = anomaly_scores(points)
-        breached = current >= self.settings.latency_threshold_ms and adaptive_breach(scores)
+        breached, coverage_status, scores = signal_gate(points, self.settings.latency_threshold_ms)
         key = f"service_latency_spike:{service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
         confidence = min(0.45 + 0.1 * min(scores["zscore"], 3) + 0.15 * min(scores["ewma"], 1), 0.95)
         return Decision(
             anomalous=anomalous,
+            breached=breached,
+            coverage_status=coverage_status,
             incident_type="service_latency_spike",
             service=service,
             severity="high" if current >= self.settings.latency_threshold_ms * 2 else "medium",
             confidence=confidence,
             root_cause=f"Sustained p95 latency degradation on {service}; dependency or recent deployment correlation requires confirmation.",
-            evidence=[Evidence(source="prometheus", query=query, window=f"{self.settings.lookback_minutes}m", value=round(current, 2))],
+            evidence=[
+                Evidence(
+                    source="prometheus",
+                    query=query,
+                    window=f"{self.settings.lookback_minutes}m",
+                    value="unavailable" if coverage_status == "unavailable" else round(current, 2),
+                ),
+                Evidence(
+                    source="detector",
+                    query="baseline_coverage",
+                    window=f"{self.settings.lookback_minutes}m",
+                    value=coverage_status,
+                ),
+            ],
             candidates=[{"service": service, "score": round(confidence, 3), "signals": scores}],
             runbook_id="deployment-latency-rollback",
             recommended_action="Review recent deployment and, after approval, roll back to the previous known-good ReplicaSet.",
@@ -136,8 +187,7 @@ class Detector:
     def error_rate(self, service: str, series: list[dict[str, Any]], query: str) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
-        scores = anomaly_scores(points)
-        breached = current >= self.settings.error_rate_threshold and adaptive_breach(scores)
+        breached, coverage_status, scores = signal_gate(points, self.settings.error_rate_threshold)
         key = f"service_error_rate_spike:{service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
@@ -149,6 +199,8 @@ class Detector:
         )
         return Decision(
             anomalous=anomalous,
+            breached=breached,
+            coverage_status=coverage_status,
             incident_type="service_error_rate_spike",
             service=service,
             severity="high" if current >= self.settings.error_rate_threshold * 2 else "medium",
@@ -162,8 +214,14 @@ class Detector:
                     source="prometheus",
                     query=query,
                     window=f"{self.settings.lookback_minutes}m",
-                    value=round(current, 4),
-                )
+                    value="unavailable" if coverage_status == "unavailable" else round(current, 4),
+                ),
+                Evidence(
+                    source="detector",
+                    query="baseline_coverage",
+                    window=f"{self.settings.lookback_minutes}m",
+                    value=coverage_status,
+                ),
             ],
             candidates=[{"service": service, "score": round(confidence, 3), "signals": scores}],
             runbook_id="service-error-rate-escalation",
@@ -179,10 +237,9 @@ class Detector:
     ) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
-        scores = anomaly_scores(points)
+        breached, coverage_status, scores = signal_gate(points, self.settings.llm_error_threshold)
         # Logs enrich confidence/evidence but never fire an incident without a
         # metric breach. This avoids static log-count and duplicate-log noise.
-        breached = current >= self.settings.llm_error_threshold and adaptive_breach(scores)
         key = f"llm_timeout_error:{service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
@@ -192,7 +249,20 @@ class Detector:
             ai=min(current / max(self.settings.llm_error_threshold, 1e-9), 1.0),
         )
         confidence = min(0.45 + 0.5 * torai["score"], 0.95)
-        evidence = [Evidence(source="prometheus", query=query, window=f"{self.settings.lookback_minutes}m", value=round(current, 4))]
+        evidence = [
+            Evidence(
+                source="prometheus",
+                query=query,
+                window=f"{self.settings.lookback_minutes}m",
+                value="unavailable" if coverage_status == "unavailable" else round(current, 4),
+            ),
+            Evidence(
+                source="detector",
+                query="baseline_coverage",
+                window=f"{self.settings.lookback_minutes}m",
+                value=coverage_status,
+            ),
+        ]
         if log_count is None:
             evidence.append(
                 Evidence(
@@ -206,6 +276,8 @@ class Detector:
             evidence.append(Evidence(source="opensearch", query="timeout OR rate_limit OR error", window=f"{self.settings.lookback_minutes}m", value=log_count))
         return Decision(
             anomalous=anomalous,
+            breached=breached,
+            coverage_status=coverage_status,
             incident_type="llm_timeout_error",
             service=service,
             severity="high" if current >= 0.25 else "medium",
@@ -223,7 +295,7 @@ class Detector:
 def latency_query(service: str) -> str:
     return (
         "histogram_quantile(0.95, sum by (le) "
-        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{service_name=\"{service}\"}}[5m])))"
+        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service)}}}[5m])))"
     )
 
 
@@ -239,10 +311,17 @@ def llm_error_query(service: str, minimum_calls: int = 5) -> str:
 
 
 def error_rate_query(service: str, minimum_requests: int = 20) -> str:
+    # The canonical frontend error SLI covers all normalized frontend server
+    # operations. Internal service signals retain their documented operation.
+    include_operation = service != "frontend"
+    all_spans = span_matchers(service, include_operation=include_operation)
+    error_spans = span_matchers(
+        service, error_only=True, include_operation=include_operation
+    )
     return (
         "(sum(rate(traces_span_metrics_calls_total{"
-        f"service_name=\"{service}\",status_code=\"STATUS_CODE_ERROR\"}}[5m])) "
-        f"/ clamp_min(sum(rate(traces_span_metrics_calls_total{{service_name=\"{service}\"}}[5m])), 0.000001)) "
+        f"{error_spans}}}[5m])) "
+        f"/ clamp_min(sum(rate(traces_span_metrics_calls_total{{{all_spans}}}[5m])), 0.000001)) "
         "and on() (sum(increase(traces_span_metrics_calls_total{"
-        f"service_name=\"{service}\"}}[5m])) >= {minimum_requests})"
+        f"{all_spans}}}[5m])) >= {minimum_requests})"
     )
