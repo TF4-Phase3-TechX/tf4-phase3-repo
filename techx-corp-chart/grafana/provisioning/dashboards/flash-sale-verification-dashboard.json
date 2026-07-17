@@ -552,7 +552,7 @@
       "description": "Number of pod restart delta in last 10 minutes.",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 28 },
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 28 },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -592,7 +592,7 @@
       "description": "OOMKilled events in last 10 minutes.",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 28 },
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 28 },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -627,11 +627,91 @@
       ]
     },
     {
+      "id": 20,
+      "title": "Pending Pods Count",
+      "description": "Number of pods currently in Pending phase.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 28 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1.0 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(k8s_pod_phase{k8s_namespace_name=~\"techx-tf4|techx-observability\"} == 1) or vector(0)",
+          "legendFormat": "Pending Pods",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Active Prometheus Alerts",
+      "description": "Number of active firing alerts in the cluster.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 28 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1.0 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(ALERTS{alertstate=\"firing\"}) or vector(0)",
+          "legendFormat": "Firing Alerts",
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "id": 17,
       "title": "Pod Replica Count (HPA)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 28 },
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 28 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },
@@ -658,7 +738,7 @@
       "title": "Active Worker Nodes Count",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 28 },
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 28 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never" },

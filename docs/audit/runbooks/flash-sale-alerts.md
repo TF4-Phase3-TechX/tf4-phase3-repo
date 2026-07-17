@@ -52,6 +52,15 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 - Preserve evidence before retrying. Avoid blind retries after a payment may have succeeded.
 - Stop load generation if the failure rate continues to consume the checkout error budget.
 
+### CheckoutLatencyP95High
+
+**Threshold:** checkout latency p95 greater than 1000 ms for 5m.
+**Owner/severity:** `tf4-webstore` / critical.
+
+- Confirm the checkout PlaceOrder p95 latency in Prometheus or Grafana.
+- Check downstream dependencies like PostgreSQL, Valkey, payment, and Kafka.
+- Investigate tracing details in Jaeger to find where the bottleneck is occurring.
+
 ---
 
 ## Browse
@@ -90,6 +99,28 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 - Identify the failing routes and correlate them with the SLO-specific alerts.
 - Check whether a common dependency or node is shared by the failing requests.
 - Stop an unapproved load test and roll back a correlated application release when safe.
+
+---
+
+## Payment
+
+### PaymentSuccessRateLow
+
+**Threshold:** payment success below 99% for 5m, with at least 20 requests.
+**Owner/severity:** `tf4-webstore` / critical.
+
+- Inspect payment service gRPC logs and check downstream payment provider integrations.
+- Correlate failures with PostgreSQL errors or Kafka queues backlog.
+- Determine if the issue is a timeout/network drop or logical processing error.
+
+### PaymentLatencyP95High
+
+**Threshold:** payment p95 latency greater than 1000 ms for 5m.
+**Owner/severity:** `tf4-webstore` / critical.
+
+- Trace payment spans in Jaeger to locate latency spikes.
+- Check database connection pool status and lock contentions in PostgreSQL.
+- Check node CPU/Memory usage hosting the payment service.
 
 ---
 
@@ -149,6 +180,33 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 - Run `kubectl describe pod` and inspect `FailedScheduling` events.
 - Check resource requests, ResourceQuota, node capacity, taints, selectors, affinity and PVC status.
 - For rollout pods, pause or roll back the rollout if the previous version is still serving traffic.
+
+### PostgreSqlDown
+
+**Threshold:** postgresql deployment available replicas below 1 for 1m.
+**Owner/severity:** `tf4-platform` / critical.
+
+- Run `kubectl get pods -n techx-tf4 -l app=postgresql` to check pod status.
+- Inspect persistent volume claim (PVC) and EBS volume state.
+- Check logs for database startup failures, OOM kills, or corruption.
+
+### ValkeyCartDown
+
+**Threshold:** valkey-cart deployment available replicas below 1 for 1m.
+**Owner/severity:** `tf4-platform` / critical.
+
+- Run `kubectl get pods -n techx-tf4 -l app=valkey-cart` to verify cache pod.
+- Check if memory exhaustion (OOM) is causing Valkey container to crash.
+- Verify Redis/Valkey config maps and persistence file mounting.
+
+### KafkaDown
+
+**Threshold:** kafka deployment available replicas below 1 for 1m.
+**Owner/severity:** `tf4-platform` / critical.
+
+- Check the state of the Kafka broker pods and Zookeeper/Kraft controller pods.
+- Run `kubectl describe pod -n techx-tf4 -l app=kafka` to check events.
+- Inspect broker disk utilization, PVC mount, and broker CPU usage logs.
 
 ---
 
