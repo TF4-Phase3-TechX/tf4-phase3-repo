@@ -343,13 +343,23 @@ resource "aws_cloudtrail" "main" {
   is_multi_region_trail         = true
   enable_logging                = true
 
-  event_selector {
-    read_write_type           = "All"
-    include_management_events = true
+  advanced_event_selector {
+    name = "Log all management events"
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Management"]
+    }
+  }
 
-    data_resource {
-      type   = "AWS::SecretsManager::Secret"
-      values = ["arn:aws:secretsmanager"]
+  advanced_event_selector {
+    name = "Log Secrets Manager data events"
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Data"]
+    }
+    field_selector {
+      field  = "resources.type"
+      equals = ["AWS::SecretsManager::Secret"]
     }
   }
 
