@@ -1,34 +1,29 @@
 # SEC-13B: Create AWS Secrets Manager Entries for RDS, ElastiCache, MSK
 
 **Task:** CDO08-118 — [SEC-13B][Secrets] Create AWS Secrets Manager entries for RDS ElastiCache MSK  
-**Parent:** CDO08-1061 — [CDO08-SEC-13][P0][Secrets] Wire managed data credentials through Secrets Manager and ESO
+**Mục tiêu:** Tạo secret placeholders/values theo output từ Nam
 
-## Yêu cầu
+## Trước khi tạo
 
-- Region: `us-east-1`
-- Secret prefix: `techx/tf4/`
-- **Không commit secret value vào Git, Jira, Slack, PR description.**
-- Chỉ người có quyền `secretsmanager:CreateSecret` / `secretsmanager:PutSecretValue` mới thực hiện.
+Cần Nam (managed infra owner) cung cấp:
+- RDS private endpoint
+- ElastiCache private endpoint
+- MSK bootstrap servers và auth mode (TLS-only / SCRAM / IAM)
 
-## Cần có trước khi chạy
+Secret prefix: `techx/tf4/` — region: `us-east-1`
 
-- Endpoint / ARN từ Nam (managed infra owner):
-  - RDS private endpoint
-  - ElastiCache private endpoint
-  - MSK bootstrap servers
-- App credentials (username/password) cho RDS đã được tạo ở database level.
-- MSK auth mode đã chốt (TLS-only / SCRAM / IAM).
+**Không commit secret value vào Git, Jira, Slack, PR description.**
 
-## Lệnh tạo secret
+---
 
-### 1. RDS PostgreSQL — `techx/tf4/rds-postgres`
+## 1. RDS PostgreSQL — `techx/tf4/rds-postgres`
 
-Thay `<...>` bằng giá trị thật trước khi chạy. **Không lưu file này sau khi đã điền giá trị thật.**
+Điền giá trị thật từ Nam vào `<...>` rồi chạy. Key schema theo contract CDO08-117.
 
 ```bash
 aws secretsmanager create-secret \
   --name "techx/tf4/rds-postgres" \
-  --description "RDS PostgreSQL credentials and connection strings for techx-tf4 apps" \
+  --description "RDS PostgreSQL credentials and connection strings for techx-tf4" \
   --secret-string '{
     "host": "<rds-private-endpoint>",
     "port": "5432",
@@ -42,7 +37,7 @@ aws secretsmanager create-secret \
   --region us-east-1
 ```
 
-Nếu secret đã tồn tại (update value):
+Update nếu secret đã tồn tại:
 
 ```bash
 aws secretsmanager put-secret-value \
@@ -51,18 +46,9 @@ aws secretsmanager put-secret-value \
   --region us-east-1
 ```
 
-Verify (chỉ kiểm tra key, không in value):
-
-```bash
-aws secretsmanager describe-secret \
-  --secret-id "techx/tf4/rds-postgres" \
-  --region us-east-1 \
-  --query '{Name:Name,ARN:ARN,LastChangedDate:LastChangedDate}'
-```
-
 ---
 
-### 2. ElastiCache Valkey — `techx/tf4/elasticache-valkey`
+## 2. ElastiCache Valkey — `techx/tf4/elasticache-valkey`
 
 Payload tối thiểu (chưa bật AUTH/TLS):
 
@@ -78,35 +64,11 @@ aws secretsmanager create-secret \
   --region us-east-1
 ```
 
-Nếu ElastiCache bật AUTH/TLS (chỉ sau khi xác nhận cart service support):
-
-```bash
-aws secretsmanager put-secret-value \
-  --secret-id "techx/tf4/elasticache-valkey" \
-  --secret-string '{
-    "host": "<elasticache-private-endpoint>",
-    "port": "6379",
-    "address": "<elasticache-private-endpoint>:6379",
-    "password": "<real-password>",
-    "tls_enabled": "true"
-  }' \
-  --region us-east-1
-```
-
-Verify:
-
-```bash
-aws secretsmanager describe-secret \
-  --secret-id "techx/tf4/elasticache-valkey" \
-  --region us-east-1 \
-  --query '{Name:Name,ARN:ARN,LastChangedDate:LastChangedDate}'
-```
-
 ---
 
-### 3. MSK Kafka — `techx/tf4/msk-kafka`
+## 3. MSK Kafka — `techx/tf4/msk-kafka`
 
-Payload khi MSK dùng TLS listener (không app-level auth):
+Payload TLS listener (không app-level auth):
 
 ```bash
 aws secretsmanager create-secret \
@@ -119,7 +81,7 @@ aws secretsmanager create-secret \
   --region us-east-1
 ```
 
-Payload nếu MSK dùng SCRAM:
+Payload SCRAM (nếu MSK dùng SCRAM):
 
 ```bash
 aws secretsmanager put-secret-value \
@@ -134,18 +96,11 @@ aws secretsmanager put-secret-value \
   --region us-east-1
 ```
 
-Verify:
-
-```bash
-aws secretsmanager describe-secret \
-  --secret-id "techx/tf4/msk-kafka" \
-  --region us-east-1 \
-  --query '{Name:Name,ARN:ARN,LastChangedDate:LastChangedDate}'
-```
-
 ---
 
-## List all secrets để confirm
+## Verify sau khi tạo
+
+Chỉ kiểm tra metadata, không in value:
 
 ```bash
 aws secretsmanager list-secrets \
@@ -154,26 +109,7 @@ aws secretsmanager list-secrets \
   --output table
 ```
 
-Kỳ vọng thấy:
+Kỳ vọng thấy đủ 3 entry:
 - `techx/tf4/rds-postgres`
 - `techx/tf4/elasticache-valkey`
 - `techx/tf4/msk-kafka`
-
-## Rotation strategy
-
-Sau khi cutover, rotate credential định kỳ hoặc khi có incident:
-
-```bash
-# Rotate RDS password
-aws secretsmanager put-secret-value \
-  --secret-id "techx/tf4/rds-postgres" \
-  --secret-string '{...new-payload-with-new-password...}' \
-  --region us-east-1
-
-# ESO sẽ tự pick up trong refreshInterval (1h)
-# Hoặc force sync:
-kubectl -n techx-tf4 annotate externalsecret rds-postgres-secret \
-  force-sync=$(date +%s) --overwrite
-```
-
-Không cần restart pod — ESO sẽ update Kubernetes Secret, app đọc lại secret từ mounted env khi restart hoặc redeploy tiếp theo.

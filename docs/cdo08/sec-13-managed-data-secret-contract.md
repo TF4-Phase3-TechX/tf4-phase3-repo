@@ -1,15 +1,7 @@
 # SEC-13A: Managed Data Secret Contract
 
 **Task:** CDO08-117 — [SEC-13A][Secrets] Define managed data secret contract  
-**Parent:** CDO08-1061 — [CDO08-SEC-13][P0][Secrets] Wire managed data credentials through Secrets Manager and ESO
-
-## Mục đích
-
-Tài liệu này định nghĩa contract (tên secret, key schema, namespace target) cho 3 managed data services: RDS PostgreSQL, ElastiCache Valkey, MSK Kafka. Contract này là nguồn truth duy nhất được dùng bởi:
-
-- Người tạo AWS Secrets Manager entries (CDO08-118)
-- Người tạo ExternalSecret manifests trong GitOps repo (CDO08-119)
-- Người wire Helm values trong app repo (CDO08-120)
+**Mục tiêu:** Chốt secret name/path/key schema cho RDS, ElastiCache, MSK
 
 ## Namespace target
 
@@ -21,11 +13,11 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 
 | Field | Value |
 |---|---|
-| AWS Secrets Manager name | `techx/tf4/rds-postgres` |
+| AWS Secrets Manager path | `techx/tf4/rds-postgres` |
 | Kubernetes Secret name | `rds-postgres-secret` |
 | Namespace | `techx-tf4` |
 
-**AWS Secrets Manager payload schema:**
+**Payload schema:**
 
 ```json
 {
@@ -42,16 +34,11 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 
 **Kubernetes Secret keys (synced by ESO):**
 
-| Key | Source property | Consumer |
+| Key | Source property | Consumer service |
 |---|---|---|
 | `dotnet-conn-string` | `connection_string_dotnet` | `accounting` |
 | `go-conn-string` | `connection_string_go` | `product-catalog` |
 | `python-conn-string` | `connection_string_python` | `product-reviews` |
-
-**Notes:**
-- Connection strings phải dùng private endpoint, không phải public endpoint.
-- Không dùng password mặc định `otelp` của in-cluster postgres.
-- SSL mode bắt buộc (`sslmode=require`).
 
 ---
 
@@ -59,11 +46,11 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 
 | Field | Value |
 |---|---|
-| AWS Secrets Manager name | `techx/tf4/elasticache-valkey` |
+| AWS Secrets Manager path | `techx/tf4/elasticache-valkey` |
 | Kubernetes Secret name | `elasticache-valkey-secret` |
 | Namespace | `techx-tf4` |
 
-**AWS Secrets Manager payload schema (tối thiểu, chưa bật AUTH/TLS):**
+**Payload schema (tối thiểu, chưa bật AUTH/TLS):**
 
 ```json
 {
@@ -73,7 +60,7 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 }
 ```
 
-**AWS Secrets Manager payload schema (nếu ElastiCache bật AUTH/TLS):**
+**Payload schema (nếu bật AUTH/TLS — chỉ sau khi `cart` service xác nhận hỗ trợ):**
 
 ```json
 {
@@ -87,13 +74,9 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 
 **Kubernetes Secret keys (synced by ESO):**
 
-| Key | Source property | Consumer |
+| Key | Source property | Consumer service |
 |---|---|---|
 | `valkey-address` | `address` | `cart` |
-
-**Notes:**
-- Chỉ bổ sung `password`/`tls_enabled` key sau khi xác nhận `cart` service hỗ trợ AUTH/TLS config.
-- ElastiCache endpoint phải là private endpoint trong VPC.
 
 ---
 
@@ -101,11 +84,11 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 
 | Field | Value |
 |---|---|
-| AWS Secrets Manager name | `techx/tf4/msk-kafka` |
+| AWS Secrets Manager path | `techx/tf4/msk-kafka` |
 | Kubernetes Secret name | `msk-kafka-secret` |
 | Namespace | `techx-tf4` |
 
-**AWS Secrets Manager payload schema (TLS listener, không app-level auth):**
+**Payload schema (TLS listener, không app-level auth):**
 
 ```json
 {
@@ -114,7 +97,7 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 }
 ```
 
-**AWS Secrets Manager payload schema (SCRAM auth):**
+**Payload schema (SCRAM auth):**
 
 ```json
 {
@@ -128,33 +111,8 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 
 **Kubernetes Secret keys (synced by ESO):**
 
-| Key | Source property | Consumer |
+| Key | Source property | Consumer service |
 |---|---|---|
 | `kafka-address` | `bootstrap_servers` | `accounting`, `checkout`, `fraud-detection` |
 
-**Notes:**
-- Auth mode cần được chốt với managed infra owner trước khi tạo secret thật.
-- Nếu MSK dùng IAM auth, cần xác nhận Kafka client services hỗ trợ SASL/OAUTHBEARER trước khi cutover.
-- OTel Collector cũng đang hardcode `kafka:9092` trong `kafkametrics` receiver — cần xác nhận scope sau khi Kafka cutover.
-
----
-
-## App env wiring map
-
-| Service | Env var | Kubernetes Secret | Key |
-|---|---|---|---|
-| `accounting` | `DB_CONNECTION_STRING` | `rds-postgres-secret` | `dotnet-conn-string` |
-| `product-catalog` | `DB_CONNECTION_STRING` | `rds-postgres-secret` | `go-conn-string` |
-| `product-reviews` | `DB_CONNECTION_STRING` | `rds-postgres-secret` | `python-conn-string` |
-| `cart` | `VALKEY_ADDR` | `elasticache-valkey-secret` | `valkey-address` |
-| `accounting` | `KAFKA_ADDR` | `msk-kafka-secret` | `kafka-address` |
-| `checkout` | `KAFKA_ADDR` | `msk-kafka-secret` | `kafka-address` |
-| `fraud-detection` | `KAFKA_ADDR` | `msk-kafka-secret` | `kafka-address` |
-
-## Checklist trước khi cutover
-
-- [ ] Auth mode MSK đã chốt với managed infra owner
-- [ ] ElastiCache AUTH/TLS support của `cart` đã xác nhận
-- [ ] Endpoint/ARN từ Nam đã cung cấp
-- [ ] Secret values đã tạo trong AWS Secrets Manager (không paste vào Git/Jira/Slack)
-- [ ] ExternalSecret Ready=True trước khi flip managed mode trong app
+> MSK auth mode phải chốt với managed infra owner trước khi tạo secret thật (CDO08-118).
