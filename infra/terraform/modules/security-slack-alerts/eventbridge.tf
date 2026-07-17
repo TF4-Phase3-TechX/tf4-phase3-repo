@@ -5,7 +5,6 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts" {
   state          = "ENABLED"
 
   event_pattern = jsonencode({
-    source      = ["aws.cloudtrail"]
     detail-type = ["AWS API Call via CloudTrail"]
     detail = {
       "$or" = [

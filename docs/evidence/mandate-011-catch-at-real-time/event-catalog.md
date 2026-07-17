@@ -18,8 +18,8 @@ Tài liệu này định nghĩa danh sách các sự kiện (events) AWS bị li
   - **Vì sao nguy hiểm:** EKS Access Entries cho phép cấp quyền Cluster Admin cho các IAM Role/User bất kỳ. Kẻ tấn công có thể dùng nó để chiếm quyền điều khiển toàn bộ Kubernetes cluster mà không cần chạm vào `aws-auth` ConfigMap cũ.
 
 ## 4. Nhóm sự kiện Dữ liệu (Data Events)
-- **`GetSecretValue` (SecretsManager):**
-  - **Vì sao nguy hiểm:** Bất kỳ nỗ lực nào đọc Secret từ nguồn không xác định đều có thể dẫn đến rò rỉ thông tin đăng nhập database, API keys, hoặc private keys. Hành động kéo secret nhạy cảm này phải bị báo động ngay lập tức nếu xuất phát từ ngoài luồng ứng dụng chính.
+- **`GetSecretValue` (SecretsManager) & `GetParameter`/`GetParameters` (SSM Parameter Store):**
+  - **Vì sao nguy hiểm:** Bất kỳ nỗ lực nào đọc Secret từ nguồn không xác định đều có thể dẫn đến rò rỉ thông tin đăng nhập database, API keys (ví dụ Slack Webhook URL), hoặc private keys. Hành động kéo secret nhạy cảm này phải bị báo động ngay lập tức nếu xuất phát từ ngoài luồng ứng dụng chính.
 
 ## Cơ chế Giảm nhiễu (Allowlisting)
 Để tránh "cảnh báo rác" (alert fatigue) khiến đội ngũ bảo mật bỏ lỡ cảnh báo thật, hệ thống áp dụng cơ chế giảm nhiễu tại Lambda:
