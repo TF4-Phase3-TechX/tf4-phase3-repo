@@ -3,6 +3,8 @@ import os
 import urllib.request
 import logging
 import boto3
+from datetime import datetime, timezone
+import re
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -109,6 +111,14 @@ def lambda_handler(event, context):
             actor = user_identity.get('arn') or user_identity.get('principalId', 'UnknownActor')
             source_ip = detail.get('sourceIPAddress', 'UnknownIP')
             
+            # Allowlist check to reduce noise
+            if actor and re.search(r'role/tf4-github-actions', actor):
+                should_alert = False
+                logger.info(f"Ignoring event {event_name} by allowlisted actor {actor}")
+                
+            # Allowlist for EKS nodes or similar known services could go here
+
+            
             # Filter logic
             if event_name == 'AuthorizeSecurityGroupIngress':
                 if not is_public_sg_ingress(detail.get('requestParameters')):
@@ -145,6 +155,21 @@ def lambda_handler(event, context):
              
         if not should_alert:
             continue
+            
+        latency_msg = "Unknown"
+        if timestamp != 'UnknownTime':
+            try:
+                event_dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                now_dt = datetime.now(timezone.utc)
+                delta_sec = (now_dt - event_dt).total_seconds()
+                latency_msg = f"{delta_sec:.2f} giây"
+                logger.info(f"Metric: Mandate11/DetectionLatency = {delta_sec}")
+            except Exception as e:
+                logger.warning(f"Could not parse timestamp {timestamp}: {e}")
+
+        cloudtrail_link = f"https://{region}.console.aws.amazon.com/cloudtrail/home?region={region}#/events?EventName={event_name}"
+        if source != 'aws.cloudtrail':
+            cloudtrail_link = "N/A"
             
         # Build Slack Message (Block Kit)
         color = "#ff0000" if severity == "critical" else "#ff9900"
@@ -187,6 +212,14 @@ def lambda_handler(event, context):
                                 {
                                     "type": "mrkdwn",
                                     "text": f"*Time:*\n`{timestamp}`"
+                                },
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"*Latency:*\n`{latency_msg}`"
+                                },
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"*Investigate:*\n<{cloudtrail_link}|View in CloudTrail>"
                                 }
                             ]
                         }
