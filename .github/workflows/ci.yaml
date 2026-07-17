@@ -209,6 +209,26 @@ jobs:
           path: infra/terraform/tfplan
           if-no-files-found: error
 
+  terraform-scan:
+    name: Terraform IaC scan (tfsec)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.terraform == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install tfsec
+        run: |
+          VERSION="v1.28.1"
+          wget -q -O tfsec https://github.com/aquasecurity/tfsec/releases/download/${VERSION}/tfsec-linux-amd64
+          chmod +x tfsec
+          sudo mv tfsec /usr/local/bin/
+
+      - name: Run tfsec scan
+        run: |
+          tfsec --severity-threshold HIGH infra/terraform
+
   helm-render:
     name: Helm lint and render
     runs-on: ubuntu-latest
@@ -291,6 +311,33 @@ jobs:
             /tmp/techx-observability.yaml
             /tmp/techx-corp-app.yaml
           if-no-files-found: error
+
+  helm-manifest-scan:
+    name: Helm Manifest scan (kube-linter)
+    runs-on: ubuntu-latest
+    needs: [changes, helm-render]
+    if: always() && needs.helm-render.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download rendered manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: rendered-manifests
+          path: ./rendered
+
+      - name: Install kube-linter
+        run: |
+          VERSION="v0.6.8"
+          curl -sSfL -O https://github.com/stackrox/kube-linter/releases/download/${VERSION}/kube-linter-linux
+          chmod +x kube-linter-linux
+          sudo mv kube-linter-linux /usr/local/bin/kube-linter
+
+      - name: Run kube-linter scan
+        run: |
+          kube-linter lint ./rendered/techx-observability.yaml
+          kube-linter lint ./rendered/techx-corp-app.yaml
 
   app-smoke-build:
     name: Docker smoke build checkout + shipping
