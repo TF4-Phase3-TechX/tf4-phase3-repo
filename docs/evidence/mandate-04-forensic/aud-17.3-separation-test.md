@@ -2,7 +2,7 @@
 ## AUD-17.3 · CDO07 · Mandate 4
 
 > **Mục đích:** Test operator role (TF4-Developer) không thể xóa audit logs.
-> **Test date:** 2026-07-15
+> **Test date:** 2026-07-17
 > **Performer:** Nguyễn Duy Hoàng (CDO07)
 
 | Thông tin | Giá trị |
@@ -103,11 +103,11 @@ An error occurred (AccessDenied) when calling the DeleteLogGroup operation: User
 
 ```bash
 # Admin có thể đọc
-aws s3 ls s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/ \
+aws s3 ls s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/us-east-1/2026/07/17/ \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 | head -3
 
 # Admin KHÔNG thể xóa (Object Lock COMPLIANCE)
-aws s3 rm s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/us-east-1/2026/07/15/511825856493_CloudTrail_us-east-1_20260715T0945Z_example.json.gz \
+aws s3 rm s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/us-east-1/2026/07/17/511825856493_CloudTrail_us-east-1_20260717T0000Z_8YfFP3XtAhJWWUZt.json.gz \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493
 ```
 
@@ -115,12 +115,12 @@ aws s3 rm s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/Clou
 
 ```
 # Đọc thành công:
-2026-07-15 09:45:32    1024 511825856493_CloudTrail_us-east-1_20260715T0945Z_abc123.json.gz
-2026-07-15 09:30:15    2048 511825856493_CloudTrail_us-east-1_20260715T0930Z_def456.json.gz
-2026-07-15 09:15:10     512 511825856493_CloudTrail_us-east-1_20260715T0915Z_ghi789.json.gz
+2026-07-16 23:58:57       5924 511825856493_CloudTrail_us-east-1_20260717T0000Z_8YfFP3XtAhJWWUZt.json.gz
+2026-07-16 23:59:33       2238 511825856493_CloudTrail_us-east-1_20260717T0000Z_nKX8dEMuRWm0BqDQ.json.gz
+2026-07-16 23:56:40      19865 511825856493_CloudTrail_us-east-1_20260717T0000Z_r3DxbuaqfkdlUaQt.json.gz
 
 # Xóa bị chặn bởi Object Lock:
-An error occurred (AccessDenied) when calling the DeleteObject operation: Cannot delete a protected object
+An error occurred (AccessDenied) when calling the DeleteObject operation: User: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/hoang.nguyenduy is not authorized to perform: s3:DeleteObject on resource: "arn:aws:s3:::tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/us-east-1/2026/07/17/511825856493_CloudTrail_us-east-1_20260717T0000Z_8YfFP3XtAhJWWUZt.json.gz" with an explicit deny in a resource-based policy
 ```
 
 **✅ PASS:** Admin có thể đọc nhưng không thể xóa (Object Lock COMPLIANCE protection).
@@ -151,7 +151,7 @@ An error occurred (AccessDenied) when calling the DeleteObject operation: Cannot
 ---
 
 **Test performed by:** Nguyễn Duy Hoàng (CDO07)
-**Date:** 2026-07-15
+**Date:** 2026-07-17
 **Operator profile tested:** TF4-Developer
 **Admin profile tested:** TF4-AuditReadOnlyAndAnalyze-511825856493
 **Status:** ✅ VERIFIED
