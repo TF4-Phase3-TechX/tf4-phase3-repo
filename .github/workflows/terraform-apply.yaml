@@ -68,6 +68,22 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Sync Slack Webhooks to AWS
+        env:
+          ALERTMANAGER_SLACK_WEBHOOK: ${{ secrets.ALERTMANAGER_SLACK_WEBHOOK }}
+          SECURITY_SLACK_WEBHOOK: ${{ secrets.SECURITY_SLACK_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${ALERTMANAGER_SLACK_WEBHOOK:-}" ]]; then
+            echo "Updating Alertmanager Webhook in Secrets Manager..."
+            aws secretsmanager put-secret-value --secret-id techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK" || \
+            aws secretsmanager create-secret --name techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK"
+          fi
+          if [[ -n "${SECURITY_SLACK_WEBHOOK:-}" ]]; then
+            echo "Updating Security Alerts Webhook in SSM..."
+            aws ssm put-parameter --name "/security-alerts/slack-webhook-url" --type "SecureString" --value "$SECURITY_SLACK_WEBHOOK" --overwrite
+          fi
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:

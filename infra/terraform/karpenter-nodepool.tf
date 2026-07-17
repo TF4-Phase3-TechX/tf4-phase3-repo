@@ -14,11 +14,11 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass_general" {
     spec = {
       role = module.karpenter.node_iam_role_name
 
-      # Karpenter v1 EC2NodeClass requires amiSelectorTerms explicitly; an
-      # alias term both selects the latest AL2023 AMI and implies amiFamily,
-      # so amiFamily itself is no longer set here.
+      # Karpenter v1 EC2NodeClass requires amiSelectorTerms explicitly.
+      # Pin the AL2023 AMI release currently resolved in runtime to avoid
+      # unreviewed node image drift from a moving alias.
       amiSelectorTerms = [
-        { alias = "al2023@latest" }
+        { alias = "al2023@v20260709" }
       ]
 
       subnetSelectorTerms = [
