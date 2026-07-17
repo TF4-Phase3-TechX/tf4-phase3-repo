@@ -343,6 +343,14 @@ resource "aws_cloudtrail" "main" {
   is_multi_region_trail         = true
   enable_logging                = true
 
+  advanced_event_selector {
+    name = "Log all management events"
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Management"]
+    }
+  }
+
   # FIX 1: Log file validation — tạo digest file mỗi giờ, có SHA-256 hash và chữ ký số RSA
   # Dùng: aws cloudtrail validate-logs -> xác minh log chưa bị sửa
   enable_log_file_validation = true
