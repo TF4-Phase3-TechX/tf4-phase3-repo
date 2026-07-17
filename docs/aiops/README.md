@@ -65,10 +65,13 @@ For a controlled live drill, CDO must first confirm the namespace, Deployment al
 | GET | `/v1/telemetry/status` | Read-only Prometheus/OpenSearch/Jaeger connectivity probe |
 | GET | `/v1/incidents` | Recent bounded incident list |
 | GET | `/v1/incidents/{id}` | Evidence, RCA and audit trail |
+| GET | `/v1/incidents/{id}/summary` | Operator Markdown with exact queries and encoded Grafana Explore link |
 | POST | `/v1/incidents/{id}/approve` | Approve and execute the bound action |
 | POST | `/v1/incidents/{id}/reject` | Reject the action |
 
 The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incidents_created_total`; persistent state and automatic Jira creation remain follow-up work.
+
+The unavailable-source semantics, production `app_llm_*` metric correction and operator summary concepts from the team's [PR #208](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/208) are consolidated into this service. The old prototype tree is not duplicated as a second runtime.
 
 ## SOTA-lite scoring and offline benchmark
 

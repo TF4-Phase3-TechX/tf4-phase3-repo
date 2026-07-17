@@ -44,6 +44,8 @@ class Incident(BaseModel):
     status: IncidentStatus = IncidentStatus.OPEN
     severity: str
     affected_service: str
+    environment: str = "production"
+    tenant_id: str = "default"
     detected_at: datetime = Field(default_factory=utcnow)
     last_observed_at: datetime = Field(default_factory=utcnow)
     confidence: float

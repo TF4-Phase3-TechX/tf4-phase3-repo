@@ -197,6 +197,10 @@ components:
         value: http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200
       - name: JAEGER_URL
         value: http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui
+      - name: GRAFANA_URL
+        value: http://grafana.techx-observability.svc.cluster.local/grafana
+      - name: OPENSEARCH_DATASOURCE_UID
+        value: webstore-logs
       - name: REMEDIATION_MODE
         value: dry-run
       - name: AIOPS_TARGET_NAMESPACE

@@ -59,6 +59,8 @@ class AIOpsWorker:
                 incident_type=decision.incident_type,
                 severity=decision.severity,
                 affected_service=decision.service,
+                environment=self.settings.environment,
+                tenant_id=self.settings.tenant_id,
                 confidence=decision.confidence,
                 suspected_root_cause=decision.root_cause,
                 evidence=decision.evidence,
