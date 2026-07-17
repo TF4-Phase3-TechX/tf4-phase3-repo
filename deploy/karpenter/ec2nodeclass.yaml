@@ -1,3 +1,8 @@
+# WARNING: Deployment Order Dependency
+# The security group selector tag has been changed from karpenter.sh/discovery to karpenter.sh/node-security-group.
+# Ensure that `terraform apply` has successfully completed on AWS (attaching the new tag to EKS Node security groups)
+# BEFORE ArgoCD triggers sync for this EC2NodeClass. If synced prematurely, Karpenter will fail to find the SG
+# and cannot scale new EC2 nodes.
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:

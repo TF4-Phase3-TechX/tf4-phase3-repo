@@ -20,6 +20,11 @@ components:
         value: "0.30"
       - name: BEDROCK_OUTPUT_USD_PER_MILLION
         value: "2.50"
+      # WARNING: Required Secret in All Namespaces
+      # This configuration maps BEDROCK_SYSTEM_CANARY from the product-reviews-bedrock-canary Secret.
+      # While this Secret exists on Production, running this value override in Dev/Staging environments
+      # requires creating a placeholder/mock Secret of the same name (product-reviews-bedrock-canary)
+      # with key 'marker' to prevent pods from crashing with CreateContainerConfigError.
       - name: BEDROCK_SYSTEM_CANARY
         valueFrom:
           secretKeyRef:

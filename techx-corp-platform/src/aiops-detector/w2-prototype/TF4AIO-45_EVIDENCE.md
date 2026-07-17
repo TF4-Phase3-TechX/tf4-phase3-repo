@@ -59,5 +59,15 @@ python -m pytest techx-corp-platform/src/aiops-detector/tests/test_validate_tf4a
 }
 ```
 
+## Dependencies Resolution
+The missing `requests` dependency blocker has been fully resolved:
+- Added `requests==2.32.3` to `techx-corp-platform/src/product-reviews/requirements.txt`.
+- Created dedicated dependency tracker `techx-corp-platform/src/aiops-detector/requirements.txt` listing `requests` and `pytest` for local and CI environments.
+
+## Deployment Recommendations & Risk Mitigation
+To address non-blocking risks identified during PR review:
+1. **Karpenter Security Group Tags**: Comments have been added to `deploy/karpenter/ec2nodeclass.yaml` highlighting that `terraform apply` must finish successfully before ArgoCD synchronization is triggered to prevent scaling issues.
+2. **Bedrock Canary Secret**: Warnings and placeholder guidelines have been added to `deploy/values-aio-llm.yaml`. Detailed instructions and a secret template for non-production environments are documented in [docs/aio01/deployment_guide_TF4AIO-45.md](file:///d:/AWS/Xbrain/Phase3/docs/aio01/deployment_guide_TF4AIO-45.md).
+
 ## Conclusion
-The AIOps detector successfully identifies the signal and explicit dependency on AIE telemetry (`app_llm_errors_total` and log messages) is verified.
+The AIOps detector successfully identifies the signal, explicit dependency on AIE telemetry (`app_llm_errors_total` and log messages) is verified, and all PR review issues (blockers and improvements) have been mitigated.
