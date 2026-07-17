@@ -40,17 +40,21 @@ Tài liệu này cung cấp:
 
 Dưới đây là bảng ánh xạ hoàn chỉnh 100% từ thành viên dự án tới tài khoản AWS (SSO Assumed Role / IAM User) và nhóm tương ứng trên cụm Kubernetes:
 
-### Nhóm CDO04 - Platform & Cost-Performance
+### Nhóm CDO04 - Platform & Cost-Performance (Nhóm CD-G04)
 | Thành viên (Real Person) | Vai trò | AWS SSO Permission Set / IAM User | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
-| **Văn Phú Tín** | Lead Platform | `AWSReservedSSO_TF4-DeployOperator_*` / IAM `cdo04-tin` (`AIDAXOKZSY7W7B3Y6BKGH`), `tin` (`AIDAXOKZSY7WQKJG6AMD6`) | `system:masters` (Admin) | Toàn quyền cụm K8s, GitOps, IaC |
-| **Ngô Nguyễn Trường An** | Member | `AWSReservedSSO_TF4-DeployOperator_*` / IAM `cdo04-an` (`AIDAXOKZSY7WTTLW3YONF`) | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
-| **Nguyễn Thành Vinh** | Member | `AWSReservedSSO_TF4-DeployOperator_*` / IAM `cdo04-vinh` (`AIDAXOKZSY7W7ULSAQVP5`) | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
-| **Phan Minh Tuấn** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` / IAM `cdo04-tuan` (`AIDAXOKZSY7W5QSO4CXVW`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
-| **Tạ Hoàng Huy** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` / IAM `cdo04-huy` (`AIDAXOKZSY7WY23QPXDQ5`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
-| **Nguyễn Quách Khang Ninh**| Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` / IAM `cdo04-ninh` (`AIDAXOKZSY7WVZRWDBRXP`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Văn Phú Tín** | Lead Platform | `AWSReservedSSO_TF4-DeployOperator_eb819e1d80dc6016` / IAM `cdo04-tin` (`AIDAXOKZSY7W7B3Y6BKGH`), `tin` (`AIDAXOKZSY7WQKJG6AMD6`) | `system:masters` (Admin) | Toàn quyền cụm K8s, GitOps, IaC |
+| **Ngô Nguyễn Trường An** | Member | `AWSReservedSSO_TF4-DeployOperator_eb819e1d80dc6016` / IAM `cdo04-an` (`AIDAXOKZSY7WTTLW3YONF`) | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
+| **Nguyễn Thành Vinh** | Member | `AWSReservedSSO_TF4-DeployOperator_eb819e1d80dc6016` / IAM `cdo04-vinh` (`AIDAXOKZSY7W7ULSAQVP5`) | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
+| **Phan Minh Tuấn** | Member | `AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86` (`tuan`) / IAM `cdo04-tuan` (`AIDAXOKZSY7W5QSO4CXVW`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên, Cost/Perf |
+| **Tạ Hoàng Huy** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`huy`) / IAM `cdo04-huy` (`AIDAXOKZSY7WY23QPXDQ5`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Nguyễn Quách Khang Ninh**| Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`ninh`) / IAM `cdo04-ninh` (`AIDAXOKZSY7WVZRWDBRXP`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Nguyễn Văn Huy Hoàng** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`hoang.nguyenvan`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Huỳnh Sỹ Thương** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`thuong.huynhsy`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Đỗ Khánh Linh** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`linh.dokhanh`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Nguyễn Quang Thịnh** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`thinh.nguyenquang`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
 
-### Nhóm CDO07 - Auditability & Compliance
+### Nhóm CDO07 - Auditability & Compliance (Nhóm CD-G07)
 | Thành viên (Real Person) | Vai trò | AWS SSO Permission Set (SSO Username) | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
 | **Nguyễn Duy Hoàng** | Lead Audit | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`hoang.nguyenduy`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
@@ -58,21 +62,37 @@ Dưới đây là bảng ánh xạ hoàn chỉnh 100% từ thành viên dự án
 | **Trần Minh Quang** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`quang.tranminh`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
 | **Bùi Thành Nghĩa** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`nghia.bui`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
 | **Đinh Văn Ty** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`ty.dinhvan`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Nguyễn Thị Huy Hoàng** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`hoang.nguyenthinhuy`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Lê Trung Trực** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`truc.le`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Huỳnh Bá Huân** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`huan.huynh`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Hoàng Kim Hùng** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`hung.hoangkim`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Nguyễn Phú Triệu** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`trieu.nguyenphu`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
 
-### Nhóm CDO08 - Security & Reliability
+### Nhóm CDO08 - Security & Reliability (Nhóm CD-G08)
 | Thành viên (Real Person) | Vai trò | AWS SSO Permission Set (SSO Username) | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
-| **Đinh Viết Quyết** | Lead CDO08 | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`quan`) | `security-reliability-auditors` | Quản lý bảo mật, SLO threshold |
+| **Đinh Viết Quyết** | Lead CDO08 | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`quyet.dinhviet`) | `security-reliability-auditors` | Quản lý bảo mật, SLO threshold |
+| **Từ Phúc Nguyên** | Lead IAM/SSO | `AWSReservedSSO_TF4-SecurityIAMSSOManager_7fec96c816beda10` (`nguyen`) | `system:masters` (Admin/IAM) | Quản trị IAM/SSO, Key management |
+| **Ngô Kim Hoàng Nam** | Member/IAM | `AWSReservedSSO_TF4-SecurityIAMSSOManager_7fec96c816beda10` (`nam`) | `system:masters` (Admin/IAM) | Quản trị IAM/SSO, Karpenter/Runtime pin |
 | **Hoàng Minh Hải** | Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`hai`) | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
-| **Nguyễn Thị Tiểu Phương**| Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`phuong`) | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
-| **Từ Phúc Nguyên** | Admin/IAM | `AWSReservedSSO_TF4-SecurityIAMSSOManager_*` (`nguyen`) | `system:masters` (Admin/IAM) | Quản trị IAM/SSO, Key management |
+| **Trần Đình Minh Quân** | Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`quan`) | `security-reliability-auditors` | Triển khai policy-as-code |
+| **Nguyễn Thị Tiểu Phương**| Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`phuong.nguyenthitieu`) | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
+| **Trần Đình Quân** | Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`quan.trandinh`) | `security-reliability-auditors` | Hỗ trợ cấu hình bảo mật |
+| **B'Nướch Thị Thủy** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` (`thuy`) | `base-readonly-users` | Đọc logs bảo mật & Audit |
+| **Nguyễn Hoàng Nhân** | Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`nhan.nguyenhoang`) | `security-reliability-auditors` | Hỗ trợ vận hành bảo mật |
 
-### Nhóm AIO01 - AI Operations
-| Thành viên (Real Person) | Vai trò | AWS SSO Permission Set / IAM User | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
+### Nhóm AIO01 - AI Operations (Nhóm AI-G01)
+| Thành viên (Real Person) | Vai trò | AWS SSO Permission Set (SSO Username) | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
-| **Đinh Danh Nam** | Tech Lead AI | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_<ROLE_HASH>` | `ai-readers` | Định hướng kỹ thuật AI, Bedrock |
-| **Trần Đình Thông** | PM AI | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_<ROLE_HASH>` | `ai-readers` | Quản lý dự án AI, lập kế hoạch |
-| **Huỳnh Xuân Hậu** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_<ROLE_HASH>` | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Đinh Danh Nam** | Tech Lead AI | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`nam.dinhdanh`) | `ai-readers` | Định hướng kỹ thuật AI, Bedrock |
+| **Trần Đình Thông** | PM AI | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`thong.trandinh`) | `ai-readers` | Quản lý dự án AI, lập kế hoạch |
+| **Huỳnh Xuân Hậu** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`hau.huynhxuan`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Huỳnh Nguyễn Ngọc Tân**| Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`tan.huynhnguyenngoc`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Cái Xuân Hoà** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`hoa.caixuan`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Nguyễn Trần Huy Vũ** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`vu.nguyentranhuy`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Nguyễn Văn Tuấn Anh** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`anh.nguyenvantuan`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Lê Ngọc Thành Tâm** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`tam.lengocthanh`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
+| **Nguyễn Tất Văn** | Member | `AWSReservedSSO_TF4-AIReadOnlyOrLimitedInvoke_4536cac35e2c79b6` (`van.nguyentat`) | `ai-readers` | Đọc logs AI, Invoke Bedrock |
 
 ---
 
