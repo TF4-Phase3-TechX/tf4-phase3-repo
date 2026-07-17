@@ -2,10 +2,11 @@
 
 - **Epic:** [TF4AIO-7](https://aio1-xbrain.atlassian.net/browse/TF4AIO-7) — EPIC-AIOPS-03: Incident Summary & Runbook Suggestion
 - **Jira Task:** [TF4AIO-44](https://aio1-xbrain.atlassian.net/browse/TF4AIO-44) — [W2/W3][AIOPS] Map incident types to runbook actions
-- **Status:** 📝 Draft — Revised for conservative human-in-the-loop review
+- **Status:** Draft — 07a runbook contract plus phased closed-loop target design
 - **Planning:** [AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md](./AIO1_PROJECT_PLANNING_AND_TASK_ASSIGNMENT.md)
 - **Detection rules (1:1 source of truth for alerts/queries):** [aiops_detection_rules_specs.md](./aiops_detection_rules_specs.md)
-- **Remediation Policy:** Conservative / Human-in-the-Loop — AIOps **suggests only**, never executes infra-impacting actions
+- **Target architecture:** [AIOPS_CLOSED_LOOP_AUTOMATION_DESIGN.md](./AIOPS_CLOSED_LOOP_AUTOMATION_DESIGN.md)
+- **Current remediation mode:** `recommend` / human-in-the-loop; mutation is not implemented in Mandate 07a
 
 ---
 
@@ -21,15 +22,24 @@
 
 > Scope note: program taxonomy may list more incident classes; **AIOps MVP mapping covers these three** so detector → summary → runbook hint stay consistent.
 
-### Non-goals (MVP boundary)
+### Current delivery boundary and final scope
 
-AIOps MVP **does not**:
+Mandate 07a documents the target closed-loop system, but its runtime boundary is
+detection plus curated human response. In 07a the system **does not**:
 
-- Auto-restart pods, StatefulSets, or nodes
-- Auto scale / rollback / mutate traffic
+- claim that an automation policy engine or executor is deployed;
+- auto-restart pods, StatefulSets, or nodes;
+- auto-scale, roll back, or mutate traffic;
 - Patch, rewrite, disable, or re-point **flagd** / incident-injection flags
 - Claim root-cause certainty (hints may state *suspected* cause only)
 - Replace CDO-owned platform runbooks
+
+The final team scope does include gated closed-loop automation. Its modes,
+eligibility gates, action tiers, executor safety, verification, rollback, and
+on-call escalation are defined in the
+[target architecture](./AIOPS_CLOSED_LOOP_AUTOMATION_DESIGN.md). Automation is
+promoted per action only after shadow-mode, human approval, and runtime safety
+evidence; it is not implied by this runbook.
 
 ### Output contract (for TF4AIO-42/43 summary field)
 
@@ -37,16 +47,23 @@ Each mapping below is intended to populate a structured **runbook hint**, not a 
 
 **Contract rule:** the incident summary generator / detector **must emit exactly these fields and formats**. Free-form prose may appear only in human-facing renderers; the structured payload is the machine contract. Mismatched field names, casing, or invented action IDs break downstream consumers.
 
-```text
-incident_type              # snake_case enum: latency_spike | error_rate_spike | llm_timeout_error
-symptoms_summary           # short human string (optional in machine payload)
-evidence_checks[]          # queries / UI paths operator should run
-suggested_actions[]        # snake_case action IDs only; ordered by safety; allow-list per MVP type
-do_not[]                   # snake_case anti-pattern IDs; allow-list per MVP type
-escalation:
-  primary                  # snake_case owner id (e.g. aio01_oncall, aie_owner_aio01)
-  secondary                # snake_case owner id
-known_limitations[]        # optional strings / ids
+```yaml
+runbook_hint:
+  incident_type: latency_spike | error_rate_spike | llm_timeout_error
+  confidence: high | partial | unknown
+  symptoms_summary: short human string
+  evidence_checks: []
+  suggested_actions: []
+  do_not: []
+  escalation:
+    primary: aio01_oncall
+    secondary: cdo_platform
+  known_limitations: []
+  automation:
+    mode: observe | recommend | approval_required | auto
+    eligible: false
+    candidate_action_id: null
+    blocked_by: []
 ```
 
 #### `runbook_hint` field contract (YAML / JSON)
@@ -56,17 +73,23 @@ Nested under the incident summary as `runbook_hint`:
 | Field | Type | Format / rules |
 | --- | --- | --- |
 | `incident_type` | string | One of: `latency_spike`, `error_rate_spike`, `llm_timeout_error` |
+| `confidence` | string | Required: `high`, `partial`, or `unknown`; independent from severity |
+| `evidence_checks` | string[] | Required curated read-only checks or evidence references |
 | `suggested_actions` | string[] | **snake_case action IDs only** (e.g. `verify_p95_and_trace_outliers`). Do **not** emit free-text sentences, Title Case, or kebab-case. Order = safety priority (safest first). IDs must come from the allow-list in each MVP §F example (or the matching §C table mapping). |
 | `do_not` | string[] | **snake_case anti-pattern IDs only** (e.g. `patch_or_rewrite_flagd`). Same casing rules as `suggested_actions`. |
 | `escalation.primary` | string | snake_case owner id from §E |
 | `escalation.secondary` | string | snake_case owner id from §E |
+| `automation.mode` | string | Required current policy mode; 07a defaults to `recommend` |
+| `automation.eligible` | boolean | Required; false when any confidence, evidence, approval, or safety gate is missing |
+| `automation.blocked_by` | string[] | Explicit policy-gate failures; never silently fall through to execution |
 
 **Generator / detector conformance:**
 
 1. Copy action / do-not IDs **verbatim** from the curated allow-list for the classified `incident_type` — do not paraphrase into natural language inside the structured fields.
-2. Prefer emitting the full ordered allow-list for that type (or a evidence-gated subset) rather than inventing new IDs such as `ScaleOutNow` or `verify-p95`.
+2. Emit only the evidence-gated subset that is safe for the current incident state; never invent IDs such as `ScaleOutNow` or `verify-p95`.
 3. Human-readable labels (for UI) may be derived by a separate presentation layer; they are **not** substitutes for the snake_case IDs in the payload.
-4. If evidence is incomplete, still use the same schema: keep IDs, set confidence/limitations, and avoid inventing mutate-style actions outside the allow-list.
+4. If evidence is incomplete, keep the same schema, set confidence/limitations,
+   set `automation.eligible=false`, and stop at investigate/escalate.
 
 Canonical examples: §2.F, §3.F, §4.F.
 
@@ -74,8 +97,8 @@ Canonical examples: §2.F, §3.F, §4.F.
 
 ## 1. Operating principles
 
-1. **Human-in-the-loop:** AIOps detects, gathers evidence links/queries, and displays curated hints. Only a human (AIO on-call and/or CDO platform) may approve and execute cluster/AWS changes.
-2. **No auto-remediation:** The engine never runs `kubectl`, Helm, Terraform, or ConfigMap patches.
+1. **Phased control:** 07a/07b run in `observe` or `recommend`; later phases may use `approval_required` or `auto` only for separately approved allow-listed actions.
+2. **No free-form remediation:** The engine never runs arbitrary `kubectl`, Helm, Terraform, ConfigMap patches, or LLM-generated commands.
 3. **Evidence before action:** Every suggested action names the evidence that must be true first. If evidence is missing, the hint stops at investigate/escalate.
 4. **Blast-radius order:** Prefer read-only diagnosis → application containment/fallback → freeze rollout → CDO-owned infra change (last resort).
 5. **flagd is protected:** Incident flags (`llmRateLimitError`, `llmInaccurateResponse`, …) are BTC/org inject mechanisms. Operators **read** flag state for diagnosis; they **must not** patch `flagd` ConfigMaps to “clear” an incident. Remediation for inject scenarios is **graceful degradation in the app**, not disabling the inject path.
@@ -135,18 +158,14 @@ Alert `AIOpsServiceLatencySpikeCritical` (p95 > 2000ms) or `AIOpsServiceLatencyS
 | --- | --- | --- | --- |
 | 1 | Spike confirmed; root span unclear | Continue triage (traces + logs); open incident note with evidence links | AIO on-call |
 | 2 | Bottleneck = dependency/DB/LLM, not local CPU | **Do not** scale the app blindly; escalate to owner of that dependency (CDO for data plane / AIE for AI path) | AIO → CDO or AIE |
-| 3 | Sustained CPU/memory near limit (> ~80% of limit) **and** HPA not covering **and** dependency not saturated | Optional **CDO-approved** scale-out of the app Deployment (increase replicas by a small step, re-check p95) | CDO platform |
-| 4 | Clear correlation with a bad deploy in the incident window | Optional **CDO-approved** rollout undo / GitOps revert of that Deployment only | CDO platform (+ AIO verify p95) |
+| 3 | Sustained CPU/memory near limit (> ~80% of limit) **and** HPA not covering **and** dependency not saturated | Propose a small bounded replica change through the approved GitOps workflow; re-check p95 before promotion | CDO platform |
+| 4 | Clear correlation with a bad deploy in the incident window | Propose a GitOps revert to the exact previous known-good application revision | CDO platform (+ AIO verify p95) |
 
-**Example mutate commands (CDO-owned, after approval — not AIOps):**
-
-```bash
-# Only if table row 3 conditions are met; replace N with verified target replica count
-kubectl scale deployment <service-name> --replicas=<N> -n <namespace>
-
-# Only if table row 4 conditions are met
-kubectl rollout undo deployment/<service-name> -n <namespace>
-```
+**Change-control path:** capture the pre-state revision and metrics, open a
+bounded GitOps change/revert, obtain the named CDO approval and deployment
+window, wait for Argo `Synced/Healthy`, then run the verification contract.
+Direct `kubectl scale` or `kubectl rollout undo` is not a normal AIOps action;
+any break-glass use remains a separate CDO-owned incident procedure.
 
 ### D. Do not
 
@@ -167,18 +186,29 @@ kubectl rollout undo deployment/<service-name> -n <namespace>
 > Generator must emit these **snake_case IDs** (or an evidence-gated subset in the same order). Do not rewrite as free text.
 
 ```yaml
-incident_type: latency_spike
-do_not:
-  - restart_pods_or_db_as_first_response
-  - scale_out_if_dependency_or_db_is_bottleneck
-suggested_actions:
-  - verify_p95_and_trace_outliers
-  - check_cpu_memory_and_recent_deploy
-  - if_local_resource_saturation_then_cdo_scale_out
-  - if_bad_deploy_then_cdo_rollout_undo
-escalation:
-  primary: aio01_oncall
-  secondary: cdo_platform
+runbook_hint:
+  incident_type: latency_spike
+  confidence: high
+  evidence_checks:
+    - verify_p95_and_trace_outliers
+    - check_cpu_memory_and_recent_deploy
+  do_not:
+    - restart_pods_or_db_as_first_response
+    - scale_out_if_dependency_or_db_is_bottleneck
+  suggested_actions:
+    - continue_readonly_triage
+    - if_local_resource_saturation_then_propose_cdo_gitops_scale
+    - if_bad_deploy_then_propose_cdo_gitops_revert
+  escalation:
+    primary: aio01_oncall
+    secondary: cdo_platform
+  known_limitations: []
+  automation:
+    mode: recommend
+    eligible: false
+    candidate_action_id: null
+    blocked_by:
+      - human_approval_required
 ```
 
 ---
@@ -267,15 +297,12 @@ Alert `AIOpsServiceErrorRateSpikeCritical` (error rate > 5%) or `AIOpsServiceErr
 | --- | --- | --- | --- |
 | 1 | Error rate real (traffic floor met); class unclear | Package metrics + log samples + trace IDs; continue triage | AIO on-call |
 | 2 | Downstream/DB connectivity errors; dependency pods not Ready | Report dependency health to **CDO**; do not restart shared data stores as first step | AIO → CDO |
-| 3 | Clear bad deploy / config of the **application** service | Optional **CDO-approved** `rollout undo` / GitOps revert of **that** Deployment | CDO (+ AIO verify error rate) |
+| 3 | Clear bad deploy / config of the **application** service | Propose a CDO-approved GitOps revert of **that** application revision | CDO (+ AIO verify error rate) |
 | 4 | Shared platform store unhealthy after CDO diagnosis | CDO follows **platform** datastore runbook (restore/failover/restart only under CDO change control) | **CDO only** |
 
-**Example mutate command (app rollback only, CDO-owned):**
-
-```bash
-# Only after deploy correlation is confirmed for the app Deployment
-kubectl rollout undo deployment/<service-name> -n <namespace>
-```
+Use the same pre-state, GitOps approval, Argo health, verification, and rollback
+contract as the latency runbook. Do not replace it with an untracked direct
+cluster mutation.
 
 > **Postgres / shared DB:** AIOps runbook does **not** suggest `kubectl rollout restart statefulset/postgresql` (or equivalent) as a default or early step. Restarting a shared datastore has high blast radius (connection storms, multi-service impact) and is **CDO platform last-resort** only, outside this curated MVP allow-list.
 
@@ -298,19 +325,30 @@ kubectl rollout undo deployment/<service-name> -n <namespace>
 > Generator must emit these **snake_case IDs** (or an evidence-gated subset in the same order). Do not rewrite as free text.
 
 ```yaml
-incident_type: error_rate_spike
-do_not:
-  - restart_shared_postgresql_from_aio_hint
-  - rollback_without_deploy_correlation
-suggested_actions:
-  - confirm_error_ratio_with_min_traffic
-  - classify_logs_infra_vs_app
-  - check_pods_endpoints_events
-  - if_bad_app_deploy_then_cdo_rollout_undo
-  - if_shared_datastore_unhealthy_then_cdo_platform_runbook
-escalation:
-  primary: aio01_oncall
-  secondary: cdo_platform
+runbook_hint:
+  incident_type: error_rate_spike
+  confidence: high
+  evidence_checks:
+    - confirm_error_ratio_with_min_traffic
+    - classify_logs_infra_vs_app
+    - check_pods_endpoints_events
+  do_not:
+    - restart_shared_postgresql_from_aio_hint
+    - rollback_without_deploy_correlation
+  suggested_actions:
+    - continue_readonly_triage
+    - if_bad_app_deploy_then_propose_cdo_gitops_revert
+    - if_shared_datastore_unhealthy_then_cdo_platform_runbook
+  escalation:
+    primary: aio01_oncall
+    secondary: cdo_platform
+  known_limitations: []
+  automation:
+    mode: recommend
+    eligible: false
+    candidate_action_id: null
+    blocked_by:
+      - human_approval_required
 ```
 
 ---
@@ -323,17 +361,24 @@ Alert `AIOpsLLMIntegrationFailureCritical` (AI span error rate > 0.5/s **or** AI
 
 ### B. Evidence to check (read-only)
 
-1. **Prometheus — AI path isolation** (same signals as detection):
+1. **Prometheus — AI path isolation** (current `product-reviews` contract):
 
-   > **Metric name drift (read before trusting empty series):** names below are **pinned for MVP alignment with detection rules**. They can lag the AI Engine codebase (e.g. LLM cost/error family such as `app_llm_errors_total`, `app_llm_calls_total` may be added or renamed while this runbook still cites `app_ai_assistant_counter_total`). Before treating a PromQL result as “no traffic / no errors”, re-verify series names against `product-reviews` instrumentation and live Prometheus (`/api/v1/label/__name__/values` or Grafana explorer). See §6 item 3 and detection open items.
+   The provider contract is `app_llm_calls_total`, `app_llm_errors_total`, and
+   `app_llm_latency_seconds`. `app_ai_assistant_counter_total` may be used only
+   as the upstream assistant-demand signal; it is not a substitute for the
+   provider call/error counters. Verify exported names under real traffic before
+   treating an empty series as a healthy zero.
 
    ```promql
-   # AI assistant throughput — pinned name; re-verify under load if series is missing
-   sum(rate(app_ai_assistant_counter_total[3m]))
+   # Provider failure rate and call throughput
+   sum(rate(app_llm_errors_total[3m]))
+   sum(rate(app_llm_calls_total[3m]))
 
-   # Optional cross-check (AIE LLM telemetry family; names may evolve independently)
-   # sum(rate(app_llm_errors_total[3m]))
-   # sum(rate(app_llm_calls_total[3m]))
+   # Provider latency
+   histogram_quantile(0.95, sum by (le) (rate(app_llm_latency_seconds_bucket[3m])))
+
+   # Optional demand cross-check: assistant requests reaching product-reviews
+   sum(rate(app_ai_assistant_counter_total[3m]))
 
    # Errors on AI span only (avoids mixing with generic product-reviews errors)
    rate(
@@ -345,15 +390,16 @@ Alert `AIOpsLLMIntegrationFailureCritical` (AI span error rate > 0.5/s **or** AI
    )
    ```
 
-2. **OpenSearch — LLM service errors** (detection-aligned DSL):
+2. **OpenSearch — Bedrock/product-reviews errors** (production resource scope):
 
    ```json
    {
      "query": {
        "bool": {
-         "must": [
-           { "term": { "resource.service.name": "llm" } },
-           { "term": { "severity.text": "ERROR" } }
+          "must": [
+            { "term": { "resource.service.name": "product-reviews" } },
+            { "term": { "resource.k8s.namespace.name": "techx-tf4" } },
+            { "term": { "severity.text": "ERROR" } }
          ],
          "should": [
            { "match_phrase": { "body": "rate limit exceeded" } },
@@ -409,20 +455,30 @@ Alert `AIOpsLLMIntegrationFailureCritical` (AI span error rate > 0.5/s **or** AI
 > Generator must emit these **snake_case IDs** (or an evidence-gated subset in the same order). Do not rewrite as free text.
 
 ```yaml
-incident_type: llm_timeout_error
-do_not:
-  - patch_or_rewrite_flagd
-  - invent_llmFallbackMode_flag
-  - restart_llm_or_product_reviews_for_429
-suggested_actions:
-  - verify_ai_span_errors_and_throughput
-  - classify_inject_flag_vs_organic_provider_failure_readonly
-  - confirm_app_safe_fallback_ux
-  - freeze_ai_rollout
-  - escalate_aie_then_cdo_if_platform
-escalation:
-  primary: aie_owner_aio01
-  secondary: cdo_platform
+runbook_hint:
+  incident_type: llm_timeout_error
+  confidence: high
+  evidence_checks:
+    - verify_ai_calls_errors_and_latency
+    - classify_inject_flag_vs_organic_provider_failure_readonly
+  do_not:
+    - patch_or_rewrite_flagd
+    - invent_llm_fallback_mode_flag
+    - restart_llm_or_product_reviews_for_429
+  suggested_actions:
+    - confirm_app_safe_fallback_ux
+    - freeze_ai_rollout
+    - escalate_aie_then_cdo_if_platform
+  escalation:
+    primary: aie_owner_aio01
+    secondary: cdo_platform
+  known_limitations: []
+  automation:
+    mode: recommend
+    eligible: false
+    candidate_action_id: freeze_ai_rollout
+    blocked_by:
+      - human_approval_required
 ```
 
 ---
@@ -431,21 +487,25 @@ escalation:
 
 | Detector / summary field | Source in this doc | Format constraint |
 | --- | --- | --- |
-| `incident_type` | MVP-1 → `latency_spike`; MVP-2 → `error_rate_spike`; MVP-3 → `llm_timeout_error` | snake_case enum only |
-| `evidence[]` / `evidence_checks[]` | Section B queries (copy links/queries into summary) | structured checks; not free-form remediation |
+| `runbook_hint.incident_type` | MVP-1 → `latency_spike`; MVP-2 → `error_rate_spike`; MVP-3 → `llm_timeout_error` | snake_case enum only |
+| `runbook_hint.evidence_checks[]` | Section B queries/check IDs | structured read-only checks; not free-form remediation |
 | `runbook_hint.suggested_actions` | Section C (safety order) + §F allow-list IDs | **snake_case action IDs only** (e.g. `verify_p95_and_trace_outliers`); no free-text sentences |
 | `runbook_hint.do_not` | Section D + §F allow-list IDs | **snake_case IDs only** |
 | `runbook_hint.escalation` | Section E | `primary` / `secondary` as snake_case owner ids |
-| `confidence` / `limitations` | Detection rules + §6 known gaps (idle metrics, inject-flag noise, metric-name drift, quantile bucket limits) | optional but preferred when signals are thin |
+| `runbook_hint.confidence` / `runbook_hint.known_limitations` | Detection rules + §6 known gaps | Required; missing sources must block mutation and remain visible to operators |
+| `runbook_hint.automation` | Target policy design | Required mode, eligibility, candidate action, and blocked reasons; 07a defaults to non-executing `recommend` |
 
 **Contract enforcement (TF4AIO-42/43):**
 
-- The incident summary generator and detector are **producers** of `runbook_hint`; this document is the **allow-list source of truth** for action / do-not IDs.
+- The incident summary generator and detector are planned **producers** of
+  `runbook_hint`; until conformance tests exist, this is the target allow-list
+  contract rather than a runtime implementation claim.
 - Emit the same schema as §0 and the §F YAML samples. Do not rename fields (`suggestedActions`, `suggested-actions`, `actions`) or change ID casing.
 - UI copy may map IDs → display strings; the stored/API payload keeps snake_case IDs so consumers do not diverge from the contract.
 - Reject or drop unknown action IDs rather than accepting LLM-invented mutate steps.
 
-AIOps may **render** optional `kubectl` examples for humans; it must **never** run them.
+AIOps must not render arbitrary mutate commands. It emits curated action IDs and
+routes approved GitOps/platform work to the owning human or executor handler.
 
 ---
 
@@ -453,10 +513,15 @@ AIOps may **render** optional `kubectl` examples for humans; it must **never** r
 
 1. **Idle cluster / missing series:** PromQL may return no data without traffic; hints should say “signal not confirmable” rather than invent actions.
 2. **Inject-flag noise:** `llmRateLimitError` drills will fire MVP-3 by design; runbook treats this as degradation proof, not a license to mutate flagd.
-3. **Metric name drift (pinned PromQL risk):** This runbook and detection rules **pin** Prometheus series such as `app_ai_assistant_counter_total`, span label `get_ai_assistant_response`, and related RED span metrics. The AI Engine / `product-reviews` instrumentation can change independently (example: LLM telemetry family uses names like `app_llm_errors_total`, `app_llm_calls_total`, token/cost series — which may be added, renamed, or preferred over older counters). **Impact:** suggested PromQL that still cites a stale name returns empty results and can be misread as “no load / no errors.”
-   - **Mitigation:** periodically re-verify pinned names against the live codebase (`techx-corp-platform/src/product-reviews/metrics.py` or current equivalent) and Prometheus series under real AI traffic; keep this doc and [aiops_detection_rules_specs.md](./aiops_detection_rules_specs.md) in lockstep when AIE renames metrics; treat empty series as “unconfirmed name or idle” until re-checked (see detection open items on `app_ai_assistant_counter`).
+3. **Metric contract drift:** The runbook uses the current provider family
+   `app_llm_calls_total`, `app_llm_errors_total`, and
+   `app_llm_latency_seconds`; `app_ai_assistant_counter_total` is only an
+   upstream demand cross-check. Re-verify exported names against
+   `product-reviews/metrics.py` and live Prometheus after instrumentation changes.
 4. **Namespace/context:** Commands use `<namespace>` placeholders — confirm live context (`techx-tf4` or current TF namespace) before any human execution.
-5. **No claim of automated remediation readiness:** Safety gates, allow-lists, dry-run, and CDO RBAC for future automation are **out of MVP scope**.
+5. **No claim of automated remediation readiness:** The target architecture is
+   documented, but policy/executor runtime evidence remains phased work. The
+   current mode is `observe` or `recommend`.
 6. **Runbook hint contract drift:** If the summary generator emits free-text actions or non-snake_case IDs, consumers of `runbook_hint.suggested_actions` will mismatch this spec. Keep generator templates / schemas synchronized with §0 and §F allow-lists.
 
 ---
@@ -469,10 +534,11 @@ AIOps may **render** optional `kubectl` examples for humans; it must **never** r
 | Evidence to check | Yes (§B), aligned with detection rules where applicable |
 | Suggested human-approved action | Yes (§C), ordered, owner-tagged, evidence-gated |
 | Escalation owner | Yes (§E), AIO01 / AIE / CDO mapped |
-| Conservative / no auto infra-impacting claim | Yes (§0 non-goals, §1 principles) |
+| 07a runtime boundary and final closed-loop scope are separated | Yes (§0 plus target architecture) |
 | No flagd mutation / no default DB restart in allow-list | Yes |
-| `runbook_hint` field/format contract for summary generator | Yes (§0 contract + §5 + §F snake_case IDs) |
-| Metric-name drift called out for pinned PromQL | Yes (§4.B note + §6.3) |
+| Nested `runbook_hint` target contract is consistent | Yes (§0 contract + §5 + §F examples) |
+| Current Bedrock telemetry/resource contract is used | Yes (§4.B + §6.3) |
+| Automation policy, verification, rollback, and escalation are planned | Yes (target architecture) |
 
 ---
 
@@ -480,6 +546,7 @@ AIOps may **render** optional `kubectl` examples for humans; it must **never** r
 
 | Date | Change |
 | --- | --- |
+| 2026-07-17 | Add final closed-loop scope; link target architecture; unify nested runbook contract; align Bedrock metrics/resource scope; replace direct mutation examples with approved GitOps change control |
 | 2026-07-16 | Review follow-up: formalize `runbook_hint` output contract (snake_case action / do-not IDs; generator must not invent field names or free-text actions); expand metric-name drift risk for pinned PromQL (e.g. `app_ai_assistant_counter_total` vs evolving `app_llm_*` family) with periodic re-verify guidance |
 | 2026-07-16 | Rewrite for TF4AIO-44 review: remove flagd patch / invented `llmFallbackMode`; remove default PostgreSQL restart; reframe kubectl as CDO-optional; align evidence with detection rules; Bedrock/Pod Identity-aware LLM path; structured `runbook_hint` examples |
 | (prior) | Initial draft with executable-style scale/rollback/restart/flagd actions |

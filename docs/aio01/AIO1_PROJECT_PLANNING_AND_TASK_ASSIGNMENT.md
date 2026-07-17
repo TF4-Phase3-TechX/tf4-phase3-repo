@@ -1,6 +1,11 @@
 # AIO1 Project Planning & Task Assignment
 
-Date: 2026-07-09
+Created: 2026-07-09
+Last updated: 2026-07-17
+
+> Jira remains the live status source. Existing Week 1/2 status rows below are
+> retained as the planning baseline; the closed-loop work packages added on
+> 2026-07-17 distinguish existing Jira issues from items still to be created.
 
 Purpose: tài liệu tổng hợp để mentor review cách team AIO1 chia việc cho toàn project Phase 3, gồm Week 1 baseline/planning và Week 2-3 build/validation.
 
@@ -126,7 +131,24 @@ Goal: make AI feature measurable, safer, more reliable, and ready for real LLM /
 
 Owner group: Nam, Hậu, Hòa, Tâm.
 
-Goal: build a small AIOps MVP that can use observability data to detect incidents, summarize symptoms, and suggest runbook hints.
+Goal: deliver a phased closed-loop AIOps system that detects incidents,
+maintains incident state, explains RCA hypotheses, recommends or executes only
+policy-approved actions, verifies recovery, rolls back failed actions, and
+escalates to the correct on-call owner. Mandate 07a covers design and initial
+implementation; runtime automation is promoted only after shadow-mode and
+safety evidence.
+
+Target design: [AIOPS_CLOSED_LOOP_AUTOMATION_DESIGN.md](./AIOPS_CLOSED_LOOP_AUTOMATION_DESIGN.md).
+
+### Delivery phases
+
+| Delivery phase | Scope | Exit gate |
+| --- | --- | --- |
+| 07a design/initial implementation | Detection rules, three-metric analysis, target architecture, unified incident/action contract, automation policy, signed ADR | Human-reviewed docs plus linked implementation PR/commit; no runtime automation claim |
+| 07b detection runtime | Deployed rules, visible alert routing, labeled drills, precision/recall/lead-time | Reproducible GitOps/runtime evidence |
+| Shadow policy | Incident state/dedup and deterministic observe/recommend decisions | Replay/live report proves eligible/blocked reasons without mutation |
+| Approval workflow | Named approval/rejection with expiry and audit | No protected action can execute without a valid approval |
+| Closed-loop executor | T0 actions first; separately approved T1/T2 handlers | Least privilege, idempotency, cooldown, verification, rollback, kill switch, controlled drills |
 
 | Phase | Task | Owner | Output / Done Criteria | Jira status |
 | --- | --- | --- | --- | --- |
@@ -142,6 +164,23 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W3 | Validate latency/error detector with load test | Hậu / Tâm + CDO dependency | Detector catches controlled degradation | `TF4AIO-56` To Do |
 | W3 | Validate LLM timeout/error signal | Hậu / Tâm + AIE dependency | AIOps recognizes AI path issue | `TF4AIO-45` To Do |
 | W3 | Write AIOps validation report | Hòa / Nam | What worked, what failed, false positives/limitations | `TF4AIO-46` To Do |
+
+### Closed-loop automation work packages
+
+These packages are part of the final team scope. A row marked `Jira to create`
+is planning evidence, not a claim that implementation has started.
+
+| Phase | Work package | Accountable owner | Output / Done Criteria | Tracking |
+| --- | --- | --- | --- | --- |
+| 07a | Target closed-loop architecture and automation policy | Nam | Reviewed architecture, modes, eligibility gates, action tiers, verification/rollback, escalation, open decisions | `TF4AIO-71` plus ADR PR |
+| 07a | Unified incident, RCA, runbook, and automation decision schema | Hậu / Hòa | Versioned schema and canonical examples; one severity/confidence vocabulary | `TF4AIO-42`, `TF4AIO-43`, `TF4AIO-44` |
+| 07b | Detection integration and on-call routing | Nam / Tâm | Alertmanager/Slack route, grouping, inhibition, acknowledgement/escalation policy, GitOps deployment evidence | `TF4AIO-76` |
+| Post-07b | Incident state manager and deduplication | Hậu | Stable fingerprint, lifecycle transitions, grouping, persistence/retention decision | Jira to create |
+| Post-07b | Shadow-mode policy engine | Hậu / Tâm | Deterministic `observe`/`recommend` decisions with eligibility and blocked reasons; no mutation | Jira to create |
+| Post-07b | Approval workflow and action catalog | Nam / Hòa + CDO | Named approver, expiry, audit, T0/T1/T2 allow-list and forbidden actions | Jira to create |
+| Post-07b | Allow-listed action executor | Tâm + CDO | Least privilege, idempotency, concurrency/cooldown, dry-run, kill switch; T0 first | Jira to create |
+| Post-07b | Post-action verifier and rollback state machine | Hậu / Tâm + CDO | Versioned pre/post queries, timeout, recovered/failed/inconclusive states, rollback drill | Jira to create |
+| Post-07b | Automation safety report and promotion review | Hòa / Nam | Per action/service shadow results, success/rollback/unsafe-action metrics, human sign-off | Jira to create |
 
 ### 7.3 Operational / PM track
 
@@ -191,6 +230,21 @@ The current Jira board has Week 1 tasks plus high-level epics. The following tas
 - `[W3][AIOPS] Validate detector with load test/failure drill`
 - `[W3][AIOPS] Write AIOps validation report`
 
+### Create for AIOps closed-loop delivery
+
+- `[POST-07B][AIOPS] Implement incident state manager and stable dedup fingerprint`
+- `[POST-07B][AIOPS] Implement shadow-mode automation policy engine`
+- `[POST-07B][AIOPS] Define on-call routing, acknowledgement, and escalation policy`
+- `[POST-07B][AIOPS/CDO] Implement approval workflow and versioned action catalog`
+- `[POST-07B][AIOPS/CDO] Implement least-privilege allow-listed action executor`
+- `[POST-07B][AIOPS/CDO] Implement post-action verification and rollback state machine`
+- `[POST-07B][AIOPS/CDO] Run controlled automation failure/rollback drills`
+- `[POST-07B][AIOPS] Publish automation safety and promotion report`
+
+Every new Jira task must name one accountable owner, dependencies, mode
+(`observe`, `recommend`, `approval_required`, or `auto`), acceptance criteria,
+PR/commit, reproducible validation, rollback expectations, and evidence URL.
+
 ### Create for OPS Week 2-3
 
 - `[W2][OPS] Create Week 2 implementation PR plan`
@@ -198,7 +252,21 @@ The current Jira board has Week 1 tasks plus high-level epics. The following tas
 - `[W3][OPS] Package endpoint/eval/repro documentation`
 - `[W3][OPS] Prepare AIO Service Health Readout`
 
-## 9. Mentor-review summary
+## 9. Planning completeness and non-claims
+
+This plan covers the final closed-loop team scope; it does not claim all phases
+are implemented. Until the relevant action is separately approved and its
+runtime gates pass:
+
+- the detector remains in `observe` or `recommend` mode;
+- runbook actions are curated suggestions, not executable free text;
+- T1/T2 mutations require human/CDO approval;
+- shared database, node/network/IAM, flagd, and arbitrary commands remain
+  manual-only or forbidden;
+- any missing telemetry or failed verification escalates instead of being
+  treated as recovery.
+
+## 10. Mentor-review summary
 
 Team AIO1 đã chia việc theo 3 nhóm chính cho toàn project:
 
