@@ -193,6 +193,32 @@ roleRef:
   name: ai-preflight-job-runner
   apiGroup: rbac.authorization.k8s.io
 ---
+# === RBAC for AI Team load-generator scale control ===
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-load-generator-scale-operator
+  namespace: techx-tf4
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["load-generator"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-load-generator-scale-operator-binding
+  namespace: techx-tf4
+subjects:
+  - kind: Group
+    name: "ai-readers"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ai-load-generator-scale-operator
+  apiGroup: rbac.authorization.k8s.io
+---
 # === RBAC for Terraform plan / GitHub Actions Karpenter validation ===
 # These resources codify the temporary access previously granted during the
 # Karpenter rollout so Terraform plan can read Helm release state and resolve
