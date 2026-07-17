@@ -169,3 +169,26 @@ aws cloudtrail lookup-events \
 ```bash
 git log -n 3 --format="%h - %an <%ae> - %ad : %s"
 ```
+
+---
+
+## 7. Minh chứng kiểm tra thực tế (Forensic Evidence Screenshot)
+
+Dưới đây là các hình ảnh minh chứng chụp lại kết quả truy vấn và vết log thực tế trên môi trường AWS CloudTrail, CloudWatch Logs Insights và Git để đối chiếu:
+
+### 1. Tổng quan truy vấn AWS CloudTrail & Git history
+![Minh chứng truy vấn AWS CloudTrail & EKS](evidence_query.png)
+
+### 2. Chi tiết sự kiện AWS CloudTrail - PutParameter
+![Chi tiết CloudTrail PutParameter](evidence_cloudtrail_put.jpg)
+
+### 3. Chi tiết sự kiện AWS CloudTrail - GetParameter
+![Chi tiết CloudTrail GetParameter](evidence_cloudtrail_get.jpg)
+
+### 4. Chi tiết sự kiện AWS CloudTrail - DeleteParameter
+![Chi tiết CloudTrail DeleteParameter](evidence_cloudtrail_delete.jpg)
+
+### 5. Truy vấn log CloudWatch Logs Insights cho phiên sự kiện
+![Truy vấn CloudWatch Logs Insights](evidence_cloudwatch_insights.jpg)
+
+
