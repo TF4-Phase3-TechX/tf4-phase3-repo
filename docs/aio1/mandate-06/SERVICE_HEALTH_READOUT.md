@@ -58,7 +58,7 @@ The AIOps track has successfully built and verified a rule-based detection engin
 - **Incident Detection:** Auto-monitors `app_llm_errors_total` and queries OpenSearch logs to catch LLM timeouts, unavailability, and format-validation errors.
 - **RCA & Incident Summary (`incident_summary.py`):** Automatically generates standard Markdown postmortem summaries mapping contributors to high/medium severity.
 - **Dynamic Grafana Correlation:** Generates custom gRPC/Prometheus visualization links pointing directly to the incident timeframe.
-- **Validation Report:** Confirmed using mock telemetry in test script [test_validate_tf4aio45.py](file:///Users/trandinhthong/Downloads/AWS/xbrain-learners/tf4-phase3-repo/techx-corp-platform/src/aiops-detector/tests/test_validate_tf4aio45.py) and logged in [TF4AIO-45_EVIDENCE.md](file:///Users/trandinhthong/Downloads/AWS/xbrain-learners/tf4-phase3-repo/techx-corp-platform/src/aiops-detector/w2-prototype/TF4AIO-45_EVIDENCE.md).
+- **Validation Report:** Confirmed using mock telemetry in test script [test_validate_tf4aio45.py](../../../techx-corp-platform/src/aiops-detector/tests/test_validate_tf4aio45.py) and logged in [TF4AIO-45_EVIDENCE.md](../../../techx-corp-platform/src/aiops-detector/w2-prototype/TF4AIO-45_EVIDENCE.md).
 
 ---
 
