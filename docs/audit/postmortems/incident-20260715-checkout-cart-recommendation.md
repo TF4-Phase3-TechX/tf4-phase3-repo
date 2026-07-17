@@ -94,17 +94,17 @@ Business Flow Health Overview được đặt đúng window `2026-07-15 18:55:00
 - Active Alerts có `LoadGeneratorTraffic` và `PodPendingOrNotRunning` ở mốc 19:10 ICT.
 - Critical Deployment Availability vẫn cần đọc thận trọng vì ảnh chỉ là dashboard view, không thay thế log/pod forensic chi tiết.
 
-![Grafana Business Flow Health Overview 18:55-19:10](./incident-20260715-grafana-business-flow-radar-1855-1910.png)
+![Grafana Business Flow Health Overview 18:55-19:10](./images/incident-20260715-grafana-business-flow-radar-1855-1910.png)
 
-![Grafana Business Flow lower panels 18:55-19:10](./incident-20260715-grafana-business-flow-panels-1855-1910.png)
+![Grafana Business Flow lower panels 18:55-19:10](./images/incident-20260715-grafana-business-flow-panels-1855-1910.png)
 
 Ảnh tổng hợp bên dưới dùng để đọc nhanh hai panel chính: `Business Flow Request Rate` và `Business Flow Error Rate`.
 
-![Grafana traffic source and impacted service 18:55-19:10](./incident-20260715-grafana-traffic-service-callout-1855-1910.png)
+![Grafana traffic source and impacted service 18:55-19:10](./images/incident-20260715-grafana-traffic-service-callout-1855-1910.png)
 
 Ảnh focus panel `Business Flow Request Rate` cho thấy rõ service nhận tải trực tiếp là `frontend`.
 
-![Grafana Request Rate shows frontend as direct traffic entrypoint](./incident-20260715-grafana-request-rate-frontend-1855-1910.png)
+![Grafana Request Rate shows frontend as direct traffic entrypoint](./images/incident-20260715-grafana-request-rate-frontend-1855-1910.png)
 
 Diễn giải từ dashboard:
 
@@ -122,7 +122,7 @@ Frontend runtime logs cho thấy request checkout nhận lỗi:
 - `DeadlineExceeded`
 - `ECONNREFUSED` tới dependency service
 
-![Frontend runtime logs showing checkout cart failure](./incident-20260715-frontend-cart-failure.png)
+![Frontend runtime logs showing checkout cart failure](./images/incident-20260715-frontend-cart-failure.png)
 
 Ghi chú quan trọng:
 
@@ -136,7 +136,7 @@ Cart runtime logs cho thấy lỗi lặp lại:
 - `FailedPrecondition`
 - `Can't access cart storage`
 
-![Cart runtime logs with timestamps](./incident-20260715-cart-log-timestamps.png)
+![Cart runtime logs with timestamps](./images/incident-20260715-cart-log-timestamps.png)
 
 Ghi chú quan trọng:
 
@@ -153,11 +153,11 @@ Con số này không đại diện riêng cho exact incident window, nhưng cho 
 
 Ảnh `flagd` dưới đây xác nhận runtime config trong namespace `techx-tf4` có flag `kafkaQueueProblems` ở trạng thái `ENABLED`, với variant `on = 100`.
 
-![flagd exact-window kafkaQueueProblems evidence](./incident-20260715-flagd-exact-window.png)
+![flagd exact-window kafkaQueueProblems evidence](./images/incident-20260715-flagd-exact-window.png)
 
 Ảnh accounting logs dưới đây được query từ `deploy/accounting` với `--since-time="2026-07-15T11:55:00Z"`, tức đúng đầu window UTC của incident. Log cho thấy lỗi `Unexpected entry.EntityState: Detached` xuất hiện lúc `2026-07-15T11:58:27Z` và `2026-07-15T11:58:28Z`, nằm trong window `11:55–12:10 UTC`.
 
-![accounting exact-window EntityState Detached logs](./incident-20260715-accounting-exact-window-logs.png)
+![accounting exact-window EntityState Detached logs](./images/incident-20260715-accounting-exact-window-logs.png)
 
 Kết luận:
 
@@ -171,7 +171,7 @@ Kết luận:
 
 Trong checkout service, `prepareOrderItemsAndShippingQuoteFromCart(...)` gọi `getUserCart(...)`. Nếu `getUserCart(...)` lỗi, checkout trả `cart failure` và dừng trước các bước shipping/payment.
 
-![Checkout code path - fail at getUserCart](./incident-20260715-checkout-code.png)
+![Checkout code path - fail at getUserCart](./images/incident-20260715-checkout-code.png)
 
 Kết luận:
 
@@ -181,7 +181,7 @@ Kết luận:
 
 Trong cart service, `ValkeyCartStore` gọi `ConnectionMultiplexer.Connect(...)`. Nếu connection không establish được, code ném `ApplicationException("Wasn't able to connect to redis")`.
 
-![Cart store code - throws when Redis is not connected](./incident-20260715-cart-code.png)
+![Cart store code - throws when Redis is not connected](./images/incident-20260715-cart-code.png)
 
 Kết luận kỹ thuật:
 
@@ -234,7 +234,7 @@ Kết luận kỹ thuật:
 
 Recommendation logs có OTLP exporter timeout, nhưng sau đó service vẫn tiếp tục nhận `ListRecommendations`.
 
-![Recommendation residual signal](./incident-20260715-recommendation-residual.png)
+![Recommendation residual signal](./images/incident-20260715-recommendation-residual.png)
 
 Kết luận:
 
@@ -244,7 +244,7 @@ Kết luận:
 
 Public ALB path cho Grafana/Jaeger trả 404 tại thời điểm kiểm tra.
 
-![Public observability endpoints return 404](./incident-20260715-public-404.png)
+![Public observability endpoints return 404](./images/incident-20260715-public-404.png)
 
 Kết luận:
 
@@ -260,9 +260,9 @@ Tại thời điểm kiểm tra hiện tại:
 - `/grafana/` trả `404 Not Found`
 - pod trong namespace `techx-tf4` đang `Running`
 
-![Current recovery check](./incident-20260715-recovery-check.png)
+![Current recovery check](./images/incident-20260715-recovery-check.png)
 
-![Kubernetes pod snapshot after recovery](./incident-20260715-kubectl-pods.png)
+![Kubernetes pod snapshot after recovery](./images/incident-20260715-kubectl-pods.png)
 
 Kết luận:
 
