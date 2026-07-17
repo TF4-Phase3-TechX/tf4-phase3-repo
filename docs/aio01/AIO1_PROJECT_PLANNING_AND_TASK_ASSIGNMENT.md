@@ -139,11 +139,13 @@ Goal: build a small AIOps MVP that can use observability data to detect incident
 | W2-W3 | Define incident summary format | Nam / Hòa | Summary template with symptoms/evidence/impact | `TF4AIO-42` To Do |
 | W2-W3 | Build incident summary MVP | Tâm / Hậu | Summary generated from detector signals | `TF4AIO-43` To Do |
 | W2-W3 | Map incident type to runbook actions | Hòa / Nam | Runbook hints for each MVP incident | `TF4AIO-44` To Do |
-| W3 | Validate latency/error detector with load test | Hậu / Tâm + CDO dependency | Detector catches controlled degradation or limitation is documented; false positives/negatives are recorded | `TF4AIO-56` To Do |
+| W3 | Validate latency/error detector with load test | Hậu / Tâm + CDO dependency | Detector catches controlled degradation or limitation is documented; false positives/negatives are recorded | `TF4AIO-56` In Review |
 | W3 | Validate LLM timeout/error signal | Hậu / Tâm + AIE dependency | AIOps recognizes AI path issue | `TF4AIO-45` To Do |
 | W3 | Write AIOps validation report | Hòa / Nam | What worked, what failed, false positives/limitations | `TF4AIO-46` To Do |
 
 Ghi chú triển khai cho TF4AIO-40: workload detector đã được thêm vào chart Helm như một Deployment liên tục, có giới hạn tài nguyên và không thay đổi flagd/openfeature. Channel đầu ra đầu tiên được chọn là structured JSONL logs (`stdout-jsonl`), với payload schema, validation script và owner response path được ghi trong [docs/aio01/TF4AIO-40-detector-evidence.md](./TF4AIO-40-detector-evidence.md). Artifact render để review nhanh tại [docs/aio01/evidence/tf4aio40-detector-render-snippet.yaml](./evidence/tf4aio40-detector-render-snippet.yaml). Trạng thái runtime inventory trên cluster `techx-tf4` đang chờ mở khóa credential/kube-context để bổ sung bằng chứng triển khai trực tiếp.
+
+Ghi chú validation cho TF4AIO-56 (silent attack drill 2026-07-14): TF4AIO-6 là scope detector foundation (TF4AIO-39/40), còn TF4AIO-56 là task validation. Evidence đã ghi nhận đầy đủ nhánh limitation/negative result, bounded conclusion và đăng ký false positive/false negative tại [docs/aio01/TF4AIO-6-detector-evidence.md](./TF4AIO-6-detector-evidence.md). Kết quả hiện tại không đủ để claim detector success do thiếu programmatic telemetry access; cần re-run sau khi CDO mở đường truy cập telemetry ổn định.
 
 ### 7.3 Operational / PM track
 
