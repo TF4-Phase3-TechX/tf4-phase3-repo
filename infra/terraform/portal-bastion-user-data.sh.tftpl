@@ -1,0 +1,85 @@
+#!/bin/bash
+set -xe
+# Redirect stdout and stderr to a log file and syslog
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/null) 2>&1
+
+echo "=== Starting Portal Bastion Host Bootstrap ==="
+
+# Enable and start SSM Agent (pre-installed on AL2023)
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
+
+# Download kubectl v1.30.2 matching EKS cluster version
+curl -LO "https://dl.k8s.io/release/v1.30.2/bin/linux/amd64/kubectl"
+
+# Make kubectl executable and move to system path
+chmod +x ./kubectl
+mv ./kubectl /usr/local/bin/kubectl
+
+# Verify kubectl version and log output
+kubectl version --client
+
+# Create EKS Kubeconfig update helper script
+cat << 'EOF' > /usr/local/bin/update-kubeconfig.sh
+#!/bin/bash
+aws eks update-kubeconfig --region ${aws_region} --name ${cluster_name}
+EOF
+chmod +x /usr/local/bin/update-kubeconfig.sh
+
+# Run initial kubeconfig update to configure EKS access for root user
+/usr/local/bin/update-kubeconfig.sh
+
+# Create the Port Forwarding daemon script
+cat << 'EOF' > /usr/local/bin/eks-port-forward-daemon.sh
+#!/bin/bash
+# Re-update kubeconfig to ensure latest credentials
+/usr/local/bin/update-kubeconfig.sh
+
+while true; do
+  echo "Starting background EKS port-forwarding..."
+
+  # Forward Grafana (from EKS svc/grafana:80 to Bastion localhost:13000)
+  kubectl port-forward svc/grafana 13000:80 -n techx-observability --address 0.0.0.0 &
+  PID_GRAFANA=$!
+
+  # Forward Jaeger (from EKS svc/jaeger:16686 to Bastion localhost:16686)
+  kubectl port-forward svc/jaeger 16686:16686 -n techx-observability --address 0.0.0.0 &
+  PID_JAEGER=$!
+
+  # Forward Load Generator (from EKS svc/load-generator:8089 to Bastion localhost:18089)
+  kubectl port-forward svc/load-generator 18089:8089 -n techx-tf4 --address 0.0.0.0 &
+  PID_LOADGEN=$!
+
+  # Sleep for 10 minutes (600s) to keep connections active.
+  # We restart them every 10 minutes to refresh the AWS IAM EKS auth token (expires in 15m).
+  sleep 600
+
+  # Terminate processes to clean up and force token refresh on next loop
+  kill $PID_GRAFANA $PID_JAEGER $PID_LOADGEN
+  wait
+done
+EOF
+chmod +x /usr/local/bin/eks-port-forward-daemon.sh
+
+# Register the EKS Port Forwarding service in systemd
+cat << 'EOF' > /etc/systemd/system/eks-port-forward.service
+[Unit]
+Description=EKS Port Forwarding Daemon for SSM Bastion
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/eks-port-forward-daemon.sh
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd, enable and start the background service
+systemctl daemon-reload
+systemctl enable eks-port-forward
+systemctl start eks-port-forward
+
+echo "=== Portal Bastion Host Bootstrap Complete ==="

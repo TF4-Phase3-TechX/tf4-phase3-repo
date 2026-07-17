@@ -14,6 +14,18 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  cluster_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
+  # Karpenter-provisioned nodes must select only the EKS node security group.
+  # The shared discovery tag also exists on cluster security groups, which can
+  # make Karpenter attach multiple SGs and break AWS LBC backend reconciliation.
+  node_security_group_tags = {
+    "karpenter.sh/discovery"           = var.cluster_name
+    "karpenter.sh/node-security-group" = var.cluster_name
+  }
+
   # Bật Control Plane Logging
   cluster_enabled_log_types = ["api", "audit", "authenticator"]
 
@@ -22,10 +34,11 @@ module "eks" {
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns            = {}
-    kube-proxy         = {}
-    vpc-cni            = {}
-    aws-ebs-csi-driver = {}
+    coredns                = {}
+    kube-proxy             = {}
+    vpc-cni                = {}
+    aws-ebs-csi-driver     = {}
+    eks-pod-identity-agent = {}
   }
 
   # EKS access entries are managed explicitly in eks-access-entries.tf.

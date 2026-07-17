@@ -1,0 +1,4 @@
+﻿NAME                          STATUS   ROLES    AGE     VERSION               INSTANCE-TYPE   CAPACITY-TYPE   ZONE
+ip-10-0-10-17.ec2.internal    Ready    <none>   6h30m   v1.34.9-eks-8f14419   t3a.large       on-demand       us-east-1a
+ip-10-0-10-231.ec2.internal   Ready    <none>   6d15h   v1.34.9-eks-7d6f6ec   t3.large                        us-east-1a
+ip-10-0-11-40.ec2.internal    Ready    <none>   6d15h   v1.34.9-eks-7d6f6ec   t3.large                        us-east-1b

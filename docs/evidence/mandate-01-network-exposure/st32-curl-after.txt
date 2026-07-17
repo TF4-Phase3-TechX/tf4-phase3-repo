@@ -1,0 +1,37 @@
+ST-3.2 SAU KHI DEPLOY - Curl test từ mạng ngoài (xác minh sau khi CDO08 deploy SEC-05)
+Task 23 - Kiểm tra độc lập - Mandate-01
+============================================================
+
+Thời điểm : 2026-07-13T16:55:09Z
+IP nguồn   : 42.118.54.254
+ALB        : http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com
+
+--- Kết quả kiểm tra sau khi CDO08 deploy SEC-05 ---
+
+GET /             -> HTTP 200   OK - storefront vẫn công khai (đúng yêu cầu)
+GET /grafana/     -> HTTP 404   DA BLOCK - Grafana không còn truy cập được từ internet
+GET /grafana      -> HTTP 404   DA BLOCK
+GET /jaeger/ui/   -> HTTP 404   DA BLOCK - Jaeger không còn truy cập được từ internet
+GET /jaeger/      -> HTTP 404   DA BLOCK
+GET /loadgen/     -> HTTP 404   DA BLOCK - Locust không còn truy cập được từ internet
+GET /feature      -> HTTP 404   DA BLOCK
+GET /flagservice/ -> HTTP 404   DA BLOCK
+GET /otlp-http/   -> HTTP 404   DA BLOCK
+
+--- So sánh trước và sau ---
+
+Route         | TRƯỚC (ST-3.2 before)  | SAU (ST-3.2 after)
+/grafana/     | HTTP 200 (BỊ LỘ)      | HTTP 404 (DA BLOCK)
+/jaeger/ui/   | HTTP 200 (BỊ LỘ)      | HTTP 404 (DA BLOCK)
+/loadgen/     | HTTP 200 (BỊ LỘ)      | HTTP 404 (DA BLOCK)
+/feature      | HTTP 503 (route tồn tại)| HTTP 404 (DA BLOCK)
+/flagservice/ | HTTP 404              | HTTP 404 (giữ nguyên)
+/otlp-http/   | HTTP 404              | HTTP 404 (giữ nguyên)
+
+--- Kết luận ---
+
+Tất cả 6 internal routes đã trả 404 từ Envoy (direct_response).
+Storefront / vẫn trả 200 - không bị ảnh hưởng.
+Mandate-01 yêu cầu về việc block routes: ĐÃ ĐÁP ỨNG.
+
+TRẠNG THÁI: PASS

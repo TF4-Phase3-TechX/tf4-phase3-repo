@@ -3,6 +3,11 @@
 # Bootstrap owns these roles because workflows need account-level trust before app/infra deploys run.
 
 data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
+
+data "aws_kms_alias" "cloudtrail" {
+  name = "alias/tf4-cloudtrail-key"
+}
 
 locals {
   github_org  = "TF4-Phase3-TechX"
@@ -98,11 +103,17 @@ data "aws_iam_policy_document" "github_actions_plan" {
     actions = [
       "autoscaling:Describe*",
       "budgets:ViewBudget",
+      "budgets:ListTagsForResource",
+      "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
       "cloudtrail:GetTrail",
       "cloudtrail:GetTrailStatus",
       "cloudtrail:ListTags",
+      "config:DescribeConfigurationRecorders",
+      "config:DescribeConfigurationRecorderStatus",
+      "config:DescribeDeliveryChannels",
+      "config:DescribeRetentionConfigurations",
       "ec2:Describe*",
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
@@ -110,6 +121,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
+      "firehose:DescribeDeliveryStream",
+      "firehose:ListTagsForDeliveryStream",
       "iam:Get*",
       "iam:List*",
       "kms:DescribeKey",
@@ -128,6 +141,39 @@ data "aws_iam_policy_document" "github_actions_plan" {
     ]
 
     resources = ["*"]
+  }
+
+  statement {
+    sid       = "ReadSecureSlackWebhookParameter"
+    effect    = "Allow"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/security-alerts/slack-webhook-url"]
+  }
+
+  statement {
+    sid       = "DescribeSsmParameters"
+    effect    = "Allow"
+    actions   = ["ssm:DescribeParameters"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "DecryptCloudTrailSecureString"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [data.aws_kms_alias.cloudtrail.target_key_arn]
+  }
+
+  statement {
+    sid    = "ReadKubernetesHelmReleaseState"
+    effect = "Allow"
+
+    actions = [
+      "eks:AccessKubernetesApi",
+      "eks:DescribeCluster"
+    ]
+
+    resources = [local.eks_cluster_arn]
   }
 
   statement {
@@ -161,6 +207,7 @@ resource "aws_iam_role_policy_attachment" "github_actions_plan" {
   role       = aws_iam_role.github_actions_plan.name
   policy_arn = aws_iam_policy.github_actions_plan.arn
 }
+
 
 resource "aws_iam_role" "github_actions_build" {
   name               = "tf4-github-actions-ecr-build"

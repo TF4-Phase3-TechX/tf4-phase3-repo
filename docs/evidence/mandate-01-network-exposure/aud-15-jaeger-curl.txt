@@ -1,4 +1,10 @@
-$ curl -I https://jaeger.tf4.techx.vn/
-HTTP/2 403 
-date: Mon, 13 Jul 2026 10:17:00 GMT
-server: istio-envoy
+# AUD-15-jaeger — Jaeger public access test
+# ⚠️ File này là PLACEHOLDER CŨ — domain giả (jaeger.tf4.techx.vn không tồn tại)
+# Path thật: /jaeger/ui/ qua ALB
+#
+# Lệnh thật:
+# curl -sS -D - -o /dev/null \
+#   "http://k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com/jaeger/ui/"
+#
+# [OUTPUT THẬT — điền sau khi chạy]
+PENDING — xem st32-curl-before.txt (before) và st32-curl-after.txt (after)

@@ -1,0 +1,22 @@
+{{- range $name, $component := .Values.components }}
+{{- if and $component.enabled $component.persistence $component.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-pvc
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  labels:
+    {{- include "techx-corp.labels" (dict "name" $name "Chart" $.Chart "Release" $.Release "Values" $.Values) | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ $component.persistence.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ $component.persistence.size | quote }}
+{{- end }}
+{{- end }}

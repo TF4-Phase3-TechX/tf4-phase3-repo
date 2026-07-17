@@ -1,0 +1,17 @@
+# Test manifest — vi phạm luật resources (thiếu requests/limits).
+# Set sẵn runAsNonRoot + capabilities.drop + image pin để CÔ LẬP đúng 1 luật vi phạm (resources).
+# Production (techx-tf4) đã [Deny] -> apply BỊ REJECT do thiếu resources. Dùng --dry-run=server
+# để không tạo pod thật trong production. Xem plan §7.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sec11-test-missing-resources
+  namespace: techx-tf4
+spec:
+  containers:
+  - name: app
+    image: nginx:1.27.0
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+      capabilities: {drop: ["ALL"]}

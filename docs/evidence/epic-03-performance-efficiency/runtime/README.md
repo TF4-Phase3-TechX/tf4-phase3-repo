@@ -36,6 +36,7 @@ See [TASK4-EVIDENCE-CHECKLIST.md](TASK4-EVIDENCE-CHECKLIST.md) for the full evid
 | PERF-04.3: Capture Grafana dashboard screenshot | Ninh | Done | Screenshots: `grafana-latency.png`, `grafana-error-rate.png`, `grafana-request-rate.png` |
 | PERF-04.4: Capture Jaeger trace if available | Huy | Done | Trace screenshots in `screenshots/` directory, Services dropdown: `jaeger-services-dropdown.png` |
 | PERF-04.5: Summarize runtime performance evidence | Huy | Done | This summary and `04-runtime-performance-evidence.md` |
+| C0G-29: Finalize Flash Sale Verification Dashboard | CDO-04 | Done | `c0g-29/flash-sale-dashboard-design.md`, `techx-corp-chart/grafana/provisioning/dashboards/flash-sale-verification-dashboard.json` |
 
 ## Findings
 

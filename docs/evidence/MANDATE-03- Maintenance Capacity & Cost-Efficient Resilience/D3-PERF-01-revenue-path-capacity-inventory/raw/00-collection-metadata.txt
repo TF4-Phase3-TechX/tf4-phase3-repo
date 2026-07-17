@@ -1,0 +1,6 @@
+Task: D3-PERF-01 — Revenue Path Capacity Inventory
+CollectedAtUTC: 2026-07-14T12:52:09Z
+CollectedAtLocal: 2026-07-14 19:52:09 +07:00
+KubernetesContext: arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+Namespace: techx-tf4
+Collector: bapn8
