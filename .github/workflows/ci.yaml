@@ -232,7 +232,6 @@ jobs:
       - name: Create CI env override
         shell: bash
         run: |
-          touch techx-corp-platform/.env
           cat > techx-corp-platform/.env.override <<EOF
           IMAGE_NAME=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}
           IMAGE_VERSION=1.0
