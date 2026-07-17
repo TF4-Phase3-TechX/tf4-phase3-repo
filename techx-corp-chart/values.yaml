@@ -187,6 +187,9 @@ components:
       port: 8080
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
+      prometheus.io/scrape: "true"
+      prometheus.io/path: /metrics
+      prometheus.io/port: "8080"
     env:
       - name: PROMETHEUS_URL
         value: http://prometheus.techx-observability.svc.cluster.local:9090

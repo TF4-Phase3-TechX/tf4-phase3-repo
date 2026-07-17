@@ -9,13 +9,17 @@ Prometheus metrics -----+
 OpenSearch logs --------+--> sustained detector --> evidence correlation
 Jaeger traces ----------+                         --> deterministic RCA
                                                   --> allowlisted runbook
+                                                  --> Prometheus event counter
+                                                  --> Alertmanager Slack/email
                                                   --> per-incident approval
                                                   --> dry-run/live action
                                                   --> rollout + SLO verification
                                                   --> resolve or restore/escalate
 ```
 
-Prometheus is the primary detector. Logs and traces increase confidence and provide investigation references. The service never mutates flagd. LLM output is not allowed to select or execute an action.
+Prometheus is the primary detector. Logs and traces increase confidence and provide investigation references. Prometheus scrapes the worker's `/metrics` endpoint; a newly created, cooldown-deduplicated incident increments a severity-labelled counter, and the committed `AIOpsIncidentDetected` rule routes it through the existing Alertmanager Slack/email receivers. The service never mutates flagd. LLM output is not allowed to select or execute an action.
+
+The design decision, initial three-signal baseline analysis, trade-offs and activation boundary are recorded in [ADR-007](./ADR-007-hybrid-anomaly-detection-and-safe-response.md).
 
 ## Run locally
 
@@ -64,7 +68,7 @@ For a controlled live drill, CDO must first confirm the namespace, Deployment al
 | POST | `/v1/incidents/{id}/approve` | Approve and execute the bound action |
 | POST | `/v1/incidents/{id}/reject` | Reject the action |
 
-The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Persistent state and Slack/Jira notification are follow-up work.
+The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incidents_created_total`; persistent state and automatic Jira creation remain follow-up work.
 
 ## SOTA-lite scoring and offline benchmark
 

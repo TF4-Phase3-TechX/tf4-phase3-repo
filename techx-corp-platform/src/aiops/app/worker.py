@@ -15,7 +15,11 @@ from .telemetry import TelemetryClient, TelemetryError
 
 log = logging.getLogger("aiops.worker")
 poll_failures = Counter("aiops_telemetry_poll_failures_total", "Telemetry poll failures", ["source"])
-incidents_created = Counter("aiops_incidents_created_total", "Incidents created", ["incident_type", "service"])
+incidents_created = Counter(
+    "aiops_incidents_created_total",
+    "Incidents created",
+    ["incident_type", "service", "severity"],
+)
 last_poll_success = Gauge("aiops_last_poll_success_unixtime", "Last successful telemetry polling time")
 
 
@@ -80,7 +84,12 @@ class AIOpsWorker:
                 ))
             stored, created = await self.store.upsert(incident)
             if created:
-                incidents_created.labels(incident.incident_type, incident.affected_service).inc()
+                notification_severity = "critical" if incident.severity == "high" else "warning"
+                incidents_created.labels(
+                    incident.incident_type,
+                    incident.affected_service,
+                    notification_severity,
+                ).inc()
                 self.remediation.request_approval(stored)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
         last_poll_success.set(time.time())
