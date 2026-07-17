@@ -2,7 +2,7 @@
 
 **Nhóm thực hiện:** CDO07 (Audit)  
 **Người thực hiện:** Võ Hồng Đức  
-**Ngày thực hiện:** 2026-07-15  
+**Ngày thực hiện:** 2026-07-17  
 **Trạng thái:** Hoàn thành  
 
 ---
@@ -43,29 +43,29 @@ Dưới đây là bảng ánh xạ hoàn chỉnh 100% từ thành viên dự án
 ### Nhóm CDO04 - Platform & Cost-Performance
 | Thành viên (Real Person) | Vai trò | AWS SSO Permission Set / IAM User | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
-| **Văn Phú Tín** | Lead Platform | `AWSReservedSSO_TF4-DeployOperator_<ROLE_HASH>` / IAM `cdo04-tin`, `tin` | `system:masters` (Admin) | Toàn quyền cụm K8s, GitOps, IaC |
-| **Ngô Nguyễn Trường An** | Member | `AWSReservedSSO_TF4-DeployOperator_<ROLE_HASH>` / IAM `cdo04-an` | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
-| **Nguyễn Thành Vinh** | Member | `AWSReservedSSO_TF4-DeployOperator_<ROLE_HASH>` / IAM `cdo04-vinh` | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
-| **Phan Minh Tuấn** | Member | `AWSReservedSSO_TF4-BaseReadOnly_<ROLE_HASH>` / IAM `cdo04-tuan` | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
-| **Tạ Hoàng Huy** | Member | `AWSReservedSSO_TF4-BaseReadOnly_<ROLE_HASH>` / IAM `cdo04-huy` | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
-| **Nguyễn Quách Khang Ninh**| Member | `AWSReservedSSO_TF4-BaseReadOnly_<ROLE_HASH>` / IAM `cdo04-ninh` | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Văn Phú Tín** | Lead Platform | `AWSReservedSSO_TF4-DeployOperator_*` / IAM `cdo04-tin` (`AIDAXOKZSY7W7B3Y6BKGH`), `tin` (`AIDAXOKZSY7WQKJG6AMD6`) | `system:masters` (Admin) | Toàn quyền cụm K8s, GitOps, IaC |
+| **Ngô Nguyễn Trường An** | Member | `AWSReservedSSO_TF4-DeployOperator_*` / IAM `cdo04-an` (`AIDAXOKZSY7WTTLW3YONF`) | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
+| **Nguyễn Thành Vinh** | Member | `AWSReservedSSO_TF4-DeployOperator_*` / IAM `cdo04-vinh` (`AIDAXOKZSY7W7ULSAQVP5`) | `system:masters` (Admin) | Quản trị cụm, Deploy ứng dụng |
+| **Phan Minh Tuấn** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` / IAM `cdo04-tuan` (`AIDAXOKZSY7W5QSO4CXVW`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Tạ Hoàng Huy** | Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` / IAM `cdo04-huy` (`AIDAXOKZSY7WY23QPXDQ5`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
+| **Nguyễn Quách Khang Ninh**| Member | `AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7` / IAM `cdo04-ninh` (`AIDAXOKZSY7WVZRWDBRXP`) | `base-readonly-users` | Đọc cấu hình, check tài nguyên |
 
 ### Nhóm CDO07 - Auditability & Compliance
-| Thành viên (Real Person) | Vai trò | AWS SSO Permission Set / IAM User | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
+| Thành viên (Real Person) | Vai trò | AWS SSO Permission Set (SSO Username) | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
-| **Nguyễn Duy Hoàng** | Lead Audit | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_<ROLE_HASH>` | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
-| **Võ Hồng Đức** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_<ROLE_HASH>` | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
-| **Trần Minh Quang** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_<ROLE_HASH>` | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
-| **Bùi Thành Nghĩa** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_<ROLE_HASH>` | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
-| **Đinh Văn Ty** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_<ROLE_HASH>` | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Nguyễn Duy Hoàng** | Lead Audit | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`hoang.nguyenduy`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Võ Hồng Đức** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`duc.vo`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Trần Minh Quang** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`quang.tranminh`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Bùi Thành Nghĩa** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`nghia.bui`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
+| **Đinh Văn Ty** | Member | `AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882` (`ty.dinhvan`) | `audit-readonly-analyzers` | Kiểm toán CloudTrail, log EKS |
 
 ### Nhóm CDO08 - Security & Reliability
-| Thành viên (Real Person) | Vai trò | AWS SSO Permission Set / IAM User | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
+| Thành viên (Real Person) | Vai trò | AWS SSO Permission Set (SSO Username) | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
 | :--- | :--- | :--- | :--- | :--- |
-| **Đinh Viết Quyết** | Lead CDO08 | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_<ROLE_HASH>` | `security-reliability-auditors` | Quản lý bảo mật, SLO threshold |
-| **Hoàng Minh Hải** | Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_<ROLE_HASH>` | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
-| **Nguyễn Thị Tiểu Phương**| Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_<ROLE_HASH>` | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
-| **Từ Phúc Nguyên** | Admin/IAM | `AWSReservedSSO_TF4-SecurityIAMSSOManager_<ROLE_HASH>` / IAM `nguyen` | `system:masters` (Admin/IAM) | Quản trị IAM/SSO, Key management |
+| **Đinh Viết Quyết** | Lead CDO08 | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`quan`) | `security-reliability-auditors` | Quản lý bảo mật, SLO threshold |
+| **Hoàng Minh Hải** | Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`hai`) | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
+| **Nguyễn Thị Tiểu Phương**| Member | `AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155` (`phuong`) | `security-reliability-auditors` | Cấu hình bảo mật, monitor reliability |
+| **Từ Phúc Nguyên** | Admin/IAM | `AWSReservedSSO_TF4-SecurityIAMSSOManager_*` (`nguyen`) | `system:masters` (Admin/IAM) | Quản trị IAM/SSO, Key management |
 
 ### Nhóm AIO01 - AI Operations
 | Thành viên (Real Person) | Vai trò | AWS SSO Permission Set / IAM User | Kubernetes Group (EKS) | Quyền hạn cốt lõi |
@@ -82,25 +82,25 @@ Toàn bộ hạ tầng và cấu hình hệ thống được quản lý dưới 
 
 Dưới đây là 3 thay đổi IaC gần nhất được truy vết thành công:
 
-### Thay đổi 1: GitOps Hardening (Commit `ca63f7e`)
-*   **Thời gian (Timestamp):** Wed Jul 15 13:46:12 2026 +0700
-*   **Người thực hiện (Git Author):** Văn Phú Tín (`vanphutin2902@gmail.com`)
-*   **Hành động IaC:** Pushed commit `ca63f7e` để làm cứng phân quyền GitOps delivery ownership.
-*   **Dấu vết Cloud (CloudTrail):** GitHub Actions Workflow được kích hoạt và assume AWS Role `arn:aws:sts::123456789012:assumed-role/tf4-github-actions-terraform-apply` để cập nhật cụm EKS.
+### Thay đổi 1: Runtime hardening policy-as-code (Commit `2e98734`)
+*   **Thời gian (Timestamp):** Thu Jul 16 23:30:58 2026 +0700
+*   **Người thực hiện (Git Author):** Tran Dinh Minh Quan (`163095752+Remmusss@users.noreply.github.com`)
+*   **Hành động IaC:** Merged PR #240 — triển khai admission policy-as-code cho runtime hardening.
+*   **Dấu vết Cloud (CloudTrail):** GitHub Actions Workflow được kích hoạt và assume AWS Role `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-ecr-build/GitHubActions` để push container images lên ECR.
 
-### Thay đổi 2: Karpenter fix & EKS permissions (Commit `b7254b3`)
-*   **Thời gian (Timestamp):** Tue Jul 14 23:44:02 2026 +0700
-*   **Người thực hiện (Git Author):** Văn Phú Tín (`vanphutin2902@gmail.com`)
-*   **Hành động IaC:** Cấu hình `amiSelectorTerms` và cấp quyền EKS view cho role `terraform-plan`.
-*   **Dấu vết Cloud (CloudTrail):** Trình tự deploy tự động kích hoạt bởi CI/CD sử dụng role `tf4-github-actions-terraform-apply`.
+### Thay đổi 2: Complete runtime hardening values (Commit `b7887de`)
+*   **Thời gian (Timestamp):** Thu Jul 16 16:18:40 2026 +0700
+*   **Người thực hiện (Git Author):** haihm191 (`119120119+2hm1901@users.noreply.github.com`)
+*   **Hành động IaC:** Merged PR #259 — hoàn thiện cấu hình values cho runtime hardening.
+*   **Dấu vết Cloud (CloudTrail):** CI/CD tự động assume role `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-ecr-build/GitHubActions` để cập nhật resources.
 
-### Thay đổi 3: Karpenter NodePool / EC2NodeClass to IaC (Commit `d9ee8a2`)
-*   **Thời gian (Timestamp):** Tue Jul 14 22:15:32 2026 +0700
-*   **Người thực hiện (Git Author):** Văn Phú Tín (`vanphutin2902@gmail.com`)
-*   **Hành động IaC:** Đưa cấu hình NodePool và EC2NodeClass của Karpenter vào quản lý trực tiếp bằng Terraform.
-*   **Dấu vết Cloud (CloudTrail):** Cập nhật tài nguyên EKS và EC2 thông qua role deploy tự động `tf4-github-actions-terraform-apply`.
+### Thay đổi 3: Add detailed cost estimation for security slack alerts (Commit `cf34a33`)
+*   **Thời gian (Timestamp):** Thu Jul 16 14:52:22 2026 +0700
+*   **Người thực hiện (Git Author):** Bùi Thành Nghĩa (`161110817+BuiThanhNghiaDTU19122004@users.noreply.github.com`)
+*   **Hành động IaC:** Merged PR #249 — bổ sung tài liệu chi tiết ước tính chi phí cho cấu hình security Slack alerts.
+*   **Dấu vết Cloud (CloudTrail):** Commit merge kích hoạt workflow CI/CD assume role `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-ecr-build/GitHubActions`.
 
-*Chi tiết log thô các thay đổi này được lưu tại tệp [`docs/evidence/aud-17.4-infra-changes-7days.json`](aud-17.4-infra-changes-7days.json).*
+*Chi tiết log thô các thay đổi này được lưu tại tệp [`aud-17.4-infra-changes-7days.json`](aud-17.4-infra-changes-7days.json).*
 
 ---
 
@@ -110,28 +110,28 @@ Khi cần thực hiện on-call khẩn cấp để giám sát cổng vận hành
 
 Dưới đây là 3 phiên on-call gần nhất được trích xuất từ CloudTrail:
 
-### Phiên 1: On-call truy cập Grafana bởi Võ Hồng Đức
-*   **Thời gian (Timestamp):** 2026-07-15T10:57:59Z (17:57:59+07)
-*   **Người thực hiện (Username):** `duc.vo`
-*   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/duc.vo`
-*   **Session ID:** `duc.vo-jxrknnpr75rvx8b3c9k8778tty`
-*   **Hành động thực tế:** Mở cổng forward luồng dữ liệu SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Port 13000).
+### Phiên 1: On-call truy cập Grafana bởi Bùi Thành Nghĩa (CDO07)
+*   **Thời gian (Timestamp):** 2026-07-16T22:55:39+07:00
+*   **Người thực hiện (Username):** `nghia.bui`
+*   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/nghia.bui`
+*   **Session ID:** `nghia.bui-yp3dudfzi22aj2qdxhvlggbbjq`
+*   **Hành động thực tế:** Mở cổng forward SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Local Port 3000 → Remote Port 13000).
 
-### Phiên 2: On-call truy cập Grafana bởi Trần Minh Quang
-*   **Thời gian (Timestamp):** 2026-07-15T10:57:17Z (17:57:17+07)
-*   **Người thực hiện (Username):** `quang.tranminh`
-*   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/quang.tranminh`
-*   **Session ID:** `quang.tranminh-ozqjhac5hii6p2szs657iz6yly`
-*   **Hành động thực tế:** Mở cổng forward luồng dữ liệu SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Port 13000).
+### Phiên 2: On-call truy cập Jaeger bởi thành viên CDO08 (quan)
+*   **Thời gian (Timestamp):** 2026-07-16T17:35:15+07:00
+*   **Người thực hiện (Username):** `quan`
+*   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155/quan`
+*   **Session ID:** `quan-6jojtusct6s2f35488sfppzzh4`
+*   **Hành động thực tế:** Mở cổng forward SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Port 16686 — Jaeger UI).
 
-### Phiên 3: On-call truy cập hệ thống bởi thành viên CDO08 (Hoàng Minh Hải)
-*   **Thời gian (Timestamp):** 2026-07-15T10:56:18Z (17:56:18+07)
-*   **Người thực hiện (Username):** `hai`
-*   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155/hai`
-*   **Session ID:** `hai-8xypi7vbuis5l8kahlehtx97ui`
-*   **Hành động thực tế:** Mở phiên kết nối SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Port 13000).
+### Phiên 3: On-call truy cập hệ thống bởi thành viên CDO08 (quan)
+*   **Thời gian (Timestamp):** 2026-07-16T17:18:08+07:00
+*   **Người thực hiện (Username):** `quan`
+*   **Tài khoản AWS (Caller ARN):** `arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-SecReliabilityReadOnlyAudit_e76349e1ba8a6155/quan`
+*   **Session ID:** `quan-xplxgfhc3hbv8jv5lg8bzahqdu`
+*   **Hành động thực tế:** Mở cổng forward SSM port-forwarding tới Bastion Host `i-072084d1cf0b2f1c9` (Local Port 8089 → Remote Port 18089).
 
-*Chi tiết log thô các phiên này được lưu tại tệp [`docs/evidence/aud-17.4-bastion-access-7days.json`](aud-17.4-bastion-access-7days.json).*
+*Chi tiết log thô các phiên này được lưu tại tệp [`aud-17.4-bastion-access-7days.json`](aud-17.4-bastion-access-7days.json).*
 
 ---
 
