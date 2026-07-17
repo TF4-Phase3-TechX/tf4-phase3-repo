@@ -1,4 +1,4 @@
-﻿name: ci
+name: ci
 
 on:
   pull_request:
@@ -56,6 +56,33 @@ jobs:
             docs:
               - 'docs/**'
               - 'README.md'
+
+  secret-scan:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          VERSION="8.18.2"
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz
+          tar -xzf gitleaks_${VERSION}_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Run Gitleaks check
+        run: |
+          gitleaks detect --source=. -v --redact --exit-code 1 --report-path=gitleaks-report.json
+
+      - name: Upload Secret Scan Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
 
   yaml-check:
     name: YAML parse check

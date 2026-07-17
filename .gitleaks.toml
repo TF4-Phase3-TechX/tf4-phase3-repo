@@ -1,0 +1,13 @@
+# File cấu hình Gitleaks mở rộng cấu hình mặc định (Extend)
+# Quyết định bởi: Tech Lead Quyết (CDO08)
+# Trạng thái: Hoạt động
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ngoại lệ được phê duyệt cho mock keys trong unit tests"
+paths = [
+    # Bỏ qua các mock keys phục vụ cho kiểm thử của app product-reviews
+    '''techx-corp-platform/src/product-reviews/tests/.*'''
+]
