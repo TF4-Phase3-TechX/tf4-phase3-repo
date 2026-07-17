@@ -11,3 +11,5 @@ paths = [
     # Bỏ qua các mock keys phục vụ cho kiểm thử của app product-reviews
     '''techx-corp-platform/src/product-reviews/tests/.*'''
 ]
+
+commits = ["1ee3e8abbb0a53a772a2c0fe56f7886e397aa332"]
