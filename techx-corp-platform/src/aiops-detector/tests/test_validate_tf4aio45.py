@@ -1,6 +1,21 @@
+import os
 import json
+import unittest
 from unittest.mock import patch
-from llm_timeout_detector import LLMTimeoutDetector
+import importlib.util
+import sys
+
+base_dir = os.path.dirname(os.path.dirname(__file__))
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+llm_timeout_detector = load_module("llm_timeout_detector", os.path.join(base_dir, "w2-prototype", "llm_timeout_detector.py"))
+LLMTimeoutDetector = llm_timeout_detector.LLMTimeoutDetector
 
 class MockResponse:
     def __init__(self, json_data, status_code=200):
@@ -14,8 +29,9 @@ class MockResponse:
         if self.status_code >= 400:
             raise Exception("HTTP Error")
 
-def test_high_severity():
-    with patch('requests.get') as mock_get:
+class TestTF4AIO45Validation(unittest.TestCase):
+    @patch('requests.get')
+    def test_tf4aio45_high_severity(self, mock_get):
         def mock_requests_get(url, *args, **kwargs):
             if "prometheus" in url:
                 return MockResponse({
@@ -36,12 +52,13 @@ def test_high_severity():
         
         detector = LLMTimeoutDetector()
         res = detector.detect(service="product-reviews", environment="production", tenant_id="default")
-        return res
+        
+        print("\nDetection Result:")
+        print(json.dumps(res, indent=2))
+        
+        self.assertEqual(res["severity"], "high", "Expected severity to be high")
+        self.assertIn("metric_details", res["evidence"])
+        self.assertIn("log_details", res["evidence"])
 
 if __name__ == "__main__":
-    print("Running validation test for LLM Timeout/Error signal...")
-    result = test_high_severity()
-    print("Detection Result:")
-    print(json.dumps(result, indent=2))
-    assert result["severity"] == "high", "Expected severity to be high"
-    print("\nValidation SUCCESS: Detector successfully recognized simulated AI-path timeout/error.")
+    unittest.main()

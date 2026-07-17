@@ -107,8 +107,8 @@ class LLMTimeoutDetector:
 
         # 2. OpenSearch — Lucene query for LLM failure keywords
         log_query = (
-            f'kubernetes.labels.app:"{service}" '
-            f'AND kubernetes.labels.environment:"{environment}" '
+            f'resource.service.name:"{service}" '
+            f'AND resource.k8s.namespace.name:"{environment}" '
             f'AND (message:*timeout* OR message:*rate_limited* OR message:*429*) '
             f'AND (message:*llm* OR message:*openai* OR message:*bedrock*)'
         )
