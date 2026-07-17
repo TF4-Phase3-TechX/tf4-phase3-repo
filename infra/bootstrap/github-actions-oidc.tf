@@ -151,6 +151,13 @@ data "aws_iam_policy_document" "github_actions_plan" {
   }
 
   statement {
+    sid       = "DescribeSsmParameters"
+    effect    = "Allow"
+    actions   = ["ssm:DescribeParameters"]
+    resources = ["*"]
+  }
+
+  statement {
     sid       = "DecryptCloudTrailSecureString"
     effect    = "Allow"
     actions   = ["kms:Decrypt"]
