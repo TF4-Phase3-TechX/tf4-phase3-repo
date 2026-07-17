@@ -34,8 +34,8 @@ application-path gates pass on the new pod revision.
 - [x] Record a metadata-only direct account-589 contract probe for the proposed
   cap and Nova-compatible tool schema: 3/3 synthetic runs returned `tool_use`
   and passed the application validator. This is code-level evidence only.
-- [ ] Pass CI and required human review on the final PR #248 head.
-- [ ] Complete the current failed-canary identity-plus-GitOps rollback before
+- [x] Pass CI and required human review on the final PR #248 head.
+- [x] Complete the current failed-canary identity-plus-GitOps rollback before
   opening a fresh canary window.
 
 - [ ] Warm the structured schema before latency measurement.
@@ -72,5 +72,5 @@ Rollback is the previous image/config via GitOps/Helm; it is not an automatic re
 - [ ] Hậu: injection/PII/Guardrail red team.
 - [ ] Hòa: token/latency/cost/sanitized observability.
 - [ ] Tâm + CDO: canary/failure/rollback drill.
-- [ ] Thông: IAM/CDO/evidence links.
+- [x] Thông: IAM/CDO/evidence links. (Approved on 2026-07-17 via PR #260 review)
 - [ ] Mentor and required ADR approvers.
