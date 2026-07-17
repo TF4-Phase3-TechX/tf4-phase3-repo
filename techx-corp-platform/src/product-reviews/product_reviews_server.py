@@ -129,6 +129,8 @@ def get_ai_assistant_response(request_product_id: str, question: str):
             "llm.outcome": outcome.outcome,
             "guardrail.version": assistant.provider.guardrail_version,
             "error.class": outcome.error_class or "none",
+            "response.stop_reason": outcome.provider_stop_reason,
+            "response.contract_stage": outcome.response_contract_stage,
         }
         span.set_attribute("gen_ai.request.model", assistant.provider.model_id)
         span.set_attribute("app.ai.outcome", outcome.outcome)
@@ -160,6 +162,8 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                 "output_tokens": outcome.output_tokens,
                 "estimated_cost_usd": round(estimated_cost, 8),
                 "error_class": outcome.error_class or "none",
+                "provider_stop_reason": outcome.provider_stop_reason,
+                "response_contract_stage": outcome.response_contract_stage,
                 "quarantined_reviews": outcome.quarantined_reviews,
             },
         )

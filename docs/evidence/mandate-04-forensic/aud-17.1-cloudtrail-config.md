@@ -2,7 +2,7 @@
 ## AUD-17.1 · CDO07 · Mandate 4
 
 > **Mục đích:** Verify CloudTrail configuration và log validation enabled.
-> **Test date:** 2026-07-15
+> **Test date:** 2026-07-17
 > **Performer:** Nguyễn Duy Hoàng (CDO07)
 
 | Thông tin | Giá trị |
@@ -17,31 +17,23 @@
 
 ```json
 {
-  "trailList": [
-    {
-      "Name": "tf4-general-cloudtrail",
-      "S3BucketName": "tf4-cloudtrail-logs-bucket-511825856493",
-      "S3KeyPrefix": "AWSLogs/511825856493/CloudTrail/",
-      "IncludeGlobalServiceEvents": true,
-      "IsMultiRegionTrail": true,
-      "HomeRegion": "us-east-1",
-      "TrailARN": "arn:aws:cloudtrail:us-east-1:511825856493:trail/tf4-general-cloudtrail",
-      "LogFileValidationEnabled": true,
-      "CloudWatchLogsLogGroupArn": "arn:aws:logs:us-east-1:511825856493:log-group:/aws/cloudtrail/tf4-general-cloudtrail:*",
-      "CloudWatchLogsRoleArn": "arn:aws:iam::511825856493:role/CloudTrail_CloudWatchLogs_Role",
-      "HasCustomEventSelectors": false,
-      "HasInsightSelectors": false,
-      "IsOrganizationTrail": false,
-      "EventSelectors": [
+    "trailList": [
         {
-          "ReadWriteType": "All",
-          "IncludeManagementEvents": true,
-          "DataResources": [],
-          "ExcludeManagementEventSources": []
+            "Name": "tf4-general-cloudtrail",
+            "S3BucketName": "tf4-cloudtrail-logs-bucket-511825856493",
+            "IncludeGlobalServiceEvents": true,
+            "IsMultiRegionTrail": true,
+            "HomeRegion": "us-east-1",
+            "TrailARN": "arn:aws:cloudtrail:us-east-1:511825856493:trail/tf4-general-cloudtrail",
+            "LogFileValidationEnabled": true,
+            "CloudWatchLogsLogGroupArn": "arn:aws:logs:us-east-1:511825856493:log-group:/aws/cloudtrail/tf4-general-cloudtrail:*",
+            "CloudWatchLogsRoleArn": "arn:aws:iam::511825856493:role/tf4-cloudtrail-to-cloudwatch-role",
+            "KmsKeyId": "arn:aws:kms:us-east-1:511825856493:key/4f20f498-949c-4970-9a79-7f34f1497d98",
+            "HasCustomEventSelectors": false,
+            "HasInsightSelectors": false,
+            "IsOrganizationTrail": false
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 
@@ -61,5 +53,5 @@
 ---
 
 **Evidence collected by:** Nguyễn Duy Hoàng (CDO07)
-**Date:** 2026-07-15
+**Date:** 2026-07-17
 **Status:** ✅ VERIFIED
