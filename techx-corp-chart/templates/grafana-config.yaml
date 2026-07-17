@@ -1,4 +1,6 @@
 {{- if .Values.grafana.enabled -}}
+{{- $alertingFiles := .Files.Glob "grafana/provisioning/alerting/*.yaml" }}
+{{- if $alertingFiles }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -9,7 +11,8 @@ metadata:
     {{- include "techx-corp.labels" . | nindent 4 }}
     grafana_alert: "1"
 data:
-  {{ (.Files.Glob "grafana/provisioning/alerting/*.yaml").AsConfig | nindent 2 }}
+  {{ $alertingFiles.AsConfig | nindent 2 }}
+{{- end }}
 
 {{- range $path, $_ := .Files.Glob "grafana/provisioning/dashboards/*.json" }}
 {{- $name := base $path | trimSuffix ".json" }}

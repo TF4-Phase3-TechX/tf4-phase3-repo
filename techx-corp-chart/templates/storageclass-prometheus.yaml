@@ -1,0 +1,13 @@
+{{- if and .Values.prometheus.enabled .Values.prometheusRetainStorageClass.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.prometheusRetainStorageClass.name | quote }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: {{ .Values.prometheusRetainStorageClass.provisioner | quote }}
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: {{ .Values.prometheusRetainStorageClass.allowVolumeExpansion }}
+{{- end }}

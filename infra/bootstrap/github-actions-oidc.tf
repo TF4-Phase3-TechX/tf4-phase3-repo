@@ -98,11 +98,17 @@ data "aws_iam_policy_document" "github_actions_plan" {
     actions = [
       "autoscaling:Describe*",
       "budgets:ViewBudget",
+      "budgets:ListTagsForResource",
+      "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
       "cloudtrail:GetTrail",
       "cloudtrail:GetTrailStatus",
       "cloudtrail:ListTags",
+      "config:DescribeConfigurationRecorders",
+      "config:DescribeConfigurationRecorderStatus",
+      "config:DescribeDeliveryChannels",
+      "config:DescribeRetentionConfigurations",
       "ec2:Describe*",
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
@@ -110,6 +116,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
+      "firehose:DescribeDeliveryStream",
+      "firehose:ListTagsForDeliveryStream",
       "iam:Get*",
       "iam:List*",
       "kms:DescribeKey",
@@ -128,6 +136,18 @@ data "aws_iam_policy_document" "github_actions_plan" {
     ]
 
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadKubernetesHelmReleaseState"
+    effect = "Allow"
+
+    actions = [
+      "eks:AccessKubernetesApi",
+      "eks:DescribeCluster"
+    ]
+
+    resources = [local.eks_cluster_arn]
   }
 
   statement {
@@ -161,6 +181,7 @@ resource "aws_iam_role_policy_attachment" "github_actions_plan" {
   role       = aws_iam_role.github_actions_plan.name
   policy_arn = aws_iam_policy.github_actions_plan.arn
 }
+
 
 resource "aws_iam_role" "github_actions_build" {
   name               = "tf4-github-actions-ecr-build"

@@ -20,7 +20,7 @@ default:
     repository: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp
     # Overrides the image tag whose default is the chart appVersion.
     # The service's name will be applied to the end of this value.
-    tag: "1.0"
+    tag: "8340af1"
     pullPolicy: IfNotPresent
     pullSecrets: []
   # Default # of replicas for all components
@@ -47,6 +47,12 @@ serviceAccount:
 # Patch permission remains absent until CDO approves a controlled live-remediation drill.
 aiopsRemediation:
   liveEnabled: false
+
+prometheusRetainStorageClass:
+  enabled: true
+  name: gp2-retain
+  provisioner: kubernetes.io/aws-ebs
+  allowVolumeExpansion: false
 
 components:
   ## Demo Components are named objects (services) with several properties
@@ -173,7 +179,7 @@ components:
   #      runAsUser: 65534
 
   aiops:
-    enabled: true
+    enabled: false
     useDefault:
       env: true
     serviceAccountName: aiops
@@ -242,12 +248,37 @@ components:
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
       limits:
-        memory: 120Mi
+        cpu: 200m
+        memory: 256Mi
+    securityContext:
+      runAsUser: 1654  # app
+      runAsGroup: 1654
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests: { cpu: 5m, memory: 8Mi }
+          limits: { cpu: 25m, memory: 32Mi }
 
   ad:
     enabled: true
@@ -269,11 +300,36 @@ components:
       - name: OTEL_LOGS_EXPORTER
         value: otlp
     resources:
+      requests:
+        cpu: 50m
+        memory: 150Mi
       limits:
+        cpu: 200m
         memory: 300Mi
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   cart:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: cart
     useDefault:
       env: true
     service:
@@ -294,15 +350,76 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 160Mi
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 1654
+      runAsGroup: 1654
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+        service: oteldemo.CartService
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     initContainers:
       - name: wait-for-valkey-cart
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 valkey-cart 6379; do echo waiting for valkey-cart; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests: { cpu: 5m, memory: 8Mi }
+          limits: { cpu: 25m, memory: 32Mi }
 
   checkout:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
     useDefault:
       env: true
     service:
@@ -335,15 +452,75 @@ components:
       - name: GOMEMLIMIT
         value: 16MiB
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 75m, memory: 48Mi }
+      limits: { cpu: 300m, memory: 96Mi }
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests: { cpu: 5m, memory: 8Mi }
+          limits: { cpu: 25m, memory: 32Mi }
 
   currency:
     enabled: true
+    replicas: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
     useDefault:
       env: true
     service:
@@ -360,8 +537,32 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   email:
     enabled: true
@@ -383,8 +584,21 @@ components:
       - name: FLAGD_PORT
         value: "8013"
     resources:
+      requests:
+        cpu: 20m
+        memory: 50Mi
       limits:
+        cpu: 100m
         memory: 100Mi
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   fraud-detection:
     enabled: true
@@ -406,15 +620,64 @@ components:
       - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
         value: "true"
     resources:
+      requests:
+        cpu: 50m
+        memory: 150Mi
       limits:
+        cpu: 200m
         memory: 300Mi
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.36.1
         command: ["sh", "-c", "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;"]
+        securityContext:
+          runAsUser: 65534  # nobody
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests: { cpu: 5m, memory: 8Mi }
+          limits: { cpu: 25m, memory: 32Mi }
 
   frontend:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
     useDefault:
       env: true
     service:
@@ -459,15 +722,47 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: http://localhost:8080/otlp-http/v1/traces             # This expects users to use `kubectl port-forward ...`
     resources:
-      limits:
-        memory: 250Mi
+      requests: { cpu: 100m, memory: 192Mi }
+      limits: { cpu: 400m, memory: 320Mi }
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 1001  # nextjs
       runAsGroup: 1001
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   frontend-proxy:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend-proxy
     useDefault:
       env: true
     service:
@@ -521,12 +816,33 @@ components:
       - name: OTEL_COLLECTOR_PORT_HTTP
         value: "4318"
     resources:
-      limits:
-        memory: 65Mi
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 128Mi }
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 10000
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 101  # envoy
       runAsGroup: 101
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   image-provider:
     enabled: true
@@ -550,8 +866,21 @@ components:
       - name: OTEL_COLLECTOR_HOST
         value: $(OTEL_COLLECTOR_NAME)
     resources:
+      requests:
+        cpu: 10m
+        memory: 25Mi
       limits:
+        cpu: 50m
         memory: 50Mi
+    securityContext:
+      runAsUser: 101  # nginx
+      runAsGroup: 101
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   load-generator:
     enabled: true
@@ -577,7 +906,7 @@ components:
       - name: LOCUST_AUTOSTART
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-        value: "true"
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -589,11 +918,32 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 1500Mi
+      requests: { cpu: 300m, memory: 256Mi }
+      limits: { cpu: 600m, memory: 512Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   payment:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: payment
     useDefault:
       env: true
     service:
@@ -612,15 +962,47 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      limits:
-        memory: 140Mi
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 128Mi }
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 1000  # node
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   product-catalog:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: product-catalog
     useDefault:
       env: true
     service:
@@ -643,11 +1025,36 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 50m, memory: 32Mi }
+      limits: { cpu: 200m, memory: 64Mi }
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    livenessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      grpc:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   product-reviews:
     enabled: true
+    serviceAccountName: product-reviews-bedrock
     useDefault:
       env: true
     service:
@@ -655,16 +1062,22 @@ components:
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
-      - name: OPENAI_API_KEY
-        value: dummy
-      - name: LLM_MODEL
-        value: techx-llm
-      - name: LLM_HOST
-        value: llm
-      - name: LLM_PORT
-        value: "8000"
-      - name: LLM_BASE_URL
-        value: http://$(LLM_HOST):$(LLM_PORT)/v1
+      - name: AWS_REGION
+        value: us-east-1
+      - name: BEDROCK_MODEL_ID
+        value: us.amazon.nova-2-lite-v1:0
+      - name: BEDROCK_GUARDRAIL_ID
+        value: SET_BY_CDO
+      - name: BEDROCK_GUARDRAIL_VERSION
+        value: "1"
+      - name: BEDROCK_OUTPUT_MODE
+        value: tool
+      - name: BEDROCK_DEADLINE_SECONDS
+        value: "4.5"
+      - name: BEDROCK_INPUT_USD_PER_MILLION
+        value: "0.30"
+      - name: BEDROCK_OUTPUT_USD_PER_MILLION
+        value: "2.50"
       - name: PRODUCT_REVIEWS_PORT
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
@@ -680,15 +1093,36 @@ components:
       - name: OTEL_PYTHON_LOG_CORRELATION
         value: "true"
       - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
-        value: "true"
+        value: "false"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 100Mi
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      readOnlyRootFilesystem: true
+      seccompProfile:
+        type: RuntimeDefault
 
   quote:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: quote
     useDefault:
       env: true
     service:
@@ -707,12 +1141,36 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 10m
+        memory: 20Mi
       limits:
+        cpu: 50m
         memory: 40Mi
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
     securityContext:
       runAsUser: 33  # www-data
       runAsGroup: 33
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   recommendation:
     enabled: true
@@ -738,11 +1196,32 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
-        memory: 500Mi            # This is high to enable supporting the recommendationCache feature flag use case
+      requests: { cpu: 75m, memory: 128Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   shipping:
     enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: shipping
     useDefault:
       env: true
     service:
@@ -759,8 +1238,32 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      limits:
-        memory: 20Mi
+      requests: { cpu: 20m, memory: 16Mi }
+      limits: { cpu: 75m, memory: 32Mi }
+    securityContext:
+      runAsUser: 65532  # distroless nonroot
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
 
   flagd:
     enabled: true
@@ -785,8 +1288,21 @@ components:
       - name: GOMEMLIMIT
         value: 60MiB
     resources:
+      requests:
+        cpu: 20m
+        memory: 40Mi
       limits:
+        cpu: 100m
         memory: 75Mi
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     command:
       - "/flagd-build"
       - "start"
@@ -827,8 +1343,20 @@ components:
     #         mountPath: /app/data
     initContainers:
       - name: init-config
-        image: busybox
+        image: busybox:1.36.1
         command: ["sh", "-c", "cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json"]
+        securityContext:
+          runAsUser: 65534
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests: { cpu: 5m, memory: 8Mi }
+          limits: { cpu: 25m, memory: 32Mi }
         volumeMounts:
           - mountPath: /config-ro
             name: config-ro
@@ -844,6 +1372,12 @@ components:
     useDefault:
       env: true
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 10Gi
     ports:
       - name: plaintext
         value: 9092
@@ -864,13 +1398,33 @@ components:
         value: CONTROLLER
       - name: KAFKA_CONTROLLER_QUORUM_VOTERS
         value: 1@kafka:9093
+      - name: KAFKA_LOG_DIRS
+        value: /tmp/kafka-data/kraft-combined-logs
+    additionalVolumeMounts:
+      - name: kafka-data
+        mountPath: /tmp/kafka-data
+    additionalVolumes:
+      - name: kafka-data
+        persistentVolumeClaim:
+          claimName: kafka-pvc
     resources:
-      limits:
+      requests:
+        cpu: 100m
         memory: 700Mi
+      limits:
+        cpu: 500m
+        memory: 700Mi
+    podSecurityContext:
+      fsGroup: 1000
     securityContext:
       runAsUser: 1000  # appuser
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   llm:
     enabled: true
@@ -885,6 +1439,18 @@ components:
         value: flagd
       - name: FLAGD_PORT
         value: "8013"
+    resources:
+      requests: { cpu: 75m, memory: 96Mi }
+      limits: { cpu: 250m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   postgresql:
     enabled: true
@@ -894,6 +1460,23 @@ components:
       repository: "postgres"
       tag: "17.6"
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 10Gi
+    podSecurityContext:
+      fsGroup: 999
+    securityContext:
+      runAsUser: 999
+      runAsGroup: 999
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     service:
       port: 5432
     podAnnotations:
@@ -929,13 +1512,26 @@ components:
         value: otel
       - name: POSTGRES_DB
         value: otel
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
     mountedConfigMaps:
       - name: postgresql-init
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
+    additionalVolumeMounts:
+      - name: postgresql-data
+        mountPath: /var/lib/postgresql/data
+    additionalVolumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: postgresql-pvc
     resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
       limits:
-        memory: 100Mi
+        cpu: 500m
+        memory: 512Mi
 
   valkey-cart:
     enabled: true
@@ -945,9 +1541,28 @@ components:
       repository: "valkey/valkey"
       tag: "9.0.1-alpine3.23"
     replicas: 1
+    strategy:
+      type: Recreate
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 5Gi
     ports:
       - name: valkey-cart
         value: 6379
+    command:
+      - valkey-server
+      - --appendonly
+      - "yes"
+      - --dir
+      - /data
+    additionalVolumeMounts:
+      - name: valkey-data
+        mountPath: /data
+    additionalVolumes:
+      - name: valkey-data
+        persistentVolumeClaim:
+          claimName: valkey-cart-pvc
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
       io.opentelemetry.discovery.metrics/enabled: 'true'
@@ -956,12 +1571,26 @@ components:
         username: valkey
         collection_interval: 10s
     resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
       limits:
-        memory: 20Mi
+        cpu: 100m
+        memory: 64Mi
+    podSecurityContext:
+      fsGroup: 999
     securityContext:
       runAsUser: 999  # valkey
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+
+metrics-server:
+  enabled: false
 
 opentelemetry-collector:
   enabled: true
@@ -969,6 +1598,15 @@ opentelemetry-collector:
     repository: "otel/opentelemetry-collector-contrib"
   fullnameOverride: otel-collector
   mode: daemonset
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
   presets:
     hostMetrics:
       enabled: true
@@ -982,7 +1620,11 @@ opentelemetry-collector:
       metrics:
         enabled: true
   resources:
+    requests:
+      cpu: 50m
+      memory: 100Mi
     limits:
+      cpu: 200m
       memory: 200Mi
   service:
     enabled: true
@@ -1097,10 +1739,17 @@ jaeger:
   fullnameOverride: jaeger
   jaeger:
     storage:
-      type: memory
+      type: elasticsearch
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     extraEnv:
-      - name: MEMORY_MAX_TRACES
-        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -1112,8 +1761,12 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
+      requests:
+        cpu: 100m
+        memory: 768Mi
       limits:
-        memory: 600Mi
+        cpu: 500m
+        memory: 768Mi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -1145,14 +1798,14 @@ jaeger:
           endpoint: 0.0.0.0:13133
       jaeger_query:
         storage:
-          traces: memory_backend
+          traces: opensearch_backend
           metrics: metrics_backend
         base_path: /jaeger/ui
       jaeger_storage:
         backends:
-          memory_backend:
-            memory:
-              max_traces: ${env:MEMORY_MAX_TRACES}
+          opensearch_backend:
+            elasticsearch:
+              server_urls: ["http://opensearch:9200"]
         metric_backends:
           metrics_backend:
             prometheus:
@@ -1171,26 +1824,145 @@ jaeger:
 
     exporters:
       jaeger_storage_exporter:
-        trace_storage: memory_backend
+        trace_storage: opensearch_backend
+  storage:
+    type: elasticsearch
+    elasticsearch:
+      tls:
+        enabled: false
+      url: http://opensearch:9200
+  esIndexCleaner:
+    enabled: true
+    numberOfDays: 1
+    schedule: "35 23 * * *"
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
 
 prometheus:
   enabled: true
   alertmanager:
-    enabled: false
+    enabled: true
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 10m
+        memory: 50Mi
+      limits:
+        cpu: 100m
+        memory: 100Mi
+    extraSecretMounts:
+      - name: smtp-auth
+        secretName: alertmanager-smtp-auth
+        mountPath: /etc/alertmanager/secrets
+        readOnly: true
+      - name: slack-webhook
+        secretName: alertmanager-slack-webhook
+        mountPath: /etc/alertmanager/slack
+        readOnly: true
+    config:
+      global:
+        resolve_timeout: 5m
+        smtp_smarthost: 'smtp.gmail.com:587'
+        smtp_from: 'tf4-on-call-email@gmail.com'
+        smtp_auth_username: 'tf4-on-call-email@gmail.com'
+        smtp_auth_password_file: '/etc/alertmanager/secrets/password'
+        smtp_require_tls: true
+      route:
+        group_by: ['alertname']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 1h
+        receiver: 'combined-notifications'
+      receivers:
+        - name: 'combined-notifications'
+          slack_configs:
+            - channel: '#tf4-alerts'
+              api_url_file: '/etc/alertmanager/slack/webhook-url'
+              send_resolved: true
+          email_configs:
+            - to: 'buithanhnghia@dtu.edu.vn'
+              send_resolved: true
+            - to: 'vanphutin2902@gmail.com'
+              send_resolved: true
+            - to: 'ngonguyentruongan2907@gmail.com'
+              send_resolved: true
   configmapReload:
     prometheus:
-      enabled: false
+      enabled: true
+      containerSecurityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
+      extraVolumeDirs:
+        - /etc/alerts.d
+      extraConfigmapMounts:
+        - name: flash-sale-alerts
+          mountPath: /etc/alerts.d
+          configMap: prometheus-flash-sale-alerts
+          readOnly: true
   kube-state-metrics:
     enabled: false
   prometheus-node-exporter:
     enabled: false
   prometheus-pushgateway:
     enabled: false
+  serverFiles:
+    prometheus.yml:
+      rule_files:
+        - /etc/config/recording_rules.yml
+        - /etc/config/alerting_rules.yml
+        - /etc/alerts.d/*.yaml
   server:
     fullnameOverride: prometheus
+    extraConfigmapMounts:
+      - name: flash-sale-alerts
+        mountPath: /etc/alerts.d
+        configMap: prometheus-flash-sale-alerts
+        readOnly: true
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
+      - "web.enable-lifecycle"
     retention: 7d
     tsdb:
       out_of_order_time_window: 30m
@@ -1230,12 +2002,30 @@ prometheus:
         - postgresql.table.name
         - postgresql.index.name
     persistentVolume:
-      enabled: false
+      enabled: true
+      storageClass: gp2-retain
+      size: 20Gi
+      annotations:
+        helm.sh/resource-policy: keep
+        argocd.argoproj.io/sync-options: Prune=false,Delete=false
     service:
       servicePort: 9090
     resources:
+      requests:
+        cpu: 100m
+        memory: 1Gi
       limits:
-        memory: 400Mi
+        cpu: 500m
+        memory: 1Gi
+    containerSecurityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
 grafana:
   enabled: true
@@ -1263,12 +2053,19 @@ grafana:
     datasources:
       enabled: true
     resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
       limits:
         cpu: 150m
         memory: 256Mi
   resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
     limits:
-      memory: 300Mi
+      cpu: 500m
+      memory: 768Mi
 
 opensearch:
   enabled: true
@@ -1276,9 +2073,22 @@ opensearch:
   clusterName: demo-cluster
   nodeGroup: techx-corp
   singleNode: true
+  protocol: http
   opensearchJavaOpts: "-Xms400m -Xmx400m"
   persistence:
-    enabled: false
+    enabled: true
+    enableInitChown: false
+    size: 20Gi
+    storageClass: "gp2"
+    image: busybox
+    imageTag: "1.36.1"
+  initResources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
   extraEnvs:
     - name: "bootstrap.memory_lock"
       value: "true"
@@ -1288,4 +2098,9 @@ opensearch:
       value: "true"
   resources:
     limits:
+      cpu: 1000m
       memory: 1100Mi
+
+bastionPortalAccess:
+  enabled: false
+  groupName: portal-bastion-group

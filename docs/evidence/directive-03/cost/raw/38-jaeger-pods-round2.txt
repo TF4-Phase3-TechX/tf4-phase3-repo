@@ -1,0 +1,5 @@
+$ kubectl get pods -n techx-observability -l app.kubernetes.io/name=jaeger -o wide
+
+NAME                                     READY   STATUS      RESTARTS   AGE     IP            NODE                         NOMINATED NODE   READINESS GATES
+jaeger-5f589cc9f6-2nftq                  1/1     Running     0          6h11m   10.0.10.238   ip-10-0-10-17.ec2.internal   <none>           <none>
+jaeger-es-index-cleaner-29734535-7bcfm   0/1     Completed   0          17h     10.0.11.249   ip-10-0-11-40.ec2.internal   <none>           <none>
