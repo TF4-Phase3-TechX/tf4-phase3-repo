@@ -343,24 +343,9 @@ resource "aws_cloudtrail" "main" {
   is_multi_region_trail         = true
   enable_logging                = true
 
-  advanced_event_selector {
-    name = "Log all management events"
-    field_selector {
-      field  = "eventCategory"
-      equals = ["Management"]
-    }
-  }
-
-  advanced_event_selector {
-    name = "Log Secrets Manager data events"
-    field_selector {
-      field  = "eventCategory"
-      equals = ["Data"]
-    }
-    field_selector {
-      field  = "resources.type"
-      equals = ["AWS::SecretsManager::Secret"]
-    }
+  event_selector {
+    read_write_type           = "All"
+    include_management_events = true
   }
 
   # FIX 1: Log file validation — tạo digest file mỗi giờ, có SHA-256 hash và chữ ký số RSA
