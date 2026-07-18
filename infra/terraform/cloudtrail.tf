@@ -351,6 +351,66 @@ resource "aws_cloudtrail" "main" {
     }
   }
 
+  advanced_event_selector {
+    name = "S3 read/delete data events for TF4 audit evidence prefixes"
+
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Data"]
+    }
+
+    field_selector {
+      field = "eventName"
+      equals = [
+        "GetObject",
+        "DeleteObject"
+      ]
+    }
+
+    field_selector {
+      field  = "resources.type"
+      equals = ["AWS::S3::Object"]
+    }
+
+    field_selector {
+      field = "resources.ARN"
+      starts_with = [
+        "arn:aws:s3:::tf4-aws-config-worm-archive-511825856493-us-east-1/aws-config/",
+        "arn:aws:s3:::tf4-aws-config-staging-511825856493-us-east-1/aws-config/",
+        "arn:aws:s3:::tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/",
+        "arn:aws:s3:::tf4-eks-audit-logs-511825856493/2026/"
+      ]
+    }
+  }
+
+  advanced_event_selector {
+    name = "S3 read/write/delete data events for TF4 Terraform state"
+
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Data"]
+    }
+
+    field_selector {
+      field = "eventName"
+      equals = [
+        "GetObject",
+        "PutObject",
+        "DeleteObject"
+      ]
+    }
+
+    field_selector {
+      field  = "resources.type"
+      equals = ["AWS::S3::Object"]
+    }
+
+    field_selector {
+      field       = "resources.ARN"
+      starts_with = ["arn:aws:s3:::tf4-phase3-state-bucket-511825856493/eks/"]
+    }
+  }
+
   # FIX 1: Log file validation — tạo digest file mỗi giờ, có SHA-256 hash và chữ ký số RSA
   # Dùng: aws cloudtrail validate-logs -> xác minh log chưa bị sửa
   enable_log_file_validation = true
