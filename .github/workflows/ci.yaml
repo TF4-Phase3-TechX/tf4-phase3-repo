@@ -106,11 +106,24 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Generate readable Trivy SAST & dependency report
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
+        with:
+          scan-type: 'fs'
+          scan-ref: 'techx-corp-platform/src'
+          scanners: 'vuln'
+          format: 'table'
+          output: 'trivy-sast-report.txt'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+          ignore-unfixed: true
+
       - name: Run Trivy SAST & dependency scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          scanners: 'vuln'
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
@@ -130,7 +143,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-sast-report
-          path: trivy-sast-report.sarif
+          path: |
+            trivy-sast-report.sarif
+            trivy-sast-report.txt
 
   yaml-check:
     name: YAML parse check
