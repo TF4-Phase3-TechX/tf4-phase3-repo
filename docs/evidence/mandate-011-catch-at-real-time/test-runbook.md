@@ -26,7 +26,7 @@ aws iam create-access-key --user-name mentor-test-user-11
    - **Investigate:** Click vào link để mở thẳng CloudTrail Console.
 
 > [!NOTE]
-> IAM là dịch vụ toàn cầu (Global Service). AWS CloudTrail có thể mất từ **5 đến 15 phút** để tổng hợp và đẩy sự kiện IAM sang EventBridge. Do đó, thông báo trên Slack có thể bị trễ thực tế lên tới 15 phút. Tuy nhiên, chỉ số **Latency** (đo đếm thời gian từ lúc EventBridge nhận được đến khi báo lên Slack) vẫn đảm bảo `< 60 giây`. *(Tham khảo: [AWS CloudTrail FAQs - Q: How long does it take CloudTrail to deliver an event?](https://aws.amazon.com/cloudtrail/faqs/))*
+> **Bài học từ thực tế (Troubleshooting):** Trong quá trình kiểm thử ban đầu, team ghi nhận hiện tượng các sự kiện nhạy cảm (như IAM CreateUser) bị bỏ sót hoàn toàn dù CloudTrail đã ghi nhận thành công. Nguyên nhân gốc rễ không phải do độ trễ của AWS (CloudTrail Delivery Latency), mà là do cấu trúc gộp chung mảng `$or` quá phức tạp trong một rule EventBridge. Việc tách thành 2 rule (Read-only và Write-only) đã giải quyết triệt để lỗi mất log im lặng này. Tốc độ nhận alert qua Slack giờ đây tuân thủ chặt chẽ SLO `p95 < 60s`.
 
 *(Đừng quên dọn dẹp sau khi test)*
 ```bash
@@ -50,7 +50,7 @@ aws ssm get-parameter --name non-existent-param-for-test-11
 2. Latency cam kết `< 60 giây`.
 
 > [!NOTE]
-> Tương tự như sự kiện IAM, các Data Events của Secrets Manager/SSM có thể mất từ **vài phút đến 15 phút** để CloudTrail đẩy sang EventBridge. Xin vui lòng chờ đợi thông báo nổ trên Slack. *(Tham khảo: [AWS CloudTrail FAQs](https://aws.amazon.com/cloudtrail/faqs/))*
+> **Bài học từ thực tế (Troubleshooting):** Sự kiện `GetSecretValue` và `GetParameter` là các API đọc (Read-only). Ban đầu hệ thống đã bỏ lỡ toàn bộ các sự kiện này. Qua quá trình debug chuyên sâu, team phát hiện root cause: AWS EventBridge mặc định (state `ENABLED`) sẽ lọc bỏ hoàn toàn các Read-Only Management Events từ CloudTrail để tiết kiệm chi phí. Để bắt được chúng, rule bắt buộc phải sử dụng state `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`. Đây là một phát hiện quan trọng giúp đảm bảo tính toàn vẹn (không bỏ lọt) của hệ thống Mandate 11.
 
 ## Kịch bản 3: Cố gắng vô hiệu hóa log (Blinding Threat)
 Mô phỏng kẻ tấn công tắt trail. Hành động này được đánh dấu là `CRITICAL`.

@@ -26,8 +26,8 @@ data "aws_iam_policy_document" "sns_topic_policy" {
       test     = "ArnEquals"
       variable = "aws:SourceArn"
       values = [
-        aws_cloudwatch_event_rule.cloudtrail_alerts_global.arn,
-        aws_cloudwatch_event_rule.cloudtrail_alerts_regional.arn,
+        aws_cloudwatch_event_rule.cloudtrail_alerts_readonly_sensitive.arn,
+        aws_cloudwatch_event_rule.cloudtrail_alerts_writeonly_sensitive.arn,
         aws_cloudwatch_event_rule.access_analyzer_alerts.arn
       ]
     }

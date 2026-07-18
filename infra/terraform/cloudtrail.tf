@@ -343,6 +343,10 @@ resource "aws_cloudtrail" "main" {
   is_multi_region_trail         = true
   enable_logging                = true
 
+  # WARNING: EventBridge's read-only rule (cloudtrail_alerts_readonly_sensitive) 
+  # strictly depends on this management event selector logging read-only events.
+  # Do not add `field_selector { field = "readOnly", equals = ["false"] }` to this block,
+  # otherwise EventBridge will silently stop receiving GetSecretValue/GetParameter events!
   advanced_event_selector {
     name = "Log all management events"
     field_selector {
