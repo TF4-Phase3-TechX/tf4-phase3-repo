@@ -61,7 +61,7 @@ Tài liệu này ghi nhận các quyết định thiết kế kiến trúc (ADR)
 
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Yêu cầu sửa đổi Code ứng dụng | Độ phức tạp Vận hành |
 | :--- | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `Phương án B` | **Ưu điểm:** Di trú online thời gian thực. Không yêu cầu sửa đổi code ứng dụng (API compatibility). Quá trình đồng bộ được AWS quản lý tự động dưới dạng replication link. Downtime tối thiểu (chỉ dừng ghi 1-3 phút trong lúc rolling update ứng dụng trỏ sang endpoint mới).<br>**Nhược điểm:** Phải mở thông luồng mạng từ EKS tới ElastiCache qua internal NLB. Yêu cầu tắt tạm thời TLS trên ElastiCache target trong lúc migration (sau cutover sẽ bật lại). | **Không có:** Chỉ cần cập nhật connection string trong cấu hình Helm values/ConfigMap của `cart` service. | **Trung bình:** Cần quản lý vòng đời migration qua CLI/Console và điều phối bước cutover. |
+| **ĐÃ CHỌN** | `Phương án B` | **Ưu điểm:** Di trú online thời gian thực. Không yêu cầu sửa đổi code ứng dụng (API compatibility). Quá trình đồng bộ được AWS quản lý tự động dưới dạng replication link. Downtime tối thiểu (chỉ dừng ghi 10-15 giây trong lúc rolling update ứng dụng trỏ sang endpoint mới).<br>**Nhược điểm:** Phải mở thông luồng mạng từ EKS tới ElastiCache qua internal NLB. Yêu cầu tắt tạm thời TLS trên ElastiCache target trong lúc migration (sau cutover sẽ bật lại). | **Không có:** Chỉ cần cập nhật connection string trong cấu hình Helm values/ConfigMap của `cart` service. | **Trung bình:** Cần quản lý vòng đời migration qua CLI/Console và điều phối bước cutover. |
 | **BỊ LOẠI BỎ** | `Phương án A` | **Ưu điểm:** Đơn giản về mặt kỹ thuật, không cần giữ kết nối đồng bộ trực tiếp giữa EKS và RDS.<br>**Nhược điểm:** Yêu cầu dừng toàn bộ luồng ghi ứng dụng từ lúc bắt đầu export RDB đến khi import xong trên ElastiCache. Với dung lượng 5GB, downtime có thể kéo dài từ 5-15 phút, gây ảnh hưởng nghiêm trọng đến trải nghiệm người dùng (SLO đặt hàng). | **Không có** | **Thấp** |
 
 #### Kế hoạch Triển khai cho Phương án Đã Chọn:
@@ -73,19 +73,16 @@ Tài liệu này ghi nhận các quyết định thiết kế kiến trúc (ADR)
      aws elasticache start-migration --replication-group-id valkey-cart-group --customer-node-endpoint-list "Address='valkey-eks-internal-nlb',Port=6379"
      ```
   4. **Theo dõi đồng bộ:** Giám sát chỉ số `ReplicationLag` và trạng thái migration (`migrating`) trên CloudWatch. Chờ đến khi lag ổn định về mức ~0 giây.
-  5. **Thực thi Cutover (Dừng ghi 1-3 phút vào khung giờ thấp điểm):**
-      * **Bước 5.1 (Chuẩn bị Green Deployment — Trước cutover 15-30 phút):** Deploy Deployment mới của `cart` service (`cart-green`) với connection string trỏ tới ElastiCache endpoint (`redis://`). Chờ Green pods vượt qua `readinessProbe` và đạt trạng thái `Running`. *(Lưu ý: ElastiCache đang ở trạng thái `migrating` — read-only replica — nên Green pods kết nối thành công nhưng chưa nhận traffic thực).*
-      * **Bước 5.2 (Freeze Writes):** Khóa ghi tạm thời trên EKS Valkey bằng lệnh: `CLIENT PAUSE 30000 WRITE`. *(Tăng timeout lên 30 giây để đủ thời gian hoàn tất các bước đồng bộ và switch).*
-      * **Bước 5.3 (Promote Target):** Chờ `ReplicationLag` trên CloudWatch về `0`, gọi lệnh hoàn tất di trú trên AWS để thăng cấp ElastiCache làm Primary (chuyển sang Read-Write):
-        ```bash
-        aws elasticache complete-migration --replication-group-id valkey-cart-group
-        ```
-      * **Bước 5.4 (Atomic Service Switch):** Cập nhật Kubernetes Service selector để chuyển hướng toàn bộ traffic sang Green Deployment (trỏ ElastiCache) trong một thao tác atomic duy nhất:
-        ```bash
-        kubectl patch service cart-service -p '{"spec":{"selector":{"version":"elasticache"}}}'
-        ```
-      * **Bước 5.5 (Verify):** Kiểm tra log Green pods xác nhận các lệnh `SET`/`GET` giỏ hàng thực hiện thành công trên ElastiCache. Thử thêm sản phẩm vào giỏ hàng trên storefront để smoke-test end-to-end.
-  6. **Bảo mật sau Migration:** Thực hiện kích hoạt lại tính năng mã hóa đường truyền (TLS) trên cụm ElastiCache và cập nhật connection string sang `rediss://` (chế độ bảo mật TLS).
+  5. **Thực thi Cutover (Dừng ghi 10-15 giây vào khung giờ thấp điểm):**
+      * **Bước 5.1 (Chuẩn bị Green via Argo Rollouts):** Cập nhật connection string trỏ sang ElastiCache (`redis://`) trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml). Commit và push Git. Argo Rollouts tự động tạo ReplicaSet Green mới chạy song song ở trạng thái `Paused` (chưa nhận traffic).
+      * **Bước 5.2 (Freeze Writes):** Khóa ghi trên EKS Valkey cũ bằng lệnh `CLIENT PAUSE 300000 WRITE` (5 phút) để đảm bảo an toàn, tránh trôi ghi trong lúc thăng cấp.
+      * **Bước 5.3 (Promote Target):** Chờ `ReplicationLag` về 0, chạy script `./scripts/valkey/05-complete-migration.sh` (thực thi `complete-migration`) để thăng cấp ElastiCache làm Primary (chuyển sang Read-Write).
+      * **Bước 5.4 (Promote Rollout & Switch Traffic):** Chạy script `./scripts/valkey/06-promote-rollout.sh` (thực thi `kubectl argo rollouts promote`) để đổi Active Service selector sang pods Green, đồng thời chạy `CLIENT UNPAUSE` trên EKS Valkey cũ.
+      * **Bước 5.5 (Verify):** Kiểm tra log Green pods xác nhận kết nối và các thao tác giỏ hàng R/W thành công trên ElastiCache.
+  6. **Bảo mật sau Migration (Zero-Downtime TLS):** Để tránh gián đoạn kết nối của pods đang chạy, thực hiện qua 3 pha:
+      * **Pha 1 (TF):** Sửa [elasticache.tf](../../../../../infra/terraform/elasticache.tf) set `transit_encryption_enabled = true` và chọn mode `preferred` (chấp nhận cả TLS và non-TLS).
+      * **Pha 2 (GitOps):** Đổi connection string của `cart` sang `rediss://` (TLS) trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml). Commit & push Git để Argo Rollouts thực hiện rolling update pods mới bắt tay TLS.
+      * **Pha 3 (TF):** Chuyển mode TLS sang `required` (chỉ nhận TLS) trong Terraform để siết chặt bảo mật.
 * **Lưu ý & Biện pháp phòng ngừa lỗi:**
   - **Kiểm định readinessProbe của Green pods:** Phải kiểm tra trước rằng `readinessProbe` của `cart` service không yêu cầu thực hiện lệnh ghi (`SET`) trong quá trình kiểm tra sức khỏe, để Green pods có thể đạt trạng thái `Ready` ngay cả khi ElastiCache vẫn đang ở trạng thái `migrating` (read-only).
   - **Giám sát dung lượng RAM:** Đảm bảo cụm ElastiCache target có dung lượng RAM trống tối thiểu bằng dung lượng sử dụng thực tế của EKS Valkey + 25% reserved memory cho việc đồng bộ.
@@ -109,24 +106,20 @@ Tài liệu này ghi nhận các quyết định thiết kế kiến trúc (ADR)
 | **BỊ LOẠI BỎ** | `Phương án C` | **Ưu điểm:** Thao tác cực nhanh và đơn giản.<br>**Nhược điểm:** Mất toàn bộ các giỏ hàng mới hoặc cập nhật trên ElastiCache kể từ lúc cutover. Vi phạm yêu cầu bảo toàn dữ liệu của nghiệp vụ. | **Cực nhanh (RTO < 60s)** | **Cao (mất giỏ hàng mới trong Observation Window)** |
 | **BỊ LOẠI BỎ** | `Phương án A` | **Nhược điểm:** Không khả thi vì chúng ta đã loại bỏ phương án Dual-write ở VK-03. | **N/A** | **N/A** |
 
-#### Kế hoạch Triển khai cho Phương án Đã Chọn:
 * **Cách triển khai đề xuất:**
-  1. **Chuẩn bị công cụ Reverse Sync:** Định nghĩa sẵn một Kubernetes Job chạy **RIOT-Redis** trong EKS cluster. Cấu hình Job này kết nối tới cả ElastiCache endpoint (Source của luồng rollback) và EKS Valkey (Target của luồng rollback).
+  1. **Chuẩn bị công cụ Reverse Sync (GitOps):** Khai báo sẵn K8s Job template `riot-redis-backfill` trong Helm templates. Đặt cờ `riot-redis-backfill.enabled = false` mặc định trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml) để tắt khi chạy bình thường.
   2. **Quy trình thực hiện Rollback khi kích hoạt Abort Trigger:**
-     * **Bước 1 (Atomic Switch-Back — Ưu tiên số 1):** Cập nhật ngay Kubernetes Service selector trỏ ngược về Blue Deployment (EKS Valkey cũ):
-       ```bash
-       kubectl patch service cart-service -p '{"spec":{"selector":{"version":"eks"}}}'
-       ```
-       *(Lý do làm trước: Switch selector dừng ngay luồng write mới vào ElastiCache, atomic ~1 giây. ElastiCache trở thành nguồn dữ liệu đóng băng tự nhiên — không cần CLIENT PAUSE. Nếu dùng CLIENT PAUSE, khi timeout hết, write mới tiếp tục vào ElastiCache liên tục, RIOT chạy live mode không bao giờ đạt lag = 0).*
-     * **Bước 2 (Backfill Reverse Sync):** Start Kubernetes Job chạy RIOT-Redis để sync ngược các giỏ hàng mới (tạo trong observation window) từ ElastiCache về EKS Valkey:
-       ```bash
-       riot-redis replicate --source <elasticache-endpoint>:6379 --target <eks-valkey-ip>:6379 --mode snapshot
-       ```
-       *(Lý do dùng `--mode snapshot` thay vì `live`: ElastiCache đã ngừng nhận write mới, data là hữu hạn và cố định. RIOT drain hết rồi tự kết thúc, lag về 0 tự nhiên).*
-     * **Bước 3 (Verify):** Chạy kiểm tra nhanh số lượng key (Key count) giữa 2 DB để xác nhận đồng bộ thành công. Kiểm tra giỏ hàng hoạt động bình thường trên storefront.
+     * **Trường hợp 1 (Trước khi có dữ liệu ghi mới vào ElastiCache):**
+       a. Chạy script `./scripts/valkey/rollback-01-abort-rollout.sh` (thực thi `kubectl argo rollouts abort cart`) để chuyển traffic về EKS.
+       b. Chạy script `./scripts/valkey/rollback-02-unlock-source.sh` (thực thi `CLIENT UNPAUSE`) để mở lại ghi EKS Valkey.
+     * **Trường hợp 2 (Sau khi đã có dữ liệu ghi mới vào ElastiCache):**
+       a. Khóa ghi trên ElastiCache (pause write hoặc scale-down app).
+       b. Cập nhật `riot-redis-backfill.enabled = true` trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml), commit & push Git để ArgoCD khởi chạy Job. Job container sẽ tự động: (1) Thực thi `FLUSHALL` trên EKS Valkey để xóa sạch dữ liệu stale, (2) Khởi chạy tool `riot-redis --mode snapshot` copy toàn bộ keys sạch từ ElastiCache về EKS Valkey.
+       c. Chạy script `./scripts/valkey/rollback-01-abort-rollout.sh` và `./scripts/valkey/rollback-02-unlock-source.sh` để chuyển traffic và mở khóa ghi EKS Valkey.
+       d. Đặt cờ Helm về `false` và push Git để dọn dẹp Job.
 * **Lưu ý & Biện pháp phòng ngừa lỗi:**
-  - **Cấu hình ghi đè (Overwrite):** Phải cấu hình RIOT-Redis ở chế độ cho phép ghi đè key (`--mode live` hoặc set key replacement policy) để dữ liệu mới từ ElastiCache cập nhật đè lên dữ liệu cũ trên EKS Valkey.
-  - **Tăng RTO để đổi lấy Data Integrity:** Quá trình sync ngược 5GB dữ liệu bằng RIOT qua mạng nội bộ AWS sẽ mất khoảng **1 đến 2 phút**. Chấp nhận downtime luồng ghi (Write Pause) trong khoảng thời gian này để đảm bảo dữ liệu không bị lệch.
+  - **Dọn sạch Target DB (FLUSHALL):** Bắt buộc phải thực hiện `FLUSHALL` trên EKS Valkey cũ trước khi chạy RIOT-Redis để dọn sạch dữ liệu cũ/stale, loại bỏ hoàn toàn các rủi ro xung đột hoặc stale keys.
+  - **Tái khởi động ghi:** Luôn nhớ unpause EKS Valkey cũ để ứng dụng tiếp tục hoạt động ghi bình thường sau khi rollback.
 
 ---
 

@@ -54,10 +54,10 @@ Tài liệu này ghi nhận các quyết định thiết kế kiến trúc (ADR)
   2. **Cấu hình Replication Task:** Cấu hình replication task cho topic `orders`. Đảm bảo bật tính năng đồng bộ consumer offsets (offset translation) cho các consumer group (`accounting`, `fraud-detection`).
   3. **Giám sát Replication Lag:** Theo dõi chỉ số sync lag của MirrorMaker 2 trên Prometheus/Grafana. Chờ đến khi replication lag tiệm cận 0.
   4. **Thực thi Cutover (Zero Downtime):**
-     * **Bước 4.1 (Switch Producer):** Cập nhật cấu hình bootstrap server của `checkout` service trỏ sang MSK. Thực hiện rolling update `checkout` service. Luồng ghi mới bắt đầu đi thẳng vào MSK. EKS Kafka cũ dừng nhận message mới.
-     * **Bước 4.2 (Catch-up sync):** Chờ vài giây để MirrorMaker 2 đồng bộ nốt các message cuối cùng còn sót lại từ EKS Kafka cũ sang MSK.
-     * **Bước 4.3 (Switch Consumers):** Cập nhật cấu hình bootstrap server của các consumer (`accounting`, `fraud-detection`) trỏ sang MSK và thực hiện rolling update. Nhờ cơ chế offset translation, các consumer mới sẽ tiếp tục đọc tiếp từ offset tương ứng trên MSK mà không bị sập hay đọc trùng.
-  5. **Cleanup:** Dừng và xóa cụm MirrorMaker 2 sau khi observation window kết thúc an toàn.
+     * **Bước 4.1 (Switch Producer via Argo Rollouts):** Cập nhật connection string trỏ sang MSK và bật `rollouts.enabled = true` cho `checkout` trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml). Commit & push Git. Chờ Green pods ready ở trạng thái Paused, chạy script `./scripts/kafka/04-promote-producers.sh` (thực thi promote checkout) để switch traffic.
+     * **Bước 4.2 (Catch-up sync):** Theo dõi CloudWatch metrics, chờ lag của MirrorMaker 2 (EKS -> MSK) về 0.
+     * **Bước 4.3 (Switch Consumers via Argo Rollouts):** Cập nhật connection string sang MSK cho các consumer (`accounting`, `fraud-detection`) trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml). Commit & push Git. Chờ pods ready và chạy script `./scripts/kafka/06-promote-consumers.sh` (thực thi promote consumers) để switch. Nhờ offset translation của MM2, consumer tiếp tục tiêu thụ từ offset tương ứng.
+  5. **Cleanup:** Cập nhật file values đặt cờ `mirrormaker2.enabled = false` và push Git để thu hồi container. Chạy script `./scripts/kafka/07-cleanup.sh` dọn dẹp cụm Kafka cũ.
 * **Lưu ý & Biện pháp phòng ngừa lỗi:**
   - **Bắt buộc cấu hình Offset Translation:** Trong MirrorMaker 2, bắt buộc phải set `sync.group.offsets.enabled=true` và `emit.checkpoints.enabled=true`. Nếu thiếu, khi consumer switch sang MSK, nó sẽ không biết đọc tiếp từ đâu, dẫn đến việc đọc lại từ đầu (earliest) gây trùng lặp dữ liệu lớn, hoặc đọc từ cuối (latest) gây mất mát đơn hàng.
   - **Network Security Group:** Đảm bảo mở thông cổng `9092`/`9094` trên Security Group của cả hai cụm Kafka để Replicator có thể kéo/đẩy data bình thường.

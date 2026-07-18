@@ -56,12 +56,12 @@ Tài liệu này ghi nhận các quyết định thiết kế kiến trúc (ADR)
      - Tạo Source Endpoint (trỏ tới Service IP của EKS Postgres) và Target Endpoint (trỏ tới RDS Postgres).
      - Tạo DMS Replication Task ở chế độ *Full load + Ongoing replication*, bật *Validation enabled* và thiết lập *Target table preparation mode = Do nothing*.
   4. **Kế hoạch Thực thi Cutover — Blue-Green Pod Switch (Downtime Write Pause dự kiến: ~10 - 15 giây):**
-     * **Bước 4.1 (Kích hoạt lại Constraints):** Bật lại các ràng buộc khóa ngoại và triggers trên RDS Postgres.
-     * **Bước 4.2 (Deploy Green):** Tạo Deployment mới (`product-catalog-rds`, `product-reviews-rds`, `accounting-rds`) với cấu hình connection string trỏ đến target RDS. Chờ các Pod mới vượt qua cuộc kiểm tra `readinessProbe` và có trạng thái `Running`.
-     * **Bước 4.3 (Khóa ghi nguồn):** Chạy lệnh SQL khóa ghi trên EKS Postgres: `ALTER DATABASE otel SET default_transaction_read_only = on;`.
-     * **Bước 4.4 (Đợi sync nốt lag):** Giám sát lag của DMS Task cho tới khi bằng 0 giây và Validation báo cáo 100% khớp.
-     * **Bước 4.5 (Verify & Reset Sequence):** Thực hiện so sánh MD5 checksum giữa các bảng cốt lõi. Chạy script SQL đồng bộ (reset) lại sequences trên RDS khớp với giá trị `MAX(id)` để tránh lỗi trùng lặp khóa chính.
-     * **Bước 4.6 (Switch traffic):** Cập nhật Service selector trỏ sang label của Deployment mới (`kubectl patch service`).
+     * **Bước 4.1 (Kích hoạt lại Constraints):** Bật lại các foreign key constraints và triggers trên RDS Postgres.
+     * **Bước 4.2 (Deploy Green via Argo Rollouts):** Cập nhật connection string trỏ đến target RDS và bật `rollouts.enabled = true` trong [deploy/values-app-stamp.yaml](../../../../../deploy/values-app-stamp.yaml). Commit và push Git. Argo Rollouts tự động tạo các ReplicaSet Green mới chạy song song ở trạng thái `Paused` (chưa nhận traffic).
+     * **Bước 4.3 (Khóa ghi nguồn):** Chạy script `./scripts/postgres/05-lock-source-writes.sh` để khóa ghi trên EKS Postgres (`read_only = on`) và kết thúc các session cũ.
+     * **Bước 4.4 (Đợi sync nốt lag):** Theo dõi tab CloudWatch metrics ngay trên DMS console, chờ latency lag của `forward_task` về mức 0 giây ổn định. Tiến hành Stop task.
+     * **Bước 4.5 (Reset Sequence):** Chạy script `./scripts/postgres/06-reset-sequences.sh` để đồng bộ sequences trên RDS khớp với giá trị `MAX(id)` thực tế.
+     * **Bước 4.6 (Promote Rollout):** Chạy script `./scripts/postgres/07-promote-rollout.sh` (thực thi `kubectl argo rollouts promote`) để chuyển hướng traffic sang pods Green. Bật task đồng bộ ngược `reverse_task` trên DMS.
 * **Lưu ý & Biện pháp phòng ngừa lỗi:**
   - **Không switch traffic trước khi DMS lag = 0:** If switch sớm, RDS sẽ thiếu dữ liệu, gây lỗi bất nhất hoặc mất đơn hàng.
   - **Giám sát WAL size trên EKS:** Khi bật logical replication, nếu DMS bị dừng hoặc mất kết nối, WAL files tích lũy và có thể gây tràn đĩa EKS Postgres. Cần cấu hình Prometheus Alert cho dung lượng thư mục `pg_wal`.
@@ -102,17 +102,20 @@ Tài liệu này ghi nhận các quyết định thiết kế kiến trúc (ADR)
 
 #### Kế hoạch Triển khai cho Phương án Đã Chọn:
 * **Cách triển khai đề xuất:**
-  1. Ngay sau khi cutover thành công sang RDS Postgres, khởi tạo sẵn một AWS DMS Task đồng bộ ngược (Reverse CDC) từ RDS (Source) về lại EKS Postgres (Target) ở trạng thái tạm dừng (Suspended).
-  2. Nếu phát hiện lỗi nghiêm trọng kích hoạt Abort trigger, quy trình rollback được thực hiện tuần tự:
-     a. Kích hoạt chạy task Reverse CDC trên AWS DMS để bắt đầu đồng bộ toàn bộ dữ liệu mới ghi từ RDS về lại EKS Postgres.
-     b. **Khóa ghi trên RDS Postgres:** Chạy lệnh SQL khóa ghi trên RDS: `ALTER DATABASE otel SET default_transaction_read_only = on;`.
-     c. **Chờ DMS đồng bộ ngược nốt dữ liệu còn lại:** Giám sát lag của task Reverse CDC cho tới khi về 0 giây (đảm bảo toàn bộ các giao dịch ghi cuối cùng trên RDS đã được chuyển về EKS).
-     d. **Reset Sequence trên EKS Postgres:** Chạy script SQL đồng bộ lại sequences trên EKS Postgres về giá trị `MAX(id) + 1` thực tế để tránh lỗi trùng lặp khóa chính.
-     e. **Atomic Service Switch:** Cập nhật lại selector của Kubernetes Service để trỏ kết nối của clients quay về các Pod chạy trên EKS Postgres.
-     f. Dừng task Reverse CDC và dọn dẹp tài nguyên.
+  1. Khai báo sẵn task đồng bộ ngược `reverse_task` (RDS -> EKS) trong [dms.tf](../../../../../infra/terraform/dms.tf) ở trạng thái tạm dừng.
+  2. Bật `reverse_task` ngay khi promote lên RDS ở bước cutover để đồng bộ ngược real-time dữ liệu mới phát sinh.
+  3. Nếu phát hiện sự cố nghiêm trọng cần rollback:
+     * **Trường hợp 1 (Trước khi có dữ liệu ghi mới vào RDS):**
+       a. Chạy script `./scripts/postgres/rollback-01-abort-rollout.sh` để abort rollout quay lại EKS.
+       b. Chạy script `./scripts/postgres/rollback-02-unlock-source.sh` mở khóa ghi EKS Postgres.
+     * **Trường hợp 2 (Sau khi đã có dữ liệu ghi mới vào RDS):**
+       a. Khóa ghi trên RDS Postgres (`read_only = on`).
+       b. Chờ lag của task `reverse_task` trên DMS console về 0 giây, sau đó Stop task.
+       c. Chạy script `./scripts/postgres/rollback-03-reset-sequences.sh` trên EKS Postgres cũ để đồng bộ lại sequences.
+       d. Chạy script `./scripts/postgres/rollback-01-abort-rollout.sh` (abort rollout) và `./scripts/postgres/rollback-02-unlock-source.sh` (mở khóa ghi EKS Postgres) để chuyển traffic quay về an toàn.
 * **Lưu ý & Biện pháp phòng ngừa lỗi:**
-  - **Bảo toàn tính tuần tự:** Không switch traffic của clients về EKS khi chưa khóa ghi trên RDS và chưa chờ Reverse CDC lag về 0 để tránh mất mát dữ liệu hoặc ghi đè sai lệch dữ liệu.
-  - **Dọn dẹp tài nguyên:** Nếu kết thúc 48 giờ observation window an toàn, bắt buộc phải xóa ngay task Reverse CDC và replication slot trên RDS để tránh tích lũy WAL gây đầy dung lượng đĩa RDS.
+  - **Bảo toàn tính tuần tự:** Không switch traffic về EKS khi chưa khóa ghi trên RDS và chưa chờ Reverse CDC lag về 0.
+  - **Dọn dẹp tài nguyên:** Sau 48 giờ observation window, dọn dẹp task Reverse CDC và replication slot để tránh đầy đĩa.
 
 ---
 
