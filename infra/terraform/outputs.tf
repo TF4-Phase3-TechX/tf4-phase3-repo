@@ -108,3 +108,45 @@ output "karpenter_node_role_name" {
   description = "IAM role name used by Karpenter-provisioned worker nodes"
   value       = module.karpenter.node_iam_role_name
 }
+
+# REL-14 — Managed PostgreSQL baseline outputs for SEC-13 / REL-15 handoff
+output "rds_postgresql_endpoint" {
+  description = "Private RDS PostgreSQL endpoint for TechX managed PostgreSQL target"
+  value       = aws_db_instance.postgresql.address
+}
+
+output "rds_postgresql_port" {
+  description = "RDS PostgreSQL listener port"
+  value       = aws_db_instance.postgresql.port
+}
+
+output "rds_postgresql_database_name" {
+  description = "Initial database name for the RDS PostgreSQL target"
+  value       = aws_db_instance.postgresql.db_name
+}
+
+output "rds_postgresql_instance_arn" {
+  description = "ARN of the RDS PostgreSQL instance"
+  value       = aws_db_instance.postgresql.arn
+}
+
+output "rds_postgresql_security_group_id" {
+  description = "Security group ID attached to the RDS PostgreSQL target"
+  value       = aws_security_group.rds_postgresql.id
+}
+
+output "rds_postgresql_subnet_group_name" {
+  description = "DB subnet group name used by the RDS PostgreSQL target"
+  value       = aws_db_subnet_group.postgresql.name
+}
+
+output "rds_postgresql_parameter_group_name" {
+  description = "DB parameter group name used by the RDS PostgreSQL target"
+  value       = aws_db_parameter_group.postgresql.name
+}
+
+output "rds_postgresql_master_user_secret_arn" {
+  description = "RDS-managed master user secret ARN for SEC-13 secret wiring reference"
+  value       = try(aws_db_instance.postgresql.master_user_secret[0].secret_arn, null)
+  sensitive   = true
+}
