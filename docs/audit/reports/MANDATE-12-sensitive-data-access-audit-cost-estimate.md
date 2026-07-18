@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-07-18  
 Phạm vi tài khoản: TF4 account `511825856493`, mặc định tại region `us-east-1`.  
-Phạm vi task: bịt lỗ hổng "Làm hụt" cho audit truy cập dữ liệu nhạy cảm theo Task 42.
+Phạm vi task: bịt lỗ hổng "Làm hụt" cho audit truy cập dữ liệu nhạy cảm theo yêu cầu trong MANDATE-12.
 
 ## 1. Phạm Vi Đã Triển Khai / Đã Xác Minh
 

@@ -375,10 +375,10 @@ resource "aws_cloudtrail" "main" {
     field_selector {
       field = "resources.ARN"
       starts_with = [
-        "arn:aws:s3:::tf4-aws-config-worm-archive-511825856493-us-east-1/aws-config/",
-        "arn:aws:s3:::tf4-aws-config-staging-511825856493-us-east-1/aws-config/",
-        "arn:aws:s3:::tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/",
-        "arn:aws:s3:::tf4-eks-audit-logs-511825856493/2026/"
+        "arn:aws:s3:::tf4-aws-config-worm-archive-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
+        "arn:aws:s3:::tf4-aws-config-staging-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
+        "arn:aws:s3:::tf4-cloudtrail-logs-bucket-${data.aws_caller_identity.current.account_id}/AWSLogs/",
+        "arn:aws:s3:::tf4-eks-audit-logs-${data.aws_caller_identity.current.account_id}/2026/"
       ]
     }
   }
@@ -407,7 +407,7 @@ resource "aws_cloudtrail" "main" {
 
     field_selector {
       field       = "resources.ARN"
-      starts_with = ["arn:aws:s3:::tf4-phase3-state-bucket-511825856493/eks/"]
+      starts_with = ["arn:aws:s3:::tf4-phase3-state-bucket-${data.aws_caller_identity.current.account_id}/eks/"]
     }
   }
 
