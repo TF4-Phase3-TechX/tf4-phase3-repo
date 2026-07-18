@@ -112,11 +112,14 @@ def lambda_handler(event, context):
             source_ip = detail.get('sourceIPAddress', 'UnknownIP')
             
             # Allowlist check to reduce noise
-            if actor and re.search(r'role/tf4-github-actions', actor):
+            allowlisted_agents = [
+                r'role/tf4-github-actions',
+                r'external-secrets',
+                r'SecuritySlackAlertsLambdaRole'
+            ]
+            if actor and any(re.search(pattern, actor) for pattern in allowlisted_agents):
                 should_alert = False
                 logger.info(f"Ignoring event {event_name} by allowlisted actor {actor}")
-                
-            # Allowlist for EKS nodes or similar known services could go here
 
             
             # Filter logic
