@@ -118,6 +118,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
       "ecr:List*",
+      "elasticache:Describe*",
+      "elasticache:ListTagsForResource",
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
