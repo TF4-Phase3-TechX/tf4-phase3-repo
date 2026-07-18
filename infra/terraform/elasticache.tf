@@ -71,10 +71,10 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
 
   at_rest_encryption_enabled = true
 
-  # Transit encryption remains disabled for the REL-14 baseline because the
-  # approved Valkey online migration plan requires a non-TLS replication link.
-  # TLS is enabled in the post-cutover security phase.
-  transit_encryption_enabled = false
+  # Preferred mode allows the migration window to support non-TLS clients while
+  # keeping the target ready for the post-cutover move to required TLS.
+  transit_encryption_enabled = true
+  transit_encryption_mode    = "preferred"
 
   snapshot_retention_limit = 7
   snapshot_window          = "18:00-19:00"
