@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID || '511825856493' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'techx-corp' }}
 
 jobs:
   changes:
@@ -177,7 +177,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check secrets availability
+        id: check_secrets
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN secret is not available. Skipping plan steps."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure AWS credentials for plan
+        if: steps.check_secrets.outputs.skip != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}
@@ -192,17 +204,21 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform init
+        if: steps.check_secrets.outputs.skip != 'true'
         run: terraform init -input=false
 
       - name: Terraform validate
+        if: steps.check_secrets.outputs.skip != 'true'
         run: terraform validate
 
       - name: Terraform plan
+        if: steps.check_secrets.outputs.skip != 'true'
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan
+        if: steps.check_secrets.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: terraform-infra-plan
