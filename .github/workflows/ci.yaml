@@ -32,13 +32,13 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Detect changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
         with:
           filters: |
             app:
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload Secret Scan Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gitleaks-report
           path: gitleaks-report.json
@@ -104,7 +104,7 @@ jobs:
       security-events: write  # required to upload SARIF to GitHub Security tab
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Run Trivy SAST & dependency scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
@@ -120,14 +120,14 @@ jobs:
       - name: Upload SARIF to GitHub Security tab
         if: always()
         continue-on-error: true  # graceful fallback if GitHub Advanced Security not enabled
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@ddf5ce7296213f5548c91e2dd19df2d77d2b2d66 # v3
         with:
           sarif_file: trivy-sast-report.sarif
           category: trivy-sast
 
       - name: Upload report artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-sast-report
           path: trivy-sast-report.sarif
@@ -139,7 +139,7 @@ jobs:
     if: needs.changes.outputs.app == 'true' || needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.terraform == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Parse YAML files
         shell: bash
@@ -175,7 +175,7 @@ jobs:
         working-directory: infra/terraform
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Check secrets availability
         id: check_secrets
@@ -190,13 +190,13 @@ jobs:
 
       - name: Configure AWS credentials for plan
         if: steps.check_secrets.outputs.skip != 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: 1.9.8
 
@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload infra plan
         if: steps.check_secrets.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: terraform-infra-plan
           path: infra/terraform/tfplan
@@ -232,7 +232,7 @@ jobs:
     if: needs.changes.outputs.terraform == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install tfsec
         run: |
@@ -251,7 +251,7 @@ jobs:
 
       - name: Upload tfsec report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tfsec-report
           path: tfsec-report.txt
@@ -264,10 +264,10 @@ jobs:
     if: needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: v3.15.4
 
@@ -334,7 +334,7 @@ jobs:
           PY
 
       - name: Upload rendered manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rendered-manifests
           path: rendered/
@@ -347,10 +347,10 @@ jobs:
     if: always() && needs.helm-render.result == 'success'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download rendered manifests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: rendered-manifests
           path: ./rendered
@@ -378,7 +378,7 @@ jobs:
 
       - name: Upload kube-linter reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: kube-linter-reports
           path: |
@@ -393,10 +393,10 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Create CI env override
         shell: bash
