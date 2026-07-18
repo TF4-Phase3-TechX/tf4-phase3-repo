@@ -8,7 +8,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_readonly_sensitive" {
   state          = "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS" # CRITICAL for read-only events
 
   event_pattern = jsonencode({
-    source      = ["aws.cloudtrail"]
+    source      = ["aws.secretsmanager", "aws.ssm"]
     detail-type = ["AWS API Call via CloudTrail"]
     detail = {
       "$or" = [
@@ -41,7 +41,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_writeonly_sensitive" {
   state          = "ENABLED"
 
   event_pattern = jsonencode({
-    source      = ["aws.cloudtrail"]
+    source      = ["aws.iam", "aws.signin", "aws.cloudtrail", "aws.ec2", "aws.s3", "aws.config", "aws.eks"]
     detail-type = ["AWS API Call via CloudTrail"]
     detail = {
       "$or" = [
