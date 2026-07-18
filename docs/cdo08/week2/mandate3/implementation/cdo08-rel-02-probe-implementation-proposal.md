@@ -283,10 +283,20 @@ baseline vì vậy là bước tiếp theo của chiến lược production roll
 phần bị bỏ qua trong thiết kế hiện tại.
 
 Đây cũng là cách bảo vệ hợp lý trước mentor: nhóm không cố thiết kế probe hoàn hảo ngay từ đầu, mà chọn safe incremental rollout — cải thiện rõ reliability nhưng giữ blast radius của thay đổi ở mức thấp.
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 ---
 ## 🛡️ CDO-07 Audit Approval Sign-Off
 - **Trạng thái:** ✅ APPROVED / PASS
 - **Người kiểm duyệt:** CDO-07 (Đội ngũ Auditability)
+<<<<<<< Updated upstream
 - **Ngày thực hiện:** 2026-07-16
 - **Đối tượng kiểm toán:** Kiểm chứng bằng chứng Reliability, Độ bền dữ liệu (Data Durability) và EKS/Karpenter HA.
 - **Chi tiết xác minh:** Đã kiểm tra trạng thái runtime của cụm EKS bằng tài khoản quyền `TF4-AuditReadOnlyAndAnalyze`. Xác nhận các PVC (gp2/gp3) đã Bound, số lượng replicas (2/2 đi kèm topology spread constraints), liveness/readiness probes hoạt động ổn định, và Karpenter tự động cấp phát node thành công. Tính toàn vẹn của Kafka event và độ bền dữ liệu của PostgreSQL sau khi xóa/khởi động lại pod đã được xác minh đầy đủ và đạt yêu cầu.
+=======
+- **Ngày thực hiện:** 2026-07-17
+- **Đối tượng kiểm toán:** Kiểm chứng bằng chứng Reliability, Độ bền dữ liệu (Data Durability) và EKS/Karpenter HA.
+- **Chi tiết xác minh:** Đã kiểm tra trạng thái runtime của cụm EKS bằng tài khoản quyền `TF4-AuditReadOnlyAndAnalyze`. Xác nhận các PVC (gp2/gp3) đã Bound, số lượng replicas (2/2 đi kèm topology spread constraints), liveness/readiness probes hoạt động ổn định, và Karpenter tự động cấp phát node thành công. Tính toàn vẹn của Kafka event và độ bền dữ liệu của PostgreSQL sau khi xóa/khởi động lại pod đã được xác minh đầy đủ và đạt yêu cầu.
+>>>>>>> Stashed changes

@@ -211,10 +211,3 @@ Sử dụng CLI `kubectl` để kiểm tra ConfigMap và trạng thái rule đã
 Trong trường hợp bộ alert rules mới gây tải lớn cho Prometheus hoặc sinh ra quá nhiều cảnh báo nhiễu ảnh hưởng đến vận hành:
 1. Revert các thay đổi trong file `techx-corp-chart/prometheus/flash-sale-alerts.yaml` về phiên bản gần nhất hoạt động tốt.
 2. Commit và push để CI/CD redeploy lại observability stack.
----
-## 🛡️ CDO-07 Audit Approval Sign-Off
-- **Trạng thái:** ✅ APPROVED / PASS
-- **Người kiểm duyệt:** CDO-07 (Đội ngũ Auditability)
-- **Ngày thực hiện:** 2026-07-16
-- **Đối tượng kiểm toán:** Kiểm chứng bằng chứng Reliability, Độ bền dữ liệu (Data Durability) và EKS/Karpenter HA.
-- **Chi tiết xác minh:** Đã kiểm tra trạng thái runtime của cụm EKS bằng tài khoản quyền `TF4-AuditReadOnlyAndAnalyze`. Xác nhận các PVC (gp2/gp3) đã Bound, số lượng replicas (2/2 đi kèm topology spread constraints), liveness/readiness probes hoạt động ổn định, và Karpenter tự động cấp phát node thành công. Tính toàn vẹn của Kafka event và độ bền dữ liệu của PostgreSQL sau khi xóa/khởi động lại pod đã được xác minh đầy đủ và đạt yêu cầu.
