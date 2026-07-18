@@ -343,6 +343,78 @@ resource "aws_cloudtrail" "main" {
   is_multi_region_trail         = true
   enable_logging                = true
 
+  # WARNING: EventBridge's read-only rule (cloudtrail_alerts_readonly_sensitive) 
+  # strictly depends on this management event selector logging read-only events.
+  # Do not add `field_selector { field = "readOnly", equals = ["false"] }` to this block,
+  # otherwise EventBridge will silently stop receiving GetSecretValue/GetParameter events!
+  advanced_event_selector {
+    name = "Log all management events"
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Management"]
+    }
+  }
+
+  advanced_event_selector {
+    name = "S3 read/delete data events for TF4 audit evidence prefixes"
+
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Data"]
+    }
+
+    field_selector {
+      field = "eventName"
+      equals = [
+        "GetObject",
+        "DeleteObject"
+      ]
+    }
+
+    field_selector {
+      field  = "resources.type"
+      equals = ["AWS::S3::Object"]
+    }
+
+    field_selector {
+      field = "resources.ARN"
+      starts_with = [
+        "arn:aws:s3:::tf4-aws-config-worm-archive-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
+        "arn:aws:s3:::tf4-aws-config-staging-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
+        "arn:aws:s3:::tf4-cloudtrail-logs-bucket-${data.aws_caller_identity.current.account_id}/AWSLogs/",
+        "arn:aws:s3:::tf4-eks-audit-logs-${data.aws_caller_identity.current.account_id}/2026/"
+      ]
+    }
+  }
+
+  advanced_event_selector {
+    name = "S3 read/write/delete data events for TF4 Terraform state"
+
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Data"]
+    }
+
+    field_selector {
+      field = "eventName"
+      equals = [
+        "GetObject",
+        "PutObject",
+        "DeleteObject"
+      ]
+    }
+
+    field_selector {
+      field  = "resources.type"
+      equals = ["AWS::S3::Object"]
+    }
+
+    field_selector {
+      field       = "resources.ARN"
+      starts_with = ["arn:aws:s3:::tf4-phase3-state-bucket-${data.aws_caller_identity.current.account_id}/eks/"]
+    }
+  }
+
   # FIX 1: Log file validation — tạo digest file mỗi giờ, có SHA-256 hash và chữ ký số RSA
   # Dùng: aws cloudtrail validate-logs -> xác minh log chưa bị sửa
   enable_log_file_validation = true

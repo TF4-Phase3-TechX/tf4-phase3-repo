@@ -363,9 +363,9 @@
 - **Estimate:** 4h (1 SP)
 - **Mục tiêu:** Verify tính toàn vẹn của Kafka event, DB data loss, ADR và độ bền dữ liệu.
 **✅ Sub-tasks (Definition of Done):**
-  - [ ] Đọc và verify các evidence files về Kafka/DB (REL-01, REL-02, REL-03, REL-06).
-  - [ ] Đọc và verify evidence probes và HA (K8S-01, K8S-04).
-  - [ ] **Evidence:** Comment Approve xác nhận trên các file evidence này.
+  - [x] Đọc và verify các evidence files về Kafka/DB (REL-01, REL-02, REL-03, REL-06).
+  - [x] Đọc và verify evidence probes và HA (K8S-01, K8S-04).
+  - [x] **Evidence:** Comment Approve xác nhận trên các file evidence này.
 
 **Task 15: Verify Evidence cho Cost/Performance Gaps (CDO-04)**
 - **Issue Type:** Task

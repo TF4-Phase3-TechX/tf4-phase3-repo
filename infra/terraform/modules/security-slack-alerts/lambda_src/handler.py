@@ -3,6 +3,8 @@ import os
 import urllib.request
 import logging
 import boto3
+from datetime import datetime, timezone
+import re
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -103,11 +105,19 @@ def lambda_handler(event, context):
         
         should_alert = True
         
-        if source == 'aws.cloudtrail':
+        if message.get('detail-type') == 'AWS API Call via CloudTrail':
             event_name = detail.get('eventName', 'UnknownEvent')
             user_identity = detail.get('userIdentity', {})
             actor = user_identity.get('arn') or user_identity.get('principalId', 'UnknownActor')
             source_ip = detail.get('sourceIPAddress', 'UnknownIP')
+            
+            # Allowlist check to reduce noise
+            if actor and re.search(r'role/tf4-github-actions', actor):
+                should_alert = False
+                logger.info(f"Ignoring event {event_name} by allowlisted actor {actor}")
+                
+            # Allowlist for EKS nodes or similar known services could go here
+
             
             # Filter logic
             if event_name == 'AuthorizeSecurityGroupIngress':
@@ -129,7 +139,7 @@ def lambda_handler(event, context):
                          should_alert = False
                          logger.info("Ignoring PutBucketPolicy as it may not be public.")
                          
-            if event_name in ['StopLogging', 'DeleteTrail', 'DeleteConfigurationRecorder']:
+            if event_name in ['StopLogging', 'DeleteTrail', 'UpdateTrail', 'PutEventSelectors', 'DeleteConfigurationRecorder']:
                 severity = "critical"
                 
         elif source == 'aws.access-analyzer':
@@ -145,6 +155,32 @@ def lambda_handler(event, context):
              
         if not should_alert:
             continue
+            
+        short_actor = actor
+        if actor and '/' in actor:
+            short_actor = actor.split('/')[-1]
+
+        latency_msg = "Unknown"
+        display_time = timestamp
+        if timestamp != 'UnknownTime':
+            try:
+                event_dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                now_dt = datetime.now(timezone.utc)
+                delta_sec = (now_dt - event_dt).total_seconds()
+                latency_msg = f"{delta_sec:.2f} giây"
+                logger.info(f"Metric: Mandate11/DetectionLatency = {delta_sec}")
+                
+                from datetime import timedelta
+                event_dt_vn = event_dt + timedelta(hours=7)
+                display_time = f"{event_dt_vn.strftime('%Y-%m-%d %H:%M:%S')} +07 (UTC: {timestamp})"
+            except Exception as e:
+                logger.warning(f"Could not parse timestamp {timestamp}: {e}")
+
+        cloudtrail_link = f"https://{region}.console.aws.amazon.com/cloudtrail/home?region={region}#/events?EventName={event_name}"
+        if message.get('detail-type') != 'AWS API Call via CloudTrail':
+            cloudtrail_link = "N/A"
+            
+        runbook_link = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/mandate-11-incident-response.md"
             
         # Build Slack Message (Block Kit)
         color = "#ff0000" if severity == "critical" else "#ff9900"
@@ -166,7 +202,11 @@ def lambda_handler(event, context):
                             "fields": [
                                 {
                                     "type": "mrkdwn",
-                                    "text": f"*Actor:*\n`{actor}`"
+                                    "text": f"*Actor:*\n*{short_actor}*\n`{actor}`"
+                                },
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"*Time:*\n{display_time}"
                                 },
                                 {
                                     "type": "mrkdwn",
@@ -178,17 +218,20 @@ def lambda_handler(event, context):
                                 },
                                 {
                                     "type": "mrkdwn",
-                                    "text": f"*Source IP:*\n`{source_ip}`"
-                                },
-                                {
-                                    "type": "mrkdwn",
                                     "text": f"*Severity:*\n`{severity.upper()}`"
                                 },
                                 {
                                     "type": "mrkdwn",
-                                    "text": f"*Time:*\n`{timestamp}`"
+                                    "text": f"*Latency:*\n`{latency_msg}`"
                                 }
                             ]
+                        },
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"*Source IP:* `{source_ip}`\n*Noise check:* ❌ Không khớp allowlist CI/CD → cảnh báo thật\n*Investigate:* <{cloudtrail_link}|View in CloudTrail> | *Runbook:* <{runbook_link}|Security Runbook>"
+                            }
                         }
                     ]
                 }
