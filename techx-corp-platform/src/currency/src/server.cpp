@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <math.h>
+#include <vector>
 #include <demo.grpc.pb.h>
 #include <grpc/health/v1/health.grpc.pb.h>
 
@@ -26,6 +27,8 @@ using namespace std;
 using namespace opentelemetry::baggage;
 using namespace opentelemetry::trace;
 
+using oteldemo::BatchCurrencyConversionRequest;
+using oteldemo::BatchCurrencyConversionResponse;
 using oteldemo::Empty;
 using oteldemo::GetSupportedCurrenciesResponse;
 using oteldemo::CurrencyConversionRequest;
@@ -141,7 +144,7 @@ class CurrencyService final : public oteldemo::CurrencyService::Service
   	return Status::OK;
   }
 
-  double getDouble(Money& money) {
+  double getDouble(const Money& money) {
     auto units = money.units();
     auto nanos = money.nanos();
 
@@ -161,6 +164,66 @@ class CurrencyService final : public oteldemo::CurrencyService::Service
     long nano = rem * pow(10, 9);
     money.set_units(unit);
     money.set_nanos(nano);
+  }
+
+  Status BatchConvert(ServerContext* context,
+    const BatchCurrencyConversionRequest* request,
+    BatchCurrencyConversionResponse* response) override
+  {
+    StartSpanOptions options;
+    options.kind = SpanKind::kServer;
+    GrpcServerCarrier carrier(context);
+
+    auto prop        = context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+    auto current_ctx = context::RuntimeContext::GetCurrent();
+    auto new_context = prop->Extract(carrier, current_ctx);
+    options.parent   = GetSpan(new_context)->GetContext();
+
+    auto span = get_tracer("currency")->StartSpan(
+        "Currency/BatchConvert",
+        {{semconv::rpc::kRpcSystem, "grpc"},
+         {semconv::rpc::kRpcService, "oteldemo.CurrencyService"},
+         {semconv::rpc::kRpcMethod, "BatchConvert"},
+         {semconv::rpc::kRpcGrpcStatusCode, semconv::rpc::RpcGrpcStatusCodeValues::kOk}},
+        options);
+    auto scope = get_tracer("currency")->WithActiveSpan(span);
+    span->SetAttribute("app.currency.conversion.to", request->to_code());
+    span->SetAttribute("app.currency.conversion.count", request->from_size());
+
+    const auto to_rate = currency_conversion.find(request->to_code());
+    if (to_rate == currency_conversion.end()) {
+      span->SetStatus(StatusCode::kError);
+      span->End();
+      return Status(grpc::StatusCode::INVALID_ARGUMENT, "unsupported target currency");
+    }
+
+    for (const auto& from : request->from()) {
+      if (currency_conversion.find(from.currency_code()) == currency_conversion.end()) {
+        span->SetStatus(StatusCode::kError);
+        span->End();
+        return Status(grpc::StatusCode::INVALID_ARGUMENT, "unsupported source currency");
+      }
+    }
+
+    std::vector<Money> converted;
+    converted.reserve(request->from_size());
+    for (const auto& from : request->from()) {
+      Money value;
+      const auto from_rate = currency_conversion.at(from.currency_code());
+      const auto one_euro = getDouble(from) / from_rate;
+      getUnitsAndNanos(value, one_euro * to_rate->second);
+      value.set_currency_code(request->to_code());
+      converted.push_back(value);
+    }
+
+    for (const auto& value : converted) {
+      response->add_converted()->CopyFrom(value);
+      CurrencyCounter(request->to_code());
+    }
+
+    span->SetStatus(StatusCode::kOk);
+    span->End();
+    return Status::OK;
   }
 
   Status Convert(ServerContext* context,
