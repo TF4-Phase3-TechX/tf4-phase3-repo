@@ -53,6 +53,10 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts" {
         {
           eventSource = ["secretsmanager.amazonaws.com"]
           eventName   = ["GetSecretValue"]
+        },
+        {
+          eventSource = ["ssm.amazonaws.com"]
+          eventName   = ["GetParameter", "GetParameters", "GetParametersByPath"]
         }
       ]
     }

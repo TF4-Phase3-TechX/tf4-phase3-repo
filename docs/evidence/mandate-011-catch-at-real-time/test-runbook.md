@@ -31,18 +31,19 @@ aws iam delete-access-key --user-name mentor-test-user-11 --access-key-id <ACCES
 aws iam delete-user --user-name mentor-test-user-11
 ```
 
-## Kịch bản 2: Truy cập Secret bất hợp pháp (Data Threat)
-Hành động này kiểm chứng CloudTrail Data Events đã được bật cho Secrets Manager và EventBridge đang bắt đúng.
+## Kịch bản 2: Truy cập Secret/Parameter bất hợp pháp (Data Threat)
+Hành động này kiểm chứng CloudTrail Data Events đã được bật cho Secrets Manager / SSM và EventBridge đang bắt đúng.
 
 **Lệnh thực thi:**
 ```bash
-# Chạy lệnh đọc Secret (Có thể test bằng một secret rỗng hoặc secret test)
+# Chạy lệnh đọc Secret/Parameter (Có thể test bằng một giá trị không tồn tại)
 aws secretsmanager get-secret-value --secret-id non-existent-secret-for-test-11
+aws ssm get-parameter --name non-existent-param-for-test-11
 ```
-*(Ngay cả khi secret không tồn tại, lệnh này vẫn được CloudTrail ghi lại)*
+*(Ngay cả khi tài nguyên không tồn tại, lệnh này vẫn được CloudTrail ghi lại)*
 
 **Kỳ vọng:**
-1. Kênh Slack sẽ nổ thông báo `🚨 Security Alert: GetSecretValue`.
+1. Kênh Slack sẽ nổ thông báo `🚨 Security Alert: GetSecretValue` hoặc `GetParameter`.
 2. Latency cam kết `< 60 giây`.
 
 ## Kịch bản 3: Cố gắng vô hiệu hóa log (Blinding Threat)
