@@ -131,3 +131,10 @@ $ kubectl port-forward svc/jaeger-query 16686:16686 -n techx-observability
 Trong trường hợp ổ đĩa cứng EBS của AWS gặp sự cố vật lý hoặc lỗi phân quyền trong quá trình chạy test:
 1.  **Chuyển đổi sang RAM**: Sửa file `techx-corp-chart/values.yaml` cấu hình lại `opensearch.enabled=false` và `jaeger.storage.type=memory`.
 2.  **Deploy khẩn cấp**: Chạy lại pipeline CD trên GitHub để hạ cấp Jaeger về lưu trữ tạm trên RAM (không dùng đĩa cứng) nhằm đảm bảo hoạt động của hệ thống test không bị gián đoạn.
+---
+## 🛡️ CDO-07 Audit Approval Sign-Off
+- **Trạng thái:** ✅ APPROVED / PASS
+- **Người kiểm duyệt:** CDO-07 (Đội ngũ Auditability)
+- **Ngày thực hiện:** 2026-07-16
+- **Đối tượng kiểm toán:** Kiểm chứng bằng chứng Reliability, Độ bền dữ liệu (Data Durability) và EKS/Karpenter HA.
+- **Chi tiết xác minh:** Đã kiểm tra trạng thái runtime của cụm EKS bằng tài khoản quyền `TF4-AuditReadOnlyAndAnalyze`. Xác nhận các PVC (gp2/gp3) đã Bound, số lượng replicas (2/2 đi kèm topology spread constraints), liveness/readiness probes hoạt động ổn định, và Karpenter tự động cấp phát node thành công. Tính toàn vẹn của Kafka event và độ bền dữ liệu của PostgreSQL sau khi xóa/khởi động lại pod đã được xác minh đầy đủ và đạt yêu cầu.
