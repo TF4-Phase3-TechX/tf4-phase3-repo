@@ -139,7 +139,7 @@ def lambda_handler(event, context):
                          should_alert = False
                          logger.info("Ignoring PutBucketPolicy as it may not be public.")
                          
-            if event_name in ['StopLogging', 'DeleteTrail', 'DeleteConfigurationRecorder']:
+            if event_name in ['StopLogging', 'DeleteTrail', 'UpdateTrail', 'PutEventSelectors', 'DeleteConfigurationRecorder']:
                 severity = "critical"
                 
         elif source == 'aws.access-analyzer':
@@ -180,7 +180,7 @@ def lambda_handler(event, context):
         if source != 'aws.cloudtrail':
             cloudtrail_link = "N/A"
             
-        runbook_link = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/evidence/mandate-011-catch-at-real-time/test-runbook.md"
+        runbook_link = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/mandate-11-incident-response.md"
             
         # Build Slack Message (Block Kit)
         color = "#ff0000" if severity == "critical" else "#ff9900"

@@ -65,7 +65,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_writeonly_sensitive" {
         },
         {
           eventSource = ["cloudtrail.amazonaws.com"]
-          eventName   = ["StopLogging", "DeleteTrail"]
+          eventName   = ["StopLogging", "DeleteTrail", "UpdateTrail", "PutEventSelectors"]
         },
         {
           eventSource = ["ec2.amazonaws.com"]
