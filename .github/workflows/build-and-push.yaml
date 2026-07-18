@@ -238,16 +238,21 @@ jobs:
               
               # 4. Provenance Attestation
               echo ">> [4/4] Generating and Attesting Provenance..."
-              cat > provenance.json <<EOF
-              {
-                "repo": "${{ github.repository }}",
-                "commit": "${{ github.sha }}",
-                "workflow": "${{ github.workflow }}",
-                "run_id": "${{ github.run_id }}",
-                "service_name": "$service",
-                "image_digest": "$digest"
-              }
-              EOF
+              jq -n \
+                --arg repo "${{ github.repository }}" \
+                --arg commit "${{ github.sha }}" \
+                --arg workflow "${{ github.workflow }}" \
+                --arg run_id "${{ github.run_id }}" \
+                --arg service_name "$service" \
+                --arg image_digest "$digest" \
+                '{
+                  repo: $repo,
+                  commit: $commit,
+                  workflow: $workflow,
+                  run_id: $run_id,
+                  service_name: $service_name,
+                  image_digest: $image_digest
+                }' > provenance.json
               cp provenance.json "security-artifacts/provenance-${service}-${digest_clean}.json"
               
               if ! cosign attest --yes --predicate provenance.json --type custom "$image_ref_digest"; then
