@@ -240,20 +240,11 @@ Karpenter worker node autoscaling baseline đã được xác thực thành côn
 - Toàn bộ pod trong namespace `techx-tf4` đã ở trạng thái `1/1 Running`.
 
 Kết luận: thay đổi này đáp ứng mục tiêu baseline worker node autoscaling, giúp TF4 không còn phụ thuộc hoàn toàn vào thao tác scale node thủ công khi scheduler thiếu CPU headroom.
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 ---
 ## 🛡️ CDO-07 Audit Approval Sign-Off
 - **Trạng thái:** ✅ APPROVED / PASS
 - **Người kiểm duyệt:** CDO-07 (Đội ngũ Auditability)
-<<<<<<< Updated upstream
 - **Ngày thực hiện:** 2026-07-16
 - **Đối tượng kiểm toán:** Kiểm chứng bằng chứng Reliability, Độ bền dữ liệu (Data Durability) và EKS/Karpenter HA.
 - **Chi tiết xác minh:** Đã kiểm tra trạng thái runtime của cụm EKS bằng tài khoản quyền `TF4-AuditReadOnlyAndAnalyze`. Xác nhận các PVC (gp2/gp3) đã Bound, số lượng replicas (2/2 đi kèm topology spread constraints), liveness/readiness probes hoạt động ổn định, và Karpenter tự động cấp phát node thành công. Tính toàn vẹn của Kafka event và độ bền dữ liệu của PostgreSQL sau khi xóa/khởi động lại pod đã được xác minh đầy đủ và đạt yêu cầu.
-=======
-- **Ngày thực hiện:** 2026-07-17
-- **Đối tượng kiểm toán:** Kiểm chứng bằng chứng Reliability, Độ bền dữ liệu (Data Durability) và EKS/Karpenter HA.
-- **Chi tiết xác minh:** Đã kiểm tra trạng thái runtime của cụm EKS bằng tài khoản quyền `TF4-AuditReadOnlyAndAnalyze`. Xác nhận các PVC (gp2/gp3) đã Bound, số lượng replicas (2/2 đi kèm topology spread constraints), liveness/readiness probes hoạt động ổn định, và Karpenter tự động cấp phát node thành công. Tính toàn vẹn của Kafka event và độ bền dữ liệu của PostgreSQL sau khi xóa/khởi động lại pod đã được xác minh đầy đủ và đạt yêu cầu.
->>>>>>> Stashed changes
+
