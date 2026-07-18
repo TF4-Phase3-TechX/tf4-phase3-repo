@@ -31,6 +31,28 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts" {
         {
           eventSource = ["config.amazonaws.com"]
           eventName   = ["DeleteConfigurationRecorder"]
+        },
+        {
+          eventSource = ["iam.amazonaws.com"]
+          eventName = [
+            "CreateAccessKey",
+            "AttachRolePolicy",
+            "PutRolePolicy",
+            "CreateUser",
+            "CreateRole",
+            "UpdateAssumeRolePolicy"
+          ]
+        },
+        {
+          eventSource = ["eks.amazonaws.com"]
+          eventName = [
+            "CreateAccessEntry",
+            "AssociateAccessPolicy"
+          ]
+        },
+        {
+          eventSource = ["secretsmanager.amazonaws.com"]
+          eventName   = ["GetSecretValue"]
         }
       ]
     }

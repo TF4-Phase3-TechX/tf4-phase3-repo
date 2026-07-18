@@ -192,10 +192,10 @@ components:
     resources:
       requests:
         cpu: 50m
-        memory: 256Mi
+        memory: 512Mi
       limits:
         cpu: 200m
-        memory: 256Mi
+        memory: 512Mi
     securityContext:
       runAsUser: 1654  # app
       runAsGroup: 1654
@@ -248,6 +248,15 @@ components:
       limits:
         cpu: 200m
         memory: 300Mi
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   cart:
     enabled: true
@@ -285,6 +294,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 1654
+      runAsGroup: 1654
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       tcpSocket:
         port: 8080
@@ -463,6 +481,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 300m, memory: 192Mi }
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     livenessProbe:
       grpc:
         port: 8080
@@ -505,6 +532,15 @@ components:
       limits:
         cpu: 100m
         memory: 100Mi
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   fraud-detection:
     enabled: true
@@ -826,6 +862,15 @@ components:
     resources:
       requests: { cpu: 300m, memory: 256Mi }
       limits: { cpu: 600m, memory: 512Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   payment:
     enabled: true
@@ -1095,6 +1140,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 128Mi }
       limits: { cpu: 300m, memory: 256Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   shipping:
     enabled: true
@@ -1182,6 +1236,15 @@ components:
       limits:
         cpu: 100m
         memory: 75Mi
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     command:
       - "/flagd-build"
       - "start"
@@ -1224,6 +1287,15 @@ components:
       - name: init-config
         image: busybox:1.36.1
         command: ["sh", "-c", "cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json"]
+        securityContext:
+          runAsUser: 65534
+          runAsGroup: 65534
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests: { cpu: 5m, memory: 8Mi }
           limits: { cpu: 25m, memory: 32Mi }
@@ -1312,6 +1384,15 @@ components:
     resources:
       requests: { cpu: 75m, memory: 96Mi }
       limits: { cpu: 250m, memory: 192Mi }
+    securityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
 
   postgresql:
     enabled: true
@@ -1327,6 +1408,17 @@ components:
       enabled: true
       storageClassName: gp2
       size: 10Gi
+    podSecurityContext:
+      fsGroup: 999
+    securityContext:
+      runAsUser: 999
+      runAsGroup: 999
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     service:
       port: 5432
     podAnnotations:
@@ -1448,6 +1540,15 @@ opentelemetry-collector:
     repository: "otel/opentelemetry-collector-contrib"
   fullnameOverride: otel-collector
   mode: daemonset
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
   presets:
     hostMetrics:
       enabled: true
@@ -1604,26 +1705,26 @@ jaeger:
     resources:
       requests:
         cpu: 100m
-        memory: 768Mi
+        memory: 1Gi
       limits:
         cpu: 500m
-        memory: 768Mi
+        memory: 1Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [batch]
+          processors: [memory_limiter, batch]
           exporters: [jaeger_storage_exporter]
       telemetry:
         resource:
           service.name: jaeger
         metrics:
-          level: detailed
+          level: normal
           readers:
             - periodic:
-                interval: 10000
+                interval: 30000
                 timeout: 5000
                 exporter:
                   otlp:
@@ -1661,7 +1762,14 @@ jaeger:
             endpoint: ${env:JAEGER_HOST}:${env:JAEGER_GRPC_PORT}
 
     processors:
-      batch: {}
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 15
+      batch:
+        send_batch_size: 512
+        send_batch_max_size: 1024
+        timeout: 5s
 
     exporters:
       jaeger_storage_exporter:
@@ -1676,6 +1784,19 @@ jaeger:
     enabled: true
     numberOfDays: 1
     schedule: "35 23 * * *"
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     resources:
       requests:
         cpu: 10m
@@ -1688,6 +1809,15 @@ prometheus:
   enabled: true
   alertmanager:
     enabled: true
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
     persistence:
       enabled: false
     resources:
@@ -1893,10 +2023,11 @@ opensearch:
   nodeGroup: techx-corp
   singleNode: true
   protocol: http
-  opensearchJavaOpts: "-Xms400m -Xmx400m"
+  opensearchJavaOpts: "-Xms800m -Xmx800m"
   persistence:
     enabled: true
-    size: 20Gi
+    enableInitChown: false
+    size: 40Gi
     storageClass: "gp2"
     image: busybox
     imageTag: "1.36.1"
@@ -1915,9 +2046,12 @@ opensearch:
     - name: "DISABLE_SECURITY_PLUGIN"
       value: "true"
   resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
     limits:
       cpu: 1000m
-      memory: 1100Mi
+      memory: 2Gi
 
 bastionPortalAccess:
   enabled: false

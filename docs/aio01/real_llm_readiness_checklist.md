@@ -38,10 +38,10 @@ This document is the consolidated successor to the OpenAI-compatible/mock readin
 
 - [x] Three models ran 30 cases × 3 repetitions; the report contains 270 metadata-only records.
 - [x] Nova passed supported ≥90%, unsupported 100%, injection quarantine 100% and zero PII/canary leakage.
-- [x] Metric contract from PR #131 is retained: `app_llm_prompt_tokens_total`, `app_llm_completion_tokens_total`, `app_llm_estimated_cost_usd_total`, `app_llm_latency_seconds`, `app_llm_errors_total`, and `app_llm_calls_total`.
+- [x] Metric contract from PR #131 is retained. The SDK cost instrument is `app_llm_estimated_cost_usd_total`; deployed OTel exposes it to Prometheus as `app_llm_estimated_cost_usd_USD_total`. Other series are `app_llm_prompt_tokens_total`, `app_llm_completion_tokens_total`, `app_llm_latency_seconds`, `app_llm_errors_total`, and `app_llm_calls_total`.
 - [x] `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` is set.
-- [ ] Deployed Prometheus series names and Grafana queries are verified.
-- [ ] Storefront SLO before/after and canary logs/traces are attached.
+- [x] Deployed Prometheus series names and queries were verified on 2026-07-17.
+- [x] Storefront SLO before/after and sanitized log/trace schema evidence are attached in the Mandate 06 runtime acceptance record.
 
 ## Controlled cutover
 
