@@ -95,41 +95,48 @@ internal class Consumer : IDisposable
                 return;
             }
 
-            var orderEntity = new OrderEntity
+            try
             {
-                Id = order.OrderId
-            };
-            _dbContext.Add(orderEntity);
-            foreach (var item in order.Items)
-            {
-                var orderItem = new OrderItemEntity
+                var orderEntity = new OrderEntity
                 {
-                    ItemCostCurrencyCode = item.Cost.CurrencyCode,
-                    ItemCostUnits = item.Cost.Units,
-                    ItemCostNanos = item.Cost.Nanos,
-                    ProductId = item.Item.ProductId,
-                    Quantity = item.Item.Quantity,
+                    Id = order.OrderId
+                };
+                _dbContext.Add(orderEntity);
+                foreach (var item in order.Items)
+                {
+                    var orderItem = new OrderItemEntity
+                    {
+                        ItemCostCurrencyCode = item.Cost.CurrencyCode,
+                        ItemCostUnits = item.Cost.Units,
+                        ItemCostNanos = item.Cost.Nanos,
+                        ProductId = item.Item.ProductId,
+                        Quantity = item.Item.Quantity,
+                        OrderId = order.OrderId
+                    };
+
+                    _dbContext.Add(orderItem);
+                }
+
+                var shipping = new ShippingEntity
+                {
+                    ShippingTrackingId = order.ShippingTrackingId,
+                    ShippingCostCurrencyCode = order.ShippingCost.CurrencyCode,
+                    ShippingCostUnits = order.ShippingCost.Units,
+                    ShippingCostNanos = order.ShippingCost.Nanos,
+                    StreetAddress = order.ShippingAddress.StreetAddress,
+                    City = order.ShippingAddress.City,
+                    State = order.ShippingAddress.State,
+                    Country = order.ShippingAddress.Country,
+                    ZipCode = order.ShippingAddress.ZipCode,
                     OrderId = order.OrderId
                 };
-
-                _dbContext.Add(orderItem);
+                _dbContext.Add(shipping);
+                _dbContext.SaveChanges();
             }
-
-            var shipping = new ShippingEntity
+            finally
             {
-                ShippingTrackingId = order.ShippingTrackingId,
-                ShippingCostCurrencyCode = order.ShippingCost.CurrencyCode,
-                ShippingCostUnits = order.ShippingCost.Units,
-                ShippingCostNanos = order.ShippingCost.Nanos,
-                StreetAddress = order.ShippingAddress.StreetAddress,
-                City = order.ShippingAddress.City,
-                State = order.ShippingAddress.State,
-                Country = order.ShippingAddress.Country,
-                ZipCode = order.ShippingAddress.ZipCode,
-                OrderId = order.OrderId
-            };
-            _dbContext.Add(shipping);
-            _dbContext.SaveChanges();
+                _dbContext.ChangeTracker.Clear();
+            }
         }
         catch (Exception ex)
         {
@@ -156,5 +163,6 @@ internal class Consumer : IDisposable
     {
         _isListening = false;
         _consumer?.Dispose();
+        _dbContext?.Dispose();
     }
 }
