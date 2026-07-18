@@ -25,6 +25,9 @@ aws iam create-access-key --user-name mentor-test-user-11
    - **Latency:** `< 60 giây` (Time-to-detect được hệ thống Lambda tự đo).
    - **Investigate:** Click vào link để mở thẳng CloudTrail Console.
 
+> [!NOTE]
+> IAM là dịch vụ toàn cầu (Global Service). AWS CloudTrail có thể mất từ **5 đến 15 phút** để tổng hợp và đẩy sự kiện IAM sang EventBridge. Do đó, thông báo trên Slack có thể bị trễ thực tế lên tới 15 phút. Tuy nhiên, chỉ số **Latency** (đo đếm thời gian từ lúc EventBridge nhận được đến khi báo lên Slack) vẫn đảm bảo `< 60 giây`. *(Tham khảo: [AWS CloudTrail FAQs - Q: How long does it take CloudTrail to deliver an event?](https://aws.amazon.com/cloudtrail/faqs/))*
+
 *(Đừng quên dọn dẹp sau khi test)*
 ```bash
 aws iam delete-access-key --user-name mentor-test-user-11 --access-key-id <ACCESS_KEY_ID_VỪA_TẠO>
@@ -45,6 +48,9 @@ aws ssm get-parameter --name non-existent-param-for-test-11
 **Kỳ vọng:**
 1. Kênh Slack sẽ nổ thông báo `🚨 Security Alert: GetSecretValue` hoặc `GetParameter`.
 2. Latency cam kết `< 60 giây`.
+
+> [!NOTE]
+> Tương tự như sự kiện IAM, các Data Events của Secrets Manager/SSM có thể mất từ **vài phút đến 15 phút** để CloudTrail đẩy sang EventBridge. Xin vui lòng chờ đợi thông báo nổ trên Slack. *(Tham khảo: [AWS CloudTrail FAQs](https://aws.amazon.com/cloudtrail/faqs/))*
 
 ## Kịch bản 3: Cố gắng vô hiệu hóa log (Blinding Threat)
 Mô phỏng kẻ tấn công tắt trail. Hành động này được đánh dấu là `CRITICAL`.
