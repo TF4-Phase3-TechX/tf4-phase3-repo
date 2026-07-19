@@ -904,8 +904,8 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      requests: { cpu: 50m, memory: 64Mi }
-      limits: { cpu: 200m, memory: 128Mi }
+      requests: { cpu: 75m, memory: 128Mi }
+      limits: { cpu: 300m, memory: 256Mi }
     livenessProbe:
       grpc:
         port: 8080
@@ -2048,10 +2048,10 @@ opensearch:
   resources:
     requests:
       cpu: 1000m
-      memory: 1Gi
-    limits:
-      cpu: 1000m
       memory: 2Gi
+    limits:
+      cpu: 1500m
+      memory: 3Gi
 
 bastionPortalAccess:
   enabled: false
