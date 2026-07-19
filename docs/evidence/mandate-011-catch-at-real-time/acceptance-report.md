@@ -1,8 +1,8 @@
 # Bản Tổng Hợp Nghiệm Thu — Mandate 11: Bắt tại trận
 
 **Ngày lập:** 2026-07-19
-**Người lập:** CDO07 — Bùi Thành Nghĩa
-**Trạng thái:** ✅ Sẵn sàng nộp mentor (T4 Allowlist đang bổ sung)
+**Người lập:** CDO07 — Hoàng Kim Hùng
+**Trạng thái:**  Sẵn sàng nộp mentor 
 **Account AWS:** `511825856493` | **Region:** `us-east-1`
 
 ---
@@ -175,8 +175,3 @@ Chi phí hệ thống giám sát: **~$0/tháng** (serverless, event-driven, nằ
 
 ---
 
-## 5. Open Items
-
-| # | Item | Priority | Owner |
-|---|---|---|---|
-| 1 | Nâng `CreateAccessEntry`/`AssociateAccessPolicy` lên CRITICAL trong `handler.py` (hiện đang show HIGH, spec ghi CRITICAL) | P2 | CDO07 |
