@@ -1,0 +1,3 @@
+command=kubectl apply --server-side --force-conflicts --field-manager=c0g-51-cost-dry-run --dry-run=server -n techx-tf4 -f raw/10b-rendered-deployments.yaml
+exit_code=0
+scope=Deployment objects only; server-side dry-run makes no persisted changes.
