@@ -166,5 +166,30 @@ output "elasticache_valkey_snapshot_retention_days" {
 
 output "elasticache_valkey_auth_token_secret_expectation" {
   description = "Secret contract expectation for the cart ElastiCache Valkey target"
-  value       = "No plaintext auth token is committed in REL-14; SEC-13 owns secret wiring for the post-migration TLS/auth phase."
+  value       = "REL-14 does not create the Valkey application secret. SEC-13 owns techx/tf4/elasticache-valkey -> techx-tf4/elasticache-valkey-secret for workloads."
+}
+
+output "elasticache_valkey_app_secret_path" {
+  description = "AWS Secrets Manager path expected for the SEC-13 ElastiCache Valkey application secret contract"
+  value       = "techx/tf4/elasticache-valkey"
+}
+
+output "elasticache_valkey_kubernetes_secret_name" {
+  description = "Kubernetes Secret name expected for the SEC-13 ElastiCache Valkey application secret contract"
+  value       = "elasticache-valkey-secret"
+}
+
+output "elasticache_valkey_kubernetes_secret_namespace" {
+  description = "Kubernetes namespace expected for the SEC-13 ElastiCache Valkey application secret contract"
+  value       = "techx-tf4"
+}
+
+output "elasticache_valkey_app_secret_payload_keys" {
+  description = "Minimum payload keys expected in the SEC-13 ElastiCache Valkey application secret"
+  value       = ["host", "port", "address"]
+}
+
+output "elasticache_valkey_app_address_key" {
+  description = "Application-facing key expected for the Valkey connection address"
+  value       = "valkey-address"
 }
