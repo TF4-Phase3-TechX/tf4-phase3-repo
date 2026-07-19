@@ -36,7 +36,9 @@ const ProductCatalogService = () => ({
     };
   },
   async getProductForDisplay(id: string) {
-    return ProductCatalogGateway.getProduct(id);
+    const { name, picture, categories } = await ProductCatalogGateway.getProduct(id);
+
+    return { name, picture, categories };
   },
 });
 
