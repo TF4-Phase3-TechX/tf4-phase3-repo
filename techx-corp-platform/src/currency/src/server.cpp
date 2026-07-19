@@ -6,7 +6,6 @@
 #include <math.h>
 #include <vector>
 #include <demo.grpc.pb.h>
-#include <grpc/health/v1/health.grpc.pb.h>
 
 #include "opentelemetry/trace/context.h"
 #include "opentelemetry/semconv/incubating/rpc_attributes.h"
@@ -90,18 +89,6 @@ namespace
 
   nostd::unique_ptr<metrics_api::Counter<uint64_t>> currency_counter;
   nostd::shared_ptr<opentelemetry::logs::Logger> logger;
-
-class HealthServer final : public grpc::health::v1::Health::Service
-{
-  Status Check(
-    ServerContext* context,
-    const grpc::health::v1::HealthCheckRequest* request,
-    grpc::health::v1::HealthCheckResponse* response) override
-  {
-    response->set_status(grpc::health::v1::HealthCheckResponse::SERVING);
-    return Status::OK;
-  }
-};
 
 class CurrencyService final : public oteldemo::CurrencyService::Service
 {
@@ -312,12 +299,11 @@ void RunServer(uint16_t port)
 
   std::string address(ip + ":" +  std::to_string(port));
 
+  grpc::EnableDefaultHealthCheckService(true);
   CurrencyService currencyService;
-  HealthServer healthService;
   ServerBuilder builder;
 
   builder.RegisterService(&currencyService);
-  builder.RegisterService(&healthService);
   builder.AddListeningPort(address, grpc::InsecureServerCredentials());
 
   std::unique_ptr<Server> server(builder.BuildAndStart());
