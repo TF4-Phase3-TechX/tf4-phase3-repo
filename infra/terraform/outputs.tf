@@ -146,7 +146,27 @@ output "rds_postgresql_parameter_group_name" {
 }
 
 output "rds_postgresql_master_user_secret_arn" {
-  description = "RDS-managed master user secret ARN for SEC-13 secret wiring reference"
+  description = "RDS-managed master user secret ARN for admin/bootstrap reference only; application workloads must use the SEC-13 app secret contract instead"
   value       = try(aws_db_instance.postgresql.master_user_secret[0].secret_arn, null)
   sensitive   = true
+}
+
+output "rds_postgresql_app_secret_path" {
+  description = "AWS Secrets Manager path expected for the SEC-13 PostgreSQL application secret contract"
+  value       = "techx/tf4/rds-postgres"
+}
+
+output "rds_postgresql_kubernetes_secret_name" {
+  description = "Kubernetes Secret name expected for the SEC-13 PostgreSQL application secret contract"
+  value       = "rds-postgres-secret"
+}
+
+output "rds_postgresql_kubernetes_secret_namespace" {
+  description = "Kubernetes namespace expected for the SEC-13 PostgreSQL application secret contract"
+  value       = "techx-tf4"
+}
+
+output "rds_postgresql_credential_handoff_note" {
+  description = "Credential handoff note for SEC-13"
+  value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
 }
