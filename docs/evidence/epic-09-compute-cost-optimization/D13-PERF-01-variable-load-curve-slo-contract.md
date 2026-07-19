@@ -107,14 +107,35 @@ Rules:
   `*_exceptions.csv` without manual editing;
 - record HTTP 5xx, timeouts, connection resets, and Locust exceptions as raw
   integer counts, even if their rate rounds to zero;
-- `customer_error_count` during the interruption interval is the sum of Browse,
-  Cart, and Checkout failures, HTTP 5xx, timeouts, connection resets, and Locust
-  exceptions observed from the interruption start until replacement/reschedule
-  is complete;
-- a single event counted by multiple sources must be deduplicated by request ID
-  when calculating `customer_error_count`; retain each source's raw count;
+- use Locust failed requests (`# failures`) as the authoritative
+  `customer_error_count`. Locust already records a request once when it ends in
+  HTTP 5xx, timeout, connection reset, or another client exception, so those
+  diagnostic categories MUST NOT be added to the total again;
+- retain HTTP 5xx, timeout, connection-reset, and exception counts as diagnostic
+  breakdowns. Their sum is not the authoritative customer error count;
+- calculate interruption failures from cumulative counters without resetting
+  Locust: `post_interruption_failures - pre_interruption_failures`;
+- the optimized run's interruption requests and failures remain in the complete
+  run denominator. Do not subtract, isolate, or restart statistics for the drill;
 - request-volume difference above 5% invalidates direct comparison. Rerun is
   preferred; any normalization requires reviewer approval and documentation.
+
+### Locust request-name mapping
+
+Use HTTP method plus normalized Locust request name. Dynamic product IDs are
+normalized to `{product_id}` before aggregation.
+
+| Flow | Locust method and normalized request name |
+|---|---|
+| Browse | `GET /`, `GET /api/products/{product_id}`, `GET /api/recommendations`, `GET /api/product-reviews/{product_id}`, `POST /api/product-ask-ai-assistant/{product_id}`, `GET /api/data/` |
+| Cart | `GET /api/cart`, `POST /api/cart` |
+| Checkout | `POST /api/checkout` |
+
+The `add_to_cart` calls made as checkout setup still contribute to the Cart
+denominator; the final `POST /api/checkout` contributes to Checkout. Any new or
+unmapped request name invalidates automatic flow aggregation until this table is
+reviewed and updated. Feature-flagged `flood_home` traffic maps to Browse, but
+the flag value must be identical for baseline and optimized runs.
 
 ### Result record
 
@@ -131,20 +152,93 @@ Rules:
 | Locust exceptions | | | Record raw count |
 | Interruption customer errors | N/A | | Exactly 0 |
 
-## 6. SLO contract
+## 6. Capacity and compute result contract
+
+Calculate each worker's hours from its overlap with the test window, not from a
+node-count snapshot:
+
+```text
+node_seconds_i = max(
+  0,
+  min(instance_termination_utc_i, run_end_utc)
+    - max(instance_launch_utc_i, run_start_utc)
+)
+
+total_worker_node_hours = sum(node_seconds_i) / 3600
+
+node_hour_reduction_percent =
+  100 * (baseline_worker_node_hours - optimized_worker_node_hours)
+      / baseline_worker_node_hours
+
+spot_node_hour_ratio_percent =
+  100 * optimized_spot_worker_node_hours
+      / optimized_total_worker_node_hours
+```
+
+Use EC2 instance launch and termination timestamps as the authoritative
+lifecycle source. Correlate each instance ID to Kubernetes node and NodeClaim.
+NodeClaim creation/deletion timestamps provide Karpenter evidence and may be
+used as a documented fallback only when an EC2 termination timestamp is not yet
+available. For a node alive at `run_end_utc`, clamp termination to
+`run_end_utc`; for a node launched before the run, clamp launch to
+`run_start_utc`. Exclude control-plane services and non-worker capacity.
+
+| Capacity metric | Baseline | Optimized | Pass rule |
+|---|---:|---:|---|
+| Total worker node-hours | | | Source timestamps retained |
+| On-Demand worker node-hours | | | Report separately |
+| Spot worker node-hours | | | Report separately |
+| Graviton/ARM64 worker node-hours | | | Greater than 0 in optimized run |
+| Node-hour reduction | N/A | | At least 30% |
+| Spot node-hour ratio | N/A | | At least 50% |
+| Peak worker count | | | Record |
+| Final resting worker count | | | Returns to approved baseline |
+
+### Graviton workload serving evidence
+
+Having an idle ARM64 node does not satisfy the contract. Record a real workload
+scheduled on ARM64 and prove that it served traffic during the test window:
+
+```text
+GRAVITON_INSTANCE_ID=
+GRAVITON_NODE_NAME=
+GRAVITON_NODECLAIM_NAME=
+GRAVITON_INSTANCE_TYPE=
+GRAVITON_ARCHITECTURE=arm64
+GRAVITON_WORKLOAD_NAMESPACE=
+GRAVITON_WORKLOAD_NAME=
+GRAVITON_POD_NAMES=
+GRAVITON_TRAFFIC_WINDOW_START_UTC=
+GRAVITON_TRAFFIC_WINDOW_END_UTC=
+GRAVITON_REQUEST_COUNT=
+GRAVITON_SUCCESSFUL_REQUEST_COUNT=
+GRAVITON_NODE_HOURS=
+```
+
+Required evidence includes EC2 architecture, Kubernetes `kubernetes.io/arch`,
+pod placement, workload readiness, and a request/trace/metric attributable to
+the ARM64 workload with a denominator greater than zero.
+
+## 7. SLO contract
 
 | Customer indicator | Target | Evaluation window | Verdict |
 |---|---:|---|---|
 | Checkout success | ≥ 99.0% | Complete run and interruption interval | Hard gate |
 | Browse success | ≥ 99.5% | Complete run and interruption interval | Hard gate |
 | Cart success | ≥ 99.5% | Complete run and interruption interval | Hard gate |
-| Storefront p95 | < 1000 ms | Every phase and complete run | Hard gate |
+| Storefront p95 | < 1000 ms | Rolling 5-minute window, evaluated every minute with at least 20 Storefront requests; complete-run p95 is also reported | Hard gate after two consecutive failing evaluations |
 | Spot interruption customer error count | 0 | Interruption until recovery | Hard gate |
 
 SLOs apply to both runs. A cost or node-hour improvement cannot receive a PASS
 when any customer-facing SLO fails.
 
-## 7. Spot interruption checkpoint
+One scrape or incomplete low-volume bucket does not trigger the p95 hard stop.
+The first valid rolling-window breach is a warning and capture checkpoint; two
+consecutive valid breaches trigger stop/rollback. During the interruption, raw
+customer errors still trigger an immediate hard stop without waiting for two
+p95 evaluations.
+
+## 8. Spot interruption checkpoint
 
 The drill is valid only when the selected EC2 instance is Spot, Ready, serving
 in-scope replicated workload, and receiving traffic. The load generator MUST
@@ -158,33 +252,42 @@ NODECLAIM_NAME=
 INSTANCE_TYPE=
 ARCHITECTURE=
 WORKLOADS_ON_NODE=
-PRE_DRILL_REQUEST_TOTAL=
+PRE_DRILL_CUMULATIVE_REQUESTS=
+PRE_DRILL_CUMULATIVE_FAILURES=
 ACTUAL_INTERRUPTION_TIMESTAMP_UTC=
 REPLACEMENT_READY_TIMESTAMP_UTC=
 RESCHEDULE_COMPLETE_TIMESTAMP_UTC=
-POST_DRILL_REQUEST_TOTAL=
-BROWSE_FAILURES=0
-CART_FAILURES=0
-CHECKOUT_FAILURES=0
-HTTP_5XX=0
-TIMEOUTS=0
-CONNECTION_RESETS=0
-LOCUST_EXCEPTIONS=0
-CUSTOMER_ERROR_COUNT=0
+POST_DRILL_CUMULATIVE_REQUESTS=
+POST_DRILL_CUMULATIVE_FAILURES=
+INTERRUPTION_REQUEST_COUNT=POST_REQUESTS-PRE_REQUESTS
+CUSTOMER_ERROR_COUNT=POST_FAILURES-PRE_FAILURES
+DIAGNOSTIC_BROWSE_FAILURES=
+DIAGNOSTIC_CART_FAILURES=
+DIAGNOSTIC_CHECKOUT_FAILURES=
+DIAGNOSTIC_HTTP_5XX=
+DIAGNOSTIC_TIMEOUTS=
+DIAGNOSTIC_CONNECTION_RESETS=
+DIAGNOSTIC_LOCUST_EXCEPTIONS=
 ```
+
+All pre/post values are cumulative counters from the same uninterrupted Locust
+process. `CUSTOMER_ERROR_COUNT` must equal zero, while
+`INTERRUPTION_REQUEST_COUNT` must be greater than zero. The same requests and
+failures remain part of the optimized complete-run totals.
 
 Capture node termination, NotReady transition, pod eviction, PDB behavior,
 rescheduling, replacement NodeClaim creation, replacement readiness, HPA state,
 and Storefront p95 on one UTC-aligned timeline.
 
-## 8. Stop and rollback conditions
+## 9. Stop and rollback conditions
 
 Stop load safely and invoke the approved rollback runbook immediately when any
 of these conditions occurs:
 
 - Checkout success is below 99.0%;
 - Browse or Cart success is below 99.5%;
-- Storefront p95 reaches or exceeds 1000 ms;
+- Storefront p95 reaches or exceeds 1000 ms for two consecutive valid rolling
+  5-minute evaluations (each with at least 20 Storefront requests);
 - any customer error occurs during the interruption interval;
 - Pending/FailedScheduling is sustained beyond the approved provisioning
   allowance or affects an SLO;
@@ -202,7 +305,13 @@ Record `STOP_TIMESTAMP_UTC`, the triggering metric/event, operator, rollback
 action, and post-rollback smoke-test result. A run stopped by a hard gate is a
 FAIL and must not be used for the optimization comparison.
 
-## 9. Screenshot and video checkpoints
+Rollback means restoring the reviewed previous-known-good Git/Terraform
+revision and approved On-Demand workload placement, then verifying workers,
+critical replicas, observability, and Browse/Cart/Checkout smoke tests. This
+contract does not require a separate rollback drill; it requires the revision,
+owner, and recovery steps to be recorded before execution.
+
+## 10. Screenshot and video checkpoints
 
 Use UTC on every dashboard and keep a visible clock or terminal timestamp in
 each capture.
@@ -213,12 +322,21 @@ each capture.
 | Low baseline | `T+04:00`–`T+05:00` | Active users/RPS, node count, replicas, SLO panels |
 | Ramp-up | About `T+07:30` | Rising users, HPA response, Pending pods, NodeClaim launch |
 | Peak settled | `T+12:00`–`T+15:00` | 200 users, RPS, peak node count, workload placement, SLO panels |
-| Pre-interruption | Immediately before drill | Spot identity, workloads on node, request totals, zeroed interval counters |
+| Pre-interruption | Immediately before drill | Spot identity, workloads on node, cumulative request/failure counters; do not reset Locust |
 | During interruption | Continuous video or captures at event time | Termination/NotReady, eviction, PDB, reschedule, replacement, live traffic and SLO |
 | Post-interruption | After recovery, still at peak | Replacement Ready, request deltas, raw error counts, Storefront p95 |
 | Ramp-down | About `T+27:30` | Falling users, HPA replicas, node count |
 | Consolidation | On each peak-only termination | NodeClaim deletion/EC2 termination and continuous SLO |
 | Final rest | At exit gate | 25 users, final node count, HPA, zero material regression, final SLO |
+| EC2 Instances | Pre-flight, peak, interruption, final rest | Lifecycle, instance ID, instance type, architecture, launch time, termination/state, and Purchase Option |
+| Cost Explorer — Purchase Option | After billing data is available | EC2 Compute `Usage quantity`, exact run date/window noted, grouped by Purchase Option; separate On-Demand and Spot |
+| Cost Explorer — Instance Type | After billing data is available | EC2 Compute `Usage quantity`, same filters/window, grouped by Instance Type; identify Graviton usage |
+
+Cost Explorer is delayed evidence and does not replace timestamp-derived
+node-hours. Use Usage Quantity, not USD Cost, as the primary console evidence.
+If Cost Explorer cannot isolate the exact sub-day run, retain the hourly/daily
+view as corroboration and use the EC2/NodeClaim lifecycle calculation for the
+run verdict.
 
 Store raw outputs and images under a run-specific directory:
 
@@ -226,7 +344,7 @@ Store raw outputs and images under a run-specific directory:
 docs/evidence/epic-09-compute-cost-optimization/runtime/<baseline|optimized>-<YYYYMMDDTHHMMSSZ>/
 ```
 
-## 10. Pre-flight and terminal evidence commands
+## 11. Pre-flight and terminal evidence commands
 
 Run these read-only commands from a terminal configured for the target cluster.
 They produce a compact screen suitable for the pre-flight screenshot:
@@ -274,7 +392,7 @@ kubectl get events -n techx-tf4 --sort-by='.metadata.creationTimestamp' | tail -
 These commands prove cluster state only. Locust CSV/HTML and Grafana captures
 remain mandatory evidence for request denominators, raw errors, and SLOs.
 
-## 11. Acceptance checklist
+## 12. Acceptance checklist
 
 - [x] Contract includes low, ramp-up, peak, ramp-down, and low observation.
 - [x] Baseline and optimized runs use one immutable profile.
@@ -283,7 +401,11 @@ remain mandatory evidence for request denominators, raw errors, and SLOs.
 - [x] Hard stop and rollback conditions are defined.
 - [x] Exact UTC run fields, phase offsets, interruption time, and observation
   period are defined.
+- [x] Worker node-hour, reduction, Spot ratio, and Graviton serving rules are
+  defined.
+- [x] EC2 lifecycle and Cost Explorer Usage Quantity checkpoints are defined.
+- [x] Interruption uses cumulative pre/post counters and remains in the optimized
+  denominator.
 - [ ] Baseline runtime fields and artifacts populated after execution.
 - [ ] Optimized runtime fields and artifacts populated after execution.
 - [ ] Reviewer confirms comparable request volume and final PASS/FAIL verdict.
-
