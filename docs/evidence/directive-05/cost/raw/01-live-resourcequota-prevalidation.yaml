@@ -1,0 +1,38 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"ResourceQuota","metadata":{"annotations":{},"labels":{"argocd.argoproj.io/instance":"techx-raw"},"name":"techx-quota","namespace":"techx-tf4"},"spec":{"hard":{"limits.cpu":"8","limits.memory":"12Gi","pods":"40","requests.cpu":"4","requests.memory":"8Gi"}}}
+    creationTimestamp: "2026-07-14T21:50:36Z"
+    labels:
+      argocd.argoproj.io/instance: techx-raw
+    name: techx-quota
+    namespace: techx-tf4
+    resourceVersion: "2968165"
+    uid: 56a6a0d6-a7c6-4c4e-935d-15b18f4772d7
+  spec:
+    hard:
+      limits.cpu: "8"
+      limits.memory: 12Gi
+      pods: "40"
+      requests.cpu: "4"
+      requests.memory: 8Gi
+  status:
+    hard:
+      limits.cpu: "8"
+      limits.memory: 12Gi
+      pods: "40"
+      requests.cpu: "4"
+      requests.memory: 8Gi
+    used:
+      limits.cpu: 7450m
+      limits.memory: 5893Mi
+      pods: "31"
+      requests.cpu: 1905m
+      requests.memory: 3491Mi
+kind: List
+metadata:
+  resourceVersion: ""
