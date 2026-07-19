@@ -53,13 +53,23 @@ Checkout đã tính authoritative order cost trước payment. Sau đó confirma
 
 Xác định response contract tối thiểu cho confirmation display và loại bỏ work không phục vụ consumer đó. Bất kỳ thay đổi nào cũng phải bảo toàn meaning của monetary fields: không được trả USD value dưới tên hoặc contract khiến caller hiểu là selected currency.
 
-## 3. Browse catalog có N+1 Currency fan-out với non-USD
+## 3. Browse catalog có N+1 Currency fan-out với non-USD — đã xử lý ở PR #324
 
 ### Evidence hiện có
 
-Browse catalog lấy danh sách product rồi thực hiện Currency conversion theo từng product khi selected currency không phải USD. Đây là N+1 downstream pattern: một list request sinh nhiều Currency RPC.
+Trước PR #324, Browse catalog lấy danh sách product rồi thực hiện Currency conversion theo từng product khi selected currency không phải USD. Đây là N+1 downstream pattern: một list request sinh nhiều Currency RPC.
 
 Ở tải thấp pattern có thể chưa lộ rõ. Dưới sustained load, fan-out làm tăng Currency request volume, contention và xác suất một slow call ảnh hưởng response tail.
+
+### Đã triển khai
+
+PR [#324](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/324) thay thế N Currency `Convert` RPC bằng một `BatchConvert` RPC cho mỗi Browse non-USD:
+
+- `CurrencyService.BatchConvert` nhận toàn bộ product prices, validate toàn bộ currency codes trước khi trả kết quả, và giữ nguyên thứ tự input/output.
+- Frontend chỉ gọi batch khi currency khác USD và catalog không rỗng; USD, currency trống và catalog rỗng vẫn không phát sinh Currency RPC.
+- Frontend kiểm tra response cardinality trước khi gán price vào product để không trả catalog bị lệch giá.
+
+Đã xác nhận trên môi trường Kubernetes với images triển khai mới: Browse EUR trả đủ 10 products, toàn bộ giá là EUR và có cùng thứ tự product IDs với Browse USD. Đây xác nhận BatchConvert chạy trên real Browse path; chưa có baseline/optimized sustained-load comparable nên chưa được kết luận mức cải thiện p95/p99.
 
 ### Câu hỏi cần xác nhận
 
