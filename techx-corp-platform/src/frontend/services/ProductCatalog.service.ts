@@ -35,6 +35,9 @@ const ProductCatalogService = () => ({
       priceUsd: await this.getProductPrice(product.priceUsd!, currencyCode),
     };
   },
+  async getProductForDisplay(id: string) {
+    return ProductCatalogGateway.getProduct(id);
+  },
 });
 
 export default ProductCatalogService();
