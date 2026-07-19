@@ -94,7 +94,7 @@
       ]
     },
     "managedData": {
-      "description": "CDO08-SEC-13D: Gates for wiring app env vars to ESO-synced Kubernetes Secrets. All disabled by default.",
+      "description": "CDO08-SEC-13D: Master gate and per-datastore gates for wiring app env vars to ESO-synced Kubernetes Secrets. All disabled by default.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

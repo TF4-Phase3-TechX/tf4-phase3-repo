@@ -46,8 +46,9 @@ plaintext env var with a secretKeyRef pointing to the ESO-synced K8s Secret.
 All flags default to false — no change to existing behavior until explicitly flipped.
 */}}
 {{- $md := .managedData | default dict }}
+{{- $managedDataEnabled := (($md).enabled | default false) }}
 
-{{- if (($md.postgresql | default dict).enabled | default false) }}
+{{- if and $managedDataEnabled (($md.postgresql | default dict).enabled | default false) }}
 {{-   $pgSecret := ($md.postgresql).secretName | default "rds-postgres-secret" }}
 {{-   $pgKeyMap := dict "accounting" "dotnet-conn-string" "product-catalog" "go-conn-string" "product-reviews" "python-conn-string" }}
 {{-   if hasKey $pgKeyMap .name }}
@@ -55,14 +56,14 @@ All flags default to false — no change to existing behavior until explicitly f
 {{-   end }}
 {{- end }}
 
-{{- if (($md.valkey | default dict).enabled | default false) }}
+{{- if and $managedDataEnabled (($md.valkey | default dict).enabled | default false) }}
 {{-   $valkeySecret := ($md.valkey).secretName | default "elasticache-valkey-secret" }}
 {{-   if eq .name "cart" }}
 {{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "VALKEY_ADDR" "secretName" $valkeySecret "secretKey" "valkey-address") | mustFromJson }}
 {{-   end }}
 {{- end }}
 
-{{- if (($md.kafka | default dict).enabled | default false) }}
+{{- if and $managedDataEnabled (($md.kafka | default dict).enabled | default false) }}
 {{-   $kafkaSecret := ($md.kafka).secretName | default "msk-kafka-secret" }}
 {{-   if has .name (list "accounting" "checkout" "fraud-detection") }}
 {{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_ADDR" "secretName" $kafkaSecret "secretKey" "kafka-address") | mustFromJson }}

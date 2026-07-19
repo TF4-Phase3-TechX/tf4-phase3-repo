@@ -5,7 +5,7 @@
 
 ---
 
-## 1. No plaintext scan — Git repo
+## 1. No plaintext managed credentials — Git repo
 
 ```bash
 # App repo
@@ -18,7 +18,7 @@ git -C tf4-phase3-gitops-manifests grep -rn . -- 'platform/secrets/*.yaml' \
   | grep -v "secretKey:\|remoteRef:\|key:\|property:\|secretStoreRef:\|#\|name:\|namespace:\|kind:\|apiVersion:\|spec:\|data:\|target:\|refreshInterval:\|creationPolicy:\|labels:\|app.kubernetes"
 ```
 
-Kỳ vọng: không có plaintext credential trong cả hai repo.
+Kỳ vọng: không có plaintext **managed credentials** trong cả hai repo.
 
 Plaintext còn lại trong `techx-corp-chart/values.yaml` là giá trị mặc định cho in-cluster services (postgresql, kafka, valkey-cart) **chưa cutover** — không vi phạm Mandate 8.
 
@@ -42,7 +42,12 @@ kubectl -n techx-tf4 get externalsecret \
   rds-postgres-secret elasticache-valkey-secret msk-kafka-secret
 ```
 
-Kỳ vọng: `READY=True` cho cả 3.
+Kỳ vọng cuối cùng: `READY=True` cho cả 3.
+
+Nếu AWS Secrets Manager entries `techx/tf4/rds-postgres`,
+`techx/tf4/elasticache-valkey` hoặc `techx/tf4/msk-kafka` chưa được tạo/nạp
+value thật thì ExternalSecret có thể chưa Ready. Trường hợp đó là blocker của
+bước credential handoff/cutover, không phải lý do commit plaintext vào Git.
 
 Nếu chưa Ready, describe để xem lỗi:
 
@@ -95,6 +100,7 @@ helm template techx-corp ./techx-corp-chart \
   -f deploy/values-app-stamp.yaml \
   -f deploy/values-flagd-sync.yaml \
   -f deploy/values-aio-llm.yaml \
+  --set managedData.enabled=true \
   --set managedData.postgresql.enabled=true \
   --set managedData.valkey.enabled=true \
   --set managedData.kafka.enabled=true \
@@ -102,6 +108,11 @@ helm template techx-corp ./techx-corp-chart \
 ```
 
 Kỳ vọng: **không có output** — không còn plaintext credential trong rendered manifest.
+
+Không bật các flag này ở production cho tới khi:
+- RDS có app credential riêng.
+- `cart` hỗ trợ TLS nếu dùng ElastiCache transit encryption.
+- Kafka clients hỗ trợ SCRAM/IAM nếu dùng MSK `SASL_SSL`.
 
 ---
 

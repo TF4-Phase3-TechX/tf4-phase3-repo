@@ -50,7 +50,7 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 | Kubernetes Secret name | `elasticache-valkey-secret` |
 | Namespace | `techx-tf4` |
 
-**Payload schema (tối thiểu, chưa bật AUTH/TLS):**
+**Payload schema theo REL-14 hiện tại:**
 
 ```json
 {
@@ -60,7 +60,13 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 }
 ```
 
-**Payload schema (nếu bật AUTH/TLS — chỉ sau khi `cart` service xác nhận hỗ trợ):**
+REL-14 hiện bật transit encryption cho ElastiCache. Secret contract vẫn dùng key
+`address` để không leak endpoint trong Git, nhưng **không bật production cutover**
+cho `managedData.valkey.enabled=true` cho tới khi `cart` hỗ trợ TLS connection
+option. Code hiện tại tự dựng connection string với `ssl=false`, nên chỉ đổi
+endpoint qua secret là chưa đủ cho managed Valkey TLS.
+
+**Payload schema mở rộng nếu bật AUTH/TLS trong app cutover:**
 
 ```json
 {
@@ -77,6 +83,9 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 | Key | Source property | Consumer service |
 |---|---|---|
 | `valkey-address` | `address` | `cart` |
+
+> TLS/auth behavior thuộc REL-16 hoặc task cutover Valkey. SEC-13 chỉ chuẩn bị
+> secret path, key schema và chart wiring.
 
 ---
 
@@ -115,4 +124,11 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 |---|---|---|
 | `kafka-address` | `bootstrap_servers` | `accounting`, `checkout`, `fraud-detection` |
 
-> MSK auth mode phải chốt với managed infra owner trước khi tạo secret thật (CDO08-118).
+REL-14 hiện dùng `SASL_SSL` với `SCRAM-SHA-512`. SEC-13 hiện chỉ wire
+`bootstrap_servers` vào `KAFKA_ADDR` để chuẩn bị contract/app wiring tối thiểu.
+Không bật `managedData.kafka.enabled=true` cho production cho tới khi Kafka
+clients trong `accounting`, `checkout` và `fraud-detection` được cập nhật để đọc
+và dùng `security_protocol`, `sasl_mechanism`, `username`, `password`.
+
+> SCRAM client config và MSK cutover thuộc REL-17 hoặc task migration/cutover
+> tương ứng. SEC-13 không commit secret value và không claim Kafka cutover ready.

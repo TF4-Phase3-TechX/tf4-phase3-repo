@@ -1,14 +1,23 @@
 # SEC-13B: Create AWS Secrets Manager Entries for RDS, ElastiCache, MSK
 
 **Task:** CDO08-118 — [SEC-13B][Secrets] Create AWS Secrets Manager entries for RDS ElastiCache MSK  
-**Mục tiêu:** Tạo secret placeholders/values theo output từ Nam
+**Mục tiêu:** Tạo AWS Secrets Manager entries và nạp value thật theo output managed infra, không commit secret value vào Git
 
 ## Trước khi tạo
 
-Cần Nam (managed infra owner) cung cấp:
+Không tạo dummy/placeholder value nếu ExternalSecret có thể sync vào cluster.
+Chỉ tạo hoặc update secret khi đã có value thật hoặc khi change window chấp
+nhận trạng thái ExternalSecret chưa Ready.
+
+Cần Nam/managed infra owner cung cấp:
 - RDS private endpoint
 - ElastiCache private endpoint
 - MSK bootstrap servers và auth mode (TLS-only / SCRAM / IAM)
+
+Cần app/cutover owner xác nhận thêm:
+- RDS app username/password, không dùng master/admin secret làm workload credential.
+- Valkey TLS behavior đã được app hỗ trợ nếu ElastiCache bật transit encryption.
+- MSK client config đã hỗ trợ SCRAM/IAM nếu MSK yêu cầu app-level auth.
 
 Secret prefix: `techx/tf4/` — region: `us-east-1`
 
@@ -50,7 +59,8 @@ aws secretsmanager put-secret-value \
 
 ## 2. ElastiCache Valkey — `techx/tf4/elasticache-valkey`
 
-Payload tối thiểu (chưa bật AUTH/TLS):
+Payload theo contract endpoint. REL-14 hiện bật transit encryption, nên không bật
+app cutover sang secret này cho tới khi `cart` hỗ trợ TLS connection option.
 
 ```bash
 aws secretsmanager create-secret \
@@ -81,7 +91,7 @@ aws secretsmanager create-secret \
   --region us-east-1
 ```
 
-Payload SCRAM (nếu MSK dùng SCRAM):
+Payload SCRAM (REL-14 hiện dùng SASL_SSL/SCRAM-SHA-512):
 
 ```bash
 aws secretsmanager put-secret-value \
@@ -95,6 +105,10 @@ aws secretsmanager put-secret-value \
   }' \
   --region us-east-1
 ```
+
+Lưu ý: app hiện chưa tự đọc các field SCRAM ngoài `bootstrap_servers` từ
+`KAFKA_ADDR`. Chỉ nạp secret SCRAM để chuẩn bị SEC-13; không bật Kafka cutover
+cho tới khi REL-17 cập nhật client config.
 
 ---
 

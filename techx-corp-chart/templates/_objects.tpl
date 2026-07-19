@@ -149,8 +149,9 @@ spec:
       {{- if .initContainers }}
       initContainers:
         {{- $md := .managedData | default dict }}
-        {{- $skipKafkaInit := (($md.kafka | default dict).enabled | default false) }}
-        {{- $skipValkeyInit := (($md.valkey | default dict).enabled | default false) }}
+        {{- $managedDataEnabled := (($md).enabled | default false) }}
+        {{- $skipKafkaInit := and $managedDataEnabled (($md.kafka | default dict).enabled | default false) }}
+        {{- $skipValkeyInit := and $managedDataEnabled (($md.valkey | default dict).enabled | default false) }}
         {{- $activeInits := list }}
         {{- range .initContainers }}
         {{-   if and $skipKafkaInit (eq .name "wait-for-kafka") }}
