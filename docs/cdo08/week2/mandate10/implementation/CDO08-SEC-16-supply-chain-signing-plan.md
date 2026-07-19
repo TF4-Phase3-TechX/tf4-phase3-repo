@@ -200,12 +200,16 @@ Kèm sửa runbook rollback thủ công REL-09 (`docs/cdo08/week2/mandate0/imple
 
 ### 6.1 Đối chiếu Definition of Done gốc của ticket
 
-| DoD | Trạng thái | Bằng chứng |
-|---|---|---|
-| Không thể overwrite tag cũ trong ECR | ✅ | `ecr.tf:6` `IMMUTABLE`, commit `5486823` |
-| Mỗi pushed image có signature, SBOM, provenance | ✅ | Bước 3 (sign), 7 (SBOM attest), 4 (provenance attest) — chạy theo vòng lặp từng service trong `image-digests.txt` |
-| Pipeline fail nếu signing/SBOM/provenance fail | ✅ | Mọi bước 2-8 đều set `security-artifacts/gate_status.txt=1` khi lỗi; step "Enforce security gate results" đọc file này, `exit 1` nếu `=1` |
-| Evidence verify cosign/SBOM/provenance được với một image | ✅ | Bước 5 (`cosign verify`), 6 (`cosign verify-attestation --type custom`), 8 (`cosign verify-attestation --type cyclonedx`) — output ra `security-artifacts/*.txt`, upload qua step "Upload security artifacts" có sẵn |
+**Trạng thái tổng: CHƯA ĐÓNG.** Implementation đã xong và tự verify được qua code review + `helm template`/`cosign --help` cục bộ, nhưng **chưa có lần chạy `build-and-push.yaml` thật nào trên GitHub Actions** — nên chưa có evidence runtime thật (chưa có file `security-artifacts/cosign-verify-*.txt` v.v. thật, chỉ có lệnh mẫu ở §7). DoD gốc yêu cầu "Evidence verify cosign/SBOM/provenance được với một image" — implementation xong không đồng nghĩa DoD này đã đạt.
+
+| DoD | Implementation | Runtime evidence | Bằng chứng |
+|---|---|---|---|
+| Không thể overwrite tag cũ trong ECR | ✅ Done | ✅ Đã live trên `main` (qua PR #293, không phải PR của ticket này) | `ecr.tf:6` `IMMUTABLE` |
+| Mỗi **promoted** image có signature, SBOM, provenance | ✅ Done | ⏳ Pending — chưa có build thật | Bước 3 (sign), 7 (SBOM attest), 4 (provenance attest); xem lưu ý "pushed vs promoted" ngay dưới bảng |
+| Pipeline fail nếu signing/SBOM/provenance fail | ✅ Done | ⏳ Pending — chưa có build thật để xác nhận gate exit 1 đúng như thiết kế | `gate_status.txt` + step "Enforce security gate results" |
+| Evidence verify cosign/SBOM/provenance được với một image | ✅ Done (code) | ⏳ **Pending — đây là gap chính khiến task chưa thể close** | Bước 5/6/8; §7 có lệnh mẫu, chưa chạy với digest thật |
+
+> **"Pushed" vs "Promoted" — sửa theo review PM:** `docker push` xảy ra ở bước "Build and push selected images" (dòng ~144), **trước** Trivy scan (bước 1). Nếu Trivy phát hiện HIGH/CRITICAL, `scan_failed=1` → bỏ qua sign/SBOM-attest/provenance-attest (bước 3-8), **nhưng image vẫn đã nằm trong ECR, không bị rollback**. Vì vậy câu gốc "mỗi pushed image có signature/SBOM/provenance" **không đúng tuyệt đối** — dùng "mỗi **promoted** image" chính xác hơn, vì job `promote` chỉ chạy khi `needs.build.result == 'success'` (dòng 355-358), tức toàn bộ gate kể cả Trivy phải pass. Image fail scan bị bỏ lại trong ECR không ký/không attest, nhưng **không bao giờ tới được GitOps/cluster** — đúng ý bảo mật cốt lõi vẫn giữ được, chỉ là chọn đúng từ ("promoted", không phải "pushed") để mô tả.
 
 ---
 
@@ -215,7 +219,7 @@ Dùng được ngay sau khi có ít nhất 1 lần chạy `build-and-push.yaml` 
 
 ```powershell
 $env:IMAGE = "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:<digest>"
-$env:IDENTITY_REGEXP = "^https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/.github/workflows/.*@refs/heads/.*$"
+$env:IDENTITY_REGEXP = "^https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/.github/workflows/.*@refs/heads/main$"
 $env:ISSUER = "https://token.actions.githubusercontent.com"
 
 # Verify chữ ký
@@ -235,6 +239,8 @@ kubectl -n techx-tf4 get pod <pod-name> -o jsonpath='{.status.containerStatuses[
 ```
 
 > Chưa chạy các lệnh trên với digest thật trong phiên này (cần `aws sso login` để có quyền đọc ECR — token AWS local đã hết hạn lúc kiểm tra). Đây là lệnh mẫu đúng cú pháp đã verify flag hợp lệ với `cosign --help` cài trên máy, chưa phải evidence đã chạy thành công.
+>
+> **Evidence chính thức bắt buộc lấy từ build trên `main`, không phải branch khác/`workflow_dispatch` tuỳ ý:** pipeline tự verify (`cosign verify`/`verify-attestation`) chỉ chấp nhận chữ ký có identity khớp đúng `@refs/heads/main` (xem `build-and-push.yaml` dòng 266/279/302). Một build test chạy trên branch khác vẫn ra chữ ký cosign hợp lệ về mặt cryptographic, nhưng **sẽ tự fail ở chính bước verify trong pipeline** (không phải lỗi — đúng thiết kế, chỉ tin build từ `main`). Vì vậy digest dùng làm evidence nộp mandate phải lấy từ đúng 1 lần `push` trigger trên `main`, không phải run thử qua `workflow_dispatch` ở nhánh khác.
 
 ---
 
@@ -260,14 +266,21 @@ kubectl -n techx-tf4 get pod <pod-name> -o jsonpath='{.status.containerStatuses[
 
 ## 10. Definition of Done
 
+**Task CHƯA đóng** — theo review PM: implementation xong không đồng nghĩa DoD đạt. Cần ít nhất 1 lần `build-and-push.yaml` chạy thật trên `main`, pass hết 8 bước, cộng evidence verify thật (không phải lệnh mẫu ở §7), trước khi coi ticket này hoàn thành.
+
+### Implementation (done)
+
 - [x] `infra/terraform/ecr.tf` — `image_tag_mutability = "IMMUTABLE"`.
 - [x] Runbook rollback REL-09 cập nhật để không overwrite tag cũ.
 - [x] Cosign keyless signing (`cosign sign --yes`, không `--key`) — có sẵn từ PR #293, xác nhận đúng dùng OIDC.
 - [x] SBOM CycloneDX (Trivy) mỗi image — có sẵn từ PR #293.
 - [x] SBOM attest lên registry (`cosign attest --type cyclonedx`) — mới thêm.
 - [x] Provenance attest (`cosign attest --type custom`, gồm repo/commit/workflow/run_id/service/digest) — có sẵn từ PR #293.
-- [x] Verify signature, verify provenance, verify SBOM — cả 3 mới thêm, đều fail gate nếu verify hỏng.
+- [x] Verify signature, verify provenance, verify SBOM — cả 3 mới thêm, đều fail gate nếu verify hỏng, chỉ chấp nhận identity từ `refs/heads/main`.
 - [x] Pipeline fail cứng nếu bất kỳ bước sign/SBOM-gen/SBOM-attest/provenance-attest/verify nào lỗi (`gate_status.txt` + step "Enforce security gate results").
-- [ ] Chạy thử thành công 1 lần trên GitHub Actions thật (chưa trigger trong phiên này).
+
+### Runtime/GitHub Actions evidence (pending — bắt buộc trước khi đóng ticket)
+
+- [ ] Chạy thành công 1 lần `build-and-push.yaml` thật trên `main` (qua trigger `push`, không phải `workflow_dispatch` ở branch khác — xem lưu ý §7), xác nhận cả 8 bước pass.
 - [ ] Merge nhánh `CDO08-SEC-16` vào `main`.
-- [ ] Chạy lệnh verify (§7) với digest thật của ít nhất 1 image, đính evidence (output thật, không phải lệnh mẫu) vào `docs/cdo08/week2/mandate10/evidence/` khi có ảnh/log thật.
+- [ ] Chạy lệnh verify (§7) với digest thật của ít nhất 1 image lấy từ build trên `main`, đính evidence (output thật, không phải lệnh mẫu) vào `docs/cdo08/week2/mandate10/evidence/`.
