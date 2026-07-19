@@ -1,0 +1,4 @@
+command=python raw/13-calculate-reservations.py
+exit_code=0
+input=03b-live-pods-all-namespaces-prevalidation.yaml, 04-live-nodes-prevalidation.yaml, 10-rendered-app-manifests.yaml
+output=14-reservation-calculation.json
