@@ -105,18 +105,21 @@ def lambda_handler(event, context):
         
         should_alert = True
         
-        if source == 'aws.cloudtrail':
+        if message.get('detail-type') == 'AWS API Call via CloudTrail':
             event_name = detail.get('eventName', 'UnknownEvent')
             user_identity = detail.get('userIdentity', {})
             actor = user_identity.get('arn') or user_identity.get('principalId', 'UnknownActor')
             source_ip = detail.get('sourceIPAddress', 'UnknownIP')
             
             # Allowlist check to reduce noise
-            if actor and re.search(r'role/tf4-github-actions', actor):
+            allowlisted_agents = [
+                r'role/tf4-github-actions',
+                r'external-secrets',
+                r'SecuritySlackAlertsLambdaRole'
+            ]
+            if actor and any(re.search(pattern, actor) for pattern in allowlisted_agents):
                 should_alert = False
                 logger.info(f"Ignoring event {event_name} by allowlisted actor {actor}")
-                
-            # Allowlist for EKS nodes or similar known services could go here
 
             
             # Filter logic
@@ -177,7 +180,7 @@ def lambda_handler(event, context):
                 logger.warning(f"Could not parse timestamp {timestamp}: {e}")
 
         cloudtrail_link = f"https://{region}.console.aws.amazon.com/cloudtrail/home?region={region}#/events?EventName={event_name}"
-        if source != 'aws.cloudtrail':
+        if message.get('detail-type') != 'AWS API Call via CloudTrail':
             cloudtrail_link = "N/A"
             
         runbook_link = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/mandate-11-incident-response.md"
