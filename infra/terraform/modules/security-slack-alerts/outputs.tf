@@ -27,3 +27,16 @@ output "lambda_execution_role_arn" {
   description = "ARN of the Lambda execution role"
   value       = aws_iam_role.lambda_exec.arn
 }
+
+output "detection_metric_namespace" {
+  description = "CloudWatch namespace containing MANDATE-11 detection latency metrics"
+  value       = var.detection_metric_namespace
+}
+
+output "detection_latency_metric_names" {
+  description = "Metric names for Lambda detection and Slack webhook acceptance latency"
+  value = [
+    "DetectionLatencySeconds",
+    "NotificationLatencySeconds",
+  ]
+}
