@@ -109,6 +109,91 @@ output "karpenter_node_role_name" {
   value       = module.karpenter.node_iam_role_name
 }
 
+output "elasticache_valkey_replication_group_id" {
+  description = "ElastiCache Valkey replication group ID for the cart migration target"
+  value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
+}
+
+output "elasticache_valkey_replication_group_arn" {
+  description = "ElastiCache Valkey replication group ARN for handoff and evidence"
+  value       = aws_elasticache_replication_group.valkey_cart.arn
+}
+
+output "elasticache_valkey_primary_endpoint" {
+  description = "Primary endpoint address for the cart ElastiCache Valkey target"
+  value       = aws_elasticache_replication_group.valkey_cart.primary_endpoint_address
+}
+
+output "elasticache_valkey_reader_endpoint" {
+  description = "Reader endpoint address for the cart ElastiCache Valkey target"
+  value       = aws_elasticache_replication_group.valkey_cart.reader_endpoint_address
+}
+
+output "elasticache_valkey_port" {
+  description = "Port for the cart ElastiCache Valkey target"
+  value       = aws_elasticache_replication_group.valkey_cart.port
+}
+
+output "elasticache_valkey_security_group_id" {
+  description = "Security group ID attached to the cart ElastiCache Valkey target"
+  value       = aws_security_group.elasticache_valkey.id
+}
+
+output "elasticache_valkey_subnet_group_name" {
+  description = "Private subnet group name used by the cart ElastiCache Valkey target"
+  value       = aws_elasticache_subnet_group.valkey_cart.name
+}
+
+output "elasticache_valkey_parameter_group_name" {
+  description = "Parameter group name used by the cart ElastiCache Valkey target"
+  value       = aws_elasticache_parameter_group.valkey_cart.name
+}
+
+output "elasticache_valkey_at_rest_encryption_enabled" {
+  description = "Whether at-rest encryption is enabled for the cart ElastiCache Valkey target"
+  value       = aws_elasticache_replication_group.valkey_cart.at_rest_encryption_enabled
+}
+
+output "elasticache_valkey_transit_encryption_enabled" {
+  description = "Whether in-transit encryption is enabled for the current cart ElastiCache Valkey phase"
+  value       = aws_elasticache_replication_group.valkey_cart.transit_encryption_enabled
+}
+
+output "elasticache_valkey_snapshot_retention_days" {
+  description = "Snapshot retention period in days for the cart ElastiCache Valkey target"
+  value       = aws_elasticache_replication_group.valkey_cart.snapshot_retention_limit
+}
+
+output "elasticache_valkey_auth_token_secret_expectation" {
+  description = "Secret contract expectation for the cart ElastiCache Valkey target"
+  value       = "REL-14 does not create the Valkey application secret. SEC-13 owns techx/tf4/elasticache-valkey -> techx-tf4/elasticache-valkey-secret for workloads."
+}
+
+output "elasticache_valkey_app_secret_path" {
+  description = "AWS Secrets Manager path expected for the SEC-13 ElastiCache Valkey application secret contract"
+  value       = "techx/tf4/elasticache-valkey"
+}
+
+output "elasticache_valkey_kubernetes_secret_name" {
+  description = "Kubernetes Secret name expected for the SEC-13 ElastiCache Valkey application secret contract"
+  value       = "elasticache-valkey-secret"
+}
+
+output "elasticache_valkey_kubernetes_secret_namespace" {
+  description = "Kubernetes namespace expected for the SEC-13 ElastiCache Valkey application secret contract"
+  value       = "techx-tf4"
+}
+
+output "elasticache_valkey_app_secret_payload_keys" {
+  description = "Minimum payload keys expected in the SEC-13 ElastiCache Valkey application secret"
+  value       = ["host", "port", "address"]
+}
+
+output "elasticache_valkey_app_address_key" {
+  description = "Application-facing key expected for the Valkey connection address"
+  value       = "valkey-address"
+}
+
 # REL-14 — Managed PostgreSQL baseline outputs for SEC-13 / REL-15 handoff
 output "rds_postgresql_endpoint" {
   description = "Private RDS PostgreSQL endpoint for TechX managed PostgreSQL target"
