@@ -1,0 +1,20 @@
+{
+  "hpa_min": {
+    "cpu_m": 1905,
+    "memory_mi": 3491,
+    "limit_cpu_m": 7450,
+    "limit_memory_mi": 5893
+  },
+  "hpa_max": {
+    "cpu_m": 2155,
+    "memory_mi": 3827,
+    "limit_cpu_m": 8450,
+    "limit_memory_mi": 6501
+  },
+  "hpa_max_plus_global_surge": {
+    "cpu_m": 3555,
+    "memory_mi": 6690,
+    "limit_cpu_m": 13875,
+    "limit_memory_mi": 11202
+  }
+}

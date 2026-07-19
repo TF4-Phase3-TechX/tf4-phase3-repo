@@ -1,0 +1,27 @@
+# Task-4: Flash sale 200 users × 15 min
+# Apply: helm upgrade ... -f deploy/values-app-stamp.yaml -f deploy/values-load-test-task4.yaml
+components:
+  load-generator:
+    envOverrides:
+      - name: LOCUST_AUTOSTART
+        value: "false"
+      - name: LOCUST_HEADLESS
+        value: "true"
+      - name: LOCUST_USERS
+        value: "200"
+      - name: LOCUST_SPAWN_RATE
+        value: "5"
+      - name: LOCUST_RUN_TIME
+        value: "16m20s"
+      - name: LOCUST_LOAD_SHAPE
+        value: "task4"
+      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+        value: "false"
+      - name: LOCUST_HOST
+        value: http://frontend-proxy:8080
+    resources:
+      limits:
+        memory: 1500Mi
+      requests:
+        cpu: 500m
+        memory: 512Mi

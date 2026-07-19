@@ -40,6 +40,19 @@ data "aws_iam_policy_document" "lambda_ssm_kms" {
       var.kms_key_arn
     ]
   }
+
+  statement {
+    sid       = "PublishMandate11DetectionLatency"
+    effect    = "Allow"
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "cloudwatch:namespace"
+      values   = [var.detection_metric_namespace]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_ssm_kms_policy" {
