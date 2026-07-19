@@ -14,6 +14,13 @@ const CurrencyGateway = () => ({
       client.convert({ from, toCode }, (error, response) => (error ? reject(error) : resolve(response)))
     );
   },
+  batchConvert(from: Money[], toCode: string) {
+    return new Promise<Money[]>((resolve, reject) =>
+      client.batchConvert({ from, toCode }, (error, response) =>
+        error ? reject(error) : resolve(response.converted)
+      )
+    );
+  },
   getSupportedCurrencies() {
     return new Promise<GetSupportedCurrenciesResponse>((resolve, reject) =>
       client.getSupportedCurrencies({}, (error, response) => (error ? reject(error) : resolve(response)))
