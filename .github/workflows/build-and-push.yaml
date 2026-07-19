@@ -197,7 +197,7 @@ jobs:
             echo "========================================="
             
             # 1. Trivy CVE Scan
-            echo ">> [1/7] Running Trivy CVE Scan..."
+            echo ">> [1/8] Running Trivy CVE Scan..."
             trivy image \
               --severity HIGH,CRITICAL \
               --format table \
@@ -218,7 +218,7 @@ jobs:
             fi
             
             # 2. SBOM (CycloneDX)
-            echo ">> [2/7] Generating CycloneDX SBOM..."
+            echo ">> [2/8] Generating CycloneDX SBOM..."
             if ! trivy image \
               --format cyclonedx \
               --output "security-artifacts/sbom-${service}-${digest_clean}.json" \
@@ -230,14 +230,14 @@ jobs:
             # Sign and Attest only if scan passes
             if [ "$scan_failed" -eq 0 ]; then
               # 3. Cosign OIDC/Keyless signature
-              echo ">> [3/7] Signing image with Cosign..."
+              echo ">> [3/8] Signing image with Cosign..."
               if ! cosign sign --yes "$image_ref_digest"; then
                 echo "::error::Failed to sign image for $service"
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
               # 4. Provenance Attestation
-              echo ">> [4/7] Generating and Attesting Provenance..."
+              echo ">> [4/8] Generating and Attesting Provenance..."
               jq -n \
                 --arg repo "${{ github.repository }}" \
                 --arg commit "${{ github.sha }}" \
@@ -261,7 +261,7 @@ jobs:
               fi
 
               # 5. Verify signature — evidence of signer identity (OIDC subject/issuer) and Rekor transparency log entry
-              echo ">> [5/7] Verifying Cosign signature..."
+              echo ">> [5/8] Verifying Cosign signature..."
               if ! cosign verify \
                 --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/.*$" \
                 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
@@ -273,7 +273,7 @@ jobs:
               fi
 
               # 6. Verify provenance attestation — evidence that the predicate (commit/repo/workflow/run_id/digest) is authentic
-              echo ">> [6/7] Verifying Provenance Attestation..."
+              echo ">> [6/8] Verifying Provenance Attestation..."
               if ! cosign verify-attestation \
                 --type custom \
                 --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/.*$" \
@@ -286,12 +286,25 @@ jobs:
               fi
 
               # 7. Attest SBOM — binds the CycloneDX SBOM to the image digest on the registry (not just a build artifact)
-              echo ">> [7/7] Attesting SBOM..."
+              echo ">> [7/8] Attesting SBOM..."
               if ! cosign attest --yes \
                 --predicate "security-artifacts/sbom-${service}-${digest_clean}.json" \
                 --type cyclonedx \
                 "$image_ref_digest"; then
                 echo "::error::Failed to attest SBOM for $service"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+
+              # 8. Verify SBOM attestation — evidence the CycloneDX SBOM attached to the digest is authentic
+              echo ">> [8/8] Verifying SBOM Attestation..."
+              if ! cosign verify-attestation \
+                --type cyclonedx \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/.*$" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                "$image_ref_digest" \
+                --output text > "security-artifacts/sbom-verify-${service}-${digest_clean}.txt" 2>&1; then
+                echo "::error::SBOM verify failed for $service — could not confirm attestation"
+                cat "security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
                 echo "1" > security-artifacts/gate_status.txt
               fi
             else
