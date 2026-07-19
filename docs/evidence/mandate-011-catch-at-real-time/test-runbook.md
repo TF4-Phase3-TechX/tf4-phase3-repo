@@ -25,25 +25,32 @@ aws iam create-access-key --user-name mentor-test-user-11
    - **Latency:** `< 60 giây` (Time-to-detect được hệ thống Lambda tự đo).
    - **Investigate:** Click vào link để mở thẳng CloudTrail Console.
 
+> [!NOTE]
+> **Bài học từ thực tế (Troubleshooting):** Trong quá trình kiểm thử ban đầu, team ghi nhận hiện tượng các sự kiện nhạy cảm (như IAM CreateUser) bị bỏ sót hoàn toàn dù CloudTrail đã ghi nhận thành công. Nguyên nhân gốc rễ không phải do độ trễ của AWS (CloudTrail Delivery Latency), mà là do cấu trúc gộp chung mảng `$or` quá phức tạp trong một rule EventBridge. Việc tách thành 2 rule (Read-only và Write-only) đã giải quyết triệt để lỗi mất log im lặng này. Tốc độ nhận alert qua Slack giờ đây tuân thủ chặt chẽ SLO `p95 < 60s`.
+
 *(Đừng quên dọn dẹp sau khi test)*
 ```bash
 aws iam delete-access-key --user-name mentor-test-user-11 --access-key-id <ACCESS_KEY_ID_VỪA_TẠO>
 aws iam delete-user --user-name mentor-test-user-11
 ```
 
-## Kịch bản 2: Truy cập Secret bất hợp pháp (Data Threat)
-Hành động này kiểm chứng CloudTrail Data Events đã được bật cho Secrets Manager và EventBridge đang bắt đúng.
+## Kịch bản 2: Truy cập Secret/Parameter bất hợp pháp (Data Threat)
+Hành động này kiểm chứng CloudTrail Data Events đã được bật cho Secrets Manager / SSM và EventBridge đang bắt đúng.
 
 **Lệnh thực thi:**
 ```bash
-# Chạy lệnh đọc Secret (Có thể test bằng một secret rỗng hoặc secret test)
+# Chạy lệnh đọc Secret/Parameter (Có thể test bằng một giá trị không tồn tại)
 aws secretsmanager get-secret-value --secret-id non-existent-secret-for-test-11
+aws ssm get-parameter --name non-existent-param-for-test-11
 ```
-*(Ngay cả khi secret không tồn tại, lệnh này vẫn được CloudTrail ghi lại)*
+*(Ngay cả khi tài nguyên không tồn tại, lệnh này vẫn được CloudTrail ghi lại)*
 
 **Kỳ vọng:**
-1. Kênh Slack sẽ nổ thông báo `🚨 Security Alert: GetSecretValue`.
+1. Kênh Slack sẽ nổ thông báo `🚨 Security Alert: GetSecretValue` hoặc `GetParameter`.
 2. Latency cam kết `< 60 giây`.
+
+> [!NOTE]
+> **Bài học từ thực tế (Troubleshooting):** Sự kiện `GetSecretValue` và `GetParameter` là các API đọc (Read-only). Ban đầu hệ thống đã bỏ lỡ toàn bộ các sự kiện này. Qua quá trình debug chuyên sâu, team phát hiện root cause: AWS EventBridge mặc định (state `ENABLED`) sẽ lọc bỏ hoàn toàn các Read-Only Management Events từ CloudTrail để tiết kiệm chi phí. Để bắt được chúng, rule bắt buộc phải sử dụng state `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`. Đây là một phát hiện quan trọng giúp đảm bảo tính toàn vẹn (không bỏ lọt) của hệ thống Mandate 11.
 
 ## Kịch bản 3: Cố gắng vô hiệu hóa log (Blinding Threat)
 Mô phỏng kẻ tấn công tắt trail. Hành động này được đánh dấu là `CRITICAL`.

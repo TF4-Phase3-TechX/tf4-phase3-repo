@@ -1,0 +1,58 @@
+{{- if eq .Release.Namespace "techx-tf4" }}
+{{- $excludedNamespaces := list "kube-system" "kube-node-lease" "kube-public" }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: require-run-as-nonroot-binding
+spec:
+  policyName: require-run-as-nonroot
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: {{ $excludedNamespaces | toYaml | nindent 8 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: require-drop-all-capabilities-binding
+spec:
+  policyName: require-drop-all-capabilities
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: {{ $excludedNamespaces | toYaml | nindent 8 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: disallow-mutable-image-tag-binding
+spec:
+  policyName: disallow-mutable-image-tag
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: {{ $excludedNamespaces | toYaml | nindent 8 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: require-resource-limits-binding
+spec:
+  policyName: require-resource-limits
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: {{ $excludedNamespaces | toYaml | nindent 8 }}
+{{- end }}
