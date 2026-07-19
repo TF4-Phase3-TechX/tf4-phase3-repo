@@ -177,6 +177,8 @@ output "msk_orders_authentication_protocol" {
 output "msk_orders_client_port" {
   description = "Client port expected for SASL/SCRAM bootstrap brokers"
   value       = 9096
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
