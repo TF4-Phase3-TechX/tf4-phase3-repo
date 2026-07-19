@@ -16,8 +16,10 @@ spec:
   - expression: >
       (object.spec.containers + object.spec.?initContainers.orValue([])).all(c,
         c.?securityContext.?runAsNonRoot.orValue(
-          object.spec.?securityContext.?runAsNonRoot.orValue(false)) == true)
-    message: "Container/initContainer must run as non-root: set runAsNonRoot=true at pod or container level."
+          object.spec.?securityContext.?runAsNonRoot.orValue(false)) == true &&
+        c.?securityContext.?runAsUser.orValue(
+          object.spec.?securityContext.?runAsUser.orValue(-1)) != 0)
+    message: "Container/initContainer must run as non-root: set runAsNonRoot=true at pod or container level, and must not set runAsUser=0."
 ---
 # ── Policy: disallow mutable / untagged image ───────────────────────────────
 apiVersion: admissionregistration.k8s.io/v1
