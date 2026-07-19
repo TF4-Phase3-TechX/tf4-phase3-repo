@@ -5,6 +5,7 @@
 
 # Python
 import os
+import time
 import logging
 import simplejson as json
 
@@ -20,15 +21,15 @@ def must_map_env(key: str):
     return value
 
 db_connection_str = must_map_env('DB_CONNECTION_STRING')
-
+db_max_conn = int(os.getenv("DB_MAX_CONN", "20"))
 
 try:
     db_pool = pool.ThreadedConnectionPool(
-        minconn=1, 
-        maxconn=20, 
+        minconn=0, 
+        maxconn=db_max_conn, 
         dsn=db_connection_str
     )
-    logging.info("Khởi tạo ThreadedConnectionPool thành công (maxconn=20).")
+    logging.info(f"Khởi tạo ThreadedConnectionPool thành công (maxconn={db_max_conn}).")
 except Exception as e:
     logging.critical(f"Lỗi khởi tạo DB Pool: {e}")
     raise e
@@ -37,7 +38,19 @@ except Exception as e:
 @contextmanager
 def get_db_connection():
     """Context manager để mượn và trả kết nối tự động từ Pool."""
-    conn = db_pool.getconn()
+    conn = None
+    retries = 3
+    for _ in range(retries):
+        try:
+            conn = db_pool.getconn()
+            break
+        except pool.PoolError:
+            logging.warning("Hết kết nối trong Pool, chờ 1.5 giây để thử lại...")
+            time.sleep(1.5)
+            
+    if not conn:
+        raise pool.PoolError("Không thể lấy kết nối từ Database sau nhiều lần thử.")
+
     try:
         yield conn
     finally:

@@ -1,65 +1,70 @@
 import os
 import pytest
-from unittest.mock import patch, MagicMock
+from psycopg2 import pool
+from unittest.mock import MagicMock
 
+# Đảm bảo environment variable luôn có mặt để không lỗi os.environ.get
 os.environ["DB_CONNECTION_STRING"] = "fake_connection_string"
-
-mock_pool_patcher = patch("psycopg2.pool.ThreadedConnectionPool")
-MockThreadedConnectionPool = mock_pool_patcher.start()
-
-mock_db_pool = MagicMock()
-MockThreadedConnectionPool.return_value = mock_db_pool
+os.environ["DB_MAX_CONN"] = "20"
 
 import database
 
+def test_get_db_connection_success(mocker):
+    # Chặn hàm getconn lại, ép nó trả về một chuỗi ký tự (giả làm connection)
+    mock_getconn = mocker.patch('database.db_pool.getconn', return_value="fake_connection")
+    
+    # Chặn hàm putconn lại để nó không thực sự trả gì về Database thật
+    mock_putconn = mocker.patch('database.db_pool.putconn')
 
-@pytest.fixture
-def mock_cursor():
-    cursor = MagicMock()
-    return cursor
+    # Chạy hàm thực tế
+    with database.get_db_connection() as conn:
+        assert conn == "fake_connection"  # Đảm bảo lấy đúng đồ giả
 
+    # Xác minh: Đảm bảo getconn và putconn đều được gọi chính xác 1 lần
+    mock_getconn.assert_called_once()
+    mock_putconn.assert_called_once_with("fake_connection")
 
-@pytest.fixture
-def mock_connection(mock_cursor):
-    conn = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = mock_cursor
-    return conn
+def test_get_db_connection_exhausted(mocker):
+    # Dùng side_effect để ép hàm văng lỗi PoolError mỗi khi được gọi
+    mock_getconn = mocker.patch('database.db_pool.getconn', side_effect=pool.PoolError)
+    
+    # Ép hàm time.sleep thành một hàm rỗng (không làm gì cả)
+    mock_sleep = mocker.patch('time.sleep')
+    mock_putconn = mocker.patch('database.db_pool.putconn')
 
+    # Kỳ vọng hệ thống sẽ tự ném ra lỗi sau khi cạn kiệt 3 lần thử
+    with pytest.raises(pool.PoolError, match="Không thể lấy kết nối từ Database sau nhiều lần thử."):
+        with database.get_db_connection():
+            pass
 
-@pytest.fixture(autouse=True)
-def reset_mocks():
-    """Reset các mock sau mỗi bài test để không bị nhiễu dữ liệu."""
-    mock_db_pool.reset_mock()
-    yield
+    # Xác minh: Kiểm tra vòng lặp retry có chạy đủ 3 lần như thiết kế không
+    assert mock_getconn.call_count == 3
+    assert mock_sleep.call_count == 3
+    
+    # Khối finally không nên đẩy một kết nối None về pool
+    mock_putconn.assert_not_called()
 
+def test_get_db_connection_with_exception(mocker):
+    mock_getconn = mocker.patch('database.db_pool.getconn', return_value="fake_connection")
+    mock_putconn = mocker.patch('database.db_pool.putconn')
 
-class TestDatabaseConnectionPool:
-    def test_get_db_connection_success(self, mock_connection):
-        """Test mượn và trả kết nối thành công (Happy path)."""
-        mock_db_pool.getconn.return_value = mock_connection
-
+    with pytest.raises(ValueError, match="Fake SQL Error"):
         with database.get_db_connection() as conn:
-            assert conn == mock_connection
+            raise ValueError("Fake SQL Error")
 
-        mock_db_pool.getconn.assert_called_once()
-        mock_db_pool.putconn.assert_called_once_with(mock_connection)
-
-    def test_get_db_connection_with_exception(self, mock_connection):
-        """Test mượn kết nối nhưng bị lỗi giữa chừng, đảm bảo putconn VẪN được gọi (Zero Leakage)."""
-        mock_db_pool.getconn.return_value = mock_connection
-
-        with pytest.raises(ValueError, match="Fake SQL Error"):
-            with database.get_db_connection() as conn:
-                raise ValueError("Fake SQL Error")
-
-        mock_db_pool.getconn.assert_called_once()
-        mock_db_pool.putconn.assert_called_once_with(mock_connection)
-
+    mock_getconn.assert_called_once()
+    mock_putconn.assert_called_once_with("fake_connection")
 
 class TestDatabaseQueries:
-    def test_fetch_product_reviews_from_db(self, mock_connection, mock_cursor):
-        """Test hàm fetch_product_reviews_from_db gọi đúng câu SQL và trả về dữ liệu."""
-        mock_db_pool.getconn.return_value = mock_connection
+    def test_fetch_product_reviews_from_db(self, mocker):
+        mock_getconn = mocker.patch('database.db_pool.getconn')
+        mock_putconn = mocker.patch('database.db_pool.putconn')
+        
+        mock_connection = MagicMock()
+        mock_getconn.return_value = mock_connection
+        
+        mock_cursor = MagicMock()
+        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
         
         mock_records = [
             (1, "john", "good", 4.5),
@@ -75,25 +80,36 @@ class TestDatabaseQueries:
         assert args[1] == ("PROD123",)
         
         assert result == mock_records
-        mock_db_pool.putconn.assert_called_once_with(mock_connection)
+        mock_putconn.assert_called_once_with(mock_connection)
 
-    def test_fetch_avg_product_review_score_has_data(self, mock_connection, mock_cursor):
-        """Test tính điểm trung bình khi sản phẩm CÓ lượt review."""
-        mock_db_pool.getconn.return_value = mock_connection
+    def test_fetch_avg_product_review_score_has_data(self, mocker):
+        mock_getconn = mocker.patch('database.db_pool.getconn')
+        mock_putconn = mocker.patch('database.db_pool.putconn')
+        
+        mock_connection = MagicMock()
+        mock_getconn.return_value = mock_connection
+        
+        mock_cursor = MagicMock()
+        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
         mock_cursor.fetchall.return_value = [(4.56,)]
 
         result = database.fetch_avg_product_review_score_from_db("PROD123")
 
-        assert result == "4.6"  # Đảm bảo làm tròn 1 chữ số thập phân
-        mock_db_pool.putconn.assert_called_once_with(mock_connection)
+        assert result == "4.6"
+        mock_putconn.assert_called_once_with(mock_connection)
 
-    def test_fetch_avg_product_review_score_no_data(self, mock_connection, mock_cursor):
-        """Test tính điểm trung bình khi sản phẩm KHÔNG CÓ review (hoặc None)."""
-        mock_db_pool.getconn.return_value = mock_connection
+    def test_fetch_avg_product_review_score_no_data(self, mocker):
+        mock_getconn = mocker.patch('database.db_pool.getconn')
+        mock_putconn = mocker.patch('database.db_pool.putconn')
         
+        mock_connection = MagicMock()
+        mock_getconn.return_value = mock_connection
+        
+        mock_cursor = MagicMock()
+        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
         mock_cursor.fetchall.return_value = [(None,)]
 
         result = database.fetch_avg_product_review_score_from_db("PROD123")
 
         assert result is None
-        mock_db_pool.putconn.assert_called_once_with(mock_connection)
+        mock_putconn.assert_called_once_with(mock_connection)
