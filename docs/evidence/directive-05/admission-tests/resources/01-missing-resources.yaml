@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: missing-resources
+  namespace: techx-admission-test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: app
+      image: nginx:1.25-alpine
+      command: ["sh", "-c", "echo ready && sleep 3600"]

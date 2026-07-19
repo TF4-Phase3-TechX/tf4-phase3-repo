@@ -5,7 +5,7 @@ Tài liệu này hướng dẫn các bước phản ứng nhanh (Incident Respon
 ## Cam kết phát hiện (Time-To-Detect) & Chống nhiễu
 - **Cam kết TTD:** `p95 < 60 giây`. 
 - **Nơi đo lường:** Thời gian trễ (Detection Latency) được tính bằng khoảng thời gian từ lúc AWS tạo event đến lúc Lambda xử lý. Metric này được Lambda ghi nhận vào CloudWatch với tên `Mandate11/DetectionLatency`. (Tham khảo chi tiết tại [Bằng chứng TTD](../evidence/mandate-011-catch-at-real-time/time-to-detect-evidence.md)).
-- **Cơ chế chống nhiễu (Allowlist):** Hệ thống được cấu hình loại bỏ các cảnh báo đến từ các luồng CI/CD hợp lệ. Cụ thể, nếu ARN của Actor chứa `role/tf4-github-actions`, Lambda sẽ chủ động drop event đó. Mọi alert lọt đến Slack và hiển thị `Noise check: ❌ Không khớp allowlist` đều phải được xem là một rủi ro thực sự cần xử lý.
+- **Cơ chế chống nhiễu (Allowlist):** Hệ thống được cấu hình loại bỏ các cảnh báo đến từ các luồng CI/CD và agent tự động hợp lệ (như `tf4-github-actions`, `external-secrets`, `SecuritySlackAlertsLambdaRole`). Lambda sẽ chủ động drop event từ các actor này. Mọi alert lọt đến Slack và hiển thị `Noise check: ❌ Không khớp allowlist` đều phải được xem là một rủi ro thực sự cần xử lý.
 
 ## 1. Phân loại mức độ (Severity) & Lý do
 
