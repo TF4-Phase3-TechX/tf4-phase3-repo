@@ -6,7 +6,7 @@ metadata:
   name: require-run-as-nonroot-binding
 spec:
   policyName: require-run-as-nonroot
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:
@@ -20,7 +20,7 @@ metadata:
   name: require-drop-all-capabilities-binding
 spec:
   policyName: require-drop-all-capabilities
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:
@@ -34,7 +34,7 @@ metadata:
   name: disallow-mutable-image-tag-binding
 spec:
   policyName: disallow-mutable-image-tag
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:
@@ -48,7 +48,7 @@ metadata:
   name: require-resource-limits-binding
 spec:
   policyName: require-resource-limits
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:

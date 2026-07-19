@@ -41,7 +41,7 @@ jobs:
       chart_changed: ${{ steps.services.outputs.chart_changed }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -100,16 +100,16 @@ jobs:
       services: ${{ needs.changes.outputs.services }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_BUILD_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Set image variables
         id: vars
@@ -126,7 +126,7 @@ jobs:
           echo "IMAGE_REPOSITORY=$image_repository" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Create CI env override
         shell: bash
@@ -166,7 +166,7 @@ jobs:
           done < <(jq -r '.[]' <<< "$SERVICES_JSON") | tee image-digests.txt
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.5.0
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
 
       - name: Security and Attestation (Scan, Sign, SBOM, Provenance)
         env:
@@ -267,7 +267,7 @@ jobs:
 
       - name: Upload security artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: security-artifacts-${{ steps.vars.outputs.image_tag }}
           path: security-artifacts/
@@ -293,7 +293,7 @@ jobs:
             '{image_repository: $image_repository, image_tag: $image_tag, git_sha: $git_sha, services: $services}' > build-metadata.json
 
       - name: Upload build metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: build-metadata-${{ steps.vars.outputs.image_tag }}
           path: |
@@ -315,7 +315,7 @@ jobs:
     steps:
       - name: Create GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ secrets.GITOPS_PROMOTION_APP_ID }}
           private-key: ${{ secrets.GITOPS_PROMOTION_APP_PRIVATE_KEY }}
@@ -323,7 +323,7 @@ jobs:
           repositories: tf4-phase3-gitops-manifests
 
       - name: Checkout GitOps repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: TF4-Phase3-TechX/tf4-phase3-gitops-manifests
           token: ${{ steps.app-token.outputs.token }}
