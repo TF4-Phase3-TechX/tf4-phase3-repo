@@ -109,6 +109,76 @@ output "karpenter_node_role_name" {
   value       = module.karpenter.node_iam_role_name
 }
 
+output "msk_orders_cluster_arn" {
+  description = "MSK cluster ARN for the orders migration target"
+  value       = aws_msk_cluster.orders.arn
+}
+
+output "msk_orders_cluster_name" {
+  description = "MSK cluster name for the orders migration target"
+  value       = aws_msk_cluster.orders.cluster_name
+}
+
+output "msk_orders_bootstrap_brokers_sasl_scram" {
+  description = "SASL/SCRAM bootstrap brokers for MirrorMaker2 and Kafka clients"
+  value       = aws_msk_cluster.orders.bootstrap_brokers_sasl_scram
+}
+
+output "msk_orders_broker_node_type" {
+  description = "MSK broker node type for the orders migration target"
+  value       = aws_msk_cluster.orders.broker_node_group_info[0].instance_type
+}
+
+output "msk_orders_broker_storage_gib" {
+  description = "Initial EBS storage per MSK broker in GiB"
+  value       = aws_msk_cluster.orders.broker_node_group_info[0].storage_info[0].ebs_storage_info[0].volume_size
+}
+
+output "msk_orders_storage_autoscaling_max_gib" {
+  description = "Maximum EBS storage per broker configured through Application Auto Scaling"
+  value       = aws_appautoscaling_target.msk_broker_storage.max_capacity
+}
+
+output "msk_orders_security_group_id" {
+  description = "Security group ID attached to the MSK orders cluster"
+  value       = aws_security_group.msk.id
+}
+
+output "msk_orders_kms_key_arn" {
+  description = "KMS key ARN used by the MSK orders cluster"
+  value       = aws_kms_key.msk.arn
+}
+
+output "msk_orders_app_secret_path" {
+  description = "AWS Secrets Manager path expected for the SEC-13 MSK application secret contract"
+  value       = "techx/tf4/msk-kafka"
+}
+
+output "msk_orders_kubernetes_secret_name" {
+  description = "Kubernetes Secret name expected for the SEC-13 MSK application secret contract"
+  value       = "msk-kafka-secret"
+}
+
+output "msk_orders_kubernetes_secret_namespace" {
+  description = "Kubernetes namespace expected for the SEC-13 MSK application secret contract"
+  value       = "techx-tf4"
+}
+
+output "msk_orders_scram_secret_handoff_note" {
+  description = "SEC-13 owns creation of the MSK SCRAM credential secret and SCRAM secret association; REL-14 does not put credentials in Terraform state"
+  value       = "REL-14 provisions the MSK baseline only. SEC-13 owns techx/tf4/msk-kafka -> techx-tf4/msk-kafka-secret and the SCRAM secret association."
+}
+
+output "msk_orders_authentication_protocol" {
+  description = "Authentication and transport protocol expected by Kafka clients"
+  value       = "SASL_SSL with SCRAM-SHA-512"
+}
+
+output "msk_orders_client_port" {
+  description = "Client port expected for SASL/SCRAM bootstrap brokers"
+  value       = 9096
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
