@@ -554,8 +554,6 @@ Sau:
 
 **Fallback (chỉ khi CD hỏng / cần hotfix khẩn):** build & push tay 2 service thay đổi. Ghi rõ đây là ngoại lệ và verify image tag khớp với chart trước khi deploy.
 
-> **ECR đang `IMMUTABLE`** (CDO08-SEC-16) — push lại một tag đã tồn tại sẽ bị ECR từ chối thẳng. Trước khi push tay, đảm bảo `$DEMO_VERSION` là giá trị **mới, duy nhất** cho lần build này (vd short SHA của commit hotfix hiện tại), không tái dùng giá trị cũ còn sót lại trong `.env.override`.
-
 ```bash
 # FALLBACK — chỉ dùng khi CD không khả dụng
 cd techx-corp-platform
@@ -651,18 +649,23 @@ curl -s -o /dev/null -w "%{http_code} %{time_total}s" http://k8s-techxtf4-techxa
 
 ### 6.5 Rollback nếu cần
 
-> **ECR đang `IMMUTABLE`** (CDO08-SEC-16) — **không rebuild & push lại tag cũ**: (1) tag cũ nhiều khả năng đã tồn tại (image của lần deploy trước), push lại sẽ bị ECR từ chối; (2) rebuild không đảm bảo ra byte-for-byte đúng image cũ. Image cũ **đã có sẵn** trong ECR — lifecycle policy (`infra/terraform/ecr.tf`) giữ 50 tag gần nhất đúng cho mục đích rollback, không cần build lại.
-
 ```bash
-# Revert code commit (giữ lịch sử git đúng, không phải bước để lấy lại image)
+# Revert code commit
 git revert <commit-hash>
 
-# Helm rollback — dùng lại đúng release trước đó (đã tham chiếu tag cũ, không rebuild)
+# Rebuild & push image cũ
+cd techx-corp-platform
+set -a; . .env; . .env.override; set +a
+docker buildx bake -f docker-compose.yml --load --set "*.platform=linux/amd64" checkout
+docker push "$IMAGE_NAME:$DEMO_VERSION-checkout"
+docker buildx bake -f docker-compose.yml --load --set "*.platform=linux/amd64" shipping
+docker push "$IMAGE_NAME:$DEMO_VERSION-shipping"
+
+# Helm rollback
 helm rollback techx-corp -n techx-tf4
 
-# Hoặc trỏ thẳng về tag cũ đã có sẵn trong ECR (thay <old-tag> bằng tag của lần deploy muốn quay về)
+# Hoặc helm upgrade với image tag cũ — APP overlay (không phải observability)
 helm upgrade --install techx-corp ./techx-corp-chart -n techx-tf4 \
-  --set default.image.tag=<old-tag> \
   -f deploy/values-app-stamp.yaml \
   -f deploy/values-flagd-sync.yaml \
   --wait --timeout 5m
