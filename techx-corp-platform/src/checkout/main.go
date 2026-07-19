@@ -68,6 +68,8 @@ var tracer trace.Tracer
 var resource *sdkresource.Resource
 var initResourcesOnce sync.Once
 
+const maxConcurrentOrderItemPreparations = 4
+
 func initResource() *sdkresource.Resource {
 	initResourcesOnce.Do(func() {
 		extraResources, _ := sdkresource.New(
@@ -444,6 +446,16 @@ type orderPrep struct {
 	shippingCostLocalized *pb.Money
 }
 
+type orderItemsResult struct {
+	items []*pb.OrderItem
+	err   error
+}
+
+type shippingCostResult struct {
+	cost *pb.Money
+	err  error
+}
+
 func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Context, userID, userCurrency string, address *pb.Address) (orderPrep, error) {
 
 	ctx, span := tracer.Start(ctx, "prepareOrderItemsAndShippingQuoteFromCart")
@@ -454,17 +466,48 @@ func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Contex
 	if err != nil {
 		return out, fmt.Errorf("cart failure: %+v", err)
 	}
-	orderItems, err := cs.prepOrderItems(ctx, cartItems, userCurrency)
-	if err != nil {
-		return out, fmt.Errorf("failed to prepare order: %+v", err)
+	// Once the cart is read, item pricing and shipping are independent reads.
+	// Keep both under the request context so any failure cancels the remaining work.
+	prepCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	orderItemsCh := make(chan orderItemsResult, 1)
+	shippingCostCh := make(chan shippingCostResult, 1)
+
+	go func() {
+		items, prepErr := cs.prepOrderItems(prepCtx, cartItems, userCurrency)
+		orderItemsCh <- orderItemsResult{items: items, err: prepErr}
+	}()
+	go func() {
+		shippingUSD, quoteErr := cs.quoteShipping(prepCtx, address, cartItems)
+		if quoteErr != nil {
+			shippingCostCh <- shippingCostResult{err: quoteErr}
+			return
+		}
+		cost, convertErr := cs.convertCurrency(prepCtx, shippingUSD, userCurrency)
+		shippingCostCh <- shippingCostResult{cost: cost, err: convertErr}
+	}()
+
+	var orderItems []*pb.OrderItem
+	var shippingPrice *pb.Money
+	var firstPrepErr error
+	for completed := 0; completed < 2; completed++ {
+		select {
+		case result := <-orderItemsCh:
+			orderItems = result.items
+			if result.err != nil && firstPrepErr == nil {
+				firstPrepErr = fmt.Errorf("failed to prepare order: %w", result.err)
+				cancel()
+			}
+		case result := <-shippingCostCh:
+			shippingPrice = result.cost
+			if result.err != nil && firstPrepErr == nil {
+				firstPrepErr = fmt.Errorf("shipping quote or currency conversion failure: %w", result.err)
+				cancel()
+			}
+		}
 	}
-	shippingUSD, err := cs.quoteShipping(ctx, address, cartItems)
-	if err != nil {
-		return out, fmt.Errorf("shipping quote failure: %+v", err)
-	}
-	shippingPrice, err := cs.convertCurrency(ctx, shippingUSD, userCurrency)
-	if err != nil {
-		return out, fmt.Errorf("failed to convert shipping cost to currency: %+v", err)
+	if firstPrepErr != nil {
+		return out, firstPrepErr
 	}
 
 	out.shippingCostLocalized = shippingPrice
@@ -481,6 +524,7 @@ func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Contex
 		attribute.Float64("app.shipping.amount", shippingCostFloat),
 		attribute.Int("app.cart.items.count", int(totalCart)),
 		attribute.Int("app.order.items.count", len(orderItems)),
+		attribute.Int("app.order.preparation.concurrency", maxConcurrentOrderItemPreparations),
 	)
 	return out, nil
 }
@@ -578,26 +622,87 @@ func (cs *checkout) emptyUserCart(ctx context.Context, userID string) error {
 
 func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, userCurrency string) ([]*pb.OrderItem, error) {
 	out := make([]*pb.OrderItem, len(items))
+	if len(items) == 0 {
+		return out, nil
+	}
 
-	for i, item := range items {
-		var product *pb.Product
-		err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
-			var e error
-			product, e = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: item.GetProductId()})
-			return e
+	workerCount := len(items)
+	if workerCount > maxConcurrentOrderItemPreparations {
+		workerCount = maxConcurrentOrderItemPreparations
+	}
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	jobs := make(chan int)
+	var workers sync.WaitGroup
+	var firstErr error
+	var errOnce sync.Once
+	recordErr := func(err error) {
+		errOnce.Do(func() {
+			firstErr = err
+			cancel()
 		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get product #%q", item.GetProductId())
+	}
+
+	for range workerCount {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for {
+				select {
+				case <-workerCtx.Done():
+					return
+				case index, ok := <-jobs:
+					if !ok {
+						return
+					}
+					item := items[index]
+					product, err := cs.getProduct(workerCtx, item.GetProductId())
+					if err != nil {
+						recordErr(fmt.Errorf("failed to get product #%q: %w", item.GetProductId(), err))
+						return
+					}
+					price, err := cs.convertCurrency(workerCtx, product.GetPriceUsd(), userCurrency)
+					if err != nil {
+						recordErr(fmt.Errorf("failed to convert price of %q to %s: %w", item.GetProductId(), userCurrency, err))
+						return
+					}
+					out[index] = &pb.OrderItem{Item: item, Cost: price}
+				}
+			}
+		}()
+	}
+
+enqueue:
+	for index := range items {
+		select {
+		case <-workerCtx.Done():
+			break enqueue
+		case jobs <- index:
 		}
-		price, err := cs.convertCurrency(ctx, product.GetPriceUsd(), userCurrency)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert price of %q to %s", item.GetProductId(), userCurrency)
-		}
-		out[i] = &pb.OrderItem{
-			Item: item,
-			Cost: price}
+	}
+	close(jobs)
+	workers.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	return out, nil
+}
+
+func (cs *checkout) getProduct(ctx context.Context, productID string) (*pb.Product, error) {
+	var product *pb.Product
+	err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+		var callErr error
+		product, callErr = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: productID})
+		return callErr
+	})
+	if err != nil {
+		return nil, err
+	}
+	return product, nil
 }
 
 func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurrency string) (*pb.Money, error) {
