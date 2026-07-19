@@ -102,6 +102,7 @@ data "aws_iam_policy_document" "github_actions_plan" {
 
     actions = [
       "autoscaling:Describe*",
+      "application-autoscaling:Describe*",
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
       "access-analyzer:GetAnalyzer",
@@ -134,6 +135,9 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kms:ListResourceTags",
       "logs:Describe*",
       "logs:ListTagsForResource",
+      "kafka:Describe*",
+      "kafka:GetBootstrapBrokers",
+      "kafka:List*",
       "rds:Describe*",
       "rds:ListTagsForResource",
       "s3:GetAccelerateConfiguration",
@@ -141,6 +145,10 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "s3:GetEncryptionConfiguration",
       "s3:GetLifecycleConfiguration",
       "s3:GetReplicationConfiguration",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetResourcePolicy",
+      "secretsmanager:ListSecretVersionIds",
+      "secretsmanager:ListTagsForResource",
       "s3:ListBucket"
     ]
 
