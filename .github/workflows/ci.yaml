@@ -127,6 +127,20 @@ jobs:
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
+          # trivy-action builds SARIF with all severities for GitHub Security.
+          # Reporting must not turn LOW/MEDIUM/UNKNOWN findings into a gate failure.
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Enforce Trivy HIGH/CRITICAL dependency gate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
+        with:
+          scan-type: 'fs'
+          scan-ref: 'techx-corp-platform/src'
+          scanners: 'vuln'
+          format: 'table'
+          output: 'trivy-sast-enforcement.txt'
+          severity: 'CRITICAL,HIGH'
           exit-code: '1'
           ignore-unfixed: true
 
@@ -146,6 +160,7 @@ jobs:
           path: |
             trivy-sast-report.sarif
             trivy-sast-report.txt
+            trivy-sast-enforcement.txt
 
   yaml-check:
     name: YAML parse check
