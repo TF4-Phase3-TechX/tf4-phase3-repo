@@ -177,4 +177,64 @@ output "msk_orders_authentication_protocol" {
 output "msk_orders_client_port" {
   description = "Client port expected for SASL/SCRAM bootstrap brokers"
   value       = 9096
+# REL-14 — Managed PostgreSQL baseline outputs for SEC-13 / REL-15 handoff
+output "rds_postgresql_endpoint" {
+  description = "Private RDS PostgreSQL endpoint for TechX managed PostgreSQL target"
+  value       = aws_db_instance.postgresql.address
+}
+
+output "rds_postgresql_port" {
+  description = "RDS PostgreSQL listener port"
+  value       = aws_db_instance.postgresql.port
+}
+
+output "rds_postgresql_database_name" {
+  description = "Initial database name for the RDS PostgreSQL target"
+  value       = aws_db_instance.postgresql.db_name
+}
+
+output "rds_postgresql_instance_arn" {
+  description = "ARN of the RDS PostgreSQL instance"
+  value       = aws_db_instance.postgresql.arn
+}
+
+output "rds_postgresql_security_group_id" {
+  description = "Security group ID attached to the RDS PostgreSQL target"
+  value       = aws_security_group.rds_postgresql.id
+}
+
+output "rds_postgresql_subnet_group_name" {
+  description = "DB subnet group name used by the RDS PostgreSQL target"
+  value       = aws_db_subnet_group.postgresql.name
+}
+
+output "rds_postgresql_parameter_group_name" {
+  description = "DB parameter group name used by the RDS PostgreSQL target"
+  value       = aws_db_parameter_group.postgresql.name
+}
+
+output "rds_postgresql_master_user_secret_arn" {
+  description = "RDS-managed master user secret ARN for admin/bootstrap reference only; application workloads must use the SEC-13 app secret contract instead"
+  value       = try(aws_db_instance.postgresql.master_user_secret[0].secret_arn, null)
+  sensitive   = true
+}
+
+output "rds_postgresql_app_secret_path" {
+  description = "AWS Secrets Manager path expected for the SEC-13 PostgreSQL application secret contract"
+  value       = "techx/tf4/rds-postgres"
+}
+
+output "rds_postgresql_kubernetes_secret_name" {
+  description = "Kubernetes Secret name expected for the SEC-13 PostgreSQL application secret contract"
+  value       = "rds-postgres-secret"
+}
+
+output "rds_postgresql_kubernetes_secret_namespace" {
+  description = "Kubernetes namespace expected for the SEC-13 PostgreSQL application secret contract"
+  value       = "techx-tf4"
+}
+
+output "rds_postgresql_credential_handoff_note" {
+  description = "Credential handoff note for SEC-13"
+  value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
 }

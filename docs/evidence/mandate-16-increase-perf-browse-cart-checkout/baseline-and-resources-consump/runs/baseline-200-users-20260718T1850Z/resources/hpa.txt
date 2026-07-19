@@ -1,0 +1,4 @@
+NAME       REFERENCE             TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+checkout   Deployment/checkout   cpu: 15%/70%    2         3         2          4d23h
+currency   Deployment/currency   cpu: 10%/70%    2         3         2          3d11h
+frontend   Deployment/frontend   cpu: 116%/70%   2         3         3          4d23h

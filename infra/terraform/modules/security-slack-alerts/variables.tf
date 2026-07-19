@@ -27,6 +27,40 @@ variable "lambda_runtime" {
   default     = "python3.12"
 }
 
+variable "detection_metric_namespace" {
+  type        = string
+  description = "CloudWatch custom metric namespace for MANDATE-11 detection latency"
+  default     = "Mandate11/DetectionLatency"
+}
+
+variable "slack_webhook_allowed_hosts" {
+  type        = list(string)
+  description = "HTTPS hosts allowed for the Slack webhook to prevent outbound alert exfiltration"
+  default     = ["hooks.slack.com"]
+
+  validation {
+    condition = (
+      length(var.slack_webhook_allowed_hosts) > 0 &&
+      alltrue([
+        for host in var.slack_webhook_allowed_hosts :
+        length(trimspace(host)) > 0 && !strcontains(host, "://")
+      ])
+    )
+    error_message = "slack_webhook_allowed_hosts must contain hostnames without URL schemes."
+  }
+}
+
+variable "detection_latency_target_seconds" {
+  type        = number
+  description = "Target p95 latency in seconds from CloudTrail event time to Slack webhook acceptance"
+  default     = 60
+
+  validation {
+    condition     = var.detection_latency_target_seconds > 0
+    error_message = "detection_latency_target_seconds must be greater than zero."
+  }
+}
+
 variable "tags" {
   type        = map(string)
   description = "A map of tags to add to all resources"
