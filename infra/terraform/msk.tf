@@ -15,7 +15,7 @@ data "aws_iam_policy_document" "msk_kms" {
 }
 
 resource "aws_kms_key" "msk" {
-  description             = "KMS key for TechX MSK storage and SCRAM secret encryption"
+  description             = "KMS key for TechX MSK storage encryption"
   deletion_window_in_days = 7
   enable_key_rotation     = true
   policy                  = data.aws_iam_policy_document.msk_kms.json
@@ -28,30 +28,6 @@ resource "aws_kms_key" "msk" {
 resource "aws_kms_alias" "msk" {
   name          = "alias/techx-tf4-msk"
   target_key_id = aws_kms_key.msk.key_id
-}
-
-resource "random_password" "msk_scram" {
-  length           = 32
-  special          = true
-  override_special = "_%@"
-}
-
-resource "aws_secretsmanager_secret" "msk_scram" {
-  name        = "AmazonMSK_techx-tf4-msk-scram"
-  description = "SASL/SCRAM credentials for TechX MSK migration target"
-  kms_key_id  = aws_kms_key.msk.arn
-
-  tags = merge(var.tags, {
-    Name = "AmazonMSK_techx-tf4-msk-scram"
-  })
-}
-
-resource "aws_secretsmanager_secret_version" "msk_scram" {
-  secret_id = aws_secretsmanager_secret.msk_scram.id
-  secret_string = jsonencode({
-    username = "techx_app"
-    password = random_password.msk_scram.result
-  })
 }
 
 resource "aws_security_group" "msk" {
@@ -68,9 +44,9 @@ resource "aws_vpc_security_group_ingress_rule" "msk_sasl_ssl_from_eks_nodes" {
   security_group_id            = aws_security_group.msk.id
   referenced_security_group_id = module.eks.node_security_group_id
   ip_protocol                  = "tcp"
-  from_port                    = 9094
-  to_port                      = 9094
-  description                  = "Allow EKS workloads and MirrorMaker2 to connect to MSK SASL_SSL"
+  from_port                    = 9096
+  to_port                      = 9096
+  description                  = "Allow EKS workloads and MirrorMaker2 to connect to MSK SASL/SCRAM"
 }
 
 resource "aws_vpc_security_group_egress_rule" "msk_all_egress" {
@@ -153,13 +129,6 @@ resource "aws_msk_cluster" "orders" {
   tags = merge(var.tags, {
     Name = "techx-tf4-orders"
   })
-}
-
-resource "aws_msk_scram_secret_association" "orders" {
-  cluster_arn     = aws_msk_cluster.orders.arn
-  secret_arn_list = [aws_secretsmanager_secret.msk_scram.arn]
-
-  depends_on = [aws_secretsmanager_secret_version.msk_scram]
 }
 
 resource "aws_appautoscaling_target" "msk_broker_storage" {

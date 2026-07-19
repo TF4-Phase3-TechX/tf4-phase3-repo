@@ -18,10 +18,6 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.35"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.7"
-    }
   }
 
   # Backend bucket/region must match bootstrap output.
@@ -62,5 +58,3 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.this.token
 }
-
-provider "random" {}

@@ -143,7 +143,6 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "s3:GetReplicationConfiguration",
       "secretsmanager:DescribeSecret",
       "secretsmanager:GetResourcePolicy",
-      "secretsmanager:GetSecretValue",
       "secretsmanager:ListSecretVersionIds",
       "secretsmanager:ListTagsForResource",
       "s3:ListBucket"
