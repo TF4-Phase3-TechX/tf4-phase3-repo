@@ -263,7 +263,7 @@ jobs:
               # 5. Verify signature — evidence of signer identity (OIDC subject/issuer) and Rekor transparency log entry
               echo ">> [5/8] Verifying Cosign signature..."
               if ! cosign verify \
-                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/.*$" \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
                 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
                 "$image_ref_digest" \
                 --output text > "security-artifacts/cosign-verify-${service}-${digest_clean}.txt" 2>&1; then
@@ -276,7 +276,7 @@ jobs:
               echo ">> [6/8] Verifying Provenance Attestation..."
               if ! cosign verify-attestation \
                 --type custom \
-                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/.*$" \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
                 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
                 "$image_ref_digest" \
                 --output text > "security-artifacts/provenance-verify-${service}-${digest_clean}.txt" 2>&1; then
@@ -299,7 +299,7 @@ jobs:
               echo ">> [8/8] Verifying SBOM Attestation..."
               if ! cosign verify-attestation \
                 --type cyclonedx \
-                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/.*$" \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
                 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
                 "$image_ref_digest" \
                 --output text > "security-artifacts/sbom-verify-${service}-${digest_clean}.txt" 2>&1; then
