@@ -132,6 +132,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kms:ListResourceTags",
       "logs:Describe*",
       "logs:ListTagsForResource",
+      "rds:Describe*",
+      "rds:ListTagsForResource",
       "s3:GetAccelerateConfiguration",
       "s3:GetBucket*",
       "s3:GetEncryptionConfiguration",
