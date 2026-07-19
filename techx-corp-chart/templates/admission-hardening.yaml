@@ -74,9 +74,9 @@ spec:
       operations: ["CREATE", "UPDATE"]
       resources: ["pods"]
   validations:
-  # Drop ALL then add back only what is required — enforce the drop: [ALL] part only.
   - expression: >
       (object.spec.containers + object.spec.?initContainers.orValue([])).all(c,
-        c.?securityContext.?capabilities.?drop.orValue([]).exists(d, d == 'ALL'))
-    message: "Container/initContainer must drop all capabilities: set securityContext.capabilities.drop: [\"ALL\"] (add back only what is required)."
+        c.?securityContext.?capabilities.?drop.orValue([]).exists(d, d == 'ALL') &&
+        c.?securityContext.?capabilities.?add.orValue([]).all(a, a in ['NET_BIND_SERVICE']))
+    message: "Container/initContainer must drop all capabilities (securityContext.capabilities.drop: [\"ALL\"]); only NET_BIND_SERVICE may be added back."
 {{- end }}
