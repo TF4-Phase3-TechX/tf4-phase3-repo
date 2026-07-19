@@ -192,6 +192,8 @@ output "elasticache_valkey_app_secret_payload_keys" {
 output "elasticache_valkey_app_address_key" {
   description = "Application-facing key expected for the Valkey connection address"
   value       = "valkey-address"
+}
+
 # REL-14 — Managed PostgreSQL baseline outputs for SEC-13 / REL-15 handoff
 output "rds_postgresql_endpoint" {
   description = "Private RDS PostgreSQL endpoint for TechX managed PostgreSQL target"
