@@ -19,7 +19,7 @@ export const Context = createContext<IContext>({
 
 interface IProps {
   children: React.ReactNode;
-  productIds: string[];
+  productIds: Array<string | undefined>;
   contextKeys: string[];
 }
 
@@ -27,6 +27,10 @@ export const useAd = () => useContext(Context);
 
 const AdProvider = ({ children, productIds, contextKeys }: IProps) => {
   const { selectedCurrency } = useCurrency();
+  const validProductIds = productIds.flatMap(productId => {
+    const normalizedProductId = productId?.trim();
+    return normalizedProductId ? [normalizedProductId] : [];
+  });
   const { data: adList = [] } = useQuery({
     queryKey: ['ads', contextKeys],
     queryFn: async () => {
@@ -39,8 +43,9 @@ const AdProvider = ({ children, productIds, contextKeys }: IProps) => {
     refetchOnWindowFocus: false,
   });
   const { data: recommendedProductList = [] } = useQuery({
-    queryKey: ['recommendations', productIds, 'selectedCurrency', selectedCurrency],
-    queryFn: () => ApiGateway.listRecommendations(productIds, selectedCurrency),
+    queryKey: ['recommendations', validProductIds, 'selectedCurrency', selectedCurrency],
+    queryFn: () => ApiGateway.listRecommendations(validProductIds, selectedCurrency),
+    enabled: validProductIds.length > 0,
     refetchOnWindowFocus: false,
   });
 

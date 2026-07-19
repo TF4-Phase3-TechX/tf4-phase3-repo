@@ -9,13 +9,25 @@ import ProductCatalogService from '../../services/ProductCatalog.service';
 
 type TResponse = Product[] | Empty;
 
+const normalizeProductIds = (productIds: string | string[] | undefined) =>
+  (Array.isArray(productIds) ? productIds : [productIds])
+    .flatMap(productId => productId?.split(',') || [])
+    .map(productId => productId.trim())
+    .filter(Boolean);
+
 const handler = async ({ method, query }: NextApiRequest, res: NextApiResponse<TResponse>) => {
   switch (method) {
     case 'GET': {
-      const { productIds = [], sessionId = '', currencyCode = '' } = query;
+      const { productIds, sessionId = '', currencyCode = '' } = query;
+      const validProductIds = normalizeProductIds(productIds);
+
+      if (validProductIds.length === 0) {
+        return res.status(400).send('');
+      }
+
       const { productIds: productList } = await RecommendationsGateway.listRecommendations(
         sessionId as string,
-        productIds as string[]
+        validProductIds
       );
       const recommendedProductList = await Promise.all(
         productList.slice(0, 4).map(id => ProductCatalogService.getProduct(id, currencyCode as string))
