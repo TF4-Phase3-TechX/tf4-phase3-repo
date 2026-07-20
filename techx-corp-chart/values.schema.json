@@ -163,6 +163,17 @@
       "required": [
         "enabled"
       ]
+    },
+    "mirrormaker2": {
+      "description": "CDO08-REL-17 Strimzi KafkaMirrorMaker2 migration configuration for Kafka self-hosted to MSK.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": { "type": "boolean" }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [
