@@ -137,3 +137,15 @@ If a later fallback causes incorrect behavior, revert only the REL-20 code/confi
 - `techx-corp-platform/src/shipping/src/shipping_service/quote.rs`
 - `docs/cdo08/week1/quan-checkout-reliability-findings.md`
 - `docs/requirements/onboarding/SLO.md`
+
+## 10. Subtask 2 implementation
+
+The selected `ad` dependency now has a 750 ms gRPC deadline, configurable through `AD_TIMEOUT_MS`. If `GetAds` fails or exceeds its deadline, `/api/data` returns HTTP 200 with an empty list, allowing the primary product/cart/checkout UI to continue without ads.
+
+Fallback activation is observable through:
+
+- counter `app.frontend.dependency_fallbacks{dependency="ad",operation="GetAds"}`;
+- structured warning event `optional_dependency_fallback` containing the dependency, operation and error;
+- the existing frontend request/span metrics used by the business-flow dashboard.
+
+The safe fallback behavior has a unit test for both healthy and failed dependency paths (`npm run test:resilience`). No checkout code or REL-09 timeout/retry value is changed. Rollback is the revert of the subtask 2 commit followed by redeploying frontend; no data migration or state rollback is required.
