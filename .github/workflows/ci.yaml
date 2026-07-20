@@ -105,12 +105,38 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Build changed-component scan scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          scan_root=".trivy-pr-scope"
+          mkdir -p "${scan_root}"
+
+          mapfile -t roots < <(
+            git diff --name-only "${BASE_SHA}"...HEAD -- techx-corp-platform/src \
+              | awk -F/ 'NF >= 4 { print $1 "/" $2 "/" $3 }' \
+              | sort -u
+          )
+          if [ "${#roots[@]}" -eq 0 ]; then
+            echo "No service directory changed; retaining an empty scoped scan root."
+          else
+            for root in "${roots[@]}"; do
+              test -d "${root}"
+              cp -a "${root}" "${scan_root}/"
+              echo "Trivy scope: ${root}"
+            done
+          fi
 
       - name: Generate readable Trivy SAST & dependency report
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
         with:
           scan-type: 'fs'
-          scan-ref: 'techx-corp-platform/src'
+          scan-ref: '.trivy-pr-scope'
           scanners: 'vuln'
           format: 'table'
           output: 'trivy-sast-report.txt'
@@ -122,7 +148,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
         with:
           scan-type: 'fs'
-          scan-ref: 'techx-corp-platform/src'
+          scan-ref: '.trivy-pr-scope'
           scanners: 'vuln'
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
