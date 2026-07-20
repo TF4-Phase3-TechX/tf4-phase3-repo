@@ -63,7 +63,7 @@ spec:
       {{- end}}
       containers:
         - name: {{ .name }}
-          image: '{{ ((.imageOverride).repository) | default .defaultValues.image.repository }}:{{ ((.imageOverride).tag) | default (printf "%s-%s" (default .Chart.AppVersion .defaultValues.image.tag) .name) }}'
+          image: '{{ include "techx-corp.image" . }}'
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
           command:
@@ -113,7 +113,7 @@ spec:
         {{- $sidecar := set . "Release" $.Release }}
         {{- $sidecar := set . "defaultValues" $.defaultValues }}
         - name: {{ .name   }}
-          image: '{{ ((.imageOverride).repository) | default .defaultValues.image.repository }}:{{ ((.imageOverride).tag) | default (printf "%s-%s" (default .Chart.AppVersion .defaultValues.image.tag) .name) }}'
+          image: '{{ include "techx-corp.image" . }}'
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
           command:
@@ -148,7 +148,19 @@ spec:
         {{- end }}
       {{- if .initContainers }}
       initContainers:
-        {{- tpl (toYaml .initContainers) . | nindent 8 }}
+        {{- $md := .managedData | default dict }}
+        {{- $managedDataEnabled := (($md).enabled | default false) }}
+        {{- $skipKafkaInit := and $managedDataEnabled (($md.kafka | default dict).enabled | default false) }}
+        {{- $skipValkeyInit := and $managedDataEnabled (($md.valkey | default dict).enabled | default false) }}
+        {{- $activeInits := list }}
+        {{- range .initContainers }}
+        {{-   if and $skipKafkaInit (eq .name "wait-for-kafka") }}
+        {{-   else if and $skipValkeyInit (eq .name "wait-for-valkey-cart") }}
+        {{-   else }}
+        {{-     $activeInits = append $activeInits . }}
+        {{-   end }}
+        {{- end }}
+        {{- tpl (toYaml $activeInits) . | nindent 8 }}
       {{- end}}
       volumes:
         {{- range .mountedConfigMaps }}

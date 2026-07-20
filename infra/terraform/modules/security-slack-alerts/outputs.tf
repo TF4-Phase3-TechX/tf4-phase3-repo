@@ -3,9 +3,14 @@ output "sns_topic_arn" {
   value       = aws_sns_topic.alerts.arn
 }
 
-output "eventbridge_rule_a_arn" {
-  description = "ARN of the EventBridge Rule for CloudTrail events"
-  value       = aws_cloudwatch_event_rule.cloudtrail_alerts.arn
+output "eventbridge_rule_readonly_arn" {
+  description = "ARN of the EventBridge Rule for Read-Only Sensitive CloudTrail events"
+  value       = aws_cloudwatch_event_rule.cloudtrail_alerts_readonly_sensitive.arn
+}
+
+output "eventbridge_rule_writeonly_arn" {
+  description = "ARN of the EventBridge Rule for Write-Only Sensitive CloudTrail events"
+  value       = aws_cloudwatch_event_rule.cloudtrail_alerts_writeonly_sensitive.arn
 }
 
 output "eventbridge_rule_b_arn" {
@@ -21,4 +26,17 @@ output "lambda_function_name" {
 output "lambda_execution_role_arn" {
   description = "ARN of the Lambda execution role"
   value       = aws_iam_role.lambda_exec.arn
+}
+
+output "detection_metric_namespace" {
+  description = "CloudWatch namespace containing MANDATE-11 detection latency metrics"
+  value       = var.detection_metric_namespace
+}
+
+output "detection_latency_metric_names" {
+  description = "Metric names for Lambda detection and Slack webhook acceptance latency"
+  value = [
+    "DetectionLatencySeconds",
+    "NotificationLatencySeconds",
+  ]
 }
