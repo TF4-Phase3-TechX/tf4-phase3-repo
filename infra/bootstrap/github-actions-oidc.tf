@@ -105,6 +105,7 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "application-autoscaling:Describe*",
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
+      "cloudwatch:DescribeAlarms",
       "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
