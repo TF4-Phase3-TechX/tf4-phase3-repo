@@ -113,17 +113,19 @@
 |---|---|---|
 | **Exact read allowlist** | Khớp đồng thời account, exact assumed role/AWS service, API và resource được duyệt | Drop — không bắn Slack, ghi structured log `MANDATE11_EXPECTED_READ` |
 | **MSK service read** | `AWSService` + `kafka.amazonaws.com` + secret ARN `AmazonMSK_*` đúng account/Region | Drop; mọi biến thể khác vẫn cảnh báo |
+| **DMS migration read** | Exact DMS role + session + một trong hai secret PostgreSQL migration | Drop; role, session hoặc secret khác vẫn cảnh báo |
 | **SG ingress filter** | Chỉ alert khi CIDR là `0.0.0.0/0` hoặc `::/0` | Drop nếu rule nội bộ hẹp |
 | **S3 policy filter** | Chỉ alert khi policy grant `Principal: "*"` không có Condition | Drop nếu không phải public |
 
 **Kết quả quét CloudTrail 48 giờ ngày 20/07/2026:**
 
 - Exact allowlist bao phủ nguồn nhiễu hợp lệ: External Secrets 556 event, Alert Lambda 60, Terraform plan/apply 110, Karpenter 6 và MSK 3.
+- Bổ sung DMS sau khi xác minh bốn event runtime khớp đúng IAM policy hai secret trong `dms-postgresql.tf`; notification baseline trước fix là 2.552 giây.
 - Human SSO đọc secret/parameter không được allowlist; IAM write từ Terraform apply vẫn cảnh báo vì pipeline có thể bị chiếm quyền.
 - Ingress PostgreSQL public `0.0.0.0/0:5432` vẫn là cảnh báo thật, không được suppress.
 - CloudWatch chưa có marker `MANDATE11_EXPECTED_READ`, xác nhận bản lọc mới chưa được deploy tại thời điểm rà soát.
 
-**Điều kiện chuyển sang `ĐẠT`:** Sau khi deploy, chụp CloudWatch log `MANDATE11_EXPECTED_READ` cho MSK/Karpenter, xác nhận các event này không còn tới Slack, và xác nhận public ingress `0.0.0.0:5432` vẫn tới Slack.
+**Điều kiện chuyển sang `ĐẠT`:** Sau khi deploy, chụp CloudWatch log `MANDATE11_EXPECTED_READ` cho MSK/Karpenter/DMS, xác nhận các event này không còn tới Slack, và xác nhận public ingress `0.0.0.0:5432` vẫn tới Slack.
 
 ---
 
