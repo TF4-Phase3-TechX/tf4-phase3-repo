@@ -71,10 +71,14 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
 
   at_rest_encryption_enabled = true
 
-  # Preferred mode allows the migration window to support non-TLS clients while
-  # keeping the target ready for the post-cutover move to required TLS.
+  # Ref: CDO08-REL-16 - cutover direction is TLS + auth token before flipping
+  # managedData.valkey.enabled, so transit encryption is required (not
+  # preferred) and an AUTH token is set. cart must present the token via
+  # StackExchange.Redis's `password=` connection option.
   transit_encryption_enabled = true
-  transit_encryption_mode    = "preferred"
+  transit_encryption_mode    = "required"
+  auth_token                 = var.valkey_auth_token
+  auth_token_update_strategy = "SET"
 
   snapshot_retention_limit = 7
   snapshot_window          = "18:00-19:00"

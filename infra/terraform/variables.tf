@@ -108,3 +108,18 @@ variable "budget_notification_emails" {
     error_message = "Each budget_notification_emails entry must be a valid email address."
   }
 }
+
+# Ref: CDO08-REL-16 - AUTH token for the cart ElastiCache Valkey replication group.
+# Supplied via TF_VAR_valkey_auth_token in CI (terraform-apply.yaml), never committed.
+# ElastiCache does not support an AWS-managed auth token like RDS's
+# manage_master_user_password, so this must be a manually-provisioned value.
+variable "valkey_auth_token" {
+  description = "AUTH token for the ElastiCache Valkey replication group (techx-tf4-valkey-cart)"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.valkey_auth_token) >= 16
+    error_message = "valkey_auth_token must be at least 16 characters (ElastiCache AUTH token minimum)."
+  }
+}

@@ -34,6 +34,10 @@ if (string.IsNullOrEmpty(valkeyAddress))
     Console.WriteLine("VALKEY_ADDR environment variable is required.");
     Environment.Exit(1);
 }
+// Ref: CDO08-REL-16 - optional TLS + AUTH token for the ElastiCache cutover.
+// Both are unset for the current in-cluster Valkey (plaintext, no auth).
+bool valkeyTls = builder.Configuration.GetValue<bool>("VALKEY_TLS");
+string valkeyPassword = builder.Configuration["VALKEY_PASSWORD"];
 
 builder.Logging
     .AddOpenTelemetry(options => options.AddOtlpExporter())
@@ -41,7 +45,7 @@ builder.Logging
 
 builder.Services.AddSingleton<ICartStore>(x =>
 {
-    var store = new ValkeyCartStore(x.GetRequiredService<ILogger<ValkeyCartStore>>(), valkeyAddress);
+    var store = new ValkeyCartStore(x.GetRequiredService<ILogger<ValkeyCartStore>>(), valkeyAddress, valkeyTls, valkeyPassword);
     store.Initialize();
     return store;
 });
