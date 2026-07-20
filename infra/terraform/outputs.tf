@@ -99,6 +99,16 @@ output "cloudtrail_log_group_arn" {
   value       = aws_cloudwatch_log_group.cloudtrail.arn
 }
 
+output "cloudtrail_auto_remediation_eventbridge_rule_name" {
+  description = "EventBridge rule that starts SSM Automation when CloudTrail StopLogging is detected"
+  value       = aws_cloudwatch_event_rule.cloudtrail_stoplogging_auto_remediation.name
+}
+
+output "cloudtrail_auto_remediation_ssm_document_name" {
+  description = "SSM Automation document used to re-enable CloudTrail logging"
+  value       = aws_ssm_document.cloudtrail_auto_remediation.name
+}
+
 output "karpenter_controller_role_arn" {
   description = "IAM role ARN used by the Karpenter controller service account"
   value       = module.karpenter.iam_role_arn
