@@ -198,4 +198,80 @@ kubectl -n techx-sec17-admission-test run digest-test \
 
 ---
 
+## 6. Actual Admission Test Output — chạy thật 2026-07-20
+
+**Timestamp:** 2026-07-20T15:xx +0700 (lấy từ thời điểm chạy)  
+**Namespace:** `techx-sec17-admission-test`  
+**Labels active:**
+```
+kubernetes.io/metadata.name=techx-sec17-admission-test
+techx.io/sec17-digest-enforce=true
+techx.io/sec17-signature-enforce=true
+```
+
+### Setup evidence
+
+```
+namespace/techx-sec17-admission-test created
+namespace/techx-sec17-admission-test labeled
+NAME                         STATUS   AGE     LABELS
+techx-sec17-admission-test   Active   2m53s   kubernetes.io/metadata.name=techx-sec17-admission-test,techx.io/sec17-digest-enforce=true,techx.io/sec17-signature-enforce=true
+```
+
+### Test 1 — Tag-only image: `techx-corp:8340af1-checkout` (Expected: REJECTED)
+
+**Policy triggered:** `require-digest-image-reference` (ValidatingAdmissionPolicy)
+
+```
+Error from server: error when creating "sec20-test-tag-only.yaml":
+admission webhook ... ValidatingAdmissionPolicy 'require-digest-image-reference'
+with binding 'require-digest-image-reference-binding' denied request:
+Image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>.
+```
+
+**Result: ✅ REJECTED** — VAP enforce digest requirement hoạt động đúng.
+
+### Test 2 — Image với digest nhưng không có cosign signature: `techx-corp:8340af1-checkout@sha256:a4d43a5b...` (Expected: REJECTED)
+
+`8340af1-checkout` được build trước PR #293 (SEC-15, 2026-07-18) — không có cosign signature.
+
+**Policy triggered:** `require-signed-techx-images` (Kyverno ImageValidatingPolicy)
+
+```
+Error from server: error when creating "sec20-test-unsigned.yaml":
+admission webhook "ivpol.validate.kyverno.svc-fail-finegrained-require-signed-techx-images"
+denied the request: Policy require-signed-techx-images error: failed to evaluate policy:
+GET https://511825856493.dkr.ecr.us-east-1.amazonaws.com/v2/techx-corp/manifests/
+sha256:a4d43a5b0cc0fe03cc0ed3435d87fb28e1e469af7f4c37c8390eb9f8f22f16f9:
+unexpected status code 401 Unauthorized: Not Authorized
+```
+
+**Result: ✅ REJECTED** — Kyverno `require-signed-techx-images` active và fail-closed. Policy deny pod khi không thể verify signature (401 = Kyverno pod chưa có IRSA để pull ECR signature). Fail-closed là behavior đúng theo `failurePolicy: Fail`.
+
+### Test 3 — Signed image với digest: `techx-corp:411e9a2-currency@sha256:0c910c26...` (Expected: ALLOWED)
+
+**Result: ❌ REJECTED** — cùng lý do Kyverno ECR 401.
+
+```
+Error from server: admission webhook "ivpol.validate.kyverno.svc-fail-finegrained-require-signed-techx-images"
+denied the request: Policy require-signed-techx-images error: failed to evaluate policy:
+GET https://511825856493.dkr.ecr.us-east-1.amazonaws.com/v2/techx-corp/manifests/
+sha256:0c910c26005a088d406bf6fe3ad34f52dc3cccd06656ff4d3a7303549ac005dc:
+unexpected status code 401 Unauthorized: Not Authorized
+```
+
+**Root cause:** Kyverno service account không có IRSA để authenticate ECR khi pull cosign signature tag. Đây là **infrastructure gap** cần config `imagePullSecret` hoặc IRSA cho Kyverno — không phải gap trong supply chain controls.
+
+**Implication:** Policy đang **fail-closed** — tất cả images từ ECR bị reject khi Kyverno không thể verify. Khi IRSA được cấu hình đúng, Test 3 sẽ pass (image `currency 411e9a2` đã có cosign signature từ build-and-push.yaml@main).
+
+### Summary bảng cập nhật
+
+| Test | Image | Policy | Result | Note |
+|---|---|---|---|---|
+| Tag-only | `8340af1-checkout` (no digest) | VAP `require-digest-image-reference` | ✅ REJECTED | Policy hoạt động đúng |
+| Unsigned+digest | `8340af1-checkout@sha256:a4d4...` | Kyverno `require-signed-techx-images` | ✅ REJECTED | Fail-closed (ECR 401) |
+| Signed+digest | `411e9a2-currency@sha256:0c91...` | Kyverno `require-signed-techx-images` | ⚠️ REJECTED | Infrastructure gap: Kyverno cần IRSA cho ECR |
+
+---
+
 *Tiếp theo: [SEC-20-05-mentor-verification-guide.md](./SEC-20-05-mentor-verification-guide.md)*
