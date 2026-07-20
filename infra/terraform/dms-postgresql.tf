@@ -6,6 +6,93 @@
 locals {
   postgresql_dms_source_host        = "k8s-techxtf4-postgres-981d5617bf-18dcaaac76555685.elb.us-east-1.amazonaws.com"
   postgresql_dms_source_secret_path = "techx/tf4/dms-postgres-source"
+  postgresql_dms_target_secret_path = "techx/tf4/rds-postgres"
+
+  postgresql_dms_table_mappings = {
+    rules = [
+      {
+        "rule-type" = "selection"
+        "rule-id"   = "include-accounting"
+        "rule-name" = "include-accounting"
+        "object-locator" = {
+          "schema-name" = "accounting"
+          "table-name"  = "%"
+        }
+        "rule-action" = "include"
+      },
+      {
+        "rule-type" = "selection"
+        "rule-id"   = "include-catalog"
+        "rule-name" = "include-catalog"
+        "object-locator" = {
+          "schema-name" = "catalog"
+          "table-name"  = "%"
+        }
+        "rule-action" = "include"
+      },
+      {
+        "rule-type" = "selection"
+        "rule-id"   = "include-reviews"
+        "rule-name" = "include-reviews"
+        "object-locator" = {
+          "schema-name" = "reviews"
+          "table-name"  = "%"
+        }
+        "rule-action" = "include"
+      }
+    ]
+  }
+
+  postgresql_dms_forward_task_settings = {
+    TargetMetadata = {
+      TargetSchema             = ""
+      SupportLobs              = true
+      FullLobMode              = false
+      LobChunkSize             = 64
+      LimitedSizeLobMode       = true
+      LobMaxSize               = 32
+      LoadMaxFileSize          = 0
+      ParallelLoadThreads      = 0
+      ParallelLoadBufferSize   = 0
+      BatchApplyEnabled        = false
+      TaskRecoveryTableEnabled = false
+    }
+    FullLoadSettings = {
+      TargetTablePrepMode             = "DO_NOTHING"
+      CreatePkAfterFullLoad           = false
+      StopTaskCachedChangesApplied    = false
+      StopTaskCachedChangesNotApplied = false
+      MaxFullLoadSubTasks             = 4
+      TransactionConsistencyTimeout   = 600
+      CommitRate                      = 10000
+    }
+    Logging = {
+      EnableLogging = true
+    }
+    ValidationSettings = {
+      EnableValidation    = true
+      ValidationMode      = "ROW_LEVEL"
+      ThreadCount         = 5
+      FailureMaxCount     = 10000
+      HandleCollationDiff = false
+    }
+    ControlTablesSettings = {
+      ControlSchema                 = "dms_control"
+      HistoryTimeslotInMinutes      = 5
+      HistoryTableEnabled           = true
+      SuspendedTablesTableEnabled   = true
+      StatusTableEnabled            = true
+      FullLoadExceptionTableEnabled = true
+    }
+  }
+}
+
+data "aws_secretsmanager_secret" "postgresql_dms_source" {
+  name = local.postgresql_dms_source_secret_path
+}
+
+data "aws_secretsmanager_secret" "postgresql_dms_target" {
+  name = local.postgresql_dms_target_secret_path
 }
 
 resource "aws_iam_role" "dms_vpc_role" {
@@ -211,6 +298,73 @@ resource "aws_dms_replication_instance" "postgresql" {
     var.tags,
     {
       Name      = "techx-tf4-postgresql-dms"
+      Component = "postgresql"
+      Service   = "dms"
+      ManagedBy = "terraform"
+      Mandate   = "08"
+      Task      = "CDO08-REL-15"
+    }
+  )
+}
+
+resource "aws_dms_endpoint" "postgresql_source" {
+  endpoint_id   = "techx-tf4-postgresql-source"
+  endpoint_type = "source"
+  engine_name   = "postgres"
+  ssl_mode      = "none"
+
+  secrets_manager_access_role_arn = aws_iam_role.postgresql_dms_secrets_access.arn
+  secrets_manager_arn             = data.aws_secretsmanager_secret.postgresql_dms_source.arn
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "techx-tf4-postgresql-source"
+      Component = "postgresql"
+      Service   = "dms"
+      ManagedBy = "terraform"
+      Mandate   = "08"
+      Task      = "CDO08-REL-15"
+    }
+  )
+}
+
+resource "aws_dms_endpoint" "postgresql_target" {
+  endpoint_id   = "techx-tf4-postgresql-rds-target"
+  endpoint_type = "target"
+  engine_name   = "postgres"
+  ssl_mode      = "require"
+
+  secrets_manager_access_role_arn = aws_iam_role.postgresql_dms_secrets_access.arn
+  secrets_manager_arn             = data.aws_secretsmanager_secret.postgresql_dms_target.arn
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "techx-tf4-postgresql-rds-target"
+      Component = "postgresql"
+      Service   = "dms"
+      ManagedBy = "terraform"
+      Mandate   = "08"
+      Task      = "CDO08-REL-15"
+    }
+  )
+}
+
+resource "aws_dms_replication_task" "postgresql_forward" {
+  replication_task_id      = "techx-tf4-postgresql-forward"
+  migration_type           = "full-load-and-cdc"
+  replication_instance_arn = aws_dms_replication_instance.postgresql.replication_instance_arn
+  source_endpoint_arn      = aws_dms_endpoint.postgresql_source.endpoint_arn
+  target_endpoint_arn      = aws_dms_endpoint.postgresql_target.endpoint_arn
+
+  table_mappings            = jsonencode(local.postgresql_dms_table_mappings)
+  replication_task_settings = jsonencode(local.postgresql_dms_forward_task_settings)
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "techx-tf4-postgresql-forward"
       Component = "postgresql"
       Service   = "dms"
       ManagedBy = "terraform"
