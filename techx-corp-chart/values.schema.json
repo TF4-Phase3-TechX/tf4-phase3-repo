@@ -258,6 +258,9 @@
         "strategy": {
           "$ref": "#/definitions/DeploymentStrategy"
         },
+        "rollouts": {
+          "$ref": "#/definitions/Rollouts"
+        },
         "persistence": {
           "$ref": "#/definitions/Persistence"
         },
@@ -419,6 +422,15 @@
             "RollingUpdate",
             "Recreate"
           ]
+        }
+      }
+    },
+    "Rollouts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
         }
       }
     },

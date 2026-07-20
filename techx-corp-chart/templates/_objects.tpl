@@ -3,9 +3,11 @@ Demo component Deployment template
 */}}
 {{- define "techx-corp.deployment" }}
 {{- $autoscaling := .autoscaling | default dict }}
+{{- /* Ref: CDO08-REL-16 - Blue-Green cutover for cart via Argo Rollouts. */}}
+{{- $rolloutsEnabled := (.rollouts).enabled | default false }}
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: {{ if $rolloutsEnabled }}argoproj.io/v1alpha1{{ else }}apps/v1{{ end }}
+kind: {{ if $rolloutsEnabled }}Rollout{{ else }}Deployment{{ end }}
 metadata:
   name: {{ .name }}
   labels:
@@ -15,7 +17,12 @@ spec:
   replicas: {{ .replicas | default .defaultValues.replicas }}
   {{- end }}
   revisionHistoryLimit: {{ .revisionHistoryLimit | default .defaultValues.revisionHistoryLimit }}
-  {{- if .strategy }}
+  {{- if $rolloutsEnabled }}
+  strategy:
+    blueGreen:
+      activeService: {{ .name }}
+      autoPromotionEnabled: false
+  {{- else if .strategy }}
   strategy:
     {{- .strategy | toYaml | nindent 4 }}
   {{- end }}

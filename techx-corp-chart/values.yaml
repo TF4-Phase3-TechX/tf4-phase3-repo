@@ -261,6 +261,11 @@ components:
   cart:
     enabled: true
     replicas: 2
+    # Ref: CDO08-REL-16 - Blue-Green cutover to ElastiCache Valkey via Argo
+    # Rollouts. Disabled by default; flipped only for the actual migration
+    # window per VALKEY-MIGRATION-PLAN.md.
+    rollouts:
+      enabled: false
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
