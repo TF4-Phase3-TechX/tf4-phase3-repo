@@ -67,6 +67,10 @@ All flags default to false — no change to existing behavior until explicitly f
 {{-   $kafkaSecret := ($md.kafka).secretName | default "msk-kafka-secret" }}
 {{-   if has .name (list "accounting" "checkout" "fraud-detection") }}
 {{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_ADDR" "secretName" $kafkaSecret "secretKey" "kafka-address") | mustFromJson }}
+{{-     $allEnvs = include "techx-corp.upsertEnvSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_SECURITY_PROTOCOL" "secretName" $kafkaSecret "secretKey" "security-protocol") | mustFromJson }}
+{{-     $allEnvs = include "techx-corp.upsertEnvSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_SASL_MECHANISM" "secretName" $kafkaSecret "secretKey" "sasl-mechanism") | mustFromJson }}
+{{-     $allEnvs = include "techx-corp.upsertEnvSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_USERNAME" "secretName" $kafkaSecret "secretKey" "username") | mustFromJson }}
+{{-     $allEnvs = include "techx-corp.upsertEnvSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_PASSWORD" "secretName" $kafkaSecret "secretKey" "password") | mustFromJson }}
 {{-   end }}
 {{- end }}
 
@@ -86,6 +90,28 @@ Returns a JSON array suitable for mustFromJson chaining.
 {{-   else }}
 {{-     $out = append $out . }}
 {{-   end }}
+{{- end }}
+{{- $out | toJson }}
+{{- end }}
+
+{{/*
+Helper: upsert a named env var as a secretKeyRef entry.
+Input dict keys: envList, envName, secretName, secretKey.
+Returns a JSON array suitable for mustFromJson chaining.
+*/}}
+{{- define "techx-corp.upsertEnvSecretRef" -}}
+{{- $out := list }}
+{{- $found := false }}
+{{- range .envList }}
+{{-   if eq .name $.envName }}
+{{-     $out = append $out (dict "name" $.envName "valueFrom" (dict "secretKeyRef" (dict "name" $.secretName "key" $.secretKey))) }}
+{{-     $found = true }}
+{{-   else }}
+{{-     $out = append $out . }}
+{{-   end }}
+{{- end }}
+{{- if not $found }}
+{{-   $out = append $out (dict "name" .envName "valueFrom" (dict "secretKeyRef" (dict "name" .secretName "key" .secretKey))) }}
 {{- end }}
 {{- $out | toJson }}
 {{- end }}

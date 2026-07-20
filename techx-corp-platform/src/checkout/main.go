@@ -141,6 +141,10 @@ type checkout struct {
 	emailSvcAddr          string
 	paymentSvcAddr        string
 	kafkaBrokerSvcAddr    string
+	kafkaSecurityProtocol string
+	kafkaSaslMechanism    string
+	kafkaUsername         string
+	kafkaPassword         string
 	pb.UnimplementedCheckoutServiceServer
 	KafkaProducerClient     sarama.AsyncProducer
 	shippingSvcClient       pb.ShippingServiceClient
@@ -230,9 +234,20 @@ func main() {
 	defer c.Close()
 
 	svc.kafkaBrokerSvcAddr = os.Getenv("KAFKA_ADDR")
+	svc.kafkaSecurityProtocol = os.Getenv("KAFKA_SECURITY_PROTOCOL")
+	svc.kafkaSaslMechanism = os.Getenv("KAFKA_SASL_MECHANISM")
+	svc.kafkaUsername = os.Getenv("KAFKA_USERNAME")
+	svc.kafkaPassword = os.Getenv("KAFKA_PASSWORD")
 
 	if svc.kafkaBrokerSvcAddr != "" {
-		svc.KafkaProducerClient, err = kafka.CreateKafkaProducer([]string{svc.kafkaBrokerSvcAddr}, logger)
+		svc.KafkaProducerClient, err = kafka.CreateKafkaProducer(
+			[]string{svc.kafkaBrokerSvcAddr},
+			logger,
+			svc.kafkaSecurityProtocol,
+			svc.kafkaSaslMechanism,
+			svc.kafkaUsername,
+			svc.kafkaPassword,
+		)
 		if err != nil {
 			logger.Error(err.Error())
 		}

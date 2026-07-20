@@ -154,9 +154,48 @@ internal class Consumer : IDisposable
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = true
         };
+        ApplyKafkaSecurityConfig(conf);
 
         return new ConsumerBuilder<string, byte[]>(conf)
             .Build();
+    }
+
+    private static void ApplyKafkaSecurityConfig(ConsumerConfig conf)
+    {
+        var securityProtocol = Environment.GetEnvironmentVariable("KAFKA_SECURITY_PROTOCOL");
+        if (string.IsNullOrWhiteSpace(securityProtocol))
+        {
+            return;
+        }
+
+        if (securityProtocol.Equals("SASL_SSL", StringComparison.OrdinalIgnoreCase))
+        {
+            conf.SecurityProtocol = SecurityProtocol.SaslSsl;
+        }
+        else if (securityProtocol.Equals("SSL", StringComparison.OrdinalIgnoreCase))
+        {
+            conf.SecurityProtocol = SecurityProtocol.Ssl;
+            return;
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unsupported KAFKA_SECURITY_PROTOCOL value: {securityProtocol}");
+        }
+
+        var mechanism = Environment.GetEnvironmentVariable("KAFKA_SASL_MECHANISM");
+        if (!string.IsNullOrWhiteSpace(mechanism))
+        {
+            if (!mechanism.Equals("SCRAM-SHA-512", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unsupported KAFKA_SASL_MECHANISM value: {mechanism}");
+            }
+            conf.SaslMechanism = SaslMechanism.ScramSha512;
+        }
+
+        conf.SaslUsername = Environment.GetEnvironmentVariable("KAFKA_USERNAME")
+            ?? throw new InvalidOperationException("KAFKA_USERNAME is required for SASL_SSL Kafka.");
+        conf.SaslPassword = Environment.GetEnvironmentVariable("KAFKA_PASSWORD")
+            ?? throw new InvalidOperationException("KAFKA_PASSWORD is required for SASL_SSL Kafka.");
     }
 
     public void Dispose()

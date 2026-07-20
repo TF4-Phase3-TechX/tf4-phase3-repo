@@ -7,6 +7,9 @@ package frauddetection
 
 import org.apache.kafka.clients.consumer.ConsumerConfig.*
 import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.config.SaslConfigs.SASL_JAAS_CONFIG
+import org.apache.kafka.common.config.SaslConfigs.SASL_MECHANISM
+import org.apache.kafka.common.config.SslConfigs.SECURITY_PROTOCOL_CONFIG
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.logging.log4j.LogManager
@@ -45,6 +48,7 @@ fun main() {
         exitProcess(1)
     }
     props[BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
+    applyKafkaSecurityConfig(props)
     val consumer = KafkaConsumer<String, ByteArray>(props).apply {
         subscribe(listOf(topic))
     }
@@ -67,6 +71,32 @@ fun main() {
                 }
         }
     }
+}
+
+fun applyKafkaSecurityConfig(props: Properties) {
+    val securityProtocol = System.getenv("KAFKA_SECURITY_PROTOCOL") ?: return
+
+    when (securityProtocol.uppercase(Locale.US)) {
+        "SASL_SSL" -> props[SECURITY_PROTOCOL_CONFIG] = "SASL_SSL"
+        "SSL" -> {
+            props[SECURITY_PROTOCOL_CONFIG] = "SSL"
+            return
+        }
+        else -> throw IllegalArgumentException("Unsupported KAFKA_SECURITY_PROTOCOL value: $securityProtocol")
+    }
+
+    val mechanism = System.getenv("KAFKA_SASL_MECHANISM") ?: "SCRAM-SHA-512"
+    if (!mechanism.equals("SCRAM-SHA-512", ignoreCase = true)) {
+        throw IllegalArgumentException("Unsupported KAFKA_SASL_MECHANISM value: $mechanism")
+    }
+    props[SASL_MECHANISM] = "SCRAM-SHA-512"
+
+    val username = System.getenv("KAFKA_USERNAME")
+        ?: throw IllegalArgumentException("KAFKA_USERNAME is required for SASL_SSL Kafka")
+    val password = System.getenv("KAFKA_PASSWORD")
+        ?: throw IllegalArgumentException("KAFKA_PASSWORD is required for SASL_SSL Kafka")
+    props[SASL_JAAS_CONFIG] =
+        "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"$username\" password=\"$password\";"
 }
 
 /**
