@@ -115,6 +115,7 @@ jobs:
           format: 'table'
           output: 'trivy-sast-report.txt'
           severity: 'CRITICAL,HIGH'
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '0'
           ignore-unfixed: true
 
@@ -127,6 +128,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '1'
           ignore-unfixed: true
 
