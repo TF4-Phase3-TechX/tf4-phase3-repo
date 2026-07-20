@@ -11,6 +11,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_readonly_sensitive" {
     source      = ["aws.secretsmanager", "aws.ssm"]
     detail-type = ["AWS API Call via CloudTrail"]
     detail = {
+      errorCode = [{ "exists" = true }, { "exists" = false }]
       "$or" = [
         {
           eventSource = ["secretsmanager.amazonaws.com"]
@@ -44,6 +45,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_writeonly_sensitive" {
     source      = ["aws.iam", "aws.signin", "aws.cloudtrail", "aws.ec2", "aws.s3", "aws.config", "aws.eks"]
     detail-type = ["AWS API Call via CloudTrail", "AWS Console Sign In via CloudTrail"]
     detail = {
+      errorCode = [{ "exists" = true }, { "exists" = false }]
       "$or" = [
         {
           eventSource = ["iam.amazonaws.com"]
