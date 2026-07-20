@@ -87,6 +87,12 @@ commit message, hay log dán vào PR).
 - [ ] PM approval có nếu chọn cold cutover — **PENDING**, xem §4.
 - [x] Risk được ghi rõ cho customer/checkout path — xem §3.
 
+## 6b. Acceptance Criteria (Subtask 4)
+
+- [x] Rollback path rõ — xem §8.1 (VK-04 Big Bang Revert, trigger + các bước cụ thể + RTO).
+- [x] Không xoá resource cũ sớm — xem §8.2 (`resource-policy: keep` + boundary 24-48h).
+- [x] REL-18 có đủ input để cleanup sau này — xem §8.2 (điều kiện + danh sách input cần ghi lại).
+
 ## 7. Prerequisites / Blockers trước khi cutover thật
 
 1. **PM approval** (§4) — PENDING.
@@ -99,6 +105,58 @@ commit message, hay log dán vào PR).
    `environments/production/image-revisions.yaml` trước khi flip toggle.
 5. `infra/terraform/elasticache.tf` thuộc REL-14/CDO-04 — PR đổi file này cần CDO-04 review.
 
-## 8. Rollback & Retention Boundary
+## 8. Rollback & Retention Boundary (Subtask 4)
 
-_Xem Subtask 4 (bổ sung ở commit riêng)._
+### 8.1. Rollback — VK-04 Big Bang Revert
+
+Kế thừa nguyên trạng chiến lược đã chọn ở ADR VK-04 (`MANDATE-08-VALKEY-DECISIONS-Quan.md`): vì cold
+cutover không có dual-write, rollback cũng đối xứng — chấp nhận mất cart ghi trên ElastiCache trong
+khoảng thời gian cutover→rollback, đổi lại RTO nhanh nhất có thể.
+
+**Trigger rollback ngay khi chạm 1 trong các ngưỡng sau** (không debug trên production trước, điều tra
+sau khi đã an toàn — cùng tinh thần runbook REL-09):
+
+- Checkout success rate < 99% (sliding 1 phút) sau thời điểm flip toggle.
+- Smoke test cart/checkout ở `CDO08-REL-16-cart-cutover-evidence.md` §3 fail.
+- `cart` log xuất hiện lỗi kết nối ElastiCache (`Wasn't able to connect to redis`,
+  `Can't access cart storage`) lặp lại, không tự phục hồi sau vài lần retry.
+
+**Các bước rollback:**
+
+1. Tắt toggle: đặt `managedData.enabled=false` (hoặc riêng `managedData.valkey.enabled=false` nếu
+   postgres/kafka managed mode đã bật độc lập) trong `environments/production/app-values.yaml` (gitops
+   repo), commit + push.
+2. ArgoCD sync (có thể force refresh để không chờ poll interval) → `_pod.tpl` tự trả `VALKEY_ADDR` về
+   giá trị plaintext `valkey-cart:6379` và tự thêm lại init container `wait-for-valkey-cart` — không cần
+   sửa gì thêm ở phía chart.
+3. Rolling restart `cart` (ArgoCD sync đã tự trigger rollout do đổi env; xác nhận `kubectl rollout status
+   deployment/cart -n techx-tf4`), giữ nguyên `replicas: 2` trong suốt quá trình (luôn có pod phục vụ).
+4. Verify lại smoke test (§3 của evidence doc) trên Valkey in-cluster cũ.
+5. Báo incident channel + ghi nhận lại trong evidence (không tạo task rollback riêng — cập nhật trực
+   tiếp `CDO08-REL-16-cart-cutover-evidence.md` §5 với thời điểm/lý do rollback).
+
+**RTO kỳ vọng:** tính bằng phút — chỉ là đổi 1 biến môi trường (qua secretKeyRef → giá trị plaintext) +
+rolling restart Deployment, không cần chờ đồng bộ dữ liệu (không có dữ liệu nào cần đồng bộ ngược, đúng
+tinh thần cold cutover/Big Bang Revert).
+
+> Rollback này **không đảo ngược được** phần TLS/auth đã bật trên ElastiCache (`transit_encryption_mode`,
+> `auth_token`) — đó là thay đổi ở tầng Terraform/infra, không phải cutover config, và không cần đảo vì
+> ElastiCache không còn nhận traffic sau bước 1-2 ở trên.
+
+### 8.2. Retention Boundary — không xoá Valkey in-cluster trước REL-18
+
+- **Không xoá** pod/PVC `valkey-cart` (`values.yaml` component `valkey-cart`, PVC `valkey-cart-pvc`) cho
+  tới khi ElastiCache đã cutover **ổn định 24–48h** (bake period, khớp `OBSERVATION_PERIOD` trong
+  `D8-PERF-03-cutover-contract.md` §2) — dù có rollback hay không trong khoảng thời gian đó.
+- PVC đã có sẵn `helm.sh/resource-policy: keep` + ArgoCD `Prune=false,Delete=false` (theo
+  `templates/component-pvcs.yaml`) — nghĩa là kể cả khi tắt component `valkey-cart` khỏi values, PVC vẫn
+  không tự bị xoá. Không cần thêm gì ở phía chart cho việc này.
+- **Điều kiện để cho phép decommission (REL-18):**
+  1. Đã qua bake 24–48h ổn định trên ElastiCache (không rollback trong suốt window).
+  2. Smoke test + SLO checkout pass liên tục trong window đó (không chỉ tại thời điểm cutover).
+  3. Không còn read/write nào từ `cart` tới `valkey-cart:6379` (xác nhận qua metrics kết nối/log, không
+     chỉ suy đoán từ việc đã flip toggle).
+- **Input REL-18 cần từ REL-16:** thời điểm cutover thật (để tính mốc 24–48h), xác nhận rollback có xảy
+  ra hay không trong window, và địa chỉ PVC/Deployment cần xoá (`valkey-cart`, `valkey-cart-pvc`,
+  namespace `techx-tf4`). Ghi các thông tin này vào `CDO08-REL-16-cart-cutover-evidence.md` §5 khi cutover
+  thật diễn ra, để REL-18 tham chiếu trực tiếp thay vì phải tự tìm lại.
