@@ -113,10 +113,14 @@ variable "budget_notification_emails" {
 # Supplied via TF_VAR_valkey_auth_token in CI (terraform-apply.yaml), never committed.
 # ElastiCache does not support an AWS-managed auth token like RDS's
 # manage_master_user_password, so this must be a manually-provisioned value.
+# Default is a non-secret placeholder so `terraform plan` (read-only, runs on
+# every PR) never needs the real token; `terraform apply` still requires the
+# real value via TF_VALKEY_AUTH_TOKEN before it can succeed.
 variable "valkey_auth_token" {
   description = "AUTH token for the ElastiCache Valkey replication group (techx-tf4-valkey-cart)"
   type        = string
   sensitive   = true
+  default     = "REPLACE-ME-PLACEHOLDER-NOT-A-REAL-TOKEN"
 
   validation {
     condition     = length(var.valkey_auth_token) >= 16
