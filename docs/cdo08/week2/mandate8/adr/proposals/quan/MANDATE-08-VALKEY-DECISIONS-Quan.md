@@ -17,8 +17,14 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 | Trạng thái | Phương án | Phân tích Trade-offs (Ưu/Nhược điểm) | Ảnh hưởng Trải nghiệm Khách hàng (SLO) |
 | :--- | :--- | :--- | :--- |
-| **ĐÃ CHỌN** | `B` | Cart chỉ có 1 field, luôn TTL 60 phút — bản chất là dữ liệu tạm thời. Cold cutover không cần dual-write, không sửa code `cart`, rủi ro thấp, làm nhanh — hợp deadline. Nhược: user đang có cart sẽ thấy giỏ trống, phải add lại. | Không ảnh hưởng success rate checkout. Cutover ở **low-traffic window** để giảm số user bị ảnh hưởng; cart quá TTL vốn đã tự hết hạn nên không phải "mất thêm". |
+| **ĐÃ CHỌN** | `B` | Cart chỉ có 1 field, luôn TTL 60 phút — bản chất là dữ liệu tạm thời. Cold cutover không cần dual-write, không sửa code `cart` ở phần **cart-store migration logic**, rủi ro thấp, làm nhanh — hợp deadline. Nhược: user đang có cart sẽ thấy giỏ trống, phải add lại. | Không ảnh hưởng success rate checkout. Cutover ở **low-traffic window** để giảm số user bị ảnh hưởng; cart quá TTL vốn đã tự hết hạn nên không phải "mất thêm". |
 | **BỊ LOẠI BỎ** | `A` | Cần dual-write/export-import trong lúc hệ thống chạy — phức tạp, rủi ro race condition — để bảo toàn dữ liệu vốn tự hết hạn sau 1 giờ. Không tương xứng chi phí kỹ thuật. | N/A |
+
+> **Cập nhật (REL-16, 2026-07-20):** "không sửa code `cart`" ở trên chỉ áp dụng cho phần cart-store migration
+> logic (không cần dual-write/backfill). REL-16 vẫn đổi code `cart` ở phần **kết nối tới Valkey** (bật
+> `ssl=true` + password) vì hướng cutover chọn **TLS + auth trước**, không đi plaintext — dù ElastiCache hiện
+> ở `transit_encryption_mode=preferred` (vẫn chấp nhận client không TLS). Chi tiết:
+> `CDO08-REL-16-valkey-cutover-plan.md`.
 
 ---
 
@@ -59,6 +65,10 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 #### Kế hoạch Triển khai cho Phương án Đã Chọn:
 * **Cách triển khai đề xuất:** (1) Provision ElastiCache Multi-AZ trong private subnet, SG chỉ mở từ node SG. (2) Job pre-flight test connectivity/TLS. (3) Tuỳ chọn dump/restore để smoke test. (4) Repoint `VALKEY_ADDR` trong low-traffic window, rolling restart `cart`. (5) Cart smoke test end-to-end (add → get → checkout) qua Jaeger.
 * **Lưu ý & Biện pháp phòng ngừa lỗi:** Không repoint khi chưa pass pre-flight. Giữ pod/PVC `valkey-cart` cũ warm tới khi bake xong (24-48h). Cần PM/business sign-off việc mất cart tại cutover.
+
+> **Cập nhật (REL-16, 2026-07-20):** bước (2) pre-flight mở rộng thành test connectivity **qua TLS + auth
+> token** (không chỉ TLS phía transport mà còn xác thực bằng password) — vì REL-16 chọn bật `auth_token` trên
+> ElastiCache đồng thời với TLS, không tách rời hai việc này.
 
 ---
 
