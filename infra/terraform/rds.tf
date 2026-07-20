@@ -82,7 +82,7 @@ resource "aws_db_instance" "postgresql" {
   identifier = "techx-tf4-postgresql"
 
   engine         = "postgres"
-  engine_version = "17.6"
+  engine_version = "17.9"
   instance_class = "db.t4g.micro"
 
   db_name  = "otel"
@@ -106,7 +106,7 @@ resource "aws_db_instance" "postgresql" {
   backup_window           = "18:00-19:00"
   maintenance_window      = "sun:19:00-sun:20:00"
 
-  auto_minor_version_upgrade = true
+  auto_minor_version_upgrade = false
   copy_tags_to_snapshot      = true
   deletion_protection        = true
   delete_automated_backups   = false
