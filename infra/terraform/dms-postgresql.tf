@@ -172,7 +172,7 @@ resource "aws_iam_role" "postgresql_dms_secrets_access" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "dms.amazonaws.com"
+          Service = "dms.us-east-1.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }
@@ -317,6 +317,8 @@ resource "aws_dms_endpoint" "postgresql_source" {
   secrets_manager_access_role_arn = aws_iam_role.postgresql_dms_secrets_access.arn
   secrets_manager_arn             = data.aws_secretsmanager_secret.postgresql_dms_source.arn
 
+  depends_on = [aws_iam_role_policy.postgresql_dms_secrets_access]
+
   tags = merge(
     var.tags,
     {
@@ -339,6 +341,8 @@ resource "aws_dms_endpoint" "postgresql_target" {
 
   secrets_manager_access_role_arn = aws_iam_role.postgresql_dms_secrets_access.arn
   secrets_manager_arn             = data.aws_secretsmanager_secret.postgresql_dms_target.arn
+
+  depends_on = [aws_iam_role_policy.postgresql_dms_secrets_access]
 
   tags = merge(
     var.tags,
