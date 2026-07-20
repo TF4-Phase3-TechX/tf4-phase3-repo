@@ -259,11 +259,6 @@ components:
         type: RuntimeDefault
 
   cart:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -272,13 +267,17 @@ components:
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: cart
-      topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: cart
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -344,6 +343,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   checkout:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
     enabled: true
     replicas: 2
     podDisruptionBudget:
@@ -361,21 +374,6 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: checkout
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: checkout
     useDefault:
       env: true
     service:
@@ -452,6 +450,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   currency:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
     enabled: true
     replicas: 2
     autoscaling:
@@ -469,21 +481,6 @@ components:
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: currency
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: currency
     useDefault:
       env: true
     service:
@@ -616,6 +613,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   frontend:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
     enabled: true
     replicas: 2
     podDisruptionBudget:
@@ -633,21 +644,6 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: frontend
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: frontend
     useDefault:
       env: true
     service:
@@ -720,11 +716,6 @@ components:
         type: RuntimeDefault
 
   frontend-proxy:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -733,13 +724,17 @@ components:
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: frontend-proxy
-      topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: frontend-proxy
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -908,11 +903,6 @@ components:
         type: RuntimeDefault
 
   payment:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -921,13 +911,17 @@ components:
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: payment
-      topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: payment
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -974,11 +968,6 @@ components:
         type: RuntimeDefault
 
   product-catalog:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -987,13 +976,17 @@ components:
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: product-catalog
-      topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: product-catalog
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -1200,11 +1193,6 @@ components:
         type: RuntimeDefault
 
   shipping:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -1213,13 +1201,17 @@ components:
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: shipping
-      topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: shipping
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
