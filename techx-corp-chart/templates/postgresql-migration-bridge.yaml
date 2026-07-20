@@ -1,0 +1,24 @@
+{{- if .Values.postgresqlMigrationBridge.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-migration-bridge
+  labels:
+    app.kubernetes.io/name: postgresql-migration-bridge
+    app.kubernetes.io/component: postgresql
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: tcp-postgresql
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+  selector:
+    opentelemetry.io/name: postgresql
+{{- end }}
