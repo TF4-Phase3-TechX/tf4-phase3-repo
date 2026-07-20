@@ -166,7 +166,7 @@ jobs:
             test -n "$digest" && test "$digest" != None
             printf '%s=%s\n' "$service" "$digest"
           done < <(jq -r '.[]' <<< "$SERVICES_JSON") | tee image-digests.txt
-          digests_json="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          digests_json="$(jq -Rnc '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           echo "image_digests=$digests_json" >> "$GITHUB_OUTPUT"
 
       - name: Install Cosign
@@ -180,7 +180,7 @@ jobs:
           set -euo pipefail
           
           # Install Trivy
-          TRIVY_VERSION="0.51.1"
+          TRIVY_VERSION="0.72.0"
           wget -q https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
           tar -xzf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz trivy
           sudo mv trivy /usr/local/bin/
@@ -291,9 +291,30 @@ jobs:
 
               # 7. Attest SBOM — binds the CycloneDX SBOM to the image digest on the registry (not just a build artifact)
               echo ">> [7/8] Attesting SBOM..."
+              sbom_predicate_file="security-artifacts/sbom-predicate-${service}-${digest_clean}.json"
+              jq -n \
+                --arg repo "${{ github.repository }}" \
+                --arg commit "${{ github.sha }}" \
+                --arg workflow "${{ github.workflow }}" \
+                --arg run_id "${{ github.run_id }}" \
+                --arg service_name "$service" \
+                --arg image_digest "$digest" \
+                --slurpfile sbom "security-artifacts/sbom-${service}-${digest_clean}.json" \
+                '{
+                  kind: "cyclonedx-sbom",
+                  repo: $repo,
+                  commit: $commit,
+                  workflow: $workflow,
+                  run_id: $run_id,
+                  service_name: $service_name,
+                  image_digest: $image_digest,
+                  bomFormat: $sbom[0].bomFormat,
+                  sbom: $sbom[0]
+                }' > "$sbom_predicate_file"
+
               if ! cosign attest --yes \
-                --predicate "security-artifacts/sbom-${service}-${digest_clean}.json" \
-                --type cyclonedx \
+                --predicate "$sbom_predicate_file" \
+                --type custom \
                 "$image_ref_digest"; then
                 echo "::error::Failed to attest SBOM for $service"
                 echo "1" > security-artifacts/gate_status.txt
@@ -301,14 +322,47 @@ jobs:
 
               # 8. Verify SBOM attestation — evidence the CycloneDX SBOM attached to the digest is authentic
               echo ">> [8/8] Verifying SBOM Attestation..."
+              sbom_verify_file="security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
+              sbom_verify_jsonl="security-artifacts/sbom-verify-${service}-${digest_clean}.jsonl"
               if ! cosign verify-attestation \
-                --type cyclonedx \
+                --type custom \
                 --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
                 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
                 "$image_ref_digest" \
-                --output text > "security-artifacts/sbom-verify-${service}-${digest_clean}.txt" 2>&1; then
+                --output json > "$sbom_verify_file" 2>&1; then
                 echo "::error::SBOM verify failed for $service — could not confirm attestation"
-                cat "security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
+                cat "$sbom_verify_file"
+                echo "1" > security-artifacts/gate_status.txt
+              elif ! grep -E '^[[:space:]]*(\{|\[)' "$sbom_verify_file" > "$sbom_verify_jsonl"; then
+                echo "::error::SBOM verify failed for $service — cosign output did not include machine-readable attestation JSON"
+                cat "$sbom_verify_file"
+                echo "1" > security-artifacts/gate_status.txt
+              elif ! jq -s -e --arg digest "$digest" '
+                def objects:
+                  .[] | if type == "array" then .[] else . end;
+
+                def statement:
+                  .payload | @base64d | fromjson;
+
+                def predicate_json:
+                  statement.predicate as $predicate
+                  | if ($predicate.Data? | type) == "string"
+                    then ($predicate.Data | fromjson)
+                    else $predicate
+                    end;
+
+                [
+                  objects
+                  | statement as $statement
+                  | predicate_json as $predicate
+                  | select(any($statement.subject[]?; .digest.sha256 == ($digest | sub("^sha256:"; ""))))
+                  | select($predicate.kind == "cyclonedx-sbom")
+                  | select($predicate.image_digest == $digest)
+                  | select($predicate.bomFormat == "CycloneDX")
+                ] | length > 0
+              ' "$sbom_verify_jsonl" > /dev/null; then
+                echo "::error::SBOM verify failed for $service — attestation exists but does not contain the expected CycloneDX SBOM for this digest"
+                cat "$sbom_verify_file"
                 echo "1" > security-artifacts/gate_status.txt
               fi
             else
@@ -337,7 +391,7 @@ jobs:
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
         shell: bash
         run: |
-          digest_map="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          digest_map="$(jq -Rnc '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           jq -n \
             --arg image_repository "$IMAGE_REPOSITORY" \
             --arg image_tag "$IMAGE_TAG" \
