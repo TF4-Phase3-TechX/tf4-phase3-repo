@@ -113,6 +113,7 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'table'
           output: 'trivy-sast-report.txt'
@@ -126,10 +127,12 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
+          limit-severities-for-sarif: true
           skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '1'
           ignore-unfixed: true
