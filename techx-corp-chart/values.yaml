@@ -1401,6 +1401,11 @@ components:
     imageOverride:
       repository: "postgres"
       tag: "17.6"
+    command:
+      - docker-entrypoint.sh
+      - postgres
+      - -c
+      - wal_level=logical
     replicas: 1
     strategy:
       type: Recreate
@@ -2083,3 +2088,8 @@ managedData:
   kafka:
     enabled: false
     secretName: msk-kafka-secret
+
+postgresqlMigrationBridge:
+  # REL-15: temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.
+  # Keep enabled only during PostgreSQL migration/observation, then disable and cleanup.
+  enabled: true
