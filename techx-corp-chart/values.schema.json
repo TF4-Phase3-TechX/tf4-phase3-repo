@@ -139,7 +139,7 @@
       ]
     },
     "valkeyMigrationBridge": {
-      "description": "CDO08-REL-16 temporary private NLB bridge for AWS ElastiCache Online Migration to reach the self-hosted valkey-cart source.",
+      "description": "Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the self-hosted valkey-cart source.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

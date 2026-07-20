@@ -2102,9 +2102,9 @@ postgresqlMigrationBridge:
   enabled: true
 
 valkeyMigrationBridge:
-  # REL-16: temporary private NLB bridge for AWS ElastiCache Online Migration to reach
-  # the self-hosted valkey-cart source. Enable only during the migration window
-  # (VALKEY-MIGRATION-PLAN.md BƯỚC 1), then disable and cleanup (BƯỚC 3.8).
+  # Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the
+  # self-hosted valkey-cart source. Keep enabled only during migration/observation,
+  # then disable and cleanup.
   enabled: false
 
 riotRedisBackfill:
