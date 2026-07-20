@@ -124,6 +124,19 @@
           }
         }
       }
+    },
+    "postgresqlMigrationBridge": {
+      "description": "CDO08-REL-15 temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [
