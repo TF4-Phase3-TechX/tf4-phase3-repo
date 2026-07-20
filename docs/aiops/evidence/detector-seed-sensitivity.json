@@ -1,0 +1,562 @@
+{
+  "scope": "labelled synthetic design fixture; not production evidence",
+  "seed_settings": {
+    "baseline_mad_multiplier": 6.0,
+    "baseline_relative_band": 0.5,
+    "zscore_threshold": 3.0,
+    "ratio_threshold": 1.5,
+    "ewma_alpha": 0.35,
+    "ewma_threshold": 1.0,
+    "trend_window": 6,
+    "trend_min_relative_change": 0.25,
+    "trend_min_current_ratio": 1.2,
+    "trend_min_consistency": 0.75,
+    "isolation_contamination": 0.15,
+    "isolation_confidence_weight": 0.05
+  },
+  "seed": {
+    "tp": 5,
+    "fp": 0,
+    "tn": 5,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "cases": [
+      {
+        "case": "flat-normal",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 1.0,
+        "trend": 0.0,
+        "purpose": "steady low latency"
+      },
+      {
+        "case": "busy-stable",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 1.02,
+        "trend": 0.0186,
+        "purpose": "busy service above the safety floor without degradation"
+      },
+      {
+        "case": "oscillating-noise",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 1.0,
+        "trend": 0.0,
+        "purpose": "non-monotonic noise must not look like a drain"
+      },
+      {
+        "case": "acute-spike",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 17.9232,
+        "trend": 12.1067,
+        "purpose": "sudden user-visible degradation"
+      },
+      {
+        "case": "masked-incident",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 1.5977,
+        "trend": 0.0,
+        "purpose": "historical noise must not mask a separate incident"
+      },
+      {
+        "case": "borderline-ratio-no-corroboration",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 1.3425,
+        "trend": 0.3562,
+        "purpose": "a noisy 1.34x boundary shift is below the selected ratio seed"
+      },
+      {
+        "case": "gradual-drift",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "slow-drift",
+        "ratio": 1.414,
+        "trend": 0.4561,
+        "purpose": "slow degradation must fire before the absolute floor"
+      },
+      {
+        "case": "moderate-gradual-drift",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "slow-drift",
+        "ratio": 1.2623,
+        "trend": 0.2826,
+        "purpose": "the selected trend seed catches a moderate monotonic rise"
+      },
+      {
+        "case": "stable-error-rate",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 0.9929,
+        "trend": 0.0142,
+        "purpose": "stable high load is not itself an anomaly"
+      },
+      {
+        "case": "gradual-error-rate",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "slow-drift",
+        "ratio": 1.414,
+        "trend": 0.4561,
+        "purpose": "slow error-budget degradation below the safety floor"
+      }
+    ]
+  },
+  "grid": [
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 4,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 4,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 1,
+        "tn": 4,
+        "fn": 1,
+        "precision": 0.8,
+        "recall": 0.8,
+        "f1": 0.8
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 0,
+        "tn": 5,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 0,
+        "tn": 5,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 4,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 4,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 1,
+        "tn": 4,
+        "fn": 1,
+        "precision": 0.8,
+        "recall": 0.8,
+        "f1": 0.8
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 0,
+        "tn": 5,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 0,
+        "tn": 5,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 4,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 4,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 1,
+        "tn": 4,
+        "fn": 1,
+        "precision": 0.8,
+        "recall": 0.8,
+        "f1": 0.8
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 0,
+        "tn": 5,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35
+      },
+      "result": {
+        "tp": 4,
+        "fp": 0,
+        "tn": 5,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      }
+    }
+  ]
+}

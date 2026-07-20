@@ -1,6 +1,6 @@
 # TF4 AI Ops Safe MVP
 
-The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements three runtime signal families: per-service p95 latency, per-service error rate, and the global LLM/provider error rate owned by `product-reviews`.
+The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements three runtime signal families: per-service p95 latency, per-service error rate, and per-caller LLM/provider error rate attributed by the metric's `service_name` label.
 
 ## Runtime flow
 
@@ -20,11 +20,15 @@ Jaeger traces ----------+                         --> deterministic RCA
 Prometheus is the primary detector. Logs and traces increase confidence and provide investigation references. Prometheus scrapes the worker's `/metrics` endpoint; a newly created, cooldown-deduplicated incident increments a severity-labelled counter, and the committed `AIOpsIncidentDetected` rule routes it through the existing Alertmanager Slack/email receivers. The service never mutates flagd. LLM output is not allowed to select or execute an action.
 
 Detector decisions use a configurable absolute safety floor plus a robust
-baseline derived independently from each service's own recent series. An
-isolated historical spike is removed with a median/MAD filter so it cannot
-mask a separate degradation. Error-rate signals also require a minimum request
-denominator. The current `app_llm_*` metric family is global, so it is evaluated
-once and assigned to `AIOPS_LLM_SIGNAL_OWNER` (default `product-reviews`);
+baseline derived independently from each service's own recent series. The
+acute path uses ratio/z-score/EWMA evidence and a median/MAD filter so an
+isolated historical spike cannot mask a separate degradation. A second,
+unfiltered recent-window trend catches consistent gradual degradation before
+the absolute floor. Isolation Forest is confidence/audit evidence only and
+cannot fire an incident by itself. Error-rate signals also require a minimum
+request denominator. Every `app_llm_*` emitter attaches `service.name` and
+`llm.operation`; grouped PromQL preserves `service_name`, so incident ownership
+comes from the emitting service instead of a global configured owner.
 OpenSearch logs are corroborating evidence and never fire an LLM incident by
 themselves.
 
@@ -118,6 +122,16 @@ cd techx-corp-platform/src/aiops
 python -m benchmark.run /path/to/RCAEval-v2.zip --max-cases 60 --seed 7 \
   --output ../../../docs/aiops/evidence/rcaeval-v2-baro-lite-results.json \
   --report ../../../docs/aiops/evidence/RCAEVAL_V2_BARO_LITE_BENCHMARK.md
+```
+
+The detector seed sensitivity fixture covers stable, noisy, acute and gradual
+series and checks a 27-combination grid. It is design evidence, not production
+precision/recall:
+
+```bash
+python -m benchmark.calibrate_detection \
+  --json ../../../docs/aiops/evidence/detector-seed-sensitivity.json \
+  --report ../../../docs/aiops/evidence/DETECTOR_SEED_SENSITIVITY.md
 ```
 
 ## Verification

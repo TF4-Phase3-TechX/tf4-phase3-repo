@@ -81,11 +81,20 @@ def test_thin_latency_series_above_floor_can_fire_while_warming():
 
 
 def test_llm_query_uses_instrumented_app_metric_family():
-    query = llm_error_query("product-reviews")
+    query = llm_error_query("")
     assert "app_llm_errors_total" in query
     assert "app_llm_calls_total" in query
     assert "app_llm_requests_total" not in query
+    assert "sum by (service_name)" in query
+    assert "on(service_name)" in query
     assert ">= 5" in query
+
+
+def test_llm_query_can_filter_one_instrumented_caller_without_losing_owner_label():
+    query = llm_error_query("shopping-copilot", minimum_calls=10)
+    assert 'service_name="shopping-copilot"' in query
+    assert "sum by (service_name)" in query
+    assert ">= 10" in query
 
 
 def test_llm_error_requires_adaptive_metric_breach_and_treats_logs_as_evidence_only():
@@ -112,6 +121,44 @@ def test_high_but_stable_service_load_does_not_fire_on_small_shift():
         {"values": [[i, str(v)] for i, v in enumerate([990, 1000, 1010, 995, 1005, 1000, 990, 1010, 1100])]}
     ]
     assert detector.latency("checkout", busy_healthy, "q").anomalous is False
+
+
+def test_gradual_degradation_fires_before_absolute_floor():
+    detector = Detector(
+        settings(
+            sustained_polls=1,
+            latency_threshold_ms=1000,
+            trend_window=6,
+            trend_min_relative_change=0.25,
+            trend_min_current_ratio=1.2,
+            trend_min_consistency=0.75,
+        )
+    )
+    gradual = [100] * 8 + [105, 115, 125, 135, 145, 155]
+    decision = detector.latency(
+        "checkout",
+        [{"values": [[i, str(v)] for i, v in enumerate(gradual)]}],
+        "q",
+    )
+
+    assert max(gradual) < 1000
+    assert decision.breached is True
+    assert decision.anomalous is True
+    assert decision.candidates[0]["signals"]["slow_drift"] == 1.0
+
+
+def test_isolation_forest_is_configurable_confidence_evidence_not_a_gate():
+    series = [{"values": [[i, str(v)] for i, v in enumerate([100, 101, 99, 102, 98, 100, 101, 100, 1800])]}]
+    without_if = Detector(
+        settings(sustained_polls=1, isolation_confidence_weight=0.0)
+    ).latency("checkout", series, "q")
+    with_if = Detector(
+        settings(sustained_polls=1, isolation_confidence_weight=0.10)
+    ).latency("checkout", series, "q")
+
+    assert without_if.anomalous is True
+    assert with_if.anomalous is True
+    assert with_if.confidence > without_if.confidence
 
 
 def test_torai_lite_renormalizes_available_sources_and_records_missing_sources():

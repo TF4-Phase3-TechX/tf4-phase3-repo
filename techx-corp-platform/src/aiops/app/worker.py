@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections import Counter as ValueCounter
+from typing import Any
 
 from prometheus_client import Counter, Gauge
 
@@ -33,6 +35,24 @@ coverage_degraded = Counter(
 last_poll_success = Gauge("aiops_last_poll_success_unixtime", "Last successful telemetry polling time")
 
 
+def _series_service(series: dict[str, Any]) -> str | None:
+    metric = series.get("metric", {})
+    return metric.get("service_name") or metric.get("service")
+
+
+def _log_service(hit: dict[str, Any]) -> str | None:
+    source = hit.get("_source", hit)
+    direct = source.get("resource.service.name") or source.get("service.name")
+    if direct:
+        return str(direct)
+    resource = source.get("resource", {})
+    if isinstance(resource, dict):
+        service = resource.get("service", {})
+        if isinstance(service, dict) and service.get("name"):
+            return str(service["name"])
+    return None
+
+
 class AIOpsWorker:
     def __init__(self, settings: Settings, telemetry: TelemetryClient, detector: Detector, store: IncidentStore, remediation: RemediationController):
         self.settings = settings
@@ -44,11 +64,6 @@ class AIOpsWorker:
 
     async def poll_once(self) -> None:
         import time
-
-        logs = await self.telemetry.search_logs(self.settings.llm_services, ("timeout", "rate_limit", "deadline", "error"))
-        if logs is None:
-            poll_failures.labels("opensearch").inc()
-            log.warning(json.dumps({"event": "telemetry_degraded", "source": "opensearch"}))
 
         prometheus_ok = True
 
@@ -68,17 +83,65 @@ class AIOpsWorker:
             decisions.append(self.detector.latency(service, await query_range(query), query))
             query = error_rate_query(service, self.settings.minimum_request_count)
             decisions.append(self.detector.error_rate(service, await query_range(query), query))
-        # app_llm_* is a single global metric family today, so it has exactly
-        # one configured incident owner. llm_services remains the log scope.
-        query = llm_error_query(self.settings.llm_signal_owner, self.settings.llm_minimum_call_count)
-        decisions.append(
-            self.detector.llm_error(
-                self.settings.llm_signal_owner,
-                await query_range(query),
-                query,
-                len(logs) if logs is not None else None,
+
+        # Discover every instrumented LLM caller from the metric label. This
+        # prevents a failure in a future caller (for example shopping-copilot)
+        # from being attributed to product-reviews.
+        query = llm_error_query("", self.settings.llm_minimum_call_count)
+        llm_series = await query_range(query)
+        attributed_series: list[tuple[str, dict[str, Any]]] = []
+        for item in llm_series:
+            service = _series_service(item)
+            if service:
+                attributed_series.append((service, item))
+            else:
+                coverage_degraded.labels(
+                    "prometheus", "llm_timeout_error", "unattributed", "unavailable"
+                ).inc()
+                log.error(
+                    json.dumps(
+                        {
+                            "event": "llm_metric_missing_service_label",
+                            "metric": item.get("metric", {}),
+                        }
+                    )
+                )
+
+        log_scope = tuple(
+            sorted(
+                set(self.settings.llm_log_services)
+                | {service for service, _ in attributed_series}
             )
         )
+        logs = await self.telemetry.search_logs(
+            log_scope, ("timeout", "rate_limit", "deadline", "error")
+        )
+        if logs is None:
+            poll_failures.labels("opensearch").inc()
+            log.warning(json.dumps({"event": "telemetry_degraded", "source": "opensearch"}))
+        log_counts = ValueCounter(
+            service for hit in (logs or []) if (service := _log_service(hit))
+        )
+
+        if attributed_series:
+            for service, item in attributed_series:
+                decisions.append(
+                    self.detector.llm_error(
+                        service,
+                        [item],
+                        query,
+                        log_counts.get(service, 0) if logs is not None else None,
+                    )
+                )
+        else:
+            # No series above the minimum-call gate is a coverage state, not a
+            # healthy zero. Expected callers are used only for that status.
+            for service in self.settings.llm_services:
+                decisions.append(
+                    self.detector.llm_error(
+                        service, [], query, None if logs is None else log_counts.get(service, 0)
+                    )
+                )
         for decision in decisions:
             if decision.coverage_status != "available":
                 coverage_degraded.labels(

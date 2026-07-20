@@ -38,12 +38,11 @@ class RecordingDetector:
 
 
 @pytest.mark.asyncio
-async def test_global_llm_metric_creates_one_decision_for_configured_owner():
+async def test_missing_llm_metric_reports_coverage_for_expected_caller():
     settings = replace(
         Settings(),
         services=("frontend", "checkout"),
-        llm_services=("llm", "product-reviews"),
-        llm_signal_owner="product-reviews",
+        llm_services=("product-reviews",),
     )
     detector = RecordingDetector()
     worker = AIOpsWorker(
@@ -57,6 +56,39 @@ async def test_global_llm_metric_creates_one_decision_for_configured_owner():
     await worker.poll_once()
 
     assert detector.llm_services == ["product-reviews"]
+
+
+class MultiCallerTelemetry(EmptyTelemetry):
+    async def query_range(self, query):
+        if "app_llm_errors_total" not in query:
+            return []
+        values = [[index, str(value)] for index, value in enumerate([0.01] * 8 + [0.08])]
+        return [
+            {"metric": {"service_name": "product-reviews"}, "values": values},
+            {"metric": {"service_name": "shopping-copilot"}, "values": values},
+        ]
+
+    async def search_logs(self, services, terms):
+        return [
+            {"_source": {"resource.service.name": "shopping-copilot"}},
+            {"_source": {"resource": {"service": {"name": "product-reviews"}}}},
+        ]
+
+
+@pytest.mark.asyncio
+async def test_llm_incident_owner_is_discovered_per_metric_series():
+    detector = RecordingDetector()
+    worker = AIOpsWorker(
+        replace(Settings(), services=(), llm_services=("product-reviews",)),
+        MultiCallerTelemetry(),
+        detector,
+        IncidentStore(),
+        remediation=object(),
+    )
+
+    await worker.poll_once()
+
+    assert detector.llm_services == ["product-reviews", "shopping-copilot"]
 
 
 class LifecycleDetector:

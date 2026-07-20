@@ -1,97 +1,127 @@
 # ADR-007: Hybrid anomaly detection, evidence-weighted RCA and safe response
 
-- Date: 2026-07-17
+- Original decision date: 2026-07-17
+- Revised after design review: 2026-07-20
 - Status: **Accepted for Mandate 7a design and implementation scope**
-- Decision owner: **Dinh Danh Nam, AIO1 Tech Lead**
-- Owner sign-off: **Accepted — 2026-07-17**
-- Runtime activation approvers: CDO deployment owner and on-call/SRE owner
-- Live-evidence status: pending Mandate 7b controlled drill
+- Live activation status: **Not approved; Mandate 7b evidence is still required**
+
+## Recorded signatures
+
+This table is the signature record. Approval is not inferred from a pull-request review.
+
+| Name | Role | Decision | Date | Scope |
+|---|---|---|---|---|
+| Dinh Danh Nam | AIO1 Tech Lead and decision owner | Accepted | 2026-07-17 | 7a detector architecture, implementation boundary and safe-response policy |
+| _Name required_ | CDO deployment owner | Pending | — | In-cluster activation, RBAC, rollback and SLO verification |
+| _Name required_ | On-call/SRE owner | Pending | — | Alert routing, escalation ownership and controlled incident drill |
+
+The pending rows are deliberate. No person is recorded as an approver until that person explicitly signs this table or an attached named approval record.
 
 ## Context
 
-TF4 already exports metrics, logs and traces, but incident discovery still depends on a human watching dashboards. Mandate 7a requires real detector and baseline code, analysis of at least three important metrics, and a signed decision record. It does not require a production injection or live precision/recall claim; those belong to Mandate 7b.
+TF4 exports metrics, logs and traces, but incident discovery still depends on a human watching dashboards. Mandate 7a requires executable detector/baseline code, analysis of at least three important signals, an initial end-to-end response design and a signed decision record. It does not authorize production incident injection or autonomous remediation.
 
-The design must stay lightweight, tolerate missing secondary telemetry, avoid alert spam, preserve the mentor-owned flagd incident mechanism, and never let an inferred root cause directly authorize a production mutation.
+The 2026-07-20 review identified four weaknesses in the first revision:
+
+1. the LLM metric was assigned to a hard-coded `product-reviews` owner;
+2. Isolation Forest was fitted but had no explicit decision contribution;
+3. the spike-oriented gate did not identify a gradual drain before an absolute floor;
+4. EWMA and normalization seeds were not configurable or supported by a reproducible sensitivity artifact.
+
+This revision closes those design/implementation gaps while retaining the team's existing detector, evidence, RCA, incident lifecycle and guarded-remediation work.
 
 ## Decision
 
-Adopt a hybrid, auditable detector rather than a single opaque model:
+Adopt a lightweight, auditable hybrid detector:
 
-1. Prometheus is the required detection source. Each `service × signal` has its own rolling 30-minute baseline and absolute safety floor.
-2. Ratio, z-score and EWMA residual gates must agree with the absolute floor. Isolation Forest is retained as supporting evidence, not the sole firing condition.
-3. A breach must persist for two polls (45 seconds per poll by default). Incident upsert and a 10-minute cooldown suppress duplicate notifications. An inactive-remediation incident resolves after two consecutive fully covered healthy polls; missing or warming telemetry breaks recovery, and a later post-cooldown breach creates a new incident.
-4. OpenSearch logs and Jaeger traces enrich evidence and confidence. Empty primary telemetry is `unavailable`, never a healthy zero. A one-to-three-point primary baseline is `warming` and uses a floor-only gate; neither state counts as recovery.
-5. At runtime, TORAI-lite combines available evidence for one detector decision and the breached service is exposed as the sole RCA candidate. Cross-service BARO-lite ranking is implemented only in the offline RCAEval-v2 benchmark. Neither name claims a full paper reproduction.
-6. New incidents expose structured evidence, RCA candidates, confidence, a runbook and a recommended action. A severity-labelled Prometheus event counter feeds the existing Alertmanager Slack/email route.
-7. Automatic action is allowed only for a bounded, allowlisted rollback runbook after per-incident human approval. Dry-run is the default. A live action requires a separate Helm RBAC gate, rollout verification and SLO verification; failure restores the original pod template and escalates.
-8. LLM output cannot select or execute an action. The detector never changes or disables flagd.
+1. **Per-service primary telemetry.** Prometheus is the required detection source. Latency and request-error signals keep an independent rolling history per service. Every `app_llm_*` emitter must attach low-cardinality `service.name` and `llm.operation` attributes; Prometheus preserves `service_name`, and the worker creates one decision per returned service series. Configuration may describe expected callers for missing-coverage reporting, but it cannot assign an incident to a different service.
+2. **Two anomaly paths.** An acute path requires the absolute safety floor plus either a meaningful ratio shift or corroborating z-score/EWMA evidence. A gradual path uses a recent linear trend, minimum current-to-baseline ratio and monotonic consistency, and may fire before the absolute floor. This is how the design handles slow symptoms such as increasing latency/error rate caused by memory pressure or queue growth; it does not claim to identify the physical cause from one metric.
+3. **Robust baseline with explicit trade-off.** Median/MAD filtering removes isolated historical spikes before mean/pstdev scoring. This reduces masking by one noisy sample and does not assume a Gaussian distribution. It can also exclude the beginning of a long incident, so the gradual path uses the unfiltered recent sequence and the design requires replay calibration.
+4. **Isolation Forest is confidence evidence, not an alert gate.** It remains useful as a non-linear outlier indicator and preserves the team's BARO-lite experiment. Its configurable contribution is capped in decision confidence. It cannot create an incident by itself because the current production history is not sufficiently labelled to justify an opaque firing boundary.
+5. **All detector seeds are runtime configuration.** MAD bands, ratio/z/EWMA thresholds, EWMA alpha, trend settings, Isolation Forest contamination and confidence contributions are environment-backed settings and explicit Helm values. Changing them requires a reviewed calibration artifact.
+6. **Sustained decisions and lifecycle control.** A breach must persist for two polls by default. Incident upsert and cooldown suppress duplicate notification. Recovery requires consecutive fully covered healthy polls; missing/warming telemetry never counts as healthy recovery.
+7. **Evidence before mutation.** OpenSearch logs and Jaeger traces enrich the decision. New incidents expose exact queries, values, coverage, scores, RCA candidates, confidence, runbook and recommended action. Missing secondary evidence is recorded, not silently treated as healthy.
+8. **Bounded response.** The default is dry-run. The only automatic mutation shape is an allowlisted rollback after explicit, unexpired per-incident approval, separate Helm/RBAC enablement, rollout verification and SLO verification. Failure restores the captured original pod template and escalates. LLM output cannot authorize an action, and the detector never changes flagd.
 
-## Initial metric analysis
+## Initial signal analysis
 
-These ranges are the 7a design baselines used to seed the implementation. They are hypotheses to be recalibrated from a labelled normal window in 7b; they are not presented as live production measurements.
+These are design seeds, not measured production normal ranges.
 
-| Signal and scope | Why it matters | Initial normal range | Anomaly rule | Method |
+| Signal | Scope and ownership | Acute rule | Gradual rule | Response |
 |---|---|---|---|---|
-| p95 server-span latency for `frontend`, `checkout`, `product-reviews`, `llm` | User-visible degradation on normalized `frontend` browse routes and dependency/service health elsewhere | 200–800 ms; service-specific rolling baseline remains primary | Current p95 ≥1,000 ms safety floor **and** either ≥1.5× its own robust baseline or both z-score ≥3 and EWMA residual score ≥1; sustained two polls. Severity becomes critical-equivalent at ≥2,000 ms | Route-aware `SPAN_KIND_SERVER` PromQL + robust ratio/z-score/EWMA; Isolation Forest evidence |
-| Error rate for the same critical services | Measures failed requests and error-budget burn before customers report | 0–2% in a healthy window | At least 20 requests in five minutes, current rate ≥5% safety floor, and the same per-service adaptive gate; sustained two polls. Severity becomes critical-equivalent at ≥10% | Error calls / all calls from OTel span metrics + robust rolling statistical baseline |
-| Global LLM/provider error rate owned by `product-reviews` | AI-path provider failure can silently degrade review assistance while the storefront remains up | 0–2%; isolated provider failures may occur without forming an incident | At least five calls in five minutes, error rate ≥5% safety floor, and the same adaptive gate; sustained two polls. Logs enrich confidence but cannot fire alone. ≥25% is critical-equivalent | Application counters + OpenSearch correlation + TORAI-lite evidence score |
+| p95 server-span latency | `frontend`, `checkout`, `product-reviews`, `llm`; one history per service | Current p95 at or above 1,000 ms and ratio ≥1.5, or z-score ≥3 with EWMA score ≥1 | Six-point fitted rise ≥25%, at least 75% positive steps, current value ≥1.2× robust long-window mean | Investigate dependency/deployment evidence; rollback remains approval-gated |
+| Request error rate | Same monitored critical services; one history per service | At least 20 requests in five minutes, current rate ≥5%, and the acute adaptive rule | Same multi-window trend rule; can alert before 5% when degradation is consistent | Correlate failed traces/logs and escalate to the service owner |
+| LLM/provider error rate | Every `app_llm_*` series grouped by its emitted `service_name`; no global owner | At least five calls in five minutes, current rate ≥5%, and the acute adaptive rule | Same multi-window trend rule per emitting caller | Check provider/configuration/fallback, then escalate to that caller's owner |
 
-The detector currently queries `traces_span_metrics_duration_milliseconds_bucket`, `traces_span_metrics_calls_total`, `app_llm_calls_total`, and `app_llm_errors_total`. Query windows are five minutes inside the 30-minute lookback. The absolute values are configurable safety floors; they are not shared baselines. Each latency/error series is scored against that service's own history. A median/MAD filter removes isolated historical spikes before scoring so one noisy sample cannot mask a separate incident. A small z-score alone is insufficient: the signal must have a meaningful ratio shift or agree with the EWMA residual. The global `app_llm_*` family has one configurable incident owner to prevent duplicate incidents.
+The LLM query is grouped and joined `on(service_name)`. A future `shopping-copilot` instrumented with the same contract therefore produces a `shopping-copilot` incident rather than a `product-reviews` incident. An unlabeled LLM series is rejected as `unattributed` coverage degradation and cannot create a wrongly owned incident.
+
+## Seed values and justification
+
+| Setting | 7a seed | Design intent and limitation |
+|---|---:|---|
+| Lookback / Prometheus range step | 30 minutes / 60 seconds | Provides a small recent history without claiming a seasonal production model |
+| Poll / sustain | 45 seconds / 2 polls | Bounds alert spam while keeping nominal confirmation near 90 seconds |
+| Median/MAD tolerance | `max(6×MAD, 50% of median)` | Removes extreme masking samples while retaining ordinary relative variation; must be checked on labelled long incidents |
+| Ratio / z-score | 1.5 / 3 | Requires a material change or a conventional high standardized deviation; neither value is claimed optimal |
+| EWMA alpha | 0.35 | Gives recent observations meaningful weight without making one point dominate; sensitivity checks also run 0.2 and 0.5 |
+| EWMA residual gate | 1.0 after `max(3×spread, 25% expected, 1)` normalization | Requires residual evidence while protecting flat/near-zero series from division instability |
+| Trend window | 6 points | Approximately six minutes at the current range step; short enough to lead the floor but long enough to test consistency |
+| Trend gates | rise 25%, current ratio 1.2, positive-step consistency 75% | Separates monotonic degradation from a single jump and oscillating noise |
+| Isolation Forest | contamination 0.15, confidence weight 0.05 | Supporting evidence only; never a firing condition until labelled production calibration justifies a stronger role |
+
+The reproducible [detector seed sensitivity report](./evidence/DETECTOR_SEED_SENSITIVITY.md) evaluates acute, stable-high, oscillating-noise, masking-noise and gradual-drift fixtures, plus a 27-combination parameter grid. It demonstrates the behavior and trade-off of the seed. It explicitly does **not** establish production precision/recall or optimality.
 
 ## End-to-end control flow
 
 ```text
-Prometheus / OpenSearch / Jaeger
-  -> per-service rolling baseline
-  -> sustained anomaly decision
-  -> evidence bundle + per-decision candidate / TORAI-lite confidence
-  -> bounded incident store and audit log
+Prometheus labelled series / OpenSearch logs / Jaeger traces
+  -> per-service rolling history and coverage state
+  -> acute-floor path OR consistent gradual-drift path
+  -> sustained decision
+  -> evidence bundle + confidence + service-scoped RCA candidate
+  -> bounded incident store and structured audit log
   -> Prometheus incident counter
-  -> Alertmanager -> Slack/email on-call notification
-  -> no approved auto-action? escalate with runbook
-  -> approved allowlisted action? dry-run or gated rollback
+  -> Alertmanager -> Slack/email on-call route
+  -> no approved safe action? escalate with runbook
+  -> approved allowlisted rollback? dry-run or gated execution
   -> rollout + p95 + checkout/storefront error-rate verification
   -> resolve, or restore original template and escalate
 ```
 
+The detector identifies **where the measured degradation is emitted** and offers investigation evidence. It does not claim that a rising queue, memory leak, deployment or provider is the root cause until correlated evidence confirms it.
+
 ## Alternatives considered
 
-- Static thresholds only: simple but too sensitive to expected load shifts; retained only as safety floors.
-- Full BARO/TORAI reproduction: rejected for 7a because it adds research and operational complexity not justified by current data and deadline. The lite implementations preserve explainable ideas and state their limits.
-- Fully learned multivariate model: rejected as the primary gate because TF4 lacks a sufficiently representative labelled production history, and opaque firing would make on-call tuning harder.
-- Direct webhook calls from the worker: rejected for the MVP. Prometheus/Alertmanager already provides grouping, retry, routing and secret ownership.
-- Autonomous remediation from an RCA score: rejected. Correlation is not authorization, and a wrong rollback can deepen an outage.
+- **Static thresholds only:** simpler, but misses consistent degradation before the floor and behaves poorly across services with different normal levels.
+- **Median/MAD plus spike detection only:** robust to isolated noise, but insufficient for memory-drain/queue-growth symptoms; retained only as the acute path.
+- **Isolation Forest as the firing gate:** rejected because the current data does not justify contamination or decision-boundary calibration and on-call explanation would be weak.
+- **Full learned multivariate model:** rejected as the primary gate because TF4 lacks representative labelled production history.
+- **One global LLM owner:** rejected because it creates incorrect ownership as soon as another service calls an LLM.
+- **Autonomous remediation from an RCA score:** rejected because correlation is not authorization and a wrong rollback can deepen an outage.
 
-## Consequences and trade-offs
+## Consequences and limitations
 
-- Absolute floors plus adaptive evidence reduce noise, but a slow drift that never crosses a floor may be missed.
-- Two-poll sustain and cooldown reduce spam at the cost of additional detection delay.
-- Minimum request/call gates prevent low-denominator error-rate alerts; they can delay detection on very low-traffic services.
-- Robust baseline filtering resists isolated masking noise, but labelled 7b/15 replay remains required to calibrate long-running incident contamination.
-- Missing-source renormalization preserves degraded operation, but confidence must expose which sources were absent.
-- In-memory incidents keep the MVP inexpensive, but pod restart loses API history; structured stdout remains available in OpenSearch.
-- Offline RCAEval-v2 results demonstrate deterministic service localization, not TF4 live precision/recall or causal correctness.
-
-## Deferred 7b / Mandate 15 gates
-
-- Capture labelled normal-window snapshots for the three signal families, recording UTC window, exact PromQL, service, sample count and observed min/p50/p95/max before calibrating floors.
-- Add impact severity based on multi-window error-budget burn-rate; 7a severity is provisional floor-based routing only.
-- Expand standing coverage to `cart` and `product-catalog` and add at least one validated saturation or queue signal.
-- Add external-scenario replay, committed labelled detection cases, precision/recall/lead-time and MTTD before/after.
-- Prove the detector as an enabled in-cluster workload and deliver the generated incident summary—not only a generic alert annotation—to the real on-call channel.
+- The gradual path improves lead time for monotonic degradation, but direct queue-depth or memory metrics still need their own validated telemetry contracts before the detector may name those physical symptoms.
+- Short trend windows can be sensitive during coordinated load ramps. Sustain, consistency and replay calibration are therefore mandatory.
+- Median/MAD filtering resists isolated masking noise but can remove early long-incident points from the long baseline; the recent trend intentionally uses the unfiltered sequence.
+- Minimum request/call gates reduce low-denominator error alerts and can delay detection on very low-traffic services.
+- Isolation Forest affects confidence only. Its seed is not presented as a learned production parameter.
+- In-memory incident state is bounded and inexpensive, but restart loses API history; structured audit events remain in OpenSearch.
+- Offline RCAEval-v2 results demonstrate deterministic service localization, not TF4 live causal correctness.
 
 ## Evidence and activation gates
 
 | Evidence/gate | Status |
 |---|---|
-| Unified implementation and review | [PR #281](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281) |
-| Unit/integration tests | 32 passing on 2026-07-17, including lifecycle recovery/re-notification, missing/warming coverage, source-failure counters, SLO selectors, masking-noise, busy-healthy and single-owner LLM cases |
-| RCAEval-v2 60-case benchmark | Top-1 0.7667, Top-3 0.9333, MRR 0.8644; [report](evidence/RCAEVAL_V2_BARO_LITE_BENCHMARK.md) |
-| Read-only observability adapters and status probe | Implemented; shared production access to Prometheus/OpenSearch/Jaeger verified on 2026-07-17; live AIOps component probe remains pending 7b deployment |
-| Alertmanager notification rule | Implemented; live delivery evidence pending 7b |
-| Live E2E injection, precision, recall and lead time | Pending Mandate 7b (due 2026-07-25) |
-| Live remediation | Disabled; requires reviewed GitOps values, CDO/on-call approval and controlled drill |
+| Unified implementation | [PR #281](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281); must be conflict-free and merged before 7a closure |
+| Service-aware LLM attribution | Implemented with emitter labels, grouped PromQL and a two-caller worker test |
+| Acute/noise/gradual detector tests | Implemented; exact passing count must be taken from the final PR head CI |
+| Seed sensitivity | [Report](./evidence/DETECTOR_SEED_SENSITIVITY.md) and [machine-readable grid](./evidence/detector-seed-sensitivity.json) |
+| RCAEval-v2 60-case offline benchmark | Top-1 0.7667, Top-3 0.9333, MRR 0.8644; [report](./evidence/RCAEVAL_V2_BARO_LITE_BENCHMARK.md) |
+| Live TF4 normal/incident calibration | Pending Mandate 7b; required before claiming production accuracy |
+| Alert delivery and controlled incident drill | Pending Mandate 7b |
+| Live remediation | Disabled; requires named CDO/on-call signatures and a controlled drill |
 
 ## Sign-off boundary
 
-The owner accepts the detection architecture and 7a implementation scope above. This signature does **not** approve production deployment, incident injection, or live remediation. Those actions require the named runtime approvers and separate 7b evidence.
+The AIO1 owner accepts the 7a architecture, implementation scope and non-autonomous safety boundary. This signature does not approve production activation, incident injection or live remediation. The two pending runtime approvers must sign by name after reviewing the final merged implementation and controlled evidence.

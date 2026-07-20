@@ -32,7 +32,7 @@ def values(series: dict[str, Any]) -> list[float]:
     return [float(point[1]) for point in series.get("values", []) if point[1] not in {"NaN", None}]
 
 
-def robust_baseline(points: list[float]) -> list[float]:
+def robust_baseline(points: list[float], settings: Settings | None = None) -> list[float]:
     """Discard isolated historical spikes before scoring the latest point.
 
     A single noisy sample must not inflate the mean/std enough to mask a
@@ -41,37 +41,89 @@ def robust_baseline(points: list[float]) -> list[float]:
     naturally noisy services.
     """
 
+    settings = settings or Settings()
     baseline = points[:-1]
     if len(baseline) < 4:
         return baseline
     center = median(baseline)
     mad = median(abs(point - center) for point in baseline)
-    tolerance = max(6 * mad, abs(center) * 0.5, 1e-9)
+    tolerance = max(
+        settings.baseline_mad_multiplier * mad,
+        abs(center) * settings.baseline_relative_band,
+        1e-9,
+    )
     cleaned = [point for point in baseline if abs(point - center) <= tolerance]
     return cleaned if len(cleaned) >= 3 else baseline
 
 
-def anomaly_scores(points: list[float]) -> dict[str, float]:
+def anomaly_scores(
+    points: list[float], settings: Settings | None = None
+) -> dict[str, float]:
+    settings = settings or Settings()
     if len(points) < 4:
-        return {"ratio": 0.0, "zscore": 0.0, "ewma": 0.0, "isolation": 0.0}
-    baseline, current = robust_baseline(points), points[-1]
+        return {
+            "ratio": 0.0,
+            "zscore": 0.0,
+            "ewma": 0.0,
+            "isolation": 0.0,
+            "trend": 0.0,
+            "trend_consistency": 0.0,
+            "slow_drift": 0.0,
+        }
+    baseline, current = robust_baseline(points, settings), points[-1]
     baseline_mean = mean(baseline)
     std = pstdev(baseline) if len(baseline) > 1 else 0.0
     # A perfectly flat baseline still has a meaningful relative deviation.
     # Use a 5% baseline band instead of turning that signal into z-score zero.
-    zscore = abs(current - baseline_mean) / max(std, abs(baseline_mean) * 0.05, 1e-9)
+    zscore = abs(current - baseline_mean) / max(
+        std, abs(baseline_mean) * settings.zscore_noise_floor, 1e-9
+    )
     expected = baseline[0]
     residuals: list[float] = []
     for point in baseline[1:]:
         residuals.append(abs(point - expected))
-        expected = 0.35 * point + 0.65 * expected
+        expected = settings.ewma_alpha * point + (1 - settings.ewma_alpha) * expected
     spread = pstdev(residuals) if len(residuals) > 1 else max(mean(residuals or [0.0]), 1.0)
-    ewma = abs(current - expected) / max(3 * spread, abs(expected) * 0.25, 1.0)
+    ewma = abs(current - expected) / max(
+        settings.ewma_spread_multiplier * spread,
+        abs(expected) * settings.ewma_relative_floor,
+        1.0,
+    )
+
+    # A short-vs-long trend catches gradual degradation that never presents as
+    # one large spike. The score is the fitted rise across the recent window,
+    # normalized by the robust long-window level. Consistency prevents a
+    # saw-tooth/noisy sequence from being treated as a sustained drain.
+    recent = points[-max(settings.trend_window, 3) :]
+    x_center = (len(recent) - 1) / 2
+    denominator = sum((index - x_center) ** 2 for index in range(len(recent)))
+    slope = (
+        sum(
+            (index - x_center) * (point - mean(recent))
+            for index, point in enumerate(recent)
+        )
+        / denominator
+        if denominator
+        else 0.0
+    )
+    trend = max(slope * (len(recent) - 1), 0.0) / max(abs(baseline_mean), 1e-9)
+    deltas = [right - left for left, right in zip(recent, recent[1:])]
+    trend_consistency = (
+        sum(delta > 0 for delta in deltas) / len(deltas) if deltas else 0.0
+    )
+    current_ratio = current / max(abs(baseline_mean), 1e-9)
+    slow_drift = float(
+        trend >= settings.trend_min_relative_change
+        and trend_consistency >= settings.trend_min_consistency
+        and current_ratio >= settings.trend_min_current_ratio
+    )
     isolation = 0.0
     isolation_points = [*baseline, current]
     if len(isolation_points) >= 8 and len(set(isolation_points)) >= 3:
         data = np.array(isolation_points).reshape(-1, 1)
-        model = IsolationForest(contamination=0.15, random_state=7).fit(data)
+        model = IsolationForest(
+            contamination=settings.isolation_contamination, random_state=7
+        ).fit(data)
         if model.predict(data[-1:])[0] == -1:
             isolation = min(-float(model.score_samples(data[-1:])[0]), 1.0)
     return {
@@ -79,16 +131,37 @@ def anomaly_scores(points: list[float]) -> dict[str, float]:
         "zscore": zscore,
         "ewma": ewma,
         "isolation": isolation,
+        "trend": trend,
+        "trend_consistency": trend_consistency,
+        "slow_drift": slow_drift,
     }
 
 
-def adaptive_breach(scores: dict[str, float]) -> bool:
-    """Require a meaningful relative shift, not a z-score-only busy signal."""
+def acute_breach(scores: dict[str, float], settings: Settings | None = None) -> bool:
+    """Detect a sudden shift while rejecting z-score-only busy noise."""
 
-    return scores["ratio"] >= 1.5 or (scores["zscore"] >= 3 and scores["ewma"] >= 1)
+    settings = settings or Settings()
+    return scores["ratio"] >= settings.ratio_threshold or (
+        scores["zscore"] >= settings.zscore_threshold
+        and scores["ewma"] >= settings.ewma_threshold
+    )
 
 
-def signal_gate(points: list[float], floor: float) -> tuple[bool, str, dict[str, float]]:
+def slow_drift_breach(scores: dict[str, float]) -> bool:
+    return scores.get("slow_drift", 0.0) >= 1.0
+
+
+def adaptive_breach(
+    scores: dict[str, float], settings: Settings | None = None
+) -> bool:
+    """Accept either an acute shift or a consistent multi-window drift."""
+
+    return acute_breach(scores, settings) or slow_drift_breach(scores)
+
+
+def signal_gate(
+    points: list[float], floor: float, settings: Settings | None = None
+) -> tuple[bool, str, dict[str, float]]:
     """Return raw breach, coverage state and adaptive scores.
 
     Empty telemetry is unavailable, not healthy. A thin baseline is explicitly
@@ -96,12 +169,19 @@ def signal_gate(points: list[float], floor: float) -> tuple[bool, str, dict[str,
     spike is not silently discarded.
     """
 
-    scores = anomaly_scores(points)
+    settings = settings or Settings()
+    scores = anomaly_scores(points, settings)
     if not points:
         return False, "unavailable", scores
     if len(points) < 4:
         return points[-1] >= floor, "warming", scores
-    return points[-1] >= floor and adaptive_breach(scores), "available", scores
+    # Acute anomalies must also violate the absolute safety floor. A gradual,
+    # consistent drift is allowed to fire before the floor so memory-drain or
+    # queue-growth symptoms are not hidden until the final spike.
+    breached = (
+        points[-1] >= floor and acute_breach(scores, settings)
+    ) or slow_drift_breach(scores)
+    return breached, "available", scores
 
 
 def span_matchers(
@@ -148,14 +228,30 @@ class Detector:
         self.settings = settings
         self._streaks: dict[str, int] = defaultdict(int)
 
+    def _confidence(self, base: float, scores: dict[str, float]) -> float:
+        """Explainable evidence score; Isolation Forest cannot fire a gate."""
+
+        return min(
+            base
+            + self.settings.zscore_confidence_weight
+            * min(scores["zscore"] / max(self.settings.zscore_threshold, 1e-9), 1.0)
+            + self.settings.ewma_confidence_weight
+            * min(scores["ewma"] / max(self.settings.ewma_threshold, 1e-9), 1.0)
+            + self.settings.isolation_confidence_weight * scores["isolation"]
+            + self.settings.trend_confidence_weight * scores["slow_drift"],
+            self.settings.maximum_confidence,
+        )
+
     def latency(self, service: str, series: list[dict[str, Any]], query: str) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
-        breached, coverage_status, scores = signal_gate(points, self.settings.latency_threshold_ms)
+        breached, coverage_status, scores = signal_gate(
+            points, self.settings.latency_threshold_ms, self.settings
+        )
         key = f"service_latency_spike:{service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
-        confidence = min(0.45 + 0.1 * min(scores["zscore"], 3) + 0.15 * min(scores["ewma"], 1), 0.95)
+        confidence = self._confidence(self.settings.latency_confidence_base, scores)
         return Decision(
             anomalous=anomalous,
             breached=breached,
@@ -187,16 +283,13 @@ class Detector:
     def error_rate(self, service: str, series: list[dict[str, Any]], query: str) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
-        breached, coverage_status, scores = signal_gate(points, self.settings.error_rate_threshold)
+        breached, coverage_status, scores = signal_gate(
+            points, self.settings.error_rate_threshold, self.settings
+        )
         key = f"service_error_rate_spike:{service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
-        confidence = min(
-            0.5
-            + 0.1 * min(scores["zscore"], 3)
-            + 0.15 * min(scores["ewma"], 1),
-            0.95,
-        )
+        confidence = self._confidence(self.settings.error_confidence_base, scores)
         return Decision(
             anomalous=anomalous,
             breached=breached,
@@ -237,7 +330,9 @@ class Detector:
     ) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
-        breached, coverage_status, scores = signal_gate(points, self.settings.llm_error_threshold)
+        breached, coverage_status, scores = signal_gate(
+            points, self.settings.llm_error_threshold, self.settings
+        )
         # Logs enrich confidence/evidence but never fire an incident without a
         # metric breach. This avoids static log-count and duplicate-log noise.
         key = f"llm_timeout_error:{service}"
@@ -248,7 +343,13 @@ class Detector:
             log=None if log_count is None else min(log_count / 3, 1.0),
             ai=min(current / max(self.settings.llm_error_threshold, 1e-9), 1.0),
         )
-        confidence = min(0.45 + 0.5 * torai["score"], 0.95)
+        confidence = min(
+            self.settings.llm_confidence_base
+            + self.settings.torai_confidence_weight * torai["score"]
+            + self.settings.isolation_confidence_weight * scores["isolation"]
+            + self.settings.trend_confidence_weight * scores["slow_drift"],
+            self.settings.maximum_confidence,
+        )
         evidence = [
             Evidence(
                 source="prometheus",
@@ -300,13 +401,20 @@ def latency_query(service: str) -> str:
 
 
 def llm_error_query(service: str, minimum_calls: int = 5) -> str:
-    # app_llm_* is emitted by product-reviews without a service label. The
-    # caller-provided service remains part of the incident scope/output.
-    del service
+    """Build a per-emitter LLM error-rate query.
+
+    ``service`` may be an exact service name or an empty string for discovery
+    across every instrumented LLM caller. The resulting Prometheus series
+    always retains ``service_name`` so the worker can assign the incident to
+    the real emitting service instead of a configured global owner.
+    """
+
+    selector = f'{{service_name="{service}"}}' if service else ""
     return (
-        "(sum(rate(app_llm_errors_total[5m])) "
-        "/ clamp_min(sum(rate(app_llm_calls_total[5m])), 0.000001)) "
-        f"and on() (sum(increase(app_llm_calls_total[5m])) >= {minimum_calls})"
+        f"(sum by (service_name) (rate(app_llm_errors_total{selector}[5m])) "
+        f"/ clamp_min(sum by (service_name) (rate(app_llm_calls_total{selector}[5m])), 0.000001)) "
+        "and on(service_name) "
+        f"(sum by (service_name) (increase(app_llm_calls_total{selector}[5m])) >= {minimum_calls})"
     )
 
 

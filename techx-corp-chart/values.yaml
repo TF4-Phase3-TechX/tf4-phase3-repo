@@ -207,14 +207,40 @@ components:
         valueFrom:
           fieldRef:
             fieldPath: metadata.namespace
-      - name: AIOPS_LLM_SIGNAL_OWNER
+      - name: AIOPS_LLM_SERVICES
         value: product-reviews
+      - name: AIOPS_LLM_LOG_SERVICES
+        value: llm,product-reviews
       - name: AIOPS_MINIMUM_REQUEST_COUNT
         value: "20"
       - name: AIOPS_LLM_MINIMUM_CALL_COUNT
         value: "5"
       - name: AIOPS_RECOVERY_POLLS
         value: "2"
+      - name: AIOPS_BASELINE_MAD_MULTIPLIER
+        value: "6"
+      - name: AIOPS_BASELINE_RELATIVE_BAND
+        value: "0.5"
+      - name: AIOPS_RATIO_THRESHOLD
+        value: "1.5"
+      - name: AIOPS_ZSCORE_THRESHOLD
+        value: "3"
+      - name: AIOPS_EWMA_ALPHA
+        value: "0.35"
+      - name: AIOPS_EWMA_THRESHOLD
+        value: "1"
+      - name: AIOPS_TREND_WINDOW
+        value: "6"
+      - name: AIOPS_TREND_MIN_RELATIVE_CHANGE
+        value: "0.25"
+      - name: AIOPS_TREND_MIN_CURRENT_RATIO
+        value: "1.2"
+      - name: AIOPS_TREND_MIN_CONSISTENCY
+        value: "0.75"
+      - name: AIOPS_ISOLATION_CONTAMINATION
+        value: "0.15"
+      - name: AIOPS_ISOLATION_CONFIDENCE_WEIGHT
+        value: "0.05"
       - name: AIOPS_APPROVAL_TOKEN
         valueFrom:
           secretKeyRef:
