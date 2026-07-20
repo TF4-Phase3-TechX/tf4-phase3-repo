@@ -138,6 +138,19 @@
         "enabled"
       ]
     },
+    "valkeyMigrationBridge": {
+      "description": "Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the self-hosted valkey-cart source.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
     "rollouts": {
       "description": "Argo Rollouts integration master switch. Requires the Argo Rollouts CRDs/controller installed in-cluster. Individual components opt in via components.<name>.useRollout.",
       "type": "object",
