@@ -6,25 +6,82 @@
 | Liên quan | `CDO08-REL-16-valkey-cutover-plan.md`, `MANDATE-08-VALKEY-DECISIONS-Quan.md` (VK-03), `D8-PERF-03-cutover-contract.md` |
 | Trạng thái | **CHƯA CHẠY** — đây là runbook + evidence skeleton, chưa có kết quả thật. Cutover chưa được phép thực hiện (xem gate ở `CDO08-REL-16-valkey-cutover-plan.md` §4, §7). |
 
-## 1. Thứ tự Gate trước khi cutover (bắt buộc, không được đảo)
+## 1. Runbook thực thi từng bước (Operator) — bắt buộc theo đúng thứ tự
 
-1. **Nạp ASM secret** `techx/tf4/elasticache-valkey` (host/port/address/tls_enabled/password) — do người có quyền `secretsmanager:PutSecretValue` thực hiện, không phải qua PR này.
-2. Verify `ExternalSecret elasticache-valkey-secret` (`techx-tf4`) chuyển `Ready=True`:
+### Bước 0 — Review & merge chuẩn bị (chưa cutover)
+1. Review 4 commit trên nhánh `cdo08-rel-16-valkey-elasticache` (app repo) + 1 commit ở gitops repo (PR).
+2. Xin **PM approval** cho cold cutover (mất active cart) — cập nhật `CDO08-REL-16-valkey-cutover-plan.md`
+   §4 từ PENDING → APPROVED kèm người duyệt + thời điểm.
+3. Xác nhận ai có quyền `secretsmanager:PutSecretValue`/`DescribeSecret` trên
+   `techx/tf4/elasticache-valkey` (role SSO hiện tại `TF4-SecurityIAMSSOManager` không có) — cần trước
+   Bước 2.
+4. Tạo GitHub secret `TF_VALKEY_AUTH_TOKEN` (repo settings) — cần trước khi `terraform apply` chạy được.
+5. Merge PR sau khi CI xanh + CDO-04 review phần `elasticache.tf`.
+
+### Bước 1 — Sinh auth token
+6. Sinh 1 chuỗi ngẫu nhiên ≥16 ký tự, ví dụ:
    ```powershell
-   kubectl get externalsecret elasticache-valkey-secret -n techx-tf4 -o jsonpath='{.status.conditions}'
+   openssl rand -base64 32
    ```
-3. Verify K8s Secret tồn tại — **chỉ liệt kê tên key, không in giá trị**:
+   Dùng **cùng 1 giá trị** cho cả Bước 2 và Bước 3 — không được lệch nhau.
+
+### Bước 2 — Nạp ASM secret
+7. Cập nhật secret `techx/tf4/elasticache-valkey`:
    ```powershell
-   kubectl get secret elasticache-valkey-secret -n techx-tf4 -o jsonpath='{range $k,$v := .data}{$k}{"`n"}{end}'
+   aws secretsmanager put-secret-value --secret-id techx/tf4/elasticache-valkey `
+     --secret-string '{"host":"<endpoint>","port":"6379","address":"<endpoint>:6379","tls_enabled":"true","password":"<auth_token_vừa_sinh>"}'
    ```
-   Kỳ vọng thấy đủ 3 key: `valkey-address`, `password`, `tls_enabled`. Không chạy lệnh nào giải mã base64 giá trị ra evidence/PR/Slack.
-4. `terraform apply` để bật `transit_encryption_mode=required` + `auth_token` trên `techx-tf4-valkey-cart` (qua pipeline `terraform-apply.yaml`, cần `TF_VALKEY_AUTH_TOKEN` secret đã tạo ở GitHub và khớp giá trị `password` đã nạp ở bước 1).
-5. Merge PR code TLS (Subtask 2) → CI build lại image `cart` → cập nhật tag trong
-   `environments/production/image-revisions.yaml` (gitops repo).
-6. **Flip `managedData.enabled=true` + `managedData.valkey.enabled=true`** trong
-   `environments/production/app-values.yaml` (gitops repo) — chỉ sau khi PM approval ở
-   `CDO08-REL-16-valkey-cutover-plan.md` §4 chuyển APPROVED.
-7. ArgoCD sync trong **low-traffic window**, theo dõi rollout `cart` (`replicas: 2`, rolling).
+   (`<endpoint>` lấy từ `terraform output elasticache_valkey_primary_endpoint` sau Bước 3, hoặc từ
+   handoff REL-14.) **Không** dán giá trị thật vào PR/Slack/Jira.
+
+### Bước 3 — Terraform apply (bật TLS required + auth_token)
+8. Set GitHub secret `TF_VALKEY_AUTH_TOKEN` = auth token ở Bước 1 (**phải khớp** giá trị `password` ở
+   Bước 2).
+9. Sau khi PR merge, pipeline `terraform-apply.yaml` tự chạy → xác nhận output chỉ update in-place RG
+   `techx-tf4-valkey-cart`, không destroy/recreate.
+
+### Bước 4 — Verify secret sync
+10. ```powershell
+    kubectl get externalsecret elasticache-valkey-secret -n techx-tf4 -o jsonpath='{.status.conditions}'
+    ```
+    Kỳ vọng `Ready=True`.
+11. ```powershell
+    kubectl get secret elasticache-valkey-secret -n techx-tf4 -o jsonpath='{range $k,$v := .data}{$k}{"`n"}{end}'
+    ```
+    Kỳ vọng đủ 3 key: `valkey-address`, `password`, `tls_enabled`. **Không** decode giá trị ra ngoài.
+
+### Bước 5 — Rebuild image cart
+12. Sau khi PR code TLS (commit `7cd84df`) merge vào main → CI tự build image `cart` mới.
+13. Cập nhật tag mới trong `environments/production/image-revisions.yaml` (gitops repo).
+
+### Bước 6 — Pre-flight connectivity test (bắt buộc trước khi flip toggle)
+14. Chạy test kết nối TLS+auth theo §2 bên dưới — phải thấy `PONG` mới đi tiếp.
+
+### Bước 7 — Chọn low-traffic window & flip toggle
+15. Đặt `managedData.enabled=true` + `managedData.valkey.enabled=true` trong
+    `environments/production/app-values.yaml` (gitops repo), commit + push.
+16. Force ArgoCD sync `techx-corp` Application.
+17. ```powershell
+    kubectl rollout status deployment/cart -n techx-tf4
+    ```
+    Chờ rollout xong, giữ `2/2 Ready`.
+
+### Bước 8 — Smoke test
+18. Chạy add-to-cart / view cart / checkout theo §3 bên dưới.
+19. Kiểm tra trace Jaeger — xác nhận span Redis trỏ ElastiCache endpoint, không lỗi (§3.4).
+20. Theo dõi Grafana checkout success rate + p95 latency theo §4 trong ít nhất vài phút đầu.
+
+### Bước 9 — Quyết định giữ hay rollback
+21. Nếu bất kỳ ngưỡng nào ở Bước 8 fail → rollback ngay theo `CDO08-REL-16-valkey-cutover-plan.md` §8.1
+    (tắt toggle → sync → rolling restart → verify lại trên Valkey cũ) — không debug trên production
+    trước.
+22. Nếu pass → điền evidence thật vào §5 bên dưới (screenshot + thời điểm), giữ nguyên Valkey in-cluster
+    **không xoá** trong 24–48h tiếp theo.
+
+### Bước 10 — Sau 24-48h bake ổn định
+23. Nếu không rollback trong suốt window → ghi lại timestamp cutover + xác nhận không rollback vào §5 —
+    đây là input để REL-18 được phép decommission `valkey-cart`/PVC (xem
+    `CDO08-REL-16-valkey-cutover-plan.md` §8.2).
 
 ## 2. Pre-flight connectivity test (trước khi flip toggle thật, theo VK-03)
 
