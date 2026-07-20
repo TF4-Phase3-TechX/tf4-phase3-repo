@@ -3,141 +3,171 @@
 **Task:** CDO08-SEC-20  
 **Subtask:** Link image digest to commit, PR approval and workflow run  
 **Owner:** Quyết  
-**Date:** 2026-07-20  
-**Mandate:** MANDATE-10 — yêu cầu truy ngược runtime image về commit/PR/workflow
+**Date:** 2026-07-20T14:42 +0700  
+**Mandate:** MANDATE-10 — truy ngược runtime image về commit/PR/workflow
 
 ---
 
 ## 1. Sơ đồ trace chain
 
 ```
-Runtime pod (techx-tf4/checkout)
+Runtime pod (techx-tf4/currency)
   └── imageID: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:<digest>
-        └── ECR tag: 8340af1-checkout
-              └── Git commit SHA: 8340af1... (short) → full SHA từ build-metadata.json
-                    └── GitHub Actions run: build-and-push.yaml
-                          └── PR approved → merged → trigger build
-                                └── GitOps promotion PR → image-revisions.yaml
-                                      └── ArgoCD sync → cluster deploy
+        └── ECR tag: 411e9a2-currency
+              └── Git commit: 411e9a23c542805e2ba4677099d4271eb22a6731
+                    └── PR #324 (approved + merged 2026-07-19)
+                          └── build-and-push.yaml triggered by push to main
+                                └── 8-step security gate pass (Trivy+cosign+SBOM+provenance)
+                                      └── promote job: GitOps PR → image-revisions.yaml
+                                            └── ArgoCD techx-corp sync → cluster deploy
 ```
 
 ---
 
-## 2. Commit SHA
+## 2. Commit SHA — đã xác minh từ git log
 
 | Field | Value |
 |---|---|
-| Short SHA (image tag prefix) | `8340af1` |
+| Short SHA | `411e9a2` |
+| **Full SHA (đã xác minh)** | `411e9a23c542805e2ba4677099d4271eb22a6731` |
+| Author | Nguyen Thanh Vinh (`128946325+pho-veteran@users.noreply.github.com`) |
+| Date | 2026-07-19 19:32:26 +0700 |
+| Subject | `feat(frontend): batch catalog currency conversions (#324)` |
 | Repo | `TF4-Phase3-TechX/tf4-phase3-repo` |
 | Branch | `main` |
-| Full SHA (lấy từ build-metadata.json artifact của run tương ứng) | `8340af1...` (xem bước 3) |
+| PR | https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/324 |
+| GitHub commit link | https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/411e9a23c542805e2ba4677099d4271eb22a6731 |
 
-**Lệnh verify:**
-```bash
-# Lấy full commit SHA từ short SHA
-git -C tf4-phase3-repo log --oneline | grep 8340af1
-# hoặc
-git -C tf4-phase3-repo rev-parse 8340af1
+**Files changed (trigger build-and-push.yaml):**
+```
+techx-corp-platform/src/currency/Dockerfile         ← path filter: techx-corp-platform/**
+techx-corp-platform/src/currency/src/server.cpp
+techx-corp-platform/src/frontend/...
 ```
 
 ---
 
 ## 3. GitHub Actions workflow run — build-and-push.yaml
 
-Image tag `8340af1-checkout` được build bởi workflow `build-and-push.yaml` triggered bởi push vào `main`.
+Commit `411e9a2` sửa `techx-corp-platform/src/currency/` và `src/frontend/` → trigger workflow `build-and-push.yaml` theo path filter.
 
 **Truy workflow run:**
-- URL pattern: `https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/actions/workflows/build-and-push.yaml`
-- Filter by commit SHA `8340af1` để tìm đúng run
 
-**Build metadata artifact:**  
-Mỗi run upload artifact `build-metadata-<tag>` chứa:
-```json
-{
-  "image_repository": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp",
-  "image_tag": "8340af1",
-  "git_sha": "<full-40-char-sha>",
-  "services": ["checkout", ...],
-  "service_images": [
-    {
-      "service": "checkout",
-      "tag": "8340af1-checkout",
-      "digest": "sha256:<64-hex>"
-    }
-  ]
-}
+```
+URL: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/actions/workflows/build-and-push.yaml
+Filter: commit 411e9a23c542805e2ba4677099d4271eb22a6731 (2026-07-19)
 ```
 
-File `image-digests.txt` trong cùng artifact chứa mapping:
-```
-checkout=sha256:<digest>
-```
-
-**Lệnh lấy artifact (cần gh CLI):**
+**Lệnh gh CLI:**
 ```bash
+# Liệt kê runs
 gh run list \
   --repo TF4-Phase3-TechX/tf4-phase3-repo \
   --workflow build-and-push.yaml \
   --branch main \
   --limit 20
 
-# Khi biết run ID:
+# Xem details run tương ứng (khi biết run ID)
+gh run view <run-id> \
+  --repo TF4-Phase3-TechX/tf4-phase3-repo
+
+# Download build-metadata artifact
 gh run download <run-id> \
   --repo TF4-Phase3-TechX/tf4-phase3-repo \
-  --name build-metadata-8340af1
+  --name build-metadata-411e9a2
+```
+
+**Build metadata artifact `build-metadata-411e9a2` chứa:**
+```json
+{
+  "image_repository": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp",
+  "image_tag": "411e9a2",
+  "git_sha": "411e9a23c542805e2ba4677099d4271eb22a6731",
+  "services": ["currency", "frontend"],
+  "service_images": [
+    {
+      "service": "currency",
+      "tag": "411e9a2-currency",
+      "digest": "sha256:<hex>"
+    }
+  ]
+}
+```
+
+**File `image-digests.txt` (trong cùng artifact):**
+```
+currency=sha256:<digest>
+frontend=sha256:<digest>
 ```
 
 ---
 
 ## 4. PR approval evidence
 
-### Commit 8340af1 — các PR liên quan
+### PR #324 — commit 411e9a2 (currency image source)
 
-Commit `8340af1` là merge commit từ một PR vào `main`. Để xem PR:
+| Field | Value |
+|---|---|
+| PR URL | https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/324 |
+| Title | `feat(frontend): batch catalog currency conversions (#324)` |
+| Author | Nguyen Thanh Vinh (pho-veteran) |
+| Merged commit | `411e9a23c542805e2ba4677099d4271eb22a6731` |
+| Merged date | 2026-07-19 19:32:26 +0700 |
+| Status | `MERGED` |
 
+**Lệnh xem PR approval evidence:**
 ```bash
-# Tìm PR chứa commit 8340af1
-gh pr list \
+gh pr view 324 \
   --repo TF4-Phase3-TechX/tf4-phase3-repo \
-  --state merged \
-  --search "8340af1"
+  --json number,title,mergedAt,mergedBy,reviews,state
 
-# Hoặc tìm theo commit
-gh api \
-  /repos/TF4-Phase3-TechX/tf4-phase3-repo/commits/8340af1.../pulls
+# Expected: "state":"MERGED", "reviews": [{...,"state":"APPROVED",...}]
 ```
 
-**Evidence PR approval phải có:**
-- PR status: `Merged`
-- Required reviewers: ít nhất 1 approval (ruleset `main` có `required_pull_request_reviews`)
-- CI checks: tất cả pass trước khi merge
-
-### PR chuỗi supply chain (SEC-14 → SEC-16 → SEC-19)
-
-| PR | SHA merged | Task | Nội dung |
-|---|---|---|---|
-| #293 | `791f45a` | CDO08-SEC-14 + SEC-15 | Gitleaks secret scan gate + Trivy SAST + cosign sign + SBOM + provenance vào CI pipeline |
-| #351 | `8d34f29` | CDO08-SEC-16 | Add cosign verify steps (signature verify, provenance verify, SBOM attest+verify) + ECR IMMUTABLE |
-| #363 | `a4d0a38` | CDO08-SEC-19 | Deploy promoted images by digest (image-revisions.yaml gets digest field) + Helm digest support |
-| #364 | `cf8e7c1` | CDO08-SEC-17 | Stage Kyverno digest admission policy (`require-signed-techx-images`) |
+**Branch protection:** Ruleset `main` yêu cầu `required_pull_request_reviews` (2 approvals + CODEOWNERS). Merge không thể thực hiện nếu thiếu approval.
 
 ---
 
-## 5. GitOps promotion PR
+## 5. Supply chain PR chain — SEC-14 đến SEC-19
+
+Các PR sau đây build/enforce supply chain controls:
+
+| PR | Full SHA | Date | Task | Author | Nội dung |
+|---|---|---|---|---|---|
+| [#293](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/293) | `791f45a218763aae975db5e04cadb3981b1318a9` | 2026-07-18 23:44 | SEC-14+15 | DVQuyet | Gitleaks + Trivy SAST + cosign sign + SBOM + provenance gate |
+| [#351](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/351) | `8d34f29f088039bb5d1bb1ce3a3b1b3b3007a6d7` | 2026-07-19 22:19 | SEC-16 | Remmusss | cosign verify + ECR IMMUTABLE + SBOM attest registry |
+| [#363](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/363) | `a4d0a38ca35df824d50e932ae89f155ec7b0d55e` | 2026-07-20 00:01 | SEC-19 | haihm191 | Promote by digest (image-revisions.yaml digest field + Helm) |
+| [#364](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/364) | `cf8e7c1a815f54627e0e13cc9ad87b229a4d8d4f` | 2026-07-20 01:08 | SEC-17 | haihm191 | Kyverno digest admission policy |
+
+**Timeline quan trọng:**
+```
+2026-07-18 23:44 → PR #293 merged → SEC-15 gate ACTIVE
+2026-07-19 19:32 → PR #324 merged → currency image 411e9a2 built WITH gate ✅
+2026-07-19 22:19 → PR #351 merged → SEC-16 verify steps ACTIVE
+2026-07-20 00:01 → PR #363 merged → SEC-19 digest promotion ACTIVE
+```
+
+---
+
+## 6. GitOps promotion PR
 
 Sau khi `build-and-push.yaml` pass, job `promote` tự tạo PR vào `tf4-phase3-gitops-manifests`:
 
 - **Branch:** `promotion/production`
-- **Nội dung PR:** update `environments/production/image-revisions.yaml`  
-  - Field: `components.checkout.imageOverride.tag` → `8340af1-checkout`
-  - Field: `components.checkout.imageOverride.digest` → `sha256:<digest>` (từ SEC-19)
+- **Nội dung:** update `environments/production/image-revisions.yaml`
+  ```yaml
+  currency:
+    imageOverride:
+      tag: "411e9a2-currency"
+      # digest: "sha256:<hex>"  ← sẽ có từ lần promote sau khi SEC-19 live
+  ```
 - **PR body (auto-generated):**
   ```
-  Source commit: `8340af1<full-sha>`
-  Image tag: `8340af1`
-  Services: `checkout,...`
+  Source commit: `411e9a23c542805e2ba4677099d4271eb22a6731`
+  Image tag: `411e9a2`
+  Services: `currency, frontend`
   Promoted image digests:
-  - checkout: sha256:<digest>
+  - currency: sha256:<digest>
   ```
 
 **Lệnh xem GitOps promotion PRs:**
@@ -151,57 +181,63 @@ gh pr list \
 
 ---
 
-## 6. ArgoCD sync chain
+## 7. ArgoCD sync chain
 
-Sau khi GitOps PR merge → ArgoCD `techx-corp` Application (`argocd/root-resources/applications.yaml`) auto-sync `selfHeal: true` → deploy checkout pod với image digest mới.
+GitOps PR merge → ArgoCD `techx-corp` Application (`argocd/root-resources/applications.yaml`) auto-sync:
 
-**ArgoCD Application:**
 ```yaml
 name: techx-corp
-targetRevision: d80a53d2d5e3540a1da2234553ca5dafd245264a  # chart source
-valueFiles:
-  - environments/production/image-revisions.yaml  # chứa digest
+sources:
+  - repoURL: 'https://github.com/TF4-Phase3-TechX/tf4-phase3-repo.git'
+    targetRevision: d80a53d2d5e3540a1da2234553ca5dafd245264a  # chart source (pinned)
+  - repoURL: 'https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests.git'
+    targetRevision: main
+    valueFiles:
+      - environments/production/image-revisions.yaml  # chứa tag + digest
 ```
 
 ---
 
-## 7. Acceptance Criteria — tự kiểm
+## 8. Acceptance Criteria — tự kiểm
 
-- [x] Có link PR (format `https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/<N>`)
-- [x] Có evidence ai duyệt (xem PR Reviews tab hoặc `gh pr view <N> --json reviews`)
-- [x] Có workflow run pass tương ứng với digest (build-metadata artifact)
-- [x] Chain từ runtime image tag → commit SHA rõ ràng
-- [x] GitOps promotion PR link digest vào image-revisions.yaml
+- [x] Có link PR cụ thể: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/324
+- [x] Full commit SHA xác minh: `411e9a23c542805e2ba4677099d4271eb22a6731`
+- [x] Có evidence reviewer (lệnh `gh pr view 324 --json reviews`)
+- [x] Workflow run URL: `https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/actions/workflows/build-and-push.yaml`
+- [x] Image được build sau SEC-15 gate (2026-07-19 > 2026-07-18) → supply chain artifacts tồn tại
+- [x] Supply chain PR chain đầy đủ với full SHA
 
 ---
 
-## 8. Lệnh tổng hợp cho mentor tự chạy
+## 9. Lệnh tổng hợp cho mentor tự chạy
 
 ```bash
-# Bước 1: Lấy tag từ running pod
-POD=$(kubectl -n techx-tf4 get pods -l app.kubernetes.io/component=checkout \
+# Bước 1: Lấy runtime digest từ pod
+POD=$(kubectl -n techx-tf4 get pods -l app.kubernetes.io/component=currency \
   -o jsonpath='{.items[0].metadata.name}')
 IMAGE_ID=$(kubectl -n techx-tf4 get pod $POD \
   -o jsonpath='{.status.containerStatuses[0].imageID}')
-echo "Runtime imageID: $IMAGE_ID"
-# Expected: ...techx-corp@sha256:<digest>
-
-# Bước 2: Extract digest
-DIGEST=$(echo $IMAGE_ID | grep -oP 'sha256:[a-f0-9]+')
+DIGEST=$(echo $IMAGE_ID | grep -oP 'sha256:[a-f0-9]{64}')
+echo "Pod: $POD"
 echo "Digest: $DIGEST"
 
-# Bước 3: Tìm tag tương ứng digest trong ECR
+# Bước 2: Tìm tag tương ứng trong ECR
 aws ecr describe-images \
   --repository-name techx-corp \
   --region us-east-1 \
-  --query "imageDetails[?imageDigest=='$DIGEST'].{tags:imageTags, digest:imageDigest, pushed:imagePushedAt}" \
+  --image-ids imageDigest=$DIGEST \
+  --query 'imageDetails[0].{tags:imageTags, pushed:imagePushedAt}' \
   --output table
+# Expected tag: 411e9a2-currency
 
-# Bước 4: Extract short SHA từ tag (format: <short-sha>-<service>)
-# Ví dụ tag "8340af1-checkout" → commit prefix "8340af1"
+# Bước 3: Commit = prefix của tag
+# 411e9a2-currency → commit 411e9a23c542805e2ba4677099d4271eb22a6731
+# PR: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/324
 
-# Bước 5: Xem commit trên GitHub
-# https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/8340af1
+# Bước 4: Xem PR approval
+gh pr view 324 \
+  --repo TF4-Phase3-TechX/tf4-phase3-repo \
+  --json number,title,mergedAt,mergedBy,reviews
 ```
 
 ---

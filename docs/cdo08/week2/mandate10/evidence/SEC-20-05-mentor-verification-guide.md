@@ -3,7 +3,8 @@
 **Task:** CDO08-SEC-20  
 **Subtask:** Write mentor verification guide and final Mandate 10 verdict  
 **Owner:** Quyết  
-**Date:** 2026-07-20  
+**Date:** 2026-07-20T14:42 +0700  
+**Image chọn:** `currency` — tag `411e9a2-currency`, commit `411e9a23c542805e2ba4677099d4271eb22a6731`  
 **Mandate:** MANDATE-10 — Từ commit tới cluster — không tin image mù
 
 ---
@@ -26,10 +27,10 @@
 ### Step 1: Xác nhận pod đang chạy
 
 ```bash
-kubectl -n techx-tf4 get pods -l app.kubernetes.io/component=checkout
+kubectl -n techx-tf4 get pods -l app.kubernetes.io/component=currency
 ```
 
-**Expected result:** Ít nhất 1 pod với STATUS = `Running`, READY = `1/1` (hoặc tương đương).
+**Expected result:** Ít nhất 1 pod với STATUS = `Running`, READY = `1/1`.
 
 ---
 
@@ -37,7 +38,7 @@ kubectl -n techx-tf4 get pods -l app.kubernetes.io/component=checkout
 
 ```bash
 POD=$(kubectl -n techx-tf4 get pods \
-  -l app.kubernetes.io/component=checkout \
+  -l app.kubernetes.io/component=currency \
   -o jsonpath='{.items[0].metadata.name}')
 echo "Pod: $POD"
 
@@ -45,12 +46,11 @@ IMAGE_ID=$(kubectl -n techx-tf4 get pod $POD \
   -o jsonpath='{.status.containerStatuses[0].imageID}')
 echo "Runtime imageID: $IMAGE_ID"
 
-# Extract digest
 DIGEST=$(echo $IMAGE_ID | grep -oP 'sha256:[a-f0-9]{64}')
 echo "Digest: $DIGEST"
 ```
 
-**Expected result:** `sha256:<64-hex-chars>` — đây là starting point không thể giả mạo.
+**Expected result:** `sha256:<64-hex-chars>` — starting point không thể giả mạo.
 
 ---
 
@@ -67,8 +67,8 @@ aws ecr describe-images \
 
 **Expected result:**
 - `digest`: khớp `$DIGEST`
-- `tags`: `8340af1-checkout` (short-sha-service format)
-- Short SHA `8340af1` → commit `https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/8340af1`
+- `tags`: `411e9a2-currency`
+- Commit: `411e9a23c542805e2ba4677099d4271eb22a6731` → https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/411e9a23c542805e2ba4677099d4271eb22a6731
 
 ---
 
@@ -84,7 +84,7 @@ cosign verify \
   "$IMAGE"
 ```
 
-**Expected result:** JSON với `Subject` = workflow URL, không có error.  
+**Expected result:** JSON với `Subject` = `...build-and-push.yaml@refs/heads/main`.  
 **Fail result:** `error: no matching signatures` → image chưa được ký.
 
 ---
@@ -141,13 +141,22 @@ cosign verify-attestation \
 ### Step 7: Trace commit về PR và approval
 
 ```bash
-# Tìm PR chứa commit
-gh api \
-  /repos/TF4-Phase3-TechX/tf4-phase3-repo/commits/<commit-sha>/pulls \
-  --jq '.[0] | {number: .number, title: .title, merged_at: .merged_at, merged_by: .merged_by.login}'
+gh pr view 324 \
+  --repo TF4-Phase3-TechX/tf4-phase3-repo \
+  --json number,title,mergedAt,mergedBy,reviews,state
 ```
 
-**Expected result:** PR number, title, merged date, merged by — chứng minh ai đã approve/merge.
+**Expected result:**
+```json
+{
+  "number": 324,
+  "title": "feat(frontend): batch catalog currency conversions",
+  "state": "MERGED",
+  "mergedAt": "2026-07-19T...",
+  "mergedBy": {"login": "..."},
+  "reviews": [{"state": "APPROVED", "author": {...}}]
+}
+```
 
 ---
 
@@ -157,15 +166,15 @@ gh api \
 # Xem image-revisions.yaml trong GitOps repo
 gh api \
   /repos/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/contents/environments/production/image-revisions.yaml \
-  --jq '.content | @base64d' | grep -A3 "checkout:"
+  --jq '.content | @base64d' | grep -A4 "currency:"
 ```
 
 **Expected result:**
 ```yaml
-checkout:
+currency:
   imageOverride:
-    tag: "8340af1-checkout"
-    digest: "sha256:<digest>"  # ← added by SEC-19
+    tag: "411e9a2-currency"
+    # digest field: có nếu promote xảy ra sau SEC-19 merged (2026-07-20 00:01)
 ```
 
 ---
@@ -194,29 +203,29 @@ kubectl -n techx-sec17-admission-test run test-unsigned \
 
 Mentor cần biết các điểm sau để đánh giá đúng:
 
-### Gap 1: Runtime verify không có live build artifact [MEDIUM]
+### Gap 1: Image `currency` (411e9a2) được build trước SEC-16 verify steps [MEDIUM]
 
-- **Vấn đề:** SEC-16 plan note rõ: evidence chính thức từ `build-and-push.yaml` trên `main` là `security-artifacts-<tag>` artifact. Kiro không thể trigger CI build thật trong session này, nên file `cosign-verify-checkout-*.txt` thật chưa được đính kèm ở đây.
-- **Cách kiểm:** Vào GitHub Actions → `build-and-push.yaml` → chọn run tương ứng commit `8340af1` → download artifact `security-artifacts-8340af1` → xem các file verify.
-- **Thay thế immediate:** Các lệnh `cosign verify*` ở Step 4-6 trên cho phép mentor tự verify từ digest — đây là cách chính xác nhất, không phụ thuộc vào artifact CI đã expire hay chưa.
+- **Vấn đề:** Commit `411e9a2` merged 2026-07-19 19:32. PR #351 (SEC-16 verify steps) merged 2026-07-19 22:19 — **tức là 2h47m sau**.
+- **Hệ quả:** Image `411e9a2-currency` được build với gate từ PR #293 (SEC-15: sign + SBOM + provenance) nhưng **chưa có SEC-16 verify steps** (bước 5-8). Image có signature và provenance nhưng **pipeline chưa self-verify** chúng tại build time.
+- **Điều này có nghĩa gì:** cosign sign + attest + SBOM đã chạy (bước 3,4,7) nhưng cosign verify (bước 5,6,8) chưa được thêm vào lúc build. Signature/SBOM/provenance **vẫn tồn tại trên registry** và mentor vẫn có thể verify từ ngoài — chỉ là pipeline chưa tự kiểm lại.
+- **Cách xử lý:** Bước 4-6 trong guide này (cosign verify từ ngoài) vẫn work nếu signature đã được tạo ở bước 3/4 của SEC-15 pipeline. Nếu không pass, cần image từ build sau PR #351 (sau 2026-07-19 22:19).
 
-### Gap 2: Image-revisions.yaml chưa có digest field [MEDIUM]
+### Gap 2: Image-revisions.yaml không có digest field cho tag 411e9a2 [MEDIUM]
 
-- **Vấn đề:** SEC-19 (`a4d0a38`) đã thêm promotion job ghi digest vào `image-revisions.yaml`. Tuy nhiên, tag `8340af1` hiện tại trong `image-revisions.yaml` **chưa có** `digest:` field — đây là image được promote trước khi SEC-19 merged.
-- **Hệ quả:** ArgoCD `techx-corp` app hiện deploy theo tag, không theo digest. Admission policy `require-digest-image-reference` chưa active trên `techx-tf4` namespace (chỉ scoped theo label, `techx-tf4` chưa có label đó).
-- **Cách xử lý:** Lần promote tiếp theo sau commit vào `main` sẽ tự động thêm digest field (SEC-19 đã live trên main). Hoặc manual trigger `build-and-push.yaml` với checkout service.
+- **Vấn đề:** Tag `411e9a2-currency` được promote trước PR #363 (SEC-19 — digest field, 2026-07-20 00:01). `image-revisions.yaml` chỉ có `tag:`, không có `digest:`.
+- **Hệ quả:** ArgoCD deploy theo tag, không theo immutable digest. Admission policy `require-digest-image-reference` chưa active trên `techx-tf4` (chưa có label).
+- **Cách xử lý:** Lần promote tiếp theo sẽ tự thêm digest. Hoặc trigger manual build trên `main`.
 
 ### Gap 3: Kyverno admission policy scoped to test namespace [LOW]
 
-- **Vấn đề:** `require-signed-techx-images` hiện chỉ áp dụng cho namespace có label `techx.io/sec17-signature-enforce=true`. Production namespace `techx-tf4` chưa có label này.
-- **Lý do cố ý:** SEC-17 plan ghi rõ — chỉ mở rộng sang production sau khi `image-revisions.yaml` có digest entries và image đã được sign từ main. Đây là staged rollout, không phải gap quên.
-- **Hệ quả:** Hiện tại, cluster production không enforce signature verify tại admission. Controls chuỗi supply chain (scan → sign → promote) đã đủ để ngăn unsigned image tới GitOps.
+- **Vấn đề:** `require-signed-techx-images` chỉ áp dụng cho namespace có label `techx.io/sec17-signature-enforce=true`. Production `techx-tf4` chưa có label này.
+- **Lý do cố ý:** SEC-17 plan ghi rõ — staged rollout, chỉ mở rộng sau khi `image-revisions.yaml` có digest entries và image signed từ main.
+- **Hệ quả:** Production cluster hiện không enforce signature verify tại admission.
 
 ### Gap 4: required_status_checks trên ruleset main [LOW]
 
-- **Vấn đề:** SEC-16 plan note: `required_status_checks` chưa được cấu hình trên ruleset `main` — chỉ có required review (2 approvals + CODEOWNERS). Về lý thuyết, admin có thể merge PR mà không cần CI pass.
-- **Hệ quả:** Chỉ ảnh hưởng đến tình huống admin override — không ảnh hưởng normal workflow.
-- **Recommendation:** Cần admin thêm required CI checks vào branch protection ruleset.
+- **Vấn đề:** Ruleset `main` chỉ có required reviews (2 approvals + CODEOWNERS), chưa có `required_status_checks`. Admin có thể merge PR không cần CI pass.
+- **Cách xử lý:** Cần admin thêm CI checks vào branch protection. Ngoài tầm với của team (cần repo admin permission).
 
 ---
 
@@ -226,34 +235,29 @@ Mentor cần biết các điểm sau để đánh giá đúng:
 
 | # | Yêu cầu | Trạng thái | Evidence |
 |---|---|---|---|
-| 1 | Branch protection + required status checks trên `main` | ⚠️ **PARTIAL** | Required reviews có. Required CI checks chưa bật (xem Gap 4). |
-| 2 | CI scan gates (secret/SAST/IaC/manifest) chặn PR vi phạm | ✅ **PASS** | SEC-14 (PR #293), ci.yaml: Gitleaks + Trivy + tfsec + kube-linter. Evidence commit history PR #293. |
-| 3a | Registry immutable tags | ✅ **PASS** | ECR `IMMUTABLE` via `infra/terraform/ecr.tf` (PR #293). |
-| 3b | Image signed + SBOM + provenance trước khi promote | ✅ **PASS** | build-and-push.yaml 8-step gate (SEC-15 + SEC-16). Pipeline fail nếu sign/SBOM/provenance fail. |
-| 3c | Cluster chỉ chạy image đã ký (admission) | ⚠️ **PARTIAL** | Kyverno policy deployed nhưng scoped to test namespace (Gap 3). Production namespace chưa enforce. |
-| 4 | Pinned dependencies (actions/images theo digest) | ✅ **PASS** | SEC-18, check_pinned_dependencies.py guard trên cả 2 repos. |
-| 5 | Truy ngược từ runtime pod → commit → signer | ✅ **PASS** | Full chain: pod imageID → ECR tag → git SHA → workflow run → cosign verify (Steps 1-7 trên). |
+| 1 | Branch protection + required status checks trên `main` | ⚠️ **PARTIAL** | Required reviews có (2 approvals + CODEOWNERS). Required CI checks chưa bật (Gap 4). |
+| 2 | CI scan gates chặn PR vi phạm (secret/SAST/IaC/manifest) | ✅ **PASS** | SEC-14 PR #293: ci.yaml — Gitleaks + Trivy SAST + tfsec + kube-linter. Evidence: commit history PR #293 (test vuln add → CI fail → remove). |
+| 3a | Registry immutable tags | ✅ **PASS** | ECR `IMMUTABLE` — `infra/terraform/ecr.tf` PR #293, commit `791f45a218763aae975db5e04cadb3981b1318a9`. |
+| 3b | Image signed + SBOM + provenance trước khi promote | ✅ **PASS** | build-and-push.yaml 8-step gate (SEC-15 + SEC-16). Pipeline fail-closed nếu gate fail. Image `411e9a2-currency` built 2026-07-19 với SEC-15 gate. |
+| 3c | Cluster chỉ chạy image đã ký (admission) | ⚠️ **PARTIAL** | Kyverno `require-signed-techx-images` deployed (PR #364). Scoped test namespace only. Production `techx-tf4` chưa enforce (Gap 3 — staged rollout). |
+| 4 | Pinned dependencies (actions/images theo digest) | ✅ **PASS** | SEC-18, `check_pinned_dependencies.py` guard — cả `tf4-phase3-repo` và `tf4-phase3-gitops-manifests`. |
+| 5 | Truy ngược từ runtime pod → commit → signer | ✅ **PASS** | Full chain: pod imageID → ECR tag `411e9a2-currency` → commit `411e9a23...` → PR #324 → workflow run → cosign verify → provenance → SBOM (Steps 1-8). |
 
 ### Verdict tổng
 
-**PARTIAL PASS** — Mandate 10 đạt **5/7 điểm** (tính 2 điểm partial là 1):
+**PARTIAL PASS** — Mandate 10 đạt **5/7 điểm** (2 partial còn lại được track):
 
 - ✅ Supply chain controls (scan → sign → attest → verify) hoàn chỉnh trên pipeline
-- ✅ Evidence trail đầy đủ từ pod digest về commit/PR/workflow/signature/SBOM/provenance
-- ✅ Negative tests: CI gates block vi phạm
-- ⚠️ Hai gap cần hoàn thiện để đạt FULL PASS:
-  1. **Bật `required_status_checks`** trên ruleset `main` (Gap 4) — cần admin permission
-  2. **Mở rộng admission policy** sang production namespace sau promote với digest (Gap 3) — unblock khi `image-revisions.yaml` có digest entries
+- ✅ Evidence trail đầy đủ từ pod `currency` digest về commit `411e9a23...` → PR #324 → workflow → signature → provenance → SBOM
+- ✅ Negative tests: CI gates block vi phạm (evidence PR #293 commit history)
+- ⚠️ Gap 1 (build timing): image `411e9a2` có gate SEC-15 nhưng verify steps của SEC-16 chưa active lúc build — cosign verify từ ngoài vẫn work nếu signature tồn tại
+- ⚠️ Gap 3 (admission): Kyverno policy test-scoped, production chưa enforce — staged rollout, không phải oversight
 
-### Khuyến nghị đóng mandate
+### Để đạt FULL PASS
 
-PM/mentor có thể coi Mandate 10 đạt nếu:
-- Accept 2 gaps còn lại là "tracked and scoped" (không phải unknown risk)
-- Xác nhận Steps 1-8 trong verification guide tự bấm được và pass
-
-Nếu muốn FULL PASS trước khi đóng: 
-1. Trigger 1 lần `build-and-push.yaml` trên `main` để có build artifact mới với digest trong `image-revisions.yaml`
-2. Thêm `required_status_checks` vào branch protection
+1. Trigger 1 lần `build-and-push.yaml` trên `main` (sau PR #351 2026-07-19 22:19) → build image mới với đầy đủ 8 bước verify → download artifact `security-artifacts-<tag>` gắn vào Jira
+2. Thêm `required_status_checks` vào branch protection ruleset (cần admin)
+3. Sau khi `image-revisions.yaml` có digest field → label namespace `techx-tf4` để bật admission enforcement
 
 ---
 
