@@ -1,0 +1,10 @@
+{
+  "guardrail_id": "wckqh9dms6qa",
+  "guardrail_version": "1",
+  "name": "tf4-product-reviews-grounded-v1",
+  "region": "us-east-1",
+  "status": "READY",
+  "content_retention": "metadata_only",
+  "contextual_grounding": "disabled_after_calibration; deterministic exact-quote validator is authoritative",
+  "policies": ["prompt_attack", "harmful_content", "pii"]
+}

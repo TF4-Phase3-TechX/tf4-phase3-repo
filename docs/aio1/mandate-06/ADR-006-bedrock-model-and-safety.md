@@ -114,7 +114,7 @@ Conservative validation can increase insufficient responses. Structured-output s
 | Evidence | Link/status |
 |---|---|
 | Three-model sanitized bake-off | Complete: [`eval/bakeoff-report.json`](eval/bakeoff-report.json), Nova winner |
-| Guardrail version/export | Canary `e2svpiawj1v5:3`; rollback source `wckqh9dms6qa:1`; templates committed |
+| Guardrail version/export | Production/canary `wckqh9dms6qa:1`; evaluation source `e2svpiawj1v5:3`; templates committed |
 | Canary/SLO/telemetry | Complete: [runtime acceptance record](runtime-acceptance-2026-07-17.md), [GitOps evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/22#issuecomment-4998938865) |
 | Rollback drill | Complete: [actual rollback evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/16#issuecomment-4998935068) |
 | Mentor/application-path record | Complete: grounded, unsupported, injection, action, PII and failure paths in the [runtime record](runtime-acceptance-2026-07-17.md) |

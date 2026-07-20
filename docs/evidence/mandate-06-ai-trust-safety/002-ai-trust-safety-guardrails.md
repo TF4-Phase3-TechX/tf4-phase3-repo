@@ -15,7 +15,7 @@
 | Injection resistance | Direct blocks 100%; stored review quarantine 100% | Unit/eval verified |
 | PII/system prompt safety | Pre-provider redaction and output canary/PII filter; zero eval leak | Unit/eval verified |
 | Failure bounds | Zero retry, 4.5-second deadline, static fallback, circuit breaker | Unit verified; drill pending |
-| Guardrail | `e2svpiawj1v5`, version 3, READY; prompt/content/PII policies | Evaluation verified |
+| Guardrail | wckqh9dms6qa (Version 1, Production) / e2svpiawj1v5 (Version 3, Evaluation) | Evaluation & Production verified |
 | IAM | Nova profile/destination-only policy passes AWS Access Analyzer | Policy verified; role association pending |
 | Telemetry | PR #131-compatible token/cost/latency/call/error metrics; content capture disabled | Code verified; deployed series pending |
 | Deployment | Dedicated ServiceAccount and hardened canary values | CDO canary pending |
@@ -25,6 +25,13 @@
 
 ```sh
 python -m pytest techx-corp-platform/src/product-reviews/tests -q
+
+# Run evaluation against the production guardrail (511825856493):
+python docs/aio1/mandate-06/eval/run_bakeoff.py \
+  --guardrail-id wckqh9dms6qa \
+  --guardrail-version 1
+
+# Run evaluation against the evaluation/canary guardrail (589077667575):
 python docs/aio1/mandate-06/eval/run_bakeoff.py \
   --guardrail-id e2svpiawj1v5 \
   --guardrail-version 3

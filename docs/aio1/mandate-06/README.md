@@ -8,7 +8,7 @@ Status: **implementation, real-model bake-off and production canary gates comple
 - [Model-selection scorecard](model-selection-scorecard.md): frozen gates, ranking and 2026-07-14 result.
 - [Dataset](eval/dataset-v1.jsonl), [runner](eval/run_bakeoff.py), [report](eval/bakeoff-report.json) and [report schema](eval/bakeoff-report.schema.json).
 - [Metadata-only human review](eval/human-review-2026-07-17.md): disposition of every deterministic failure and unstable case without re-grading unretained content.
-- [Guardrail configuration](guardrail/create-guardrail.json) and [version evidence](guardrail/evaluation-guardrail-evidence.json).
+- [Guardrail configuration](guardrail/create-guardrail.json), [evaluation version evidence](guardrail/evaluation-guardrail-evidence.json), and [production version evidence](guardrail/production-guardrail-evidence.json).
 - [Nova runtime IAM policy](iam/runtime-policy-nova.json), validated with AWS Access Analyzer.
 - [CDO production handoff runbook](CDO-HANDOFF.md): account, Guardrail, IAM, Pod Identity, deployment, verification and rollback contract.
 - [Runtime evidence checklist](evidence-checklist.md).

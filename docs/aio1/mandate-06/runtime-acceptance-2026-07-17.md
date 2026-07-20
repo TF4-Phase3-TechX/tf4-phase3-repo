@@ -12,7 +12,7 @@ answers, PII, AWS credentials, the system-canary value, or Guardrail traces.
 | Deployment | `techx-tf4/product-reviews`, generation 22, Ready/Updated `1/1` |
 | Image | `d1c4632-product-reviews`, digest `sha256:f8a938d6822a1e689dde1f8df01123635dcbd68bea32fa681ff8e439061aaa92` |
 | Model | `us.amazon.nova-2-lite-v1:0` |
-| Guardrail | Evaluation/canary `e2svpiawj1v5:3`; rollback source `wckqh9dms6qa:1` |
+| Guardrail | Production/canary `wckqh9dms6qa:1`; evaluation source `e2svpiawj1v5:3` |
 | Identity | ServiceAccount `product-reviews-bedrock`; association `a-ytlbepsjqae4uvmr7`; approved account-589 target role |
 
 The exact-image preflight passed before promotion. Its sanitized result records
