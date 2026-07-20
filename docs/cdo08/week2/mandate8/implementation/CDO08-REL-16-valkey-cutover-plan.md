@@ -27,11 +27,12 @@ kỹ thuật di trú.
 
 | # | Việc cần làm | Trạng thái |
 |---|---|---|
-| P1 | Cài Argo Rollouts controller (Helm) + CRD | Application đã commit (`argocd/root-resources/applications.yaml`), **chưa sync** |
-| P2 | Cấp quyền ArgoCD ClusterRole cho CRD `rollouts.argoproj.io`/`rolloutmanager` | AppProject `namespaceResourceWhitelist` đã thêm `argoproj.io/Rollout` — cần verify ArgoCD ServiceAccount ClusterRole riêng nếu chưa đủ |
-| P3 | NLB bridge `valkey-migration-bridge` reach được `valkey-cart` | Template đã commit (`valkeyMigrationBridge.enabled=false` mặc định) — **chưa bật, chưa có NLB thật** |
-| P4 | IAM quyền `elasticache:StartMigration`/`CompleteMigration`/`DescribeReplicationGroups` cho người vận hành | **Chưa verify** — cần check trước khi chạy `02-start-migration.sh` |
+| P1 | Cài Argo Rollouts controller (Helm) + CRD | **Xong** — Application `argo-rollouts` đã merge+sync qua PR #56/#396 (gitops), verify trực tiếp trên cluster: `kubectl get application argo-rollouts -n argocd` → `Synced`/`Healthy`, CRD `rollouts.argoproj.io` tồn tại, controller pod `1/1 Running`. |
+| P2 | Cấp quyền ArgoCD ClusterRole cho CRD `rollouts.argoproj.io` | **Xong** — verify trực tiếp: `kubectl auth can-i create rollouts.argoproj.io --as=system:serviceaccount:argocd:argocd-application-controller` → `yes`. |
+| P3 | NLB bridge `valkey-migration-bridge` reach được `valkey-cart` | Template đã merge (PR #397, dùng nguyên bản không tự viết lại), `valkeyMigrationBridge.enabled=false` mặc định — **chưa bật, chưa có NLB thật**. Selector `opentelemetry.io/name: valkey-cart` đã verify khớp label pod thật. |
+| P4 | IAM quyền `elasticache:StartMigration`/`CompleteMigration`/`DescribeReplicationGroups` cho người vận hành | **Đã verify — CHƯA ĐỦ.** `aws iam simulate-principal-policy` trên role `TF4-SecurityIAMSSOManager`: `DescribeReplicationGroups` = `allowed`, nhưng `StartMigration` và `CompleteMigration` = `implicitDeny`. Phải xin thêm quyền hoặc đổi role trước khi chạy `02-start-migration.sh`/`05-complete-migration.sh`. |
 | P5 | SG cho phép ElastiCache reach bridge | Đã verify: egress rule có sẵn từ REL-14 (`elasticache_valkey_to_vpc_redis`), khớp đúng pattern REL-15 Postgres bridge đã dùng — không cần sửa Terraform |
+| P6 | `redis-cli` có trong image `valkey-cart` không (dùng bởi `04-freeze-writes.sh`/`06-promote-rollout.sh`/`rollback-02-unlock-source.sh`) | **Xong** — verify trực tiếp: `kubectl exec deploy/valkey-cart -- which redis-cli` → `/usr/local/bin/redis-cli` tồn tại (cả `valkey-cli` cũng có). |
 
 ## 4. PM Approval Gate
 
@@ -63,5 +64,7 @@ migration khác trong Mandate 8). `08-cleanup.sh` chỉ tắt NLB bridge, không
 
 ## 8. Chưa làm (explicitly out of scope lượt này)
 
-Không sync ArgoCD (chưa cài Argo Rollouts thật), không bật `valkeyMigrationBridge`/`riotRedisBackfill`,
-không chạy script nào, không đụng AWS/ElastiCache live, không tạo PR (hỏi riêng khi code sẵn sàng).
+Argo Rollouts controller đã live (P1/P2 xong, do nhóm khác cài chung cho Mandate 8) — nhưng vẫn không tự
+bật `valkeyMigrationBridge`/`riotRedisBackfill`/`rollouts.enabled`+`useRollout` cho `cart`, không chạy
+script nào trong `scripts/valkey/`, không đụng AWS/ElastiCache live. Blocker thật còn lại trước khi chạy
+thật: PM approval (§4, PENDING) + quyền IAM `StartMigration`/`CompleteMigration` (P4, chưa đủ).
