@@ -30,7 +30,7 @@ RUN dotnet publish ./src/cart.csproj -r linux-musl-$TARGETARCH --no-restore -o /
 # -----------------------------------------------------------------------------
 
 # https://mcr.microsoft.com/v2/dotnet/runtime-deps/tags/list
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine3.22@sha256:dede21dd11890c0f687e49408e4479e129fb9464809b9a1ce162fbad004cf987
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine3.22@sha256:6e271376d4f31554636e1355915b4e61ba971ebbac28f09e6fc7c4d97f5cc43d
 
 WORKDIR /usr/src/app/
 COPY --from=builder /cart/ ./
