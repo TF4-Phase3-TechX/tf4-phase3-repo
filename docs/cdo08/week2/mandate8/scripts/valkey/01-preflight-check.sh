@@ -14,8 +14,8 @@ kubectl get crd rollouts.argoproj.io >/dev/null \
 
 echo "[2/4] cart Rollout resource exists and is healthy?"
 kubectl get rollout cart -n "$NAMESPACE" >/dev/null \
-  && echo "  OK: Rollout/cart exists (components.cart.rollouts.enabled must be true)." \
-  || { echo "  FAIL: Rollout/cart not found - flip components.cart.rollouts.enabled=true and sync first."; exit 1; }
+  && echo "  OK: Rollout/cart exists (rollouts.enabled + components.cart.useRollout must both be true)." \
+  || { echo "  FAIL: Rollout/cart not found - flip rollouts.enabled=true and components.cart.useRollout=true, then sync first."; exit 1; }
 
 echo "[3/4] valkey-migration-bridge Service has an NLB endpoint?"
 BRIDGE_HOST=$(kubectl get svc valkey-migration-bridge -n "$NAMESPACE" \
