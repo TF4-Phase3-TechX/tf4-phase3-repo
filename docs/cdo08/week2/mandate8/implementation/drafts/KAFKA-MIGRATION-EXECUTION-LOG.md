@@ -231,6 +231,107 @@ Secret value committed: không
 Runtime migration enabled: chưa
 ```
 
+## Cập nhật sau review PR #401
+
+Review yêu cầu sửa 2 điểm trước khi merge:
+
+1. `01-verify-msk-connectivity.sh` dùng `kubectl run --rm` nhưng chưa attach bằng `-i`, nên `kubectl` chặn ngay trước khi tạo pod.
+2. Debug pod trong script chưa tuân thủ admission policy của cluster: cần `runAsNonRoot`, drop toàn bộ Linux capabilities và khai báo `resources.requests/limits`.
+3. `values.schema.json` cho `mirrormaker2` còn quá lỏng vì `additionalProperties=true`, dễ bỏ lọt typo như `boostrapServers`.
+
+Đã xử lý:
+
+```text
+docs/cdo08/week2/mandate8/scripts/kafka/01-verify-msk-connectivity.sh
+techx-corp-chart/values.schema.json
+```
+
+Chi tiết:
+
+- Thêm `-i` cho `kubectl run --rm`.
+- Thêm `--overrides` để pod test MSK connectivity tuân thủ policy:
+  - `runAsNonRoot=true`
+  - `runAsUser=65534`
+  - `runAsGroup=65534`
+  - `seccompProfile=RuntimeDefault`
+  - `allowPrivilegeEscalation=false`
+  - `capabilities.drop=["ALL"]`
+  - `resources.requests/limits`
+- Thêm biến `KUBECTL="${KUBECTL:-kubectl}"` để có thể override path kubectl khi cần chạy từ môi trường Windows/Git Bash.
+- Siết schema `mirrormaker2` về `additionalProperties=false`.
+- Khai báo rõ các field con:
+  - `name`
+  - `replicas`
+  - `version`
+  - `connectCluster`
+  - `sourceCluster.alias`
+  - `sourceCluster.bootstrapServers`
+  - `targetCluster.alias`
+  - `targetCluster.bootstrapServers`
+  - `targetCluster.securityProtocol`
+  - `targetCluster.saslMechanism`
+  - `targetCluster.username`
+  - `targetCluster.passwordSecret.name`
+  - `targetCluster.passwordSecret.key`
+  - `topicsPattern`
+  - `groupsPattern`
+  - `replicationPolicyClass`
+  - `sourceConnector.tasksMax`
+  - `resources`
+
+Lệnh verify sau khi sửa:
+
+```bash
+bash -n docs/cdo08/week2/mandate8/scripts/kafka/01-verify-msk-connectivity.sh
+```
+
+Kết quả:
+
+```text
+Pass
+```
+
+```bash
+helm lint ./techx-corp-chart \
+  -f ../tf4-phase3-gitops-manifests/environments/production/app-values.yaml \
+  -f ../tf4-phase3-gitops-manifests/environments/production/flagd-values.yaml \
+  -f ../tf4-phase3-gitops-manifests/environments/production/image-revisions.yaml
+```
+
+Kết quả:
+
+```text
+1 chart(s) linted, 0 chart(s) failed
+```
+
+```bash
+helm template techx-corp ./techx-corp-chart \
+  --set mirrormaker2.enabled=true \
+  --set-string "mirrormaker2.targetCluster.bootstrapServers=b-1.example.kafka.us-east-1.amazonaws.com:9096\,b-2.example.kafka.us-east-1.amazonaws.com:9096" \
+  --show-only templates/mirrormaker2.yaml
+```
+
+Kết quả:
+
+```text
+Pass, render được KafkaMirrorMaker2 manifest với IdentityReplicationPolicy.
+```
+
+```bash
+helm template techx-corp ./techx-corp-chart \
+  -f ../tf4-phase3-gitops-manifests/environments/production/app-values.yaml \
+  -f ../tf4-phase3-gitops-manifests/environments/production/flagd-values.yaml \
+  -f ../tf4-phase3-gitops-manifests/environments/production/image-revisions.yaml
+```
+
+Kết quả:
+
+```text
+Pass
+```
+
+Lưu ý: chưa chạy runtime `01-verify-msk-connectivity.sh` trực tiếp trên cluster trong phiên này vì shell tool không có `kubectl` trong PATH của bash. Script đã được sửa theo đúng pattern đã pass ở PR Valkey và đã pass syntax check.
+
 ## Việc cần làm tiếp
 
 1. Tạo PR app repo cho các file trên.
