@@ -31,7 +31,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** Xác nhận hệ thống alert đã được cấu hình sẵn trong Grafana. Đây là evidence trả lời câu hỏi "radar dashboard có cảm nhận được dư chấn không" — alert rules TỒN TẠI và đang active với interval 30s.
 
-![Alert Rules List — 4 groups từ flash-sale-alerts.yaml](grafana-03-alert-rules.png)
+![Alert Rules List — 4 groups từ flash-sale-alerts.yaml](images/grafana-03-alert-rules.png)
 
 **Nội dung ảnh:** Grafana Alerting > Alert rules, hiển thị file provisioning `/etc/alerts.d/flash-sale-alerts.yaml` với 4 groups:
 - `flash-sale-kubernetes-pressure` — 30s
@@ -47,7 +47,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** Xác nhận cụ thể các alert rules liên quan đến incident — đặc biệt `NodeCPUPressure` trực tiếp liên quan đến việc frontend CPU đạt 127% trong window sự cố. Đây là bằng chứng rằng nếu có data, alert đáng lẽ đã kêu.
 
-![flash-sale-kubernetes-pressure — chi tiết 6 rules](flash-sale-kubernetes-pressure.png)
+![flash-sale-kubernetes-pressure — chi tiết 6 rules](images/flash-sale-kubernetes-pressure.png)
 
 **Nội dung ảnh:** Detail view của group `flash-sale-kubernetes-pressure`, namespace `/etc/alerts.d/flash-sale-alerts.yaml`, interval 30s. 6 rules:
 
@@ -68,7 +68,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** CDO07 query trực tiếp vào window incident 14:10–14:30 ngày 14/07 để tìm data. Kết quả là **No data** — đây là bằng chứng rằng Prometheus không có data lịch sử cho window đó, dù metric đang được scrape đúng (xem Ảnh 4).
 
-![Prometheus raw counter — container_cpu_usage_seconds_total{pod=~"frontend-.*"}, time range 14:10–14:30 ngày 14/07](grafana-01-frontend-cpu.png)
+![Prometheus raw counter — container_cpu_usage_seconds_total{pod=~"frontend-.*"}, time range 14:10–14:30 ngày 14/07](images/grafana-01-frontend-cpu.png)
 
 **Nội dung ảnh:** Grafana Explore, datasource Prometheus, query `container_cpu_usage_seconds_total{pod=~"frontend-.*"}`, chế độ Raw, time range **2026-07-14 14:10:00 → 14:30:00** (+07). Kết quả: data hiển thị nhưng là các điểm rời rạc từ pod hiện tại — không có continuous time series cho window incident. Pod lúc incident (`frontend-6c7fd747df-*`) đã không còn trong Prometheus.
 
@@ -80,7 +80,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** Sau khi xác nhận không có data lịch sử, CDO07 query Last 1h ngày 15/07 để chứng minh metric pipeline KHÔNG bị broken — Prometheus đang scrape đúng ở thời điểm hiện tại. Đây là baseline để phân biệt "no data vì incident" vs "no data vì Prometheus bị lỗi".
 
-![Prometheus rate — rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m]), Last 1h ngày 15/07](grafana-01-frontend-cpu-current.png)
+![Prometheus rate — rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m]), Last 1h ngày 15/07](images/grafana-01-frontend-cpu-current.png)
 
 **Nội dung ảnh:** Query `rate(container_cpu_usage_seconds_total{pod=~"frontend-.*"}[1m])`, time range **Last 1 hour (15/07/2026)**, namespace `techx-tf4`. Chart hiển thị data liên tục từ ~13:50 đến ~14:20 ngày 15/07 — metric đang được scrape bình thường.
 
@@ -92,7 +92,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** Đây là ảnh quan trọng nhất về observability gap. CDO07 query dashboard chính xác trong window 14:00–15:00 ngày 14/07 — kết quả là tất cả panels đều 0 / No data. PM đã xác nhận đây là thật.
 
-![Kubernetes Scaling Dashboard — 2026-07-14 14:00–15:00, all zero/no data](grafana-04-k8s-scaling-dashboard.png)
+![Kubernetes Scaling Dashboard — 2026-07-14 14:00–15:00, all zero/no data](images/grafana-04-k8s-scaling-dashboard.png)
 
 **Nội dung ảnh:** Dashboard "Kubernetes Scaling - Pods & Nodes", namespace filter `techx-tf4`, time range **2026-07-14 14:00:00 → 2026-07-14 15:00:00** (UTC+07:00). Kết quả:
 - Current Nodes: **0** (đỏ)
@@ -121,7 +121,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** CloudTrail ghi lại toàn bộ AWS API calls trong window incident. Đây là audit trail không thể giả mạo — chứng minh các hoạt động thực sự xảy ra trong hệ thống lúc 14:15–14:30.
 
-![CloudTrail events trong window incident](cloud_trail_detect.png)
+![CloudTrail events trong window incident](images/cloud_trail_detect.png)
 
 **Nội dung ảnh:** CloudTrail console hiển thị các events trong window 14:15–14:30 +07. Thấy rõ pattern bất thường: `vinhkhuat` GetCallerIdentity burst, bastion `i-072084d1cf0b2f1c9` RegisterContainerInstance AccessDenied lặp lại, team (`quang.tranminh`, `phuong`) đang điều tra.
 
@@ -131,7 +131,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** Ghi lại hoạt động network level trong window incident. CreateNetworkInterface events có thể liên quan đến HPA scale up tạo pod mới (mỗi pod mới cần network interface trong VPC).
 
-![CloudTrail — CreateNetworkInterface events](create_network_interface.png)
+![CloudTrail — CreateNetworkInterface events](images/create_network_interface.png)
 
 **Nội dung ảnh:** CloudTrail events `CreateNetworkInterface` từ EC2. Consistent với việc K8s tạo pod mới khi HPA scale frontend 1→3 — mỗi pod mới trong EKS cần 1 ENI (Elastic Network Interface) từ VPC CNI plugin.
 
@@ -159,7 +159,7 @@ Trong window 14:15–14:30 +07, user báo không thanh toán được. CDO07 đi
 
 > **Lý do chụp:** K8s Audit Log (OpenSearch/Grafana) ghi lại toàn bộ kubectl operations trong cluster. Ảnh này chứng minh team đã phát hiện và chủ động điều tra TRONG window incident (14:25–14:27), không phải sau khi sự cố kết thúc.
 
-![K8s Audit Log — team port-forward vào Grafana/Jaeger lúc 14:25–14:27](evidence_incident.jpg)
+![K8s Audit Log — team port-forward vào Grafana/Jaeger lúc 14:25–14:27](images/evidence_incident.jpg)
 
 **Nội dung ảnh:** K8s Audit Log từ OpenSearch, timestamp range 14:15–14:27 +07. Các entries đáng chú ý:
 

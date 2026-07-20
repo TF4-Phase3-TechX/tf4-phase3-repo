@@ -13,8 +13,8 @@ set -a
 set +a
 
 for SERVICE in "$@"; do
-  docker compose config --services | grep -Fxq "$SERVICE" || {
-    echo "unknown build service: $SERVICE" >&2
+  docker buildx bake -f docker-compose.yml --print "$SERVICE" >/dev/null || {
+    echo "unknown or invalid build target: $SERVICE" >&2
     exit 2
   }
   echo ">> Building and pushing: $SERVICE"

@@ -1,0 +1,2 @@
+scope=post server-side-dry-run snapshot only; no deployment or rollout was performed
+command=kubectl get deployment/pods/events/resourcequota

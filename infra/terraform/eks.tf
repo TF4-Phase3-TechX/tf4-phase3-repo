@@ -34,10 +34,12 @@ module "eks" {
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns                = {}
-    kube-proxy             = {}
-    vpc-cni                = {}
-    aws-ebs-csi-driver     = {}
+    coredns    = {}
+    kube-proxy = {}
+    vpc-cni    = {}
+    aws-ebs-csi-driver = {
+      service_account_role_arn = module.ebs_csi_irsa.iam_role_arn
+    }
     eks-pod-identity-agent = {}
   }
 
@@ -75,7 +77,6 @@ module "eks" {
 
       # Gắn thêm các IAM policy phổ biến cho worker nodes
       iam_role_additional_policies = {
-        AmazonEBSCSIDriverPolicy           = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
         AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
         CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
         AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"

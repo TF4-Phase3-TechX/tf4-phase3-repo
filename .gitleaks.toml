@@ -1,0 +1,21 @@
+# Cấu hình Gitleaks cho dự án TF4 - CDO08 Security Gate
+# Owner: Quyết (CDO08) | Last reviewed: 2026-07-17
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Approved allowlist - audit documentation and test fixtures only"
+paths = [
+    # Mock keys in unit test fixtures - not real credentials
+    # Approved: Quyết (CDO08), 2026-07-17
+    '''techx-corp-platform/src/product-reviews/tests/.*''',
+
+    # Audit ADR documents - describe found issues, not active credentials
+    # Approved: Quyết (CDO08), 2026-07-17
+    '''docs/audit/adr/.*''',
+
+    # Forensic audit evidence - example values in audit trail documentation
+    # Approved: Quyết (CDO08), 2026-07-17
+    '''docs/evidence/mandate-04-forensic/.*'''
+]

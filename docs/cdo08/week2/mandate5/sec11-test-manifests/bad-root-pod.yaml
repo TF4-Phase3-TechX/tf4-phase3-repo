@@ -1,0 +1,17 @@
+# Test manifest — vi phạm cả 2 luật nhóm non-root:
+# thiếu runAsNonRoot (policy require-run-as-nonroot) VÀ thiếu capabilities.drop
+# (policy require-drop-all-capabilities).
+# Production (techx-tf4) đã [Deny] -> apply BỊ REJECT thật. Dùng --dry-run=server
+# để không tạo pod thật trong production khi chỉ muốn xem message reject. Xem plan §7.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sec11-test-bad-root
+  namespace: techx-tf4
+spec:
+  containers:
+  - name: app
+    image: nginx:1.27.0
+    resources:
+      requests: {cpu: "50m", memory: "64Mi"}
+      limits: {cpu: "100m", memory: "128Mi"}

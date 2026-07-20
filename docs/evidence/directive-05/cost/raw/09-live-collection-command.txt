@@ -1,0 +1,2 @@
+command=kubectl get resourcequota/deploy,hpa,pdb/pods/nodes/describe nodes/top nodes/nodepool,nodeclaim/events
+result=completed

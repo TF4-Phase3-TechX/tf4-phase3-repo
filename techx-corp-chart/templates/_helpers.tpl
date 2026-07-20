@@ -50,6 +50,22 @@ opentelemetry.io/name: {{ .name }}
 {{- end }}
 {{- end }}
 
+{{/*
+Render a component image reference. When digest is set, keep the readable tag and
+pin the immutable artifact with repo:tag@sha256:...
+*/}}
+{{- define "techx-corp.image" -}}
+{{- $imageOverride := .imageOverride | default dict -}}
+{{- $repository := (get $imageOverride "repository") | default .defaultValues.image.repository -}}
+{{- $tag := (get $imageOverride "tag") | default (printf "%s-%s" (default .Chart.AppVersion .defaultValues.image.tag) .name) -}}
+{{- $digest := (get $imageOverride "digest") | default "" -}}
+{{- if $digest -}}
+{{- printf "%s:%s@%s" $repository $tag $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- end -}}
+{{- end }}
+
 {{- define "techx-corp.envOverriden" -}}
 {{- $mergedEnvs := list }}
 {{- $envOverrides := default (list) .envOverrides }}
