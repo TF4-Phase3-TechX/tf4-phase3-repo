@@ -251,6 +251,15 @@ resource "aws_vpc_security_group_egress_rule" "dms_postgresql_to_rds" {
   description                  = "Allow DMS to reach target RDS PostgreSQL"
 }
 
+resource "aws_vpc_security_group_egress_rule" "dms_postgresql_to_aws_services_https" {
+  security_group_id = aws_security_group.dms_postgresql_migration.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+  description       = "Allow DMS to retrieve PostgreSQL migration credentials from AWS services via NAT"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "rds_postgresql_from_dms" {
   security_group_id            = aws_security_group.rds_postgresql.id
   referenced_security_group_id = aws_security_group.dms_postgresql_migration.id
