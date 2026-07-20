@@ -316,5 +316,52 @@ class Task4FlashSaleShape(LoadTestShape):
         return None
 
 
-if os.environ.get("LOCUST_LOAD_SHAPE", "").lower() == "task4":
-    load_shape = Task4FlashSaleShape
+class D19BreakpointShape:
+    """Immutable D19 stepped profile for baseline and post-tuning runs.
+
+    Each tuple is (phase name, target concurrent users, duration seconds,
+    spawn rate). Keep this schedule unchanged between comparable runs.
+    """
+
+    STEPS = (
+        ("warm-up", 25, 300, 5),
+        ("step-01", 50, 300, 5),
+        ("step-02", 75, 300, 5),
+        ("step-03", 100, 300, 5),
+        ("step-04", 125, 300, 5),
+        ("step-05", 150, 300, 5),
+        ("step-06", 175, 300, 5),
+        ("step-07", 200, 300, 5),
+        ("fine-01", 210, 300, 2),
+        ("fine-02", 220, 300, 2),
+        ("fine-03", 230, 300, 2),
+        ("fine-04", 240, 300, 2),
+        ("fine-05", 250, 300, 2),
+        ("overload", 275, 600, 2),
+    )
+
+    def tick(self):
+        run_time = self.get_run_time()
+        elapsed = 0
+        for _, users, duration, spawn_rate in self.STEPS:
+            elapsed += duration
+            if run_time < elapsed:
+                return users, spawn_rate
+        return None
+
+
+if os.environ.get("LOCUST_LOAD_SHAPE", "").lower() == "d19-breakpoint":
+    # Locust auto-discovers concrete LoadTestShape subclasses. Rebind the
+    # existing single concrete shape instead of exposing two competing shapes.
+    Task4FlashSaleShape.STEPS = D19BreakpointShape.STEPS
+
+    def d19_breakpoint_tick(self):
+        run_time = self.get_run_time()
+        elapsed = 0
+        for _, users, duration, spawn_rate in self.STEPS:
+            elapsed += duration
+            if run_time < elapsed:
+                return users, spawn_rate
+        return None
+
+    Task4FlashSaleShape.tick = d19_breakpoint_tick
