@@ -266,7 +266,8 @@ components:
     # actual migration window per VALKEY-MIGRATION-PLAN.md.
     useRollout: false
     rolloutStrategy:
-      blueGreen: {}
+      blueGreen:
+        autoPromotionEnabled: false
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
