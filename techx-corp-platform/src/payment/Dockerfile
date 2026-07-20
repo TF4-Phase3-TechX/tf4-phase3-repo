@@ -13,7 +13,7 @@ RUN npm ci --omit=dev
 
 # -----------------------------------------------------------------------------
 
-FROM docker.io/library/node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3
+FROM docker.io/library/node:22-alpine3.23@sha256:8516dce0483394d5708d4b2ee6cacb79fb1d617ea4e2787c2120bcca92ce372e
 
 WORKDIR /usr/src/app/
 
