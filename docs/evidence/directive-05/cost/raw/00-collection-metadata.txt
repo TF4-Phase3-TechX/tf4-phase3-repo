@@ -1,0 +1,6 @@
+collected_at_utc=2026-07-16T03:34:02Z
+cluster=techx-tf4-cluster
+namespace=techx-tf4
+context=arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+git_sha=40cd1ff08ac3a9d0eac548b634a099f5716a8caf
+collector=Claude Code (default AWS credentials; read-only API queries)

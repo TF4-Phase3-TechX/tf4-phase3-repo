@@ -1,4 +1,4 @@
-﻿name: ci
+name: ci
 
 on:
   pull_request:
@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID || '511825856493' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'techx-corp' }}
 
 jobs:
   changes:
@@ -32,13 +32,13 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Detect changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
         with:
           filters: |
             app:
@@ -57,6 +57,96 @@ jobs:
               - 'docs/**'
               - 'README.md'
 
+  secret-scan:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          VERSION="8.18.2"
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz
+          tar -xzf gitleaks_${VERSION}_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Run Gitleaks check
+        run: |
+          # Lấy SHA của commit gốc mà branch này tách ra từ main
+          BASE_SHA=$(git merge-base HEAD origin/main)
+          HEAD_SHA=$(git rev-parse HEAD)
+          echo ">> Scanning commits: ${BASE_SHA}..${HEAD_SHA}"
+          gitleaks detect \
+            --source=. \
+            --log-opts="${BASE_SHA}..${HEAD_SHA}" \
+            --redact \
+            --exit-code 1 \
+            --report-path=gitleaks-report.json \
+            -v
+
+      - name: Upload Secret Scan Report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+
+  sast-dependency-scan:
+    name: SAST & Dependency scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.app == 'true'
+    permissions:
+      contents: read
+      security-events: write  # required to upload SARIF to GitHub Security tab
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Generate readable Trivy SAST & dependency report
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
+        with:
+          scan-type: 'fs'
+          scan-ref: 'techx-corp-platform/src'
+          scanners: 'vuln'
+          format: 'table'
+          output: 'trivy-sast-report.txt'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Run Trivy SAST & dependency scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
+        with:
+          scan-type: 'fs'
+          scan-ref: 'techx-corp-platform/src'
+          scanners: 'vuln'
+          format: 'sarif'
+          output: 'trivy-sast-report.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        continue-on-error: true  # graceful fallback if GitHub Advanced Security not enabled
+        uses: github/codeql-action/upload-sarif@ddf5ce7296213f5548c91e2dd19df2d77d2b2d66 # v3
+        with:
+          sarif_file: trivy-sast-report.sarif
+          category: trivy-sast
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trivy-sast-report
+          path: |
+            trivy-sast-report.sarif
+            trivy-sast-report.txt
+
   yaml-check:
     name: YAML parse check
     runs-on: ubuntu-latest
@@ -64,7 +154,7 @@ jobs:
     if: needs.changes.outputs.app == 'true' || needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.terraform == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Parse YAML files
         shell: bash
@@ -100,16 +190,28 @@ jobs:
         working-directory: infra/terraform
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Check secrets availability
+        id: check_secrets
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN secret is not available. Skipping plan steps."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Configure AWS credentials for plan
-        uses: aws-actions/configure-aws-credentials@v4
+        if: steps.check_secrets.outputs.skip != 'true'
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_PLAN_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: 1.9.8
 
@@ -117,22 +219,58 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform init
+        if: steps.check_secrets.outputs.skip != 'true'
         run: terraform init -input=false
 
       - name: Terraform validate
+        if: steps.check_secrets.outputs.skip != 'true'
         run: terraform validate
 
       - name: Terraform plan
+        if: steps.check_secrets.outputs.skip != 'true'
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan
-        uses: actions/upload-artifact@v4
+        if: steps.check_secrets.outputs.skip != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: terraform-infra-plan
           path: infra/terraform/tfplan
           if-no-files-found: error
+
+  terraform-scan:
+    name: Terraform IaC scan (tfsec)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.terraform == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install tfsec
+        run: |
+          VERSION="v1.28.1"
+          wget -q -O tfsec https://github.com/aquasecurity/tfsec/releases/download/${VERSION}/tfsec-linux-amd64
+          chmod +x tfsec
+          sudo mv tfsec /usr/local/bin/
+
+      - name: Run tfsec scan
+        run: |
+          tfsec -m HIGH --ignore-hcl-errors --exclude-downloaded-modules -e aws-ec2-no-public-egress-sgr,aws-s3-encryption-customer-key,aws-ecr-enforce-immutable-repository,aws-iam-no-policy-wildcards infra/terraform > tfsec-report.txt 2>&1 || tfsec_failed=1
+          cat tfsec-report.txt
+          if [ -n "${tfsec_failed:-}" ]; then
+            exit 1
+          fi
+
+      - name: Upload tfsec report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tfsec-report
+          path: tfsec-report.txt
+          if-no-files-found: ignore
 
   helm-render:
     name: Helm lint and render
@@ -141,10 +279,10 @@ jobs:
     if: needs.changes.outputs.chart == 'true' || needs.changes.outputs.deploy == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: v3.15.4
 
@@ -166,13 +304,15 @@ jobs:
 
       - name: Render observability release
         run: |
+          mkdir -p rendered
           helm template techx-observability ./techx-corp-chart \
             --namespace techx-observability \
             -f deploy/values-observability.yaml \
-            > /tmp/techx-observability.yaml
+            > rendered/techx-observability.yaml
 
       - name: Render app release
         run: |
+          mkdir -p rendered
           helm template techx-corp ./techx-corp-chart \
             --namespace techx-tf4 \
             --set default.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY} \
@@ -180,7 +320,7 @@ jobs:
             -f deploy/values-app-stamp.yaml \
             -f deploy/values-flagd-sync.yaml \
             -f deploy/values-aio-llm.yaml \
-            > /tmp/techx-corp-app.yaml
+            > rendered/techx-corp-app.yaml
 
       - name: Assert application resource and HPA defaults
         run: |
@@ -188,7 +328,7 @@ jobs:
           from pathlib import Path
           import yaml
 
-          resources = [r for r in yaml.safe_load_all(Path('/tmp/techx-corp-app.yaml').read_text()) if r]
+          resources = [r for r in yaml.safe_load_all(Path('rendered/techx-corp-app.yaml').read_text()) if r]
           expected = {
               'frontend-proxy', 'frontend', 'cart', 'product-catalog', 'recommendation',
               'product-reviews', 'llm', 'checkout', 'currency', 'payment', 'shipping',
@@ -209,13 +349,57 @@ jobs:
           PY
 
       - name: Upload rendered manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rendered-manifests
-          path: |
-            /tmp/techx-observability.yaml
-            /tmp/techx-corp-app.yaml
+          path: rendered/
           if-no-files-found: error
+
+  helm-manifest-scan:
+    name: Helm Manifest scan (kube-linter)
+    runs-on: ubuntu-latest
+    needs: [changes, helm-render]
+    if: always() && needs.helm-render.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Download rendered manifests
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: rendered-manifests
+          path: ./rendered
+
+      - name: Install kube-linter
+        run: |
+          VERSION="v0.6.8"
+          curl -sSfL -O https://github.com/stackrox/kube-linter/releases/download/${VERSION}/kube-linter-linux
+          chmod +x kube-linter-linux
+          sudo mv kube-linter-linux /usr/local/bin/kube-linter
+
+      - name: Run kube-linter scan
+        run: |
+          kube-linter lint --config .kube-linter.yaml ./rendered/techx-observability.yaml > kube-linter-obs.txt 2>&1 || obs_failed=1
+          kube-linter lint --config .kube-linter.yaml ./rendered/techx-corp-app.yaml > kube-linter-app.txt 2>&1 || app_failed=1
+          
+          echo "=== Observability Linter Output ==="
+          cat kube-linter-obs.txt
+          echo "=== App Linter Output ==="
+          cat kube-linter-app.txt
+          
+          if [ -n "$obs_failed" ] || [ -n "$app_failed" ]; then
+            exit 1
+          fi
+
+      - name: Upload kube-linter reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kube-linter-reports
+          path: |
+            kube-linter-obs.txt
+            kube-linter-app.txt
+          if-no-files-found: ignore
 
   app-smoke-build:
     name: Docker smoke build checkout + shipping
@@ -224,10 +408,10 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Create CI env override
         shell: bash

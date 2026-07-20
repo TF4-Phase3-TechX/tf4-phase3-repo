@@ -6,7 +6,7 @@ metadata:
   name: require-run-as-nonroot-binding
 spec:
   policyName: require-run-as-nonroot
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:
@@ -20,7 +20,7 @@ metadata:
   name: require-drop-all-capabilities-binding
 spec:
   policyName: require-drop-all-capabilities
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:
@@ -34,7 +34,7 @@ metadata:
   name: disallow-mutable-image-tag-binding
 spec:
   policyName: disallow-mutable-image-tag
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:
@@ -45,10 +45,25 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
 metadata:
+  annotations:
+    techx.io/sec17-stage: "test-scope-only"
+    techx.io/sec17-note: "Expand to production only after GitOps image revisions include digests and build signatures are verified."
+  name: require-digest-image-reference-binding
+spec:
+  policyName: require-digest-image-reference
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        techx.io/sec17-digest-enforce: "true"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
   name: require-resource-limits-binding
 spec:
   policyName: require-resource-limits
-  validationActions: [Audit, Warn]
+  validationActions: [Deny]
   matchResources:
     namespaceSelector:
       matchExpressions:

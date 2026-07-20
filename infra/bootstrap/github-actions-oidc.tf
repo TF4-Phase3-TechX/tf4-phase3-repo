@@ -102,6 +102,7 @@ data "aws_iam_policy_document" "github_actions_plan" {
 
     actions = [
       "autoscaling:Describe*",
+      "application-autoscaling:Describe*",
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
       "access-analyzer:GetAnalyzer",
@@ -118,6 +119,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
       "ecr:List*",
+      "elasticache:Describe*",
+      "elasticache:ListTagsForResource",
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
@@ -132,11 +135,20 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kms:ListResourceTags",
       "logs:Describe*",
       "logs:ListTagsForResource",
+      "kafka:Describe*",
+      "kafka:GetBootstrapBrokers",
+      "kafka:List*",
+      "rds:Describe*",
+      "rds:ListTagsForResource",
       "s3:GetAccelerateConfiguration",
       "s3:GetBucket*",
       "s3:GetEncryptionConfiguration",
       "s3:GetLifecycleConfiguration",
       "s3:GetReplicationConfiguration",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetResourcePolicy",
+      "secretsmanager:ListSecretVersionIds",
+      "secretsmanager:ListTagsForResource",
       "s3:ListBucket"
     ]
 

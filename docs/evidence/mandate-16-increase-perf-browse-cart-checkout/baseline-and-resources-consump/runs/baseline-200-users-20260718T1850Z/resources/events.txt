@@ -1,0 +1,8 @@
+LAST SEEN   TYPE     REASON              OBJECT                             MESSAGE
+41m         Normal   Scheduled           pod/frontend-7ff4667fc6-mxjfj      Successfully assigned techx-tf4/frontend-7ff4667fc6-mxjfj to ip-10-0-10-17.ec2.internal
+41m         Normal   SuccessfulCreate    replicaset/frontend-7ff4667fc6     Created pod: frontend-7ff4667fc6-mxjfj
+41m         Normal   SuccessfulRescale   horizontalpodautoscaler/frontend   New size: 3; reason: cpu resource utilization (percentage of request) above target
+41m         Normal   ScalingReplicaSet   deployment/frontend                Scaled up replica set frontend-7ff4667fc6 from 2 to 3
+41m         Normal   Pulled              pod/frontend-7ff4667fc6-mxjfj      Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-frontend" already present on machine
+41m         Normal   Created             pod/frontend-7ff4667fc6-mxjfj      Created container: frontend
+41m         Normal   Started             pod/frontend-7ff4667fc6-mxjfj      Started container frontend
