@@ -166,7 +166,7 @@ jobs:
             test -n "$digest" && test "$digest" != None
             printf '%s=%s\n' "$service" "$digest"
           done < <(jq -r '.[]' <<< "$SERVICES_JSON") | tee image-digests.txt
-          digests_json="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          digests_json="$(jq -Rnc '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           echo "image_digests=$digests_json" >> "$GITHUB_OUTPUT"
 
       - name: Install Cosign
@@ -180,7 +180,7 @@ jobs:
           set -euo pipefail
           
           # Install Trivy
-          TRIVY_VERSION="0.51.1"
+          TRIVY_VERSION="0.72.0"
           wget -q https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
           tar -xzf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz trivy
           sudo mv trivy /usr/local/bin/
@@ -337,7 +337,7 @@ jobs:
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
         shell: bash
         run: |
-          digest_map="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          digest_map="$(jq -Rnc '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           jq -n \
             --arg image_repository "$IMAGE_REPOSITORY" \
             --arg image_tag "$IMAGE_TAG" \

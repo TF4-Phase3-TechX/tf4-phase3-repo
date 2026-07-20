@@ -24,6 +24,7 @@ public class ValkeyCartStore : ICartStore
     private readonly object _locker = new();
     private readonly byte[] _emptyCartBytes;
     private readonly string _connectionString;
+    private readonly string _connectionStringForLogging;
 
     private static readonly ActivitySource CartActivitySource = new("OpenTelemetry.Demo.Cart");
     private static readonly Meter CartMeter = new Meter("OpenTelemetry.Demo.Cart");
@@ -43,13 +44,23 @@ public class ValkeyCartStore : ICartStore
         });
     private readonly ConfigurationOptions _redisConnectionOptions;
 
-    public ValkeyCartStore(ILogger<ValkeyCartStore> logger, string valkeyAddress)
+    // enableTls/password default to plaintext, no-auth (in-cluster Valkey / ElastiCache
+    // pre-TLS-enablement). Ref: CDO08-REL-16 - VALKEY-MIGRATION-PLAN.md §3.7 zero-downtime
+    // TLS enablement, run only after cutover is stable, not as a cutover prerequisite.
+    public ValkeyCartStore(ILogger<ValkeyCartStore> logger, string valkeyAddress, bool enableTls = false, string password = null)
     {
         _logger = logger;
         // Serialize empty cart into byte array.
         var cart = new Oteldemo.Cart();
         _emptyCartBytes = cart.ToByteArray();
-        _connectionString = $"{valkeyAddress},ssl=false,allowAdmin=true,abortConnect=false";
+        var sslOption = enableTls ? "ssl=true" : "ssl=false";
+        _connectionString = $"{valkeyAddress},{sslOption},allowAdmin=true,abortConnect=false";
+        _connectionStringForLogging = _connectionString;
+        if (!string.IsNullOrEmpty(password))
+        {
+            _connectionString += $",password={password}";
+            _connectionStringForLogging += ",password=***";
+        }
 
         _redisConnectionOptions = ConfigurationOptions.Parse(_connectionString);
 
@@ -88,7 +99,7 @@ public class ValkeyCartStore : ICartStore
 
             if (_logger.IsEnabled(LogLevel.Debug))
             {
-                _logger.LogDebug("Connecting to Redis: {connectionString}", _connectionString);
+                _logger.LogDebug("Connecting to Redis: {connectionString}", _connectionStringForLogging);
             }
 
             _redis = ConnectionMultiplexer.Connect(_redisConnectionOptions);

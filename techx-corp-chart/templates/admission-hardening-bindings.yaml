@@ -70,4 +70,34 @@ spec:
       - key: kubernetes.io/metadata.name
         operator: NotIn
         values: {{ $excludedNamespaces | toYaml | nindent 8 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: disallow-privileged-and-host-access-binding
+spec:
+  policyName: disallow-privileged-and-host-access
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: {{ $excludedNamespaces | toYaml | nindent 8 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  annotations:
+    techx.io/exception-note: "techx-observability excluded — otel-collector-agent DaemonSet needs hostPath:/ readonly for host metrics."
+  name: disallow-hostpath-volumes-binding
+spec:
+  policyName: disallow-hostpath-volumes
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: {{ (append $excludedNamespaces "techx-observability") | toYaml | nindent 8 }}
 {{- end }}

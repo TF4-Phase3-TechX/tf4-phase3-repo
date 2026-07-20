@@ -15,9 +15,38 @@ cloudwatch_client = boto3.client('cloudwatch')
 WEBHOOK_URL = None
 METRIC_NAMESPACE = os.environ.get('DETECTION_METRIC_NAMESPACE', 'Mandate11/DetectionLatency')
 DETECTION_TARGET_SECONDS = float(os.environ.get('DETECTION_LATENCY_TARGET_SECONDS', '60'))
-SLACK_ALERT_LAMBDA_ROLE = 'assumed-role/SecuritySlackAlertsLambdaRole/'
-TERRAFORM_APPLY_ROLE = 'assumed-role/tf4-github-actions-terraform-apply/'
-EXTERNAL_SECRETS_ROLE = 'assumed-role/external-secrets-techx-tf4-cluster/'
+SLACK_ALERT_LAMBDA_ROLE = 'SecuritySlackAlertsLambdaRole'
+TERRAFORM_APPLY_ROLE = 'tf4-github-actions-terraform-apply'
+TERRAFORM_PLAN_ROLE = 'tf4-github-actions-plan'
+EXTERNAL_SECRETS_ROLE = 'external-secrets-techx-tf4-cluster'
+DMS_SECRETS_ROLE = 'techx-tf4-postgresql-dms-secrets-access'
+DMS_SESSION_NAME = 'dms-session-for-replication-engine'
+DMS_SECRET_PREFIXES = (
+    'techx/tf4/dms-postgres-source',
+    'techx/tf4/rds-postgres',
+)
+KARPENTER_CONTROLLER_ROLE = 'karpenter-controller-techx-tf4-cluster'
+KARPENTER_PUBLIC_PARAMETER_PREFIX = '/aws/service/eks/optimized-ami/'
+SENSITIVE_READ_EVENTS = {
+    'GetSecretValue',
+    'GetParameter',
+    'GetParameters',
+    'GetParametersByPath',
+}
+CRITICAL_EVENTS = {
+    'ConsoleLogin',
+    'StopLogging',
+    'DeleteTrail',
+    'UpdateTrail',
+    'PutEventSelectors',
+    'DeleteConfigurationRecorder',
+    'StopConfigurationRecorder',
+    'DeleteDeliveryChannel',
+    'PutConfigurationRecorder',
+    'PutDeliveryChannel',
+    'CreateAccessEntry',
+    'AssociateAccessPolicy',
+}
 ALLOWED_SLACK_WEBHOOK_HOSTS = {
     host.strip().lower()
     for host in os.environ.get(
@@ -183,27 +212,202 @@ def is_public_bucket_policy(request_params):
     return False
 
 
-def is_expected_sensitive_read(event_name, actor, request_params):
+def extract_actor(user_identity):
+    return (
+        user_identity.get('arn')
+        or user_identity.get('principalId')
+        or user_identity.get('invokedBy')
+        or user_identity.get('type')
+        or 'UnknownActor'
+    )
+
+
+def extract_resource_identifier(event_name, request_params):
     request_params = request_params or {}
+    event_fields = {
+        'CreateUser': ('userName',),
+        'CreateAccessKey': ('userName',),
+        'CreateRole': ('roleName',),
+        'AttachRolePolicy': ('roleName', 'policyArn'),
+        'PutRolePolicy': ('roleName', 'policyName'),
+        'UpdateAssumeRolePolicy': ('roleName',),
+        'CreateAccessEntry': ('name', 'principalArn'),
+        'AssociateAccessPolicy': ('name', 'principalArn', 'policyArn'),
+        'AuthorizeSecurityGroupIngress': ('groupId',),
+        'PutBucketPolicy': ('bucketName',),
+        'PutBucketAcl': ('bucketName',),
+        'DeleteConfigurationRecorder': ('configurationRecorderName',),
+        'StopConfigurationRecorder': ('configurationRecorderName',),
+        'DeleteDeliveryChannel': ('deliveryChannelName',),
+        'PutConfigurationRecorder': ('configurationRecorder',),
+        'PutDeliveryChannel': ('deliveryChannel',),
+    }
+    fallback_fields = (
+        'secretId',
+        'name',
+        'names',
+        'path',
+        'trailName',
+        'resourceArn',
+    )
+    fields = event_fields.get(event_name, fallback_fields)
+    resource = {
+        field: request_params[field]
+        for field in fields
+        if request_params.get(field) not in (None, '', [], {})
+    }
+    if not resource:
+        return 'UnknownResource'
+    if len(resource) == 1:
+        value = next(iter(resource.values()))
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, separators=(',', ':'), sort_keys=True)[:500]
+        return str(value)[:500]
+    return json.dumps(resource, separators=(',', ':'), sort_keys=True)[:500]
+
+
+def is_exact_assumed_role(actor, account, role_name, session_name=None):
+    arn_parts = actor.split(':', 5)
+    if len(arn_parts) != 6:
+        return False
+
+    resource_parts = arn_parts[5].split('/', 2)
+    return (
+        arn_parts[2] == 'sts'
+        and arn_parts[4] == account
+        and len(resource_parts) == 3
+        and resource_parts[0] == 'assumed-role'
+        and resource_parts[1] == role_name
+        and bool(resource_parts[2])
+        and (session_name is None or resource_parts[2] == session_name)
+    )
+
+
+def requested_ssm_parameters(event_name, request_params):
+    request_params = request_params or {}
+    if event_name == 'GetParameter':
+        names = [request_params.get('name')]
+    elif event_name == 'GetParameters':
+        names = request_params.get('names', [])
+        if isinstance(names, str):
+            names = [names]
+    elif event_name == 'GetParametersByPath':
+        names = [request_params.get('path')]
+    else:
+        names = []
+
+    return [name for name in names if isinstance(name, str) and name]
+
+
+def secret_matches_prefix(secret_id, account, region, prefix):
+    if not isinstance(secret_id, str):
+        return False
+    return (
+        secret_id.startswith(prefix)
+        or secret_id.startswith(
+            f'arn:aws:secretsmanager:{region}:{account}:secret:{prefix}'
+        )
+    )
+
+
+def is_expected_sensitive_read(
+    event_name,
+    user_identity,
+    request_params,
+    account,
+    region,
+    source_ip,
+    user_agent,
+):
+    request_params = request_params or {}
+    actor = extract_actor(user_identity)
     webhook_parameter = os.environ.get(
         'SLACK_WEBHOOK_SSM_PARAM',
         '/security-alerts/slack-webhook-url',
     )
 
-    if event_name in ('GetParameter', 'GetParameters'):
-        if 'assumed-role/tf4-github-actions-' in actor:
-            return True
-        if SLACK_ALERT_LAMBDA_ROLE in actor:
-            parameter_name = request_params.get('name')
-            return parameter_name == webhook_parameter
+    if event_name in ('GetParameter', 'GetParameters', 'GetParametersByPath'):
+        parameter_names = requested_ssm_parameters(event_name, request_params)
+        reads_only_webhook = (
+            event_name in ('GetParameter', 'GetParameters')
+            and bool(parameter_names)
+            and all(name == webhook_parameter for name in parameter_names)
+        )
+
+        if is_exact_assumed_role(
+            actor,
+            account,
+            SLACK_ALERT_LAMBDA_ROLE,
+        ):
+            return event_name == 'GetParameter' and reads_only_webhook
+
+        if any(
+            is_exact_assumed_role(actor, account, role_name)
+            for role_name in (TERRAFORM_APPLY_ROLE, TERRAFORM_PLAN_ROLE)
+        ):
+            return reads_only_webhook
+
+        if is_exact_assumed_role(
+            actor,
+            account,
+            KARPENTER_CONTROLLER_ROLE,
+        ):
+            return (
+                event_name == 'GetParameter'
+                and bool(parameter_names)
+                and all(
+                    name.startswith(KARPENTER_PUBLIC_PARAMETER_PREFIX)
+                    for name in parameter_names
+                )
+            )
+
         return False
 
     if event_name == 'GetSecretValue':
         secret_id = request_params.get('secretId', '')
-        return (
-            EXTERNAL_SECRETS_ROLE in actor
-            and secret_id.startswith('techx/tf4/')
+        external_secrets_read = (
+            is_exact_assumed_role(
+                actor,
+                account,
+                EXTERNAL_SECRETS_ROLE,
+            )
+            and secret_matches_prefix(
+                secret_id,
+                account,
+                region,
+                'techx/tf4/',
+            )
         )
+        dms_migration_read = (
+            user_identity.get('type') == 'AssumedRole'
+            and is_exact_assumed_role(
+                actor,
+                account,
+                DMS_SECRETS_ROLE,
+                DMS_SESSION_NAME,
+            )
+            and any(
+                secret_matches_prefix(
+                    secret_id,
+                    account,
+                    region,
+                    prefix,
+                )
+                for prefix in DMS_SECRET_PREFIXES
+            )
+        )
+        msk_service_read = (
+            user_identity.get('type') == 'AWSService'
+            and user_identity.get('invokedBy') == 'kafka.amazonaws.com'
+            and source_ip == 'kafka.amazonaws.com'
+            and user_agent == 'kafka.amazonaws.com'
+            and isinstance(secret_id, str)
+            and secret_id.startswith(
+                f'arn:aws:secretsmanager:{region}:{account}:'
+                'secret:AmazonMSK_'
+            )
+        )
+        return external_secrets_read or dms_migration_read or msk_service_read
 
     return False
 
@@ -232,6 +436,7 @@ def lambda_handler(event, context):
         event_id = detail.get('eventID') or detail.get('id', 'UnknownEventID')
         event_name = "UnknownEvent"
         actor = "UnknownActor"
+        resource_identifier = "UnknownResource"
         account = message.get('account', 'UnknownAccount')
         region = message.get('region', 'UnknownRegion')
         timestamp = detail.get('eventTime') or message.get('time', 'UnknownTime')
@@ -245,14 +450,31 @@ def lambda_handler(event, context):
             metric_pipeline = 'CloudTrailToSlack'
             event_name = detail.get('eventName', 'UnknownEvent')
             user_identity = detail.get('userIdentity', {})
-            actor = user_identity.get('arn') or user_identity.get('principalId', 'UnknownActor')
+            actor = extract_actor(user_identity)
             source_ip = detail.get('sourceIPAddress', 'UnknownIP')
+            user_agent = detail.get('userAgent', '')
             request_params = detail.get('requestParameters', {})
-            if is_expected_sensitive_read(event_name, actor, request_params):
+            resource_identifier = extract_resource_identifier(
+                event_name,
+                request_params,
+            )
+            if is_expected_sensitive_read(
+                event_name,
+                user_identity,
+                request_params,
+                account,
+                region,
+                source_ip,
+                user_agent,
+            ):
                 should_alert = False
-                logger.info(
-                    f"Ignoring expected {event_name} by {actor} for an approved resource"
-                )
+                logger.info(json.dumps({
+                    'marker': 'MANDATE11_EXPECTED_READ',
+                    'eventName': event_name,
+                    'actor': actor,
+                    'resource': resource_identifier,
+                    'reason': 'exact_identity_api_resource_allowlist',
+                }))
             elif event_name == 'AuthorizeSecurityGroupIngress':
                 if not is_public_sg_ingress(detail.get('requestParameters')):
                     should_alert = False
@@ -271,7 +493,7 @@ def lambda_handler(event, context):
                          should_alert = False
                          logger.info("Ignoring PutBucketPolicy as it may not be public.")
                          
-            if event_name in ['ConsoleLogin', 'StopLogging', 'DeleteTrail', 'UpdateTrail', 'PutEventSelectors', 'DeleteConfigurationRecorder']:
+            if event_name in CRITICAL_EVENTS:
                 severity = "critical"
                 
         elif source == 'aws.access-analyzer':
@@ -282,6 +504,7 @@ def lambda_handler(event, context):
             # Extract finding details if needed
             finding_id = detail.get('id', 'UnknownID')
             event_name = f"AccessAnalyzer Finding: {finding_id}"
+            resource_identifier = detail.get('resource', 'UnknownResource')
             
         else:
              logger.warning(f"Unknown source: {source}")
@@ -291,6 +514,19 @@ def lambda_handler(event, context):
         short_actor = actor
         if actor and '/' in actor:
             short_actor = actor.split('/')[-1]
+
+        if (
+            event_name not in SENSITIVE_READ_EVENTS
+            and is_exact_assumed_role(actor, account, TERRAFORM_APPLY_ROLE)
+        ):
+            noise_check = (
+                "Privileged write từ CI/CD: vẫn cảnh báo để phát hiện "
+                "pipeline bị chiếm quyền"
+            )
+        else:
+            noise_check = (
+                "Không khớp allowlist identity + API + resource → cảnh báo thật"
+            )
 
         detection_latency = calculate_latency_seconds(timestamp, lambda_received_at)
         latency_msg = "Unknown"
@@ -361,6 +597,10 @@ def lambda_handler(event, context):
                                 {
                                     "type": "mrkdwn",
                                     "text": f"*Detection latency:*\n`{latency_msg}`"
+                                },
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"*Resource:*\n`{resource_identifier}`"
                                 }
                             ]
                         },
@@ -368,7 +608,7 @@ def lambda_handler(event, context):
                             "type": "section",
                             "text": {
                                 "type": "mrkdwn",
-                                "text": f"*Source IP:* `{source_ip}`\n*Noise check:* Không khớp allowlist actor + resource → cảnh báo thật\n*Investigate:* <{cloudtrail_link}|View in CloudTrail> | *Runbook:* <{runbook_link}|Security Runbook>"
+                                "text": f"*Source IP:* `{source_ip}`\n*Noise check:* {noise_check}\n*Investigate:* <{cloudtrail_link}|View in CloudTrail> | *Runbook:* <{runbook_link}|Security Runbook>"
                             }
                         }
                     ]
