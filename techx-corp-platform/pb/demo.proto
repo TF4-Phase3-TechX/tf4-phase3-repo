@@ -108,6 +108,7 @@ service ProductReviewService {
   rpc GetProductReviews(GetProductReviewsRequest) returns (GetProductReviewsResponse){}
   rpc GetAverageProductReviewScore(GetAverageProductReviewScoreRequest) returns (GetAverageProductReviewScoreResponse){}
   rpc AskProductAIAssistant(AskProductAIAssistantRequest) returns (AskProductAIAssistantResponse){}
+  rpc SearchProductsAIAssistant(SearchProductsAIAssistantRequest) returns (SearchProductsAIAssistantResponse){}
 }
 
 message ProductReview {
@@ -139,6 +140,26 @@ message AskProductAIAssistantRequest {
 
 message AskProductAIAssistantResponse {
     string response = 1;
+}
+
+message SearchProductsAIAssistantRequest {
+    string query = 1;
+}
+
+message SearchProductsAIAssistantResponse {
+    repeated Product results = 1;
+    SearchEvidenceTrace trace = 2;
+}
+
+message SearchEvidenceTrace {
+    string parsed_intent = 1;
+    string filter_applied = 2;
+    int32 candidate_count_before = 3;
+    int32 candidate_count_after = 4;
+    bool refused = 5;
+    int32 input_tokens = 6;
+    int32 output_tokens = 7;
+    double estimated_cost_usd = 8;
 }
 
 // ---------------Shipping Service----------
@@ -179,7 +200,6 @@ message Address {
 service CurrencyService {
     rpc GetSupportedCurrencies(Empty) returns (GetSupportedCurrenciesResponse) {}
     rpc Convert(CurrencyConversionRequest) returns (Money) {}
-    rpc BatchConvert(BatchCurrencyConversionRequest) returns (BatchCurrencyConversionResponse) {}
 }
 
 // Represents an amount of money with its currency type.
@@ -210,18 +230,6 @@ message CurrencyConversionRequest {
 
     // The 3-letter currency code defined in ISO 4217.
     string to_code = 2;
-}
-
-message BatchCurrencyConversionRequest {
-    repeated Money from = 1;
-
-    // The 3-letter currency code defined in ISO 4217.
-    string to_code = 2;
-}
-
-message BatchCurrencyConversionResponse {
-    // Entry i is the conversion of request.from[i].
-    repeated Money converted = 1;
 }
 
 // -------------Payment service-----------------
