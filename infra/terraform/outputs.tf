@@ -395,5 +395,35 @@ output "postgresql_dms_secrets_access_role_arn" {
 
 output "postgresql_dms_endpoint_task_handoff_note" {
   description = "Handoff note for DMS endpoint/task creation"
-  value       = "REL-15 DMS baseline provisions the private replication instance only. DMS endpoint/task creation should use Secrets Manager ARNs for source/target credentials; do not put PostgreSQL passwords in Terraform state."
+  value       = "REL-15 DMS endpoints/tasks use Secrets Manager ARNs for source/target credentials. PostgreSQL passwords are not stored directly in Terraform configuration/state."
+}
+
+output "postgresql_dms_source_endpoint_arn" {
+  description = "AWS DMS source endpoint ARN for the self-hosted PostgreSQL source"
+  value       = aws_dms_endpoint.postgresql_source.endpoint_arn
+}
+
+output "postgresql_dms_target_endpoint_arn" {
+  description = "AWS DMS target endpoint ARN for the RDS PostgreSQL target"
+  value       = aws_dms_endpoint.postgresql_target.endpoint_arn
+}
+
+output "postgresql_dms_forward_task_arn" {
+  description = "AWS DMS forward full-load-and-cdc task ARN for PostgreSQL EKS to RDS"
+  value       = aws_dms_replication_task.postgresql_forward.replication_task_arn
+}
+
+output "postgresql_dms_forward_task_id" {
+  description = "AWS DMS forward full-load-and-cdc task ID for PostgreSQL EKS to RDS"
+  value       = aws_dms_replication_task.postgresql_forward.replication_task_id
+}
+
+output "postgresql_dms_target_secret_path" {
+  description = "AWS Secrets Manager path used by DMS target endpoint for RDS PostgreSQL"
+  value       = local.postgresql_dms_target_secret_path
+}
+
+output "postgresql_dms_reverse_task_note" {
+  description = "Reverse CDC readiness note for rollback planning"
+  value       = "Reverse RDS-to-EKS DMS task is not created in this PR because EKS target write-back credential is not ready. Create a separate reverse target credential/task before post-write cutover if rollback requires reverse CDC."
 }

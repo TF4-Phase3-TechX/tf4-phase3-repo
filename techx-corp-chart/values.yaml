@@ -261,11 +261,12 @@ components:
   cart:
     enabled: true
     replicas: 2
-    # Ref: CDO08-REL-16 - Blue-Green cutover to ElastiCache Valkey via Argo
-    # Rollouts. Disabled by default; flipped only for the actual migration
-    # window per VALKEY-MIGRATION-PLAN.md.
-    rollouts:
-      enabled: false
+    # Ref: CDO08-REL-16 - Blue-Green cutover to ElastiCache Valkey. Disabled by
+    # default; flip alongside the top-level rollouts.enabled only for the
+    # actual migration window per VALKEY-MIGRATION-PLAN.md.
+    useRollout: false
+    rolloutStrategy:
+      blueGreen: {}
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
@@ -2113,3 +2114,9 @@ riotRedisBackfill:
   image: redislabs/riot:3.1.5
   elasticacheAddress: ""
   targetAddress: "valkey-cart:6379"
+
+# Argo Rollouts integration (requires the Argo Rollouts CRDs/controller installed in-cluster).
+# Master switch. Individual components must also opt in via components.<name>.useRollout: true,
+# plus components.<name>.rolloutStrategy.canary or .blueGreen.
+rollouts:
+  enabled: false
