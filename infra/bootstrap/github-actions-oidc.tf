@@ -173,6 +173,18 @@ data "aws_iam_policy_document" "github_actions_plan" {
   }
 
   statement {
+    sid    = "ReadCloudTrailRemediationSsmDocument"
+    effect = "Allow"
+
+    actions = [
+      "ssm:DescribeDocument",
+      "ssm:ListTagsForResource"
+    ]
+
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/tf4-restore-cloudtrail-logging"]
+  }
+
+  statement {
     sid       = "DecryptCloudTrailSecureString"
     effect    = "Allow"
     actions   = ["kms:Decrypt"]
