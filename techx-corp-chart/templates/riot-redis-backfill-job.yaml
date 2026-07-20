@@ -1,0 +1,53 @@
+{{- if .Values.riotRedisBackfill.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: riot-redis-backfill
+  labels:
+    app.kubernetes.io/name: riot-redis-backfill
+    app.kubernetes.io/component: valkey-cart
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: Helm
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: riot-redis-backfill
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: riot-redis-backfill
+          image: '{{ .Values.riotRedisBackfill.image }}'
+          # Ref: CDO08-REL-16 - VALKEY-MIGRATION-PLAN.md §4 TRƯỜNG HỢP 2. Flushes the
+          # stale EKS valkey-cart target, then backfills the latest snapshot from
+          # ElastiCache back to it. Verify the exact riot-redis subcommand/flags
+          # against the installed tool version before running for real.
+          command:
+            - sh
+            - -c
+            - |
+              redis-cli -h valkey-cart -p 6379 FLUSHALL
+              riot-redis replicate \
+                --source-uri "redis://{{ .Values.riotRedisBackfill.elasticacheAddress }}" \
+                --target-uri "redis://{{ .Values.riotRedisBackfill.targetAddress }}" \
+                --mode snapshot
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+{{- end }}
