@@ -34,14 +34,14 @@ aws secretsmanager create-secret \
   --name "techx/tf4/rds-postgres" \
   --description "RDS PostgreSQL credentials and connection strings for techx-tf4" \
   --secret-string '{
-    "host": "<rds-private-endpoint>",
+    "host": "techx-tf4-postgresql.covse6gsuue2.us-east-1.rds.amazonaws.com",
     "port": "5432",
     "username": "<app-user>",
     "password": "<real-password>",
     "dbname": "otel",
-    "connection_string_dotnet": "Host=<rds-private-endpoint>;Port=5432;Username=<app-user>;Password=<real-password>;Database=otel;SSL Mode=Require;Trust Server Certificate=true",
-    "connection_string_go": "postgres://<app-user>:<real-password>@<rds-private-endpoint>:5432/otel?sslmode=require",
-    "connection_string_python": "host=<rds-private-endpoint> port=5432 user=<app-user> password=<real-password> dbname=otel sslmode=require"
+    "connection_string_dotnet": "Host=techx-tf4-postgresql.covse6gsuue2.us-east-1.rds.amazonaws.com;Port=5432;Username=<app-user>;Password=<real-password>;Database=otel;SSL Mode=Require;Trust Server Certificate=true",
+    "connection_string_go": "postgres://<app-user>:<real-password>@techx-tf4-postgresql.covse6gsuue2.us-east-1.rds.amazonaws.com:5432/otel?sslmode=require",
+    "connection_string_python": "host=techx-tf4-postgresql.covse6gsuue2.us-east-1.rds.amazonaws.com port=5432 user=<app-user> password=<real-password> dbname=otel sslmode=require"
   }' \
   --region us-east-1
 ```
@@ -67,9 +67,9 @@ aws secretsmanager create-secret \
   --name "techx/tf4/elasticache-valkey" \
   --description "ElastiCache Valkey endpoint for techx-tf4 cart service" \
   --secret-string '{
-    "host": "<elasticache-private-endpoint>",
+    "host": "master.techx-tf4-valkey-cart.pyo0mq.use1.cache.amazonaws.com",
     "port": "6379",
-    "address": "<elasticache-private-endpoint>:6379"
+    "address": "master.techx-tf4-valkey-cart.pyo0mq.use1.cache.amazonaws.com:6379"
   }' \
   --region us-east-1
 ```
@@ -78,26 +78,31 @@ aws secretsmanager create-secret \
 
 ## 3. MSK Kafka — `techx/tf4/msk-kafka`
 
-Payload TLS listener (không app-level auth):
+MSK auth mode đã chốt: `SASL_SSL with SCRAM-SHA-512`, port `9096` (REL-14).
+
+Payload SCRAM (REL-14 dùng SASL_SSL/SCRAM-SHA-512):
 
 ```bash
 aws secretsmanager create-secret \
   --name "techx/tf4/msk-kafka" \
   --description "MSK Kafka bootstrap servers for techx-tf4 apps" \
   --secret-string '{
-    "bootstrap_servers": "<broker-1>:9094,<broker-2>:9094,<broker-3>:9094",
-    "security_protocol": "SSL"
+    "bootstrap_servers": "b-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:9096,b-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:9096",
+    "security_protocol": "SASL_SSL",
+    "sasl_mechanism": "SCRAM-SHA-512",
+    "username": "<app-user>",
+    "password": "<real-password>"
   }' \
   --region us-east-1
 ```
 
-Payload SCRAM (REL-14 hiện dùng SASL_SSL/SCRAM-SHA-512):
+Update nếu secret đã tồn tại:
 
 ```bash
 aws secretsmanager put-secret-value \
   --secret-id "techx/tf4/msk-kafka" \
   --secret-string '{
-    "bootstrap_servers": "<broker-1>:9096,<broker-2>:9096,<broker-3>:9096",
+    "bootstrap_servers": "b-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:9096,b-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:9096",
     "security_protocol": "SASL_SSL",
     "sasl_mechanism": "SCRAM-SHA-512",
     "username": "<app-user>",
@@ -109,6 +114,42 @@ aws secretsmanager put-secret-value \
 Lưu ý: app hiện chưa tự đọc các field SCRAM ngoài `bootstrap_servers` từ
 `KAFKA_ADDR`. Chỉ nạp secret SCRAM để chuẩn bị SEC-13; không bật Kafka cutover
 cho tới khi REL-17 cập nhật client config.
+
+---
+
+## 4. MSK SCRAM Secret Association
+
+MSK yêu cầu SCRAM secret có prefix `AmazonMSK_` trong AWS Secrets Manager.
+Secret này tách biệt với `techx/tf4/msk-kafka` — một cái cho MSK authentication,
+một cái cho ESO sync vào K8s.
+
+**Bước 1: Tạo SCRAM secret với prefix `AmazonMSK_`**
+
+```bash
+aws secretsmanager create-secret \
+  --name "AmazonMSK_techx-tf4-orders-app" \
+  --secret-string '{"username":"<app-user>","password":"<real-password>"}' \
+  --region us-east-1
+```
+
+**Bước 2: Associate SCRAM secret với MSK cluster**
+
+```bash
+aws kafka batch-associate-scram-secret \
+  --cluster-arn arn:aws:kafka:us-east-1:511825856493:cluster/techx-tf4-orders/71e62f82-16ff-4111-b94d-704cccf87259-2 \
+  --secret-arn-list <arn-of-scram-secret> \
+  --region us-east-1
+```
+
+Lấy ARN của SCRAM secret từ output lệnh `create-secret` ở bước 1, hoặc chạy:
+
+```bash
+aws secretsmanager describe-secret \
+  --secret-id "AmazonMSK_techx-tf4-orders-app" \
+  --region us-east-1 \
+  --query 'ARN' \
+  --output text
+```
 
 ---
 

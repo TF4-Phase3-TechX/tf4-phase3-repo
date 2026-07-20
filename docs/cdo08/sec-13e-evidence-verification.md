@@ -118,27 +118,75 @@ Không bật các flag này ở production cho tới khi:
 
 ## 7. Rotation strategy
 
-Sau khi cutover, rotate credential khi có yêu cầu hoặc security incident:
+Sau khi cutover, rotate credential khi có yêu cầu hoặc security incident.
+
+### 7.1 Rotation order
+
+**Không rotate tất cả ba managed data credential cùng lúc.**
+
+Thứ tự đề xuất: **PostgreSQL → Valkey → Kafka**
+
+Chờ pod healthy và smoke test pass cho từng service trước khi tiếp tục rotate service tiếp theo.
+
+### 7.2 Rotation step sequence
+
+Thực hiện lần lượt theo 4 bước sau cho từng service cần rotate:
+
+**Step 1 — Update AWS Secrets Manager:**
 
 ```bash
-# Update secret value trong AWS Secrets Manager
 aws secretsmanager put-secret-value \
   --secret-id "techx/tf4/rds-postgres" \
   --secret-string '{...new-payload...}' \
   --region us-east-1
-
-# Lặp lại cho elasticache-valkey và msk-kafka nếu cần
 ```
 
-ESO tự sync theo `refreshInterval: 1h`. Force sync ngay:
+Lặp lại với `techx/tf4/elasticache-valkey` hoặc `techx/tf4/msk-kafka` tuỳ theo service đang rotate.
+
+**Step 2 — Confirm ESO sync READY=True với timestamp mới:**
+
+ESO tự sync theo `refreshInterval: 1h`. Force sync ngay nếu cần:
 
 ```bash
-kubectl -n techx-tf4 annotate externalsecret rds-postgres-secret \
-  force-sync=$(date +%s) --overwrite
-kubectl -n techx-tf4 annotate externalsecret elasticache-valkey-secret \
-  force-sync=$(date +%s) --overwrite
-kubectl -n techx-tf4 annotate externalsecret msk-kafka-secret \
+kubectl -n techx-tf4 annotate externalsecret <name> \
   force-sync=$(date +%s) --overwrite
 ```
 
-Sau khi K8s Secret được update, pod sẽ nhận giá trị mới khi restart hoặc redeploy. Không cần xoá Secret thủ công.
+Verify sync thành công và timestamp đã cập nhật:
+
+```bash
+kubectl -n techx-tf4 get externalsecret <name>
+# Expect: READY=True và SYNCED_AT timestamp mới hơn thời điểm put-secret-value
+```
+
+**Step 3 — Rolling restart deployment:**
+
+```bash
+kubectl -n techx-tf4 rollout restart deployment/<service-name>
+```
+
+**Step 4 — Verify pod healthy và không có authentication error trong logs:**
+
+```bash
+kubectl -n techx-tf4 rollout status deployment/<service-name>
+kubectl -n techx-tf4 logs -l app=<service-name> --since=2m | grep -i 'auth\|error\|denied'
+# Expect: pod healthy, không có authentication error
+```
+
+### 7.3 Ghi chú về pod restart
+
+Không cần redeploy nếu chỉ cần credential mới propagate — ESO sync vào Kubernetes Secret mà không cần tác động gì thêm. Tuy nhiên, rolling restart deployment là bắt buộc nếu credential mới cần được inject ngay lập tức (vì env var được inject tại thời điểm pod start, không hot-reload).
+
+### 7.4 Rollback path
+
+Nếu deployment rollout fails sau khi rotate credential, rollback Helm release về revision trước:
+
+```bash
+# Xem lịch sử revision
+helm history techx-corp -n techx-tf4
+
+# Rollback về revision cụ thể
+helm rollback techx-corp <REVISION> -n techx-tf4
+```
+
+**Quan trọng: Không xóa Kubernetes Secret do ESO tạo khi rollback.** ESO là owner của các secret `rds-postgres-secret`, `elasticache-valkey-secret`, `msk-kafka-secret` — xóa thủ công sẽ gây disruption cho các pod đang đọc từ secretKeyRef. Helm rollback chỉ revert chart configuration, không ảnh hưởng đến K8s Secrets do ESO quản lý.
