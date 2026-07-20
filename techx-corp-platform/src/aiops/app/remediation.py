@@ -27,32 +27,67 @@ class KubernetesRollbackAdapter:
         self.namespace = namespace
         self.deployment_recency_hours = deployment_recency_hours
 
-    def previous_template(self, deployment: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    def previous_template(
+        self, deployment: str
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         current = self.api.read_namespaced_deployment(deployment, self.namespace)
         replicasets = self.api.list_namespaced_replica_set(
-            self.namespace, label_selector=",".join(f"{k}={v}" for k, v in current.spec.selector.match_labels.items())
+            self.namespace,
+            label_selector=",".join(
+                f"{k}={v}" for k, v in current.spec.selector.match_labels.items()
+            ),
         ).items
-        owned = [rs for rs in replicasets if any(o.uid == current.metadata.uid for o in (rs.metadata.owner_references or []))]
-        owned.sort(key=lambda rs: int((rs.metadata.annotations or {}).get("deployment.kubernetes.io/revision", "0")), reverse=True)
+        owned = [
+            rs
+            for rs in replicasets
+            if any(
+                o.uid == current.metadata.uid
+                for o in (rs.metadata.owner_references or [])
+            )
+        ]
+        owned.sort(
+            key=lambda rs: int(
+                (rs.metadata.annotations or {}).get(
+                    "deployment.kubernetes.io/revision", "0"
+                )
+            ),
+            reverse=True,
+        )
         if len(owned) < 2:
             raise PolicyDenied("No previous ReplicaSet revision is retained")
         latest_created = owned[0].metadata.creation_timestamp
-        if not latest_created or utcnow() - latest_created > timedelta(hours=self.deployment_recency_hours):
-            raise PolicyDenied("No sufficiently recent Deployment revision is correlated with the incident")
+        if not latest_created or utcnow() - latest_created > timedelta(
+            hours=self.deployment_recency_hours
+        ):
+            raise PolicyDenied(
+                "No sufficiently recent Deployment revision is correlated with the incident"
+            )
         serializer = self.kube_client.ApiClient()
-        return serializer.sanitize_for_serialization(current.spec.template), serializer.sanitize_for_serialization(owned[1].spec.template)
+        return serializer.sanitize_for_serialization(
+            current.spec.template
+        ), serializer.sanitize_for_serialization(owned[1].spec.template)
 
     def patch_template(self, deployment: str, template: dict[str, Any]) -> None:
-        self.api.patch_namespaced_deployment(deployment, self.namespace, {"spec": {"template": template}})
+        self.api.patch_namespaced_deployment(
+            deployment, self.namespace, {"spec": {"template": template}}
+        )
 
     def rollout_ready(self, deployment: str) -> bool:
         obj = self.api.read_namespaced_deployment_status(deployment, self.namespace)
         desired = obj.spec.replicas or 1
-        return (obj.status.updated_replicas or 0) >= desired and (obj.status.available_replicas or 0) >= desired
+        return (obj.status.updated_replicas or 0) >= desired and (
+            obj.status.available_replicas or 0
+        ) >= desired
 
 
 class RemediationController:
-    def __init__(self, settings: Settings, adapter: KubernetesRollbackAdapter | None = None, verifier: Callable[[str], Awaitable[dict[str, Any]]] | None = None, catalog: RunbookCatalog | None = None):
+    def __init__(
+        self,
+        settings: Settings,
+        adapter: KubernetesRollbackAdapter | None = None,
+        verifier: Callable[[str], Awaitable[dict[str, Any]]] | None = None,
+        catalog: RunbookCatalog | None = None,
+    ):
         self.settings = settings
         self.adapter = adapter
         self.verifier = verifier
@@ -70,13 +105,22 @@ class RemediationController:
                 last_error = exc
                 if attempt == 0:
                     await asyncio.sleep(1.0)
-        raise RuntimeError(f"Kubernetes action failed after two attempts: {last_error}") from last_error
+        raise RuntimeError(
+            f"Kubernetes action failed after two attempts: {last_error}"
+        ) from last_error
 
     def request_approval(self, incident: Incident) -> None:
         incident.status = IncidentStatus.AWAITING_APPROVAL
         incident.approval_status = "pending"
-        incident.approval_expires_at = utcnow() + timedelta(seconds=self.settings.approval_ttl_seconds)
-        incident.audit_events.append(AuditEvent(event="approval_requested", detail={"action": incident.recommended_action}))
+        incident.approval_expires_at = utcnow() + timedelta(
+            seconds=self.settings.approval_ttl_seconds
+        )
+        incident.audit_events.append(
+            AuditEvent(
+                event="approval_requested",
+                detail={"action": incident.recommended_action},
+            )
+        )
 
     def approve(self, incident: Incident) -> None:
         if incident.status != IncidentStatus.AWAITING_APPROVAL:
@@ -107,7 +151,7 @@ class RemediationController:
             raise PolicyDenied(f"Deployment {target} is outside the allowlist")
         if incident.approval_status != "approved":
             raise PolicyDenied("Per-incident approval is required")
-        if incident.confidence < 0.75:
+        if incident.confidence < self.settings.remediation_confidence_threshold:
             raise PolicyDenied("RCA confidence is below the remediation threshold")
         if target in self._locks:
             raise PolicyDenied("Another action is already running for this target")
@@ -119,12 +163,20 @@ class RemediationController:
             incident.execution_attempts += 1
             incident.status = IncidentStatus.EXECUTING
             if self.settings.remediation_mode != "live":
-                incident.verification_result = {"mode": "dry-run", "eligible": True, "target": target}
+                incident.verification_result = {
+                    "mode": "dry-run",
+                    "eligible": True,
+                    "target": target,
+                }
                 incident.status = IncidentStatus.ESCALATED
-                incident.escalation_reason = "Dry-run completed; no production mutation was performed"
+                incident.escalation_reason = (
+                    "Dry-run completed; no production mutation was performed"
+                )
                 incident.audit_events.append(AuditEvent(event="dry_run_completed"))
                 return
-            adapter = self.adapter or KubernetesRollbackAdapter(self.settings.namespace, self.settings.deployment_recency_hours)
+            adapter = self.adapter or KubernetesRollbackAdapter(
+                self.settings.namespace, self.settings.deployment_recency_hours
+            )
             original, previous = await self._retry(adapter.previous_template, target)
             await self._retry(adapter.patch_template, target, previous)
             mutated = True
@@ -135,8 +187,16 @@ class RemediationController:
                 if await self._retry(adapter.rollout_ready, target):
                     ready = True
                     break
-            slo = await self.verifier(target) if ready and self.verifier else {"healthy": ready, "reason": "rollout-only verification"}
-            incident.verification_result = {"rollout_ready": ready, "target": target, "slo": slo}
+            slo = (
+                await self.verifier(target)
+                if ready and self.verifier
+                else {"healthy": ready, "reason": "rollout-only verification"}
+            )
+            incident.verification_result = {
+                "rollout_ready": ready,
+                "target": target,
+                "slo": slo,
+            }
             if ready and slo.get("healthy", False):
                 incident.status = IncidentStatus.RESOLVED
                 incident.audit_events.append(AuditEvent(event="remediation_verified"))
@@ -145,7 +205,9 @@ class RemediationController:
                 incident.rollback_result = {"restored_original_template": True}
                 incident.status = IncidentStatus.ROLLED_BACK
                 incident.escalation_reason = "Remediation rollout did not become ready"
-                incident.audit_events.append(AuditEvent(event="remediation_rolled_back"))
+                incident.audit_events.append(
+                    AuditEvent(event="remediation_rolled_back")
+                )
         except PolicyDenied:
             raise
         except Exception as exc:
@@ -153,15 +215,27 @@ class RemediationController:
             if mutated and adapter and original:
                 try:
                     await self._retry(adapter.patch_template, target, original)
-                    incident.rollback_result = {"restored_original_template": True, "reason": str(exc)}
+                    incident.rollback_result = {
+                        "restored_original_template": True,
+                        "reason": str(exc),
+                    }
                     incident.status = IncidentStatus.ROLLED_BACK
-                    incident.audit_events.append(AuditEvent(event="remediation_rolled_back_after_error"))
+                    incident.audit_events.append(
+                        AuditEvent(event="remediation_rolled_back_after_error")
+                    )
                 except Exception as rollback_exc:
                     incident.status = IncidentStatus.ESCALATED
-                    incident.rollback_result = {"restored_original_template": False, "error": str(rollback_exc)}
-                    incident.audit_events.append(AuditEvent(event="rollback_failed_escalation"))
+                    incident.rollback_result = {
+                        "restored_original_template": False,
+                        "error": str(rollback_exc),
+                    }
+                    incident.audit_events.append(
+                        AuditEvent(event="rollback_failed_escalation")
+                    )
             else:
                 incident.status = IncidentStatus.ESCALATED
-                incident.audit_events.append(AuditEvent(event="execution_failed_before_mutation"))
+                incident.audit_events.append(
+                    AuditEvent(event="execution_failed_before_mutation")
+                )
         finally:
             self._locks.discard(target)

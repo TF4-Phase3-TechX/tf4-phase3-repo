@@ -211,12 +211,24 @@ components:
         value: product-reviews
       - name: AIOPS_LLM_LOG_SERVICES
         value: llm,product-reviews
+      - name: AIOPS_POLL_SECONDS
+        value: "45"
+      - name: AIOPS_LOOKBACK_MINUTES
+        value: "30"
+      - name: AIOPS_SUSTAINED_POLLS
+        value: "2"
       - name: AIOPS_MINIMUM_REQUEST_COUNT
         value: "20"
       - name: AIOPS_LLM_MINIMUM_CALL_COUNT
         value: "5"
       - name: AIOPS_RECOVERY_POLLS
         value: "2"
+      - name: AIOPS_LATENCY_THRESHOLD_MS
+        value: "1000"
+      - name: AIOPS_ERROR_RATE_THRESHOLD
+        value: "0.05"
+      - name: AIOPS_LLM_ERROR_THRESHOLD
+        value: "0.05"
       - name: AIOPS_BASELINE_MAD_MULTIPLIER
         value: "6"
       - name: AIOPS_BASELINE_RELATIVE_BAND
@@ -225,8 +237,14 @@ components:
         value: "1.5"
       - name: AIOPS_ZSCORE_THRESHOLD
         value: "3"
+      - name: AIOPS_ZSCORE_NOISE_FLOOR
+        value: "0.05"
       - name: AIOPS_EWMA_ALPHA
         value: "0.35"
+      - name: AIOPS_EWMA_SPREAD_MULTIPLIER
+        value: "3"
+      - name: AIOPS_EWMA_RELATIVE_FLOOR
+        value: "0.25"
       - name: AIOPS_EWMA_THRESHOLD
         value: "1"
       - name: AIOPS_TREND_WINDOW
@@ -241,6 +259,46 @@ components:
         value: "0.15"
       - name: AIOPS_ISOLATION_CONFIDENCE_WEIGHT
         value: "0.05"
+      - name: AIOPS_LATENCY_CONFIDENCE_BASE
+        value: "0.45"
+      - name: AIOPS_ERROR_CONFIDENCE_BASE
+        value: "0.50"
+      - name: AIOPS_LLM_CONFIDENCE_BASE
+        value: "0.45"
+      - name: AIOPS_TORAI_CONFIDENCE_WEIGHT
+        value: "0.40"
+      - name: AIOPS_ZSCORE_CONFIDENCE_WEIGHT
+        value: "0.10"
+      - name: AIOPS_EWMA_CONFIDENCE_WEIGHT
+        value: "0.15"
+      - name: AIOPS_TREND_CONFIDENCE_WEIGHT
+        value: "0.10"
+      - name: AIOPS_MAXIMUM_CONFIDENCE
+        value: "0.95"
+      - name: AIOPS_TORAI_METRIC_WEIGHT
+        value: "0.35"
+      - name: AIOPS_TORAI_TRACE_WEIGHT
+        value: "0.25"
+      - name: AIOPS_TORAI_LOG_WEIGHT
+        value: "0.20"
+      - name: AIOPS_TORAI_DEPLOY_WEIGHT
+        value: "0.10"
+      - name: AIOPS_TORAI_AI_WEIGHT
+        value: "0.10"
+      - name: AIOPS_TORAI_METRIC_RELATIVE_SPAN
+        value: "0.50"
+      - name: AIOPS_TORAI_LOG_COUNT_SATURATION
+        value: "3"
+      - name: AIOPS_LATENCY_HIGH_MULTIPLIER
+        value: "2"
+      - name: AIOPS_ERROR_HIGH_MULTIPLIER
+        value: "2"
+      - name: AIOPS_LLM_HIGH_ERROR_RATE
+        value: "0.25"
+      - name: AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD
+        value: "0.75"
+      - name: AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD
+        value: "0.01"
       - name: AIOPS_APPROVAL_TOKEN
         valueFrom:
           secretKeyRef:

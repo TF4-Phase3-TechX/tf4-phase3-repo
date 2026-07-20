@@ -11,6 +11,8 @@ from .config import Settings
 from .models import Decision, Evidence
 
 
+# Pure-function fallback used by unit tests and offline callers. The runtime
+# Detector supplies the equivalent environment/Helm-backed Settings values.
 TORAI_LITE_WEIGHTS = {
     "metric": 0.35,
     "trace": 0.25,
@@ -29,10 +31,16 @@ LATENCY_SPAN_NAMES = {
 
 
 def values(series: dict[str, Any]) -> list[float]:
-    return [float(point[1]) for point in series.get("values", []) if point[1] not in {"NaN", None}]
+    return [
+        float(point[1])
+        for point in series.get("values", [])
+        if point[1] not in {"NaN", None}
+    ]
 
 
-def robust_baseline(points: list[float], settings: Settings | None = None) -> list[float]:
+def robust_baseline(
+    points: list[float], settings: Settings | None = None
+) -> list[float]:
     """Discard isolated historical spikes before scoring the latest point.
 
     A single noisy sample must not inflate the mean/std enough to mask a
@@ -83,7 +91,9 @@ def anomaly_scores(
     for point in baseline[1:]:
         residuals.append(abs(point - expected))
         expected = settings.ewma_alpha * point + (1 - settings.ewma_alpha) * expected
-    spread = pstdev(residuals) if len(residuals) > 1 else max(mean(residuals or [0.0]), 1.0)
+    spread = (
+        pstdev(residuals) if len(residuals) > 1 else max(mean(residuals or [0.0]), 1.0)
+    )
     ewma = abs(current - expected) / max(
         settings.ewma_spread_multiplier * spread,
         abs(expected) * settings.ewma_relative_floor,
@@ -151,9 +161,7 @@ def slow_drift_breach(scores: dict[str, float]) -> bool:
     return scores.get("slow_drift", 0.0) >= 1.0
 
 
-def adaptive_breach(
-    scores: dict[str, float], settings: Settings | None = None
-) -> bool:
+def adaptive_breach(scores: dict[str, float], settings: Settings | None = None) -> bool:
     """Accept either an acute shift or a consistent multi-window drift."""
 
     return acute_breach(scores, settings) or slow_drift_breach(scores)
@@ -197,7 +205,9 @@ def span_matchers(
     return ",".join(matchers)
 
 
-def torai_lite_score(**signals: float | None) -> dict[str, Any]:
+def torai_lite_score(
+    *, weights: dict[str, float] | None = None, **signals: float | None
+) -> dict[str, Any]:
     """Normalize available evidence into an auditable multi-source score.
 
     This preserves the research-inspired TORAI-lite weighting documented by
@@ -205,21 +215,23 @@ def torai_lite_score(**signals: float | None) -> dict[str, Any]:
     therefore is not represented as a full TORAI implementation.
     """
 
+    selected_weights = weights or TORAI_LITE_WEIGHTS
     available = {
         name: min(max(float(value), 0.0), 1.0)
         for name, value in signals.items()
-        if name in TORAI_LITE_WEIGHTS and value is not None
+        if name in selected_weights and value is not None
     }
-    denominator = sum(TORAI_LITE_WEIGHTS[name] for name in available)
+    denominator = sum(selected_weights[name] for name in available)
     score = (
-        sum(TORAI_LITE_WEIGHTS[name] * value for name, value in available.items()) / denominator
+        sum(selected_weights[name] * value for name, value in available.items())
+        / denominator
         if denominator
         else 0.0
     )
     return {
         "score": round(score, 4),
         "components": {name: round(value, 4) for name, value in available.items()},
-        "missing_sources": sorted(set(TORAI_LITE_WEIGHTS) - set(available)),
+        "missing_sources": sorted(set(selected_weights) - set(available)),
     }
 
 
@@ -242,7 +254,9 @@ class Detector:
             self.settings.maximum_confidence,
         )
 
-    def latency(self, service: str, series: list[dict[str, Any]], query: str) -> Decision:
+    def latency(
+        self, service: str, series: list[dict[str, Any]], query: str
+    ) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
         breached, coverage_status, scores = signal_gate(
@@ -258,7 +272,13 @@ class Detector:
             coverage_status=coverage_status,
             incident_type="service_latency_spike",
             service=service,
-            severity="high" if current >= self.settings.latency_threshold_ms * 2 else "medium",
+            severity=(
+                "high"
+                if current
+                >= self.settings.latency_threshold_ms
+                * self.settings.latency_high_multiplier
+                else "medium"
+            ),
             confidence=confidence,
             root_cause=f"Sustained p95 latency degradation on {service}; dependency or recent deployment correlation requires confirmation.",
             evidence=[
@@ -266,7 +286,9 @@ class Detector:
                     source="prometheus",
                     query=query,
                     window=f"{self.settings.lookback_minutes}m",
-                    value="unavailable" if coverage_status == "unavailable" else round(current, 2),
+                    value="unavailable"
+                    if coverage_status == "unavailable"
+                    else round(current, 2),
                 ),
                 Evidence(
                     source="detector",
@@ -275,12 +297,16 @@ class Detector:
                     value=coverage_status,
                 ),
             ],
-            candidates=[{"service": service, "score": round(confidence, 3), "signals": scores}],
+            candidates=[
+                {"service": service, "score": round(confidence, 3), "signals": scores}
+            ],
             runbook_id="deployment-latency-rollback",
             recommended_action="Review recent deployment and, after approval, roll back to the previous known-good ReplicaSet.",
         )
 
-    def error_rate(self, service: str, series: list[dict[str, Any]], query: str) -> Decision:
+    def error_rate(
+        self, service: str, series: list[dict[str, Any]], query: str
+    ) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
         breached, coverage_status, scores = signal_gate(
@@ -296,7 +322,13 @@ class Detector:
             coverage_status=coverage_status,
             incident_type="service_error_rate_spike",
             service=service,
-            severity="high" if current >= self.settings.error_rate_threshold * 2 else "medium",
+            severity=(
+                "high"
+                if current
+                >= self.settings.error_rate_threshold
+                * self.settings.error_high_multiplier
+                else "medium"
+            ),
             confidence=confidence,
             root_cause=(
                 f"Sustained error-rate degradation on {service}; logs, traces and recent deployment "
@@ -307,7 +339,9 @@ class Detector:
                     source="prometheus",
                     query=query,
                     window=f"{self.settings.lookback_minutes}m",
-                    value="unavailable" if coverage_status == "unavailable" else round(current, 4),
+                    value="unavailable"
+                    if coverage_status == "unavailable"
+                    else round(current, 4),
                 ),
                 Evidence(
                     source="detector",
@@ -316,7 +350,9 @@ class Detector:
                     value=coverage_status,
                 ),
             ],
-            candidates=[{"service": service, "score": round(confidence, 3), "signals": scores}],
+            candidates=[
+                {"service": service, "score": round(confidence, 3), "signals": scores}
+            ],
             runbook_id="service-error-rate-escalation",
             recommended_action="Correlate failed traces and error logs, then escalate to the service owner.",
         )
@@ -339,8 +375,26 @@ class Detector:
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
         torai = torai_lite_score(
-            metric=min(max(scores["ratio"] - 1, 0) / 0.5, 1.0),
-            log=None if log_count is None else min(log_count / 3, 1.0),
+            weights={
+                "metric": self.settings.torai_metric_weight,
+                "trace": self.settings.torai_trace_weight,
+                "log": self.settings.torai_log_weight,
+                "deploy": self.settings.torai_deploy_weight,
+                "ai": self.settings.torai_ai_weight,
+            },
+            metric=min(
+                max(scores["ratio"] - 1, 0)
+                / max(self.settings.torai_metric_relative_span, 1e-9),
+                1.0,
+            ),
+            log=(
+                None
+                if log_count is None
+                else min(
+                    log_count / max(self.settings.torai_log_count_saturation, 1e-9),
+                    1.0,
+                )
+            ),
             ai=min(current / max(self.settings.llm_error_threshold, 1e-9), 1.0),
         )
         confidence = min(
@@ -355,7 +409,9 @@ class Detector:
                 source="prometheus",
                 query=query,
                 window=f"{self.settings.lookback_minutes}m",
-                value="unavailable" if coverage_status == "unavailable" else round(current, 4),
+                value="unavailable"
+                if coverage_status == "unavailable"
+                else round(current, 4),
             ),
             Evidence(
                 source="detector",
@@ -374,19 +430,32 @@ class Detector:
                 )
             )
         elif log_count:
-            evidence.append(Evidence(source="opensearch", query="timeout OR rate_limit OR error", window=f"{self.settings.lookback_minutes}m", value=log_count))
+            evidence.append(
+                Evidence(
+                    source="opensearch",
+                    query="timeout OR rate_limit OR error",
+                    window=f"{self.settings.lookback_minutes}m",
+                    value=log_count,
+                )
+            )
         return Decision(
             anomalous=anomalous,
             breached=breached,
             coverage_status=coverage_status,
             incident_type="llm_timeout_error",
             service=service,
-            severity="high" if current >= 0.25 else "medium",
+            severity="high"
+            if current >= self.settings.llm_high_error_rate
+            else "medium",
             confidence=confidence,
             root_cause="LLM calls show sustained timeout/error or provider rate-limit evidence.",
             evidence=evidence,
             candidates=[
-                {"service": service, "score": round(confidence, 3), "signals": {**torai, "anomaly": scores}},
+                {
+                    "service": service,
+                    "score": round(confidence, 3),
+                    "signals": {**torai, "anomaly": scores},
+                },
             ],
             runbook_id="llm-timeout-escalation",
             recommended_action="Confirm provider/configuration and fallback health; escalate because no bounded automatic mutation is approved.",

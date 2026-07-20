@@ -18,6 +18,28 @@ python -m benchmark.run /path/to/RCAEval-v2.zip --max-cases 60 --seed 7 --baseli
 Selection is deterministic and stratified by RCAEval system and fault type.
 The scorer compares a pre-injection baseline window with the labeled incident window, ranks metrics, then aggregates the three strongest metric signals per service.
 
+## Scoring design and coefficient justification
+
+This fixed formula belongs to the **offline localization benchmark**, not the runtime alert gate. It is kept fixed so the published result is reproducible:
+
+```text
+metric score = log1p(robust median shift)
+             + 0.35 × log1p(p95 peak shift)
+             + 1.50 × persistence
+             + 0.20 × log1p(relative median change)
+
+service score = 0.65 × strongest metric
+              + 0.25 × second metric
+              + 0.10 × third metric
+```
+
+- Median/MAD is the primary term because it resists isolated extreme samples. `1.4826 × MAD` is the standard normal-consistency scaling; the fallback scale prevents flat/near-zero metrics from exploding.
+- Persistence receives the strongest explicit multiplier because an incident that changes many samples is stronger RCA evidence than one peak. The p95 peak remains secondary so a transient cannot dominate the rank.
+- Relative change has the smallest term because it is unstable near zero; it supplements, rather than replaces, the robust standardized shift.
+- The top-three service aggregation prioritizes the strongest signal while allowing two independent metrics to corroborate it. Lower-ranked metrics are excluded to limit noisy high-dimensional services from winning by metric count alone.
+
+These coefficients are engineering seeds evaluated on the deterministic 60-case sample. The benchmark result supports the implementation trade-off; it does not prove that the coefficients are optimal for TF4 production or authorize runtime remediation.
+
 ## Per-system
 
 | System | Cases | Top-1 | Top-3 | MRR |

@@ -34,7 +34,11 @@ class ServiceScore:
 
 
 def baro_lite(window: MetricWindow) -> MetricScore:
-    """Research-inspired baseline-vs-incident scorer, not a full BARO reproduction."""
+    """Research-inspired baseline-vs-incident scorer, not a full BARO reproduction.
+
+    Coefficients are fixed for benchmark reproducibility and justified in the
+    generated RCAEval evidence report. They are not runtime alert thresholds.
+    """
 
     baseline = np.asarray(window.baseline, dtype=float)
     incident = np.asarray(window.incident, dtype=float)
@@ -47,7 +51,9 @@ def baro_lite(window: MetricWindow) -> MetricScore:
     robust_shift = abs(incident_median - baseline_median) / scale
     peak_shift = float(np.quantile(np.abs(incident - baseline_median), 0.95)) / scale
     persistence = float(np.mean(np.abs(incident - baseline_median) >= 3 * scale))
-    relative_change = abs(incident_median - baseline_median) / max(abs(baseline_median), scale_floor)
+    relative_change = abs(incident_median - baseline_median) / max(
+        abs(baseline_median), scale_floor
+    )
     raw_score = (
         math.log1p(robust_shift)
         + 0.35 * math.log1p(peak_shift)

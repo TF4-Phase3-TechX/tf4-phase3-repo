@@ -10,12 +10,24 @@ def _csv(name: str, default: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Settings:
-    prometheus_url: str = os.getenv("PROMETHEUS_URL", "http://prometheus.techx-observability.svc.cluster.local:9090")
-    opensearch_url: str = os.getenv("OPENSEARCH_URL", "http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200")
+    prometheus_url: str = os.getenv(
+        "PROMETHEUS_URL", "http://prometheus.techx-observability.svc.cluster.local:9090"
+    )
+    opensearch_url: str = os.getenv(
+        "OPENSEARCH_URL",
+        "http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200",
+    )
     opensearch_index: str = os.getenv("OPENSEARCH_INDEX", "otel-logs-*")
-    jaeger_url: str = os.getenv("JAEGER_URL", "http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui")
-    grafana_url: str = os.getenv("GRAFANA_URL", "http://grafana.techx-observability.svc.cluster.local/grafana")
-    opensearch_datasource_uid: str = os.getenv("OPENSEARCH_DATASOURCE_UID", "webstore-logs")
+    jaeger_url: str = os.getenv(
+        "JAEGER_URL",
+        "http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui",
+    )
+    grafana_url: str = os.getenv(
+        "GRAFANA_URL", "http://grafana.techx-observability.svc.cluster.local/grafana"
+    )
+    opensearch_datasource_uid: str = os.getenv(
+        "OPENSEARCH_DATASOURCE_UID", "webstore-logs"
+    )
     environment: str = os.getenv("AIOPS_ENVIRONMENT", "production")
     tenant_id: str = os.getenv("AIOPS_TENANT_ID", "default")
     poll_seconds: int = int(os.getenv("AIOPS_POLL_SECONDS", "45"))
@@ -33,39 +45,102 @@ class Settings:
     # Detector seeds are configurable because they must be recalibrated from
     # labelled normal and incident windows. Defaults are conservative 7a
     # starting values, not claims of production-optimal tuning.
-    baseline_mad_multiplier: float = float(os.getenv("AIOPS_BASELINE_MAD_MULTIPLIER", "6"))
-    baseline_relative_band: float = float(os.getenv("AIOPS_BASELINE_RELATIVE_BAND", "0.5"))
+    baseline_mad_multiplier: float = float(
+        os.getenv("AIOPS_BASELINE_MAD_MULTIPLIER", "6")
+    )
+    baseline_relative_band: float = float(
+        os.getenv("AIOPS_BASELINE_RELATIVE_BAND", "0.5")
+    )
     zscore_threshold: float = float(os.getenv("AIOPS_ZSCORE_THRESHOLD", "3"))
     zscore_noise_floor: float = float(os.getenv("AIOPS_ZSCORE_NOISE_FLOOR", "0.05"))
     ratio_threshold: float = float(os.getenv("AIOPS_RATIO_THRESHOLD", "1.5"))
     ewma_alpha: float = float(os.getenv("AIOPS_EWMA_ALPHA", "0.35"))
-    ewma_spread_multiplier: float = float(os.getenv("AIOPS_EWMA_SPREAD_MULTIPLIER", "3"))
+    ewma_spread_multiplier: float = float(
+        os.getenv("AIOPS_EWMA_SPREAD_MULTIPLIER", "3")
+    )
     ewma_relative_floor: float = float(os.getenv("AIOPS_EWMA_RELATIVE_FLOOR", "0.25"))
     ewma_threshold: float = float(os.getenv("AIOPS_EWMA_THRESHOLD", "1"))
     trend_window: int = int(os.getenv("AIOPS_TREND_WINDOW", "6"))
-    trend_min_relative_change: float = float(os.getenv("AIOPS_TREND_MIN_RELATIVE_CHANGE", "0.25"))
-    trend_min_current_ratio: float = float(os.getenv("AIOPS_TREND_MIN_CURRENT_RATIO", "1.2"))
-    trend_min_consistency: float = float(os.getenv("AIOPS_TREND_MIN_CONSISTENCY", "0.75"))
-    isolation_contamination: float = float(os.getenv("AIOPS_ISOLATION_CONTAMINATION", "0.15"))
-    latency_confidence_base: float = float(os.getenv("AIOPS_LATENCY_CONFIDENCE_BASE", "0.45"))
-    error_confidence_base: float = float(os.getenv("AIOPS_ERROR_CONFIDENCE_BASE", "0.50"))
+    trend_min_relative_change: float = float(
+        os.getenv("AIOPS_TREND_MIN_RELATIVE_CHANGE", "0.25")
+    )
+    trend_min_current_ratio: float = float(
+        os.getenv("AIOPS_TREND_MIN_CURRENT_RATIO", "1.2")
+    )
+    trend_min_consistency: float = float(
+        os.getenv("AIOPS_TREND_MIN_CONSISTENCY", "0.75")
+    )
+    isolation_contamination: float = float(
+        os.getenv("AIOPS_ISOLATION_CONTAMINATION", "0.15")
+    )
+    # Confidence is an explainable operator-prioritisation score, not a
+    # calibrated probability. Every contribution remains configurable for the
+    # labelled production replay required by Mandate 7b.
+    latency_confidence_base: float = float(
+        os.getenv("AIOPS_LATENCY_CONFIDENCE_BASE", "0.45")
+    )
+    error_confidence_base: float = float(
+        os.getenv("AIOPS_ERROR_CONFIDENCE_BASE", "0.50")
+    )
     llm_confidence_base: float = float(os.getenv("AIOPS_LLM_CONFIDENCE_BASE", "0.45"))
-    torai_confidence_weight: float = float(os.getenv("AIOPS_TORAI_CONFIDENCE_WEIGHT", "0.40"))
-    zscore_confidence_weight: float = float(os.getenv("AIOPS_ZSCORE_CONFIDENCE_WEIGHT", "0.10"))
-    ewma_confidence_weight: float = float(os.getenv("AIOPS_EWMA_CONFIDENCE_WEIGHT", "0.15"))
-    isolation_confidence_weight: float = float(os.getenv("AIOPS_ISOLATION_CONFIDENCE_WEIGHT", "0.05"))
-    trend_confidence_weight: float = float(os.getenv("AIOPS_TREND_CONFIDENCE_WEIGHT", "0.10"))
+    torai_confidence_weight: float = float(
+        os.getenv("AIOPS_TORAI_CONFIDENCE_WEIGHT", "0.40")
+    )
+    zscore_confidence_weight: float = float(
+        os.getenv("AIOPS_ZSCORE_CONFIDENCE_WEIGHT", "0.10")
+    )
+    ewma_confidence_weight: float = float(
+        os.getenv("AIOPS_EWMA_CONFIDENCE_WEIGHT", "0.15")
+    )
+    isolation_confidence_weight: float = float(
+        os.getenv("AIOPS_ISOLATION_CONFIDENCE_WEIGHT", "0.05")
+    )
+    trend_confidence_weight: float = float(
+        os.getenv("AIOPS_TREND_CONFIDENCE_WEIGHT", "0.10")
+    )
     maximum_confidence: float = float(os.getenv("AIOPS_MAXIMUM_CONFIDENCE", "0.95"))
+    torai_metric_weight: float = float(os.getenv("AIOPS_TORAI_METRIC_WEIGHT", "0.35"))
+    torai_trace_weight: float = float(os.getenv("AIOPS_TORAI_TRACE_WEIGHT", "0.25"))
+    torai_log_weight: float = float(os.getenv("AIOPS_TORAI_LOG_WEIGHT", "0.20"))
+    torai_deploy_weight: float = float(os.getenv("AIOPS_TORAI_DEPLOY_WEIGHT", "0.10"))
+    torai_ai_weight: float = float(os.getenv("AIOPS_TORAI_AI_WEIGHT", "0.10"))
+    torai_metric_relative_span: float = float(
+        os.getenv("AIOPS_TORAI_METRIC_RELATIVE_SPAN", "0.50")
+    )
+    torai_log_count_saturation: float = float(
+        os.getenv("AIOPS_TORAI_LOG_COUNT_SATURATION", "3")
+    )
+    latency_high_multiplier: float = float(
+        os.getenv("AIOPS_LATENCY_HIGH_MULTIPLIER", "2")
+    )
+    error_high_multiplier: float = float(os.getenv("AIOPS_ERROR_HIGH_MULTIPLIER", "2"))
+    llm_high_error_rate: float = float(os.getenv("AIOPS_LLM_HIGH_ERROR_RATE", "0.25"))
+    remediation_confidence_threshold: float = float(
+        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.75")
+    )
+    verification_error_rate_threshold: float = float(
+        os.getenv("AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD", "0.01")
+    )
     remediation_mode: str = os.getenv("REMEDIATION_MODE", "dry-run")
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
-    deployment_recency_hours: int = int(os.getenv("AIOPS_DEPLOYMENT_RECENCY_HOURS", "24"))
+    deployment_recency_hours: int = int(
+        os.getenv("AIOPS_DEPLOYMENT_RECENCY_HOURS", "24")
+    )
     namespace: str = os.getenv("AIOPS_TARGET_NAMESPACE", "techx-corp")
-    allowed_deployments: tuple[str, ...] = field(default_factory=lambda: _csv("AIOPS_ALLOWED_DEPLOYMENTS", "llm,product-reviews"))
-    services: tuple[str, ...] = field(default_factory=lambda: _csv("AIOPS_MONITORED_SERVICES", "llm,product-reviews,frontend,checkout"))
+    allowed_deployments: tuple[str, ...] = field(
+        default_factory=lambda: _csv("AIOPS_ALLOWED_DEPLOYMENTS", "llm,product-reviews")
+    )
+    services: tuple[str, ...] = field(
+        default_factory=lambda: _csv(
+            "AIOPS_MONITORED_SERVICES", "llm,product-reviews,frontend,checkout"
+        )
+    )
     # Expected callers are used only to report unavailable coverage. Actual
     # incident ownership is discovered from the service_name metric label.
-    llm_services: tuple[str, ...] = field(default_factory=lambda: _csv("AIOPS_LLM_SERVICES", "product-reviews"))
+    llm_services: tuple[str, ...] = field(
+        default_factory=lambda: _csv("AIOPS_LLM_SERVICES", "product-reviews")
+    )
     llm_log_services: tuple[str, ...] = field(
         default_factory=lambda: _csv("AIOPS_LLM_LOG_SERVICES", "llm,product-reviews")
     )

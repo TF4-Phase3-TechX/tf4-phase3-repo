@@ -45,13 +45,13 @@ Adopt a lightweight, auditable hybrid detector:
 
 ## Initial signal analysis
 
-These are design seeds, not measured production normal ranges.
+The table is deliberately explicit about the four items required by Mandate 7a for each signal: why it was selected, what the initial normal baseline means, what is anomalous, and which method is used. The ranges are configurable **design seeds**, not measured claims about TF4 production. The baseline is learned independently for each `service × signal`; a stable busy service can therefore remain normal even when its raw value is high.
 
-| Signal | Scope and ownership | Acute rule | Gradual rule | Response |
+| Signal and ownership | Why selected | Initial definition of normal | What is anomalous | Method and response |
 |---|---|---|---|---|
-| p95 server-span latency | `frontend`, `checkout`, `product-reviews`, `llm`; one history per service | Current p95 at or above 1,000 ms and ratio ≥1.5, or z-score ≥3 with EWMA score ≥1 | Six-point fitted rise ≥25%, at least 75% positive steps, current value ≥1.2× robust long-window mean | Investigate dependency/deployment evidence; rollback remains approval-gated |
-| Request error rate | Same monitored critical services; one history per service | At least 20 requests in five minutes, current rate ≥5%, and the acute adaptive rule | Same multi-window trend rule; can alert before 5% when degradation is consistent | Correlate failed traces/logs and escalate to the service owner |
-| LLM/provider error rate | Every `app_llm_*` series grouped by its emitted `service_name`; no global owner | At least five calls in five minutes, current rate ≥5%, and the acute adaptive rule | Same multi-window trend rule per emitting caller | Check provider/configuration/fallback, then escalate to that caller's owner |
+| p95 server-span latency for `frontend`, `checkout`, `product-reviews` and `llm`; one history per service | It is the clearest user-visible symptom and is directly tied to the storefront p95 SLO. It also exposes slow dependency, queue and resource-pressure symptoms without pretending to identify their physical cause. | The robust mean/spread of that service's previous 30-minute, 60-second-step history after Median/MAD masking-noise removal. A stable busy window is normal when the relative/z/EWMA and gradual gates remain false; 1,000 ms is a safety floor, not the learned baseline. | Acute: current p95 ≥1,000 ms **and** ratio ≥1.5, or z-score ≥3 with EWMA score ≥1. Gradual: six-point fitted rise ≥25%, ≥75% positive steps and current ≥1.2× the robust long-window mean. The gradual path may fire below 1,000 ms. | Per-service Median/MAD baseline + ratio/z-score/EWMA acute gate + unfiltered short-window trend. Correlate deployment/dependency evidence; rollback remains separately approval-gated. |
+| Request error rate for the same critical services; one history per service | Failures consume the availability error budget and can be severe even when latency has not risen. The signal is calculated only from server spans so client/internal spans do not distort ownership. | The robust mean/spread of the service's own preceding 30-minute error-rate history. A window is eligible only with ≥20 requests in five minutes; low-volume ratios are unavailable rather than normal. A stable high-load period with no deviation remains normal. | Acute: current rate ≥5% plus the same adaptive ratio/z/EWMA rule. Gradual: the same trend rule can fire before 5% when a consistent rise is consuming the budget. | Denominator-gated per-service error-rate series with the same two detection paths. Correlate failed traces/logs and escalate to the emitting service owner. |
+| LLM/provider error rate for every `app_llm_*` caller grouped by emitted `service_name` | Provider timeouts/rate limits directly remove the AI feature while ordinary service request metrics may remain healthy. Caller attribution is required so a future service is not assigned to `product-reviews`. | The robust mean/spread of each caller's own preceding 30-minute LLM error-rate history. A window is eligible only with ≥5 calls in five minutes. Missing or unlabeled series are coverage failures, never healthy samples and never assigned to a configured global owner. | Acute: current rate ≥5% plus the adaptive rule. Gradual: the same per-caller trend rule. A current rate ≥25% raises severity to high but does not alter the anomaly gate. | Label-preserving PromQL + per-caller robust baseline and two-path detector. Logs/TORAI-lite enrich confidence only; check provider/configuration/fallback and escalate to that caller's owner. |
 
 The LLM query is grouped and joined `on(service_name)`. A future `shopping-copilot` instrumented with the same contract therefore produces a `shopping-copilot` incident rather than a `product-reviews` incident. An unlabeled LLM series is rejected as `unattributed` coverage degradation and cannot create a wrongly owned incident.
 
@@ -60,7 +60,10 @@ The LLM query is grouped and joined `on(service_name)`. A future `shopping-copil
 | Setting | 7a seed | Design intent and limitation |
 |---|---:|---|
 | Lookback / Prometheus range step | 30 minutes / 60 seconds | Provides a small recent history without claiming a seasonal production model |
+| PromQL rate window | 5 minutes | Smooths scrape-level jitter while remaining short enough for the target MTTD; replay must quantify the actual lead-time trade-off |
 | Poll / sustain | 45 seconds / 2 polls | Bounds alert spam while keeping nominal confirmation near 90 seconds |
+| Minimum adaptive / Isolation Forest history | 4 / 8 points | Avoids unstable statistics on a thin baseline; the service reports `warming` and still permits a severe floor breach. IF waits longer because fitting an unsupervised model on fewer points would be misleading |
+| Latency / request-error / LLM safety floor | 1,000 ms / 5% / 5% | Latency reuses the storefront p95 objective; the percentage floors mark material initial degradation. They are guardrails combined with adaptive evidence, not definitions of normal |
 | Median/MAD tolerance | `max(6×MAD, 50% of median)` | Removes extreme masking samples while retaining ordinary relative variation; must be checked on labelled long incidents |
 | Ratio / z-score | 1.5 / 3 | Requires a material change or a conventional high standardized deviation; neither value is claimed optimal |
 | EWMA alpha | 0.35 | Gives recent observations meaningful weight without making one point dominate; sensitivity checks also run 0.2 and 0.5 |
@@ -68,6 +71,22 @@ The LLM query is grouped and joined `on(service_name)`. A future `shopping-copil
 | Trend window | 6 points | Approximately six minutes at the current range step; short enough to lead the floor but long enough to test consistency |
 | Trend gates | rise 25%, current ratio 1.2, positive-step consistency 75% | Separates monotonic degradation from a single jump and oscillating noise |
 | Isolation Forest | contamination 0.15, confidence weight 0.05 | Supporting evidence only; never a firing condition until labelled production calibration justifies a stronger role |
+| Isolation Forest random seed | 7 | Makes the 7a audit and tests reproducible; it is not a learned production parameter |
+
+### Confidence, severity and evidence-weight justification
+
+Confidence is an operator-prioritisation score, **not a calibrated incident probability** and not an authorization token. All values below are runtime/Helm configuration so the production replay can replace them without changing code.
+
+| Setting | 7a seed | Design intent and limitation |
+|---|---:|---|
+| Latency / request-error / LLM confidence base | 0.45 / 0.50 / 0.45 | A primary metric breach starts below the 0.75 remediation boundary. Error rate receives a slightly higher triage prior because it directly consumes availability budget. These priors do not claim empirical probability. |
+| z-score / EWMA / gradual-trend contribution | 0.10 / 0.15 / 0.10 | Independent explainable corroboration can raise priority. EWMA is slightly stronger because it incorporates recent sequence; no single contribution authorizes action. |
+| Isolation Forest contribution / confidence cap | 0.05 / 0.95 | Keeps opaque unsupervised evidence subordinate and prevents a displayed score of 1.0 from implying certainty. |
+| TORAI-lite source weights | metric 0.35, trace 0.25, log 0.20, deployment 0.10, AI 0.10 | Primary metric evidence leads; trace/log correlation supports it; deployment/AI hints remain weaker because correlation is not cause. Missing sources are reported and available weights are renormalized. TORAI-lite changes confidence only, never the firing gate. |
+| TORAI metric/log normalization | +50% relative span / three matching logs | Saturates bounded evidence without allowing an unbounded ratio or duplicated logs to dominate. These are replay-tunable seeds, not measured optima. |
+| High severity | latency/error ≥2× safety floor; LLM error rate ≥25% | Separates material customer impact from a medium anomaly. Severity changes routing/priority, not whether an anomaly exists. |
+| Denominator gates | 20 requests / 5 LLM calls per five minutes | Avoids unstable percentages from tiny denominators, accepting delayed detection for very low-traffic services. |
+| Remediation confidence boundary | 0.75 | A defense-in-depth prerequisite in addition to named approval, allowlist, RBAC and verification. Live remediation remains disabled until 7b evidence and runtime signatures exist. |
 
 The reproducible [detector seed sensitivity report](./evidence/DETECTOR_SEED_SENSITIVITY.md) evaluates acute, stable-high, oscillating-noise, masking-noise and gradual-drift fixtures, plus a 27-combination parameter grid. It demonstrates the behavior and trade-off of the seed. It explicitly does **not** establish production precision/recall or optimality.
 

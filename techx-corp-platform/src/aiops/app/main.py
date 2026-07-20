@@ -22,6 +22,8 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 settings = Settings()
 store = IncidentStore(settings.cooldown_seconds)
 telemetry = TelemetryClient(settings)
+
+
 async def verify_service_slo(service: str) -> dict[str, object]:
     latency_series = await telemetry.query_range(latency_query(service))
     points = values(latency_series[0]) if latency_series else []
@@ -34,11 +36,14 @@ async def verify_service_slo(service: str) -> dict[str, object]:
     guard_points = values(guard_series[0]) if guard_series else []
     guard_error_rate = guard_points[-1] if guard_points else None
     return {
-        "healthy": current is not None and current < settings.latency_threshold_ms and guard_error_rate is not None and guard_error_rate < 0.01,
+        "healthy": current is not None
+        and current < settings.latency_threshold_ms
+        and guard_error_rate is not None
+        and guard_error_rate < settings.verification_error_rate_threshold,
         "p95_latency_ms": current,
         "threshold_ms": settings.latency_threshold_ms,
         "checkout_storefront_error_rate": guard_error_rate,
-        "checkout_storefront_error_rate_threshold": 0.01,
+        "checkout_storefront_error_rate_threshold": settings.verification_error_rate_threshold,
     }
 
 
@@ -66,7 +71,10 @@ def require_token(authorization: str | None = Header(default=None)) -> None:
     expected = settings.approval_token
     supplied = authorization.removeprefix("Bearer ") if authorization else ""
     if not expected or not hmac.compare_digest(expected, supplied):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Valid approval bearer token required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Valid approval bearer token required",
+        )
 
 
 @app.get("/healthz")
