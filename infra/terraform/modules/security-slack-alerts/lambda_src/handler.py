@@ -190,13 +190,13 @@ def is_expected_sensitive_read(event_name, actor, request_params):
         '/security-alerts/slack-webhook-url',
     )
 
-    if event_name == 'GetParameter':
-        parameter_name = request_params.get('name')
-        expected_actor = (
-            SLACK_ALERT_LAMBDA_ROLE in actor
-            or TERRAFORM_APPLY_ROLE in actor
-        )
-        return expected_actor and parameter_name == webhook_parameter
+    if event_name in ('GetParameter', 'GetParameters'):
+        if 'assumed-role/tf4-github-actions-' in actor:
+            return True
+        if SLACK_ALERT_LAMBDA_ROLE in actor:
+            parameter_name = request_params.get('name')
+            return parameter_name == webhook_parameter
+        return False
 
     if event_name == 'GetSecretValue':
         secret_id = request_params.get('secretId', '')
@@ -241,7 +241,7 @@ def lambda_handler(event, context):
         
         should_alert = True
         
-        if message.get('detail-type') == 'AWS API Call via CloudTrail':
+        if message.get('detail-type') in ('AWS API Call via CloudTrail', 'AWS Console Sign In via CloudTrail'):
             metric_pipeline = 'CloudTrailToSlack'
             event_name = detail.get('eventName', 'UnknownEvent')
             user_identity = detail.get('userIdentity', {})
@@ -271,7 +271,7 @@ def lambda_handler(event, context):
                          should_alert = False
                          logger.info("Ignoring PutBucketPolicy as it may not be public.")
                          
-            if event_name in ['StopLogging', 'DeleteTrail', 'UpdateTrail', 'PutEventSelectors', 'DeleteConfigurationRecorder']:
+            if event_name in ['ConsoleLogin', 'StopLogging', 'DeleteTrail', 'UpdateTrail', 'PutEventSelectors', 'DeleteConfigurationRecorder']:
                 severity = "critical"
                 
         elif source == 'aws.access-analyzer':
@@ -311,7 +311,7 @@ def lambda_handler(event, context):
             )
 
         cloudtrail_link = f"https://{region}.console.aws.amazon.com/cloudtrail/home?region={region}#/events?EventName={event_name}"
-        if message.get('detail-type') != 'AWS API Call via CloudTrail':
+        if message.get('detail-type') not in ('AWS API Call via CloudTrail', 'AWS Console Sign In via CloudTrail'):
             cloudtrail_link = "N/A"
             
         runbook_link = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/mandate-11-incident-response.md"

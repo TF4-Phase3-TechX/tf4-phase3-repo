@@ -42,7 +42,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_writeonly_sensitive" {
 
   event_pattern = jsonencode({
     source      = ["aws.iam", "aws.signin", "aws.cloudtrail", "aws.ec2", "aws.s3", "aws.config", "aws.eks"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    detail-type = ["AWS API Call via CloudTrail", "AWS Console Sign In via CloudTrail"]
     detail = {
       "$or" = [
         {
