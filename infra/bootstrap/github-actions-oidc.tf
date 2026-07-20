@@ -178,6 +178,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
 
     actions = [
       "ssm:DescribeDocument",
+      "ssm:GetDocument",
+      "ssm:DescribeDocumentPermission",
       "ssm:ListTagsForResource"
     ]
 
