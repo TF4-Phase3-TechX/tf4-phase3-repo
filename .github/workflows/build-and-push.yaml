@@ -337,7 +337,7 @@ jobs:
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
         shell: bash
         run: |
-          digest_map="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          digest_map="$(jq -Rnc '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           jq -n \
             --arg image_repository "$IMAGE_REPOSITORY" \
             --arg image_tag "$IMAGE_TAG" \
