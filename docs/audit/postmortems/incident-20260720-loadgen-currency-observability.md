@@ -6,6 +6,7 @@
 **Giai đoạn telemetry bất thường:** 01:30-09:40 ICT  
 **Phạm vi:** `tf4-webstore`, namespace `techx-tf4`  
 **Người phụ trách báo cáo:** Trần Minh Quang - CDO07 Auditability Team  
+**Người review và đánh giá lại báo cáo:** Bùi Thành Nghĩa - CDO07 Auditability Team 
 
 ## Tóm tắt
 
