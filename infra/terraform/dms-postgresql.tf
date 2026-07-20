@@ -12,7 +12,7 @@ locals {
     rules = [
       {
         "rule-type" = "selection"
-        "rule-id"   = "include-accounting"
+        "rule-id"   = "1"
         "rule-name" = "include-accounting"
         "object-locator" = {
           "schema-name" = "accounting"
@@ -22,7 +22,7 @@ locals {
       },
       {
         "rule-type" = "selection"
-        "rule-id"   = "include-catalog"
+        "rule-id"   = "2"
         "rule-name" = "include-catalog"
         "object-locator" = {
           "schema-name" = "catalog"
@@ -32,7 +32,7 @@ locals {
       },
       {
         "rule-type" = "selection"
-        "rule-id"   = "include-reviews"
+        "rule-id"   = "3"
         "rule-name" = "include-reviews"
         "object-locator" = {
           "schema-name" = "reviews"
