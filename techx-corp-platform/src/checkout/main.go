@@ -576,26 +576,94 @@ func (cs *checkout) emptyUserCart(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, userCurrency string) ([]*pb.OrderItem, error) {
-	out := make([]*pb.OrderItem, len(items))
+const maxConcurrentOrderItemPreparations = 4
 
-	for i, item := range items {
-		var product *pb.Product
-		err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
-			var e error
-			product, e = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: item.GetProductId()})
-			return e
+func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, userCurrency string) ([]*pb.OrderItem, error) {
+	if len(items) == 0 {
+		return nil, nil
+	}
+
+	out := make([]*pb.OrderItem, len(items))
+	workerCount := len(items)
+	if workerCount > maxConcurrentOrderItemPreparations {
+		workerCount = maxConcurrentOrderItemPreparations
+	}
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	jobs := make(chan int)
+	var workers sync.WaitGroup
+	var firstErr error
+	var errOnce sync.Once
+	recordErr := func(err error) {
+		errOnce.Do(func() {
+			firstErr = err
+			cancel()
 		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get product #%q", item.GetProductId())
+	}
+
+	for range workerCount {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for {
+				select {
+				case <-workerCtx.Done():
+					return
+				case index, ok := <-jobs:
+					if !ok {
+						return
+					}
+					item := items[index]
+					// 1. Get Product
+					var product *pb.Product
+					err := retryRead(workerCtx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+						var e error
+						product, e = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: item.GetProductId()})
+						return e
+					})
+					if err != nil {
+						recordErr(fmt.Errorf("failed to get product #%q: %w", item.GetProductId(), err))
+						return
+					}
+
+					// 2. Convert Currency
+					var price *pb.Money
+					err = retryRead(workerCtx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+						var e error
+						price, e = cs.currencySvcClient.Convert(callCtx, &pb.CurrencyConversionRequest{
+							From:   product.GetPriceUsd(),
+							ToCode: userCurrency,
+						})
+						return e
+					})
+					if err != nil {
+						recordErr(fmt.Errorf("failed to convert price of %q to %s: %w", item.GetProductId(), userCurrency, err))
+						return
+					}
+
+					out[index] = &pb.OrderItem{
+						Item: item,
+						Cost: price,
+					}
+				}
+			}
+		}()
+	}
+
+enqueue:
+	for index := range items {
+		select {
+		case <-workerCtx.Done():
+			break enqueue
+		case jobs <- index:
 		}
-		price, err := cs.convertCurrency(ctx, product.GetPriceUsd(), userCurrency)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert price of %q to %s", item.GetProductId(), userCurrency)
-		}
-		out[i] = &pb.OrderItem{
-			Item: item,
-			Cost: price}
+	}
+	close(jobs)
+	workers.Wait()
+
+	if firstErr != nil {
+		return nil, firstErr
 	}
 	return out, nil
 }
