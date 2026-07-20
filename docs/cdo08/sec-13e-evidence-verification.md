@@ -5,6 +5,62 @@
 
 ---
 
+## ✅ VERIFIED — 2026-07-21
+
+### 2a. ClusterSecretStore — READY=True
+
+```
+NAME                 AGE     STATUS   CAPABILITIES   READY
+aws-secretsmanager   5d19h   Valid    ReadWrite      True
+```
+
+### 2b. ExternalSecret — READY=True cho cả 3
+
+```
+NAME                        STORE              REFRESH INTERVAL   STATUS         READY
+rds-postgres-secret         aws-secretsmanager 1h                 SecretSynced   True
+elasticache-valkey-secret   aws-secretsmanager 1h                 SecretSynced   True
+msk-kafka-secret            aws-secretsmanager 1h                 SecretSynced   True
+```
+
+### 2c. Kubernetes Secrets — tồn tại, TYPE=Opaque
+
+```
+NAME                        TYPE     DATA   AGE
+rds-postgres-secret         Opaque   3      6h48m
+elasticache-valkey-secret   Opaque   1      37s
+msk-kafka-secret            Opaque   5      8h
+```
+
+### 2d. AWS Secrets Manager — 3 entries SEC-13 tồn tại
+
+```
+techx/tf4/rds-postgres       arn:aws:secretsmanager:us-east-1:511825856493:secret:techx/tf4/rds-postgres-T586rF
+techx/tf4/elasticache-valkey arn:aws:secretsmanager:us-east-1:511825856493:secret:techx/tf4/elasticache-valkey-jFYmFu
+techx/tf4/msk-kafka          arn:aws:secretsmanager:us-east-1:511825856493:secret:techx/tf4/msk-kafka-W5RENp
+```
+
+### 2e. IRSA verification — PASS
+
+- ServiceAccount `external-secrets` có annotation `eks.amazonaws.com/role-arn: arn:aws:iam::511825856493:role/external-secrets-techx-tf4-cluster`
+- IAM policy `external-secrets-read-production`: Allow `GetSecretValue`, `DescribeSecret`, `ListSecretVersionIds` trên `arn:aws:secretsmanager:us-east-1:511825856493:secret:techx/tf4/*`
+- Không có write actions, không có wildcard account-wide
+
+### 2f. No-plaintext scan — PASS
+
+Kết quả `git grep` trên `*.yaml` và `*.json`:
+- Matches tìm thấy chỉ trong `docs/evidence/` (snapshot evidence cũ từ directive-03/05, trạng thái cluster trước SEC-13) và `ci.yaml` (pattern trong lệnh grep chính nó)
+- Không có plaintext managed credential nào trong source files, chart templates, hay values files production
+- `techx-corp-chart/values.yaml` giữ in-cluster default (`postgresql`, `kafka:9092`, `valkey-cart:6379`) cho backward compat local/dev — không vi phạm Mandate 8
+
+### 2g. Helm render validation — PASS
+
+`helm template` với `managedData.*.enabled=true`: không có output từ grep pattern `otelp|Password=otel|postgres://.*@postgresql|kafka:9092|valkey-cart:6379` (sau khi exclude false positives `postgresql-init` và `KAFKA_ADVERTISED_LISTENERS`). App service env vars dùng `secretKeyRef` đúng cho tất cả 7 services.
+
+---
+
+---
+
 ## 1. No plaintext managed credentials — Git repo
 
 ```bash
