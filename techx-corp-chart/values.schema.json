@@ -151,6 +151,28 @@
         "enabled"
       ]
     },
+    "riotRedisBackfill": {
+      "description": "CDO08-REL-16 rollback-only Job backfilling ElastiCache back to EKS valkey-cart using riot-redis.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "elasticacheAddress": {
+          "type": "string"
+        },
+        "targetAddress": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
     "rollouts": {
       "description": "Argo Rollouts integration master switch. Requires the Argo Rollouts CRDs/controller installed in-cluster. Individual components opt in via components.<name>.useRollout.",
       "type": "object",
