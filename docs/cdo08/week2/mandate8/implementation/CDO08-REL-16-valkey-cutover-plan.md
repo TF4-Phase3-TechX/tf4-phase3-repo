@@ -96,14 +96,17 @@ commit message, hay log dán vào PR).
 ## 7. Prerequisites / Blockers trước khi cutover thật
 
 1. **PM approval** (§4) — PENDING.
-2. **Quyền AWS Secrets Manager**: role SSO hiện tại (`TF4-SecurityIAMSSOManager`) không có quyền
-   `secretsmanager:DescribeSecret`/`PutSecretValue` trên path `techx/tf4/elasticache-valkey` — cần role
-   migration-operator/admin để thực hiện §5 mục 1.
-3. **Auth token**: phải sinh 1 giá trị và đồng bộ vào cả Terraform (`var.valkey_auth_token`) lẫn ASM secret
-   (`password`) — hai bên phải khớp nhau.
-4. **CI rebuild `cart` image** sau khi merge code TLS (Subtask 2) → cập nhật tag trong
+2. **Quyền AWS Secrets Manager**: role SSO `TF4-SecurityIAMSSOManager` trên `techx/tf4/elasticache-valkey`
+   — đã cấp. Secret này chưa tồn tại trong AWS Secrets Manager — bước nạp value đầu tiên phải dùng
+   `create-secret`, không phải `put-secret-value` (xem `CDO08-REL-16-cart-cutover-evidence.md` §1 Bước 2).
+3. **GitHub secret `TF_VALKEY_AUTH_TOKEN`** — cần tạo trước khi `terraform apply` chạy được với
+   `auth_token` thật (nếu không sẽ dùng placeholder mặc định trong `variables.tf`, fail validation
+   ≥16 ký tự).
+4. **Auth token**: phải sinh 1 giá trị và đồng bộ vào cả Terraform (`var.valkey_auth_token`, qua GitHub
+   secret ở mục 3) lẫn ASM secret (`password`, qua mục 2) — hai bên phải khớp nhau.
+5. **CI rebuild `cart` image** sau khi merge code TLS (Subtask 2) → cập nhật tag trong
    `environments/production/image-revisions.yaml` trước khi flip toggle.
-5. `infra/terraform/elasticache.tf` thuộc REL-14/CDO-04 — PR đổi file này cần CDO-04 review.
+6. `infra/terraform/elasticache.tf` thuộc REL-14/CDO-04 — PR đổi file này cần CDO-04 review.
 
 ## 8. Rollback & Retention Boundary (Subtask 4)
 

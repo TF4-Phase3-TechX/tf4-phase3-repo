@@ -230,6 +230,10 @@ jobs:
         if: steps.check_secrets.outputs.skip != 'true'
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
+          # Not a secret: terraform plan is read-only and never touches the real
+          # ElastiCache AUTH token. Real value only flows through
+          # TF_VALKEY_AUTH_TOKEN in terraform-apply.yaml.
+          TF_VAR_valkey_auth_token: "ci-plan-only-dummy-token-not-a-real-secret"
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan

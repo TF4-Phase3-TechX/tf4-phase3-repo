@@ -98,6 +98,13 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
+      - name: Check valkey_auth_token secret is set
+        run: |
+          if [ -z "${{ secrets.TF_VALKEY_AUTH_TOKEN }}" ]; then
+            echo "::error::TF_VALKEY_AUTH_TOKEN secret is not set. Refusing to run terraform apply without a real ElastiCache AUTH token (CDO08-REL-16)."
+            exit 1
+          fi
+
       - name: Terraform apply
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}

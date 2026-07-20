@@ -50,42 +50,35 @@ Tất cả Kubernetes Secrets được sync vào namespace: `techx-tf4`
 | Kubernetes Secret name | `elasticache-valkey-secret` |
 | Namespace | `techx-tf4` |
 
-**Payload schema theo REL-14 hiện tại:**
-
-```json
-{
-  "host": "<elasticache-private-endpoint>",
-  "port": "6379",
-  "address": "<elasticache-private-endpoint>:6379"
-}
-```
-
-REL-14 hiện bật transit encryption cho ElastiCache. Secret contract vẫn dùng key
-`address` để không leak endpoint trong Git, nhưng **không bật production cutover**
-cho `managedData.valkey.enabled=true` cho tới khi `cart` hỗ trợ TLS connection
-option. Code hiện tại tự dựng connection string với `ssl=false`, nên chỉ đổi
-endpoint qua secret là chưa đủ cho managed Valkey TLS.
-
-**Payload schema mở rộng nếu bật AUTH/TLS trong app cutover:**
+**Payload schema (REL-16 — TLS+auth, bắt buộc trước khi cutover):**
 
 ```json
 {
   "host": "<elasticache-private-endpoint>",
   "port": "6379",
   "address": "<elasticache-private-endpoint>:6379",
-  "password": "<real-password>",
+  "password": "<real-auth-token>",
   "tls_enabled": "true"
 }
 ```
+
+REL-16 đã thêm hỗ trợ TLS/AUTH cho `cart` (`ssl=true` + password qua `VALKEY_TLS`/`VALKEY_PASSWORD`) và
+Terraform đã đổi `transit_encryption_mode=required` + `auth_token`. Secret contract vẫn dùng key `address`
+để không leak endpoint trong Git. **Không bật `managedData.valkey.enabled=true` cho production cho tới
+khi** ASM secret có đủ 5 property ở trên và cart image mới (hỗ trợ TLS) đã rollout — xem gate ở
+`CDO08-REL-16-valkey-cutover-plan.md` §4, §7.
 
 **Kubernetes Secret keys (synced by ESO):**
 
 | Key | Source property | Consumer service |
 |---|---|---|
 | `valkey-address` | `address` | `cart` |
+| `password` | `password` | `cart` |
+| `tls_enabled` | `tls_enabled` | `cart` |
 
-> TLS/auth behavior thuộc REL-16 hoặc task cutover Valkey. SEC-13 chỉ chuẩn bị
-> secret path, key schema và chart wiring.
+> Chi tiết cutover (thứ tự gate, runbook, rollback) thuộc REL-16, xem
+> `CDO08-REL-16-valkey-cutover-plan.md` và `CDO08-REL-16-cart-cutover-evidence.md`. SEC-13 chuẩn bị secret
+> path, key schema và chart wiring.
 
 ---
 
