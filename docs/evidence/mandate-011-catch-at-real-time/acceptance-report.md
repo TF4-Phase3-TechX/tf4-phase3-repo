@@ -1,8 +1,8 @@
 # Bản Tổng Hợp Nghiệm Thu — Mandate 11: Bắt tại trận
 
-**Ngày lập:** 2026-07-19
+**Ngày lập:** 2026-07-19; rà soát runtime 2026-07-20
 **Người lập:** CDO07 — Hoàng Kim Hùng
-**Trạng thái:**  Sẵn sàng nộp mentor 
+**Trạng thái:** Source đã kiểm tra; chờ deploy và lấy evidence runtime cho giảm nhiễu
 **Account AWS:** `511825856493` | **Region:** `us-east-1`
 
 ---
@@ -17,12 +17,12 @@
 |---|---|
 | File evidence | [`event-catalog.md`](./event-catalog.md) |
 
-**Tóm tắt:** Hệ thống giám sát **17 API event** chia làm 2 nhóm rule EventBridge:
+**Tóm tắt:** Source giám sát **25 API event** chia làm 2 nhóm rule EventBridge:
 
 | Nhóm | Events | Severity | Rule |
 |---|---|---|---|
 | Log tampering | `StopLogging`, `DeleteTrail`, `UpdateTrail`, `PutEventSelectors` | 🔴 CRITICAL | `cloudtrail_alerts_writeonly_sensitive` |
-| Audit destruction | `DeleteConfigurationRecorder` | 🔴 CRITICAL | `cloudtrail_alerts_writeonly_sensitive` |
+| Audit destruction | `DeleteConfigurationRecorder`, `StopConfigurationRecorder`, `DeleteDeliveryChannel`, `PutConfigurationRecorder`, `PutDeliveryChannel` | 🔴 CRITICAL | `cloudtrail_alerts_writeonly_sensitive` |
 | Root login | `ConsoleLogin` (Root only) | 🔴 CRITICAL | `cloudtrail_alerts_writeonly_sensitive` |
 | EKS backdoor | `CreateAccessEntry`, `AssociateAccessPolicy` | 🔴 CRITICAL | `cloudtrail_alerts_writeonly_sensitive` |
 | IAM escalation | `CreateAccessKey`, `AttachRolePolicy`, `PutRolePolicy`, `CreateUser`, `CreateRole`, `UpdateAssumeRolePolicy` | 🟠 HIGH | `cloudtrail_alerts_writeonly_sensitive` |
@@ -51,6 +51,7 @@
 |---|---|
 | `Actor` | Tên ngắn + ARN đầy đủ (ai) |
 | `Event name` | Tên API call (gì) |
+| `Resource` | Tên/ARN tài nguyên bị tác động (đối tượng nào) |
 | `Time` | Timestamp +07 và UTC (khi) |
 | `Source IP` | IP nguồn (từ đâu) |
 | `Account` + `Region` | Phạm vi tài nguyên |
@@ -88,9 +89,10 @@
 | T2 | `StopLogging` | **1.73 giây** |
 | T3 | `GetSecretValue` | **2.38 giây** |
 | T5 | `CreateAccessEntry` | **5.49 giây** |
-| CloudWatch p95 (4 mẫu) | All | **max 5.23 giây** |
+| CloudWatch p95 (bài test ban đầu) | All | **max 5.23 giây** |
+| CloudWatch p95 72 giờ (108 mẫu) | Detection / Notification | **6.19 / 6.60 giây** |
 
-**p95 thực tế: 5.23 giây** — thấp hơn ngưỡng cam kết **~11 lần**.
+**p95 Notification mới nhất: 6.60 giây** — vẫn thấp hơn ngưỡng cam kết khoảng 9 lần.
 
 **Cơ chế đo:** Lambda tự tính `delta = datetime.now(UTC) - CloudTrail eventTime`, ghi vào CloudWatch metric `Mandate11/DetectionLatency` và hiển thị trực tiếp trong Slack field `*Latency:*`.
 
@@ -100,20 +102,28 @@
 
 > *"Phân biệt hành động hợp lệ (CI/CD, bảo trì on-call có kế hoạch) với bất thường - cảnh báo phải đủ tin để không ai tắt tiếng nó."*
 
-| Kết quả | ✅ ĐẠT |
+| Kết quả | ⚠️ SOURCE PASS / RUNTIME PENDING |
 |---|---|
 | File evidence | Code: `infra/terraform/modules/security-slack-alerts/lambda_src/handler.py` |
-| Bằng chứng gián tiếp | Ảnh alert T1–T5: tất cả đều hiện nhãn `Noise check: ❌ Không khớp allowlist CI/CD → cảnh báo thật` |
+| Bằng chứng hiện có | Unit test exact allowlist đã pass; ảnh T1–T5 chỉ chứng minh luồng cảnh báo trước thay đổi |
 
-**Cơ chế đã implement trong code (không cần test riêng vì là logic tĩnh):**
+**Cơ chế đã implement trong code và được bảo vệ bằng unit test:**
 
 | Loại lọc | Cách thức | Kết quả khi khớp |
 |---|---|---|
-| **CI/CD allowlist** | Actor ARN chứa `role/tf4-github-actions` | Drop — không bắn Slack, ghi CloudWatch log `Ignoring event ... by allowlisted actor` |
+| **Exact read allowlist** | Khớp đồng thời account, exact assumed role/AWS service, API và resource được duyệt | Drop — không bắn Slack, ghi structured log `MANDATE11_EXPECTED_READ` |
+| **MSK service read** | `AWSService` + `kafka.amazonaws.com` + secret ARN `AmazonMSK_*` đúng account/Region | Drop; mọi biến thể khác vẫn cảnh báo |
 | **SG ingress filter** | Chỉ alert khi CIDR là `0.0.0.0/0` hoặc `::/0` | Drop nếu rule nội bộ hẹp |
 | **S3 policy filter** | Chỉ alert khi policy grant `Principal: "*"` không có Condition | Drop nếu không phải public |
 
-**Bằng chứng gián tiếp từ test T1–T5:** Toàn bộ 5 alert thực tế đều hiển thị nhãn `Noise check: ❌ Không khớp allowlist CI/CD → cảnh báo thật`, xác nhận Lambda đang phân loại và dán nhãn đúng. Các test này dùng profile SSO cá nhân (không phải `role/tf4-github-actions`), nên không bị filter — đúng với logic allowlist.
+**Kết quả quét CloudTrail 48 giờ ngày 20/07/2026:**
+
+- Exact allowlist bao phủ nguồn nhiễu hợp lệ: External Secrets 556 event, Alert Lambda 60, Terraform plan/apply 110, Karpenter 6 và MSK 3.
+- Human SSO đọc secret/parameter không được allowlist; IAM write từ Terraform apply vẫn cảnh báo vì pipeline có thể bị chiếm quyền.
+- Ingress PostgreSQL public `0.0.0.0/0:5432` vẫn là cảnh báo thật, không được suppress.
+- CloudWatch chưa có marker `MANDATE11_EXPECTED_READ`, xác nhận bản lọc mới chưa được deploy tại thời điểm rà soát.
+
+**Điều kiện chuyển sang `ĐẠT`:** Sau khi deploy, chụp CloudWatch log `MANDATE11_EXPECTED_READ` cho MSK/Karpenter, xác nhận các event này không còn tới Slack, và xác nhận public ingress `0.0.0.0:5432` vẫn tới Slack.
 
 ---
 
@@ -139,7 +149,7 @@ Lambda: audit-security-slack-alerts (Python 3.12)
   ├── Content filter (SG/S3 public check)
   ├── Severity classification (CRITICAL/HIGH)
   ├── Latency measurement → CloudWatch metric
-  └── Slack Block Kit format (actor/event/time/ip/severity/latency/links)
+  └── Slack Block Kit format (actor/event/resource/time/ip/severity/latency/links)
      │
      ▼
 Slack Webhook → Kênh #security-alerts
@@ -155,10 +165,10 @@ Chi tiết: [`alert-flow-diagram.md`](./alert-flow-diagram.md)
 |---|---|---|---|
 | 1 | Danh mục sự kiện nguy hiểm, có biện minh | ✅ PASS | `event-catalog.md` |
 | 2 | Alert chạy thật, tới Slack, đủ ai/gì/khi/đâu | ✅ PASS | `time-to-detect-evidence.md` §3.1–3.5 |
-| 3 | Time-to-detect đo được, p95 < 60s | ✅ PASS — **p95 = 5.23s** | `time-to-detect-evidence.md` §3.6–3.7 |
-| 4 | Noise reduction — CI/CD không sinh nhiễu | ✅ PASS | `handler.py` allowlist logic + nhãn trên alert |
+| 3 | Time-to-detect đo được, p95 < 60s | ✅ PASS — **Notification p95 = 6.60s/108 mẫu** | CloudWatch `Mandate11/DetectionLatency` |
+| 4 | Noise reduction — phân biệt luồng hợp lệ | ⚠️ SOURCE PASS / RUNTIME PENDING | Exact allowlist tests pass; chờ marker và Slack evidence sau deploy |
 
-**Kết luận chung:** Hệ thống đạt 4/4 yêu cầu Mandate 11. Pipeline `CloudTrail → EventBridge → SNS → Lambda → Slack` hoạt động end-to-end, sẵn sàng để mentor tự kiểm chứng.
+**Kết luận chung:** Ba yêu cầu đầu đã có evidence runtime. Yêu cầu giảm nhiễu đã hoàn tất ở source nhưng chỉ được chuyển sang `PASS` sau khi deploy và chứng minh exact allowlist không làm mất cảnh báo thật.
 
 ---
 

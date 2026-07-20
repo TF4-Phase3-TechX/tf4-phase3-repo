@@ -102,6 +102,10 @@ class HandlerTests(unittest.TestCase):
             '11111111-2222-3333-4444-555555555555',
             slack_request.data.decode('utf-8'),
         )
+        self.assertIn(
+            'mandate11-ttd-test',
+            slack_request.data.decode('utf-8'),
+        )
         self.assertEqual(len(self.cloudwatch.requests), 1)
         request = self.cloudwatch.requests[0]
         self.assertEqual(request['Namespace'], 'Mandate11/DetectionLatency')
@@ -236,6 +240,229 @@ class HandlerTests(unittest.TestCase):
 
         urlopen.assert_called_once()
         self.assertEqual(len(self.cloudwatch.requests), 1)
+
+    def test_terraform_roles_only_bypass_exact_webhook_parameter_set(self):
+        account = '511825856493'
+        common = (
+            account,
+            'us-east-1',
+            '192.0.2.20',
+            'HashiCorp Terraform',
+        )
+
+        for role_name in (
+            'tf4-github-actions-terraform-apply',
+            'tf4-github-actions-plan',
+        ):
+            identity = {
+                'arn': (
+                    f'arn:aws:sts::{account}:assumed-role/'
+                    f'{role_name}/GitHubActions'
+                ),
+            }
+            with self.subTest(role=role_name):
+                self.assertTrue(self.handler.is_expected_sensitive_read(
+                    'GetParameter',
+                    identity,
+                    {'name': '/security-alerts/slack-webhook-url'},
+                    *common,
+                ))
+                self.assertTrue(self.handler.is_expected_sensitive_read(
+                    'GetParameters',
+                    identity,
+                    {'names': ['/security-alerts/slack-webhook-url']},
+                    *common,
+                ))
+                self.assertFalse(self.handler.is_expected_sensitive_read(
+                    'GetParameters',
+                    identity,
+                    {
+                        'names': [
+                            '/security-alerts/slack-webhook-url',
+                            '/production/unapproved-parameter',
+                        ],
+                    },
+                    *common,
+                ))
+                self.assertFalse(self.handler.is_expected_sensitive_read(
+                    'GetParametersByPath',
+                    identity,
+                    {'path': '/security-alerts/'},
+                    *common,
+                ))
+
+    def test_expected_reads_require_exact_service_role_and_resource(self):
+        account = '511825856493'
+        region = 'us-east-1'
+
+        external_secrets = {
+            'arn': (
+                f'arn:aws:sts::{account}:assumed-role/'
+                'external-secrets-techx-tf4-cluster/external-secrets'
+            ),
+        }
+        self.assertTrue(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            external_secrets,
+            {'secretId': 'techx/tf4/rds-postgres'},
+            account,
+            region,
+            '192.0.2.21',
+            'external-secrets',
+        ))
+        self.assertFalse(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            external_secrets,
+            {'secretId': 'another-team/production-secret'},
+            account,
+            region,
+            '192.0.2.21',
+            'external-secrets',
+        ))
+
+        karpenter = {
+            'arn': (
+                f'arn:aws:sts::{account}:assumed-role/'
+                'karpenter-controller-techx-tf4-cluster/controller'
+            ),
+        }
+        self.assertTrue(self.handler.is_expected_sensitive_read(
+            'GetParameter',
+            karpenter,
+            {'name': '/aws/service/eks/optimized-ami/1.33/amazon-linux-2023/x86_64/standard/recommended/image_id'},
+            account,
+            region,
+            '192.0.2.22',
+            'karpenter',
+        ))
+        self.assertFalse(self.handler.is_expected_sensitive_read(
+            'GetParameter',
+            karpenter,
+            {'name': '/production/database-password'},
+            account,
+            region,
+            '192.0.2.22',
+            'karpenter',
+        ))
+
+    def test_resource_identifier_uses_only_event_specific_fields(self):
+        self.assertEqual(
+            self.handler.extract_resource_identifier(
+                'AttachRolePolicy',
+                {
+                    'roleName': 'dms-vpc-role',
+                    'policyArn': 'arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole',
+                    'unrelated': 'must-not-be-in-slack',
+                },
+            ),
+            '{"policyArn":"arn:aws:iam::aws:policy/service-role/'
+            'AmazonDMSVPCManagementRole","roleName":"dms-vpc-role"}',
+        )
+        self.assertEqual(
+            self.handler.extract_resource_identifier(
+                'GetSecretValue',
+                {'secretId': 'techx/tf4/rds-postgres'},
+            ),
+            'techx/tf4/rds-postgres',
+        )
+
+    def test_msk_service_read_requires_exact_identity_and_secret_arn(self):
+        account = '511825856493'
+        region = 'us-east-1'
+        identity = {
+            'type': 'AWSService',
+            'invokedBy': 'kafka.amazonaws.com',
+        }
+        secret = {
+            'secretId': (
+                f'arn:aws:secretsmanager:{region}:{account}:'
+                'secret:AmazonMSK_techx_tf4_orders_app-test'
+            ),
+        }
+
+        self.assertTrue(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            identity,
+            secret,
+            account,
+            region,
+            'kafka.amazonaws.com',
+            'kafka.amazonaws.com',
+        ))
+        self.assertEqual(
+            self.handler.extract_actor(identity),
+            'kafka.amazonaws.com',
+        )
+        self.assertFalse(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            identity,
+            {'secretId': f'arn:aws:secretsmanager:{region}:{account}:secret:other'},
+            account,
+            region,
+            'kafka.amazonaws.com',
+            'kafka.amazonaws.com',
+        ))
+        self.assertFalse(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            {'type': 'AssumedRole', 'invokedBy': 'kafka.amazonaws.com'},
+            secret,
+            account,
+            region,
+            'kafka.amazonaws.com',
+            'kafka.amazonaws.com',
+        ))
+
+    def test_public_postgresql_ingress_remains_alertable(self):
+        event_time = datetime.now(timezone.utc) - timedelta(seconds=5)
+        request_params = {
+            'ipPermissions': {
+                'items': [{
+                    'ipProtocol': 'tcp',
+                    'fromPort': 5432,
+                    'toPort': 5432,
+                    'ipRanges': {'items': [{'cidrIp': '0.0.0.0/0'}]},
+                }],
+            },
+        }
+
+        self.assertTrue(self.handler.is_public_sg_ingress(request_params))
+
+        cloudtrail_event = {
+            'source': 'aws.ec2',
+            'detail-type': 'AWS API Call via CloudTrail',
+            'account': '511825856493',
+            'region': 'us-east-1',
+            'time': event_time.isoformat().replace('+00:00', 'Z'),
+            'detail': {
+                'eventID': 'eeeeeeee-ffff-0000-1111-222222222222',
+                'eventName': 'AuthorizeSecurityGroupIngress',
+                'eventTime': event_time.isoformat().replace('+00:00', 'Z'),
+                'sourceIPAddress': '18.204.125.157',
+                'userIdentity': {
+                    'arn': (
+                        'arn:aws:sts::511825856493:assumed-role/'
+                        'AmazonEKSLoadBalancerControllerRole/controller'
+                    ),
+                },
+                'requestParameters': request_params,
+            },
+        }
+        sns_event = {
+            'Records': [{'Sns': {'Message': json.dumps(cloudtrail_event)}}]
+        }
+
+        with patch.object(
+            self.handler.urllib.request,
+            'urlopen',
+            return_value=FakeHTTPResponse(),
+        ) as urlopen:
+            self.handler.lambda_handler(sns_event, None)
+
+        urlopen.assert_called_once()
+        self.assertIn(
+            'AuthorizeSecurityGroupIngress',
+            urlopen.call_args.args[0].data.decode('utf-8'),
+        )
 
     def test_slack_failure_is_retried_and_does_not_emit_notification_metric(self):
         event_time = datetime.now(timezone.utc) - timedelta(seconds=5)
