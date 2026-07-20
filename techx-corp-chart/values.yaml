@@ -1841,13 +1841,29 @@ prometheus:
         secretName: alertmanager-slack-webhook
         mountPath: /etc/alertmanager/slack
         readOnly: true
+    templateFiles:
+      slack.tmpl: |-
+        {{ define "slack.title" }}
+        [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+        {{ end }}
+        {{ define "slack.text" }}
+        {{ range .Alerts -}}
+        *Alert:* {{ .Annotations.summary }}{{ if .Labels.severity }} - `{{ .Labels.severity }}`{{ end }}
+        *Description:* {{ .Annotations.description }}
+        *Details:*
+          {{ range .Labels.SortedPairs }}• *{{ .Name }}:* `{{ .Value }}`
+          {{ end }}
+        {{ end }}
+        {{ end }}
     config:
+      templates:
+        - '/etc/alertmanager/*.tmpl'
       global:
         resolve_timeout: 5m
         smtp_smarthost: 'smtp.gmail.com:587'
         smtp_from: 'tf4-on-call-email@gmail.com'
         smtp_auth_username: 'tf4-on-call-email@gmail.com'
-        smtp_auth_password_file: '/etc/alertmanager/secrets/password'
+        smtp_auth_password_file: '/etc/alertmanager/secrets/smtp-password'
         smtp_require_tls: true
       route:
         group_by: ['alertname']
@@ -1861,6 +1877,8 @@ prometheus:
             - channel: '#tf4-alerts'
               api_url_file: '/etc/alertmanager/slack/webhook-url'
               send_resolved: true
+              title: '{{ template "slack.title" . }}'
+              text: '{{ template "slack.text" . }}'
           email_configs:
             - to: 'buithanhnghia@dtu.edu.vn'
               send_resolved: true
