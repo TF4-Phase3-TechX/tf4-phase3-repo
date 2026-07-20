@@ -137,6 +137,19 @@
       "required": [
         "enabled"
       ]
+    },
+    "rollouts": {
+      "description": "Argo Rollouts integration master switch. Requires the Argo Rollouts CRDs/controller installed in-cluster. Individual components opt in via components.<name>.useRollout.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [
@@ -223,6 +236,22 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "useRollout": {
+          "description": "Render this component as an Argo Rollouts kind: Rollout instead of kind: Deployment. Requires rollouts.enabled: true and rolloutStrategy.canary or .blueGreen to be set.",
+          "type": "boolean"
+        },
+        "rolloutStrategy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "canary": {
+              "type": "object"
+            },
+            "blueGreen": {
+              "type": "object"
+            }
+          }
         },
         "useDefault": {
           "type": "object",
