@@ -166,7 +166,7 @@ jobs:
             test -n "$digest" && test "$digest" != None
             printf '%s=%s\n' "$service" "$digest"
           done < <(jq -r '.[]' <<< "$SERVICES_JSON") | tee image-digests.txt
-          digests_json="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          digests_json="$(jq -Rnc '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           echo "image_digests=$digests_json" >> "$GITHUB_OUTPUT"
 
       - name: Install Cosign
