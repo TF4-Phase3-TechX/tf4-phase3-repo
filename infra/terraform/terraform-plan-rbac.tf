@@ -2,6 +2,9 @@
 resource "kubernetes_cluster_role_v1" "terraform_plan_crd_reader" {
   metadata {
     name = "terraform-plan-crd-reader"
+    labels = {
+      "argocd.argoproj.io/instance" = "techx-corp"
+    }
   }
 
   rule {
@@ -33,6 +36,9 @@ resource "kubernetes_cluster_role_v1" "terraform_plan_crd_reader" {
 resource "kubernetes_cluster_role_binding_v1" "terraform_plan_crd_reader" {
   metadata {
     name = "terraform-plan-crd-reader"
+    labels = {
+      "argocd.argoproj.io/instance" = "techx-corp"
+    }
   }
 
   role_ref {

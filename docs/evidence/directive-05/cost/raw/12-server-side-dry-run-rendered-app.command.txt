@@ -1,0 +1,2 @@
+command=kubectl apply --server-side --dry-run=server -n techx-tf4 -f raw/10-rendered-app-manifests.yaml
+exit_code=1

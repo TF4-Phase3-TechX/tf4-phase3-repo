@@ -177,6 +177,17 @@ export interface CurrencyConversionRequest {
   toCode: string;
 }
 
+export interface BatchCurrencyConversionRequest {
+  from: Money[];
+  /** The 3-letter currency code defined in ISO 4217. */
+  toCode: string;
+}
+
+export interface BatchCurrencyConversionResponse {
+  /** Entry i is the conversion of request.from[i]. */
+  converted: Money[];
+}
+
 export interface CreditCardInfo {
   creditCardNumber: string;
   creditCardCvv: number;
@@ -2294,6 +2305,120 @@ export const CurrencyConversionRequest: MessageFns<CurrencyConversionRequest> = 
   },
 };
 
+function createBaseBatchCurrencyConversionRequest(): BatchCurrencyConversionRequest {
+  return { from: [], toCode: "" };
+}
+
+export const BatchCurrencyConversionRequest: MessageFns<BatchCurrencyConversionRequest> = {
+  encode(message: BatchCurrencyConversionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const value of message.from) {
+      Money.encode(value!, writer.uint32(10).fork()).join();
+    }
+    if (message.toCode !== "") {
+      writer.uint32(18).string(message.toCode);
+    }
+    return writer;
+  },
+  decode(input: BinaryReader | Uint8Array, length?: number): BatchCurrencyConversionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBatchCurrencyConversionRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag === 10) {
+            message.from.push(Money.decode(reader, reader.uint32()));
+            continue;
+          }
+          break;
+        case 2:
+          if (tag === 18) {
+            message.toCode = reader.string();
+            continue;
+          }
+          break;
+      }
+      if ((tag & 7) === 4 || tag === 0) break;
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+  fromJSON(object: any): BatchCurrencyConversionRequest {
+    return {
+      from: globalThis.Array.isArray(object?.from) ? object.from.map((value: any) => Money.fromJSON(value)) : [],
+      toCode: isSet(object.toCode) ? globalThis.String(object.toCode) : "",
+    };
+  },
+  toJSON(message: BatchCurrencyConversionRequest): unknown {
+    const obj: any = {};
+    if (message.from?.length) obj.from = message.from.map((value) => Money.toJSON(value));
+    if (message.toCode !== "") obj.toCode = message.toCode;
+    return obj;
+  },
+  create<I extends Exact<DeepPartial<BatchCurrencyConversionRequest>, I>>(base?: I): BatchCurrencyConversionRequest {
+    return BatchCurrencyConversionRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<BatchCurrencyConversionRequest>, I>>(
+    object: I,
+  ): BatchCurrencyConversionRequest {
+    const message = createBaseBatchCurrencyConversionRequest();
+    message.from = object.from?.map((value) => Money.fromPartial(value)) || [];
+    message.toCode = object.toCode ?? "";
+    return message;
+  },
+};
+
+function createBaseBatchCurrencyConversionResponse(): BatchCurrencyConversionResponse {
+  return { converted: [] };
+}
+
+export const BatchCurrencyConversionResponse: MessageFns<BatchCurrencyConversionResponse> = {
+  encode(message: BatchCurrencyConversionResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const value of message.converted) {
+      Money.encode(value!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+  decode(input: BinaryReader | Uint8Array, length?: number): BatchCurrencyConversionResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBatchCurrencyConversionResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      if (tag === 10) {
+        message.converted.push(Money.decode(reader, reader.uint32()));
+        continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) break;
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+  fromJSON(object: any): BatchCurrencyConversionResponse {
+    return {
+      converted: globalThis.Array.isArray(object?.converted)
+        ? object.converted.map((value: any) => Money.fromJSON(value))
+        : [],
+    };
+  },
+  toJSON(message: BatchCurrencyConversionResponse): unknown {
+    const obj: any = {};
+    if (message.converted?.length) obj.converted = message.converted.map((value) => Money.toJSON(value));
+    return obj;
+  },
+  create<I extends Exact<DeepPartial<BatchCurrencyConversionResponse>, I>>(base?: I): BatchCurrencyConversionResponse {
+    return BatchCurrencyConversionResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<BatchCurrencyConversionResponse>, I>>(
+    object: I,
+  ): BatchCurrencyConversionResponse {
+    const message = createBaseBatchCurrencyConversionResponse();
+    message.converted = object.converted?.map((value) => Money.fromPartial(value)) || [];
+    return message;
+  },
+};
+
 function createBaseCreditCardInfo(): CreditCardInfo {
   return { creditCardNumber: "", creditCardCvv: 0, creditCardExpirationYear: 0, creditCardExpirationMonth: 0 };
 }
@@ -4317,11 +4442,23 @@ export const CurrencyServiceService = {
     responseSerialize: (value: Money): Buffer => Buffer.from(Money.encode(value).finish()),
     responseDeserialize: (value: Buffer): Money => Money.decode(value),
   },
+  batchConvert: {
+    path: "/oteldemo.CurrencyService/BatchConvert",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: BatchCurrencyConversionRequest): Buffer =>
+      Buffer.from(BatchCurrencyConversionRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): BatchCurrencyConversionRequest => BatchCurrencyConversionRequest.decode(value),
+    responseSerialize: (value: BatchCurrencyConversionResponse): Buffer =>
+      Buffer.from(BatchCurrencyConversionResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): BatchCurrencyConversionResponse => BatchCurrencyConversionResponse.decode(value),
+  },
 } as const;
 
 export interface CurrencyServiceServer extends UntypedServiceImplementation {
   getSupportedCurrencies: handleUnaryCall<Empty, GetSupportedCurrenciesResponse>;
   convert: handleUnaryCall<CurrencyConversionRequest, Money>;
+  batchConvert: handleUnaryCall<BatchCurrencyConversionRequest, BatchCurrencyConversionResponse>;
 }
 
 export interface CurrencyServiceClient extends Client {
@@ -4354,6 +4491,21 @@ export interface CurrencyServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Money) => void,
+  ): ClientUnaryCall;
+  batchConvert(
+    request: BatchCurrencyConversionRequest,
+    callback: (error: ServiceError | null, response: BatchCurrencyConversionResponse) => void,
+  ): ClientUnaryCall;
+  batchConvert(
+    request: BatchCurrencyConversionRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: BatchCurrencyConversionResponse) => void,
+  ): ClientUnaryCall;
+  batchConvert(
+    request: BatchCurrencyConversionRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: BatchCurrencyConversionResponse) => void,
   ): ClientUnaryCall;
 }
 

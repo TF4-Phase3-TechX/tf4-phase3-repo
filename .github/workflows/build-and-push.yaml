@@ -28,9 +28,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID || '511825856493' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'techx-corp' }}
 
 jobs:
   changes:
@@ -41,7 +41,7 @@ jobs:
       chart_changed: ${{ steps.services.outputs.chart_changed }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -96,20 +96,21 @@ jobs:
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
       image_repository: ${{ steps.vars.outputs.image_repository }}
+      image_digests: ${{ steps.digests.outputs.image_digests }}
       source_sha: ${{ github.sha }}
       services: ${{ needs.changes.outputs.services }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_BUILD_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Set image variables
         id: vars
@@ -126,7 +127,7 @@ jobs:
           echo "IMAGE_REPOSITORY=$image_repository" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Create CI env override
         shell: bash
@@ -150,6 +151,7 @@ jobs:
           bash deploy/build-push-images.sh "${services[@]}"
 
       - name: Verify pushed image digests
+        id: digests
         env:
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
         shell: bash
@@ -164,21 +166,198 @@ jobs:
             test -n "$digest" && test "$digest" != None
             printf '%s=%s\n' "$service" "$digest"
           done < <(jq -r '.[]' <<< "$SERVICES_JSON") | tee image-digests.txt
+          digests_json="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
+          echo "image_digests=$digests_json" >> "$GITHUB_OUTPUT"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+
+      - name: Security and Attestation (Scan, Sign, SBOM, Provenance, Verify)
+        env:
+          SERVICES_JSON: ${{ needs.changes.outputs.services }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          # Install Trivy
+          TRIVY_VERSION="0.51.1"
+          wget -q https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
+          tar -xzf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz trivy
+          sudo mv trivy /usr/local/bin/
+          
+          mkdir -p security-artifacts
+          echo "0" > security-artifacts/gate_status.txt
+          
+          while IFS='=' read -r service digest; do
+            [[ -n "$service" && -n "$digest" ]] || continue
+            
+            digest_clean="${digest//:/-}"
+            image_ref_tag="${IMAGE_REPOSITORY}:${IMAGE_TAG}-${service}"
+            image_ref_digest="${IMAGE_REPOSITORY}@${digest}"
+            
+            echo "========================================="
+            echo "Security Processing for: $service"
+            echo "Digest: $digest"
+            echo "========================================="
+            
+            # 1. Trivy CVE Scan
+            echo ">> [1/8] Running Trivy CVE Scan..."
+            trivy image \
+              --severity HIGH,CRITICAL \
+              --format table \
+              --output "security-artifacts/trivy-${service}-${digest_clean}.txt" \
+              "$image_ref_digest" || true
+              
+            trivy image \
+              --severity HIGH,CRITICAL \
+              --format json \
+              --output "security-artifacts/trivy-${service}-${digest_clean}.json" \
+              "$image_ref_digest" || true
+            
+            scan_failed=0
+            if ! trivy image --severity HIGH,CRITICAL --exit-code 1 "$image_ref_digest" > /dev/null; then
+              echo "::error::Image $image_ref_tag has HIGH/CRITICAL CVEs."
+              echo "1" > security-artifacts/gate_status.txt
+              scan_failed=1
+            fi
+            
+            # 2. SBOM (CycloneDX)
+            echo ">> [2/8] Generating CycloneDX SBOM..."
+            if ! trivy image \
+              --format cyclonedx \
+              --output "security-artifacts/sbom-${service}-${digest_clean}.json" \
+              "$image_ref_digest"; then
+              echo "::error::Failed to generate SBOM for $service"
+              echo "1" > security-artifacts/gate_status.txt
+            fi
+            
+            # Sign and Attest only if scan passes
+            if [ "$scan_failed" -eq 0 ]; then
+              # 3. Cosign OIDC/Keyless signature
+              echo ">> [3/8] Signing image with Cosign..."
+              if ! cosign sign --yes "$image_ref_digest"; then
+                echo "::error::Failed to sign image for $service"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+
+              # 4. Provenance Attestation
+              echo ">> [4/8] Generating and Attesting Provenance..."
+              jq -n \
+                --arg repo "${{ github.repository }}" \
+                --arg commit "${{ github.sha }}" \
+                --arg workflow "${{ github.workflow }}" \
+                --arg run_id "${{ github.run_id }}" \
+                --arg service_name "$service" \
+                --arg image_digest "$digest" \
+                '{
+                  repo: $repo,
+                  commit: $commit,
+                  workflow: $workflow,
+                  run_id: $run_id,
+                  service_name: $service_name,
+                  image_digest: $image_digest
+                }' > provenance.json
+              cp provenance.json "security-artifacts/provenance-${service}-${digest_clean}.json"
+              
+              if ! cosign attest --yes --predicate provenance.json --type custom "$image_ref_digest"; then
+                echo "::error::Failed to attest provenance for $service"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+
+              # 5. Verify signature — evidence of signer identity (OIDC subject/issuer) and Rekor transparency log entry
+              echo ">> [5/8] Verifying Cosign signature..."
+              if ! cosign verify \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                "$image_ref_digest" \
+                --output text > "security-artifacts/cosign-verify-${service}-${digest_clean}.txt" 2>&1; then
+                echo "::error::Cosign verify failed for $service — could not confirm signature"
+                cat "security-artifacts/cosign-verify-${service}-${digest_clean}.txt"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+
+              # 6. Verify provenance attestation — evidence that the predicate (commit/repo/workflow/run_id/digest) is authentic
+              echo ">> [6/8] Verifying Provenance Attestation..."
+              if ! cosign verify-attestation \
+                --type custom \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                "$image_ref_digest" \
+                --output text > "security-artifacts/provenance-verify-${service}-${digest_clean}.txt" 2>&1; then
+                echo "::error::Provenance verify failed for $service — could not confirm attestation"
+                cat "security-artifacts/provenance-verify-${service}-${digest_clean}.txt"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+
+              # 7. Attest SBOM — binds the CycloneDX SBOM to the image digest on the registry (not just a build artifact)
+              echo ">> [7/8] Attesting SBOM..."
+              if ! cosign attest --yes \
+                --predicate "security-artifacts/sbom-${service}-${digest_clean}.json" \
+                --type cyclonedx \
+                "$image_ref_digest"; then
+                echo "::error::Failed to attest SBOM for $service"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+
+              # 8. Verify SBOM attestation — evidence the CycloneDX SBOM attached to the digest is authentic
+              echo ">> [8/8] Verifying SBOM Attestation..."
+              if ! cosign verify-attestation \
+                --type cyclonedx \
+                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                "$image_ref_digest" \
+                --output text > "security-artifacts/sbom-verify-${service}-${digest_clean}.txt" 2>&1; then
+                echo "::error::SBOM verify failed for $service — could not confirm attestation"
+                cat "security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
+                echo "1" > security-artifacts/gate_status.txt
+              fi
+            else
+              echo ">> [SKIP] Skipping Cosign signing and attestation for $service due to CVE scan failure."
+            fi
+            
+          done < image-digests.txt
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: security-artifacts-${{ steps.vars.outputs.image_tag }}
+          path: security-artifacts/
+          if-no-files-found: ignore
+
+      - name: Enforce security gate results
+        run: |
+          if [ -f security-artifacts/gate_status.txt ] && [ "$(cat security-artifacts/gate_status.txt)" = "1" ]; then
+            echo "Security gate failed: One or more steps failed."
+            exit 1
+          fi
 
       - name: Write build metadata
         env:
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
         shell: bash
         run: |
+          digest_map="$(jq -Rn '[inputs | select(length > 0) | split("=") | {key: .[0], value: .[1]}] | from_entries' < image-digests.txt)"
           jq -n \
             --arg image_repository "$IMAGE_REPOSITORY" \
             --arg image_tag "$IMAGE_TAG" \
             --arg git_sha "$GITHUB_SHA" \
             --argjson services "$SERVICES_JSON" \
-            '{image_repository: $image_repository, image_tag: $image_tag, git_sha: $git_sha, services: $services}' > build-metadata.json
+            --argjson digests "$digest_map" \
+            '{
+              image_repository: $image_repository,
+              image_tag: $image_tag,
+              git_sha: $git_sha,
+              services: $services,
+              service_images: ($services | map({
+                service: .,
+                tag: ($image_tag + "-" + .),
+                digest: $digests[.]
+              }))
+            }' > build-metadata.json
 
       - name: Upload build metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: build-metadata-${{ steps.vars.outputs.image_tag }}
           path: |
@@ -200,7 +379,7 @@ jobs:
     steps:
       - name: Create GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ secrets.GITOPS_PROMOTION_APP_ID }}
           private-key: ${{ secrets.GITOPS_PROMOTION_APP_PRIVATE_KEY }}
@@ -208,7 +387,7 @@ jobs:
           repositories: tf4-phase3-gitops-manifests
 
       - name: Checkout GitOps repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: TF4-Phase3-TechX/tf4-phase3-gitops-manifests
           token: ${{ steps.app-token.outputs.token }}
@@ -217,6 +396,7 @@ jobs:
       - name: Update GitOps revisions
         env:
           CHART_CHANGED: ${{ needs.changes.outputs.chart_changed }}
+          IMAGE_DIGESTS_JSON: ${{ needs.build.outputs.image_digests }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
           SOURCE_SHA: ${{ github.sha }}
@@ -237,12 +417,23 @@ jobs:
           import json, os, re
 
           services = json.loads(os.environ["SERVICES_JSON"])
+          digests = json.loads(os.environ.get("IMAGE_DIGESTS_JSON") or "{}")
           if services:
               path = Path("gitops/environments/production/image-revisions.yaml")
               text = path.read_text()
               for service in services:
-                  pattern = rf'(\n  {re.escape(service)}:\n    imageOverride:\n      tag: ")[^"]+(")'
-                  text, count = re.subn(pattern, rf'\g<1>{os.environ["IMAGE_TAG"]}-{service}\g<2>', text)
+                  digest = digests.get(service)
+                  if not digest:
+                      raise SystemExit(f"missing digest for promoted service {service}")
+                  tag = f'{os.environ["IMAGE_TAG"]}-{service}'
+                  pattern = (
+                      rf'(\n  {re.escape(service)}:\n'
+                      rf'    imageOverride:\n'
+                      rf'      tag: ")[^"]+(")'
+                      rf'(?:\n      digest: "sha256:[0-9a-fA-F]{{64}}")?'
+                  )
+                  replacement = rf'\g<1>{tag}\g<2>' + f'\n      digest: "{digest}"'
+                  text, count = re.subn(pattern, replacement, text)
                   if count == 0:
                       entry_pattern = rf'(?m)^  {re.escape(service)}:\s*$'
                       if re.search(entry_pattern, text):
@@ -253,7 +444,8 @@ jobs:
                       block = (
                           f'  {service}:\n'
                           '    imageOverride:\n'
-                          f'      tag: "{os.environ["IMAGE_TAG"]}-{service}"\n'
+                          f'      tag: "{tag}"\n'
+                          f'      digest: "{digest}"\n'
                       )
                       text = text.replace(header, header + block, 1)
                   elif count != 1:
@@ -301,6 +493,11 @@ jobs:
           body="Source commit: \`${SOURCE_SHA}\`"
           if [[ "$SERVICES_JSON" != '[]' ]]; then
             body+=$'\n\n'"Image tag: \`${IMAGE_TAG}\`"$'\n\n'"Services: \`${services}\`"
+            body+=$'\n\n'"Promoted image digests:"$'\n'
+            while IFS='=' read -r service digest; do
+              [[ -n "$service" && -n "$digest" ]] || continue
+              body+=$'\n'"- \`${service}\`: \`${digest}\`"
+            done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$IMAGE_DIGESTS_JSON")
           fi
           if [[ "$CHART_CHANGED" == 'true' ]]; then
             body+=$'\n\n'"Chart source SHA: \`${SOURCE_SHA}\` (techx-corp and techx-observability)"
