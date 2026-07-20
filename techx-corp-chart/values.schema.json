@@ -92,6 +92,38 @@
         "enabled",
         "groupName"
       ]
+    },
+    "managedData": {
+      "description": "CDO08-SEC-13D: Master gate and per-datastore gates for wiring app env vars to ESO-synced Kubernetes Secrets. All disabled by default.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "postgresql": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        },
+        "valkey": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        },
+        "kafka": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        }
+      }
     }
   },
   "required": [
@@ -593,6 +625,10 @@
         },
         "tag": {
           "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-fA-F]{64}$"
         },
         "pullPolicy": {
           "type": "string"

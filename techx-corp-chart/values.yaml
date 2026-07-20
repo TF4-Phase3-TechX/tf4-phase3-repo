@@ -2056,3 +2056,30 @@ opensearch:
 bastionPortalAccess:
   enabled: false
   groupName: portal-bastion-group
+
+# CDO08-SEC-13D: Managed data credential wiring gates.
+# All flags default to false — existing in-cluster services are unaffected.
+# Flip the global flag and each sub-flag to true only after:
+#   1. AWS Secrets Manager entry for that service exists (CDO08-118)
+#   2. ExternalSecret in GitOps repo is Ready=True (CDO08-119)
+#   3. Migration/cutover task for that service is approved and ready
+# DO NOT set any flag to true in the same PR that provisions managed infra.
+# DO NOT hardcode secret values here — only secretName references.
+managedData:
+  # Master switch. Sub-flags are ignored unless this is true.
+  enabled: false
+
+  # Wire accounting, product-catalog, product-reviews to RDS via rds-postgres-secret
+  postgresql:
+    enabled: false
+    secretName: rds-postgres-secret
+
+  # Wire cart to ElastiCache via elasticache-valkey-secret
+  valkey:
+    enabled: false
+    secretName: elasticache-valkey-secret
+
+  # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret
+  kafka:
+    enabled: false
+    secretName: msk-kafka-secret
