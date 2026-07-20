@@ -79,7 +79,13 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_alerts_writeonly_sensitive" {
         },
         {
           eventSource = ["config.amazonaws.com"]
-          eventName   = ["DeleteConfigurationRecorder"]
+          eventName = [
+            "DeleteConfigurationRecorder",
+            "StopConfigurationRecorder",
+            "DeleteDeliveryChannel",
+            "PutConfigurationRecorder",
+            "PutDeliveryChannel"
+          ]
         },
         {
           eventSource = ["eks.amazonaws.com"]
