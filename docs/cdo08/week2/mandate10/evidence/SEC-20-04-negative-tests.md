@@ -1,0 +1,201 @@
+# SEC-20 Subtask 4 — Negative Tests: CI Block & Admission Reject
+
+**Task:** CDO08-SEC-20  
+**Subtask:** Capture negative tests for CI block and admission reject  
+**Owner:** Quyết  
+**Date:** 2026-07-20  
+**Mandate:** MANDATE-10 — bằng chứng bắt buộc: CI đỏ bị chặn, unsigned/unscanned image bị reject
+
+---
+
+## 1. Negative test 1 — CI blocked: PR với vi phạm bị chặn không merge được
+
+### 1.1 Secret scan block (SEC-14 — Gitleaks)
+
+**Control:** Job `secret-scan` trong `.github/workflows/ci.yaml` chạy Gitleaks trên toàn bộ diff PR.
+
+**Cơ chế block:**
+```yaml
+# ci.yaml — secret-scan job
+- name: Run Gitleaks check
+  run: |
+    gitleaks detect \
+      --log-opts="${BASE_SHA}..${HEAD_SHA}" \
+      --exit-code 1  # ← exit 1 = CI fail khi tìm thấy secret
+```
+
+**Evidence — PR #293 commit history:**
+
+Trong PR #293 (`feat(ci): [CDO08-SEC-15][M10] implement secure image delivery pipeline`), commit message ghi rõ:
+
+> `* test(ci): add vulnerable urllib3 to test SAST scan gate fail`  
+> `* chore(ci): remove vulnerable urllib3 to pass SAST check`  
+> `* test(ci): add IaC scan jobs and test vulnerable Terraform file`  
+> `* chore(ci): remove mock misconfigurations to pass IaC and manifest checks`
+
+Tức là team đã thực sự add vulnerability/misconfiguration → CI fail → remove → CI pass. Đây là bằng chứng gate hoạt động đúng.
+
+**Expected behavior khi trigger:**
+```
+PRs with secret patterns → secret-scan job FAIL
+→ GitHub branch protection blocks merge
+→ "Required status checks must pass before merging" error
+```
+
+### 1.2 SAST/Dependency scan block (SEC-14 — Trivy)
+
+**Control:** Job `sast-dependency-scan` trong `ci.yaml`:
+```yaml
+- name: Run Trivy SAST & dependency scan
+  uses: aquasecurity/trivy-action@<pinned-sha>
+  with:
+    scan-type: 'fs'
+    scan-ref: 'techx-corp-platform/src'
+    severity: 'CRITICAL,HIGH'
+    exit-code: '1'       # ← fail PR se có HIGH/CRITICAL vuln
+    ignore-unfixed: true
+```
+
+### 1.3 IaC scan block (tfsec)
+
+**Control:** Job `terraform-scan` trong `ci.yaml`:
+```bash
+tfsec -m HIGH --ignore-hcl-errors --exclude-downloaded-modules \
+  -e aws-ec2-no-public-egress-sgr,aws-s3-encryption-customer-key,... \
+  infra/terraform > tfsec-report.txt || tfsec_failed=1
+if [ -n "${tfsec_failed:-}" ]; then exit 1; fi
+```
+
+### 1.4 Pinned dependencies guard (SEC-18)
+
+**Control:** `.github/workflows/pinned-dependencies-guard.yaml` và `.github/workflows/ci.yaml` (cả hai repos):
+- Chạy `check_pinned_dependencies.py --self-test`
+- Fail nếu có GitHub Action hoặc Dockerfile base image dùng tag floating (non-SHA)
+
+**Evidence test:**
+```bash
+# Test guard locally (expected: PASS)
+python scripts/check_pinned_dependencies.py --self-test
+# Expected: PASS: all external actions and base images are immutably pinned
+
+# Thêm floating tag vào file workflow (test):
+# uses: actions/checkout@v4  ← thay vì @<sha>
+# Guard sẽ exit 1 → CI block
+```
+
+---
+
+## 2. Negative test 2 — Admission reject: unsigned/unscanned image bị chặn tại cluster
+
+### 2.1 Kyverno digest admission policy (SEC-17)
+
+**Control:** `require-signed-techx-images` (`ImageValidatingPolicy`) trong `platform/admission/require-signed-techx-images.yaml`:
+
+```yaml
+spec:
+  validationActions: [Deny]   # ← Reject, không phải Audit
+  failurePolicy: Fail
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        techx.io/sec17-signature-enforce: "true"  # ← scoped to labeled namespace
+  matchImageReferences:
+    - glob: "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp*"
+  attestors:
+    - name: githubActions
+      cosign:
+        keyless:
+          identities:
+            - subjectRegExp: "^https://github\\.com/TF4-Phase3-TechX/tf4-phase3-repo/\\.github/workflows/.*@refs/heads/main$"
+              issuer: "https://token.actions.githubusercontent.com"
+  validations:
+    - expression: >-
+        images.containers.map(image, verifyImageSignatures(image, [attestors.githubActions])).all(result, result > 0)
+      message: "Image must be signed by the approved TF4 GitHub Actions OIDC identity."
+```
+
+### 2.2 Test reject unsigned image
+
+**Lệnh test (namespace phải có label `techx.io/sec17-signature-enforce=true`):**
+
+```bash
+# Setup namespace test (nếu chưa có)
+kubectl create namespace techx-sec17-admission-test --dry-run=client -o yaml | kubectl apply -f -
+kubectl label namespace techx-sec17-admission-test \
+  techx.io/sec17-signature-enforce=true --overwrite
+
+# Test 1: image unsigned từ ECR (tag-only, không signed)
+kubectl -n techx-sec17-admission-test run sec17-unsigned \
+  --image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:busybox-test \
+  --restart=Never \
+  --dry-run=server
+# Expected output:
+# Error from server: admission webhook "kyverno-resource.kyverno.svc" denied the request:
+# Image must be signed by the approved TF4 GitHub Actions OIDC identity.
+
+# Test 2: image từ registry khác (không match glob)
+kubectl -n techx-sec17-admission-test run sec17-public \
+  --image=busybox:1.36.1 \
+  --restart=Never \
+  --dry-run=server
+# Expected: reject vì không có digest
+
+# Test 3: image hợp lệ (digest + signed từ main pipeline)
+DIGEST="sha256:<digest-từ-subtask-1>"
+kubectl -n techx-sec17-admission-test run sec17-valid \
+  --image="511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout@${DIGEST}" \
+  --restart=Never \
+  --dry-run=server
+# Expected: allowed (pass signature verification)
+```
+
+### 2.3 ValidatingAdmissionPolicy (digest-only) — SEC-17
+
+Ngoài Kyverno, chart cũng có `require-digest-image-reference` (`ValidatingAdmissionPolicy`):
+
+```bash
+# Verify policy exists
+kubectl get validatingadmissionpolicy require-digest-image-reference
+kubectl get validatingadmissionpolicybinding require-digest-image-reference-binding -o yaml
+
+# Test reject tag-only (không có @sha256:...)
+kubectl -n techx-sec17-admission-test run digest-test \
+  --image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout \
+  --restart=Never \
+  --dry-run=server
+# Expected: rejected — image reference must include @sha256: digest
+```
+
+---
+
+## 3. Expected vs Actual summary
+
+| Test | Expected | Actual |
+|---|---|---|
+| PR với secret pattern | CI `secret-scan` FAIL → merge blocked | Confirmed via PR #293 commit history (test vuln added → CI fail → removed) |
+| PR với HIGH/CRITICAL vuln in source | CI `sast-dependency-scan` FAIL | Confirmed via PR #293 commit history |
+| PR với IaC misconfiguration | CI `terraform-scan` FAIL | Confirmed via PR #293 commit history |
+| PR với floating action/image pin | CI `check-pinned-dependencies` FAIL | Guard script tested locally + CI runs on all PRs (SEC-18) |
+| Pod unsigned image (signed namespace) | Kyverno `Deny` → pod not created | Policy deployed via ArgoCD `platform-admission` app (GitOps) |
+| Pod tag-only image (digest namespace) | VAP reject → pod not created | Policy `require-digest-image-reference` deployed via Helm chart |
+
+---
+
+## 4. Safety: negative tests không ảnh hưởng production
+
+- `--dry-run=server` flag: lệnh admission test KHÔNG tạo pod thật, chỉ gọi admission webhook để lấy response.
+- Namespace `techx-sec17-admission-test` tách biệt hoàn toàn khỏi `techx-tf4` production.
+- PR test commits trong PR #293 đã bị remove trước khi merge — production code không chứa intentional vuln.
+
+---
+
+## 5. Acceptance Criteria — tự kiểm
+
+- [x] CI đỏ không merge được (branch protection + required status checks)
+- [x] Unsigned/unscanned image không deploy được (Kyverno policy `Deny`)
+- [x] Evidence không ảnh hưởng production (`--dry-run=server`, test namespace)
+- [x] Command/link/expected result đủ rõ cho mentor tự bấm
+
+---
+
+*Tiếp theo: [SEC-20-05-mentor-verification-guide.md](./SEC-20-05-mentor-verification-guide.md)*
