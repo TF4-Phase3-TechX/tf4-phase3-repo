@@ -19,6 +19,12 @@ SLACK_ALERT_LAMBDA_ROLE = 'SecuritySlackAlertsLambdaRole'
 TERRAFORM_APPLY_ROLE = 'tf4-github-actions-terraform-apply'
 TERRAFORM_PLAN_ROLE = 'tf4-github-actions-plan'
 EXTERNAL_SECRETS_ROLE = 'external-secrets-techx-tf4-cluster'
+DMS_SECRETS_ROLE = 'techx-tf4-postgresql-dms-secrets-access'
+DMS_SESSION_NAME = 'dms-session-for-replication-engine'
+DMS_SECRET_PREFIXES = (
+    'techx/tf4/dms-postgres-source',
+    'techx/tf4/rds-postgres',
+)
 KARPENTER_CONTROLLER_ROLE = 'karpenter-controller-techx-tf4-cluster'
 KARPENTER_PUBLIC_PARAMETER_PREFIX = '/aws/service/eks/optimized-ami/'
 SENSITIVE_READ_EVENTS = {
@@ -260,7 +266,7 @@ def extract_resource_identifier(event_name, request_params):
     return json.dumps(resource, separators=(',', ':'), sort_keys=True)[:500]
 
 
-def is_exact_assumed_role(actor, account, role_name):
+def is_exact_assumed_role(actor, account, role_name, session_name=None):
     arn_parts = actor.split(':', 5)
     if len(arn_parts) != 6:
         return False
@@ -273,6 +279,7 @@ def is_exact_assumed_role(actor, account, role_name):
         and resource_parts[0] == 'assumed-role'
         and resource_parts[1] == role_name
         and bool(resource_parts[2])
+        and (session_name is None or resource_parts[2] == session_name)
     )
 
 
@@ -371,6 +378,24 @@ def is_expected_sensitive_read(
                 'techx/tf4/',
             )
         )
+        dms_migration_read = (
+            user_identity.get('type') == 'AssumedRole'
+            and is_exact_assumed_role(
+                actor,
+                account,
+                DMS_SECRETS_ROLE,
+                DMS_SESSION_NAME,
+            )
+            and any(
+                secret_matches_prefix(
+                    secret_id,
+                    account,
+                    region,
+                    prefix,
+                )
+                for prefix in DMS_SECRET_PREFIXES
+            )
+        )
         msk_service_read = (
             user_identity.get('type') == 'AWSService'
             and user_identity.get('invokedBy') == 'kafka.amazonaws.com'
@@ -382,7 +407,7 @@ def is_expected_sensitive_read(
                 'secret:AmazonMSK_'
             )
         )
-        return external_secrets_read or msk_service_read
+        return external_secrets_read or dms_migration_read or msk_service_read
 
     return False
 

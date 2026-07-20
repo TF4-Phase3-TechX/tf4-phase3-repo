@@ -112,6 +112,7 @@ Allowlist được implement tại Lambda layer (không phải EventBridge filte
 |---|---|---|
 | Exact read allowlist | Khớp account + exact assumed role/AWS service + API + resource | Drop — structured log CloudWatch, không bắn Slack |
 | MSK service read | `AWSService`/`kafka.amazonaws.com` đọc đúng secret ARN `AmazonMSK_*` | Drop |
+| DMS migration read | Exact DMS role/session đọc đúng một trong hai PostgreSQL migration secret | Drop |
 | SG ingress filter | `AuthorizeSecurityGroupIngress` không phải `0.0.0.0/0`/`::/0` | Drop |
 | S3 policy filter | `PutBucketPolicy`/`PutBucketAcl` không grant public | Drop |
 
