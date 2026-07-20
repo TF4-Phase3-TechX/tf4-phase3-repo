@@ -8,10 +8,19 @@
     {{- $config := set . "observability" $.Values.observability }}
     {{- $config := set . "defaultValues" $.Values.default }}
     {{- $config := set . "managedData" ($.Values.managedData | default dict) }}
+    {{- $config := set . "rolloutsGlobal" ($.Values.rollouts | default dict) }}
 
     {{- if $config.enabled -}}
-        {{- include "techx-corp.deployment" $config -}}
+        {{- $useRollout := and ($config.rolloutsGlobal.enabled | default false) ($config.useRollout | default false) }}
+        {{- if $useRollout }}
+            {{- include "techx-corp.rollout" $config -}}
+        {{- else }}
+            {{- include "techx-corp.deployment" $config -}}
+        {{- end }}
         {{- include "techx-corp.service" $config -}}
+        {{- if and $useRollout ($config.rolloutStrategy).blueGreen }}
+            {{- include "techx-corp.rolloutPreviewService" $config -}}
+        {{- end }}
         {{- include "techx-corp.ingress" $config -}}
         {{- include "techx-corp.configmap" $config -}}
     {{ end }}
