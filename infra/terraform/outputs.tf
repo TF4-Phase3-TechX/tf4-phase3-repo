@@ -325,3 +325,19 @@ output "rds_postgresql_credential_handoff_note" {
   description = "Credential handoff note for SEC-13"
   value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
 }
+
+# REL-15 - PostgreSQL migration backup outputs
+output "postgresql_migration_backup_bucket_name" {
+  description = "S3 bucket used for REL-15 PostgreSQL migration backup artifacts"
+  value       = aws_s3_bucket.postgresql_migration_backups.id
+}
+
+output "postgresql_migration_backup_bucket_arn" {
+  description = "ARN of the S3 bucket used for REL-15 PostgreSQL migration backup artifacts"
+  value       = aws_s3_bucket.postgresql_migration_backups.arn
+}
+
+output "postgresql_migration_backup_prefix" {
+  description = "Prefix used for REL-15 PostgreSQL migration backup artifacts; lifecycle expires this prefix after 7 days"
+  value       = local.postgresql_migration_backup_prefix
+}
