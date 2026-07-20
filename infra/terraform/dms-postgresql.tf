@@ -312,6 +312,7 @@ resource "aws_dms_endpoint" "postgresql_source" {
   endpoint_type = "source"
   engine_name   = "postgres"
   ssl_mode      = "none"
+  database_name = "otel"
 
   secrets_manager_access_role_arn = aws_iam_role.postgresql_dms_secrets_access.arn
   secrets_manager_arn             = data.aws_secretsmanager_secret.postgresql_dms_source.arn
@@ -334,6 +335,7 @@ resource "aws_dms_endpoint" "postgresql_target" {
   endpoint_type = "target"
   engine_name   = "postgres"
   ssl_mode      = "require"
+  database_name = "otel"
 
   secrets_manager_access_role_arn = aws_iam_role.postgresql_dms_secrets_access.arn
   secrets_manager_arn             = data.aws_secretsmanager_secret.postgresql_dms_target.arn
