@@ -242,8 +242,8 @@ def main() -> int:
             "choose a versioned --output path or pass --force explicitly"
         )
     cases = load_cases(args.dataset)
-    if len(cases) != 30:
-        parser.error(f"dataset must contain exactly 30 cases, found {len(cases)}")
+    if len(cases) != 45:
+        parser.error(f"dataset must contain exactly 45 cases, found {len(cases)}")
     if args.recompute_from:
         prior = json.loads(args.recompute_from.read_text(encoding="utf-8"))
         by_name = {model["model"]: model for model in prior["models"]}
