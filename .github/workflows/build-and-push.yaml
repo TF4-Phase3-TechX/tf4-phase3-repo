@@ -180,7 +180,7 @@ jobs:
           set -euo pipefail
           
           # Install Trivy
-          TRIVY_VERSION="0.51.1"
+          TRIVY_VERSION="0.72.0"
           wget -q https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
           tar -xzf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz trivy
           sudo mv trivy /usr/local/bin/
