@@ -436,10 +436,10 @@ jobs:
     if: needs.changes.outputs.app == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@f677139d59fb5a2818a7b93623bb658d519b5962
         with:
           python-version: '3.12'
 
@@ -447,7 +447,7 @@ jobs:
         working-directory: techx-corp-platform/src/product-reviews
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-mock
+          pip install pytest==9.0.3 pytest-mock==3.15.1
 
       - name: Run Pytest
         working-directory: techx-corp-platform/src/product-reviews
