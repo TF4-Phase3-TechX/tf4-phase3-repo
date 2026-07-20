@@ -75,6 +75,23 @@ def test_canonicalizes_insufficient_and_rejects_canary_leak():
         {"decision": "insufficient", "answer": "Unknown", "citations": []}, [], "CANARY-42"
     )["answer"] == INSUFFICIENT_RESPONSE
 
+    # The fallback never displays model text or citations, so provider-added
+    # citations are safely discarded instead of turning a deny into downtime.
+    canonical = validate_grounded_output(
+        {
+            "decision": "insufficient",
+            "answer": "Not enough evidence.",
+            "citations": [{"review_id": 7, "evidence_quote": "irrelevant provider output"}],
+        },
+        [],
+        "CANARY-42",
+    )
+    assert canonical == {
+        "decision": "insufficient",
+        "answer": INSUFFICIENT_RESPONSE,
+        "citations": [],
+    }
+
     with pytest.raises(UnsafeModelOutput, match="sensitive_output"):
         validate_grounded_output(
             {
