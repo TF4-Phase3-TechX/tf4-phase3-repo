@@ -1,9 +1,0 @@
-# Trivy configuration to skip directories of services not modified in this PR
-# This avoids failing the security checks due to existing vulnerabilities in other services
-scan:
-  skip-dirs:
-    - "**/src/email"
-    - "**/src/flagd-ui"
-    - "**/src/frontend"
-    - "**/src/payment"
-    - "**/src/product-catalog"
