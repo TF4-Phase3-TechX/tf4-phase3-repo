@@ -160,12 +160,10 @@ resource "aws_cloudwatch_event_target" "cloudtrail_stoplogging_auto_remediation"
   role_arn  = aws_iam_role.cloudtrail_auto_remediation_eventbridge.arn
 
   input = jsonencode({
-    TrailName = [
-      aws_cloudtrail.main.name
-    ]
-    AutomationAssumeRole = [
-      aws_iam_role.cloudtrail_auto_remediation_automation.arn
-    ]
+    Parameters = {
+      TrailName            = [aws_cloudtrail.main.name]
+      AutomationAssumeRole = [aws_iam_role.cloudtrail_auto_remediation_automation.arn]
+    }
   })
 
   depends_on = [
