@@ -82,8 +82,10 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   maintenance_window       = "sun:19:00-sun:20:00"
 
   auto_minor_version_upgrade = false
-  apply_immediately          = false
-  final_snapshot_identifier  = "techx-tf4-valkey-cart-final"
+  # AWS requires transit encryption toggles to apply immediately (rejects the
+  # change otherwise) — must stay true through the REL-16 migration window.
+  apply_immediately         = true
+  final_snapshot_identifier = "techx-tf4-valkey-cart-final"
 
   tags = merge(var.tags, {
     Name = "techx-tf4-valkey-cart"
