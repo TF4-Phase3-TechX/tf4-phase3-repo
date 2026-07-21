@@ -351,3 +351,326 @@ Lưu ý: chưa chạy runtime `01-verify-msk-connectivity.sh` trực tiếp trê
 4. Verify MirrorMaker2 Running.
 5. Verify lag/catch-up về 0.
 6. Sau đó mới cutover producer/consumer theo plan.
+
+---
+
+## Cập nhật runtime sau khi merge app repo và GitOps
+
+Thời điểm ghi nhận: 2026-07-21.
+
+Phạm vi của mục này: tiếp tục theo `KAFKA-MIGRATION-PLAN.md`, dừng ở giai đoạn trước cutover. Chưa chuyển traffic checkout/accounting/fraud-detection sang MSK.
+
+### Trạng thái đã hoàn thành
+
+- App repo đã merge các PR sửa MirrorMaker2 chart.
+- GitOps repo đã merge PR bật MirrorMaker2 runtime.
+- Bot promote GitOps đã cập nhật `targetRevision` sang commit app repo mới.
+- ArgoCD đã sync ứng dụng `techx-corp` tới commit app repo mới.
+- `KafkaMirrorMaker2/orders-mirrormaker2` đã `Ready`.
+- Pod `orders-mirrormaker2-mirrormaker2-0` đã `Running` và container `Ready=true`.
+- Kafka Connect REST API trả về 2 connector đang `RUNNING`:
+  - `self-hosted->msk.MirrorSourceConnector`
+  - `self-hosted->msk.MirrorCheckpointConnector`
+- MirrorSource task đang replicate topic partition `orders-0` từ Kafka self-hosted sang MSK.
+- ConfigMap worker đã có internal topic replication factor bằng `2`, phù hợp MSK hiện có 2 brokers.
+- Topic `orders` trên MSK đã tồn tại, `ReplicationFactor=2`, ISR đủ.
+
+### Lỗi đã gặp và cách xử lý
+
+1. `KafkaMirrorMaker2` ban đầu không apply được vì CRD Strimzi live dùng `kafka.strimzi.io/v1`, không dùng `v1beta2`.
+
+   Cách xử lý: sửa chart sang `apiVersion: kafka.strimzi.io/v1`.
+
+2. Sau khi đổi API version, schema v1 yêu cầu `spec.target` và `spec.mirrors[].source`.
+
+   Cách xử lý: sửa template theo schema Strimzi v1, thêm các field bắt buộc cho Kafka Connect target:
+
+   ```yaml
+   target:
+     configStorageTopic: mm2-configs
+     offsetStorageTopic: mm2-offsets
+     statusStorageTopic: mm2-status
+     groupId: orders-mirrormaker2
+   ```
+
+3. Strimzi operator không hỗ trợ Kafka version `3.9.0`.
+
+   Cách xử lý: GitOps override:
+
+   ```yaml
+   mirrormaker2:
+     version: 4.2.1
+   ```
+
+4. MirrorMaker2 không Ready vì Kafka Connect tạo internal topic `mm2-offsets` với replication factor mặc định `3`, trong khi MSK chỉ có 2 brokers.
+
+   Log lỗi:
+
+   ```text
+   Replication factor: 3 larger than available brokers: 2
+   ```
+
+   Cách xử lý: thêm config replication factor cho các internal topic:
+
+   ```yaml
+   config.storage.replication.factor: "2"
+   offset.storage.replication.factor: "2"
+   status.storage.replication.factor: "2"
+   ```
+
+5. Sau khi PR merge, CR live đã `generation=3` nhưng `observedGeneration=2`, nên ConfigMap/pod vẫn chưa nhận RF=2 ngay.
+
+   Cách xử lý: chờ Strimzi operator reconcile. Sau đó trạng thái chuyển thành:
+
+   ```text
+   generation=3 observedGeneration=3 Ready
+   pod Running true restart=0
+   ```
+
+### Lệnh đã chạy và kết quả chính
+
+Kiểm tra ArgoCD target revision và sync state:
+
+```powershell
+kubectl get application techx-corp -n argocd -o jsonpath='{.spec.sources[0].targetRevision} {.status.sync.status} {.status.health.status} {.status.operationState.phase} {.status.operationState.message}'
+```
+
+Kết quả chính:
+
+```text
+targetRevision=ba9245985e9ffea19d537f50934d92c799d0f399
+operationState.phase=Succeeded
+operationState.message=successfully synced (all tasks run)
+```
+
+Kiểm tra MirrorMaker2 resource:
+
+```powershell
+kubectl get kafkamirrormaker2 orders-mirrormaker2 -n techx-tf4
+```
+
+Kết quả sau khi operator reconcile:
+
+```text
+orders-mirrormaker2 DesiredReplicas=1 Ready
+```
+
+Kiểm tra generation:
+
+```powershell
+kubectl get kafkamirrormaker2 orders-mirrormaker2 -n techx-tf4 -o jsonpath='{.metadata.generation} {.status.observedGeneration} {.status.conditions[*].type} {.status.replicas} {.status.readyReplicas}'
+```
+
+Kết quả:
+
+```text
+3 3 Ready 1
+```
+
+Kiểm tra pod:
+
+```powershell
+kubectl get pod orders-mirrormaker2-mirrormaker2-0 -n techx-tf4 -o jsonpath='{.status.phase} {.status.containerStatuses[0].ready} {.status.containerStatuses[0].restartCount}'
+```
+
+Kết quả:
+
+```text
+Running true 0
+```
+
+Kiểm tra ConfigMap worker đã nhận RF=2:
+
+```powershell
+kubectl get cm orders-mirrormaker2-mirrormaker2-config -n techx-tf4 -o yaml |
+  Select-String -Pattern 'replication.factor|config.storage|offset.storage|status.storage|bootstrap.servers|security.protocol|sasl.mechanism'
+```
+
+Kết quả chính:
+
+```text
+config.storage.topic=mm2-configs
+offset.storage.topic=mm2-offsets
+status.storage.topic=mm2-status
+config.storage.replication.factor=2
+offset.storage.replication.factor=2
+status.storage.replication.factor=2
+security.protocol=SASL_SSL
+sasl.mechanism=SCRAM-SHA-512
+```
+
+Kiểm tra Kafka Connect connector status:
+
+```powershell
+kubectl exec -n techx-tf4 orders-mirrormaker2-mirrormaker2-0 -- curl -s http://localhost:8083/connectors?expand=status
+```
+
+Kết quả chính:
+
+```text
+self-hosted->msk.MirrorCheckpointConnector: connector RUNNING, task 0 RUNNING
+self-hosted->msk.MirrorSourceConnector: connector RUNNING, task 0 RUNNING
+```
+
+Kiểm tra log replication:
+
+```powershell
+kubectl logs orders-mirrormaker2-mirrormaker2-0 -n techx-tf4 --tail=200 |
+  Select-String -Pattern 'ERROR|WARN|Exception|failed|Unable|replication.factor|Started|Herder|Ready|Successfully|logged in|Connector|Task'
+```
+
+Kết quả chính:
+
+```text
+MirrorSourceTask replicating 1 topic-partitions self-hosted->msk: [orders-0]
+WorkerSourceTask self-hosted->msk.MirrorSourceConnector-0 finished initialization and start
+```
+
+Kiểm tra topic `orders` trên MSK:
+
+```powershell
+kubectl exec -n techx-tf4 orders-mirrormaker2-mirrormaker2-0 -- sh -c '/opt/kafka/bin/kafka-topics.sh --bootstrap-server b-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:9096,b-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:9096 --command-config /tmp/strimzi-connect.properties --describe --topic orders'
+```
+
+Kết quả chính:
+
+```text
+Topic: orders
+PartitionCount: 3
+ReplicationFactor: 2
+Replicas: 1,2 / 2,1
+Isr: 1,2 / 2,1
+```
+
+Lưu ý: lệnh Kafka CLI có lúc timeout sau khi đã in metadata. Metadata topic vẫn đọc được thành công.
+
+### Trạng thái hiện tại theo plan
+
+Đã đạt phần chính của Bước 2.1:
+
+- MirrorMaker2 đã deploy qua GitOps.
+- Pod MirrorMaker2 Running/Ready.
+- Connector sync task RUNNING.
+- Topic `orders` có trên MSK.
+
+Đang ở Bước 2.2:
+
+- Cần tiếp tục monitor MirrorMaker2 lag/catch-up ổn định.
+- Chưa thực hiện Bước 3 Cutover Window.
+- Chưa promote checkout producer.
+- Chưa promote accounting/fraud-detection consumers.
+
+### Việc cần làm tiếp trước cutover
+
+1. Theo dõi MirrorMaker2 log/lag thêm một khoảng ổn định.
+2. Nếu cần parity test bằng event thật, phải thống nhất trước vì publish vào topic `orders` có thể được consumer thật xử lý.
+3. Khi bắt đầu Bước 3.1 cutover producer, cần quay video/lấy evidence từ đầu:
+   - ArgoCD app state.
+   - Rollout state.
+   - checkout green pod Ready.
+   - promote producer.
+   - log publish sang MSK.
+   - MM2 catch-up.
+   - promote consumers.
+   - accounting/fraud-detection consume/process.
+   - rollback path vẫn rõ.
+
+---
+
+## Cập nhật pre-cutover: phát hiện lỗi CheckpointConnector trước khi quay evidence cutover
+
+Thời điểm ghi nhận: 2026-07-21.
+
+Khi chuẩn bị vào cutover, đã kiểm tra lại live state:
+
+```powershell
+kubectl get kafkamirrormaker2 orders-mirrormaker2 -n techx-tf4 -o jsonpath='{.metadata.generation} {.status.observedGeneration} {.status.conditions[*].type} {.status.replicas} {.status.readyReplicas}'
+```
+
+Kết quả:
+
+```text
+3 3 Ready 1
+```
+
+```powershell
+kubectl get pod orders-mirrormaker2-mirrormaker2-0 -n techx-tf4 -o jsonpath='{.status.phase} {.status.containerStatuses[0].ready} {.status.containerStatuses[0].restartCount}'
+```
+
+Kết quả:
+
+```text
+Running true 0
+```
+
+```powershell
+kubectl exec -n techx-tf4 orders-mirrormaker2-mirrormaker2-0 -- curl -s http://localhost:8083/connectors?expand=status
+```
+
+Kết quả chính:
+
+```text
+self-hosted->msk.MirrorCheckpointConnector: RUNNING
+self-hosted->msk.MirrorSourceConnector: RUNNING
+tasks: RUNNING
+```
+
+Tuy nhiên log 10 phút gần nhất có lỗi lặp lại ở `MirrorCheckpointConnector`:
+
+```text
+Unable to sync offsets for consumer group accounting.
+Unable to sync offsets for consumer group fraud-detection.
+UnknownTopicOrPartitionException: Failed altering group offsets for the following partitions: [self-hosted.orders-0]
+```
+
+Phân tích:
+
+- `MirrorSourceConnector` đang dùng `IdentityReplicationPolicy`, nên topic đích là `orders`.
+- `MirrorCheckpointConnector` chưa được set cùng `replication.policy.class`.
+- Vì vậy checkpoint/offset sync vẫn map offset sang tên topic dạng alias `self-hosted.orders`, trong khi MSK đang có topic identity là `orders`.
+- Không nên vào cutover consumer khi checkpoint offset sync còn lỗi lặp lại.
+
+Cách xử lý đã chuẩn bị trong app repo:
+
+```yaml
+checkpointConnector:
+  config:
+    replication.policy.class: "org.apache.kafka.connect.mirror.IdentityReplicationPolicy"
+```
+
+File đã sửa:
+
+```text
+techx-corp-chart/templates/mirrormaker2.yaml
+```
+
+Lệnh verify local:
+
+```powershell
+helm lint ./techx-corp-chart -f ../tf4-phase3-gitops-manifests/environments/production/app-values.yaml -f ../tf4-phase3-gitops-manifests/environments/production/flagd-values.yaml -f ../tf4-phase3-gitops-manifests/environments/production/image-revisions.yaml
+```
+
+Kết quả:
+
+```text
+1 chart(s) linted, 0 chart(s) failed
+```
+
+```powershell
+helm template techx-corp ./techx-corp-chart -f ../tf4-phase3-gitops-manifests/environments/production/app-values.yaml -f ../tf4-phase3-gitops-manifests/environments/production/flagd-values.yaml -f ../tf4-phase3-gitops-manifests/environments/production/image-revisions.yaml --show-only templates/mirrormaker2.yaml
+```
+
+Kết quả chính:
+
+```text
+sourceConnector.config.replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+checkpointConnector.config.replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+```
+
+Trạng thái:
+
+- Chưa vào cutover.
+- Cần tạo PR app repo cho fix này.
+- Sau khi app PR merge, đợi bot promote GitOps targetRevision.
+- Sau khi ArgoCD sync xong, kiểm tra lại log `MirrorCheckpointConnector`.
+- Chỉ bắt đầu quay video cutover khi lỗi offset sync không còn lặp lại và pre-cutover check pass.
