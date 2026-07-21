@@ -11,4 +11,6 @@ metadata:
 data:
   flash-sale-alerts.yaml: |-
 {{ .Files.Get "prometheus/flash-sale-alerts.yaml" | indent 4 }}
+  aiops-alerts.yaml: |-
+{{ .Files.Get "prometheus/aiops-alerts.yaml" | indent 4 }}
 {{- end }}
