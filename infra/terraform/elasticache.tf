@@ -74,6 +74,7 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   # AWS Online Migration (used for the REL-16 cutover) rejects StartMigration against
   # any replication group with transit encryption enabled, even in "preferred" mode —
   # must stay disabled here and be enabled post-cutover via 07-enable-tls.sh.
+  #tfsec:ignore:aws-elasticache-enable-in-transit-encryption -- temporary for the REL-16 migration window, re-enabled post-cutover via 07-enable-tls.sh
   transit_encryption_enabled = false
 
   snapshot_retention_limit = 7
