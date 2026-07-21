@@ -1,0 +1,362 @@
+{
+  "assumptions": {
+    "scheduler_request_formula": "sum regular containers vs maximum init-container resources per Pod",
+    "hpa_baseline": "minReplicas",
+    "hpa_worst_case": "maxReplicas",
+    "rollout_surge": "ceil(25% of HPA-min replicas) added to every Deployment after all HPAs are at maximum; intentionally conservative simultaneous-rollout model"
+  },
+  "render_validation": {
+    "deployment_count": 22,
+    "hpa_names": [
+      "checkout",
+      "currency",
+      "frontend"
+    ],
+    "missing_resource_fields": {}
+  },
+  "model_millicores_mebibytes": {
+    "hpa_min": {
+      "cpu_m": 1905,
+      "memory_mi": 3491,
+      "limit_cpu_m": 7450,
+      "limit_memory_mi": 5893
+    },
+    "hpa_max": {
+      "cpu_m": 2155,
+      "memory_mi": 3827,
+      "limit_cpu_m": 8450,
+      "limit_memory_mi": 6501
+    },
+    "hpa_max_plus_global_surge": {
+      "cpu_m": 3555,
+      "memory_mi": 6690,
+      "limit_cpu_m": 13875,
+      "limit_memory_mi": 11202
+    }
+  },
+  "per_deployment": {
+    "accounting": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 256,
+        "limit_cpu_m": 200,
+        "limit_memory_mi": 256
+      }
+    },
+    "ad": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 150,
+        "limit_cpu_m": 200,
+        "limit_memory_mi": 300
+      }
+    },
+    "cart": {
+      "replicas": 2,
+      "max_replicas": 2,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 75,
+        "memory_mi": 96,
+        "limit_cpu_m": 300,
+        "limit_memory_mi": 192
+      }
+    },
+    "checkout": {
+      "replicas": 2,
+      "max_replicas": 3,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 75,
+        "memory_mi": 48,
+        "limit_cpu_m": 300,
+        "limit_memory_mi": 96
+      }
+    },
+    "currency": {
+      "replicas": 2,
+      "max_replicas": 3,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 75,
+        "memory_mi": 96,
+        "limit_cpu_m": 300,
+        "limit_memory_mi": 192
+      }
+    },
+    "email": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 20,
+        "memory_mi": 50,
+        "limit_cpu_m": 100,
+        "limit_memory_mi": 100
+      }
+    },
+    "flagd": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 20,
+        "memory_mi": 40,
+        "limit_cpu_m": 100,
+        "limit_memory_mi": 75
+      }
+    },
+    "fraud-detection": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 150,
+        "limit_cpu_m": 200,
+        "limit_memory_mi": 300
+      }
+    },
+    "frontend": {
+      "replicas": 2,
+      "max_replicas": 3,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 100,
+        "memory_mi": 192,
+        "limit_cpu_m": 400,
+        "limit_memory_mi": 320
+      }
+    },
+    "frontend-proxy": {
+      "replicas": 2,
+      "max_replicas": 2,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 64,
+        "limit_cpu_m": 200,
+        "limit_memory_mi": 128
+      }
+    },
+    "image-provider": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 10,
+        "memory_mi": 25,
+        "limit_cpu_m": 50,
+        "limit_memory_mi": 50
+      }
+    },
+    "kafka": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 100,
+        "memory_mi": 700,
+        "limit_cpu_m": 500,
+        "limit_memory_mi": 700
+      }
+    },
+    "llm": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 75,
+        "memory_mi": 96,
+        "limit_cpu_m": 250,
+        "limit_memory_mi": 192
+      }
+    },
+    "load-generator": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 300,
+        "memory_mi": 256,
+        "limit_cpu_m": 600,
+        "limit_memory_mi": 512
+      }
+    },
+    "payment": {
+      "replicas": 2,
+      "max_replicas": 2,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 64,
+        "limit_cpu_m": 200,
+        "limit_memory_mi": 128
+      }
+    },
+    "postgresql": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 256,
+        "limit_cpu_m": 500,
+        "limit_memory_mi": 512
+      }
+    },
+    "product-catalog": {
+      "replicas": 2,
+      "max_replicas": 2,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 50,
+        "memory_mi": 32,
+        "limit_cpu_m": 200,
+        "limit_memory_mi": 64
+      }
+    },
+    "product-reviews": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 75,
+        "memory_mi": 96,
+        "limit_cpu_m": 300,
+        "limit_memory_mi": 192
+      }
+    },
+    "quote": {
+      "replicas": 2,
+      "max_replicas": 2,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 10,
+        "memory_mi": 20,
+        "limit_cpu_m": 50,
+        "limit_memory_mi": 40
+      }
+    },
+    "recommendation": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 75,
+        "memory_mi": 128,
+        "limit_cpu_m": 300,
+        "limit_memory_mi": 256
+      }
+    },
+    "shipping": {
+      "replicas": 2,
+      "max_replicas": 2,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 20,
+        "memory_mi": 16,
+        "limit_cpu_m": 75,
+        "limit_memory_mi": 32
+      }
+    },
+    "valkey-cart": {
+      "replicas": 1,
+      "max_replicas": 1,
+      "max_surge_pods": 1,
+      "per_pod": {
+        "cpu_m": 20,
+        "memory_mi": 32,
+        "limit_cpu_m": 100,
+        "limit_memory_mi": 64
+      }
+    }
+  },
+  "live_namespace_reservations": {
+    "argocd": {
+      "cpu_m": 0,
+      "memory_mi": 0,
+      "limit_cpu_m": 0,
+      "limit_memory_mi": 0
+    },
+    "external-secrets": {
+      "cpu_m": 0,
+      "memory_mi": 0,
+      "limit_cpu_m": 0,
+      "limit_memory_mi": 0
+    },
+    "kube-system": {
+      "cpu_m": 1860,
+      "memory_mi": 1940,
+      "limit_cpu_m": 2000,
+      "limit_memory_mi": 5972
+    },
+    "techx-observability": {
+      "cpu_m": 1680,
+      "memory_mi": 3078,
+      "limit_cpu_m": 4300,
+      "limit_memory_mi": 5392
+    },
+    "techx-tf4": {
+      "cpu_m": 1905,
+      "memory_mi": 3491,
+      "limit_cpu_m": 7450,
+      "limit_memory_mi": 5893
+    }
+  },
+  "node_allocatable": {
+    "ip-10-0-10-17.ec2.internal": {
+      "cpu_m": 1930,
+      "memory_mi": 7101,
+      "pods": 35
+    },
+    "ip-10-0-10-231.ec2.internal": {
+      "cpu_m": 1930,
+      "memory_mi": 7079,
+      "pods": 35
+    },
+    "ip-10-0-11-40.ec2.internal": {
+      "cpu_m": 1930,
+      "memory_mi": 7079,
+      "pods": 35
+    }
+  },
+  "node_reserved": {
+    "ip-10-0-10-17.ec2.internal": {
+      "cpu_m": 1695,
+      "memory_mi": 4611,
+      "limit_cpu_m": 5775,
+      "limit_memory_mi": 8228,
+      "pods": 24,
+      "cpu_request_ratio": 0.8782,
+      "memory_request_ratio": 0.6493,
+      "pod_ratio": 0.6857
+    },
+    "ip-10-0-10-231.ec2.internal": {
+      "cpu_m": 1790,
+      "memory_mi": 2630,
+      "limit_cpu_m": 5575,
+      "limit_memory_mi": 4603,
+      "pods": 24,
+      "cpu_request_ratio": 0.9275,
+      "memory_request_ratio": 0.3715,
+      "pod_ratio": 0.6857
+    },
+    "ip-10-0-11-40.ec2.internal": {
+      "cpu_m": 1910,
+      "memory_mi": 1168,
+      "limit_cpu_m": 2200,
+      "limit_memory_mi": 4226,
+      "pods": 21,
+      "cpu_request_ratio": 0.9896,
+      "memory_request_ratio": 0.165,
+      "pod_ratio": 0.6
+    }
+  }
+}

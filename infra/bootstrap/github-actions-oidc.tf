@@ -102,8 +102,12 @@ data "aws_iam_policy_document" "github_actions_plan" {
 
     actions = [
       "autoscaling:Describe*",
+      "application-autoscaling:Describe*",
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
+      "cloudwatch:DescribeAlarms",
+      "dms:Describe*",
+      "dms:List*",
       "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
@@ -118,6 +122,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
       "ecr:List*",
+      "elasticache:Describe*",
+      "elasticache:ListTagsForResource",
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
@@ -132,11 +138,20 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kms:ListResourceTags",
       "logs:Describe*",
       "logs:ListTagsForResource",
+      "kafka:Describe*",
+      "kafka:GetBootstrapBrokers",
+      "kafka:List*",
+      "rds:Describe*",
+      "rds:ListTagsForResource",
       "s3:GetAccelerateConfiguration",
       "s3:GetBucket*",
       "s3:GetEncryptionConfiguration",
       "s3:GetLifecycleConfiguration",
       "s3:GetReplicationConfiguration",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetResourcePolicy",
+      "secretsmanager:ListSecretVersionIds",
+      "secretsmanager:ListTagsForResource",
       "s3:ListBucket"
     ]
 
@@ -155,6 +170,20 @@ data "aws_iam_policy_document" "github_actions_plan" {
     effect    = "Allow"
     actions   = ["ssm:DescribeParameters"]
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadCloudTrailRemediationSsmDocument"
+    effect = "Allow"
+
+    actions = [
+      "ssm:DescribeDocument",
+      "ssm:GetDocument",
+      "ssm:DescribeDocumentPermission",
+      "ssm:ListTagsForResource"
+    ]
+
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/tf4-restore-cloudtrail-logging"]
   }
 
   statement {
@@ -237,6 +266,7 @@ data "aws_iam_policy_document" "github_actions_build" {
       "ecr:InitiateLayerUpload",
       "ecr:ListImages",
       "ecr:PutImage",
+      "ecr:PutImageTagMutability",
       "ecr:UploadLayerPart"
     ]
 

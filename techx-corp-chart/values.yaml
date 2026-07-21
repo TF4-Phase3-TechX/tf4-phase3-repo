@@ -261,6 +261,13 @@ components:
   cart:
     enabled: true
     replicas: 2
+    # Ref: CDO08-REL-16 - Blue-Green cutover to ElastiCache Valkey. Disabled by
+    # default; flip alongside the top-level rollouts.enabled only for the
+    # actual migration window per VALKEY-MIGRATION-PLAN.md.
+    useRollout: false
+    rolloutStrategy:
+      blueGreen:
+        autoPromotionEnabled: false
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
@@ -1401,6 +1408,11 @@ components:
     imageOverride:
       repository: "postgres"
       tag: "17.6"
+    command:
+      - docker-entrypoint.sh
+      - postgres
+      - -c
+      - wal_level=logical
     replicas: 1
     strategy:
       type: Recreate
@@ -2056,3 +2068,56 @@ opensearch:
 bastionPortalAccess:
   enabled: false
   groupName: portal-bastion-group
+
+# CDO08-SEC-13D: Managed data credential wiring gates.
+# All flags default to false — existing in-cluster services are unaffected.
+# Flip the global flag and each sub-flag to true only after:
+#   1. AWS Secrets Manager entry for that service exists (CDO08-118)
+#   2. ExternalSecret in GitOps repo is Ready=True (CDO08-119)
+#   3. Migration/cutover task for that service is approved and ready
+# DO NOT set any flag to true in the same PR that provisions managed infra.
+# DO NOT hardcode secret values here — only secretName references.
+managedData:
+  # Master switch. Sub-flags are ignored unless this is true.
+  enabled: false
+
+  # Wire accounting, product-catalog, product-reviews to RDS via rds-postgres-secret
+  postgresql:
+    enabled: false
+    secretName: rds-postgres-secret
+
+  # Wire cart to ElastiCache via elasticache-valkey-secret
+  valkey:
+    enabled: false
+    secretName: elasticache-valkey-secret
+
+  # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret
+  kafka:
+    enabled: false
+    secretName: msk-kafka-secret
+
+postgresqlMigrationBridge:
+  # REL-15: temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.
+  # Keep enabled only during PostgreSQL migration/observation, then disable and cleanup.
+  enabled: true
+
+valkeyMigrationBridge:
+  # Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the
+  # self-hosted valkey-cart source. Keep enabled only during migration/observation,
+  # then disable and cleanup.
+  enabled: false
+
+riotRedisBackfill:
+  # REL-16: rollback-only Job that backfills ElastiCache -> EKS valkey-cart using
+  # riot-redis, per VALKEY-MIGRATION-PLAN.md §4 TRƯỜNG HỢP 2. Enable only when
+  # actually running a post-cutover rollback.
+  enabled: false
+  image: redislabs/riot:3.1.5
+  elasticacheAddress: ""
+  targetAddress: "valkey-cart:6379"
+
+# Argo Rollouts integration (requires the Argo Rollouts CRDs/controller installed in-cluster).
+# Master switch. Individual components must also opt in via components.<name>.useRollout: true,
+# plus components.<name>.rolloutStrategy.canary or .blueGreen.
+rollouts:
+  enabled: false

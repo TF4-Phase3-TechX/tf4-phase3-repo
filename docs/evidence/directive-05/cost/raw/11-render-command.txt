@@ -1,0 +1,2 @@
+command=docker run alpine/helm:3.15.4 template techx-corp ./techx-corp-chart --namespace techx-tf4 --set default.image.repository=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp --set default.image.tag=preview -f deploy/values-app-stamp.yaml -f deploy/values-flagd-sync.yaml -f deploy/values-aio-llm.yaml
+exit_code=0

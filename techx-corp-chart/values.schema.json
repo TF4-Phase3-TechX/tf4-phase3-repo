@@ -92,6 +92,99 @@
         "enabled",
         "groupName"
       ]
+    },
+    "managedData": {
+      "description": "CDO08-SEC-13D: Master gate and per-datastore gates for wiring app env vars to ESO-synced Kubernetes Secrets. All disabled by default.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "postgresql": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        },
+        "valkey": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        },
+        "kafka": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        }
+      }
+    },
+    "postgresqlMigrationBridge": {
+      "description": "CDO08-REL-15 temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "valkeyMigrationBridge": {
+      "description": "Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the self-hosted valkey-cart source.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "riotRedisBackfill": {
+      "description": "CDO08-REL-16 rollback-only Job backfilling ElastiCache back to EKS valkey-cart using riot-redis.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "elasticacheAddress": {
+          "type": "string"
+        },
+        "targetAddress": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "rollouts": {
+      "description": "Argo Rollouts integration master switch. Requires the Argo Rollouts CRDs/controller installed in-cluster. Individual components opt in via components.<name>.useRollout.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [
@@ -178,6 +271,22 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "useRollout": {
+          "description": "Render this component as an Argo Rollouts kind: Rollout instead of kind: Deployment. Requires rollouts.enabled: true and rolloutStrategy.canary or .blueGreen to be set.",
+          "type": "boolean"
+        },
+        "rolloutStrategy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "canary": {
+              "type": "object"
+            },
+            "blueGreen": {
+              "type": "object"
+            }
+          }
         },
         "useDefault": {
           "type": "object",
@@ -593,6 +702,10 @@
         },
         "tag": {
           "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-fA-F]{64}$"
         },
         "pullPolicy": {
           "type": "string"
