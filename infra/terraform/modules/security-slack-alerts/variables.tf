@@ -66,3 +66,19 @@ variable "tags" {
   description = "A map of tags to add to all resources"
   default     = {}
 }
+
+variable "formatted_sns_topic_name" {
+  type        = string
+  description = "Name of the SNS topic that delivers human-readable formatted security alert emails"
+  default     = "audit-security-alerts-formatted"
+}
+
+variable "alert_email_endpoint" {
+  type        = string
+  description = "Email address that receives human-readable security alert notifications"
+
+  validation {
+    condition     = can(regex("^[^@]+@[^@]+\\.[^@]+$", var.alert_email_endpoint))
+    error_message = "alert_email_endpoint must be a valid email address."
+  }
+}

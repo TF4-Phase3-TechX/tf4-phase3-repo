@@ -26,6 +26,7 @@ resource "aws_lambda_function" "slack_formatter" {
       SLACK_WEBHOOK_ALLOWED_HOSTS      = join(",", var.slack_webhook_allowed_hosts)
       DETECTION_METRIC_NAMESPACE       = var.detection_metric_namespace
       DETECTION_LATENCY_TARGET_SECONDS = tostring(var.detection_latency_target_seconds)
+      FORMATTED_SNS_TOPIC_ARN          = aws_sns_topic.formatted_alerts.arn
     }
   }
 
