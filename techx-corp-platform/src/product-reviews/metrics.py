@@ -3,6 +3,15 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+
+def llm_metric_identity(service_name, operation="ask_product_ai_assistant"):
+    """Low-cardinality labels required for per-caller AIOps attribution."""
+
+    return {
+        "service.name": service_name,
+        "llm.operation": operation,
+    }
+
 def init_metrics(meter):
 
     # Product reviews counter

@@ -33,3 +33,9 @@ data "aws_iam_policy_document" "sns_topic_policy" {
     }
   }
 }
+
+resource "aws_sns_topic_subscription" "email_subscription" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = "buithanhnghia@dtu.edu.vn"
+}

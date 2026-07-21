@@ -165,8 +165,10 @@ def validate_grounded_output(
         raise UnsafeModelOutput("sensitive_output")
 
     if payload["decision"] == "insufficient":
-        if payload["citations"]:
-            raise UnsafeModelOutput("insufficient_with_citations")
+        # The deny/fallback path never displays model-authored text or evidence.
+        # Some providers still attach citations to an `insufficient` tool result;
+        # discarding them is safer and more available than converting an already
+        # safe decision into a provider failure.
         return {"decision": "insufficient", "answer": INSUFFICIENT_RESPONSE, "citations": []}
 
     if not answer or not payload["citations"]:
