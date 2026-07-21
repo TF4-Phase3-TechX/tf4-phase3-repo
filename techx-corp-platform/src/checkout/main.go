@@ -142,6 +142,7 @@ type checkout struct {
 	paymentSvcAddr        string
 	kafkaBrokerSvcAddr    string
 	pb.UnimplementedCheckoutServiceServer
+	kafkaProducerMu         sync.RWMutex
 	KafkaProducerClient     sarama.AsyncProducer
 	shippingSvcClient       pb.ShippingServiceClient
 	productCatalogSvcClient pb.ProductCatalogServiceClient
@@ -149,6 +150,47 @@ type checkout struct {
 	currencySvcClient       pb.CurrencyServiceClient
 	emailSvcClient          pb.EmailServiceClient
 	paymentSvcClient        pb.PaymentServiceClient
+}
+
+// getKafkaProducer returns the current producer, or nil if it hasn't connected
+// yet (or hasn't reconnected after a failure). Safe for concurrent use with
+// setKafkaProducer, which the background retry loop calls from another goroutine.
+func (cs *checkout) getKafkaProducer() sarama.AsyncProducer {
+	cs.kafkaProducerMu.RLock()
+	defer cs.kafkaProducerMu.RUnlock()
+	return cs.KafkaProducerClient
+}
+
+func (cs *checkout) setKafkaProducer(p sarama.AsyncProducer) {
+	cs.kafkaProducerMu.Lock()
+	defer cs.kafkaProducerMu.Unlock()
+	cs.KafkaProducerClient = p
+}
+
+// connectKafkaProducerWithRetry keeps trying to create the Kafka producer with
+// capped exponential backoff until it succeeds. Runs in the background so a
+// slow/unreachable broker (e.g. MSK SASL_SSL handshake taking longer than
+// self-hosted plaintext, or a transient outage) never blocks service startup
+// or crashes the process — sendToPostProcessor treats a nil producer as
+// "not connected yet" and skips the Kafka publish for that order instead of
+// panicking.
+func (cs *checkout) connectKafkaProducerWithRetry(logger *slog.Logger) {
+	delay := 2 * time.Second
+	const maxDelay = 30 * time.Second
+	for {
+		producer, err := kafka.CreateKafkaProducer([]string{cs.kafkaBrokerSvcAddr}, logger)
+		if err == nil {
+			cs.setKafkaProducer(producer)
+			logger.Info("Kafka producer connected")
+			return
+		}
+		logger.Error(fmt.Sprintf("Failed to create Kafka producer, retrying in %v: %v", delay, err))
+		time.Sleep(delay)
+		delay *= 2
+		if delay > maxDelay {
+			delay = maxDelay
+		}
+	}
 }
 
 func main() {
@@ -232,10 +274,7 @@ func main() {
 	svc.kafkaBrokerSvcAddr = os.Getenv("KAFKA_ADDR")
 
 	if svc.kafkaBrokerSvcAddr != "" {
-		svc.KafkaProducerClient, err = kafka.CreateKafkaProducer([]string{svc.kafkaBrokerSvcAddr}, logger)
-		if err != nil {
-			logger.Error(err.Error())
-		}
+		go svc.connectKafkaProducerWithRetry(logger)
 	}
 
 	logger.Info(fmt.Sprintf("service config: %+v", svc))
@@ -701,6 +740,12 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 }
 
 func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderResult) {
+	producer := cs.getKafkaProducer()
+	if producer == nil {
+		logger.Warn("Kafka producer not connected yet (still retrying) - skipping post-processor notification for this order")
+		return
+	}
+
 	message, err := proto.Marshal(result)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to marshal message to protobuf: %+v", err))
@@ -719,16 +764,16 @@ func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderRes
 	// Send message and handle response
 	startTime := time.Now()
 	select {
-	case cs.KafkaProducerClient.Input() <- &msg:
+	case producer.Input() <- &msg:
 		select {
-		case successMsg := <-cs.KafkaProducerClient.Successes():
+		case successMsg := <-producer.Successes():
 			span.SetAttributes(
 				attribute.Bool("messaging.kafka.producer.success", true),
 				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
 				attribute.KeyValue(semconv.MessagingKafkaMessageOffset(int(successMsg.Offset))),
 			)
 			logger.Info(fmt.Sprintf("Successful to write message. offset: %v, duration: %v", successMsg.Offset, time.Since(startTime)))
-		case errMsg := <-cs.KafkaProducerClient.Errors():
+		case errMsg := <-producer.Errors():
 			span.SetAttributes(
 				attribute.Bool("messaging.kafka.producer.success", false),
 				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
@@ -758,8 +803,8 @@ func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderRes
 		logger.Info("Warning: FeatureFlag 'kafkaQueueProblems' is activated, overloading queue now.")
 		for i := 0; i < ffValue; i++ {
 			go func(i int) {
-				cs.KafkaProducerClient.Input() <- &msg
-				_ = <-cs.KafkaProducerClient.Successes()
+				producer.Input() <- &msg
+				_ = <-producer.Successes()
 			}(i)
 		}
 		logger.Info(fmt.Sprintf("Done with #%d messages for overload simulation.", ffValue))
