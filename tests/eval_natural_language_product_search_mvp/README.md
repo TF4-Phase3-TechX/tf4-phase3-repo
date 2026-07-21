@@ -6,11 +6,12 @@ This directory contains the evaluation framework for **TF4AIO-4** (Natural-langu
 
 The framework verifies that the `SearchProductsAIAssistant` gRPC RPC correctly:
 
-1. Parses natural-language queries into structured search intents via AWS Bedrock.
+1. Parses natural-language queries into structured search intents via AWS Bedrock (with application-level and `jsonschema` exact validation).
 2. Filters the product catalog by category, price range, and keywords.
-3. Refuses out-of-scope queries and prompt injection attempts.
-4. Returns only products that exist in the real catalog (grounding shield).
-5. Provides an evidence trace for every response.
+3. Refuses out-of-scope queries (general QA, math, coding, personal questions) and adversarial prompt injection attempts (DAN jailbreak, tag injection, prompt leaking, SQLi payloads, long-prefix buffer attacks).
+4. Handles non-English queries (Vietnamese, French, Spanish) appropriately for search, refusal, and safety bounds.
+5. Returns only products that exist in the real catalog (grounding shield).
+6. Provides a complete evidence trace with token usage, latency, and estimated USD cost for every response.
 
 ## Directory Structure
 
@@ -18,24 +19,26 @@ The framework verifies that the `SearchProductsAIAssistant` gRPC RPC correctly:
 |------|---------------|
 | `run_eval.py` | CLI Entrypoint: reads dataset, calls `SearchProductsAIAssistant` via gRPC, evaluates test cases, writes versioned evidence & report |
 | `generate_dataset.py` | CLI Entrypoint: loads products → builds test cases → writes `eval_dataset.json` with SHA256 hash |
-| `eval_dataset.json` | Generated test dataset (DO NOT edit manually — regenerate via `generate_dataset.py`) |
+| `eval_dataset.json` | Generated test dataset (43 test cases; DO NOT edit manually — regenerate via `generate_dataset.py`) |
 | `report.md` | Auto-generated markdown report summarizing historical and latest eval runs |
 | `src/` | Core framework modules (`evaluator.py`, `grounding.py`, `dataset_builder.py`, `db_source.py`) |
 | `tests/` | Unit tests for framework helpers (`test_run_eval_helpers.py`) |
 | `evidence/` | Directory containing versioned run evidence folders (`YYYY-MM-DD-HH-mm/`) with `results.json`, `README.md`, and `snapshots/` |
 
-## Intent Groups (D1 Compliance)
+## Intent Groups (D1 & Mandate 14 Compliance)
 
-The dataset contains ≥15 test cases across ≥4 intent groups:
+The dataset contains **43 test cases** across **8 intent groups**:
 
-| Group | Description | Expected Behavior |
-|-------|-------------|-------------------|
-| `exact_match` | Query uses exact product name | Returns matching product(s) |
-| `category` | Query filters by category (e.g., "telescopes") | Returns all products in that category |
-| `price_range` | Query filters by price (e.g., "under $100") | Returns products within price range |
-| `attribute_filter` | Combined category + price filter | Returns products matching both filters |
-| `safety` | Out-of-domain queries, empty queries | Refused (`refused=true`, empty results) |
-| `injection` | Prompt injection attempts | Refused (`refused=true`, empty results) |
+| Group | Count | Description | Expected Behavior |
+|-------|-------|-------------|-------------------|
+| `exact_match` | 3 | Query uses exact product name | Returns matching product(s) |
+| `category` | 3 | Query filters by category (e.g., "telescopes") | Returns all products in that category |
+| `price_range` | 3 | Query filters by price (e.g., "under $100") | Returns products within price range |
+| `attribute_filter` | 3 | Combined category + price filter | Returns products matching both filters |
+| `safety` | 13 | Out-of-domain queries (math, coding, financial, general QA) in EN/VI/ES/FR | Refused (`refused=true`, empty results) |
+| `injection` | 13 | Adversarial prompt injection, DAN jailbreak, leaking, SQLi, tag overrides in EN/VI/ES/FR | Refused (`refused=true`, empty results) |
+| `multilingual_search` | 3 | Vietnamese price & category search queries | Returns matching product(s) or refused if out of scope |
+| `compare_edge_case` | 2 | Single-target & non-existent product comparison queries | Refused (`refused=true`, empty results) |
 
 ## Quick Start
 

@@ -623,9 +623,10 @@ def main() -> None:
     now_utc = datetime.now(timezone.utc)
     timestamp_str = now_utc.isoformat()
 
-    # Format folder as YYYY-MM-DD-HH-mm (ngày-tháng-năm-giờ-phút theo giờ local)
+    # Format folder as YYYY-MM-DD-HH-mm-ss-SSSS (ngày-tháng-năm-giờ-phút-giây-miligiây 4 số)
     now_local = datetime.now().astimezone()
-    date_folder_name = now_local.strftime("%Y-%m-%d-%H-%M")
+    ms_str = f"{now_local.microsecond // 100:04d}"
+    date_folder_name = now_local.strftime(f"%Y-%m-%d-%H-%M-%S-{ms_str}")
 
     total_cases = len(test_cases)
     pass_rate = passed_count / total_cases if total_cases > 0 else 0.0
