@@ -218,39 +218,6 @@ def _refused_search_response(parsed_intent="", filter_applied="", before=0, afte
 
 import difflib
 
-VIETNAMESE_KEYWORD_MAP = {
-    "đèn": "flashlight",
-    "den": "flashlight",
-    "pin": "flashlight",
-    "kính": "telescope",
-    "kinh": "telescope",
-    "thiên": "telescope",
-    "thien": "telescope",
-    "văn": "telescope",
-    "van": "telescope",
-    "màn": "filter",
-    "man": "filter",
-    "lọc": "filter",
-    "loc": "filter",
-    "nhòm": "binoculars",
-    "nhom": "binoculars",
-    "ống": "binoculars",
-    "ong": "binoculars",
-    "vệ": "cleaning",
-    "ve": "cleaning",
-    "sinh": "cleaning",
-    "lau": "cleaning",
-    "sách": "book",
-    "sach": "book",
-    "du": "travel",
-    "lịch": "travel",
-    "lich": "travel",
-    "ảnh": "imager",
-    "anh": "imager",
-    "chụp": "imager",
-    "chup": "imager",
-}
-
 def _fuzzy_match_token(keyword_token: str, product_text: str) -> bool:
     clean_text = "".join(c if c.isalnum() or c.isspace() else " " for c in product_text.lower())
     product_tokens = clean_text.split()
@@ -276,8 +243,7 @@ def _fuzzy_match_keywords(keywords_query: str, name: str, description: str) -> b
     raw_tokens = [tok for tok in keywords_query.lower().split() if tok not in STOP_WORDS]
     if not raw_tokens:
         return True
-    mapped_set = {VIETNAMESE_KEYWORD_MAP.get(tok, tok) for tok in raw_tokens}
-    for kw_tok in mapped_set:
+    for kw_tok in raw_tokens:
         if not (_fuzzy_match_token(kw_tok, name) or _fuzzy_match_token(kw_tok, description)):
             return False
     return True

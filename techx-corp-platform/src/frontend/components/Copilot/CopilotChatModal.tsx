@@ -75,7 +75,13 @@ export const CopilotChatModal: React.FC = () => {
                 } else if (Array.isArray(results) && results.length > 0) {
                     assistantText = `Dưới đây là các sản phẩm phù hợp với yêu cầu của bạn:`;
                 } else {
-                    assistantText = `Xin chào! Tôi là Trợ lý Shopping Copilot. Tôi có thể giúp gì cho bạn hôm nay? Bạn có thể tìm kiếm các sản phẩm như kính thiên văn, đèn pin, hay ống nhòm nhé!`;
+                    const cleanQ = userMsgText.trim().toLowerCase();
+                    const isGreeting = ['hi', 'hí', 'hello', 'chào', 'chào bạn', 'xin chào'].includes(cleanQ);
+                    if (isGreeting) {
+                        assistantText = `Xin chào! Tôi là Trợ lý Shopping Copilot. Tôi có thể giúp gì cho bạn hôm nay?`;
+                    } else {
+                        assistantText = `Rất tiếc, tôi chưa tìm thấy sản phẩm nào phù hợp với "${userMsgText}". Cửa hàng hiện có các sản phẩm như kính thiên văn, đèn pin, ống nhòm và sách thiên văn. Bạn thử tìm từ khóa khác xem sao nhé!`;
+                    }
                 }
             }
 
