@@ -11,25 +11,27 @@ metadata:
 spec:
   version: {{ $mm2.version | default "3.9.0" | quote }}
   replicas: {{ $mm2.replicas | default 1 }}
-  connectCluster: {{ $mm2.connectCluster | default "msk" | quote }}
-  clusters:
-    - alias: {{ $source.alias | default "self-hosted" | quote }}
-      bootstrapServers: {{ required "mirrormaker2.sourceCluster.bootstrapServers is required" $source.bootstrapServers | quote }}
-    - alias: {{ $target.alias | default "msk" | quote }}
-      bootstrapServers: {{ required "mirrormaker2.targetCluster.bootstrapServers is required when mirrormaker2.enabled=true" $target.bootstrapServers | quote }}
-      tls: {}
-      authentication:
-        type: scram-sha-512
-        username: {{ required "mirrormaker2.targetCluster.username is required" $target.username | quote }}
-        passwordSecret:
-          secretName: {{ required "mirrormaker2.targetCluster.passwordSecret.name is required" (($target.passwordSecret).name) | quote }}
-          password: {{ required "mirrormaker2.targetCluster.passwordSecret.key is required" (($target.passwordSecret).key) | quote }}
-      config:
-        security.protocol: {{ $target.securityProtocol | default "SASL_SSL" | quote }}
-        sasl.mechanism: {{ $target.saslMechanism | default "SCRAM-SHA-512" | quote }}
+  target:
+    alias: {{ $target.alias | default "msk" | quote }}
+    bootstrapServers: {{ required "mirrormaker2.targetCluster.bootstrapServers is required when mirrormaker2.enabled=true" $target.bootstrapServers | quote }}
+    tls: {}
+    authentication:
+      type: scram-sha-512
+      username: {{ required "mirrormaker2.targetCluster.username is required" $target.username | quote }}
+      passwordSecret:
+        secretName: {{ required "mirrormaker2.targetCluster.passwordSecret.name is required" (($target.passwordSecret).name) | quote }}
+        password: {{ required "mirrormaker2.targetCluster.passwordSecret.key is required" (($target.passwordSecret).key) | quote }}
+    config:
+      security.protocol: {{ $target.securityProtocol | default "SASL_SSL" | quote }}
+      sasl.mechanism: {{ $target.saslMechanism | default "SCRAM-SHA-512" | quote }}
+    configStorageTopic: {{ (($target.connectStorageTopics | default dict).config) | default "mm2-configs" | quote }}
+    offsetStorageTopic: {{ (($target.connectStorageTopics | default dict).offset) | default "mm2-offsets" | quote }}
+    statusStorageTopic: {{ (($target.connectStorageTopics | default dict).status) | default "mm2-status" | quote }}
+    groupId: {{ $target.groupId | default "orders-mirrormaker2" | quote }}
   mirrors:
-    - sourceCluster: {{ $source.alias | default "self-hosted" | quote }}
-      targetCluster: {{ $target.alias | default "msk" | quote }}
+    - source:
+        alias: {{ $source.alias | default "self-hosted" | quote }}
+        bootstrapServers: {{ required "mirrormaker2.sourceCluster.bootstrapServers is required" $source.bootstrapServers | quote }}
       topicsPattern: {{ $mm2.topicsPattern | default "orders" | quote }}
       groupsPattern: {{ $mm2.groupsPattern | default "accounting|fraud-detection" | quote }}
       sourceConnector:
@@ -38,10 +40,6 @@ spec:
           replication.policy.class: {{ $mm2.replicationPolicyClass | default "org.apache.kafka.connect.mirror.IdentityReplicationPolicy" | quote }}
           sync.topic.acls.enabled: "false"
           refresh.topics.interval.seconds: "30"
-      heartbeatConnector:
-        tasksMax: 1
-        config:
-          heartbeats.topic.replication.factor: "2"
       checkpointConnector:
         tasksMax: 1
         config:
