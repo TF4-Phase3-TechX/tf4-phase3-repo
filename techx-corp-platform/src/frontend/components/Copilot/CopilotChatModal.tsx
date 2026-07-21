@@ -51,12 +51,11 @@ export const CopilotChatModal: React.FC = () => {
             const proposal = data.actionProposal || data.action_proposal || undefined;
             const results = data.results || [];
             let assistantText = data.response;
-
-            if (!assistantText && data.trace?.parsedIntent) {
+            const traceObj = data.trace || {};
+            const rawIntent = traceObj.parsedIntent || traceObj.parsed_intent;
+            if (rawIntent) {
                 try {
-                    const parsed = typeof data.trace.parsedIntent === 'string'
-                        ? JSON.parse(data.trace.parsedIntent)
-                        : data.trace.parsedIntent;
+                    const parsed = typeof rawIntent === 'string' ? JSON.parse(rawIntent) : rawIntent;
                     if (parsed.response_message) {
                         assistantText = parsed.response_message;
                     } else if (parsed.search_type === 'clarify' && parsed.clarify_question) {
