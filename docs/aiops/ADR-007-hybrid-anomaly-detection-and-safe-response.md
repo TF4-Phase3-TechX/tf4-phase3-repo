@@ -11,11 +11,13 @@ This table is the signature record. Approval is not inferred from a pull-request
 
 | Name | Role | Decision | Date | Scope |
 |---|---|---|---|---|
-| Dinh Danh Nam | AIO1 Tech Lead and decision owner | Accepted | 2026-07-17 | 7a detector architecture, implementation boundary and safe-response policy |
-| _Name required_ | CDO deployment owner | Pending | — | In-cluster activation, RBAC, rollback and SLO verification |
-| _Name required_ | On-call/SRE owner | Pending | — | Alert routing, escalation ownership and controlled incident drill |
+| Đinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead and decision owner | Accepted | 2026-07-17 | 7a detector architecture, implementation boundary and safe-response policy |
+| Cái Xuân Hòa (`XUanhoa04`) | AIOps technical reviewer | Approved | 2026-07-21 | 7a detector/baseline design, service-scoped ownership, calibration evidence and safe-response boundary; [review](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281#pullrequestreview-4745190607) |
+| Trần Đình Thông (`trandinhthong7`) | AIO1 PM and delivery reviewer | Approved | 2026-07-21 | 7a scope, evidence completeness and merge readiness; [review](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/281#pullrequestreview-4745710714) |
+| _Name required_ | CDO deployment owner | Pending for 7b | — | 7b only: in-cluster activation, RBAC, rollback and SLO verification |
+| _Name required_ | On-call/SRE owner | Pending for 7b | — | 7b only: alert routing, escalation ownership and controlled incident drill |
 
-The pending rows are deliberate. No person is recorded as an approver until that person explicitly signs this table or an attached named approval record.
+The named records above close the 7a design/initial-implementation decision. The two pending rows are deliberate 7b runtime-activation gates, not missing 7a signatures. No person is recorded for those roles until that person explicitly signs this table or an attached named approval record.
 
 ## Context
 

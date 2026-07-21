@@ -2,7 +2,7 @@
 
 - Date: 2026-07-14
 - Status: **Accepted** (runtime gates passed and closure PR merged 2026-07-17)
-- Owner: Dinh Danh Nam
+- Owner: Đinh Danh Nam
 - Required approvers: AIO1 Tech Lead, CDO deployment owner, CDO-07 Audit
 
 ## Recorded signatures
@@ -11,11 +11,11 @@ Approval is recorded directly here; the reader is not required to reconstruct it
 
 | Signer | Role | Decision | Date | Reviewed scope / source record |
 |---|---|---|---|---|
-| Dinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead and decision owner | **Approved for merge** | 2026-07-17 | ADR-006, model decision and production evidence at head `8abf298`; [named sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5001632575) |
-| Hải (`2hm1901`) | CDO08 deployment evidence reviewer | **Approved** | 2026-07-17 | Generation 22, final workload health, image digest, SLO/provider/application checks and rollback evidence; [review](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#pullrequestreview-4721409299) |
-| `anons1811s` | CDO-07 Audit signer | **Sign-off with evidence-scope limitation** | 2026-07-17 | Metadata-only evidence, retained logs and deployment read-back; [named audit sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5000507925) |
+| Đinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead and decision owner | **Approved for merge** | 2026-07-17 | ADR-006, model decision and production evidence at head `8abf298`; [named sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5001632575) |
+| Hoàng Minh Hải (`2hm1901`) | CDO08 deployment evidence reviewer | **Approved** | 2026-07-17 | Generation 22, final workload health, image digest, SLO/provider/application checks and rollback evidence; [review](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#pullrequestreview-4721409299) |
+| Đinh Văn Ty (`anons1811s`) | CDO-07 Audit signer | **Sign-off with evidence-scope limitation** | 2026-07-17 | Metadata-only evidence, retained logs and deployment read-back; [named audit sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5000507925) |
 
-The CDO-07 signer's public full name is not present in the retained GitHub record, so this ADR records the exact signing identity instead of inventing a name.
+The CDO-07 signer's GitHub profile does not expose a public full name. The full-name mapping above is retained from the repository's CDO-07 ownership/signatory evidence; the GitHub handle remains beside it so the approval is independently traceable to the original record.
 
 ## Context
 
@@ -118,6 +118,6 @@ Conservative validation can increase insufficient responses. Structured-output s
 | Canary/SLO/telemetry | Complete: [runtime acceptance record](runtime-acceptance-2026-07-17.md), [GitOps evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/22#issuecomment-4998938865) |
 | Rollback drill | Complete: [actual rollback evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/16#issuecomment-4998935068) |
 | Mentor/application-path record | Complete: grounded, unsupported, injection, action, PII and failure paths in the [runtime record](runtime-acceptance-2026-07-17.md) |
-| Dinh Danh Nam / AIO1 Tech Lead | Approved 2026-07-17; direct signature recorded above |
-| Hải (`2hm1901`) / CDO08 deployment evidence reviewer | Approved 2026-07-17; direct signature recorded above |
-| `anons1811s` / CDO-07 Audit | Signed off with evidence-scope limitation 2026-07-17; direct signature recorded above |
+| Đinh Danh Nam / AIO1 Tech Lead | Approved 2026-07-17; direct signature recorded above |
+| Hoàng Minh Hải (`2hm1901`) / CDO08 deployment evidence reviewer | Approved 2026-07-17; direct signature recorded above |
+| Đinh Văn Ty (`anons1811s`) / CDO-07 Audit | Signed off with evidence-scope limitation 2026-07-17; direct signature recorded above |
