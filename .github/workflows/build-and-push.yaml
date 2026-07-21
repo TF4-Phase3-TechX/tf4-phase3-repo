@@ -240,8 +240,8 @@ jobs:
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
-              # 4. Provenance Attestation
-              echo ">> [4/8] Generating and Attesting Provenance..."
+              # 4. Provenance + SBOM Attestation
+              echo ">> [4/8] Generating and Attesting Provenance + SBOM..."
               jq -n \
                 --arg repo "${{ github.repository }}" \
                 --arg commit "${{ github.sha }}" \
@@ -258,9 +258,41 @@ jobs:
                   image_digest: $image_digest
                 }' > provenance.json
               cp provenance.json "security-artifacts/provenance-${service}-${digest_clean}.json"
-              
-              if ! cosign attest --yes --predicate provenance.json --type custom "$image_ref_digest"; then
-                echo "::error::Failed to attest provenance for $service"
+
+              delivery_predicate_file="security-artifacts/delivery-predicate-${service}-${digest_clean}.json"
+              jq -n \
+                --arg repo "${{ github.repository }}" \
+                --arg commit "${{ github.sha }}" \
+                --arg workflow "${{ github.workflow }}" \
+                --arg run_id "${{ github.run_id }}" \
+                --arg service_name "$service" \
+                --arg image_digest "$digest" \
+                --slurpfile sbom "security-artifacts/sbom-${service}-${digest_clean}.json" \
+                '{
+                  kind: "secure-delivery-evidence",
+                  repo: $repo,
+                  commit: $commit,
+                  workflow: $workflow,
+                  run_id: $run_id,
+                  service_name: $service_name,
+                  image_digest: $image_digest,
+                  provenance: {
+                    repo: $repo,
+                    commit: $commit,
+                    workflow: $workflow,
+                    run_id: $run_id,
+                    service_name: $service_name,
+                    image_digest: $image_digest
+                  },
+                  sbom: {
+                    kind: "cyclonedx-sbom",
+                    bomFormat: $sbom[0].bomFormat,
+                    document: $sbom[0]
+                  }
+                }' > "$delivery_predicate_file"
+
+              if ! cosign attest --yes --predicate "$delivery_predicate_file" --type custom "$image_ref_digest"; then
+                echo "::error::Failed to attest provenance/SBOM evidence for $service"
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
@@ -289,8 +321,8 @@ jobs:
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
-              # 7. Attest SBOM — binds the CycloneDX SBOM to the image digest on the registry (not just a build artifact)
-              echo ">> [7/8] Attesting SBOM..."
+              # 7. Persist SBOM predicate artifact — the signed delivery predicate in step 4 binds this content to the image digest.
+              echo ">> [7/8] Preparing SBOM predicate evidence..."
               sbom_predicate_file="security-artifacts/sbom-predicate-${service}-${digest_clean}.json"
               jq -n \
                 --arg repo "${{ github.repository }}" \
@@ -312,15 +344,7 @@ jobs:
                   sbom: $sbom[0]
                 }' > "$sbom_predicate_file"
 
-              if ! cosign attest --yes \
-                --predicate "$sbom_predicate_file" \
-                --type custom \
-                "$image_ref_digest"; then
-                echo "::error::Failed to attest SBOM for $service"
-                echo "1" > security-artifacts/gate_status.txt
-              fi
-
-              # 8. Verify SBOM attestation — evidence the CycloneDX SBOM attached to the digest is authentic
+              # 8. Verify SBOM attestation — evidence the signed delivery predicate contains the expected CycloneDX SBOM for this digest
               echo ">> [8/8] Verifying SBOM Attestation..."
               sbom_verify_file="security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
               sbom_verify_jsonl="security-artifacts/sbom-verify-${service}-${digest_clean}.jsonl"
@@ -356,9 +380,11 @@ jobs:
                     | statement as $statement
                     | predicate_json as $predicate
                     | select(any($statement.subject[]?; .digest.sha256 == ($digest | sub("^sha256:"; ""))))
-                    | select($predicate.kind == "cyclonedx-sbom")
+                    | select($predicate.kind == "secure-delivery-evidence")
                     | select($predicate.image_digest == $digest)
-                    | select($predicate.bomFormat == "CycloneDX")
+                    | select($predicate.sbom.kind == "cyclonedx-sbom")
+                    | select($predicate.sbom.bomFormat == "CycloneDX")
+                    | select($predicate.sbom.document.bomFormat == "CycloneDX")
                   ] | length > 0
                 ' "$sbom_verify_jsonl" > /dev/null; then
                   sbom_verified=1
