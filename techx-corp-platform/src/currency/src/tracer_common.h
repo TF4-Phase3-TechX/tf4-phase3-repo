@@ -73,8 +73,11 @@ public:
 void initTracer()
 {
   auto exporter = opentelemetry::exporter::otlp::OtlpGrpcExporterFactory::Create();
+  opentelemetry::sdk::trace::BatchSpanProcessorOptions processor_options;
+  opentelemetry::sdk::trace::BatchSpanProcessorRuntimeOptions runtime_options;
   auto processor =
-      opentelemetry::sdk::trace::BatchSpanProcessorFactory::Create(std::move(exporter));
+      opentelemetry::sdk::trace::BatchSpanProcessorFactory::Create(
+          std::move(exporter), processor_options, runtime_options);
   std::vector<std::unique_ptr<opentelemetry::sdk::trace::SpanProcessor>> processors;
   processors.push_back(std::move(processor));
 
