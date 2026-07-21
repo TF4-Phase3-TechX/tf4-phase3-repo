@@ -1085,6 +1085,20 @@ components:
         value: "true"
       - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
         value: "true"
+      - name: OTEL_EXPORTER_OTLP_TIMEOUT
+        value: "500"
+      - name: OTEL_EXPORTER_OTLP_LOGS_TIMEOUT
+        value: "500"
+      - name: OTEL_EXPORTER_OTLP_TRACES_TIMEOUT
+        value: "500"
+      - name: OTEL_EXPORTER_OTLP_METRICS_TIMEOUT
+        value: "500"
+      - name: OTEL_BLRP_EXPORT_TIMEOUT
+        value: "500"
+      - name: OTEL_BSP_EXPORT_TIMEOUT
+        value: "500"
+      - name: OTEL_METRIC_EXPORT_TIMEOUT
+        value: "500"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: IPV6_ENABLED
