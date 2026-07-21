@@ -109,13 +109,46 @@ export interface GetAverageProductReviewScoreResponse {
   averageScore: string;
 }
 
+export interface CartActionProposal {
+  actionType: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  confirmationRequired: boolean;
+  idempotencyKey: string;
+}
+
 export interface AskProductAIAssistantRequest {
   productId: string;
   question: string;
+  sessionId?: string;
 }
 
 export interface AskProductAIAssistantResponse {
   response: string;
+  actionProposal?: CartActionProposal | undefined;
+}
+
+export interface SearchProductsAIAssistantRequest {
+  query: string;
+  sessionId?: string;
+}
+
+export interface SearchEvidenceTrace {
+  parsedIntent: string;
+  filterApplied: string;
+  candidateCountBefore: number;
+  candidateCountAfter: number;
+  refused: boolean;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostUsd: number;
+}
+
+export interface SearchProductsAIAssistantResponse {
+  results: Product[];
+  trace: SearchEvidenceTrace | undefined;
+  actionProposal?: CartActionProposal | undefined;
 }
 
 export interface GetQuoteRequest {
@@ -1671,6 +1704,114 @@ export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResp
   ): AskProductAIAssistantResponse {
     const message = createBaseAskProductAIAssistantResponse();
     message.response = object.response ?? "";
+    return message;
+  },
+};
+
+function createBaseSearchProductsAIAssistantRequest(): SearchProductsAIAssistantRequest {
+  return { query: "", sessionId: "" };
+}
+
+export const SearchProductsAIAssistantRequest: MessageFns<SearchProductsAIAssistantRequest> = {
+  encode(message: SearchProductsAIAssistantRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.query !== "") {
+      writer.uint32(10).string(message.query);
+    }
+    if (message.sessionId && message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    return writer;
+  },
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchProductsAIAssistantRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchProductsAIAssistantRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) break;
+          message.query = reader.string();
+          continue;
+        case 2:
+          if (tag !== 18) break;
+          message.sessionId = reader.string();
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) break;
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+  fromJSON(object: any): SearchProductsAIAssistantRequest {
+    return {
+      query: isSet(object.query) ? globalThis.String(object.query) : "",
+      sessionId: isSet(object.sessionId) ? globalThis.String(object.sessionId) : "",
+    };
+  },
+  toJSON(message: SearchProductsAIAssistantRequest): unknown {
+    const obj: any = {};
+    if (message.query !== "") obj.query = message.query;
+    if (message.sessionId !== "") obj.sessionId = message.sessionId;
+    return obj;
+  },
+  create<I extends Exact<DeepPartial<SearchProductsAIAssistantRequest>, I>>(base?: I): SearchProductsAIAssistantRequest {
+    return SearchProductsAIAssistantRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SearchProductsAIAssistantRequest>, I>>(object: I): SearchProductsAIAssistantRequest {
+    const message = createBaseSearchProductsAIAssistantRequest();
+    message.query = object.query ?? "";
+    message.sessionId = object.sessionId ?? "";
+    return message;
+  },
+};
+
+function createBaseSearchProductsAIAssistantResponse(): SearchProductsAIAssistantResponse {
+  return { results: [], trace: undefined, actionProposal: undefined };
+}
+
+export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssistantResponse> = {
+  encode(message: SearchProductsAIAssistantResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.results) {
+      Product.encode(v, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchProductsAIAssistantResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchProductsAIAssistantResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) break;
+          message.results.push(Product.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) break;
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+  fromJSON(object: any): SearchProductsAIAssistantResponse {
+    return {
+      results: globalThis.Array.isArray(object?.results) ? object.results.map((e: any) => Product.fromJSON(e)) : [],
+      trace: undefined,
+      actionProposal: undefined,
+    };
+  },
+  toJSON(message: SearchProductsAIAssistantResponse): unknown {
+    const obj: any = {};
+    if (message.results?.length) obj.results = message.results.map((e) => Product.toJSON(e));
+    return obj;
+  },
+  create<I extends Exact<DeepPartial<SearchProductsAIAssistantResponse>, I>>(base?: I): SearchProductsAIAssistantResponse {
+    return SearchProductsAIAssistantResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SearchProductsAIAssistantResponse>, I>>(object: I): SearchProductsAIAssistantResponse {
+    const message = createBaseSearchProductsAIAssistantResponse();
+    message.results = object.results?.map((e) => Product.fromPartial(e)) || [];
     return message;
   },
 };
@@ -4282,6 +4423,17 @@ export const ProductReviewServiceService = {
       Buffer.from(AskProductAIAssistantResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): AskProductAIAssistantResponse => AskProductAIAssistantResponse.decode(value),
   },
+  searchProductsAiAssistant: {
+    path: "/oteldemo.ProductReviewService/SearchProductsAIAssistant",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SearchProductsAIAssistantRequest): Buffer =>
+      Buffer.from(SearchProductsAIAssistantRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): SearchProductsAIAssistantRequest => SearchProductsAIAssistantRequest.decode(value),
+    responseSerialize: (value: SearchProductsAIAssistantResponse): Buffer =>
+      Buffer.from(SearchProductsAIAssistantResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): SearchProductsAIAssistantResponse => SearchProductsAIAssistantResponse.decode(value),
+  },
 } as const;
 
 export interface ProductReviewServiceServer extends UntypedServiceImplementation {
@@ -4335,9 +4487,23 @@ export interface ProductReviewServiceClient extends Client {
   ): ClientUnaryCall;
   askProductAiAssistant(
     request: AskProductAIAssistantRequest,
-    metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: AskProductAIAssistantResponse) => void,
+  ): ClientUnaryCall;
+  searchProductsAiAssistant(
+    request: SearchProductsAIAssistantRequest,
+    callback: (error: ServiceError | null, response: SearchProductsAIAssistantResponse) => void,
+  ): ClientUnaryCall;
+  searchProductsAiAssistant(
+    request: SearchProductsAIAssistantRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SearchProductsAIAssistantResponse) => void,
+  ): ClientUnaryCall;
+  searchProductsAiAssistant(
+    request: SearchProductsAIAssistantRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SearchProductsAIAssistantResponse) => void,
   ): ClientUnaryCall;
 }
 

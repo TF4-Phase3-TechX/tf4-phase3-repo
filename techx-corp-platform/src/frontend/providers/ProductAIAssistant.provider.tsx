@@ -9,7 +9,7 @@ export interface AiRequestPayload {
     question: string;
 }
 
-export type AiResponse = { text: string } | string;
+export type AiResponse = { response?: string; text?: string } | string;
 
 interface AiAssistantContextValue {
     aiResponse: AiResponse | null;
