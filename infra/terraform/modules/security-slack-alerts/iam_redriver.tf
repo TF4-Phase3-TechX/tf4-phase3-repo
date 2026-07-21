@@ -12,9 +12,9 @@ resource "aws_iam_role_policy_attachment" "redriver_basic_execution" {
 
 data "aws_iam_policy_document" "redriver_policy_doc" {
   statement {
-    sid       = "AllowReadDLQ"
-    effect    = "Allow"
-    actions   = [
+    sid    = "AllowReadDLQ"
+    effect = "Allow"
+    actions = [
       "sqs:ReceiveMessage",
       "sqs:DeleteMessage",
       "sqs:GetQueueAttributes"
