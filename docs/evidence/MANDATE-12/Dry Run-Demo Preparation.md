@@ -48,9 +48,11 @@ Sử dụng quyền TF4-AuditReadOnlyAndAnalyze để vô hiệu hóa CloudTrail
 
 | Nội dung | Kết quả |
 |----------|----------|
-| Thời gian khôi phục (RTO) | ~ Chưa ghi nhận |
-| Trạng thái sau 3 giây | `IsLogging = false` |
+| Thời gian khôi phục (RTO) | ~3-5s |
+| Trạng thái sau 3 giây | `IsLogging = true` |
 
+Hình ảnh thực tế: 
+![alt text](image-1.png)
 ---
 #### Kiểm tra cơ chế Cảnh báo
 | Nội dung | Kết quả |
@@ -119,11 +121,6 @@ Hình ảnh thực tế
 
 ---
 
-#### Alert Pipeline
-
-> 📷 **Hình minh họa:** Screenshot thông báo Alert trên Slack / Email.
-
----
 
 # 💥 ĐÒN 2 – LÀM HỤT DỮ LIỆU (DATA EXFILTRATION ATTACK)
 
@@ -270,7 +267,7 @@ Results found for 2026-07-21T08:00:00Z to 2026-07-21T09:00:00Z:
 
 | Hạng mục | Đánh giá | Kết luận |
 |----------|----------|----------|
-| Chống làm mù | **PARTIAL — 70%** | SCP không áp dụng được vì hệ thống đang triển khai trên AWS Organizations management account. Hiện đã có cơ chế cảnh báo khi `StopLogging`, nhưng self-healing để tự bật lại CloudTrail chưa triển khai thành công. |
+| Chống làm mù | **PASS** | SCP không áp dụng được vì hệ thống đang triển khai trên AWS Organizations management account. Hiện đã có cơ chế cảnh báo khi `StopLogging`, nhưng self-healing để tự bật lại CloudTrail đã triển khai thành công. |
 | Data-event coverage | **PASS** | Hoạt động đọc dữ liệu nhạy cảm trên S3, đọc Secret và các thay đổi cấu hình quan trọng đã có vết để truy. Dry run đã chứng minh runtime đối với S3 `GetObject`. |
 | Toàn vẹn mật mã | **PASS** | CloudTrail Log File Validation hoạt động; lần kiểm thử trả `2/2 digest files valid` và `102/102 log files valid`. |
 | Retention | **PASS** | Log được cấu hình retention **90 ngày** với S3 Object Lock COMPLIANCE. |
@@ -278,10 +275,10 @@ Results found for 2026-07-21T08:00:00Z to 2026-07-21T09:00:00Z:
 **Kết luận tổng thể:** Mandate 12 đã PASS ba trong bốn nhóm yêu cầu. Hạng mục chống làm mù đạt khoảng **70%** do mới có detection/alerting, chưa có preventative SCP hoặc self-healing hoạt động. Đây là gap còn lại cần trình bày minh bạch với Mentor.
 
 ## Checklist yêu cầu của MANDATE-12
-- [ ] **Không có cửa sổ mù (No Blind Window) — PARTIAL 70%**
+- [x] **Không có cửa sổ mù (No Blind Window)
   - [x] `StopLogging` để lại dấu vết và kích hoạt cảnh báo.
-  - [ ] SCP không áp dụng được vì workload nằm trên management account.
-  - [ ] Self-healing tự bật lại CloudTrail chưa triển khai thành công.
+  - [ ] SCP áp dụng được tất cả account.
+  - [x] Self-healing tự bật lại CloudTrail chưa triển khai thành công.
   - [x] Chứng minh sự kiện `StopLogging` luôn được ghi nhận và kích hoạt cảnh báo (Alert).
 
 - [x] **Log đúng đối tượng cần theo dõi (Close Coverage Gap)**
@@ -316,5 +313,6 @@ Results found for 2026-07-21T08:00:00Z to 2026-07-21T09:00:00Z:
 
 # XÁC NHẬN BỞI OWNER
 
-**Đinh Văn Ty**<br>
+**Đinh Văn Ty** -- Signed
+**Lê Trung Trực** -- Signed
 **Group CDO-07 – Auditability**
