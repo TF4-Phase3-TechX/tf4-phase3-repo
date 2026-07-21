@@ -418,6 +418,13 @@ components:
   cart:
     enabled: true
     replicas: 2
+    # Ref: CDO08-REL-16 - Blue-Green cutover to ElastiCache Valkey. Disabled by
+    # default; flip alongside the top-level rollouts.enabled only for the
+    # actual migration window per VALKEY-MIGRATION-PLAN.md.
+    useRollout: false
+    rolloutStrategy:
+      blueGreen:
+        autoPromotionEnabled: false
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
@@ -1235,6 +1242,20 @@ components:
         value: "true"
       - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
         value: "true"
+      - name: OTEL_EXPORTER_OTLP_TIMEOUT
+        value: "500"
+      - name: OTEL_EXPORTER_OTLP_LOGS_TIMEOUT
+        value: "500"
+      - name: OTEL_EXPORTER_OTLP_TRACES_TIMEOUT
+        value: "500"
+      - name: OTEL_EXPORTER_OTLP_METRICS_TIMEOUT
+        value: "500"
+      - name: OTEL_BLRP_EXPORT_TIMEOUT
+        value: "500"
+      - name: OTEL_BSP_EXPORT_TIMEOUT
+        value: "500"
+      - name: OTEL_METRIC_EXPORT_TIMEOUT
+        value: "500"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: IPV6_ENABLED
@@ -1558,6 +1579,11 @@ components:
     imageOverride:
       repository: "postgres"
       tag: "17.6"
+    command:
+      - docker-entrypoint.sh
+      - postgres
+      - -c
+      - wal_level=logical
     replicas: 1
     strategy:
       type: Recreate
@@ -2240,3 +2266,61 @@ managedData:
   kafka:
     enabled: false
     secretName: msk-kafka-secret
+
+postgresqlMigrationBridge:
+  # REL-15: temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.
+  # Keep enabled only during PostgreSQL migration/observation, then disable and cleanup.
+  enabled: true
+
+valkeyMigrationBridge:
+  # Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the
+  # self-hosted valkey-cart source. Keep enabled only during migration/observation,
+  # then disable and cleanup.
+  enabled: false
+
+riotRedisBackfill:
+  # REL-16: rollback-only Job that backfills ElastiCache -> EKS valkey-cart using
+  # riot-redis, per VALKEY-MIGRATION-PLAN.md §4 TRƯỜNG HỢP 2. Enable only when
+  # actually running a post-cutover rollback.
+  enabled: false
+  image: redislabs/riot:3.1.5
+  elasticacheAddress: ""
+  targetAddress: "valkey-cart:6379"
+
+# Argo Rollouts integration (requires the Argo Rollouts CRDs/controller installed in-cluster).
+# Master switch. Individual components must also opt in via components.<name>.useRollout: true,
+# plus components.<name>.rolloutStrategy.canary or .blueGreen.
+rollouts:
+  enabled: false
+
+# CDO08-REL-17: Kafka self-hosted -> MSK migration using Strimzi MirrorMaker 2.
+# Keep disabled until Strimzi is installed, MSK SCRAM secret is ready, and the
+# cutover window is approved.
+mirrormaker2:
+  enabled: false
+  name: orders-mirrormaker2
+  replicas: 1
+  version: 3.9.0
+  connectCluster: msk
+  sourceCluster:
+    alias: self-hosted
+    bootstrapServers: kafka:9092
+  targetCluster:
+    alias: msk
+    bootstrapServers: ""
+    securityProtocol: SASL_SSL
+    saslMechanism: SCRAM-SHA-512
+    username: techx_tf4_orders_app
+    passwordSecret:
+      name: msk-kafka-secret
+      key: password
+  topicsPattern: orders
+  groupsPattern: "accounting|fraud-detection"
+  replicationPolicyClass: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi

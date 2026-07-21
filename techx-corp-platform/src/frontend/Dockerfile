@@ -42,19 +42,28 @@ RUN npm ci --omit=dev
 
 # -----------------------------------------------------------------------------
 
-FROM gcr.io/distroless/nodejs22-debian12:nonroot@sha256:13593b7570658e8477de39e2f4a1dd25db2f836d68a0ba771251572d23bb4f8e
+FROM docker.io/library/node:22-alpine3.23@sha256:8516dce0483394d5708d4b2ee6cacb79fb1d617ea4e2787c2120bcca92ce372e
 
 WORKDIR /app
 
-COPY --from=builder /app/.next/standalone/ ./
-COPY --from=builder /app/.next/static/ .next/static/
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx \
+    /usr/local/bin/corepack \
+    /opt/yarn-*
 
-COPY --from=deps /app/node_modules/ node_modules/
+COPY --chown=node:node --from=builder /app/.next/standalone/ ./
+COPY --chown=node:node --from=builder /app/.next/static/ .next/static/
 
-COPY ./src/frontend/public/ public/
+COPY --chown=node:node --from=deps /app/node_modules/ node_modules/
 
-COPY ./src/frontend/utils/telemetry/Instrumentation.js Instrumentation.js
+COPY --chown=node:node ./src/frontend/public/ public/
+
+COPY --chown=node:node ./src/frontend/utils/telemetry/Instrumentation.js Instrumentation.js
 
 EXPOSE ${FRONTEND_PORT}
 
-CMD ["--require=./Instrumentation.js", "server.js"]
+USER node
+
+CMD ["node", "--require=./Instrumentation.js", "server.js"]
