@@ -213,8 +213,25 @@ class BedrockAdapter:
             "messages": [{
                 "role": "user",
                 "content": [
-                    {"guardContent": {"text": {"text": context, "qualifiers": ["grounding_source"]}}},
-                    {"guardContent": {"text": {"text": question, "qualifiers": ["query"]}}},
+                    # Contextual qualifiers alone exclude these blocks from the
+                    # other Guardrail policies; guard_content keeps prompt-attack,
+                    # content and sensitive-information checks active as well.
+                    {
+                        "guardContent": {
+                            "text": {
+                                "text": context,
+                                "qualifiers": ["grounding_source", "guard_content"],
+                            }
+                        }
+                    },
+                    {
+                        "guardContent": {
+                            "text": {
+                                "text": question,
+                                "qualifiers": ["query", "guard_content"],
+                            }
+                        }
+                    },
                 ],
             }],
             # The observed valid citation payload required 328 tokens. A cap

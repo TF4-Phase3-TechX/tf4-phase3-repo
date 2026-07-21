@@ -62,6 +62,26 @@ def test_converse_is_single_call_pinned_guardrail_and_structured_output():
     assert client.request["inferenceConfig"] == {"temperature": 0, "maxTokens": 512}
     assert client.request["outputConfig"]["textFormat"]["type"] == "json_schema"
 
+    guarded_blocks = client.request["messages"][0]["content"]
+    assert len(guarded_blocks) == 2
+    assert all(set(block) == {"guardContent"} for block in guarded_blocks)
+
+    context_block = guarded_blocks[0]["guardContent"]["text"]
+    question_block = guarded_blocks[1]["guardContent"]["text"]
+    assert json.loads(context_block["text"]) == {
+        "product": {"id": "p1"},
+        "reviews": [{"review_id": 1, "description": "safe"}],
+    }
+    assert context_block["qualifiers"] == ["grounding_source", "guard_content"]
+    assert question_block == {
+        "text": "question",
+        "qualifiers": ["query", "guard_content"],
+    }
+    assert all(
+        "guard_content" in block["guardContent"]["text"]["qualifiers"]
+        for block in guarded_blocks
+    )
+
 
 def test_guardrail_intervention_is_a_safe_provider_failure():
     client = FakeClient({"stopReason": "guardrail_intervened"})
