@@ -185,6 +185,77 @@
       "required": [
         "enabled"
       ]
+    },
+    "mirrormaker2": {
+      "description": "CDO08-REL-17 Strimzi KafkaMirrorMaker2 migration configuration for Kafka self-hosted to MSK.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "name": { "type": "string" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "version": { "type": "string" },
+        "connectCluster": { "type": "string" },
+        "sourceCluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "alias": { "type": "string" },
+            "bootstrapServers": { "type": "string" }
+          },
+          "required": [
+            "alias",
+            "bootstrapServers"
+          ]
+        },
+        "targetCluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "alias": { "type": "string" },
+            "bootstrapServers": { "type": "string" },
+            "securityProtocol": { "type": "string" },
+            "saslMechanism": { "type": "string" },
+            "username": { "type": "string" },
+            "passwordSecret": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "key": { "type": "string" }
+              },
+              "required": [
+                "name",
+                "key"
+              ]
+            }
+          },
+          "required": [
+            "alias",
+            "bootstrapServers",
+            "securityProtocol",
+            "saslMechanism",
+            "username",
+            "passwordSecret"
+          ]
+        },
+        "topicsPattern": { "type": "string" },
+        "groupsPattern": { "type": "string" },
+        "replicationPolicyClass": { "type": "string" },
+        "sourceConnector": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tasksMax": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [

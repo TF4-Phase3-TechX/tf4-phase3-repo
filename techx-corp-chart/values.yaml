@@ -2121,3 +2121,35 @@ riotRedisBackfill:
 # plus components.<name>.rolloutStrategy.canary or .blueGreen.
 rollouts:
   enabled: false
+
+# CDO08-REL-17: Kafka self-hosted -> MSK migration using Strimzi MirrorMaker 2.
+# Keep disabled until Strimzi is installed, MSK SCRAM secret is ready, and the
+# cutover window is approved.
+mirrormaker2:
+  enabled: false
+  name: orders-mirrormaker2
+  replicas: 1
+  version: 3.9.0
+  connectCluster: msk
+  sourceCluster:
+    alias: self-hosted
+    bootstrapServers: kafka:9092
+  targetCluster:
+    alias: msk
+    bootstrapServers: ""
+    securityProtocol: SASL_SSL
+    saslMechanism: SCRAM-SHA-512
+    username: techx_tf4_orders_app
+    passwordSecret:
+      name: msk-kafka-secret
+      key: password
+  topicsPattern: orders
+  groupsPattern: "accounting|fraud-detection"
+  replicationPolicyClass: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
