@@ -67,7 +67,8 @@ All flags default to false — no change to existing behavior until explicitly f
 
 {{- if and $managedDataEnabled (($md.kafka | default dict).enabled | default false) }}
 {{-   $kafkaSecret := ($md.kafka).secretName | default "msk-kafka-secret" }}
-{{-   if has .name (list "accounting" "checkout" "fraud-detection") }}
+{{-   $kafkaServices := ($md.kafka).services | default (list "accounting" "checkout" "fraud-detection") }}
+{{-   if has .name $kafkaServices }}
 {{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_ADDR" "secretName" $kafkaSecret "secretKey" "kafka-address") | mustFromJson }}
 {{-     $allEnvs = append $allEnvs (dict "name" "KAFKA_SECURITY_PROTOCOL" "valueFrom" (dict "secretKeyRef" (dict "name" $kafkaSecret "key" "security-protocol"))) }}
 {{-     $allEnvs = append $allEnvs (dict "name" "KAFKA_SASL_MECHANISM" "valueFrom" (dict "secretKeyRef" (dict "name" $kafkaSecret "key" "sasl-mechanism"))) }}
