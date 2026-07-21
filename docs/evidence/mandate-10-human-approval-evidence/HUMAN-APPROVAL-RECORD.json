@@ -1,0 +1,52 @@
+{
+  "recordType": "MANDATE-10-human-approval-evidence",
+  "owner": "Nguyễn Phú Triệu (CDO-07 Auditability)",
+  "scope": "Human Approval Evidence and main branch protection review",
+  "evidenceCollectedAt": "2026-07-21",
+  "repository": "TF4-Phase3-TechX/tf4-phase3-repo",
+  "pullRequest": {
+    "number": 443,
+    "title": "fix(currency): pass otel batch processor runtime options",
+    "state": "closed",
+    "merged": true,
+    "baseBranch": "main",
+    "headSha": "acbd4ac48d977bd13e801d7ca9708aa911f001f7",
+    "mergeCommitSha": "a93093665767a27c40b71e6597b10c1ce20dd702",
+    "provenanceSha": "a93093665767a27c40b71e6597b10c1ce20dd702",
+    "commitMatch": true,
+    "mergedBy": "NamHoang4268",
+    "mergedAt": "2026-07-21T07:44:41Z",
+    "url": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/443"
+  },
+  "approvals": [
+    {
+      "reviewer": "NamHoang4268",
+      "state": "APPROVED",
+      "submittedAt": "2026-07-21T07:40:58Z",
+      "commitId": "acbd4ac48d977bd13e801d7ca9708aa911f001f7",
+      "reviewUrl": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/443#pullrequestreview-4742342478"
+    },
+    {
+      "reviewer": "Remmusss",
+      "state": "APPROVED",
+      "submittedAt": "2026-07-21T07:42:24Z",
+      "commitId": "acbd4ac48d977bd13e801d7ca9708aa911f001f7",
+      "reviewUrl": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/443#pullrequestreview-4742352476"
+    }
+  ],
+  "branchProtection": {
+    "ruleset": "main",
+    "branch": "main",
+    "enforcement": "active",
+    "requiredApprovingReviewCount": 2,
+    "requireCodeOwnerReview": true,
+    "requiredStatusChecks": "NOT CONFIGURED",
+    "finding": "Required status checks are not configured for main."
+  },
+  "evidenceFiles": [
+    "images/H2-01-commit-to-pr.png",
+    "images/H2-02-pr-approval-reviewers.png",
+    "images/H2-03-main-branch-protection.png"
+  ],
+  "auditConclusion": "Commit-to-PR correlation and pre-merge human approvals are evidenced. Required status checks remain a finding for Security/DevOps."
+}
