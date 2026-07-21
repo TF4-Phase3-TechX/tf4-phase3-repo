@@ -10,6 +10,7 @@ RDS_PORT="${RDS_PORT:-5432}"
 TARGET_SECRET_NAME="${TARGET_SECRET_NAME:-rds-admin-temp}"
 TARGET_SECRET_USER_KEY="${TARGET_SECRET_USER_KEY:-username}"
 TARGET_SECRET_PASSWORD_KEY="${TARGET_SECRET_PASSWORD_KEY:-password}"
+SOURCE_FROZEN="${SOURCE_FROZEN:-false}"
 POD_NAME="rds-parity-check-$$"
 
 TABLES=(
@@ -84,6 +85,11 @@ target_count() {
     psql -v ON_ERROR_STOP=1 -At -c "SELECT COUNT(*) FROM $1;"
 }
 
+if [[ "$SOURCE_FROZEN" != "true" ]]; then
+  echo "[WARN] SOURCE_FROZEN is not true. This is a live sanity check, not final cutover parity."
+  echo "[WARN] Dynamic tables can differ while source writes and DMS CDC are still active."
+fi
+
 printf "%-30s %12s %12s %8s\n" "table" "source" "target" "status"
 failed=0
 for table in "${TABLES[@]}"; do
@@ -91,7 +97,11 @@ for table in "${TABLES[@]}"; do
   tgt="$(target_count "$table" | tr -d '\r')"
   status="PASS"
   if [[ "$src" != "$tgt" ]]; then
-    status="FAIL"
+    if [[ "$SOURCE_FROZEN" == "true" ]]; then
+      status="FAIL"
+    else
+      status="DIFF"
+    fi
     failed=1
   fi
   printf "%-30s %12s %12s %8s\n" "$table" "$src" "$tgt" "$status"
@@ -101,9 +111,13 @@ echo "[INFO] reviews.productreviews sequence on target:"
 kubectl -n "$NAMESPACE" exec "pod/$POD_NAME" -- \
   psql -c "SELECT (SELECT MAX(id) FROM reviews.productreviews) AS max_productreview_id, last_value, is_called FROM reviews.productreviews_id_seq;"
 
-if [[ "$failed" -ne 0 ]]; then
+if [[ "$failed" -ne 0 && "$SOURCE_FROZEN" == "true" ]]; then
   echo "[ERROR] Row count parity failed." >&2
   exit 1
 fi
 
-echo "[OK] Row count parity passed."
+if [[ "$failed" -ne 0 ]]; then
+  echo "[WARN] Live sanity check found count differences. Re-run with SOURCE_FROZEN=true only after writer freeze and CDC catch-up."
+else
+  echo "[OK] Row count parity passed."
+fi

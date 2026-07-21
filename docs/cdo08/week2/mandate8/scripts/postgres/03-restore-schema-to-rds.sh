@@ -12,8 +12,12 @@ SCHEMA_FILE="${SCHEMA_FILE:-}"
 CONFIRM_RESTORE_SCHEMA="${CONFIRM_RESTORE_SCHEMA:-}"
 POD_NAME="rds-schema-restore-$$"
 
+if [[ "${1:-}" == "--yes" ]]; then
+  CONFIRM_RESTORE_SCHEMA="YES"
+fi
+
 if [[ "$CONFIRM_RESTORE_SCHEMA" != "YES" ]]; then
-  echo "[ERROR] This applies schema DDL to RDS. Re-run with CONFIRM_RESTORE_SCHEMA=YES." >&2
+  echo "[ERROR] This applies schema DDL to RDS. Re-run with CONFIRM_RESTORE_SCHEMA=YES or pass --yes." >&2
   exit 1
 fi
 

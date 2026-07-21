@@ -16,8 +16,12 @@ BACKUP_FILE="$OUT_DIR/postgresql-data-$TS.dump"
 LIST_FILE="$OUT_DIR/postgresql-data-$TS.list"
 CONFIRM_BACKUP_TO_S3="${CONFIRM_BACKUP_TO_S3:-}"
 
+if [[ "${1:-}" == "--yes" ]]; then
+  CONFIRM_BACKUP_TO_S3="YES"
+fi
+
 if [[ "$CONFIRM_BACKUP_TO_S3" != "YES" ]]; then
-  echo "[ERROR] This creates a source dump and uploads it to S3. Re-run with CONFIRM_BACKUP_TO_S3=YES." >&2
+  echo "[ERROR] This creates a source dump and uploads it to S3. Re-run with CONFIRM_BACKUP_TO_S3=YES or pass --yes." >&2
   exit 1
 fi
 

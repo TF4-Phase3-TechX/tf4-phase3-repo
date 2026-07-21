@@ -11,8 +11,12 @@ TARGET_SECRET_PASSWORD_KEY="${TARGET_SECRET_PASSWORD_KEY:-password}"
 CONFIRM_RESET_SEQUENCES="${CONFIRM_RESET_SEQUENCES:-}"
 POD_NAME="rds-sequence-reset-$$"
 
+if [[ "${1:-}" == "--yes" ]]; then
+  CONFIRM_RESET_SEQUENCES="YES"
+fi
+
 if [[ "$CONFIRM_RESET_SEQUENCES" != "YES" ]]; then
-  echo "[ERROR] This updates RDS sequence values. Re-run with CONFIRM_RESET_SEQUENCES=YES." >&2
+  echo "[ERROR] This updates RDS sequence values. Re-run with CONFIRM_RESET_SEQUENCES=YES or pass --yes." >&2
   exit 1
 fi
 
