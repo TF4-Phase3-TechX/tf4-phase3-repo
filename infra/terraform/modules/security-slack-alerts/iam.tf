@@ -53,6 +53,13 @@ data "aws_iam_policy_document" "lambda_ssm_kms" {
       values   = [var.detection_metric_namespace]
     }
   }
+
+  statement {
+    sid       = "AllowSendToDLQ"
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.lambda_dlq.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_ssm_kms_policy" {
