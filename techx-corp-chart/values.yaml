@@ -335,15 +335,14 @@ components:
 
   accounting:
     enabled: true
-    # Ref: CDO08-REL-17 - Blue-Green cutover to MSK Kafka. Disabled by default;
-    # flip alongside the top-level rollouts.enabled only for the actual cutover
-    # window per KAFKA-CUTOVER-RETRY-RUNBOOK.md. Flip useRollout ON in its own
-    # PR first (no other change) so a Rollout-managed baseline ReplicaSet
-    # exists before the Kafka env change creates the paused Green ReplicaSet.
-    useRollout: false
-    rolloutStrategy:
-      blueGreen:
-        autoPromotionEnabled: false
+    # Ref: CDO08-REL-17 - accounting is a Kafka consumer (no inbound Service, so
+    # Blue-Green's activeService requirement doesn't apply, and a Rollout pausing
+    # both old+new replicas alive at once would double-process mirrored messages).
+    # Recreate: kill the old pod fully before starting the new one — a few
+    # seconds of no consumption is safe (Kafka retains messages), avoids ever
+    # having self-hosted-reading and MSK-reading pods alive simultaneously.
+    strategy:
+      type: Recreate
     useDefault:
       env: true
     podAnnotations:
@@ -728,15 +727,14 @@ components:
 
   fraud-detection:
     enabled: true
-    # Ref: CDO08-REL-17 - Blue-Green cutover to MSK Kafka. Disabled by default;
-    # flip alongside the top-level rollouts.enabled only for the actual cutover
-    # window per KAFKA-CUTOVER-RETRY-RUNBOOK.md. Flip useRollout ON in its own
-    # PR first (no other change) so a Rollout-managed baseline ReplicaSet
-    # exists before the Kafka env change creates the paused Green ReplicaSet.
-    useRollout: false
-    rolloutStrategy:
-      blueGreen:
-        autoPromotionEnabled: false
+    # Ref: CDO08-REL-17 - fraud-detection is a Kafka consumer (no inbound Service, so
+    # Blue-Green's activeService requirement doesn't apply, and a Rollout pausing
+    # both old+new replicas alive at once would double-process mirrored messages).
+    # Recreate: kill the old pod fully before starting the new one — a few
+    # seconds of no consumption is safe (Kafka retains messages), avoids ever
+    # having self-hosted-reading and MSK-reading pods alive simultaneously.
+    strategy:
+      type: Recreate
     useDefault:
       env: true
     podAnnotations:
