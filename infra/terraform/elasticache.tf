@@ -83,10 +83,11 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   maintenance_window       = "sun:19:00-sun:20:00"
 
   auto_minor_version_upgrade = false
-  # NOTE: apply_immediately must stay true for THIS apply — AWS rejects transit
-  # encryption toggles unless applied immediately. Revert to false in a separate,
-  # later PR only after this change has been applied successfully.
-  apply_immediately         = true
+  # Reverted to the pre-migration REL-14 baseline now that PR #434 (transit
+  # encryption restore) has been applied successfully - no pending change needs
+  # immediate application anymore, so future modifications go back to waiting for
+  # the maintenance window by default.
+  apply_immediately         = false
   final_snapshot_identifier = "techx-tf4-valkey-cart-final"
 
   tags = merge(var.tags, {
