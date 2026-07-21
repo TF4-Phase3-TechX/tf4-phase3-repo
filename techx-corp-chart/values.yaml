@@ -1085,6 +1085,8 @@ components:
         value: "true"
       - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
         value: "true"
+      - name: OTEL_LOGS_EXPORTER
+        value: none
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: IPV6_ENABLED
