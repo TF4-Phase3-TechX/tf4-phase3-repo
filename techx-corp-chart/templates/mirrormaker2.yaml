@@ -24,6 +24,9 @@ spec:
     config:
       security.protocol: {{ $target.securityProtocol | default "SASL_SSL" | quote }}
       sasl.mechanism: {{ $target.saslMechanism | default "SCRAM-SHA-512" | quote }}
+      config.storage.replication.factor: {{ $target.configStorageReplicationFactor | default 2 | quote }}
+      offset.storage.replication.factor: {{ $target.offsetStorageReplicationFactor | default 2 | quote }}
+      status.storage.replication.factor: {{ $target.statusStorageReplicationFactor | default 2 | quote }}
     configStorageTopic: {{ (($target.connectStorageTopics | default dict).config) | default "mm2-configs" | quote }}
     offsetStorageTopic: {{ (($target.connectStorageTopics | default dict).offset) | default "mm2-offsets" | quote }}
     statusStorageTopic: {{ (($target.connectStorageTopics | default dict).status) | default "mm2-status" | quote }}
