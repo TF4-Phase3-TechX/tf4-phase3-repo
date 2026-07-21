@@ -251,20 +251,17 @@ def _fuzzy_match_keywords(keywords_query: str, name: str, description: str) -> b
 def _fuzzy_match_product_by_name(query_name: str, products: list) -> list:
     if not query_name or not query_name.strip():
         return []
-    target_tokens = [t.lower() for t in query_name.strip().split() if len(t) > 1]
+    target_tokens = [t.lower() for t in query_name.strip().split() if len(t) > 1 and t.lower() not in STOP_WORDS]
     if not target_tokens:
         return []
-    matched_products = []
+    scored_products = []
     for p in products:
         p_name_lower = p.name.lower()
-        match_all = True
-        for t_tok in target_tokens:
-            if not _fuzzy_match_token(t_tok, p_name_lower):
-                match_all = False
-                break
-        if match_all:
-            matched_products.append(p)
-    return matched_products
+        match_count = sum(1 for t_tok in target_tokens if _fuzzy_match_token(t_tok, p_name_lower))
+        if match_count > 0:
+            scored_products.append((match_count, p))
+    scored_products.sort(key=lambda x: x[0], reverse=True)
+    return [p for _, p in scored_products]
 
 
 def search_products_ai(query: str, session_id: str = ""):
@@ -354,7 +351,7 @@ def search_products_ai(query: str, session_id: str = ""):
                 except (ValueError, TypeError):
                     qty = 1
 
-                if len(matched) == 1:
+                if matched:
                     target = matched[0]
                     proposal = demo_pb2.CartActionProposal(
                         action_type="ADD_TO_CART",
@@ -381,24 +378,62 @@ def search_products_ai(query: str, session_id: str = ""):
                         ),
                         action_proposal=proposal,
                     )
-                elif len(matched) >= 2:
-                    return demo_pb2.SearchProductsAIAssistantResponse(
-                        results=matched[:3],
-                        trace=_make_refused_trace(
-                            parsed_intent=parsed_intent_json,
-                            filter_applied="ambiguous_cart_action",
-                            before=candidate_count_before,
-                            after=len(matched),
-                            input_tokens=_in_tok,
-                            output_tokens=_out_tok,
-                        ),
-                    )
                 else:
                     return _refused_search_response(
                         parsed_intent=parsed_intent_json,
+                        filter_applied="no_cart_match",
+                        before=candidate_count_before,
+                        after=0,
                         input_tokens=_in_tok,
                         output_tokens=_out_tok,
                     )
+
+            # Handle review Q&A search type ("reviews")
+            if intent.get("search_type") == "reviews":
+                span.set_attribute("app.search.outcome", "reviews_qa")
+                target_kw = intent.get("keywords") or ""
+                matched = _fuzzy_match_product_by_name(target_kw, all_products) if target_kw else []
+
+                target_product = None
+                if matched:
+                    target_product = matched[0]
+                else:
+                    for turn in reversed(history):
+                        content = turn.get("content", "")
+                        for p in all_products:
+                            if p.name.lower() in content.lower():
+                                target_product = p
+                                break
+                        if target_product:
+                            break
+
+                if not target_product and all_products:
+                    target_product = all_products[0]
+
+                if target_product:
+                    review_outcome = assistant.answer(target_product.id, query, session_id)
+                    answer_text = review_outcome.response
+                    intent["response_message"] = answer_text
+                    parsed_intent_json = json.dumps(intent, ensure_ascii=False)
+
+                    if session_id:
+                        session_store.append_turn("guest", session_id, "user", query)
+                        session_store.append_turn("guest", session_id, "assistant", answer_text)
+
+                    return demo_pb2.SearchProductsAIAssistantResponse(
+                        results=[target_product],
+                        trace=demo_pb2.SearchEvidenceTrace(
+                            parsed_intent=parsed_intent_json,
+                            filter_applied=json.dumps({"review_qa_product_id": target_product.id}, ensure_ascii=False),
+                            candidate_count_before=candidate_count_before,
+                            candidate_count_after=1,
+                            refused=False,
+                            input_tokens=_in_tok + review_outcome.input_tokens,
+                            output_tokens=_out_tok + review_outcome.output_tokens,
+                            estimated_cost_usd=_calculate_search_cost(_in_tok + review_outcome.input_tokens, _out_tok + review_outcome.output_tokens),
+                        ),
+                    )
+
             valid_ids = {p.id for p in all_products}
 
             # --- Apply filters ---
