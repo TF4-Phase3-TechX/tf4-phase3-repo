@@ -218,27 +218,66 @@ def _refused_search_response(parsed_intent="", filter_applied="", before=0, afte
 
 import difflib
 
+VIETNAMESE_KEYWORD_MAP = {
+    "đèn": "flashlight",
+    "den": "flashlight",
+    "pin": "flashlight",
+    "kính": "telescope",
+    "kinh": "telescope",
+    "thiên": "telescope",
+    "thien": "telescope",
+    "văn": "telescope",
+    "van": "telescope",
+    "màn": "filter",
+    "man": "filter",
+    "lọc": "filter",
+    "loc": "filter",
+    "nhòm": "binoculars",
+    "nhom": "binoculars",
+    "ống": "binoculars",
+    "ong": "binoculars",
+    "vệ": "cleaning",
+    "ve": "cleaning",
+    "sinh": "cleaning",
+    "lau": "cleaning",
+    "sách": "book",
+    "sach": "book",
+    "du": "travel",
+    "lịch": "travel",
+    "lich": "travel",
+    "ảnh": "imager",
+    "anh": "imager",
+    "chụp": "imager",
+    "chup": "imager",
+}
+
 def _fuzzy_match_token(keyword_token: str, product_text: str) -> bool:
     clean_text = "".join(c if c.isalnum() or c.isspace() else " " for c in product_text.lower())
     product_tokens = clean_text.split()
     kw_len = len(keyword_token)
-    if kw_len <= 4:
+    if kw_len <= 3:
         threshold = 1.0
-    elif 5 <= kw_len <= 6:
+    elif 4 <= kw_len <= 6:
         threshold = 0.60
     else:
         threshold = 0.75
     for p_token in product_tokens:
         ratio = difflib.SequenceMatcher(None, keyword_token, p_token).ratio()
-        if ratio >= threshold:
+        if ratio >= threshold or keyword_token in p_token:
             return True
     return False
 
+STOP_WORDS = {
+    "có", "những", "loại", "nào", "gì", "cho", "tôi", "em", "bạn", "nhé", "không", "muốn", "tìm", "xem", "các", "mẫu",
+    "show", "me", "all", "the", "what", "are", "is", "a", "an", "of", "for", "with", "in", "on", "can", "you", "please", "tell"
+}
+
 def _fuzzy_match_keywords(keywords_query: str, name: str, description: str) -> bool:
-    kw_tokens = keywords_query.lower().split()
-    if not kw_tokens:
+    raw_tokens = [tok for tok in keywords_query.lower().split() if tok not in STOP_WORDS]
+    if not raw_tokens:
         return True
-    for kw_tok in kw_tokens:
+    mapped_set = {VIETNAMESE_KEYWORD_MAP.get(tok, tok) for tok in raw_tokens}
+    for kw_tok in mapped_set:
         if not (_fuzzy_match_token(kw_tok, name) or _fuzzy_match_token(kw_tok, description)):
             return False
     return True
@@ -280,8 +319,11 @@ def search_products_ai(query: str, session_id: str = ""):
             return _refused_search_response()
 
         try:
-            # --- Parse intent via LLM ---
-            intent = assistant.provider.parse_search_intent(query)
+            # --- Fetch multi-turn conversation history ---
+            history = session_store.get_history("guest", session_id) if session_id else []
+
+            # --- Parse intent via LLM with multi-turn history ---
+            intent = assistant.provider.parse_search_intent(query, history=history)
             _metadata = intent.get("_metadata") or {}
             _in_tok = _metadata.get("input_tokens", 0)
             _out_tok = _metadata.get("output_tokens", 0)
@@ -290,8 +332,7 @@ def search_products_ai(query: str, session_id: str = ""):
             parsed_intent_json = json.dumps({k: v for k, v in intent.items() if k != "_metadata"}, ensure_ascii=False)
             span.set_attribute("app.search.search_type", intent.get("search_type", ""))
 
-            # Record telemetry immediately after provider call for ALL outcomes,
-            # including out_of_scope (which still consumed tokens/cost).
+            # Record telemetry immediately after provider call for ALL outcomes
             _record_search_metrics(
                 model_id=assistant.provider.model_id,
                 guardrail_version=assistant.provider.guardrail_version,
@@ -315,13 +356,34 @@ def search_products_ai(query: str, session_id: str = ""):
             all_products = list(catalog_response.products)
             candidate_count_before = len(all_products)
 
+            # Handle clarify search type (when LLM asks for multi-turn clarification)
+            if intent.get("search_type") == "clarify":
+                clarify_q = intent.get("clarify_question") or "Bạn có thể cho biết rõ hơn loại sản phẩm bạn đang tìm kiếm không?"
+                if session_id:
+                    session_store.append_turn("guest", session_id, "user", query)
+                    session_store.append_turn("guest", session_id, "assistant", clarify_q)
+                span.set_attribute("app.search.outcome", "clarify")
+                return demo_pb2.SearchProductsAIAssistantResponse(
+                    results=[],
+                    trace=demo_pb2.SearchEvidenceTrace(
+                        parsed_intent=parsed_intent_json,
+                        filter_applied=json.dumps({"clarify_question": clarify_q}, ensure_ascii=False),
+                        candidate_count_before=candidate_count_before,
+                        candidate_count_after=0,
+                        refused=True,
+                        input_tokens=_in_tok,
+                        output_tokens=_out_tok,
+                        estimated_cost_usd=_calculate_search_cost(_in_tok, _out_tok),
+                    ),
+                )
+
             # Handle cart_action search type
             if intent.get("search_type") == "cart_action":
                 span.set_attribute("app.search.outcome", "cart_action")
-                keywords = intent.get("keywords", "")
-                matched = _fuzzy_match_product_by_name(keywords, all_products)
-                raw_qty = intent.get("quantity") or 1
+                target_kw = intent.get("keywords") or intent.get("category") or query
+                matched = _fuzzy_match_product_by_name(target_kw, all_products)
                 try:
+                    raw_qty = intent.get("quantity", 1)
                     qty = max(1, min(int(raw_qty), 10))
                 except (ValueError, TypeError):
                     qty = 1
@@ -379,12 +441,21 @@ def search_products_ai(query: str, session_id: str = ""):
 
             # Category filter
             category = intent.get("category", "").strip().lower()
+            category_aliases = {"flashlight": "flashlights", "telescope": "telescopes", "binocular": "binoculars", "book": "books", "accessory": "accessories"}
+            category = category_aliases.get(category, category)
             if category:
                 filters_applied["category"] = category
-                filtered = [
-                    p for p in filtered
-                    if any(category in c.lower() for c in p.categories)
-                ]
+                if category == "telescopes":
+                    filtered = [
+                        p for p in filtered
+                        if any("telescopes" in c.lower() for c in p.categories)
+                        and not any("accessories" in c.lower() for c in p.categories)
+                    ]
+                else:
+                    filtered = [
+                        p for p in filtered
+                        if any(category in c.lower() for c in p.categories)
+                    ]
 
             # Price filter
             price_min = intent.get("price_min")
@@ -404,10 +475,29 @@ def search_products_ai(query: str, session_id: str = ""):
             keywords = intent.get("keywords", "").strip().lower()
             if keywords:
                 filters_applied["keywords"] = keywords
-                filtered = [
+                kw_filtered = [
                     p for p in filtered
                     if _fuzzy_match_keywords(keywords, p.name, p.description)
                 ]
+                # If keywords matching found items, or if category wasn't set, use kw_filtered.
+                # If category filter already matched items, keep category candidates even if keywords matched 0.
+                if kw_filtered or not category:
+                    filtered = kw_filtered
+
+            # Sorting driven by LLM intent (e.g. price_asc when user asks for cheap/rẻ)
+            sort_by = intent.get("sort_by", "").strip().lower()
+            if sort_by == "price_asc":
+                filters_applied["sort_by"] = "price_asc"
+                filtered.sort(key=lambda p: p.price_usd.units + p.price_usd.nanos / 1_000_000_000)
+            elif sort_by == "price_desc":
+                filters_applied["sort_by"] = "price_desc"
+                filtered.sort(key=lambda p: p.price_usd.units + p.price_usd.nanos / 1_000_000_000, reverse=True)
+
+            if session_id and filtered:
+                res_names = ", ".join([p.name for p in filtered[:3]])
+                session_store.append_turn("guest", session_id, "user", query)
+                session_store.append_turn("guest", session_id, "assistant", f"Found products: {res_names}")
+
 
             # Compare filter — fail closed on any ambiguity.
             # _validate_search_intent() in the adapter already requires >= 2 targets,
