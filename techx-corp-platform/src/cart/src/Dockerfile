@@ -32,7 +32,7 @@ RUN dotnet publish ./src/cart.csproj -r linux-musl-$TARGETARCH --no-restore -o /
 # https://mcr.microsoft.com/v2/dotnet/runtime-deps/tags/list
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine3.22@sha256:dede21dd11890c0f687e49408e4479e129fb9464809b9a1ce162fbad004cf987
 
-RUN apk upgrade --no-cache
+RUN apk add --no-cache --upgrade libcrypto3 libssl3 musl musl-utils zlib
 
 WORKDIR /usr/src/app/
 COPY --from=builder /cart/ ./
