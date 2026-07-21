@@ -1,0 +1,25 @@
+{{- if .Values.valkeyMigrationBridge.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey-migration-bridge
+  labels:
+    app.kubernetes.io/name: valkey-migration-bridge
+    app.kubernetes.io/component: valkey
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    ignore-check.kube-linter.io/dangling-service: "Temporary bridge for ElastiCache Valkey Online Migration; valkey-cart pod is rendered in the app manifest and verified at runtime."
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: tcp-valkey
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+  selector:
+    opentelemetry.io/name: valkey-cart
+{{- end }}

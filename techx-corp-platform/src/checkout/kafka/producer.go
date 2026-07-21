@@ -3,10 +3,13 @@
 package kafka
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/IBM/sarama"
+	"github.com/xdg-go/scram"
 )
 
 var (
@@ -28,6 +31,30 @@ func (l *saramaLogger) Print(v ...interface{}) {
 	l.logger.Info(fmt.Sprint(v...))
 }
 
+type scramClient struct {
+	hashGenerator scram.HashGeneratorFcn
+	*scram.Client
+	*scram.ClientConversation
+}
+
+func (x *scramClient) Begin(userName, password, authzID string) error {
+	client, err := x.hashGenerator.NewClient(userName, password, authzID)
+	if err != nil {
+		return err
+	}
+	x.Client = client
+	x.ClientConversation = client.NewConversation()
+	return nil
+}
+
+func (x *scramClient) Step(challenge string) (string, error) {
+	return x.ClientConversation.Step(challenge)
+}
+
+func (x *scramClient) Done() bool {
+	return x.ClientConversation.Done()
+}
+
 func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.AsyncProducer, error) {
 	// Set the logger for sarama to use.
 	sarama.Logger = &saramaLogger{logger: logger}
@@ -44,6 +71,9 @@ func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.AsyncPro
 
 	// So we can know the partition and offset of messages.
 	saramaConfig.Producer.Return.Successes = true
+	if err := applySecurityConfig(saramaConfig); err != nil {
+		return nil, err
+	}
 
 	producer, err := sarama.NewAsyncProducer(brokers, saramaConfig)
 	if err != nil {
@@ -58,4 +88,50 @@ func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.AsyncPro
 		}
 	}()
 	return producer, nil
+}
+
+func applySecurityConfig(config *sarama.Config) error {
+	securityProtocol := os.Getenv("KAFKA_SECURITY_PROTOCOL")
+	saslMechanism := os.Getenv("KAFKA_SASL_MECHANISM")
+	username := os.Getenv("KAFKA_USERNAME")
+	password := os.Getenv("KAFKA_PASSWORD")
+
+	if securityProtocol == "" && saslMechanism == "" && username == "" && password == "" {
+		return nil
+	}
+
+	if username == "" || password == "" {
+		return fmt.Errorf("KAFKA_USERNAME and KAFKA_PASSWORD must be set when Kafka SASL is enabled")
+	}
+
+	switch securityProtocol {
+	case "", "SASL_SSL":
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config = &tls.Config{MinVersion: tls.VersionTLS12}
+	case "SASL_PLAINTEXT":
+	default:
+		return fmt.Errorf("unsupported KAFKA_SECURITY_PROTOCOL value: %s", securityProtocol)
+	}
+
+	config.Net.SASL.Enable = true
+	config.Net.SASL.User = username
+	config.Net.SASL.Password = password
+
+	switch saslMechanism {
+	case "", "SCRAM-SHA-512":
+		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
+		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {
+			return &scramClient{hashGenerator: scram.SHA512}
+		}
+	case "SCRAM-SHA-256":
+		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
+		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {
+			return &scramClient{hashGenerator: scram.SHA256}
+		}
+	case "PLAIN":
+		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+	default:
+		return fmt.Errorf("unsupported KAFKA_SASL_MECHANISM value: %s", saslMechanism)
+	}
+	return nil
 }

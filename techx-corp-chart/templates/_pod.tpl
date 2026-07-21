@@ -60,6 +60,8 @@ All flags default to false — no change to existing behavior until explicitly f
 {{-   $valkeySecret := ($md.valkey).secretName | default "elasticache-valkey-secret" }}
 {{-   if eq .name "cart" }}
 {{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "VALKEY_ADDR" "secretName" $valkeySecret "secretKey" "valkey-address") | mustFromJson }}
+{{-     $allEnvs = append $allEnvs (dict "name" "VALKEY_TLS" "valueFrom" (dict "secretKeyRef" (dict "name" $valkeySecret "key" "tls_enabled"))) }}
+{{-     $allEnvs = append $allEnvs (dict "name" "VALKEY_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" $valkeySecret "key" "password"))) }}
 {{-   end }}
 {{- end }}
 
@@ -67,6 +69,10 @@ All flags default to false — no change to existing behavior until explicitly f
 {{-   $kafkaSecret := ($md.kafka).secretName | default "msk-kafka-secret" }}
 {{-   if has .name (list "accounting" "checkout" "fraud-detection") }}
 {{-     $allEnvs = include "techx-corp.replaceEnvWithSecretRef" (dict "envList" $allEnvs "envName" "KAFKA_ADDR" "secretName" $kafkaSecret "secretKey" "kafka-address") | mustFromJson }}
+{{-     $allEnvs = append $allEnvs (dict "name" "KAFKA_SECURITY_PROTOCOL" "valueFrom" (dict "secretKeyRef" (dict "name" $kafkaSecret "key" "security-protocol"))) }}
+{{-     $allEnvs = append $allEnvs (dict "name" "KAFKA_SASL_MECHANISM" "valueFrom" (dict "secretKeyRef" (dict "name" $kafkaSecret "key" "sasl-mechanism"))) }}
+{{-     $allEnvs = append $allEnvs (dict "name" "KAFKA_USERNAME" "valueFrom" (dict "secretKeyRef" (dict "name" $kafkaSecret "key" "username"))) }}
+{{-     $allEnvs = append $allEnvs (dict "name" "KAFKA_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" $kafkaSecret "key" "password"))) }}
 {{-   end }}
 {{- end }}
 
