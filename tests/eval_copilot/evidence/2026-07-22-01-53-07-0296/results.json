@@ -1,0 +1,364 @@
+{
+  "git_sha": "12d21e20a30b405c791bc19e3d09d9531ce69b83",
+  "timestamp_utc": "2026-07-21T18:53:07.029601+00:00",
+  "runtime_env": "local",
+  "model_id": "us.amazon.nova-2-lite-v1:0",
+  "database_sha256": "7f7259b5e2b95e2c8c534fdc53c56a4ec7e9ce26e99a6b37adddaf9747de77d1",
+  "dataset_hash": "600bb09fc4cac356ecd62d80c2d66d6422d3b94d20bb962c131929dd5abfc868",
+  "dataset_sha256": "600bb09fc4cac356ecd62d80c2d66d6422d3b94d20bb962c131929dd5abfc868",
+  "config_source": "env_override",
+  "summary": {
+    "total_cases": 12,
+    "passed_cases": 10,
+    "failed_cases": 2,
+    "pass_rate": 0.8333333333333334,
+    "total_input_tokens": 17460,
+    "total_output_tokens": 685,
+    "total_estimated_cost_usd": 0.006950499999999999
+  },
+  "criteria_verification": {
+    "record_real_token_cost_successful_searches": true,
+    "record_provider_usage_out_of_scope": true,
+    "reject_unknown_application_schema_fields": true,
+    "normalize_and_bound_input": true,
+    "trustworthy_deployed_model_metadata": true
+  },
+  "results": [
+    {
+      "test_id": "TC-01",
+      "group": "vietnamese_nlp",
+      "query": "có những loại kính thiên văn nào?",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "1YMWWN1N4O",
+        "66VCHSJNUP",
+        "OLJCESPC7Z"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2250,
+      "output_tokens": 92,
+      "estimated_cost_usd": 0.000905,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 1.0,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": []
+      }
+    },
+    {
+      "test_id": "TC-02",
+      "group": "vietnamese_nlp",
+      "query": "đèn pin",
+      "expected_product_ids": [
+        "LS4PSXUNUM"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "LS4PSXUNUM"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2130,
+      "output_tokens": 74,
+      "estimated_cost_usd": 0.000824,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 1.0,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": []
+      }
+    },
+    {
+      "test_id": "TC-03",
+      "group": "vietnamese_nlp",
+      "query": "có kính thiên văn nào rẻ rẻ không?",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2256,
+      "output_tokens": 122,
+      "estimated_cost_usd": 0.0009818,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 1.0,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": []
+      }
+    },
+    {
+      "test_id": "TC-04",
+      "group": "vietnamese_nlp",
+      "query": "màn lọc kính thiên văn",
+      "expected_product_ids": [
+        "6E92ZMYYFZ"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "0PUK6V6EV0",
+        "6E92ZMYYFZ"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2173,
+      "output_tokens": 79,
+      "estimated_cost_usd": 0.0008493999999999999,
+      "passed": true,
+      "reason": "pass_with_extra_results",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 0.5,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": [
+          "0PUK6V6EV0"
+        ]
+      }
+    },
+    {
+      "test_id": "TC-05",
+      "group": "vietnamese_nlp",
+      "query": "chòa bạn",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "actual_product_ids": [],
+      "actual_refused": true,
+      "input_tokens": 2039,
+      "output_tokens": 53,
+      "estimated_cost_usd": 0.0007442,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "refuse_out_of_scope"
+      }
+    },
+    {
+      "test_id": "TC-06",
+      "group": "vietnamese_nlp",
+      "query": "tôi muốn mua kính thiên văn rẻ nhất",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [],
+      "actual_refused": true,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "passed": false,
+      "reason": "unexpected_refusal",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products"
+      }
+    },
+    {
+      "test_id": "TC-07",
+      "group": "vietnamese_nlp",
+      "query": "hi",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "actual_product_ids": [],
+      "actual_refused": true,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "refuse_out_of_scope"
+      }
+    },
+    {
+      "test_id": "TC-08",
+      "group": "vietnamese_nlp",
+      "query": "có truyện tranh không?",
+      "expected_product_ids": [
+        "HQTGWGPNH4"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "HQTGWGPNH4"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2148,
+      "output_tokens": 87,
+      "estimated_cost_usd": 0.0008619,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 1.0,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": []
+      }
+    },
+    {
+      "test_id": "TC-09",
+      "group": "vietnamese_nlp",
+      "query": "tôi muốn mua 1 bộ one piece",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "actual_product_ids": [],
+      "actual_refused": true,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "refuse_out_of_scope"
+      }
+    },
+    {
+      "test_id": "TC-10",
+      "group": "vietnamese_nlp_multiturn",
+      "query": "thêm cái đắt nhất vào giỏ hàng",
+      "expected_product_ids": [
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "66VCHSJNUP"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2230,
+      "output_tokens": 83,
+      "estimated_cost_usd": 0.0008765,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 1.0,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": []
+      }
+    },
+    {
+      "test_id": "TC-11",
+      "group": "vietnamese_nlp_multiturn",
+      "query": "đánh giá như thế nào?",
+      "expected_product_ids": [
+        "2ZYFJ3GM2N"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [],
+      "actual_refused": true,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "passed": false,
+      "reason": "unexpected_refusal",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products"
+      }
+    },
+    {
+      "test_id": "TC-12",
+      "group": "vietnamese_nlp_multiturn",
+      "query": "cái nào rẻ nhất",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "actual_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "actual_refused": false,
+      "input_tokens": 2234,
+      "output_tokens": 95,
+      "estimated_cost_usd": 0.0009076999999999999,
+      "passed": true,
+      "reason": "pass",
+      "details": {
+        "grounding_result": {
+          "grounded": true,
+          "invalid_ids": []
+        },
+        "expected_behavior": "return_products",
+        "recall": 1.0,
+        "precision": 1.0,
+        "precision_threshold": 0.5,
+        "missing_ids": [],
+        "extra_ids": []
+      }
+    }
+  ]
+}

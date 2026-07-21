@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -552,16 +553,34 @@ def main() -> None:
         output_tokens = 0
         estimated_cost_usd = 0.0
 
-        try:
-            session_id = f"eval_session_{tc['test_id']}"
-            for prev_q in tc.get("history_queries", []):
-                stub.SearchProductsAIAssistant(
-                    demo_pb2.SearchProductsAIAssistantRequest(query=prev_q, session_id=session_id),
-                    timeout=15.0,
-                )
+        time.sleep(1.5)
+        session_id = f"eval_session_{tc['test_id']}_{uuid.uuid4().hex[:8]}"
+        for prev_q in tc.get("history_queries", []):
+            for attempt in range(2):
+                try:
+                    stub.SearchProductsAIAssistant(
+                        demo_pb2.SearchProductsAIAssistantRequest(query=prev_q, session_id=session_id),
+                        timeout=30.0,
+                    )
+                    break
+                except Exception as exc:
+                    if attempt == 1:
+                        print(f"Warning: History query '{prev_q}' failed: {exc}", file=sys.stderr)
+                    time.sleep(1.0)
 
-            req = demo_pb2.SearchProductsAIAssistantRequest(query=query, session_id=session_id)
-            res = stub.SearchProductsAIAssistant(req, timeout=15.0)
+        time.sleep(1.0)
+        try:
+            res = None
+            for attempt in range(3):
+                try:
+                    req = demo_pb2.SearchProductsAIAssistantRequest(query=query, session_id=session_id)
+                    res = stub.SearchProductsAIAssistant(req, timeout=30.0)
+                    break
+                except Exception as exc:
+                    if attempt == 2:
+                        print(f"Warning: Main query '{query}' failed after 3 attempts: {exc}", file=sys.stderr)
+                        raise
+                    time.sleep(2.0)
 
             actual_product_ids = [p.id for p in res.results]
             if not actual_product_ids and hasattr(res, "action_proposal") and res.action_proposal.product_id:

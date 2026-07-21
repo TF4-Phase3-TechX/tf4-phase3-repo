@@ -588,6 +588,11 @@ def search_products_ai(query: str, session_id: str = ""):
                 },
             )
 
+            if session_id:
+                p_names = ", ".join(p.name for p in filtered[:3]) if filtered else "không có sản phẩm"
+                session_store.append_turn("guest", session_id, "user", query)
+                session_store.append_turn("guest", session_id, "assistant", f"Dưới đây là các sản phẩm phù hợp: {p_names}")
+
             return demo_pb2.SearchProductsAIAssistantResponse(
                 results=filtered,
                 trace=trace_msg,

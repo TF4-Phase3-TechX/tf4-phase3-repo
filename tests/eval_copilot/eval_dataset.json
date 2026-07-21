@@ -124,18 +124,16 @@
       ],
       "query": "cái nào rẻ nhất",
       "expected_product_ids": [
-        "OLJCESPC7Z",
-        "1YMWWN1N4O",
-        "66VCHSJNUP"
+        "1YMWWN1N4O"
       ],
       "expected_behavior": "return_products",
-      "description": "Vietnamese multi-turn question sorting telescopes by cheapest based on prior conversation turn"
+      "description": "Vietnamese multi-turn question identifying cheapest telescope based on prior conversation turn"
     }
   ],
   "_meta": {
-    "generated_at": "2026-07-22T01:43:00.000000+00:00",
+    "generated_at": "2026-07-22T01:56:20.000000+00:00",
     "source_file": "init.sql",
     "product_count": 10,
-    "dataset_sha256": "12d56399400cab35cfbbddf26b654c13c02f95763948f2769a6db350332465df"
+    "dataset_sha256": "a757e6a6034900643db6f80cb65d201e32062b5c1108a1a2498ef51980286365"
   }
 }

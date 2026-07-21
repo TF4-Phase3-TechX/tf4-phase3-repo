@@ -8,30 +8,39 @@
 
 | Metric | Latest Run Value |
 | :--- | :--- |
-| **Timestamp (UTC)** | `2026-07-21T18:37:22.508648+00:00` |
-| **Git SHA** | `c1e9a317f2231bb99019f93fb5831deefe7771dd` |
+| **Timestamp (UTC)** | `2026-07-21T18:57:20.212821+00:00` |
+| **Git SHA** | `12d21e20a30b405c791bc19e3d09d9531ce69b83` |
 | **Database SHA-256** | `7f7259b5e2b95e2c8c534fdc53c56a4ec7e9ce26e99a6b37adddaf9747de77d1` |
-| **Dataset SHA-256** | `c5fa6e405b34f402ec9b80cd44b68c78ab2f516ecc885196d43a0051be6cf4ee` |
+| **Dataset SHA-256** | `a757e6a6034900643db6f80cb65d201e32062b5c1108a1a2498ef51980286365` |
 | **Runtime Environment** | `local` |
 | **Model ID** | `us.amazon.nova-2-lite-v1:0` |
 | **Config Source** | `env_override` |
-| **Total Cases** | 11 |
-| **Passed Cases** | 11 |
+| **Total Cases** | 12 |
+| **Passed Cases** | 12 |
 | **Failed Cases** | 0 |
 | **Pass Rate** | **100.0%** |
 | **Avg Recall (`return_products`)** | 1.000 |
-| **Avg Precision (`return_products`)** | 0.938 |
+| **Avg Precision (`return_products`)** | 0.944 |
 | **Precision Threshold** | 0.5 |
-| **Total Input Tokens** | `23,916` |
-| **Total Output Tokens** | `1,298` |
-| **Total Estimated Cost (USD)** | `$0.010420` |
+| **Total Input Tokens** | `26,148` |
+| **Total Output Tokens** | `1,439` |
+| **Total Estimated Cost (USD)** | `$0.011442` |
 
 ## Historical Run Records
 
-Found 23 execution log file(s) on disk.
+Found 32 execution log file(s) on disk.
 
 | Evidence File | Timestamp (UTC) | Git SHA | Environment | Model ID | Config Source | Passed/Total | Pass Rate | Input Tokens | Output Tokens | Est. Cost ($) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `2026-07-22-01-57-20-2128/results.json` | 2026-07-21T18:57:20.212821+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 12/12 | 100.0% | 26148 | 1439 | `$0.011442` |
+| `2026-07-22-01-56-18-3609/results.json` | 2026-07-21T18:56:18.360917+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 11/12 | 91.7% | 26148 | 1460 | `$0.011494` |
+| `2026-07-22-01-55-17-0100/results.json` | 2026-07-21T18:55:17.010049+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 11/12 | 91.7% | 24024 | 1344 | `$0.010567` |
+| `2026-07-22-01-54-14-9539/results.json` | 2026-07-21T18:54:14.953913+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 9/12 | 75.0% | 14296 | 656 | `$0.005929` |
+| `2026-07-22-01-53-37-1702/results.json` | 2026-07-21T18:53:37.170163+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 9/12 | 75.0% | 16333 | 667 | `$0.006567` |
+| `2026-07-22-01-53-07-0296/results.json` | 2026-07-21T18:53:07.029601+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 10/12 | 83.3% | 17460 | 685 | `$0.006950` |
+| `2026-07-22-01-52-34-2537/results.json` | 2026-07-21T18:52:34.253744+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 10/12 | 83.3% | 21601 | 954 | `$0.008865` |
+| `2026-07-22-01-51-58-5694/results.json` | 2026-07-21T18:51:58.569458+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 11/12 | 91.7% | 24773 | 1280 | `$0.010632` |
+| `2026-07-22-01-51-26-8074/results.json` | 2026-07-21T18:51:26.807448+00:00 | `12d21e20` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 11/12 | 91.7% | 26148 | 1541 | `$0.011697` |
 | `2026-07-22-01-37-22-5086/results.json` | 2026-07-21T18:37:22.508648+00:00 | `c1e9a317` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 11/11 | 100.0% | 23916 | 1298 | `$0.010420` |
 | `2026-07-22-01-36-46-5900/results.json` | 2026-07-21T18:36:46.589920+00:00 | `c1e9a317` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 10/11 | 90.9% | 23405 | 1374 | `$0.010456` |
 | `2026-07-22-01-35-28-6736/results.json` | 2026-07-21T18:35:28.673604+00:00 | `c1e9a317` | local | `us.amazon.nova-2-lite-v1:0` | `env_override` | 9/11 | 81.8% | 23405 | 1341 | `$0.010374` |
@@ -60,17 +69,18 @@ Found 23 execution log file(s) on disk.
 
 | Test ID | Group | Query | Expected IDs | Actual IDs | Refused | Recall | Precision | Tokens (In/Out) | Est. Cost ($) | Result | Reason |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `TC-01` | `vietnamese_nlp` | *"có những loại kính thiên văn nào?"* | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | 1YMWWN1N4O, 66VCHSJNUP, OLJCESPC7Z | `False` | 1.00 | 1.00 | 2031/110 | `$0.000884` | **✅ PASS** | `pass` |
-| `TC-02` | `vietnamese_nlp` | *"đèn pin"* | LS4PSXUNUM | LS4PSXUNUM | `False` | 1.00 | 1.00 | 2003/94 | `$0.000836` | **✅ PASS** | `pass` |
-| `TC-03` | `vietnamese_nlp` | *"có kính thiên văn nào rẻ rẻ không?"* | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | `False` | 1.00 | 1.00 | 2033/106 | `$0.000875` | **✅ PASS** | `pass` |
-| `TC-04` | `vietnamese_nlp` | *"màn lọc kính thiên văn"* | 6E92ZMYYFZ | 0PUK6V6EV0, 6E92ZMYYFZ | `False` | 1.00 | 0.50 | 2014/105 | `$0.000867` | **✅ PASS** | `pass_with_extra_results` |
-| `TC-05` | `vietnamese_nlp` | *"chòa bạn"* | [] | [] | `True` | — | — | 1989/53 | `$0.000729` | **✅ PASS** | `pass` |
-| `TC-06` | `vietnamese_nlp` | *"tôi muốn mua kính thiên văn rẻ nhất"* | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | `False` | 1.00 | 1.00 | 2033/104 | `$0.000870` | **✅ PASS** | `pass` |
-| `TC-07` | `vietnamese_nlp` | *"hi"* | [] | [] | `True` | — | — | 1987/53 | `$0.000729` | **✅ PASS** | `pass` |
-| `TC-08` | `vietnamese_nlp` | *"có truyện tranh không?"* | HQTGWGPNH4 | HQTGWGPNH4 | `False` | 1.00 | 1.00 | 2009/78 | `$0.000798` | **✅ PASS** | `pass` |
-| `TC-09` | `vietnamese_nlp` | *"tôi muốn mua 1 bộ one piece"* | [] | [] | `True` | — | — | 2054/84 | `$0.000826` | **✅ PASS** | `pass` |
-| `TC-10` | `vietnamese_nlp` | *"thêm cái đắt nhất vào giỏ hàng"* | 66VCHSJNUP | 66VCHSJNUP | `False` | 1.00 | 1.00 | 2099/106 | `$0.000895` | **✅ PASS** | `pass` |
-| `TC-11` | `vietnamese_nlp` | *"đánh giá như thế nào?"* | 2ZYFJ3GM2N | 2ZYFJ3GM2N | `False` | 1.00 | 1.00 | 3664/405 | `$0.002112` | **✅ PASS** | `pass` |
+| `TC-01` | `vietnamese_nlp` | *"có những loại kính thiên văn nào?"* | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | 1YMWWN1N4O, 66VCHSJNUP, OLJCESPC7Z | `False` | 1.00 | 1.00 | 2044/79 | `$0.000811` | **✅ PASS** | `pass` |
+| `TC-02` | `vietnamese_nlp` | *"đèn pin"* | LS4PSXUNUM | LS4PSXUNUM | `False` | 1.00 | 1.00 | 2039/84 | `$0.000822` | **✅ PASS** | `pass` |
+| `TC-03` | `vietnamese_nlp` | *"có kính thiên văn nào rẻ rẻ không?"* | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | `False` | 1.00 | 1.00 | 2045/106 | `$0.000879` | **✅ PASS** | `pass` |
+| `TC-04` | `vietnamese_nlp` | *"màn lọc kính thiên văn"* | 6E92ZMYYFZ | 0PUK6V6EV0, 6E92ZMYYFZ | `False` | 1.00 | 0.50 | 2042/92 | `$0.000843` | **✅ PASS** | `pass_with_extra_results` |
+| `TC-05` | `vietnamese_nlp` | *"chòa bạn"* | [] | [] | `True` | — | — | 2039/53 | `$0.000744` | **✅ PASS** | `pass` |
+| `TC-06` | `vietnamese_nlp` | *"tôi muốn mua kính thiên văn rẻ nhất"* | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | OLJCESPC7Z, 1YMWWN1N4O, 66VCHSJNUP | `False` | 1.00 | 1.00 | 2045/91 | `$0.000841` | **✅ PASS** | `pass` |
+| `TC-07` | `vietnamese_nlp` | *"hi"* | [] | [] | `True` | — | — | 2037/53 | `$0.000744` | **✅ PASS** | `pass` |
+| `TC-08` | `vietnamese_nlp` | *"có truyện tranh không?"* | HQTGWGPNH4 | HQTGWGPNH4 | `False` | 1.00 | 1.00 | 2042/91 | `$0.000840` | **✅ PASS** | `pass` |
+| `TC-09` | `vietnamese_nlp` | *"tôi muốn mua 1 bộ one piece"* | [] | [] | `True` | — | — | 2045/82 | `$0.000819` | **✅ PASS** | `pass` |
+| `TC-10` | `vietnamese_nlp_multiturn` | *"thêm cái đắt nhất vào giỏ hàng"* | 66VCHSJNUP | 66VCHSJNUP | `False` | 1.00 | 1.00 | 2125/87 | `$0.000855` | **✅ PASS** | `pass` |
+| `TC-11` | `vietnamese_nlp_multiturn` | *"đánh giá như thế nào?"* | 2ZYFJ3GM2N | 2ZYFJ3GM2N | `False` | 1.00 | 1.00 | 3521/506 | `$0.002321` | **✅ PASS** | `pass` |
+| `TC-12` | `vietnamese_nlp_multiturn` | *"cái nào rẻ nhất"* | 1YMWWN1N4O | 1YMWWN1N4O | `False` | 1.00 | 1.00 | 2124/115 | `$0.000925` | **✅ PASS** | `pass` |
 
 ## Known Gaps & Observations
 
