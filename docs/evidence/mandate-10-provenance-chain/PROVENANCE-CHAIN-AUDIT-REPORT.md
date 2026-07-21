@@ -1,117 +1,117 @@
-# MANDATE-10 — Provenance Chain Audit Evidence
+# MANDATE-10 — Bằng chứng kiểm toán chuỗi Provenance
 
-**Owner:** CDO07 Audit
-**Scope:** Provenance Chain only
-**Evidence collection:** 2026-07-21
-**Source branch:** `main`
+**Người phụ trách:** Nguyễn Phú Triệu (CDO-07 Auditability)
+**Phạm vi:** Chỉ kiểm tra chuỗi Provenance
+**Thời điểm thu thập bằng chứng:** 2026-07-21
+**Nhánh nguồn:** `main`
 
-## 1. Audit scope
+## 1. Phạm vi kiểm toán
 
-This document records an independent, read-only verification of the image
-provenance chain required by MANDATE-10:
+Tài liệu này ghi nhận kết quả kiểm tra độc lập, chỉ đọc đối với chuỗi
+Provenance của image theo yêu cầu MANDATE-10:
 
 ```text
-Running Pod
-  -> runtime Image Digest
-  -> ECR image metadata
-  -> Cosign signature
-  -> in-toto provenance/SBOM attestation
-  -> GitHub Actions workflow and commit
+Pod đang chạy
+  -> Image Digest thực tế
+  -> Metadata image trong ECR
+  -> Chữ ký Cosign
+  -> Attestation Provenance/SBOM theo in-toto
+  -> Workflow và commit của GitHub Actions
 ```
 
-This PR does not change GitHub Actions, Terraform, ECR, Kubernetes admission,
-branch protection, or production workloads. Human approval evidence and branch
-protection review are intentionally reserved for the separate `H2` workstream.
+PR này không thay đổi GitHub Actions, Terraform, ECR, cơ chế admission của
+Kubernetes, branch protection hoặc workload production. Bằng chứng phê duyệt
+của con người và kiểm tra branch protection được dành riêng cho luồng công
+việc `H2`.
 
-## 2. Live verification result
+## 2. Kết quả kiểm tra trực tiếp
 
-The following values were collected directly from EKS, ECR, Cosign, and GitHub
-Actions. The JSON/text files are retained in the local evidence directory
+Các giá trị dưới đây được thu thập trực tiếp từ EKS, ECR, Cosign và GitHub
+Actions. Các file JSON/text được lưu giữ trong thư mục bằng chứng cục bộ
 `D:\evidence\M10`.
 
-| Link | Observed value | Result |
+| Liên kết cần kiểm tra | Giá trị quan sát được | Kết quả |
 |---|---|---|
 | Pod | `techx-tf4/currency-858bcdfbc6-pq4rb` | PASS |
-| Runtime image | `techx-corp:a930936-currency` | PASS |
-| Runtime digest | `sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c` | PASS |
-| ECR digest equality | Pod digest equals ECR digest | PASS |
-| Signature | Cosign exit code `0`; claims, certificate, and transparency log verified | PASS |
+| Image thực tế | `techx-corp:a930936-currency` | PASS |
+| Digest thực tế | `sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c` | PASS |
+| So khớp digest ECR | Digest của Pod bằng digest trong ECR | PASS |
+| Chữ ký | Cosign exit code `0`; claims, certificate và transparency log đã được xác minh | PASS |
 | OIDC issuer | `https://token.actions.githubusercontent.com` | PASS |
-| Signing workflow | `build-and-push`, `refs/heads/main` | PASS |
-| Provenance commit | `a93093665767a27c40b71e6597b10c1ce20dd702` | PASS |
-| GitHub Actions run | `29811592226`, conclusion `success` | PASS |
+| Workflow ký | `build-and-push`, `refs/heads/main` | PASS |
+| Commit Provenance | `a93093665767a27c40b71e6597b10c1ce20dd702` | PASS |
+| Lần chạy GitHub Actions | `29811592226`, kết luận `success` | PASS |
 | SBOM | CycloneDX (`cyclonedx-sbom`) | PASS |
-| Vulnerability result | `0` findings in the captured attestation/scan summary | PASS |
+| Kết quả lỗ hổng | `0` phát hiện trong bản tóm tắt attestation/scan đã thu thập | PASS |
 
-## 3. Evidence index
+## 3. Danh mục bằng chứng
 
-### Provenance Chain — attach to the Provenance sub-task
+### Chuỗi Provenance — đính kèm vào sub-task Provenance
 
-| Evidence | Purpose |
+| Bằng chứng | Mục đích |
 |---|---|
-| `images/P1-01-cluster-context.png` | Cluster context: `techx-tf4-cluster`, ACTIVE, Kubernetes 1.34 |
-| `images/P1-02-pod-runtime-image-digest.png` | Obtains the image and immutable digest from the running Pod |
-| `images/P1-03-ecr-digest-match.png` | Confirms the same digest and tag exist in ECR |
-| `images/P1-04-cosign-signature-verification.png` | Shows Cosign signature verification PASS |
-| `images/P1-05-provenance-attestation-sbom-retake-required.png` | Retake required; previous copy counted the wrong SBOM property |
-| `PROVENANCE-CHAIN-RECORD.json` | Consolidated runtime, registry, signature, attestation, scan, and pipeline record |
+| `images/P1-01-cluster-context.png` | Ghi nhận ngữ cảnh cluster: `techx-tf4-cluster`, ACTIVE, Kubernetes 1.34 |
+| `images/P1-02-pod-runtime-image-digest.png` | Lấy image và digest bất biến từ Pod đang chạy |
+| `images/P1-03-ecr-digest-match.png` | Xác nhận digest và tag tương ứng tồn tại trong ECR |
+| `images/P1-04-cosign-signature-verification.png` | Hiển thị kết quả xác minh chữ ký Cosign PASS |
+| `images/P1-05-provenance-attestation-sbom-retake-required.png` | Cần chụp lại; bản hiện tại đếm nhầm thuộc tính SBOM |
+| `PROVENANCE-CHAIN-RECORD.json` | Bản ghi hợp nhất về runtime, registry, chữ ký, attestation, scan và pipeline |
 
-The raw `06-cosign-attestation.txt` remains outside the repository as a backup
-only. It is too large for a useful Jira screenshot; the consolidated JSON
-record is the review copy.
+File raw `06-cosign-attestation.txt` chỉ được giữ bên ngoài repository làm
+bản sao lưu. File này quá dài để dùng làm ảnh Jira; bản JSON hợp nhất là bản
+dùng cho việc review.
 
-## 4. Auditor conclusion
+## 4. Kết luận kiểm toán
 
-For the captured `currency` workload, the runtime image digest is traceable to
-the ECR image, a valid GitHub Actions OIDC signature, a signed in-toto
-attestation, the `build-and-push` workflow, the exact commit SHA, the Actions
-run, and the CycloneDX SBOM.
+Đối với workload `currency` được kiểm tra, digest của image đang chạy có thể
+truy vết đến image trong ECR, chữ ký OIDC hợp lệ của GitHub Actions, attestation
+in-toto đã ký, workflow `build-and-push`, commit SHA chính xác, lần chạy
+Actions và SBOM CycloneDX.
 
-The observed chain is:
+Chuỗi quan sát được:
 
 ```text
-currency Pod
+Pod currency
   -> sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c
   -> build-and-push / run 29811592226
   -> commit a93093665767a27c40b71e6597b10c1ce20dd702
-  -> signed provenance + CycloneDX SBOM
+  -> provenance đã ký + SBOM CycloneDX
 ```
 
-## 5. Finding: PR number is not a direct attestation field
+## 5. Phát hiện: PR ID không phải trường trực tiếp trong attestation
 
-The captured delivery predicate contains repository, commit, workflow, run ID,
-service name, image digest, and SBOM data. A `pull_request_number` field was
-not observed in the attestation.
+Delivery predicate đã thu thập có repository, commit, workflow, run ID, tên
+service, image digest và dữ liệu SBOM. Không quan sát thấy trường
+`pull_request_number` trong attestation.
 
-Therefore:
+Vì vậy:
 
-1. The digest-to-commit link is cryptographically evidenced in this PR.
-2. A PR number can be correlated from the commit through the GitHub API.
-3. Direct inclusion of the PR number in the signed predicate would require a
-   change by the pipeline owner; Audit does not make that production change.
-4. The commit-to-PR correlation, approver identity, and branch-protection
-   result belong to the separate Human Approval (`H2`) workstream.
+1. Liên kết digest với commit được chứng minh bằng mật mã trong PR này.
+2. PR ID có thể được đối chiếu từ commit thông qua GitHub API.
+3. Việc đưa trực tiếp PR ID vào signed predicate cần pipeline owner thay đổi
+   pipeline; Audit không thực hiện thay đổi production đó.
+4. Đối chiếu commit với PR, danh tính người phê duyệt và kết quả branch
+   protection thuộc luồng Human Approval (`H2`) riêng.
 
-## 6. CDO08 implementation dependency reviewed
+## 6. Đã rà soát phần phụ thuộc triển khai của CDO08
 
-CDO08 already implemented the underlying delivery controls. The relevant work
-was reviewed for audit context and is not modified by this PR:
+CDO08 đã triển khai các kiểm soát delivery nền tảng. Các thay đổi liên quan
+được rà soát cho mục đích kiểm toán và không bị sửa trong PR này:
 
-- `origin/cdo08/sec20-fix-combined-sbom-provenance-attestation` — combines the
-  signed delivery predicate with the CycloneDX SBOM and verifies the digest.
-- `origin/cdo08/sec20-fix-sbom-attestation-verify` — hardens attestation
-  verification and retry handling.
-- `origin/cdo08/sec20-fix-ecr-cosign-mutability-workflow` — handles the ECR
-  Cosign artifact-tag behavior in the delivery workflow.
-- `origin/CDO08-SEC-20-provenance-evidence` — implementation team's SEC-20
-  evidence and mentor guide.
+- `origin/cdo08/sec20-fix-combined-sbom-provenance-attestation` — kết hợp
+  delivery predicate đã ký với SBOM CycloneDX và xác minh digest.
+- `origin/cdo08/sec20-fix-sbom-attestation-verify` — tăng cường xác minh
+  attestation và xử lý retry.
+- `origin/cdo08/sec20-fix-ecr-cosign-mutability-workflow` — xử lý hành vi
+  artifact tag của ECR Cosign trong delivery workflow.
+- `origin/CDO08-SEC-20-provenance-evidence` — bằng chứng SEC-20 và tài liệu
+  hướng dẫn của team triển khai.
 
-The Audit contribution is independent verification and evidence organization,
-not reimplementation of those controls.
+Đóng góp của Audit là xác minh độc lập và tổ chức bằng chứng, không triển khai
+lại các kiểm soát delivery.
 
-## 7. Jira attachment guidance
+## 7. Hướng dẫn đính kèm lên Jira
 
-Attach the four final `P1-*` screenshots and the consolidated JSON record to
-the Provenance Chain sub-task after P1-05 is recaptured. Do not attach the
-`H2-*` screenshots to this PR; they are reserved for the separate Human
-Approval branch.
+Sau khi chụp lại P1-05, đính kèm bốn ảnh P1-* đạt yêu cầu và bản ghi JSON hợp
+nhất vào sub-task Provenance Chain. Không đính kèm ảnh `H2-*` vào PR này; các
+ảnh đó dành cho branch Human Approval riêng.
