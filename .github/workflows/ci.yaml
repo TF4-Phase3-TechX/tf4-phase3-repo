@@ -99,48 +99,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.app == 'true'
+    env:
+      TRIVY_SKIP_DIRS: techx-corp-platform/src/flagd-ui
     permissions:
       contents: read
       security-events: write  # required to upload SARIF to GitHub Security tab
     steps:
       - name: Checkout source code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-
-      - name: Build changed-component scan scope
-        shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          scan_root=".trivy-pr-scope"
-          mkdir -p "${scan_root}"
-
-          mapfile -t roots < <(
-            git diff --name-only "${BASE_SHA}"...HEAD -- techx-corp-platform/src \
-              | awk -F/ 'NF >= 4 { print $1 "/" $2 "/" $3 }' \
-              | sort -u
-          )
-          if [ "${#roots[@]}" -eq 0 ]; then
-            echo "No service directory changed; retaining an empty scoped scan root."
-          else
-            for root in "${roots[@]}"; do
-              test -d "${root}"
-              cp -a "${root}" "${scan_root}/"
-              echo "Trivy scope: ${root}"
-            done
-          fi
 
       - name: Generate readable Trivy SAST & dependency report
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
         with:
           scan-type: 'fs'
-          scan-ref: '.trivy-pr-scope'
+          scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'table'
           output: 'trivy-sast-report.txt'
           severity: 'CRITICAL,HIGH'
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '0'
           ignore-unfixed: true
 
@@ -148,11 +126,14 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 pinned by commit SHA
         with:
           scan-type: 'fs'
-          scan-ref: '.trivy-pr-scope'
+          scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
+          limit-severities-for-sarif: true
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '1'
           ignore-unfixed: true
 

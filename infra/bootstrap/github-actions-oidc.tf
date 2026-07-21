@@ -106,6 +106,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
       "cloudwatch:DescribeAlarms",
+      "dms:Describe*",
+      "dms:List*",
       "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
@@ -168,6 +170,20 @@ data "aws_iam_policy_document" "github_actions_plan" {
     effect    = "Allow"
     actions   = ["ssm:DescribeParameters"]
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadCloudTrailRemediationSsmDocument"
+    effect = "Allow"
+
+    actions = [
+      "ssm:DescribeDocument",
+      "ssm:GetDocument",
+      "ssm:DescribeDocumentPermission",
+      "ssm:ListTagsForResource"
+    ]
+
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/tf4-restore-cloudtrail-logging"]
   }
 
   statement {
@@ -250,6 +266,7 @@ data "aws_iam_policy_document" "github_actions_build" {
       "ecr:InitiateLayerUpload",
       "ecr:ListImages",
       "ecr:PutImage",
+      "ecr:PutImageTagMutability",
       "ecr:UploadLayerPart"
     ]
 
