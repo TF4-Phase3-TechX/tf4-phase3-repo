@@ -46,6 +46,7 @@ spec:
       checkpointConnector:
         tasksMax: 1
         config:
+          replication.policy.class: {{ $mm2.replicationPolicyClass | default "org.apache.kafka.connect.mirror.IdentityReplicationPolicy" | quote }}
           checkpoints.topic.replication.factor: "2"
           sync.group.offsets.enabled: "true"
           sync.group.offsets.interval.seconds: "30"
