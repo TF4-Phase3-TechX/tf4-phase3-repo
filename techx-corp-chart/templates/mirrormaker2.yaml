@@ -2,7 +2,7 @@
 {{- if ($mm2.enabled | default false) -}}
 {{- $source := $mm2.sourceCluster | default dict -}}
 {{- $target := $mm2.targetCluster | default dict -}}
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaMirrorMaker2
 metadata:
   name: {{ $mm2.name | default "orders-mirrormaker2" | quote }}
