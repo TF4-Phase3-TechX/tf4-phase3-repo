@@ -44,7 +44,17 @@ techx-tf4   orders-mirrormaker2-mirrormaker2   strimzi.io/cluster=orders-mirrorm
 Conclusion:
 - The cluster/CNI is configured to enforce NetworkPolicy.
 - No SEC-21 policy is live at the time this document is written.
-- Terraform now codifies `vpc-cni.configuration_values.enableNetworkPolicy = "true"` to prevent future drift. This is source code only; no Terraform apply was run by the assistant.
+- This PR does not change Terraform. If PM wants to codify the current live addon setting to prevent drift, do that in a separate infra PR/runbook because Terraform changes trigger Terraform CI/plan.
+
+Optional PM drift-guard snippet for a separate infra PR:
+
+```hcl
+vpc-cni = {
+  configuration_values = jsonencode({
+    enableNetworkPolicy = "true"
+  })
+}
+```
 
 ## Namespaces
 
