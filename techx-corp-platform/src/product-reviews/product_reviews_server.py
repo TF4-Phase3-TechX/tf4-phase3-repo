@@ -31,7 +31,10 @@ from database import fetch_avg_product_review_score_from_db, fetch_product_revie
 import demo_pb2
 import demo_pb2_grpc
 from metrics import init_metrics
-from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
+import uuid
+from metrics import init_metrics
+from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
+from session_store import session_store
 
 
 logger = logging.getLogger("main")
@@ -66,11 +69,13 @@ class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
     def AskProductAIAssistant(self, request, context):
         # Question content is intentionally absent from logs and trace attributes.
         logger.info("ai_assistant_request", extra={"product_id": request.product_id})
-        return get_ai_assistant_response(request.product_id, request.question)
+        session_id = getattr(request, "session_id", "")
+        return get_ai_assistant_response(request.product_id, request.question, session_id)
 
     def SearchProductsAIAssistant(self, request, context):
         logger.info("nl_search_request")
-        return search_products_ai(request.query)
+        session_id = getattr(request, "session_id", "")
+        return search_products_ai(request.query, session_id)
 
     def Check(self, request, context):
         return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.SERVING)
@@ -107,9 +112,10 @@ def fetch_product_info(product_id: str) -> dict:
     return MessageToDict(product, preserving_proto_field_name=True)
 
 
-def get_ai_assistant_response(request_product_id: str, question: str):
+def get_ai_assistant_response(request_product_id: str, question: str, session_id: str = ""):
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
         span.set_attribute("app.product.id", request_product_id)
+        span.set_attribute("app.caller.feature", "product_qa")
         # Preserve the BTC-owned incident flags at the application boundary.
         # They exercise safe degradation and output blocking without selecting
         # a mock provider or allowing intentionally inaccurate content through.
@@ -121,7 +127,7 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                 error_class="injected_rate_limit",
             )
         else:
-            outcome = assistant.answer(request_product_id, question)
+            outcome = assistant.answer(request_product_id, question, session_id)
             if check_feature_flag("llmInaccurateResponse") and request_product_id == "L9ECAV7KIM":
                 outcome = AssistantOutcome(
                     response=INSUFFICIENT_RESPONSE,
@@ -176,7 +182,10 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                 "quarantined_reviews": outcome.quarantined_reviews,
             },
         )
-        return demo_pb2.AskProductAIAssistantResponse(response=outcome.response)
+        return demo_pb2.AskProductAIAssistantResponse(
+            response=outcome.response,
+            action_proposal=outcome.action_proposal,
+        )
 
 
 def _calculate_search_cost(input_tokens: int, output_tokens: int) -> float:
@@ -234,9 +243,13 @@ def _fuzzy_match_keywords(keywords_query: str, name: str, description: str) -> b
             return False
     return True
 
-def _match_comparison_target(target_name: str, products: list) -> list:
+def _fuzzy_match_product_by_name(query_name: str, products: list) -> list:
+    if not query_name or not query_name.strip():
+        return []
+    target_tokens = [t.lower() for t in query_name.strip().split() if len(t) > 1]
+    if not target_tokens:
+        return []
     matched_products = []
-    target_tokens = target_name.lower().split()
     for p in products:
         p_name_lower = p.name.lower()
         match_all = True
@@ -248,8 +261,10 @@ def _match_comparison_target(target_name: str, products: list) -> list:
             matched_products.append(p)
     return matched_products
 
-def search_products_ai(query: str):
+
+def search_products_ai(query: str, session_id: str = ""):
     with tracer.start_as_current_span("search_products_ai") as span:
+        span.set_attribute("app.caller.feature", "copilot_search")
         # --- Input validation ---
         if not query or not query.strip():
             span.set_attribute("app.search.outcome", "empty_query")
@@ -259,7 +274,8 @@ def search_products_ai(query: str):
         # long-prefix attacks that push attack markers outside the scanned window.
         query = normalize_text(query, MAX_QUESTION_CHARS)
 
-        if is_attack_or_action(query) or contains_pii(query):
+        # Strict check order: is_attack first (hard block), is_action_intent allowed to proceed
+        if is_attack(query) or contains_pii(query):
             span.set_attribute("app.search.outcome", "blocked")
             return _refused_search_response()
 
@@ -298,6 +314,63 @@ def search_products_ai(query: str):
             catalog_response = product_catalog_stub.ListProducts(demo_pb2.Empty(), timeout=2.0)
             all_products = list(catalog_response.products)
             candidate_count_before = len(all_products)
+
+            # Handle cart_action search type
+            if intent.get("search_type") == "cart_action":
+                span.set_attribute("app.search.outcome", "cart_action")
+                keywords = intent.get("keywords", "")
+                matched = _fuzzy_match_product_by_name(keywords, all_products)
+                raw_qty = intent.get("quantity") or 1
+                try:
+                    qty = max(1, min(int(raw_qty), 10))
+                except (ValueError, TypeError):
+                    qty = 1
+
+                if len(matched) == 1:
+                    target = matched[0]
+                    proposal = demo_pb2.CartActionProposal(
+                        action_type="ADD_TO_CART",
+                        product_id=target.id,
+                        product_name=target.name,
+                        quantity=qty,
+                        confirmation_required=True,
+                        idempotency_key=str(uuid.uuid4()),
+                    )
+                    if session_id:
+                        session_store.append_turn("guest", session_id, "user", query)
+                        session_store.append_turn("guest", session_id, "assistant", f"I can help add '{target.name}' to your cart.")
+                    return demo_pb2.SearchProductsAIAssistantResponse(
+                        results=[target],
+                        trace=demo_pb2.SearchEvidenceTrace(
+                            parsed_intent=parsed_intent_json,
+                            filter_applied="cart_action",
+                            candidate_count_before=candidate_count_before,
+                            candidate_count_after=1,
+                            refused=False,
+                            input_tokens=_in_tok,
+                            output_tokens=_out_tok,
+                            estimated_cost_usd=_calculate_search_cost(_in_tok, _out_tok),
+                        ),
+                        action_proposal=proposal,
+                    )
+                elif len(matched) >= 2:
+                    return demo_pb2.SearchProductsAIAssistantResponse(
+                        results=matched[:3],
+                        trace=_make_refused_trace(
+                            parsed_intent=parsed_intent_json,
+                            filter_applied="ambiguous_cart_action",
+                            before=candidate_count_before,
+                            after=len(matched),
+                            input_tokens=_in_tok,
+                            output_tokens=_out_tok,
+                        ),
+                    )
+                else:
+                    return _refused_search_response(
+                        parsed_intent=parsed_intent_json,
+                        input_tokens=_in_tok,
+                        output_tokens=_out_tok,
+                    )
             valid_ids = {p.id for p in all_products}
 
             # --- Apply filters ---

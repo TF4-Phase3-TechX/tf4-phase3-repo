@@ -81,9 +81,18 @@ def normalize_text(value: Any, max_chars: int) -> str:
     return text[:max_chars]
 
 
-def is_attack_or_action(text: str) -> bool:
+def is_attack(text: str) -> bool:
     normalized = normalize_text(text, MAX_REVIEW_CHARS)
-    return any(p.search(normalized) for p in (*_ATTACK_PATTERNS, *_ACTION_PATTERNS))
+    return any(p.search(normalized) for p in _ATTACK_PATTERNS)
+
+
+def is_action_intent(text: str) -> bool:
+    normalized = normalize_text(text, MAX_REVIEW_CHARS)
+    return any(p.search(normalized) for p in _ACTION_PATTERNS)
+
+
+def is_attack_or_action(text: str) -> bool:
+    return is_attack(text) or is_action_intent(text)
 
 
 def contains_pii(text: str) -> bool:

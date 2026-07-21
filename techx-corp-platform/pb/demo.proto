@@ -133,22 +133,35 @@ message GetAverageProductReviewScoreResponse {
     string average_score = 1;
 }
 
+message CartActionProposal {
+    string action_type = 1;
+    string product_id = 2;
+    string product_name = 3;
+    int32 quantity = 4;
+    bool confirmation_required = 5;
+    string idempotency_key = 6;
+}
+
 message AskProductAIAssistantRequest {
     string product_id = 1;
     string question = 2;
+    string session_id = 3;
 }
 
 message AskProductAIAssistantResponse {
     string response = 1;
+    CartActionProposal action_proposal = 2;
 }
 
 message SearchProductsAIAssistantRequest {
     string query = 1;
+    string session_id = 2;
 }
 
 message SearchProductsAIAssistantResponse {
     repeated Product results = 1;
     SearchEvidenceTrace trace = 2;
+    CartActionProposal action_proposal = 3;
 }
 
 message SearchEvidenceTrace {
