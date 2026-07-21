@@ -112,6 +112,15 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
+      - name: Allow Cosign ECR artifact tag updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr put-image-tag-mutability \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-tag-mutability IMMUTABLE_WITH_EXCLUSION \
+            --image-tag-mutability-exclusion-filters filterType=WILDCARD,filter='sha256-*'
+
       - name: Set image variables
         id: vars
         shell: bash
