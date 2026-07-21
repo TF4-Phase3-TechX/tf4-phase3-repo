@@ -8,6 +8,7 @@ incidents and that both acute and gradual degradations remain detectable.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -64,14 +65,14 @@ CASES = (
     ),
     Case(
         "gradual-drift",
-        (100, 100, 100, 100, 100, 100, 100, 100, 105, 115, 125, 135, 145, 155),
+        (400, 400, 400, 400, 400, 400, 400, 400, 430, 490, 550, 610, 680, 750),
         1000,
         True,
-        "slow degradation must fire before the absolute floor",
+        "slow degradation in the early-warning zone must fire before the absolute floor",
     ),
     Case(
         "moderate-gradual-drift",
-        (100, 100, 100, 100, 100, 100, 100, 100, 104, 110, 116, 122, 128, 134),
+        (500, 500, 500, 500, 500, 500, 500, 500, 530, 570, 610, 650, 690, 720),
         1000,
         True,
         "the selected trend seed catches a moderate monotonic rise",
@@ -85,7 +86,7 @@ CASES = (
     ),
     Case(
         "gradual-error-rate",
-        (0.01,) * 8 + (0.0105, 0.0115, 0.0125, 0.0135, 0.0145, 0.0155),
+        (0.02,) * 8 + (0.022, 0.025, 0.028, 0.031, 0.034, 0.038),
         0.05,
         True,
         "slow error-budget degradation below the safety floor",
@@ -93,11 +94,71 @@ CASES = (
 )
 
 
-def evaluate(settings: Settings) -> dict[str, object]:
+def load_cases(path: Path) -> tuple[tuple[Case, ...], dict[str, object]]:
+    """Load labelled replay cases collected from Prometheus or another source."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    raw_cases = payload.get("cases")
+    if not isinstance(raw_cases, list) or not raw_cases:
+        raise ValueError("calibration dataset must contain a non-empty cases list")
+    cases = []
+    for raw in raw_cases:
+        points = raw.get("points", [])
+        if not isinstance(points, list) or not points:
+            raise ValueError(f"case {raw.get('name', '<unnamed>')} has no points")
+        cases.append(
+            Case(
+                name=str(raw["name"]),
+                points=tuple(float(point) for point in points),
+                floor=float(raw["floor"]),
+                anomalous=bool(raw["anomalous"]),
+                purpose=str(raw.get("purpose", "labelled replay window")),
+            )
+        )
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    source = payload.get("source", {})
+    if not isinstance(source, dict):
+        source = {}
+    source = {**source, "dataset_canonical_sha256": hashlib.sha256(canonical).hexdigest()}
+    metadata = {
+        "scope": str(payload.get("scope", "labelled external replay dataset")),
+        "source": source,
+    }
+    return tuple(cases), metadata
+
+
+def evaluate(
+    settings: Settings,
+    cases: tuple[Case, ...] = CASES,
+    *,
+    replay_all_points: bool = False,
+) -> dict[str, object]:
     rows = []
     tp = fp = tn = fn = 0
-    for case in CASES:
-        predicted, coverage, scores = signal_gate(list(case.points), case.floor, settings)
+    for case in cases:
+        first_detection_index = None
+        if replay_all_points:
+            streak = 0
+            predicted = False
+            coverage = "unavailable"
+            scores = {}
+            for end in range(1, len(case.points) + 1):
+                start = max(0, end - settings.lookback_minutes)
+                breached, coverage, scores = signal_gate(
+                    list(case.points[start:end]),
+                    case.floor,
+                    settings,
+                    include_isolation=False,
+                )
+                streak = streak + 1 if breached else 0
+                if streak >= settings.sustained_polls:
+                    predicted = True
+                    first_detection_index = end - 1
+                    break
+        else:
+            predicted, coverage, scores = signal_gate(
+                list(case.points), case.floor, settings, include_isolation=False
+            )
         if predicted and case.anomalous:
             tp += 1
         elif predicted:
@@ -115,6 +176,7 @@ def evaluate(settings: Settings) -> dict[str, object]:
                 "mode": "slow-drift" if scores["slow_drift"] else "acute-or-healthy",
                 "ratio": round(scores["ratio"], 4),
                 "trend": round(scores["trend"], 4),
+                "first_detection_index": first_detection_index,
                 "purpose": case.purpose,
             }
         )
@@ -137,34 +199,53 @@ def candidates(base: Settings):
     for alpha in (0.2, 0.35, 0.5):
         for ratio in (1.3, 1.5, 1.8):
             for trend in (0.2, 0.25, 0.35):
-                yield replace(
-                    base,
-                    ewma_alpha=alpha,
-                    ratio_threshold=ratio,
-                    trend_min_relative_change=trend,
-                )
+                for floor_ratio in (0.6, 0.7, 0.8):
+                    yield replace(
+                        base,
+                        ewma_alpha=alpha,
+                        ratio_threshold=ratio,
+                        trend_min_relative_change=trend,
+                        trend_min_floor_ratio=floor_ratio,
+                    )
 
 
 def render_report(payload: dict[str, object]) -> str:
     seed = payload["seed"]
+    production_dataset = bool(payload.get("production_dataset"))
+    source = payload.get("source", {})
     lines = [
-        "# Mandate 7a detector seed sensitivity",
+        "# Mandate 7a detector calibration replay",
         "",
-        "Generated by `python -m benchmark.calibrate_detection`. This is a labelled design fixture, **not production precision/recall evidence**. Production-window calibration remains an activation gate.",
+        f"Generated by `python -m benchmark.calibrate_detection`. Scope: **{payload['scope']}**.",
+        "",
+        (
+            "This is production-informed replay evidence. It becomes production precision/recall evidence only when every normal/incident label and incident boundary has been independently validated."
+            if production_dataset
+            else "This is a labelled design fixture, **not production precision/recall evidence**. Production-window calibration remains an activation gate."
+        ),
         "",
         "## Seed result",
         "",
-        f"- Cases: {len(CASES)}",
+        f"- Cases: {payload['case_count']}",
         f"- TP/FP/TN/FN: {seed['tp']}/{seed['fp']}/{seed['tn']}/{seed['fn']}",
         f"- Precision/recall/F1 on this fixture: {seed['precision']}/{seed['recall']}/{seed['f1']}",
         f"- Grid candidates checked: {len(payload['grid'])}",
+        f"- Replay mode: {'rolling 30-sample windows with sustained-poll confirmation' if production_dataset else 'final point per design fixture'}",
+        *(
+            [
+                f"- Namespace: `{source.get('namespace', 'not recorded')}`",
+                f"- Canonical dataset SHA-256: `{source.get('dataset_canonical_sha256', 'not recorded')}`",
+            ]
+            if production_dataset and isinstance(source, dict)
+            else []
+        ),
         "",
-        "| Case | Expected | Predicted | Mode | Ratio | Trend | Purpose |",
-        "|---|---:|---:|---|---:|---:|---|",
+        "| Case | Expected | Predicted | First detection sample | Mode | Ratio | Trend | Purpose |",
+        "|---|---:|---:|---:|---|---:|---:|---|",
     ]
     for row in seed["cases"]:
         lines.append(
-            f"| {row['case']} | {row['expected']} | {row['predicted']} | {row['mode']} | "
+            f"| {row['case']} | {row['expected']} | {row['predicted']} | {row['first_detection_index']} | {row['mode']} | "
             f"{row['ratio']} | {row['trend']} | {row['purpose']} |"
         )
     lines.extend(
@@ -172,16 +253,43 @@ def render_report(payload: dict[str, object]) -> str:
             "",
             "## Interpretation",
             "",
-            "The seed detects the labelled acute, masking-noise and gradual-drift cases while rejecting the stable and oscillating fixtures. The grid is a sensitivity check only: it demonstrates that the selected seed is reproducible and exposes which knobs change outcomes; it does not prove that `0.35`, `1.5`, or any other value is optimal for TF4 production.",
+            "The grid is a sensitivity check: it makes parameter selection reproducible and exposes which knobs change outcomes. A production-derived dataset reduces reliance on engineering judgement, but does not prove optimality outside the captured and labelled windows.",
             "",
             "Isolation Forest is intentionally excluded from the firing gate. Its configurable contribution is limited to confidence/audit evidence, so an opaque unsupervised classification cannot create an incident by itself.",
             "",
             "## Production activation gate",
             "",
-            "Re-run the same evaluation over labelled TF4 normal, load-test and injected-incident windows; compare false-positive rate, recall and detection lead time; then update Helm values through review. Until that evidence exists, these values remain conservative design seeds.",
+            (
+                "This replay provides an initial seed from existing TF4 traffic. Mandate 7b must add independently validated labels, LLM/provider windows, broader non-overlapping normal windows, controlled incident drills and alert-delivery/lead-time evidence before production-accuracy claims or live remediation approval."
+                if production_dataset
+                else "Re-run the same evaluation over labelled TF4 normal, load-test and injected-incident windows; compare false-positive rate, recall and detection lead time; then update Helm values through review. Until that evidence exists, these values remain conservative design seeds."
+            ),
             "",
         ]
     )
+    if production_dataset:
+        floor_sensitivity = {}
+        for candidate in payload["grid"]:
+            floor_ratio = candidate["settings"]["trend_min_floor_ratio"]
+            result = candidate["result"]
+            previous = floor_sensitivity.get(floor_ratio)
+            if previous is None or result["f1"] > previous["f1"]:
+                floor_sensitivity[floor_ratio] = result
+        lines.extend(
+            [
+                "## Early-warning boundary sensitivity",
+                "",
+                "The selected 0.70 seed is the only tested SLO-proximity boundary that retained every labelled incident signal without paging on a labelled normal latency ramp. This is evidence for the initial seed, not proof that 0.70 generalises to unseen traffic.",
+                "",
+                "| Minimum current/SLO ratio | Best precision | Best recall | Best F1 | FP | FN |",
+                "|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for floor_ratio, result in sorted(floor_sensitivity.items()):
+            lines.append(
+                f"| {floor_ratio} | {result['precision']} | {result['recall']} | {result['f1']} | {result['fp']} | {result['fn']} |"
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -189,25 +297,45 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--dataset",
+        type=Path,
+        help="Labelled replay dataset; omit to use the built-in design fixture",
+    )
     args = parser.parse_args()
 
     base = Settings()
-    seed = evaluate(base)
+    cases = CASES
+    metadata: dict[str, object] = {
+        "scope": "labelled synthetic design fixture; not production evidence",
+        "source": {},
+    }
+    if args.dataset:
+        cases, metadata = load_cases(args.dataset)
+    source = metadata["source"] if isinstance(metadata["source"], dict) else {}
+    production_dataset = source.get("kind") == "prometheus_query_range"
+    seed = evaluate(base, cases, replay_all_points=production_dataset)
     grid = []
     for candidate in candidates(base):
-        result = evaluate(candidate)
+        result = evaluate(
+            candidate, cases, replay_all_points=production_dataset
+        )
         grid.append(
             {
                 "settings": {
                     "ewma_alpha": candidate.ewma_alpha,
                     "ratio_threshold": candidate.ratio_threshold,
                     "trend_min_relative_change": candidate.trend_min_relative_change,
+                    "trend_min_floor_ratio": candidate.trend_min_floor_ratio,
                 },
                 "result": {key: result[key] for key in ("tp", "fp", "tn", "fn", "precision", "recall", "f1")},
             }
         )
     payload = {
-        "scope": "labelled synthetic design fixture; not production evidence",
+        "scope": metadata["scope"],
+        "source": source,
+        "production_dataset": production_dataset,
+        "case_count": len(cases),
         "seed_settings": {
             key: value
             for key, value in asdict(base).items()
@@ -223,6 +351,7 @@ def main() -> int:
                 "trend_min_relative_change",
                 "trend_min_current_ratio",
                 "trend_min_consistency",
+                "trend_min_floor_ratio",
                 "isolation_contamination",
                 "isolation_confidence_weight",
             }

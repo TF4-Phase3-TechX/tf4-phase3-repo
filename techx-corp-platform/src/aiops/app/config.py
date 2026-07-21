@@ -70,6 +70,11 @@ class Settings:
     trend_min_consistency: float = float(
         os.getenv("AIOPS_TREND_MIN_CONSISTENCY", "0.75")
     )
+    # A trend far below the service SLO is useful audit evidence but should not
+    # page by itself. This guard separates real degradation from normal ramp-up.
+    trend_min_floor_ratio: float = float(
+        os.getenv("AIOPS_TREND_MIN_FLOOR_RATIO", "0.7")
+    )
     isolation_contamination: float = float(
         os.getenv("AIOPS_ISOLATION_CONTAMINATION", "0.15")
     )

@@ -255,6 +255,8 @@ components:
         value: "1.2"
       - name: AIOPS_TREND_MIN_CONSISTENCY
         value: "0.75"
+      - name: AIOPS_TREND_MIN_FLOOR_RATIO
+        value: "0.7"
       - name: AIOPS_ISOLATION_CONTAMINATION
         value: "0.15"
       - name: AIOPS_ISOLATION_CONFIDENCE_WEIGHT

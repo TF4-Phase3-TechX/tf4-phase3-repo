@@ -125,7 +125,8 @@ python -m benchmark.run /path/to/RCAEval-v2.zip --max-cases 60 --seed 7 \
 ```
 
 The detector seed sensitivity fixture covers stable, noisy, acute and gradual
-series and checks a 27-combination grid. It is design evidence, not production
+series and checks an 81-combination grid, including the 60/70/80% SLO
+early-warning boundary. It is design evidence, not production
 precision/recall:
 
 ```bash
@@ -133,6 +134,33 @@ python -m benchmark.calibrate_detection \
   --json ../../../docs/aiops/evidence/detector-seed-sensitivity.json \
   --report ../../../docs/aiops/evidence/DETECTOR_SEED_SENSITIVITY.md
 ```
+
+For production-informed calibration, first collect explicitly labelled,
+bounded Prometheus windows through the private read-only path. The collector
+does not infer labels from metric values; `label_authority` and links to the
+load-test or incident evidence are mandatory review inputs:
+
+```bash
+python -m benchmark.collect_prometheus_dataset \
+  --manifest /path/to/approved-window-manifest.json \
+  --output /path/to/tf4-prometheus-labelled-windows.json
+
+python -m benchmark.calibrate_detection \
+  --dataset /path/to/tf4-prometheus-labelled-windows.json \
+  --json ../../../docs/aiops/evidence/production-informed-calibration.json \
+  --report ../../../docs/aiops/evidence/PRODUCTION_INFORMED_CALIBRATION.md
+```
+
+Normal-only windows can justify noise and false-positive adjustments, but
+cannot establish recall or lead time. Those require independently labelled
+incident windows and remain part of Mandate 7b acceptance.
+
+External Prometheus cases are replayed point-by-point with the configured
+lookback and sustained-poll confirmation, so an incident that recovers before
+the end of the captured window is not lost. Built-in design fixtures use their
+final point. Sample multiple non-overlapping normal windows rather than
+labelling an entire day from appearance alone; incident windows must link to
+the incident timeline used as the label.
 
 ## Verification
 

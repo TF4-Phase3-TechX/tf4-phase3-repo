@@ -79,15 +79,19 @@ class AIOpsWorker:
 
         decisions = []
         for service in self.settings.services:
-            query = latency_query(service)
+            query = latency_query(service, self.settings.namespace)
             decisions.append(self.detector.latency(service, await query_range(query), query))
-            query = error_rate_query(service, self.settings.minimum_request_count)
+            query = error_rate_query(
+                service, self.settings.minimum_request_count, self.settings.namespace
+            )
             decisions.append(self.detector.error_rate(service, await query_range(query), query))
 
         # Discover every instrumented LLM caller from the metric label. This
         # prevents a failure in a future caller (for example shopping-copilot)
         # from being attributed to product-reviews.
-        query = llm_error_query("", self.settings.llm_minimum_call_count)
+        query = llm_error_query(
+            "", self.settings.llm_minimum_call_count, self.settings.namespace
+        )
         llm_series = await query_range(query)
         attributed_series: list[tuple[str, dict[str, Any]]] = []
         for item in llm_series:

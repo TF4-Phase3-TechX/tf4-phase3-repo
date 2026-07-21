@@ -1,8 +1,19 @@
 {
-  "scope": "labelled synthetic design fixture; not production evidence",
-  "source": {},
-  "production_dataset": false,
-  "case_count": 10,
+  "scope": "TF4 production Prometheus replay using committed load/incident windows",
+  "source": {
+    "kind": "prometheus_query_range",
+    "namespace": "techx-tf4",
+    "step_seconds": 60,
+    "label_authority": "committed TF4 load-test summary and CDO07 postmortems",
+    "label_evidence": [
+      "docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/SUMMARY.md",
+      "docs/audit/postmortems/incident-20260717-currency-timeout.md",
+      "docs/audit/postmortems/incident-20260720-loadgen-currency-observability.md"
+    ],
+    "dataset_canonical_sha256": "b05ad625daeb27cd7ac11ba539eb7f8d3180628c1c894755c16f697319965e1f"
+  },
+  "production_dataset": true,
+  "case_count": 12,
   "seed_settings": {
     "baseline_mad_multiplier": 6.0,
     "baseline_relative_band": 0.5,
@@ -19,123 +30,145 @@
     "isolation_confidence_weight": 0.05
   },
   "seed": {
-    "tp": 5,
+    "tp": 6,
     "fp": 0,
-    "tn": 5,
+    "tn": 6,
     "fn": 0,
     "precision": 1.0,
     "recall": 1.0,
     "f1": 1.0,
     "cases": [
       {
-        "case": "flat-normal",
+        "case": "frontend-latency-normal-load-20260718",
         "expected": false,
         "predicted": false,
         "coverage": "available",
         "mode": "acute-or-healthy",
-        "ratio": 1.0,
+        "ratio": 0.7688,
         "trend": 0.0,
         "first_detection_index": null,
-        "purpose": "steady low latency"
+        "purpose": "200-user baseline: checkout had zero failures and user-facing p95 stayed below the SLO"
       },
       {
-        "case": "busy-stable",
+        "case": "frontend-error-rate-normal-load-20260718",
         "expected": false,
         "predicted": false,
         "coverage": "available",
         "mode": "acute-or-healthy",
-        "ratio": 1.02,
-        "trend": 0.0186,
-        "first_detection_index": null,
-        "purpose": "busy service above the safety floor without degradation"
-      },
-      {
-        "case": "oscillating-noise",
-        "expected": false,
-        "predicted": false,
-        "coverage": "available",
-        "mode": "acute-or-healthy",
-        "ratio": 1.0,
+        "ratio": 0.0,
         "trend": 0.0,
         "first_detection_index": null,
-        "purpose": "non-monotonic noise must not look like a drain"
+        "purpose": "200-user baseline: checkout had zero failures and user-facing p95 stayed below the SLO"
       },
       {
-        "case": "acute-spike",
-        "expected": true,
-        "predicted": true,
-        "coverage": "available",
-        "mode": "acute-or-healthy",
-        "ratio": 17.9232,
-        "trend": 12.1067,
-        "first_detection_index": null,
-        "purpose": "sudden user-visible degradation"
-      },
-      {
-        "case": "masked-incident",
-        "expected": true,
-        "predicted": true,
-        "coverage": "available",
-        "mode": "acute-or-healthy",
-        "ratio": 1.5977,
-        "trend": 0.0,
-        "first_detection_index": null,
-        "purpose": "historical noise must not mask a separate incident"
-      },
-      {
-        "case": "borderline-ratio-no-corroboration",
+        "case": "checkout-latency-normal-load-20260718",
         "expected": false,
         "predicted": false,
         "coverage": "available",
         "mode": "acute-or-healthy",
-        "ratio": 1.3425,
-        "trend": 0.3562,
+        "ratio": 0.9553,
+        "trend": 0.0,
         "first_detection_index": null,
-        "purpose": "a noisy 1.34x boundary shift is below the selected ratio seed"
+        "purpose": "200-user baseline: checkout had zero failures and user-facing p95 stayed below the SLO"
       },
       {
-        "case": "gradual-drift",
+        "case": "checkout-error-rate-normal-load-20260718",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 0.0,
+        "trend": 0.0,
+        "first_detection_index": null,
+        "purpose": "200-user baseline: checkout had zero failures and user-facing p95 stayed below the SLO"
+      },
+      {
+        "case": "frontend-latency-incident-currency-20260717",
         "expected": true,
         "predicted": true,
         "coverage": "available",
         "mode": "slow-drift",
-        "ratio": 1.7666,
-        "trend": 0.7504,
-        "first_detection_index": null,
-        "purpose": "slow degradation in the early-warning zone must fire before the absolute floor"
+        "ratio": 2.9936,
+        "trend": 1.834,
+        "first_detection_index": 18,
+        "purpose": "labelled currency saturation incident; frontend/checkout errors rose from 03:40 UTC"
       },
       {
-        "case": "moderate-gradual-drift",
+        "case": "frontend-error-rate-incident-currency-20260717",
         "expected": true,
         "predicted": true,
         "coverage": "available",
         "mode": "slow-drift",
-        "ratio": 1.3277,
-        "trend": 0.3556,
-        "first_detection_index": null,
-        "purpose": "the selected trend seed catches a moderate monotonic rise"
+        "ratio": 49284226.5049,
+        "trend": 52143330.3788,
+        "first_detection_index": 17,
+        "purpose": "labelled currency saturation incident; frontend/checkout errors rose from 03:40 UTC"
       },
       {
-        "case": "stable-error-rate",
+        "case": "checkout-latency-incident-currency-20260717",
+        "expected": true,
+        "predicted": true,
+        "coverage": "warming",
+        "mode": "acute-or-healthy",
+        "ratio": 0.0,
+        "trend": 0.0,
+        "first_detection_index": 1,
+        "purpose": "labelled currency saturation incident; frontend/checkout errors rose from 03:40 UTC"
+      },
+      {
+        "case": "checkout-error-rate-incident-currency-20260717",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 724888850.299,
+        "trend": 598748773.139,
+        "first_detection_index": 14,
+        "purpose": "labelled currency saturation incident; frontend/checkout errors rose from 03:40 UTC"
+      },
+      {
+        "case": "frontend-latency-incident-browse-checkout-20260720",
+        "expected": false,
+        "predicted": false,
+        "coverage": "available",
+        "mode": "slow-drift",
+        "ratio": 1.2402,
+        "trend": 0.3989,
+        "first_detection_index": null,
+        "purpose": "incident window, but this signal stayed below its 1000 ms SLO floor; labelled normal per signal to penalize cross-signal over-alerting"
+      },
+      {
+        "case": "frontend-error-rate-incident-browse-checkout-20260720",
+        "expected": true,
+        "predicted": true,
+        "coverage": "available",
+        "mode": "acute-or-healthy",
+        "ratio": 66045387.3483,
+        "trend": 74370350.4378,
+        "first_detection_index": 40,
+        "purpose": "labelled frontend/checkout incident; frontend error rate crossed the 5% SLO floor and peaked near 8.7%"
+      },
+      {
+        "case": "checkout-latency-incident-browse-checkout-20260720",
         "expected": false,
         "predicted": false,
         "coverage": "available",
         "mode": "acute-or-healthy",
-        "ratio": 0.9929,
-        "trend": 0.0142,
+        "ratio": 1.0035,
+        "trend": 0.0,
         "first_detection_index": null,
-        "purpose": "stable high load is not itself an anomaly"
+        "purpose": "incident window, but this signal stayed below its 1000 ms SLO floor; labelled normal per signal to penalize cross-signal over-alerting"
       },
       {
-        "case": "gradual-error-rate",
+        "case": "checkout-error-rate-incident-browse-checkout-20260720",
         "expected": true,
         "predicted": true,
         "coverage": "available",
-        "mode": "slow-drift",
-        "ratio": 1.7787,
-        "trend": 0.7356,
-        "first_detection_index": null,
-        "purpose": "slow error-budget degradation below the safety floor"
+        "mode": "acute-or-healthy",
+        "ratio": 116363636.3636,
+        "trend": 111729512.4325,
+        "first_detection_index": 23,
+        "purpose": "labelled frontend/checkout incident; alerts fired at 17:21-17:23 UTC and error rates peaked near 17:41 UTC"
       }
     ]
   },
@@ -148,13 +181,13 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
+        "tn": 5,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 0.9091
+        "f1": 0.9231
       }
     },
     {
@@ -165,13 +198,13 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.9091
+        "f1": 1.0
       }
     },
     {
@@ -182,29 +215,12 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
-        "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
         "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -213,16 +229,33 @@
         "ewma_alpha": 0.2,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.25,
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.9091
+        "f1": 1.0
       }
     },
     {
@@ -233,46 +266,12 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
-        "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
         "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
-        "f1": 0.9091
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -281,338 +280,355 @@
         "ewma_alpha": 0.2,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
+        "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 2,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
       "settings": {
         "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.2,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
         "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
         "trend_min_relative_change": 0.2,
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
+        "tn": 5,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 0.8571,
         "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.2,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -621,16 +637,33 @@
         "ewma_alpha": 0.35,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.2,
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.9091
+        "f1": 1.0
       }
     },
     {
@@ -641,46 +674,12 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
-        "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
         "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
-        "f1": 0.9091
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -689,32 +688,49 @@
         "ewma_alpha": 0.35,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.8
+        "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 2,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
       }
     },
     {
       "settings": {
         "ewma_alpha": 0.35,
         "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.8
       },
       "result": {
         "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -723,50 +739,67 @@
         "ewma_alpha": 0.35,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35,
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
     {
       "settings": {
         "ewma_alpha": 0.35,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 2,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
@@ -777,9 +810,9 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 0,
-        "tn": 5,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -794,301 +827,267 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
         "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 0,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 0,
-        "tn": 5,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.35,
-        "ratio_threshold": 1.8,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.5,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
     {
       "settings": {
-        "ewma_alpha": 0.5,
-        "ratio_threshold": 1.3,
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
         "trend_min_relative_change": 0.2,
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.35,
+        "ratio_threshold": 1.8,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -1097,32 +1096,49 @@
         "ewma_alpha": 0.5,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.8
+        "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 2,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
       }
     },
     {
       "settings": {
         "ewma_alpha": 0.5,
         "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.25,
-        "trend_min_floor_ratio": 0.6
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.8
       },
       "result": {
         "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -1131,16 +1147,33 @@
         "ewma_alpha": 0.5,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.25,
+        "trend_min_floor_ratio": 0.6
+      },
+      "result": {
+        "tp": 6,
+        "fp": 1,
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.25,
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
-        "precision": 0.8333,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.9091
+        "f1": 1.0
       }
     },
     {
@@ -1151,46 +1184,12 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
-        "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.5,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.6
-      },
-      "result": {
         "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
-        "f1": 0.9091
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.5,
-        "ratio_threshold": 1.3,
-        "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.7
-      },
-      "result": {
-        "tp": 5,
-        "fp": 1,
-        "tn": 4,
-        "fn": 0,
-        "precision": 0.8333,
-        "recall": 1.0,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
         "f1": 0.9091
       }
     },
@@ -1199,16 +1198,50 @@
         "ewma_alpha": 0.5,
         "ratio_threshold": 1.3,
         "trend_min_relative_change": 0.35,
-        "trend_min_floor_ratio": 0.8
+        "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 2,
+        "tp": 6,
         "fp": 1,
-        "tn": 4,
-        "fn": 3,
-        "precision": 0.6667,
-        "recall": 0.4,
-        "f1": 0.5
+        "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.3,
+        "trend_min_relative_change": 0.35,
+        "trend_min_floor_ratio": 0.8
+      },
+      "result": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     },
     {
@@ -1219,9 +1252,26 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
-        "fp": 0,
+        "tp": 6,
+        "fp": 1,
         "tn": 5,
+        "fn": 0,
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231
+      }
+    },
+    {
+      "settings": {
+        "ewma_alpha": 0.5,
+        "ratio_threshold": 1.5,
+        "trend_min_relative_change": 0.2,
+        "trend_min_floor_ratio": 0.7
+      },
+      "result": {
+        "tp": 6,
+        "fp": 0,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -1233,33 +1283,16 @@
         "ewma_alpha": 0.5,
         "ratio_threshold": 1.5,
         "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.7
+        "trend_min_floor_ratio": 0.8
       },
       "result": {
         "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 0,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      }
-    },
-    {
-      "settings": {
-        "ewma_alpha": 0.5,
-        "ratio_threshold": 1.5,
-        "trend_min_relative_change": 0.2,
-        "trend_min_floor_ratio": 0.8
-      },
-      "result": {
-        "tp": 2,
-        "fp": 0,
-        "tn": 5,
-        "fn": 3,
-        "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     },
     {
@@ -1270,13 +1303,13 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
-        "fp": 0,
+        "tp": 6,
+        "fp": 1,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
@@ -1287,9 +1320,9 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 0,
-        "tn": 5,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -1304,13 +1337,13 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
+        "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 3,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     },
     {
@@ -1321,13 +1354,13 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
-        "fp": 0,
+        "tp": 6,
+        "fp": 1,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
@@ -1338,9 +1371,9 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 0,
-        "tn": 5,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -1355,13 +1388,13 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
+        "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 3,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     },
     {
@@ -1372,13 +1405,13 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
-        "fp": 0,
+        "tp": 6,
+        "fp": 1,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
@@ -1389,9 +1422,9 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 0,
-        "tn": 5,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -1406,13 +1439,13 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
+        "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 3,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     },
     {
@@ -1423,13 +1456,13 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
-        "fp": 0,
+        "tp": 6,
+        "fp": 1,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
@@ -1440,9 +1473,9 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 0,
-        "tn": 5,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -1457,13 +1490,13 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
+        "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 3,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     },
     {
@@ -1474,13 +1507,13 @@
         "trend_min_floor_ratio": 0.6
       },
       "result": {
-        "tp": 5,
-        "fp": 0,
+        "tp": 6,
+        "fp": 1,
         "tn": 5,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.8571,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.9231
       }
     },
     {
@@ -1491,9 +1524,9 @@
         "trend_min_floor_ratio": 0.7
       },
       "result": {
-        "tp": 5,
+        "tp": 6,
         "fp": 0,
-        "tn": 5,
+        "tn": 6,
         "fn": 0,
         "precision": 1.0,
         "recall": 1.0,
@@ -1508,13 +1541,13 @@
         "trend_min_floor_ratio": 0.8
       },
       "result": {
-        "tp": 2,
+        "tp": 5,
         "fp": 0,
-        "tn": 5,
-        "fn": 3,
+        "tn": 6,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 0.4,
-        "f1": 0.5714
+        "recall": 0.8333,
+        "f1": 0.9091
       }
     }
   ]

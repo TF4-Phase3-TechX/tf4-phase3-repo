@@ -63,6 +63,13 @@ def test_frontend_error_query_uses_canonical_all_server_span_boundary():
     assert "span_name" not in query
 
 
+def test_runtime_queries_can_be_scoped_to_the_application_namespace():
+    namespace = 'k8s_namespace_name="techx-tf4"'
+    assert namespace in latency_query("frontend", "techx-tf4")
+    assert namespace in error_rate_query("checkout", namespace="techx-tf4")
+    assert namespace in llm_error_query("", namespace="techx-tf4")
+
+
 def test_empty_latency_series_is_unavailable_not_healthy():
     detector = Detector(settings(sustained_polls=1))
     decision = detector.latency("frontend", [], "q")
@@ -146,7 +153,7 @@ def test_gradual_degradation_fires_before_absolute_floor():
             trend_min_consistency=0.75,
         )
     )
-    gradual = [100] * 8 + [105, 115, 125, 135, 145, 155]
+    gradual = [400] * 8 + [450, 510, 570, 630, 690, 750]
     decision = detector.latency(
         "checkout",
         [{"values": [[i, str(v)] for i, v in enumerate(gradual)]}],
@@ -157,6 +164,21 @@ def test_gradual_degradation_fires_before_absolute_floor():
     assert decision.breached is True
     assert decision.anomalous is True
     assert decision.candidates[0]["signals"]["slow_drift"] == 1.0
+
+
+def test_slow_drift_far_below_slo_is_audit_evidence_not_a_page():
+    detector = Detector(settings(sustained_polls=1, latency_threshold_ms=1000))
+    ramp_up = [50] * 8 + [55, 65, 75, 85, 95, 105]
+
+    decision = detector.latency(
+        "frontend",
+        [{"values": [[i, str(v)] for i, v in enumerate(ramp_up)]}],
+        "q",
+    )
+
+    assert decision.candidates[0]["signals"]["slow_drift"] == 1.0
+    assert decision.breached is False
+    assert decision.anomalous is False
 
 
 def test_isolation_forest_is_configurable_confidence_evidence_not_a_gate():

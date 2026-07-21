@@ -65,7 +65,10 @@ def robust_baseline(
 
 
 def anomaly_scores(
-    points: list[float], settings: Settings | None = None
+    points: list[float],
+    settings: Settings | None = None,
+    *,
+    include_isolation: bool = True,
 ) -> dict[str, float]:
     settings = settings or Settings()
     if len(points) < 4:
@@ -129,7 +132,7 @@ def anomaly_scores(
     )
     isolation = 0.0
     isolation_points = [*baseline, current]
-    if len(isolation_points) >= 8 and len(set(isolation_points)) >= 3:
+    if include_isolation and len(isolation_points) >= 8 and len(set(isolation_points)) >= 3:
         data = np.array(isolation_points).reshape(-1, 1)
         model = IsolationForest(
             contamination=settings.isolation_contamination, random_state=7
@@ -168,7 +171,11 @@ def adaptive_breach(scores: dict[str, float], settings: Settings | None = None) 
 
 
 def signal_gate(
-    points: list[float], floor: float, settings: Settings | None = None
+    points: list[float],
+    floor: float,
+    settings: Settings | None = None,
+    *,
+    include_isolation: bool = True,
 ) -> tuple[bool, str, dict[str, float]]:
     """Return raw breach, coverage state and adaptive scores.
 
@@ -178,7 +185,7 @@ def signal_gate(
     """
 
     settings = settings or Settings()
-    scores = anomaly_scores(points, settings)
+    scores = anomaly_scores(points, settings, include_isolation=include_isolation)
     if not points:
         return False, "unavailable", scores
     if len(points) < 4:
@@ -188,14 +195,23 @@ def signal_gate(
     # queue-growth symptoms are not hidden until the final spike.
     breached = (
         points[-1] >= floor and acute_breach(scores, settings)
-    ) or slow_drift_breach(scores)
+    ) or (
+        slow_drift_breach(scores)
+        and points[-1] >= floor * settings.trend_min_floor_ratio
+    )
     return breached, "available", scores
 
 
 def span_matchers(
-    service: str, *, error_only: bool = False, include_operation: bool = True
+    service: str,
+    *,
+    namespace: str | None = None,
+    error_only: bool = False,
+    include_operation: bool = True,
 ) -> str:
     matchers = [f'service_name="{service}"', 'span_kind="SPAN_KIND_SERVER"']
+    if namespace:
+        matchers.append(f'k8s_namespace_name="{namespace}"')
     span_name = LATENCY_SPAN_NAMES.get(service) if include_operation else None
     if span_name:
         operator = "=" if service == "checkout" else "=~"
@@ -462,14 +478,16 @@ class Detector:
         )
 
 
-def latency_query(service: str) -> str:
+def latency_query(service: str, namespace: str | None = None) -> str:
     return (
         "histogram_quantile(0.95, sum by (le) "
-        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service)}}}[5m])))"
+        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[5m])))"
     )
 
 
-def llm_error_query(service: str, minimum_calls: int = 5) -> str:
+def llm_error_query(
+    service: str, minimum_calls: int = 5, namespace: str | None = None
+) -> str:
     """Build a per-emitter LLM error-rate query.
 
     ``service`` may be an exact service name or an empty string for discovery
@@ -478,7 +496,12 @@ def llm_error_query(service: str, minimum_calls: int = 5) -> str:
     the real emitting service instead of a configured global owner.
     """
 
-    selector = f'{{service_name="{service}"}}' if service else ""
+    matchers = []
+    if service:
+        matchers.append(f'service_name="{service}"')
+    if namespace:
+        matchers.append(f'k8s_namespace_name="{namespace}"')
+    selector = "{" + ",".join(matchers) + "}" if matchers else ""
     return (
         f"(sum by (service_name) (rate(app_llm_errors_total{selector}[5m])) "
         f"/ clamp_min(sum by (service_name) (rate(app_llm_calls_total{selector}[5m])), 0.000001)) "
@@ -487,13 +510,20 @@ def llm_error_query(service: str, minimum_calls: int = 5) -> str:
     )
 
 
-def error_rate_query(service: str, minimum_requests: int = 20) -> str:
+def error_rate_query(
+    service: str, minimum_requests: int = 20, namespace: str | None = None
+) -> str:
     # The canonical frontend error SLI covers all normalized frontend server
     # operations. Internal service signals retain their documented operation.
     include_operation = service != "frontend"
-    all_spans = span_matchers(service, include_operation=include_operation)
+    all_spans = span_matchers(
+        service, namespace=namespace, include_operation=include_operation
+    )
     error_spans = span_matchers(
-        service, error_only=True, include_operation=include_operation
+        service,
+        namespace=namespace,
+        error_only=True,
+        include_operation=include_operation,
     )
     return (
         "(sum(rate(traces_span_metrics_calls_total{"
