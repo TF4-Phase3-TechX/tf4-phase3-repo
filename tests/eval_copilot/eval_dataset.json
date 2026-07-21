@@ -102,12 +102,25 @@
       ],
       "expected_behavior": "return_products",
       "description": "Vietnamese request to add most expensive telescope from history to cart"
+    },
+    {
+      "test_id": "TC-11",
+      "group": "vietnamese_nlp",
+      "history_queries": [
+        "ống nhòm đắt nhất"
+      ],
+      "query": "đánh giá như thế nào?",
+      "expected_product_ids": [
+        "2ZYFJ3GM2N"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese question asking for product reviews based on prior conversation turn"
     }
   ],
   "_meta": {
-    "generated_at": "2026-07-22T01:20:00.000000+00:00",
+    "generated_at": "2026-07-22T01:37:00.000000+00:00",
     "source_file": "init.sql",
     "product_count": 10,
-    "dataset_sha256": "1f6091f7cd1882d77792b13090c4eb626c160700edd3bbc3917eb5aaa18ecadc"
+    "dataset_sha256": "c5fa6e405b34f402ec9b80cd44b68c78ab2f516ecc885196d43a0051be6cf4ee"
   }
 }
