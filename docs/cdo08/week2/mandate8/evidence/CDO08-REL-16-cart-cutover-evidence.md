@@ -57,6 +57,68 @@ Rollback: không cần dùng — cutover cuối cùng thành công sau khi fix i
 
 Đã dọn dẹp toàn bộ resource test (`cart-smoke-test` pod, `cart-proto` configmap, key `smoke-test-user` trên cả 2 store) sau khi verify xong — không để lại rác trên production.
 
+### 3.1. Bằng chứng cụ thể: endpoint đang dùng là ElastiCache thật, traffic 100% qua ElastiCache
+
+Verify lại toàn bộ ngay tại thời điểm viết evidence (không dựa vào suy luận từ config, mà chạy lệnh thật, có output thật):
+
+**a) Endpoint app đang dùng là gì:**
+```
+$ kubectl get rollout cart -n techx-tf4 -o jsonpath='{...env...}' | grep VALKEY
+VALKEY_ADDR=techx-tf4-valkey-cart.pyo0mq.ng.0001.use1.cache.amazonaws.com:6379
+```
+
+**b) Endpoint đó có đúng là ElastiCache thật, đang `available`, do AWS xác nhận (không phải chuỗi tự đặt):**
+```
+$ aws elasticache describe-replication-groups --replication-group-id techx-tf4-valkey-cart \
+    --query 'ReplicationGroups[0].{Status:Status,PrimaryEndpoint:NodeGroups[0].PrimaryEndpoint}'
+{
+    "Status": "available",
+    "PrimaryEndpoint": {
+        "Address": "techx-tf4-valkey-cart.pyo0mq.ng.0001.use1.cache.amazonaws.com",
+        "Port": 6379
+    }
+}
+```
+→ Chuỗi trong `VALKEY_ADDR` khớp **chính xác từng ký tự** với `PrimaryEndpoint.Address` mà AWS trả về cho replication group `techx-tf4-valkey-cart` — không phải giá trị bịa/để tạm.
+
+**c) `Deployment/cart` cũ đã bị xoá hẳn — không còn đường nào để traffic lọt vào nguồn cũ:**
+```
+$ kubectl get deployment cart -n techx-tf4
+Error from server (NotFound): deployments.apps "cart" not found
+
+$ kubectl get pods -n techx-tf4 -l app.kubernetes.io/component=cart
+cart-766c6b8f5c-2f6lf   1/1   Running   0   4h44m
+cart-766c6b8f5c-r9svc   1/1   Running   0   4h44m
+```
+Chỉ còn đúng 2 pod thuộc `Rollout/cart`, không còn pod nào của Deployment cũ tồn tại song song.
+
+**d) Endpoints Kubernetes xác nhận traffic chỉ đi vào 2 pod này:**
+```
+$ kubectl get endpoints cart -n techx-tf4
+10.0.10.74  -> cart-766c6b8f5c-r9svc
+10.0.11.238 -> cart-766c6b8f5c-2f6lf
+```
+
+**e) Bằng chứng mạnh nhất — ghi dữ liệu thật qua đúng Service `cart` (client không biết endpoint thật, chỉ gọi `cart.techx-tf4.svc.cluster.local:8080` như app thật), rồi verify trực tiếp bằng redis-cli xem dữ liệu rơi vào đâu:**
+```
+# Ghi qua gRPC (giống hệt cách frontend/checkout gọi)
+$ grpcurl AddItem(user_id=evidence-test-user, product=OLJCESPC7Z, qty=2) -> cart.techx-tf4.svc.cluster.local:8080
+{}
+$ grpcurl GetCart(evidence-test-user)
+{"userId":"evidence-test-user","items":[{"productId":"OLJCESPC7Z","quantity":2}]}
+
+# Query TRỰC TIẾP bằng redis-cli vào ElastiCache — không qua app:
+$ redis-cli -h techx-tf4-valkey-cart.pyo0mq.ng.0001.use1.cache.amazonaws.com -p 6379 EXISTS evidence-test-user
+1
+$ redis-cli -h techx-tf4-valkey-cart.pyo0mq.ng.0001.use1.cache.amazonaws.com -p 6379 TTL evidence-test-user
+3572
+
+# Query TRỰC TIẾP vào valkey-cart CŨ — phải là 0 mới đúng:
+$ kubectl exec deploy/valkey-cart -- redis-cli EXISTS evidence-test-user
+0
+```
+→ Key ghi qua Service `cart` **có mặt trên ElastiCache** (TTL hợp lệ 3572s) và **hoàn toàn không có** trên `valkey-cart` cũ. Đây là bằng chứng trực tiếp, không suy luận: request thật đi qua Service → tới ElastiCache, không chạm nguồn cũ ở bất kỳ bước nào. Đã dọn dẹp key test này sau khi verify.
+
 ## 4. Theo dõi SLO
 
 - **Cart success rate: 100%** (theo Grafana, sau khi fix incident §5.1) — xác nhận cart hoạt động đúng, ổn định trên ElastiCache.
@@ -106,8 +168,9 @@ Rollback: không cần dùng — cutover cuối cùng thành công sau khi fix i
 - [ ] Checkout qua UI thật — **chưa test thủ công**, và checkout tổng thể đang bị ảnh hưởng bởi lỗi không liên quan (xem §4) nên chưa thể xác nhận 100% qua UI.
 - [x] Data parity check post-cutover (A-1, A-2) pass.
 - [ ] Data parity check pre-cutover (K-1) — **có gap thật, đã ghi nhận trung thực ở §2**, không đạt ≥99.9% do incident.
-- [x] Không có error spike do cart gây ra (cart success rate 100% sau fix; error spike hiện tại là do `currency`/`shipping`/Jaeger, ngoài phạm vi).
+- [x] Không có error spike do cart gây ra (cart success rate 100% sau fix; error spike hiện tại là do `currency`/`shipping`/Jaeger, ngoài phạm vi — đã tự phục hồi phần lớn sau khi team liên quan fix `currency`, xem PR #443).
 - [x] Không xoá `valkey-cart` — vẫn giữ nguyên, đang bake.
+- [x] `Deployment/cart` cũ (Blue, orphan sau khi ArgoCD convert sang Rollout, `prune: false` không tự xoá) — đã xoá thủ công sau khi xác nhận 100% traffic qua Rollout mới (xem §3.1). Không ảnh hưởng gì tới traffic.
 - [ ] Bake 24-48h ổn định — **đang trong giai đoạn theo dõi**, chưa đủ thời gian.
 
-**Trạng thái tổng thể: Cutover kỹ thuật thành công, cart hoạt động đúng và ổn định. Có 1 gap parity dữ liệu thật (thấp rủi ro do TTL ngắn) cần theo dõi, và một số script fix cần commit để không lặp lại bug. Chưa đủ điều kiện đóng ticket REL-18 (xoá `valkey-cart`) cho tới khi bake xong 24-48h.**
+**Trạng thái tổng thể: Cutover kỹ thuật thành công, đã verify bằng chứng trực tiếp (không suy luận) rằng 100% traffic/dữ liệu đang đi qua ElastiCache thật (§3.1), cart hoạt động ổn định. Có 1 gap parity dữ liệu thật từ lúc incident (thấp rủi ro do TTL ngắn) cần theo dõi, và một số script fix cần commit để không lặp lại bug (§5.2). Chưa đủ điều kiện đóng ticket REL-18 (xoá `valkey-cart`) cho tới khi bake xong 24-48h.**
