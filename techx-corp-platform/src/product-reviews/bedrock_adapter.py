@@ -631,6 +631,15 @@ def _validate_search_intent(
             contract_stage="tool_input_dict",
         )
 
+    # 0. Exact JSON Schema validation using jsonschema library (if installed)
+    try:
+        import jsonschema
+        jsonschema.validate(instance=payload, schema=SEARCH_INTENT_SCHEMA)
+    except ImportError:
+        pass  # Fallback to custom schema checks below if jsonschema is not installed
+    except Exception:
+        _fail()
+
     # 1. Reject unknown fields at application boundary — never trust provider schema.
     _ALLOWED_KEYS = frozenset({
         "search_type", "category", "keywords", "price_min", "price_max", "comparison_targets"
