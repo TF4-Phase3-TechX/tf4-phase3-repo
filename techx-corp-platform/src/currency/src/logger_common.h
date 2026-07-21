@@ -20,7 +20,10 @@ namespace
   void initLogger() {
     otlp::OtlpGrpcLogRecordExporterOptions loggerOptions;
     auto exporter  = otlp::OtlpGrpcLogRecordExporterFactory::Create(loggerOptions);
-    auto processor = logs_sdk::BatchLogRecordProcessorFactory::Create(std::move(exporter));
+    logs_sdk::BatchLogRecordProcessorOptions processorOptions;
+    logs_sdk::BatchLogRecordProcessorRuntimeOptions runtimeOptions;
+    auto processor = logs_sdk::BatchLogRecordProcessorFactory::Create(
+        std::move(exporter), processorOptions, runtimeOptions);
     std::vector<std::unique_ptr<logs_sdk::LogRecordProcessor>> processors;
     processors.push_back(std::move(processor));
     auto context = logs_sdk::LoggerContextFactory::Create(std::move(processors));
