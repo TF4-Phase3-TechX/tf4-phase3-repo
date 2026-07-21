@@ -1,0 +1,33 @@
+﻿MANDATE-10 EVIDENCE SUMMARY
+
+Pod -> ECR
+Pod: currency-858bcdfbc6-pq4rb
+Image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:a930936-currency@sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c
+Digest: sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c
+Pod/ECR digest match: PASS
+
+Cosign / Provenance / SBOM
+Signature: PASS
+Attestation: PASS
+OIDC issuer: https://token.actions.githubusercontent.com
+Workflow: build-and-push
+Commit: a93093665767a27c40b71e6597b10c1ce20dd702
+Run ID: 29811592226
+SBOM: CycloneDX, vulnerabilities=0
+
+Scan / Actions
+Run conclusion: success
+Gate status: 0
+
+PR / Human approval
+PR #443 merged
+Approvers: NamHoang4268, Remmusss
+Approved count: 2
+
+Main ruleset
+Enforcement: active
+Required approvals: 2
+Code owner review: True
+Required status checks present: False
+
+Finding: required status checks are absent from the live ruleset; report to Security/Repo Admin.

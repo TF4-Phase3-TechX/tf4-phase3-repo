@@ -1,0 +1,15 @@
+{
+  "image_repository": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp",
+  "image_tag": "a930936",
+  "git_sha": "a93093665767a27c40b71e6597b10c1ce20dd702",
+  "services": [
+    "currency"
+  ],
+  "service_images": [
+    {
+      "service": "currency",
+      "tag": "a930936-currency",
+      "digest": "sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c"
+    }
+  ]
+}

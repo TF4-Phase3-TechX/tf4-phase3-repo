@@ -1,0 +1,7 @@
+﻿{
+    "Name": "techx-tf4-cluster",
+    "Status": "ACTIVE",
+    "Version": "1.34",
+    "PublicEndpoint": true,
+    "PrivateEndpoint": true
+}

@@ -1,0 +1,15 @@
+﻿{
+    "images": [
+        {
+            "registryId": "511825856493",
+            "repositoryName": "techx-corp",
+            "imageId": {
+                "imageDigest": "sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c",
+                "imageTag": "a930936-currency"
+            },
+            "imageManifest": "{\n   \"schemaVersion\": 2,\n   \"mediaType\": \"application/vnd.docker.distribution.manifest.v2+json\",\n   \"config\": {\n      \"mediaType\": \"application/vnd.docker.container.image.v1+json\",\n      \"size\": 1433,\n      \"digest\": \"sha256:47a31d9d8da0644c63ca88b2d87233798e8ccc7444fa636210cf68374061f649\"\n   },\n   \"layers\": [\n      {\n         \"mediaType\": \"application/vnd.docker.image.rootfs.diff.tar.gzip\",\n         \"size\": 3646875,\n         \"digest\": \"sha256:897d797d2723cf0e318402f4d6f37d51b011517e5cf09246b22155f0fa90dc81\"\n      },\n      {\n         \"mediaType\": \"application/vnd.docker.image.rootfs.diff.tar.gzip\",\n         \"size\": 23717562,\n         \"digest\": \"sha256:076e5483eef336218fa12d4bc2f3a2c567fbe7c1e86c4d9480879f43275576ac\"\n      },\n      {\n         \"mediaType\": \"application/vnd.docker.image.rootfs.diff.tar.gzip\",\n         \"size\": 3288993,\n         \"digest\": \"sha256:be5451f1b40cf01c34ca1783db75d8993d6f5a3288ad11cbc5cb9d372ddefe5d\"\n      }\n   ]\n}",
+            "imageManifestMediaType": "application/vnd.docker.distribution.manifest.v2+json"
+        }
+    ],
+    "failures": []
+}
