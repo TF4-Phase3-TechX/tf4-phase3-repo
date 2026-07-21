@@ -266,6 +266,7 @@ data "aws_iam_policy_document" "github_actions_build" {
       "ecr:InitiateLayerUpload",
       "ecr:ListImages",
       "ecr:PutImage",
+      "ecr:PutImageTagMutability",
       "ecr:UploadLayerPart"
     ]
 
