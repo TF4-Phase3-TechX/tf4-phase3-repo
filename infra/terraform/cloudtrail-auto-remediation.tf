@@ -159,11 +159,12 @@ resource "aws_cloudwatch_event_target" "cloudtrail_stoplogging_auto_remediation"
   arn       = local.cloudtrail_automation_definition_arn
   role_arn  = aws_iam_role.cloudtrail_auto_remediation_eventbridge.arn
 
+  # SSM Automation targets expect the runbook parameters at the JSON root.
+  # A { "Parameters": { ... } } wrapper is for other invocation shapes and
+  # causes EventBridge FailedInvocations before an Automation execution exists.
   input = jsonencode({
-    Parameters = {
-      TrailName            = [aws_cloudtrail.main.name]
-      AutomationAssumeRole = [aws_iam_role.cloudtrail_auto_remediation_automation.arn]
-    }
+    TrailName            = [aws_cloudtrail.main.name]
+    AutomationAssumeRole = [aws_iam_role.cloudtrail_auto_remediation_automation.arn]
   })
 
   depends_on = [
