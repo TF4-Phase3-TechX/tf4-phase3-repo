@@ -112,6 +112,15 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
+      - name: Allow Cosign ECR artifact tag updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr put-image-tag-mutability \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-tag-mutability IMMUTABLE_WITH_EXCLUSION \
+            --image-tag-mutability-exclusion-filters filterType=WILDCARD,filter='sha256-*'
+
       - name: Set image variables
         id: vars
         shell: bash
@@ -240,8 +249,8 @@ jobs:
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
-              # 4. Provenance Attestation
-              echo ">> [4/8] Generating and Attesting Provenance..."
+              # 4. Provenance + SBOM Attestation
+              echo ">> [4/8] Generating and Attesting Provenance + SBOM..."
               jq -n \
                 --arg repo "${{ github.repository }}" \
                 --arg commit "${{ github.sha }}" \
@@ -258,9 +267,41 @@ jobs:
                   image_digest: $image_digest
                 }' > provenance.json
               cp provenance.json "security-artifacts/provenance-${service}-${digest_clean}.json"
-              
-              if ! cosign attest --yes --predicate provenance.json --type custom "$image_ref_digest"; then
-                echo "::error::Failed to attest provenance for $service"
+
+              delivery_predicate_file="security-artifacts/delivery-predicate-${service}-${digest_clean}.json"
+              jq -n \
+                --arg repo "${{ github.repository }}" \
+                --arg commit "${{ github.sha }}" \
+                --arg workflow "${{ github.workflow }}" \
+                --arg run_id "${{ github.run_id }}" \
+                --arg service_name "$service" \
+                --arg image_digest "$digest" \
+                --slurpfile sbom "security-artifacts/sbom-${service}-${digest_clean}.json" \
+                '{
+                  kind: "secure-delivery-evidence",
+                  repo: $repo,
+                  commit: $commit,
+                  workflow: $workflow,
+                  run_id: $run_id,
+                  service_name: $service_name,
+                  image_digest: $image_digest,
+                  provenance: {
+                    repo: $repo,
+                    commit: $commit,
+                    workflow: $workflow,
+                    run_id: $run_id,
+                    service_name: $service_name,
+                    image_digest: $image_digest
+                  },
+                  sbom: {
+                    kind: "cyclonedx-sbom",
+                    bomFormat: $sbom[0].bomFormat,
+                    document: $sbom[0]
+                  }
+                }' > "$delivery_predicate_file"
+
+              if ! cosign attest --yes --predicate "$delivery_predicate_file" --type custom "$image_ref_digest"; then
+                echo "::error::Failed to attest provenance/SBOM evidence for $service"
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
@@ -289,26 +330,85 @@ jobs:
                 echo "1" > security-artifacts/gate_status.txt
               fi
 
-              # 7. Attest SBOM — binds the CycloneDX SBOM to the image digest on the registry (not just a build artifact)
-              echo ">> [7/8] Attesting SBOM..."
-              if ! cosign attest --yes \
-                --predicate "security-artifacts/sbom-${service}-${digest_clean}.json" \
-                --type cyclonedx \
-                "$image_ref_digest"; then
-                echo "::error::Failed to attest SBOM for $service"
-                echo "1" > security-artifacts/gate_status.txt
-              fi
+              # 7. Persist SBOM predicate artifact — the signed delivery predicate in step 4 binds this content to the image digest.
+              echo ">> [7/8] Preparing SBOM predicate evidence..."
+              sbom_predicate_file="security-artifacts/sbom-predicate-${service}-${digest_clean}.json"
+              jq -n \
+                --arg repo "${{ github.repository }}" \
+                --arg commit "${{ github.sha }}" \
+                --arg workflow "${{ github.workflow }}" \
+                --arg run_id "${{ github.run_id }}" \
+                --arg service_name "$service" \
+                --arg image_digest "$digest" \
+                --slurpfile sbom "security-artifacts/sbom-${service}-${digest_clean}.json" \
+                '{
+                  kind: "cyclonedx-sbom",
+                  repo: $repo,
+                  commit: $commit,
+                  workflow: $workflow,
+                  run_id: $run_id,
+                  service_name: $service_name,
+                  image_digest: $image_digest,
+                  bomFormat: $sbom[0].bomFormat,
+                  sbom: $sbom[0]
+                }' > "$sbom_predicate_file"
 
-              # 8. Verify SBOM attestation — evidence the CycloneDX SBOM attached to the digest is authentic
+              # 8. Verify SBOM attestation — evidence the signed delivery predicate contains the expected CycloneDX SBOM for this digest
               echo ">> [8/8] Verifying SBOM Attestation..."
-              if ! cosign verify-attestation \
-                --type cyclonedx \
-                --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
-                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-                "$image_ref_digest" \
-                --output text > "security-artifacts/sbom-verify-${service}-${digest_clean}.txt" 2>&1; then
-                echo "::error::SBOM verify failed for $service — could not confirm attestation"
-                cat "security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
+              sbom_verify_file="security-artifacts/sbom-verify-${service}-${digest_clean}.txt"
+              sbom_verify_jsonl="security-artifacts/sbom-verify-${service}-${digest_clean}.jsonl"
+              sbom_verified=0
+              for attempt in 1 2 3 4 5; do
+                if ! cosign verify-attestation \
+                  --type custom \
+                  --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
+                  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+                  "$image_ref_digest" \
+                  --output json > "$sbom_verify_file" 2>&1; then
+                  echo "SBOM verify attempt ${attempt}/5 did not confirm attestation yet."
+                  cat "$sbom_verify_file"
+                elif ! grep -E '^[[:space:]]*(\{|\[)' "$sbom_verify_file" > "$sbom_verify_jsonl"; then
+                  echo "SBOM verify attempt ${attempt}/5 did not return machine-readable attestation JSON."
+                  cat "$sbom_verify_file"
+                elif jq -s -e --arg digest "$digest" '
+                  def objects:
+                    .[] | if type == "array" then .[] else . end;
+
+                  def statement:
+                    .payload | @base64d | fromjson;
+
+                  def predicate_json:
+                    statement.predicate as $predicate
+                    | if ($predicate.Data? | type) == "string"
+                      then ($predicate.Data | fromjson)
+                      else $predicate
+                      end;
+
+                  [
+                    objects
+                    | statement as $statement
+                    | predicate_json as $predicate
+                    | select(any($statement.subject[]?; .digest.sha256 == ($digest | sub("^sha256:"; ""))))
+                    | select($predicate.kind == "secure-delivery-evidence")
+                    | select($predicate.image_digest == $digest)
+                    | select($predicate.sbom.kind == "cyclonedx-sbom")
+                    | select($predicate.sbom.bomFormat == "CycloneDX")
+                    | select($predicate.sbom.document.bomFormat == "CycloneDX")
+                  ] | length > 0
+                ' "$sbom_verify_jsonl" > /dev/null; then
+                  sbom_verified=1
+                  break
+                else
+                  echo "SBOM verify attempt ${attempt}/5 found attestations, but not the expected CycloneDX SBOM predicate yet."
+                  cat "$sbom_verify_file"
+                fi
+
+                sleep $(( attempt * 5 ))
+              done
+
+              if [ "$sbom_verified" -ne 1 ]; then
+                echo "::error::SBOM verify failed for $service — attestation exists but does not contain the expected CycloneDX SBOM for this digest"
+                cat "$sbom_verify_file"
                 echo "1" > security-artifacts/gate_status.txt
               fi
             else
