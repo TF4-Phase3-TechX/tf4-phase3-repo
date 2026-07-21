@@ -1,0 +1,406 @@
+{
+  "schema_version": 1,
+  "source": "..\\..\\..\\docs\\aio1\\mandate-22\\scenarios-v1.jsonl",
+  "all_passed": true,
+  "cases": [
+    {
+      "id": "m22-success-01",
+      "expected_status": "resolved",
+      "actual_status": "resolved",
+      "passed": true,
+      "patches": [
+        {
+          "revision": "previous"
+        }
+      ],
+      "verification": {
+        "healthy": true,
+        "observed_entire_window": true,
+        "samples": [
+          {
+            "poll": 1,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": true,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 2,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": true,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 3,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": true,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          }
+        ],
+        "target": "product-reviews"
+      },
+      "rollback_verification": null,
+      "mutation_blocked": false,
+      "audit": [
+        {
+          "at": "2026-07-21T16:35:56.832069Z",
+          "event": "autonomous_policy_evaluated",
+          "detail": {
+            "policy_version": "m22-v1",
+            "checks": {
+              "autonomous_enabled": true,
+              "runbook_authorized": true,
+              "target_allowlisted": true,
+              "severity_high": true,
+              "confidence_sufficient": true,
+              "evidence_present": true,
+              "mutation_not_blocked": true
+            }
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.833069Z",
+          "event": "action_preauthorized",
+          "detail": {
+            "policy_version": "m22-v1",
+            "action": "rollback_previous_replicaset"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.833069Z",
+          "event": "action_preflight_started",
+          "detail": {
+            "target": "product-reviews",
+            "mode": "live"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.843074Z",
+          "event": "action_preflight_passed",
+          "detail": {
+            "target": "product-reviews"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.844078Z",
+          "event": "kubernetes_server_dry_run_passed",
+          "detail": {}
+        },
+        {
+          "at": "2026-07-21T16:35:56.845072Z",
+          "event": "action_executed",
+          "detail": {}
+        },
+        {
+          "at": "2026-07-21T16:35:56.847072Z",
+          "event": "remediation_verified",
+          "detail": {}
+        }
+      ]
+    },
+    {
+      "id": "m22-forced-wrong-01",
+      "expected_status": "rolled_back",
+      "actual_status": "rolled_back",
+      "passed": true,
+      "patches": [
+        {
+          "revision": "previous"
+        },
+        {
+          "revision": "current"
+        }
+      ],
+      "verification": {
+        "healthy": false,
+        "observed_entire_window": true,
+        "samples": [
+          {
+            "poll": 1,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 2,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 3,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          }
+        ],
+        "target": "product-reviews"
+      },
+      "rollback_verification": {
+        "healthy": true,
+        "observed_entire_window": true,
+        "samples": [
+          {
+            "poll": 1,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": true,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 2,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": true,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 3,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": true,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          }
+        ],
+        "target": "product-reviews"
+      },
+      "mutation_blocked": false,
+      "audit": [
+        {
+          "at": "2026-07-21T16:35:56.860072Z",
+          "event": "autonomous_policy_evaluated",
+          "detail": {
+            "policy_version": "m22-v1",
+            "checks": {
+              "autonomous_enabled": true,
+              "runbook_authorized": true,
+              "target_allowlisted": true,
+              "severity_high": true,
+              "confidence_sufficient": true,
+              "evidence_present": true,
+              "mutation_not_blocked": true
+            }
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.861071Z",
+          "event": "action_preauthorized",
+          "detail": {
+            "policy_version": "m22-v1",
+            "action": "rollback_previous_replicaset"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.861071Z",
+          "event": "action_preflight_started",
+          "detail": {
+            "target": "product-reviews",
+            "mode": "live"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.862069Z",
+          "event": "action_preflight_passed",
+          "detail": {
+            "target": "product-reviews"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.862069Z",
+          "event": "kubernetes_server_dry_run_passed",
+          "detail": {}
+        },
+        {
+          "at": "2026-07-21T16:35:56.863070Z",
+          "event": "action_executed",
+          "detail": {}
+        },
+        {
+          "at": "2026-07-21T16:35:56.867068Z",
+          "event": "rollback_applied",
+          "detail": {
+            "reason": "Remediation did not recover during the stabilization window"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.869069Z",
+          "event": "rollback_verified",
+          "detail": {}
+        }
+      ]
+    },
+    {
+      "id": "m22-rollback-unhealthy-01",
+      "expected_status": "escalated",
+      "actual_status": "escalated",
+      "passed": true,
+      "patches": [
+        {
+          "revision": "previous"
+        },
+        {
+          "revision": "current"
+        }
+      ],
+      "verification": {
+        "healthy": false,
+        "observed_entire_window": true,
+        "samples": [
+          {
+            "poll": 1,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 2,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 3,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          }
+        ],
+        "target": "product-reviews"
+      },
+      "rollback_verification": {
+        "healthy": false,
+        "observed_entire_window": true,
+        "samples": [
+          {
+            "poll": 1,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 2,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          },
+          {
+            "poll": 3,
+            "rollout_ready": true,
+            "slo": {
+              "healthy": false,
+              "source": "external_replay",
+              "service": "product-reviews"
+            }
+          }
+        ],
+        "target": "product-reviews"
+      },
+      "mutation_blocked": true,
+      "audit": [
+        {
+          "at": "2026-07-21T16:35:56.881591Z",
+          "event": "autonomous_policy_evaluated",
+          "detail": {
+            "policy_version": "m22-v1",
+            "checks": {
+              "autonomous_enabled": true,
+              "runbook_authorized": true,
+              "target_allowlisted": true,
+              "severity_high": true,
+              "confidence_sufficient": true,
+              "evidence_present": true,
+              "mutation_not_blocked": true
+            }
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.881591Z",
+          "event": "action_preauthorized",
+          "detail": {
+            "policy_version": "m22-v1",
+            "action": "rollback_previous_replicaset"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.881591Z",
+          "event": "action_preflight_started",
+          "detail": {
+            "target": "product-reviews",
+            "mode": "live"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.882604Z",
+          "event": "action_preflight_passed",
+          "detail": {
+            "target": "product-reviews"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.883605Z",
+          "event": "kubernetes_server_dry_run_passed",
+          "detail": {}
+        },
+        {
+          "at": "2026-07-21T16:35:56.883605Z",
+          "event": "action_executed",
+          "detail": {}
+        },
+        {
+          "at": "2026-07-21T16:35:56.886590Z",
+          "event": "rollback_applied",
+          "detail": {
+            "reason": "Remediation did not recover during the stabilization window"
+          }
+        },
+        {
+          "at": "2026-07-21T16:35:56.889598Z",
+          "event": "rollback_unverified_escalation",
+          "detail": {}
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Uses the production controller with bounded Kubernetes/telemetry adapters.",
+    "Does not replace the required in-cluster successful and forced-rollback drills."
+  ]
+}

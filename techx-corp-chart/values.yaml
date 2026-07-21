@@ -203,6 +203,22 @@ components:
         value: webstore-logs
       - name: REMEDIATION_MODE
         value: dry-run
+      # Both switches remain off until CDO signs the exact Mandate-22 policy,
+      # target and drill window. Live RBAC is separately gated below.
+      - name: AIOPS_AUTONOMOUS_REMEDIATION_ENABLED
+        value: "false"
+      - name: AIOPS_REMEDIATION_POLICY_VERSION
+        value: "m22-v1"
+      - name: AIOPS_AUTONOMOUS_RUNBOOKS
+        value: "deployment-latency-rollback"
+      - name: AIOPS_VERIFICATION_POLLS
+        value: "3"
+      - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
+        value: "3"
+      - name: AIOPS_VERIFICATION_INTERVAL_SECONDS
+        value: "20"
+      - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
+        value: "900"
       - name: AIOPS_TARGET_NAMESPACE
         valueFrom:
           fieldRef:
