@@ -1,5 +1,5 @@
-# Owner: Nhóm CDO07 (Audit)
-# Ref: AUDIT-010 — Auto-remediate CloudTrail StopLogging via EventBridge + SSM Automation
+# Owner: CDO07 Audit
+# Ref: AUDIT-010 - Auto-remediate CloudTrail StopLogging via EventBridge + SSM Automation
 
 locals {
   cloudtrail_auto_remediation_document_name = "tf4-restore-cloudtrail-logging"
@@ -165,4 +165,9 @@ resource "aws_cloudwatch_event_target" "cloudtrail_stoplogging_auto_remediation"
       AutomationAssumeRole = [aws_iam_role.cloudtrail_auto_remediation_automation.arn]
     }
   })
+
+  depends_on = [
+    aws_ssm_document.cloudtrail_auto_remediation,
+    aws_iam_role_policy.cloudtrail_auto_remediation_eventbridge
+  ]
 }
