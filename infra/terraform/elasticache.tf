@@ -71,10 +71,10 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
 
   at_rest_encryption_enabled = true
 
-  # Preferred mode allows the migration window to support non-TLS clients while
-  # keeping the target ready for the post-cutover move to required TLS.
-  transit_encryption_enabled = true
-  transit_encryption_mode    = "preferred"
+  # AWS Online Migration (used for the REL-16 cutover) rejects StartMigration against
+  # any replication group with transit encryption enabled, even in "preferred" mode —
+  # must stay disabled here and be enabled post-cutover via 07-enable-tls.sh.
+  transit_encryption_enabled = false
 
   snapshot_retention_limit = 7
   snapshot_window          = "18:00-19:00"
