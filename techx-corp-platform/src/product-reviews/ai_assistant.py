@@ -6,6 +6,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable
+import copy
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 from bedrock_adapter import BedrockAdapter, ProviderFailure
 from safety import (
@@ -101,3 +106,47 @@ class GroundedAssistant:
                 error_class=type(exc).__name__.lower()[:64],
                 quarantined_reviews=quarantined_reviews,
             )
+
+
+def log_tool_audit(tool_name: str, args: dict, trace_id: str):
+    sanitized_args = copy.deepcopy(args)
+    sensitive_keys = ('password', 'secret', 'token', 'key', 'email', 'phone')
+    for k in list(sanitized_args.keys()):
+        if any(sensitive in k.lower() for sensitive in sensitive_keys):
+            sanitized_args[k] = "[REDACTED_SECRET]"
+            
+    logger.info(
+        "agent_tool_call",
+        extra={
+            "event": "agent_tool_call",
+            "trace_id": trace_id,
+            "tool_name": tool_name,
+            "sanitized_args": sanitized_args
+        }
+    )
+
+def run_copilot_loop(user_query: str):
+    MAX_ITERATIONS = 25
+    LATENCY_BUDGET_SEC = 4.5
+    start_time = time.monotonic()
+    
+    for iteration in range(MAX_ITERATIONS):
+        # a. [Pre-flight Check]
+        elapsed_time = time.monotonic() - start_time
+        if elapsed_time >= LATENCY_BUDGET_SEC:
+            logger.warning("Latency budget exhausted")
+            break
+            
+        # b. [Mock Action]
+        mock_tool_name = "search_products"
+        mock_args = {"query": user_query, "api_key": "sk-12345"}
+        
+        # c. [Audit]
+        log_tool_audit(tool_name=mock_tool_name, args=mock_args, trace_id="mock_trace_123")
+        
+        # d. [Safety Net]
+        if iteration == MAX_ITERATIONS - 1:
+            logger.warning("Max iterations reached")
+            break
+            
+    return "Tôi đang xử lý quá nhiều thông tin, vui lòng thử lại với câu hỏi ngắn gọn hơn."

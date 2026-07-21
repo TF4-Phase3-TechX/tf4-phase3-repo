@@ -89,3 +89,55 @@ def test_provider_contract_failure_preserves_sanitized_usage_metadata():
     assert outcome.output_tokens == 21
     assert outcome.provider_stop_reason == "tool_use"
     assert outcome.response_contract_stage == "tool_stop_reason"
+
+
+import logging
+from ai_assistant import log_tool_audit, run_copilot_loop
+
+def test_log_tool_audit_sanitizes_secrets(caplog):
+    caplog.set_level(logging.INFO)
+    args = {
+        "query": "laptop",
+        "api_key": "sk-12345",
+        "USER_PASSWORD": "mysecretpassword",
+        "phone_number": "0123456789"
+    }
+    log_tool_audit("search_products", args, "trace-123")
+    
+    assert len(caplog.records) == 1
+    record = caplog.records[0]
+    assert record.message == "agent_tool_call"
+    
+    sanitized = record.sanitized_args
+    assert sanitized["query"] == "laptop"
+    assert sanitized["api_key"] == "[REDACTED_SECRET]"
+    assert sanitized["USER_PASSWORD"] == "[REDACTED_SECRET]"
+    assert sanitized["phone_number"] == "[REDACTED_SECRET]"
+    
+    # Verify original dict is not mutated
+    assert args["api_key"] == "sk-12345"
+
+def test_run_copilot_loop_max_iterations(caplog):
+    caplog.set_level(logging.WARNING)
+    result = run_copilot_loop("tìm laptop")
+    assert result == "Tôi đang xử lý quá nhiều thông tin, vui lòng thử lại với câu hỏi ngắn gọn hơn."
+    assert any("Max iterations reached" in record.message for record in caplog.records)
+
+def test_run_copilot_loop_latency_budget(caplog, monkeypatch):
+    caplog.set_level(logging.WARNING)
+    
+    import time
+    original_monotonic = time.monotonic
+    call_count = 0
+    
+    def mock_monotonic():
+        nonlocal call_count
+        call_count += 1
+        # Lần gọi đầu (start_time) là 0, lần 2 (elapsed) là 5.0 (> 4.5)
+        return original_monotonic() + (5.0 if call_count > 1 else 0.0)
+        
+    monkeypatch.setattr(time, "monotonic", mock_monotonic)
+    
+    result = run_copilot_loop("tìm điện thoại")
+    assert result == "Tôi đang xử lý quá nhiều thông tin, vui lòng thử lại với câu hỏi ngắn gọn hơn."
+    assert any("Latency budget exhausted" in record.message for record in caplog.records)
