@@ -1,0 +1,67 @@
+{
+  "recordType": "MANDATE-10-provenance-chain",
+  "capturedAtUtc": "2026-07-21T13:41:32Z",
+  "identity": {
+    "account": "511825856493",
+    "role": "AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882",
+    "user": "trieu.nguyen"
+  },
+  "cluster": {
+    "name": "techx-tf4-cluster",
+    "region": "us-east-1",
+    "status": "ACTIVE",
+    "version": "1.34",
+    "namespace": "techx-tf4"
+  },
+  "runtime": {
+    "pod": "currency-858bcdfbc6-pq4rb",
+    "container": "currency",
+    "image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:a930936-currency@sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c",
+    "imageDigest": "sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c",
+    "node": "ip-10-0-10-231.ec2.internal"
+  },
+  "registry": {
+    "repository": "techx-corp",
+    "tag": "a930936-currency",
+    "digest": "sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c",
+    "status": "ACTIVE",
+    "digestMatchesRuntime": true
+  },
+  "signature": {
+    "verification": "PASS",
+    "cosignExitCode": 0,
+    "claims": "VALIDATED",
+    "transparencyLog": "VERIFIED",
+    "certificate": "VERIFIED",
+    "oidcIssuer": "https://token.actions.githubusercontent.com",
+    "workflow": "build-and-push",
+    "workflowRef": "refs/heads/main"
+  },
+  "attestation": {
+    "verification": "PASS",
+    "predicateType": "https://cosign.sigstore.dev/attestation/v1",
+    "repository": "TF4-Phase3-TechX/tf4-phase3-repo",
+    "commit": "a93093665767a27c40b71e6597b10c1ce20dd702",
+    "workflow": "build-and-push",
+    "githubRunId": "29811592226",
+    "service": "currency",
+    "imageDigest": "sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c",
+    "digestMatchesRuntime": true,
+    "sbomKind": "cyclonedx-sbom",
+    "sbomFormat": "CycloneDX",
+    "vulnerabilityCount": 0
+  },
+  "pipeline": {
+    "runId": "29811592226",
+    "conclusion": "success",
+    "headBranch": "main",
+    "headSha": "a93093665767a27c40b71e6597b10c1ce20dd702",
+    "gateStatus": 0,
+    "trivyVulnerabilities": 0
+  },
+  "scopeAndFindings": {
+    "humanApprovalEvidence": "separate-H2-workstream",
+    "pullRequestNumberInSignedPredicate": "not-observed",
+    "attestationScreenshot": "retake-required-before-final-Jira-attachment"
+  }
+}
