@@ -553,10 +553,19 @@ def main() -> None:
         estimated_cost_usd = 0.0
 
         try:
-            req = demo_pb2.SearchProductsAIAssistantRequest(query=query)
+            session_id = f"eval_session_{tc['test_id']}"
+            for prev_q in tc.get("history_queries", []):
+                stub.SearchProductsAIAssistant(
+                    demo_pb2.SearchProductsAIAssistantRequest(query=prev_q, session_id=session_id),
+                    timeout=15.0,
+                )
+
+            req = demo_pb2.SearchProductsAIAssistantRequest(query=query, session_id=session_id)
             res = stub.SearchProductsAIAssistant(req, timeout=15.0)
 
             actual_product_ids = [p.id for p in res.results]
+            if not actual_product_ids and hasattr(res, "action_proposal") and res.action_proposal.product_id:
+                actual_product_ids = [res.action_proposal.product_id]
             actual_refused = res.trace.refused
 
             if hasattr(res.trace, "input_tokens"):

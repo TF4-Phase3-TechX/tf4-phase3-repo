@@ -71,12 +71,43 @@
       "expected_product_ids": [],
       "expected_behavior": "refuse_out_of_scope",
       "description": "English greeting chatter out of scope"
+    },
+    {
+      "test_id": "TC-08",
+      "group": "vietnamese_nlp",
+      "query": "có truyện tranh không?",
+      "expected_product_ids": [
+        "HQTGWGPNH4"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese query for comic books"
+    },
+    {
+      "test_id": "TC-09",
+      "group": "vietnamese_nlp",
+      "query": "tôi muốn mua 1 bộ one piece",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "description": "Vietnamese query for item not in catalog"
+    },
+    {
+      "test_id": "TC-10",
+      "group": "vietnamese_nlp",
+      "history_queries": [
+        "tôi muốn mua kính thiên văn"
+      ],
+      "query": "thêm cái đắt nhất vào giỏ hàng",
+      "expected_product_ids": [
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese request to add most expensive telescope from history to cart"
     }
   ],
   "_meta": {
-    "generated_at": "2026-07-22T01:08:05.000000+00:00",
+    "generated_at": "2026-07-22T01:20:00.000000+00:00",
     "source_file": "init.sql",
     "product_count": 10,
-    "dataset_sha256": "e6a4bea251f078fe4704410c3ab4970ade2c29bf621f47cb7b01f4ae03cd0093"
+    "dataset_sha256": "1f6091f7cd1882d77792b13090c4eb626c160700edd3bbc3917eb5aaa18ecadc"
   }
 }
