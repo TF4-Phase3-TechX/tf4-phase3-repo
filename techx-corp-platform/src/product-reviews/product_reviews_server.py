@@ -27,7 +27,7 @@ from bedrock_adapter import BedrockAdapter
 from database import fetch_avg_product_review_score_from_db, fetch_product_reviews_from_db
 import demo_pb2
 import demo_pb2_grpc
-from metrics import init_metrics
+from metrics import init_metrics, llm_metric_identity
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
 
 
@@ -123,12 +123,19 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                     error_class="injected_inaccurate_response_blocked",
                     quarantined_reviews=outcome.quarantined_reviews,
                 )
-        attributes = {
+        attributes = llm_metric_identity(
+            os.environ.get("OTEL_SERVICE_NAME", "product-reviews")
+        ) | {
+            # Explicit attribution is part of the app_llm_* metric contract.
+            # Prometheus normalizes these keys to service_name and
+            # llm_operation, allowing AIOps to route incidents per caller.
             "llm.model": assistant.provider.model_id,
             "llm.call": "converse",
             "llm.outcome": outcome.outcome,
             "guardrail.version": assistant.provider.guardrail_version,
             "error.class": outcome.error_class or "none",
+            "response.stop_reason": outcome.provider_stop_reason,
+            "response.contract_stage": outcome.response_contract_stage,
         }
         span.set_attribute("gen_ai.request.model", assistant.provider.model_id)
         span.set_attribute("app.ai.outcome", outcome.outcome)
@@ -160,6 +167,8 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                 "output_tokens": outcome.output_tokens,
                 "estimated_cost_usd": round(estimated_cost, 8),
                 "error_class": outcome.error_class or "none",
+                "provider_stop_reason": outcome.provider_stop_reason,
+                "response_contract_stage": outcome.response_contract_stage,
                 "quarantined_reviews": outcome.quarantined_reviews,
             },
         )

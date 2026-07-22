@@ -95,41 +95,48 @@ internal class Consumer : IDisposable
                 return;
             }
 
-            var orderEntity = new OrderEntity
+            try
             {
-                Id = order.OrderId
-            };
-            _dbContext.Add(orderEntity);
-            foreach (var item in order.Items)
-            {
-                var orderItem = new OrderItemEntity
+                var orderEntity = new OrderEntity
                 {
-                    ItemCostCurrencyCode = item.Cost.CurrencyCode,
-                    ItemCostUnits = item.Cost.Units,
-                    ItemCostNanos = item.Cost.Nanos,
-                    ProductId = item.Item.ProductId,
-                    Quantity = item.Item.Quantity,
+                    Id = order.OrderId
+                };
+                _dbContext.Add(orderEntity);
+                foreach (var item in order.Items)
+                {
+                    var orderItem = new OrderItemEntity
+                    {
+                        ItemCostCurrencyCode = item.Cost.CurrencyCode,
+                        ItemCostUnits = item.Cost.Units,
+                        ItemCostNanos = item.Cost.Nanos,
+                        ProductId = item.Item.ProductId,
+                        Quantity = item.Item.Quantity,
+                        OrderId = order.OrderId
+                    };
+
+                    _dbContext.Add(orderItem);
+                }
+
+                var shipping = new ShippingEntity
+                {
+                    ShippingTrackingId = order.ShippingTrackingId,
+                    ShippingCostCurrencyCode = order.ShippingCost.CurrencyCode,
+                    ShippingCostUnits = order.ShippingCost.Units,
+                    ShippingCostNanos = order.ShippingCost.Nanos,
+                    StreetAddress = order.ShippingAddress.StreetAddress,
+                    City = order.ShippingAddress.City,
+                    State = order.ShippingAddress.State,
+                    Country = order.ShippingAddress.Country,
+                    ZipCode = order.ShippingAddress.ZipCode,
                     OrderId = order.OrderId
                 };
-
-                _dbContext.Add(orderItem);
+                _dbContext.Add(shipping);
+                _dbContext.SaveChanges();
             }
-
-            var shipping = new ShippingEntity
+            finally
             {
-                ShippingTrackingId = order.ShippingTrackingId,
-                ShippingCostCurrencyCode = order.ShippingCost.CurrencyCode,
-                ShippingCostUnits = order.ShippingCost.Units,
-                ShippingCostNanos = order.ShippingCost.Nanos,
-                StreetAddress = order.ShippingAddress.StreetAddress,
-                City = order.ShippingAddress.City,
-                State = order.ShippingAddress.State,
-                Country = order.ShippingAddress.Country,
-                ZipCode = order.ShippingAddress.ZipCode,
-                OrderId = order.OrderId
-            };
-            _dbContext.Add(shipping);
-            _dbContext.SaveChanges();
+                _dbContext.ChangeTracker.Clear();
+            }
         }
         catch (Exception ex)
         {
@@ -147,14 +154,67 @@ internal class Consumer : IDisposable
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = true
         };
+        ApplyKafkaSecurityConfig(conf);
 
         return new ConsumerBuilder<string, byte[]>(conf)
             .Build();
+    }
+
+    private static void ApplyKafkaSecurityConfig(ClientConfig conf)
+    {
+        var securityProtocol = Environment.GetEnvironmentVariable("KAFKA_SECURITY_PROTOCOL");
+        var saslMechanism = Environment.GetEnvironmentVariable("KAFKA_SASL_MECHANISM");
+        var username = Environment.GetEnvironmentVariable("KAFKA_USERNAME");
+        var password = Environment.GetEnvironmentVariable("KAFKA_PASSWORD");
+
+        if (string.IsNullOrWhiteSpace(securityProtocol) &&
+            string.IsNullOrWhiteSpace(saslMechanism) &&
+            string.IsNullOrWhiteSpace(username) &&
+            string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("KAFKA_USERNAME and KAFKA_PASSWORD must be set when Kafka SASL is enabled.");
+        }
+
+        conf.SecurityProtocol = ParseSecurityProtocol(securityProtocol);
+        conf.SaslMechanism = ParseSaslMechanism(saslMechanism);
+        conf.SaslUsername = username;
+        conf.SaslPassword = password;
+    }
+
+    private static SecurityProtocol ParseSecurityProtocol(string? value)
+    {
+        return value switch
+        {
+            null or "" => SecurityProtocol.SaslSsl,
+            "SASL_SSL" => SecurityProtocol.SaslSsl,
+            "SASL_PLAINTEXT" => SecurityProtocol.SaslPlaintext,
+            "SSL" => SecurityProtocol.Ssl,
+            "PLAINTEXT" => SecurityProtocol.Plaintext,
+            _ => throw new InvalidOperationException($"Unsupported KAFKA_SECURITY_PROTOCOL value: {value}")
+        };
+    }
+
+    private static SaslMechanism ParseSaslMechanism(string? value)
+    {
+        return value switch
+        {
+            null or "" => SaslMechanism.ScramSha512,
+            "SCRAM-SHA-512" => SaslMechanism.ScramSha512,
+            "SCRAM-SHA-256" => SaslMechanism.ScramSha256,
+            "PLAIN" => SaslMechanism.Plain,
+            _ => throw new InvalidOperationException($"Unsupported KAFKA_SASL_MECHANISM value: {value}")
+        };
     }
 
     public void Dispose()
     {
         _isListening = false;
         _consumer?.Dispose();
+        _dbContext?.Dispose();
     }
 }

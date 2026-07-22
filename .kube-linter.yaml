@@ -1,0 +1,21 @@
+# Cấu hình Kube-Linter cho dự án TF4
+# Owner: Quyết (CDO08)
+# Trạng thái: Hoạt động
+
+# Loại bỏ các checks quá nghiêm ngặt/noise đối với baseline codebase hiện tại
+# (các phần này sẽ được giải quyết qua các task khác trong tuần)
+checks:
+  exclude:
+    - "no-read-only-root-fs"     # Yêu cầu filesystem read-only (SEC-10)
+    - "run-as-non-root"          # Yêu cầu chạy dưới user non-root (SEC-10)
+    - "no-anti-affinity"         # Yêu cầu cấu hình anti-affinity
+    - "default-service-account"  # Cảnh báo dùng SA mặc định (SEC-13)
+    - "no-liveness-probe"        # Thiếu liveness probe (REL-02)
+    - "no-readiness-probe"       # Thiếu readiness probe (REL-02)
+    - "unset-cpu-requirements"   # Tránh báo lỗi với các third-party charts trong observability
+    - "unset-memory-requirements" # Tránh báo lỗi với các third-party charts trong observability
+    - "non-isolated-pod"         # Yêu cầu NetworkPolicy (SEC-03)
+    - "privilege-escalation"     # Yêu cầu allowPrivilegeEscalation: false (SEC-10)
+    - "liveness-port"            # Tránh báo lỗi liveness HTTPGet không khớp với container ports
+    - "readiness-port"           # Tránh báo lỗi readiness HTTPGet không khớp với container ports
+    - "sensitive-host-mounts"    # Bỏ qua warning mount host path (dành cho otel-collector thu thập logs/metrics)

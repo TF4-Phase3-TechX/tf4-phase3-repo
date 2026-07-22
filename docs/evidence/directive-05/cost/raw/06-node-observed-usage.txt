@@ -1,0 +1,4 @@
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-10-17.ec2.internal    293m         15%      3906Mi          55%         
+ip-10-0-10-231.ec2.internal   215m         11%      3425Mi          48%         
+ip-10-0-11-40.ec2.internal    192m         9%       3901Mi          55%         

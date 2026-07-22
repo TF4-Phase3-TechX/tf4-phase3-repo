@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#6fa8dc"/></marker>
+  </defs>
+  <rect width="1500" height="620" fill="#f5f8fb"/>
+  <text x="750" y="62" text-anchor="middle" fill="#17324d" font-family="Arial, sans-serif" font-size="34" font-weight="700">TF4 Audit Trail — coverage và integrity path</text>
+  <g font-family="Arial, sans-serif">
+    <rect x="55" y="175" width="270" height="145" rx="18" fill="#ffffff" stroke="#316b9b" stroke-width="3"/>
+    <text x="190" y="220" text-anchor="middle" fill="#17324d" font-size="24" font-weight="700">Actor / Hacker</text>
+    <text x="190" y="260" text-anchor="middle" fill="#405a70" font-size="20">SSO identity</text>
+    <text x="190" y="292" text-anchor="middle" fill="#405a70" font-size="20">S3 GetObject</text>
+    <rect x="405" y="175" width="300" height="145" rx="18" fill="#ffffff" stroke="#316b9b" stroke-width="3"/>
+    <text x="555" y="220" text-anchor="middle" fill="#17324d" font-size="24" font-weight="700">CloudTrail</text>
+    <text x="555" y="260" text-anchor="middle" fill="#405a70" font-size="20">Management + targeted</text>
+    <text x="555" y="292" text-anchor="middle" fill="#405a70" font-size="20">S3 data events</text>
+    <rect x="785" y="105" width="320" height="145" rx="18" fill="#ffffff" stroke="#2e8b57" stroke-width="3"/>
+    <text x="945" y="150" text-anchor="middle" fill="#17324d" font-size="24" font-weight="700">CloudWatch Logs</text>
+    <text x="945" y="190" text-anchor="middle" fill="#405a70" font-size="20">Insights query</text>
+    <text x="945" y="222" text-anchor="middle" fill="#2e8b57" font-size="20" font-weight="700">Coverage evidence</text>
+    <rect x="785" y="330" width="320" height="170" rx="18" fill="#ffffff" stroke="#8c5cab" stroke-width="3"/>
+    <text x="945" y="375" text-anchor="middle" fill="#17324d" font-size="24" font-weight="700">S3 Object Lock</text>
+    <text x="945" y="415" text-anchor="middle" fill="#405a70" font-size="20">COMPLIANCE · 90 days</text>
+    <text x="945" y="447" text-anchor="middle" fill="#405a70" font-size="20">KMS encrypted</text>
+    <text x="945" y="479" text-anchor="middle" fill="#8c5cab" font-size="20" font-weight="700">Immutable storage</text>
+    <rect x="1185" y="330" width="265" height="170" rx="18" fill="#ffffff" stroke="#d08a19" stroke-width="3"/>
+    <text x="1317" y="375" text-anchor="middle" fill="#17324d" font-size="24" font-weight="700">Digest chain</text>
+    <text x="1317" y="415" text-anchor="middle" fill="#405a70" font-size="20">SHA-256 + signature</text>
+    <text x="1317" y="447" text-anchor="middle" fill="#405a70" font-size="20">validate-logs</text>
+    <text x="1317" y="479" text-anchor="middle" fill="#d08a19" font-size="20" font-weight="700">Integrity evidence</text>
+  </g>
+  <g stroke="#6fa8dc" stroke-width="5" fill="none" marker-end="url(#arrow)">
+    <path d="M325 247 L405 247"/>
+    <path d="M705 225 L785 190"/>
+    <path d="M705 270 L785 400"/>
+    <path d="M1105 415 L1185 415"/>
+  </g>
+  <text x="750" y="570" text-anchor="middle" fill="#405a70" font-family="Arial, sans-serif" font-size="20">Đòn 2 chứng minh không hụt · Đòn 3 chứng minh log/digest không bị thêm, xóa hoặc sửa lén</text>
+</svg>

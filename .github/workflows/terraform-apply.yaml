@@ -26,7 +26,7 @@ jobs:
       terraform: ${{ steps.filter.outputs.terraform }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -60,16 +60,32 @@ jobs:
         working-directory: infra/terraform
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Sync Slack Webhooks to AWS
+        env:
+          ALERTMANAGER_SLACK_WEBHOOK: ${{ secrets.ALERTMANAGER_SLACK_WEBHOOK }}
+          SECURITY_SLACK_WEBHOOK: ${{ secrets.SECURITY_SLACK_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${ALERTMANAGER_SLACK_WEBHOOK:-}" ]]; then
+            echo "Updating Alertmanager Webhook in Secrets Manager..."
+            aws secretsmanager put-secret-value --secret-id techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK" || \
+            aws secretsmanager create-secret --name techx/tf4/alertmanager-slack-webhook --secret-string "$ALERTMANAGER_SLACK_WEBHOOK"
+          fi
+          if [[ -n "${SECURITY_SLACK_WEBHOOK:-}" ]]; then
+            echo "Updating Security Alerts Webhook in SSM..."
+            aws ssm put-parameter --name "/security-alerts/slack-webhook-url" --type "SecureString" --value "$SECURITY_SLACK_WEBHOOK" --overwrite
+          fi
+
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: 1.9.8
 
@@ -85,6 +101,7 @@ jobs:
       - name: Terraform apply
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
+          TF_VAR_valkey_auth_token: ${{ secrets.TF_VALKEY_AUTH_TOKEN }}
         run: terraform apply -input=false -auto-approve
 
       - name: Show infra outputs

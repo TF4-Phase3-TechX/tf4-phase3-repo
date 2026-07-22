@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM --platform=${BUILDPLATFORM} eclipse-temurin:17-jdk AS builder
+FROM --platform=${BUILDPLATFORM} eclipse-temurin:17-jdk@sha256:068a8f9ae4b74d9a20de3ecca771ba1a6437f1d7a8a8ad6deaf9dbdd2274397a AS builder
 
 WORKDIR /usr/src/app/
 
@@ -14,7 +14,7 @@ RUN ./gradlew shadowJar
 
 # -----------------------------------------------------------------------------
 
-FROM gcr.io/distroless/java17-debian12:nonroot
+FROM eclipse-temurin:17-jre-jammy@sha256:475d8e96b4b2bfe08999e5e854755c773af1581acdf959a4545d88f0696a2339
 
 ARG OTEL_JAVA_AGENT_VERSION
 WORKDIR /usr/src/app/

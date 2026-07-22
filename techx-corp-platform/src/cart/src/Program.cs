@@ -15,6 +15,7 @@ using cart.healthcheck;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,10 @@ if (string.IsNullOrEmpty(valkeyAddress))
     Console.WriteLine("VALKEY_ADDR environment variable is required.");
     Environment.Exit(1);
 }
+// Ref: CDO08-REL-16 - optional TLS + AUTH token, enabled later per
+// VALKEY-MIGRATION-PLAN.md §3.7 (not required for the initial cutover).
+bool valkeyTls = builder.Configuration.GetValue<bool>("VALKEY_TLS");
+string valkeyPassword = builder.Configuration["VALKEY_PASSWORD"];
 
 builder.Logging
     .AddOpenTelemetry(options => options.AddOtlpExporter())
@@ -41,7 +46,7 @@ builder.Logging
 
 builder.Services.AddSingleton<ICartStore>(x =>
 {
-    var store = new ValkeyCartStore(x.GetRequiredService<ILogger<ValkeyCartStore>>(), valkeyAddress);
+    var store = new ValkeyCartStore(x.GetRequiredService<ILogger<ValkeyCartStore>>(), valkeyAddress, valkeyTls, valkeyPassword);
     store.Initialize();
     return store;
 });

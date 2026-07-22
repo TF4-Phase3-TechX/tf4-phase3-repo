@@ -1,0 +1,70 @@
+{{- if .Values.riotRedisBackfill.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: riot-redis-backfill
+  labels:
+    app.kubernetes.io/name: riot-redis-backfill
+    app.kubernetes.io/component: valkey-cart
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: Helm
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: riot-redis-backfill
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: riot-redis-backfill
+          image: '{{ .Values.riotRedisBackfill.image }}'
+          # Ref: CDO08-REL-16 - VALKEY-MIGRATION-PLAN.md §4 TRƯỜNG HỢP 2. Verifies the
+          # ElastiCache source is reachable BEFORE flushing the EKS valkey-cart target,
+          # then backfills the latest snapshot from ElastiCache back to it. Verify the
+          # exact riot-redis subcommand/flags against the installed tool version before
+          # running for real.
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              ELASTICACHE_ADDR="{{ required "riotRedisBackfill.elasticacheAddress must be set before enabling this Job" .Values.riotRedisBackfill.elasticacheAddress }}"
+              TARGET_ADDR="{{ .Values.riotRedisBackfill.targetAddress }}"
+
+              echo "Verifying ElastiCache source is reachable before flushing target..."
+              redis-cli -u "redis://${ELASTICACHE_ADDR}" PING
+
+              echo "Source reachable. Flushing target valkey-cart..."
+              redis-cli -h valkey-cart -p 6379 FLUSHALL
+
+              echo "Backfilling from ElastiCache to valkey-cart..."
+              riot-redis replicate \
+                --source-uri "redis://${ELASTICACHE_ADDR}" \
+                --target-uri "redis://${TARGET_ADDR}" \
+                --mode snapshot
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

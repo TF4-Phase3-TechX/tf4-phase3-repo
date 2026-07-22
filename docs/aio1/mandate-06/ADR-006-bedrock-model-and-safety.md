@@ -1,10 +1,21 @@
 # ADR-006: Amazon Bedrock model selection and trust/safety boundary
 
 - Date: 2026-07-14
-- Status: **Proposed**
-- Owner: Nam
+- Status: **Accepted** (runtime gates passed and closure PR merged 2026-07-17)
+- Owner: Đinh Danh Nam
 - Required approvers: AIO1 Tech Lead, CDO deployment owner, CDO-07 Audit
-- Signatures: pending canary, mentor and named approval evidence
+
+## Recorded signatures
+
+Approval is recorded directly here; the reader is not required to reconstruct it from a PR review list.
+
+| Signer | Role | Decision | Date | Reviewed scope / source record |
+|---|---|---|---|---|
+| Đinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead and decision owner | **Approved for merge** | 2026-07-17 | ADR-006, model decision and production evidence at head `8abf298`; [named sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5001632575) |
+| Hoàng Minh Hải (`2hm1901`) | CDO08 deployment evidence reviewer | **Approved** | 2026-07-17 | Generation 22, final workload health, image digest, SLO/provider/application checks and rollback evidence; [review](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#pullrequestreview-4721409299) |
+| Đinh Văn Ty (`anons1811s`) | CDO-07 Audit signer | **Sign-off with evidence-scope limitation** | 2026-07-17 | Metadata-only evidence, retained logs and deployment read-back; [named audit sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5000507925) |
+
+The CDO-07 signer's GitHub profile does not expose a public full name. The full-name mapping above is retained from the repository's CDO-07 ownership/signatory evidence; the GitHub handle remains beside it so the approval is independently traceable to the original record.
 
 ## Context
 
@@ -16,7 +27,7 @@ The decision is intentionally not based on a vendor benchmark or on choosing the
   
 Use Amazon Bedrock Runtime through the AWS SDK for Python and the `Converse` API. Production authentication is EKS Pod Identity; no Bedrock long-lived API key or OpenAI key is stored.
 
-The 2026-07-14 three-model bake-off selected **Amazon Nova 2 Lite** through `us.amazon.nova-2-lite-v1:0` for the proposed canary. It was the only model to pass every hard gate and scored 92.02. Production output uses the forced non-action `emit_grounded_answer` tool followed by the same application schema and exact-quote validator. This ADR remains `Proposed` until canary, Storefront SLO, rollback and mentor evidence pass.
+The 2026-07-14 three-model bake-off selected **Amazon Nova 2 Lite** through `us.amazon.nova-2-lite-v1:0`. It was the only model to pass every hard gate and scored 92.02. Production output uses the forced non-action `emit_grounded_answer` tool followed by the same application schema and exact-quote validator. The 2026-07-17 EKS canary then passed the real application path, Storefront SLO, provider-failure and rollback gates.
 
 Claude Haiku 4.5 is the implementation baseline because it combines Guardrails, abuse detection, structured outputs, token counts and tool use. Runtime smoke evidence on 2026-07-14 showed that the foundation-model ID rejects on-demand invocation in this account, so the executable configuration uses the active US inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`. This is a safety/tooling baseline, not a claim that the Claude brand is intrinsically stronger.
 
@@ -49,7 +60,7 @@ Pre-run calibration found that Bedrock contextual grounding blocked both support
 
 ## Model catalogue snapshot
 
-Prices are Standard on-demand USD per 1M input/output tokens, captured 2026-07-14. They must be re-snapshotted from [Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/) in the signed evaluation evidence.
+Prices are Standard on-demand USD per 1M input/output tokens, captured 2026-07-14. The winning Nova rate and Guardrail filter catalogue were re-snapshotted on 2026-07-17 in the [runtime acceptance record](runtime-acceptance-2026-07-17.md).
 
 | Model | Input/output | Relevant runtime capabilities | Disposition |
 |---|---:|---|---|
@@ -98,15 +109,15 @@ Local bake-off uses temporary AWS SSO credentials. CDO must grant temporary eval
 
 ## Consequences and acceptance
 
-Conservative validation can increase insufficient responses. Structured-output schema compilation can add first-use latency, so the canary must warm the schema before measuring p95. Haiku requires a US profile in the tested account; Nova adds both profile routing and tool-output validation complexity. No model is accepted until the real application path, mentor adversarial tests, SLO comparison and rollback drill are linked below.
+Conservative validation can increase insufficient responses. Structured-output schema compilation can add first-use latency, so the canary must warm the schema before measuring p95. Haiku requires a US profile in the tested account; Nova adds both profile routing and tool-output validation complexity. The real application path, adversarial tests, SLO comparison and rollback drill are linked below.
 
 | Evidence | Link/status |
 |---|---|
 | Three-model sanitized bake-off | Complete: [`eval/bakeoff-report.json`](eval/bakeoff-report.json), Nova winner |
-| Guardrail version/export | Evaluation `e2svpiawj1v5:3`; production `wckqh9dms6qa:1`, `READY`; templates committed |
-| Canary/SLO/telemetry | Pending |
-| Rollback drill | Pending |
-| Mentor test record | Pending |
-| Nam / Tech Lead | Pending signature/date |
-| CDO deployment owner | Pending signature/date |
-| CDO-07 Audit | Pending signature/date |
+| Guardrail version/export | Production/canary `wckqh9dms6qa:1`; legacy evaluation `e2svpiawj1v5:3`; Standard hardening evaluation `h2za64pyoh1i:3`; templates committed |
+| Canary/SLO/telemetry | Complete: [runtime acceptance record](runtime-acceptance-2026-07-17.md), [GitOps evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/22#issuecomment-4998938865) |
+| Rollback drill | Complete: [actual rollback evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/16#issuecomment-4998935068) |
+| Mentor/application-path record | Complete: grounded, unsupported, injection, action, PII and failure paths in the [runtime record](runtime-acceptance-2026-07-17.md) |
+| Đinh Danh Nam / AIO1 Tech Lead | Approved 2026-07-17; direct signature recorded above |
+| Hoàng Minh Hải (`2hm1901`) / CDO08 deployment evidence reviewer | Approved 2026-07-17; direct signature recorded above |
+| Đinh Văn Ty (`anons1811s`) / CDO-07 Audit | Signed off with evidence-scope limitation 2026-07-17; direct signature recorded above |

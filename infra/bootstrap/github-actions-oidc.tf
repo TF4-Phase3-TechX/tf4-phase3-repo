@@ -3,6 +3,11 @@
 # Bootstrap owns these roles because workflows need account-level trust before app/infra deploys run.
 
 data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
+
+data "aws_kms_alias" "cloudtrail" {
+  name = "alias/tf4-cloudtrail-key"
+}
 
 locals {
   github_org  = "TF4-Phase3-TechX"
@@ -97,8 +102,12 @@ data "aws_iam_policy_document" "github_actions_plan" {
 
     actions = [
       "autoscaling:Describe*",
+      "application-autoscaling:Describe*",
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
+      "cloudwatch:DescribeAlarms",
+      "dms:Describe*",
+      "dms:List*",
       "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
@@ -113,6 +122,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
       "ecr:List*",
+      "elasticache:Describe*",
+      "elasticache:ListTagsForResource",
       "eks:Describe*",
       "eks:List*",
       "elasticloadbalancing:Describe*",
@@ -127,15 +138,90 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kms:ListResourceTags",
       "logs:Describe*",
       "logs:ListTagsForResource",
+      "kafka:Describe*",
+      "kafka:GetBootstrapBrokers",
+      "kafka:List*",
+      "rds:Describe*",
+      "rds:ListTagsForResource",
       "s3:GetAccelerateConfiguration",
       "s3:GetBucket*",
       "s3:GetEncryptionConfiguration",
       "s3:GetLifecycleConfiguration",
       "s3:GetReplicationConfiguration",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetResourcePolicy",
+      "secretsmanager:ListSecretVersionIds",
+      "secretsmanager:ListTagsForResource",
       "s3:ListBucket"
     ]
 
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingSqsState"
+    effect = "Allow"
+
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ListQueueTags",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-dlq",
+    ]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingSnsState"
+    effect = "Allow"
+
+    actions = [
+      "sns:GetTopicAttributes",
+      "sns:ListTagsForResource",
+      "sns:ListSubscriptionsByTopic",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts",
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
+    ]
+  }
+
+  statement {
+    sid       = "ReadSecureSlackWebhookParameter"
+    effect    = "Allow"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/security-alerts/slack-webhook-url"]
+  }
+
+  statement {
+    sid       = "DescribeSsmParameters"
+    effect    = "Allow"
+    actions   = ["ssm:DescribeParameters"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadCloudTrailRemediationSsmDocument"
+    effect = "Allow"
+
+    actions = [
+      "ssm:DescribeDocument",
+      "ssm:GetDocument",
+      "ssm:DescribeDocumentPermission",
+      "ssm:ListTagsForResource"
+    ]
+
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/tf4-restore-cloudtrail-logging"]
+  }
+
+  statement {
+    sid       = "DecryptCloudTrailSecureString"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [data.aws_kms_alias.cloudtrail.target_key_arn]
   }
 
   statement {
@@ -211,6 +297,7 @@ data "aws_iam_policy_document" "github_actions_build" {
       "ecr:InitiateLayerUpload",
       "ecr:ListImages",
       "ecr:PutImage",
+      "ecr:PutImageTagMutability",
       "ecr:UploadLayerPart"
     ]
 

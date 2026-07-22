@@ -28,6 +28,8 @@ class AssistantOutcome:
     output_tokens: int = 0
     error_class: str = ""
     quarantined_reviews: int = 0
+    provider_stop_reason: str = "not_applicable"
+    response_contract_stage: str = "not_applicable"
 
 
 class GroundedAssistant:
@@ -67,6 +69,8 @@ class GroundedAssistant:
                 input_tokens=result.input_tokens,
                 output_tokens=result.output_tokens,
                 quarantined_reviews=prepared.quarantined_review_count,
+                provider_stop_reason=result.stop_reason,
+                response_contract_stage=result.contract_stage,
             )
         except ProviderFailure as exc:
             outcome = "blocked" if exc.error_class == "guardrail_intervened" else "unavailable"
@@ -76,6 +80,11 @@ class GroundedAssistant:
                 outcome=outcome,
                 error_class=exc.error_class,
                 quarantined_reviews=quarantined_reviews,
+                latency_ms=exc.latency_ms,
+                input_tokens=exc.input_tokens,
+                output_tokens=exc.output_tokens,
+                provider_stop_reason=exc.stop_reason,
+                response_contract_stage=exc.contract_stage,
             )
         except UnsafeModelOutput as exc:
             return AssistantOutcome(
