@@ -575,7 +575,7 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 16MiB
+        value: 75MiB
     resources:
       requests: { cpu: 75m, memory: 48Mi }
       limits: { cpu: 300m, memory: 96Mi }
