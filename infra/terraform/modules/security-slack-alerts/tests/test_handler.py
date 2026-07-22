@@ -423,6 +423,64 @@ class HandlerTests(unittest.TestCase):
             'kafka.amazonaws.com',
         ))
 
+    def test_dms_read_requires_exact_role_session_and_secret(self):
+        account = '511825856493'
+        region = 'us-east-1'
+        identity = {
+            'type': 'AssumedRole',
+            'arn': (
+                f'arn:aws:sts::{account}:assumed-role/'
+                'techx-tf4-postgresql-dms-secrets-access/'
+                'dms-session-for-replication-engine'
+            ),
+        }
+        common = (account, region, '18.204.125.157', 'aws-sdk-go-v2')
+
+        for secret_name in (
+            'techx/tf4/dms-postgres-source-CeiU4M',
+            'techx/tf4/rds-postgres-T586rF',
+        ):
+            with self.subTest(secret=secret_name):
+                self.assertTrue(self.handler.is_expected_sensitive_read(
+                    'GetSecretValue',
+                    identity,
+                    {
+                        'secretId': (
+                            f'arn:aws:secretsmanager:{region}:{account}:'
+                            f'secret:{secret_name}'
+                        ),
+                    },
+                    *common,
+                ))
+
+        self.assertFalse(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            identity,
+            {
+                'secretId': (
+                    f'arn:aws:secretsmanager:{region}:{account}:'
+                    'secret:techx/tf4/openai-test'
+                ),
+            },
+            *common,
+        ))
+        wrong_session = dict(identity)
+        wrong_session['arn'] = wrong_session['arn'].replace(
+            'dms-session-for-replication-engine',
+            'unexpected-session',
+        )
+        self.assertFalse(self.handler.is_expected_sensitive_read(
+            'GetSecretValue',
+            wrong_session,
+            {
+                'secretId': (
+                    f'arn:aws:secretsmanager:{region}:{account}:'
+                    'secret:techx/tf4/rds-postgres-T586rF'
+                ),
+            },
+            *common,
+        ))
+
     def test_public_postgresql_ingress_remains_alertable(self):
         event_time = datetime.now(timezone.utc) - timedelta(seconds=5)
         request_params = {
