@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "node --require ./Instrumentation.js server.js",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:resilience": "tsc utils/resilience/optionalDependency.ts utils/resilience/optionalDependency.test.ts --target ES2022 --module commonjs --moduleResolution node --rootDir utils/resilience --outDir .next/cache/resilience-tests --noEmit false --esModuleInterop --skipLibCheck && node --test .next/cache/resilience-tests/optionalDependency.test.js",
     "cy:open": "cypress open",
     "grpc:generate": "mkdir -p ./protos && protoc -I ./pb  --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=esModuleInterop=true --ts_proto_out=./protos --ts_proto_opt=outputServices=grpc-js demo.proto"
   },
