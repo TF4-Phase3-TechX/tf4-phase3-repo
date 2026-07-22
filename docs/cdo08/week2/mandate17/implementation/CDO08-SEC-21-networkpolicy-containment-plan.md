@@ -196,6 +196,7 @@ Required app-to-app traffic:
 | `checkout` | `kafka` | 9092 | Publish order events. |
 | `accounting` | `kafka` | 9092 | Consume order events. |
 | `fraud-detection` | `kafka` | 9092 | Consume order events. |
+| `checkout`, `accounting`, `fraud-detection` | private MSK subnets `10.0.10.0/24`, `10.0.11.0/24` | 9096 | Managed MSK IAM/SASL path after Kafka cutover. |
 | `orders-mirrormaker2-mirrormaker2` | `kafka` | 9092 | Mirror self-hosted Kafka topics to MSK; required to avoid CDO08-SEC-21 outage repeat. |
 | `kafka` | `kafka` | 9093 | KRaft controller self path. |
 | `cart` | `valkey-cart` or private ElastiCache subnets | 6379 | Cart store. |
@@ -220,6 +221,7 @@ External/private exceptions:
 |---|---|---:|---|
 | `cart` | `10.0.10.0/24`, `10.0.11.0/24` | 6379 | Approved private ElastiCache Valkey endpoint. Not internet egress. |
 | `accounting`, `product-catalog`, `product-reviews` | `10.0.10.0/24`, `10.0.11.0/24` | 5432 | Approved private RDS PostgreSQL endpoint. Not internet egress. |
+| `checkout`, `accounting`, `fraud-detection` | `10.0.10.0/24`, `10.0.11.0/24` | 9096 | Approved private MSK endpoint. Not internet egress. |
 
 Deferred:
 - `product-reviews -> Bedrock`: standard Kubernetes NetworkPolicy cannot safely represent AWS service FQDN allowlists. Keep product-reviews AI egress out of enforced internet deny until a VPC endpoint/CIDR or CNI-specific FQDN policy is approved.

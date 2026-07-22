@@ -120,6 +120,20 @@ DENIED_EXPECTED_kafka
 Connection timed out
 ```
 
+Managed MSK access should also be denied for this attacker role:
+
+```powershell
+kubectl exec -n techx-tf4 sec21-attacker -- sh -c "if nc -zvw 3 b-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com 9096; then echo UNEXPECTED_PASS_msk; exit 1; else echo DENIED_EXPECTED_msk; fi"
+kubectl exec -n techx-tf4 sec21-attacker -- sh -c "if nc -zvw 3 b-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com 9096; then echo UNEXPECTED_PASS_msk; exit 1; else echo DENIED_EXPECTED_msk; fi"
+```
+
+Expected:
+
+```text
+DENIED_EXPECTED_msk
+Connection timed out
+```
+
 Observability/admin endpoint access should be denied:
 
 ```powershell
