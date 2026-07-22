@@ -16,6 +16,7 @@ class IncidentStatus(str, Enum):
     OPEN = "open"
     AWAITING_APPROVAL = "awaiting_approval"
     APPROVED = "approved"
+    AUTO_EXECUTING = "auto_executing"
     EXECUTING = "executing"
     VERIFYING = "verifying"
     RESOLVED = "resolved"
@@ -56,6 +57,7 @@ class Incident(BaseModel):
     recommended_action: str
     approval_status: str = "not_requested"
     approval_expires_at: datetime | None = None
+    auto_approved: bool = False  # True when the pre-authorized policy gate passed; False for human-approval path
     execution_attempts: int = 0
     verification_result: dict[str, Any] | None = None
     rollback_result: dict[str, Any] | None = None

@@ -11,12 +11,16 @@ runbooks:
     incident_type: service_latency_spike
     automatic_action: rollback_previous_replicaset
     preconditions:
-      - Per-incident approval is valid.
-      - Deployment is allowlisted and retains a previous ReplicaSet.
-      - Latency degradation is sustained and user-facing.
+      - Pre-authorized policy envelope: REMEDIATION_MODE=live, incident_type in autonomous allowlist.
+      - Detector confidence >= AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD (default 0.75).
+      - Target service in CDO-approved AIOPS_ALLOWED_DEPLOYMENTS allowlist.
+      - Cooldown window cleared since last autonomous action on this target.
+      - Deployment retains a previous ReplicaSet within AIOPS_DEPLOYMENT_RECENCY_HOURS.
+      - Latency degradation is sustained and user-facing (sustained_polls >= 1).
     verification:
-      - Deployment rollout becomes ready.
-      - Latency and error rate recover without degrading checkout/storefront SLO.
+      - Deployment rollout becomes ready within 60s (12 x 5s checks).
+      - SLO verifier confirms healthy: latency and error rate recovered.
+      - On verify failure: original template is restored (rollback) and incident escalated.
   - id: service-error-rate-escalation
     incident_type: service_error_rate_spike
     automatic_action: null

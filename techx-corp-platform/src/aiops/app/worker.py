@@ -229,8 +229,33 @@ class AIOpsWorker:
                     incident.affected_service,
                     notification_severity,
                 ).inc()
-                self.remediation.request_approval(stored)
-                log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
+                # Autonomous closed-loop path: if REMEDIATION_MODE=live and the
+                # pre-authorized policy gate passes, execute immediately without a
+                # per-incident human button press.  The policy gate (should_auto_execute)
+                # enforces allowlist, confidence, cooldown and blast-radius.
+                # All other cases (dry-run, gated incident types, low confidence)
+                # fall through to the human-approval path.
+                eligible, deny_reason = self.remediation.should_auto_execute(stored)
+                if eligible:
+                    log.info(
+                        json.dumps({
+                            "event": "autonomous_execution_triggered",
+                            "incident_id": stored.incident_id,
+                            "incident_type": stored.incident_type,
+                            "service": stored.affected_service,
+                        })
+                    )
+                    asyncio.create_task(self.remediation.autonomous_execute(stored))
+                else:
+                    self.remediation.request_approval(stored)
+                    log.info(
+                        json.dumps({
+                            "event": "incident_created",
+                            "incident": stored.model_dump(mode="json"),
+                            "autonomous_gate_deny_reason": deny_reason,
+                        }, separators=(",", ":"))
+                    )
+
         if prometheus_ok:
             last_poll_success.set(time.time())
 
