@@ -171,6 +171,55 @@ cart       2         2         2            2           33h
 checkout   2         2         2            2           22h
 ```
 
+## Post-Review Readiness Fix
+
+During the final requirement check, `product-reviews` briefly reported unavailable and logs showed credential retrieval timeouts to the EKS Pod Identity endpoint:
+
+```text
+Connect timeout on endpoint URL: "http://169.254.170.23/v1/credentials"
+```
+
+Fix applied:
+- Updated `sec21-allow-product-reviews-egress`.
+- Added only `product-reviews -> 169.254.170.23/32:80`.
+- Added owner, expiry, and reason annotations.
+- No broad internet egress was added.
+
+Server dry-run and apply result:
+
+```text
+networkpolicy.networking.k8s.io/sec21-allow-product-reviews-egress configured (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-product-reviews-egress configured
+```
+
+Readiness after fix:
+
+```text
+accounting        1     1     1
+ad                1     1     1
+currency          2     2     2
+email             1     1     1
+flagd             1     1     1
+fraud-detection   1     1     1
+frontend          3     3     3
+frontend-proxy    1     1     1
+image-provider    1     1     1
+llm               1     1     1
+load-generator    1     1     1
+payment           1     1     1
+product-catalog   2     2     2
+product-reviews   1     1     1
+quote             1     1     1
+recommendation    1     1     1
+shipping          1     1     1
+```
+
+Product-reviews pod check:
+
+```text
+product-reviews-7cdc4ff979-8rx9b   true   Running   0
+```
+
 Cleanup:
 
 ```text

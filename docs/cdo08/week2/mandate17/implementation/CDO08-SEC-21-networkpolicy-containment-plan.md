@@ -204,6 +204,7 @@ Required app-to-app traffic:
 | `product-catalog` | `postgresql` or private RDS subnets | 5432 | Catalog database. |
 | `product-reviews` | `postgresql` or private RDS subnets | 5432 | Reviews database. |
 | `product-reviews` | `product-catalog` | 8080 | Product lookup. |
+| `product-reviews` | EKS Pod Identity endpoint `169.254.170.23/32` | 80 | Node-local credential endpoint for Bedrock access. |
 | `recommendation` | `product-catalog` | 8080 | Product lookup. |
 | `shipping` | `quote` | 8080 | Quote backend. |
 
@@ -222,6 +223,7 @@ External/private exceptions:
 | `cart` | `10.0.10.0/24`, `10.0.11.0/24` | 6379 | Approved private ElastiCache Valkey endpoint. Not internet egress. |
 | `accounting`, `product-catalog`, `product-reviews` | `10.0.10.0/24`, `10.0.11.0/24` | 5432 | Approved private RDS PostgreSQL endpoint. Not internet egress. |
 | `checkout`, `accounting`, `fraud-detection` | `10.0.10.0/24`, `10.0.11.0/24` | 9096 | Approved private MSK endpoint. Not internet egress. |
+| `product-reviews` | `169.254.170.23/32` | 80 | Approved EKS Pod Identity credential endpoint. Not internet egress. |
 
 Deferred:
 - `product-reviews -> Bedrock`: standard Kubernetes NetworkPolicy cannot safely represent AWS service FQDN allowlists. Keep product-reviews AI egress out of enforced internet deny until a VPC endpoint/CIDR or CNI-specific FQDN policy is approved.
