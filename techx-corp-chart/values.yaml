@@ -575,7 +575,7 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 16MiB
+        value: 75MiB
     resources:
       requests: { cpu: 75m, memory: 48Mi }
       limits: { cpu: 300m, memory: 96Mi }
@@ -1812,13 +1812,27 @@ opentelemetry-collector:
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       otlphttp/prometheus:
         endpoint: http://prometheus:9090/api/v1/otlp
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       opensearch:
         logs_index: otel-logs
         logs_index_time_format: "yyyy-MM-dd"
@@ -1826,6 +1840,15 @@ opentelemetry-collector:
           endpoint: http://opensearch:9200
           tls:
             insecure: true
+        sending_queue:
+          num_consumers: 10
+          queue_size: 1000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
 
     processors:
       memory_limiter:
@@ -1869,14 +1892,14 @@ opentelemetry-collector:
       pipelines:
         traces:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [otlp/jaeger, debug, spanmetrics]
+          exporters: [otlp/jaeger, spanmetrics]
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [otlphttp/prometheus, debug]
+          exporters: [otlphttp/prometheus]
         logs:
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [opensearch, debug]
+          exporters: [opensearch]
       telemetry:
         metrics:
           level: detailed
@@ -2196,6 +2219,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  rbac:
+    # The upstream role always includes Secrets. SEC-22 supplies a ConfigMap-only Role.
+    create: false
   testFramework:
     enabled: false
   grafana.ini:
@@ -2214,10 +2240,13 @@ grafana:
   sidecar:
     alerts:
       enabled: true
+      resource: configmap
     dashboards:
       enabled: true
+      resource: configmap
     datasources:
       enabled: true
+      resource: configmap
     resources:
       requests:
         cpu: 20m
@@ -2273,6 +2302,21 @@ opensearch:
     limits:
       cpu: 1000m
       memory: 2Gi
+
+  otelLogsLifecycle:
+    enabled: false
+    image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+    schedule: "45 23 * * *"
+    endpoint: http://opensearch:9200
+    policyId: otel-logs-retention
+    retention: 3d
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
 
 bastionPortalAccess:
   enabled: false
