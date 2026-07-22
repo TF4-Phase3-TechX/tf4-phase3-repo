@@ -1,0 +1,4 @@
+collected_at_utc: 2026-07-22T13:08:01Z
+kubectl_context: arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+purpose: D13-COST-01 on-demand baseline, captured during clean locust 200-user run (previous window discarded due to concurrent checkout blue-green rollout churn)
+known_concurrent_incident: recommendation deployment single pod stuck ImagePullBackOff (ECR MANIFEST_UNKNOWN / Kyverno signed-image policy), unrelated to node capacity, ongoing ~145min

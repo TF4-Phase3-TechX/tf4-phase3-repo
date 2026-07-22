@@ -1,0 +1,459 @@
+{
+    "GroupDefinitions": [
+        {
+            "Type": "DIMENSION",
+            "Key": "PURCHASE_TYPE"
+        },
+        {
+            "Type": "DIMENSION",
+            "Key": "INSTANCE_TYPE"
+        }
+    ],
+    "ResultsByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2026-07-15",
+                "End": "2026-07-16"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.3943176279",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "23.942222",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "25.506666",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.medium"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "2.953056",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.small"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "6.542777",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-16",
+                "End": "2026-07-17"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.0184662059",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "24",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "44.045833",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-17",
+                "End": "2026-07-18"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.0638338488",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "46.281111",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "23.985",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-18",
+                "End": "2026-07-19"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.2764225083",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "24",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "47.194168",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-19",
+                "End": "2026-07-20"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.2011203003",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "23.085",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-20",
+                "End": "2026-07-21"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.0164229707",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "48",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "24",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "55.260833",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-21",
+                "End": "2026-07-22"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "NoInstanceType"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "0.0751962045",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "37.711111",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3.nano"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "18.674166",
+                            "Unit": "N/A"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "On Demand Instances",
+                        "t3a.large"
+                    ],
+                    "Metrics": {
+                        "UsageQuantity": {
+                            "Amount": "37.740833",
+                            "Unit": "N/A"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        },
+        {
+            "TimePeriod": {
+                "Start": "2026-07-22",
+                "End": "2026-07-23"
+            },
+            "Total": {
+                "UsageQuantity": {
+                    "Amount": "0",
+                    "Unit": "N/A"
+                }
+            },
+            "Groups": [],
+            "Estimated": true
+        }
+    ],
+    "DimensionValueAttributes": []
+}
