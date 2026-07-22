@@ -19,7 +19,12 @@ Theo quy trình phân công trụ dự án TF4:
 - CDO07 chịu trách nhiệm xây dựng bảng tra cứu Glue Catalog / Athena và viết kịch bản nghiệm thu audit query evidence.
 - CDO08 chịu trách nhiệm quản lý Security/IAM/SSO permission sets.
 
-Ticket này được khởi tạo để yêu cầu CDO08 gán 2 IAM Policy đã được định nghĩa trong Terraform vào SSO Permission Set / IAM Role của Chuyên viên Audit (`TF4-AuditReadOnlyAndAnalyze` hoặc role tương đương).
+**Bằng chứng kiểm tra thực tế (Runtime Evidence):**
+Khi đăng nhập bằng profile SSO `TF4-AuditReadOnlyAndAnalyze` (`hoang.nguyenduy`) trên AWS Console, hệ thống báo lỗi `AccessDenied`:
+- `athena:GetWorkGroup` trên Workgroup `tf4-audit-forensics` bị từ chối.
+- `glue:GetDatabases` trên Catalog `arn:aws:glue:us-east-1:511825856493:catalog` bị từ chối do chưa được gán Identity-based Policy.
+
+Ticket này được khởi tạo để yêu cầu CDO08 gán 2 IAM Policy đã được định nghĩa trong Terraform vào SSO Permission Set / IAM Role của Chuyên viên Audit (`TF4-AuditReadOnlyAndAnalyze`).
 
 ---
 
