@@ -1,0 +1,7 @@
+=== 28-pvc-ebs-pass2 ===
+Collected: 2026-07-22T07:48:58Z
+
+NAME              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE     VOLUMEMODE
+kafka-pvc         Bound    pvc-cb14ee85-b485-439e-b407-9ab1f76eb1dc   10Gi       RWO            gp2            <unset>                 7d15h   Filesystem
+postgresql-pvc    Bound    pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0   10Gi       RWO            gp2            <unset>                 8d      Filesystem
+valkey-cart-pvc   Bound    pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3   5Gi        RWO            gp2            <unset>                 7d15h   Filesystem

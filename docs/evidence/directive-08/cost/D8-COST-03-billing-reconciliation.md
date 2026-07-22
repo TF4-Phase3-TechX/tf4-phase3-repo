@@ -3,7 +3,7 @@
 **Directive:** #8 — Managed Data Services Migration
 **Owner:** Tuấn — CDO-04 Performance Efficiency & Cost Optimization
 **Account:** `511825856493`, region `us-east-1`
-**Trạng thái tính đến `2026-07-22`:** **BLOCKED / Pass 1 (not final).** Đã thu thập được toàn bộ data source có quyền truy cập, gồm cả MSK cluster detail và Karpenter NodeClaim lifetime, nhưng **không đủ điều kiện đóng ticket** — billing chưa qua đủ thời gian ổn định và `D8-COST-02` (dependency bắt buộc) vẫn ở trạng thái Pass 1, chưa PASS đầy đủ 4 điều kiện Safety Rule. Nguồn ticket: `task-week-3/epic8/task-tuan.md`.
+**Trạng thái tính đến `2026-07-22`:** **BLOCKED / Pass 1 (not final).** Đã thu thập được toàn bộ data source có quyền truy cập, gồm cả MSK cluster detail và Karpenter NodeClaim lifetime, nhưng **không đủ điều kiện đóng ticket** — billing chưa qua đủ thời gian ổn định và `D8-COST-02` (dependency bắt buộc), dù đã xong Pass 1 + Pass 2, vẫn chưa PASS đầy đủ 4 điều kiện Safety Rule. Nguồn ticket: `task-week-3/epic8/task-tuan.md`.
 
 ---
 
@@ -19,7 +19,7 @@ Ticket ghi rõ: *"Depends on D8-COST-02 và billing lag 24–48 giờ hoặc lâ
 
 | Điều kiện | Trạng thái | Evidence |
 | --- | --- | --- |
-| `D8-COST-02` hoàn tất | **Chưa** — Pass 1 only | `docs/evidence/directive-08/cost/D8-COST-02-eks-capacity-verification-plan.md`: chỉ 1/4 Safety Rule đạt PASS (cutover); 3/4 chưa đạt (data parity, stabilization, rollback decision), Pass 2/PVC removal còn mở |
+| `D8-COST-02` hoàn tất | **Chưa** — Pass 1 + Pass 2 xong, nhưng Safety Rule vẫn chưa đủ | `docs/evidence/directive-08/cost/D8-COST-02-eks-capacity-verification-plan.md`: Pass 2 chưa quan sát được Karpenter consolidation nào, nhưng cả 2 NodeClaim đã `Consolidatable: True` và chưa terminate — chưa thể kết luận dứt khoát là sẽ không bao giờ xảy ra. Vẫn chỉ 1/4 Safety Rule đạt PASS (cutover); 3/4 chưa đạt (data parity, stabilization, rollback decision); PVC removal còn mở |
 | Billing lag 24–48h+ | **Chưa đủ cho phần lớn dữ liệu** | Xem bảng "Billing lag theo service" bên dưới — MSK/EKS cleanup mới ~vài giờ traffic; RDS/ElastiCache/MSK resource đã 3 ngày nhưng Cost Explorer vẫn `Estimated: true` toàn bộ |
 
 → Theo đúng Acceptance Criteria của chính ticket này ("Không claim saving khi chưa đủ billing window"), tài liệu này **chỉ ghi nhận data point Pass 1**, không đưa ra billing-reconciled verdict cuối cùng.
@@ -139,7 +139,7 @@ Không tính được — không có "actual" đã settle để so sánh với "
 
 Depends on `D8-COST-02` và billing lag 24–48 giờ hoặc lâu hơn.
 
-- **`D8-COST-02`:** chưa hoàn tất — xem `D8-COST-02-eks-capacity-verification-plan.md` (chỉ 1/4 Safety Rule PASS — cutover; data parity/stabilization/rollback decision đều chưa đạt, Pass 2 chưa chạy).
+- **`D8-COST-02`:** chưa hoàn tất — xem `D8-COST-02-eks-capacity-verification-plan.md` (Pass 1 + Pass 2 đã xong; Karpenter consolidation chưa quan sát được nhưng chưa loại trừ khả năng xảy ra sau — 2 NodeClaim đã `Consolidatable: True`, chưa terminate; chỉ 1/4 Safety Rule PASS — cutover; data parity/stabilization/rollback decision đều chưa đạt).
 - **Billing lag:** chưa đủ — toàn bộ Cost Explorer/`AWS Budgets` vẫn ở trạng thái estimate, kể cả với RDS/ElastiCache/MSK đều đã tồn tại 3 ngày.
 
 ---
@@ -163,7 +163,7 @@ Depends on `D8-COST-02` và billing lag 24–48 giờ hoặc lâu hơn.
 
 ## Việc còn lại trước khi đóng ticket
 
-1. Chờ `D8-COST-02` đạt đủ 4 điều kiện Safety Rule (data parity PASS, stabilization PASS, rollback decision) và chạy xong Pass 2.
+1. Chờ `D8-COST-02` đạt đủ 4 điều kiện Safety Rule (data parity PASS, stabilization PASS, rollback decision) — Pass 1 và Pass 2 đã xong, đây là điều kiện còn lại duy nhất chặn `D8-COST-02` đóng.
 2. Re-pull Cost Explorer + AWS Budgets sau ít nhất 48–72h kể từ cutover thật (`2026-07-22`), kiểm tra cờ `Estimated` đã tắt chưa trước khi tính Observed delta.
 3. Xác nhận với CDO-08/billing owner lý do RDS/ElastiCache/MSK cost gần `$0` dù đã chạy 3 ngày (free-tier vs billing-lag) — không tự suy diễn.
 4. Xin thêm `kafka:ListNodes`/`GetBootstrapBrokers` để tách MSK cost chi tiết theo broker — theo dõi qua `D8-ACCESS-REQUEST-cost-perf-readonly.md`.

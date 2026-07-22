@@ -1,0 +1,15 @@
+=== 26-resourcequota-pass2 ===
+Collected: 2026-07-22T07:48:58Z
+
+NAME          REQUEST                                                           LIMIT                                              AGE
+techx-quota   pods: 29/40, requests.cpu: 1835m/4, requests.memory: 2951Mi/9Gi   limits.cpu: 6750m/10, limits.memory: 5193Mi/12Gi   7d9h
+
+Name:            techx-quota
+Namespace:       techx-tf4
+Resource         Used    Hard
+--------         ----    ----
+limits.cpu       6750m   10
+limits.memory    5193Mi  12Gi
+pods             29      40
+requests.cpu     1835m   4
+requests.memory  2951Mi  9Gi

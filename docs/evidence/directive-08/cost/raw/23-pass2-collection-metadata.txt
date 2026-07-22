@@ -1,0 +1,4 @@
+=== 23-pass2-collection-metadata ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T07:48:58Z
+Ghi chú: Pass 2 - chạy sau khi cửa sổ consolidateAfter (5m) đã trôi qua nhiều lần kể từ cutover, dùng để xác nhận final resting state
