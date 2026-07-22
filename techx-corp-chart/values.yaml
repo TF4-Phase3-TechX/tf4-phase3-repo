@@ -1095,7 +1095,7 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      requests: { cpu: 50m, memory: 64Mi }
+      requests: { cpu: 50m, memory: 96Mi }
       limits: { cpu: 200m, memory: 128Mi }
     livenessProbe:
       grpc:

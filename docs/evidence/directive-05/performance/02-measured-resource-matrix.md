@@ -53,17 +53,15 @@ kubectl describe pod -n techx-observability jaeger-7b6f6548cb-m97sz
 | `frontend` | Next.js/Node.js; Sync/P0 entry point | 3 / HPA 2–3, 70% | 100m / 400m | 192Mi / 320Mi | 290.4m, 316.5M | **Nguy cơ OOM cao.** RAM peak `325.2M` vượt giới hạn limit cũ `320Mi`. Đề xuất tăng limit lên `512Mi`. | Peak: 324.2m CPU / 325.2Mi RAM. Throttle: 10.09%. Restarts: 0. | 100m/400m; 192Mi/320Mi | `WARNING` |
 | `frontend-proxy` | Envoy; Sync/P0 ingress gateway | 2 / fixed | 50m / 200m | 64Mi / 128Mi | 54.6m, 50.6M | CPU/RAM snapshot thấp hơn request. Hoạt động tốt. | Peak: 54.7m CPU / 50.9Mi RAM. Throttle: 0.00%. Restarts: 0. | 50m/200m; 64Mi/128Mi | `PASS` |
 | `image-provider` | nginx; Supporting/P2 | 1 / — | 10m / 50m | 25Mi / 50Mi | 0.5m, 6.0M | Sử dụng tài nguyên cực thấp. | Peak: 0.6m CPU / 6.0Mi RAM. Throttle: 0.00%. Restarts: 0. | 10m/50m; 25Mi/50Mi | `PASS` |
-| `kafka` | JVM; Async/P0 event broker | 1 / — | 100m / 500m | 700Mi / 700Mi | 16.2m, 581.9M | JVM Heap `400M`. Peak RAM `582M` gần sát giới hạn. Đề xuất tăng limit lên `1024Mi`. | Peak: 18.3m CPU / 582.0Mi RAM. Throttle: 0.21%. Restarts: 0. | 100m/500m; 700Mi/700Mi | `PASS` |
 | `llm` | Python mock; Sync/P1 AI dependency | 1 / — | 75m / 250m | 96Mi / 192Mi | 13.9m, 70.6M | Chạy ổn định. | Peak: 14.1m CPU / 70.4Mi RAM. Throttle: 0.00%. Restarts: 0. | 75m/250m; 96Mi/192Mi | `PASS` |
 | `load-generator` | Python/Locust; test-only | 1 / — | 300m / 600m | 256Mi / 512Mi | 400.8m, 132.3M | Bắn tải làm CPU tăng cao. Giữ nguyên cấu hình. | Peak: 442.0m CPU / 132.6Mi RAM. Throttle: 43.02%. Restarts: 0. | 300m/600m; 256Mi/512Mi | `PASS` |
 | `payment` | Node.js; Sync/P0 checkout dependency | 2 / fixed | 50m / 200m | 64Mi / 128Mi | 30.4m, 215.6M | **Vượt xa request cũ.** RAM peak đạt `215.1M`. Đề xuất tăng request/limit lên `256Mi/384Mi`. | Peak: 33.7m CPU / 215.1Mi RAM. Throttle: 0.13%. Restarts: 0. | 50m/200m; 64Mi/128Mi | `WARNING` |
-| `postgresql` | PostgreSQL; Sync/P0 persistent data | 1 / — | 50m / 500m | 256Mi / 512Mi | 186.5m, 89.0M | Có mount PVC. Hoạt động ổn định. | Peak: 195.5m CPU / 107.2Mi RAM. Throttle: 23.31%. Restarts: 0. | 50m/500m; 256Mi/512Mi | `PASS` |
 | `product-catalog` | Go; Sync/P0 catalog dependency | 2 / fixed | 50m / 200m | 32Mi / 64Mi | 83.9m, 26.0M | CPU peak vượt request `50m` gây throttle nhẹ. Đề xuất tăng CPU request lên `100m`. | Peak: 89.6m CPU / 28.6Mi RAM. Throttle: 12.27%. Restarts: 0. | 50m/200m; 32Mi/64Mi | `PASS` |
 | `product-reviews` | Python gRPC; Sync/P1 AI/reviews | 1 / — | 75m / 300m | 96Mi / 192Mi | 90.7m, 76.0M | CPU peak vượt request cũ. Đề xuất tăng CPU request lên `100m`. | Peak: 139.3m CPU / 76.2Mi RAM. Throttle: 16.14%. Restarts: 0. | 75m/300m; 96Mi/192Mi | `PASS` |
 | `quote` | PHP; Sync/P1 shipping dependency | 2 / fixed | 10m / 50m | 20Mi / 40Mi | 7.7m, 38.1M | RAM peak `38.3M` chạm sát limit `40Mi`. Đề xuất nâng limit lên `96Mi`. | Peak: 7.9m CPU / 38.3Mi RAM. Throttle: 1.38%. Restarts: 0. | 10m/50m; 20Mi/40Mi | `PASS` |
 | `recommendation` | Python; Sync/P1 browse dependency | 1 / — | 75m / 300m | 128Mi / 256Mi | 93.3m, 48.0M | CPU peak vượt request. Đề xuất tăng CPU request lên `100m`. | Peak: 112.1m CPU / 48.3Mi RAM. Throttle: 22.15%. Restarts: 0. | 75m/300m; 128Mi/256Mi | `PASS` |
 | `shipping` | Go; Sync/P0 checkout dependency | 2 / fixed | 20m / 75m | 16Mi / 32Mi | 4.5m, 7.9M | Go runtime nhẹ. Hoạt động an toàn. | Peak: 4.7m CPU / 7.9Mi RAM. Throttle: 0.08%. Restarts: 0. | 20m/75m; 16Mi/32Mi | `PASS` |
-| `valkey-cart` | Valkey; Sync/P0 cart state | 1 / — | 20m / 100m | 32Mi / 64Mi | 6.4m, 6.8M | Dữ liệu giỏ hàng lưu đệm. Tiêu thụ rất ít RAM. | Peak: 6.5m CPU / 6.8Mi RAM. Throttle: 0.11%. Restarts: 0. | 20m/100m; 32Mi/64Mi | `PASS` |
+
 
 ---
 
