@@ -336,6 +336,16 @@ output "rds_postgresql_credential_handoff_note" {
   value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
 }
 
+output "cloudflare_tunnel_token_secret_path" {
+  description = "AWS Secrets Manager path for the CDO08 SEC-05 Cloudflare Tunnel token placeholder"
+  value       = aws_secretsmanager_secret.cloudflare_tunnel_token.name
+}
+
+output "cloudflare_tunnel_token_secret_arn" {
+  description = "AWS Secrets Manager ARN for the CDO08 SEC-05 Cloudflare Tunnel token placeholder"
+  value       = aws_secretsmanager_secret.cloudflare_tunnel_token.arn
+}
+
 # REL-15 - PostgreSQL migration backup outputs
 output "postgresql_migration_backup_bucket_name" {
   description = "S3 bucket used for REL-15 PostgreSQL migration backup artifacts"
