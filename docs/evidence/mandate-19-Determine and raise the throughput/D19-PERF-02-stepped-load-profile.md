@@ -1,18 +1,22 @@
-# D19-PERF-02 — Stepped load profile để tìm breakpoint thực tế
+# D19-PERF-02 — Kế hoạch stepped load profile để tìm breakpoint thực tế
 
 ## 1. Trạng thái và phạm vi
 
 - **Owner:** CDO04
 - **Profile ID:** `d19-breakpoint-v1`
-- **Implementation:** `D19BreakpointShape` trong `techx-corp-platform/src/load-generator/locustfile.py`
-- **Runner:** `scripts/run-d19-breakpoint-test.sh`
 - **Dependency:** D19-PERF-01
+- **Loại deliverable:** Plan only
+- **Cách thực thi:** Cấu hình và điều khiển qua UI trong approved test window
+- **Runtime execution:** NOT RUN
+- **Helm/deploy verification:** N/A
 
-Profile này dùng nguyên trạng cho baseline và post-tuning. Mọi thay đổi schedule, task weight, fixture, wait time hoặc feature flag tạo một profile version mới và buộc chạy lại cả hai phía.
+Tài liệu này chỉ khóa kế hoạch kiểm thử. Task không thay đổi application source, load-generator source, Helm, Terraform, HPA, node hoặc flagd.
+
+Baseline và post-tuning phải dùng cùng schedule, endpoint weights, test data, UI configuration và SLO contract. Nếu thay đổi bất kỳ thành phần nào, hai run không còn so sánh trực tiếp và phải chạy lại.
 
 ## 2. Immutable stepped schedule
 
-Load được điều khiển bằng concurrent users vì workload hiện tại dùng `HttpUser` với think time `between(1, 10)`. Offered, achieved và successful RPS vẫn được đo ở từng step; không suy diễn RPS từ user count.
+Load được điều khiển theo concurrent users. Offered, achieved và successful RPS phải được đo tại từng step; không suy diễn RPS từ user count.
 
 | Phase | Target users | Spawn rate | Duration | Evaluation |
 |---|---:|---:|---:|---|
@@ -31,13 +35,13 @@ Load được điều khiển bằng concurrent users vì workload hiện tại 
 | Fine 05 | 250 | 2 users/s | 5 phút | 3 phút cuối |
 | Overload | 275 | 2 users/s | 10 phút | Graceful-degradation evidence |
 
-Tổng planned runtime là 75 phút. Các bước 10-user ở vùng 200–250 là fine-grained search dựa trên mốc 200-user đã từng được dùng trong repository. Nếu First Failing Step nằm ngoài vùng này, không sửa profile giữa baseline và post-tuning: tạo profile v2 được review và chạy lại cả hai.
+Tổng planned runtime là 75 phút. Không thay đổi step size hoặc duration giữa baseline và post-tuning.
 
-Nếu phase Overload 275 users vẫn đạt toàn bộ SLO và không có saturation/plateau, verdict bắt buộc là `NO_BREAKPOINT_FOUND_WITHIN_PROFILE`. Kết luận duy nhất được phép là breakpoint lớn hơn mức successful RPS đã đo tại 275 users. Phải tạo immutable profile v2 và chạy lại cả baseline lẫn post-tuning; không được tuyên bố 275 users là breakpoint.
+Nếu 275 users vẫn đạt toàn bộ SLO và không có saturation hoặc throughput plateau, verdict bắt buộc là `NO_BREAKPOINT_FOUND_WITHIN_PROFILE`. Chỉ được kết luận breakpoint lớn hơn mức đã đo; phải tạo profile v2 và chạy lại cả baseline lẫn post-tuning.
 
 ## 3. Endpoint weights cố định
 
-Giữ nguyên `WebsiteUser`, `wait_time = between(1, 10)` và tổng task weight 101.
+Giữ nguyên workload và task weights đang được triển khai tại thời điểm approved window.
 
 | Flow | Tasks | Weight | Task-selection share |
 |---|---|---:|---:|
@@ -47,31 +51,47 @@ Giữ nguyên `WebsiteUser`, `wait_time = between(1, 10)` và tổng task weight
 | Background/production-like | AI assistant 10; ads 6 | 16 | 15.84% |
 | Flag-gated | flood home 1 | 1 | 0.99% |
 
-Checkout và Cart task có nested requests, vì vậy bảng trên là task-selection mix, không phải HTTP request share. Raw `stats_history.csv` và route stats là nguồn đo request mix thực tế. `loadGeneratorFloodHomepage` phải giữ nguyên và disabled ở cả hai run.
+Task-selection share không phải HTTP request share vì Cart và Checkout có nested requests. Request mix thực tế phải lấy từ raw UI export/Locust statistics. `loadGeneratorFloodHomepage` phải giữ nguyên và disabled trong cả hai run.
 
-## 4. User data và correlation
+## 4. Test data và correlation plan
 
-- Mỗi session tạo UUID v4 và gắn baggage `session.id`; mọi synthetic request có `synthetic_request=true`.
-- Mỗi cart/checkout journey tạo UUID v4 riêng làm `userId`; nested add-to-cart và checkout dùng cùng ID để correlation.
-- Product được chọn từ danh sách cố định trong source; checkout identity lấy từ cùng revision của `people.json`.
-- Baseline và post-tuning phải dùng cùng load-generator Git SHA/image digest, `people.json`, product list và randomization implementation.
-- Không dùng chung cart identity giữa virtual users; không đưa PII hoặc credential vào log.
-- Correctness phải đối chiếu cart state, transaction result và duplicate order theo D19-PERF-01; HTTP 2xx sai nội dung vẫn là failure.
+- Baseline và post-tuning dùng cùng load-generator image digest và runtime configuration.
+- Dùng cùng `people.json`, product fixture, wait-time policy và randomization behavior.
+- Mỗi virtual-user journey dùng correlation ID riêng theo implementation đang triển khai; không thay đổi source trong task này.
+- Không chia sẻ cart identity giữa virtual users.
+- Không ghi PII hoặc credential vào evidence.
+- Cart state, transaction result và duplicate order được kiểm tra theo D19-PERF-01.
+- HTTP 2xx có payload hoặc transaction state sai vẫn được tính là correctness failure.
 
-## 5. UTC timeline và timestamps
+## 5. UI execution plan
 
-Không hard-code lịch chạy chưa được duyệt. Runner ghi exact UTC thực tế vào `run-metadata.env`:
+Trước approved window, operator phải review và chụp lại toàn bộ UI configuration:
 
-- `RUN_START_UTC` ngay trước khi Locust bắt đầu;
-- `RUN_END_UTC` ngay sau khi Locust kết thúc;
-- `phase-timeline.csv` lưu planned offsets để đối chiếu schedule;
-- `actual-phase-transitions.csv` do Locust shape ghi trực tiếp tại `phase_transition` và `target_achieved`, gồm actual user count và UTC timestamp tới millisecond;
-- node timeline mỗi 60 giây với `TIMESTAMP_UTC`;
-- Locust history theo thời gian và pod log có timestamp.
+1. target environment và storefront URL;
+2. concurrent users và spawn rate của từng phase;
+3. endpoint/task mix;
+4. load-generator image/runtime configuration;
+5. feature-flag state;
+6. baseline node count, node identity, instance type và allocatable capacity;
+7. HPA, quota và workload replica state;
+8. dashboard queries dùng cho SLO và saturation.
 
-Planned timestamp không được dùng thay actual transition timestamp. Mỗi evaluation window chỉ hợp lệ khi có event `target_achieved` cho phase tương ứng và actual users đạt target. Primary window là 3 phút cuối phase tính theo actual transition, nhưng phải nằm hoàn toàn sau `target_achieved`; nếu không đủ trọn 3 phút sau khi đạt target thì phase có verdict `INSUFFICIENT_DATA`.
+Trong lúc chạy:
 
-Minimum sample count trong evaluation window:
+1. operator chuyển từng phase theo schedule đã khóa;
+2. ghi actual UTC timestamp khi UI bắt đầu phase;
+3. ghi actual UTC timestamp khi active users đạt target;
+4. chỉ đánh giá phase sau khi actual users đạt target;
+5. export raw statistics/logs sau mỗi phase;
+6. chụp CPU, memory, throttling và restart của load generator;
+7. ghi node name, UID/provider ID và instance type mỗi phút;
+8. áp dụng hard-stop theo D19-PERF-01 khi correctness hoặc safety gate gãy.
+
+Không dùng planned timestamp thay cho actual UI timestamp.
+
+## 6. Evaluation contract
+
+Primary evaluation window là 3 phút cuối của phase và phải nằm hoàn toàn sau thời điểm actual users đạt target. Nếu không đủ trọn 3 phút sau khi đạt target, phase là `INSUFFICIENT_DATA`.
 
 | Flow | Minimum successful samples cho p95 | Minimum successful samples cho p99 |
 |---|---:|---:|
@@ -79,112 +99,85 @@ Minimum sample count trong evaluation window:
 | Cart | 100 | 100 |
 | Checkout | 100 | 100 |
 
-Flow thiếu sample không được PASS/FAIL latency; toàn phase là `INSUFFICIENT_DATA`. Error, timeout và correctness hard gates vẫn có hiệu lực ngay theo D19-PERF-01.
+Flow thiếu sample không được PASS/FAIL latency. Error, timeout và correctness hard gates vẫn có hiệu lực ngay theo D19-PERF-01.
 
-## 6. Chạy profile
+## 7. Evidence plan
 
-```bash
-bash scripts/run-d19-breakpoint-test.sh baseline
-bash scripts/run-d19-breakpoint-test.sh post-tuning
-```
+Mỗi baseline/post-tuning run phải lưu:
 
-Runner không tự thay đổi replica, HPA, node hoặc flagd. Trước run, runner bắt buộc digest của `locustfile.py`, canonical `people.json`, canonical product fixture, image và runtime configuration được ghi lại; source/deployed fixture mismatch làm run `INVALID`. Dừng theo hard-stop của D19-PERF-01 nếu correctness/safety gate gãy; giữ toàn bộ artifact đã tạo và ghi `HARD_STOP`.
+- screenshot UI configuration trước run;
+- actual phase start và target-achieved timestamps theo UTC;
+- raw Locust/UI CSV, HTML report, failures, exceptions và console logs;
+- offered, achieved và successful RPS theo phase;
+- Browse, Cart và Checkout p95/p99, success, error và timeout ratios;
+- correctness và duplicate-order results;
+- load-generator CPU, memory, throttling và restart timeline;
+- node count, name, UID/provider ID, instance type và replacement timeline;
+- HPA, pod replicas, quota và scheduling state;
+- CPU, memory, connection, worker/thread pool, queue và downstream saturation;
+- image digest, runtime configuration, fixture fingerprints và Git SHA;
+- Last Passing Step, First Failing Step và conservative breakpoint result.
 
-## 7. Raw evidence contract
+Không chỉnh tay raw artifact. Missing mandatory evidence không được coi là PASS.
 
-Mỗi run tạo thư mục `runtime/<run-type>-<RUN_ID>/` gồm:
-
-```text
-RESULT
-run-metadata.env
-load/locust-console.log
-load/pod.log
-load/phase-timeline.csv
-load/actual-phase-transitions.csv
-load/stats.csv
-load/stats_history.csv
-load/failures.csv
-load/exceptions.csv
-load/report.html
-kubernetes/nodes-before.txt
-kubernetes/nodes-after.txt
-kubernetes/node-timeline.log
-kubernetes/node-fingerprint-before.txt
-kubernetes/node-fingerprint-after.txt
-kubernetes/hpa-before.yaml
-kubernetes/capacity-guards-before.yaml
-kubernetes/pods-before.txt
-load-generator/runtime-config.txt
-load-generator/resource-timeline.log
-```
-
-Không chỉnh tay raw artifact. `PROFILE_SHA256`, `PEOPLE_SHA256`, `PRODUCT_FIXTURE_SHA256`, `RUNTIME_CONFIG_SHA256`, Git SHA, image digest và Kubernetes context chứng minh workload bất biến. Load-generator timeline thu CPU, memory, cgroup throttling và restart count mỗi 60 giây; missing signal làm run `INSUFFICIENT_DATA` hoặc `INVALID`, không được mặc định PASS. Node fingerprint dùng name, Kubernetes UID, provider ID và instance type để phát hiện replacement dù node count không đổi. SLO/saturation dashboard exports được bổ sung theo checkpoints của D19-PERF-01.
-
-`PROFILE_SHA256` chuẩn hóa CRLF thành LF trước khi hash để cùng Git content cho cùng digest trên Windows/Linux. People và product fixture dùng canonical JSON digest để không phụ thuộc whitespace hoặc line ending.
-
-## 8. Quy tắc so sánh và verdict
+## 8. Quy tắc hợp lệ và verdict
 
 Run chỉ hợp lệ khi:
 
-1. profile ID và SHA-256 giống nhau;
-2. endpoint weights, fixture, wait time và flagd giống nhau;
-3. đủ 75 phút hoặc dừng bởi hard-stop có evidence;
-4. load generator có CPU/memory/throttling/restart timeline, không saturation và tạo được target users;
-5. node count/type, node UID/provider ID, allocatable capacity và cluster topology không đổi;
-6. có raw history để tính offered/achieved/successful RPS từng step;
-7. có dữ liệu cho Last Passing, First Failing và saturation đồng timeline;
-8. post-tuning không được dùng step/profile khác baseline.
+1. baseline/post-tuning dùng cùng profile và UI configuration;
+2. endpoint weights, fixtures, wait time và flagd không đổi;
+3. node count/type/identity và allocatable capacity không đổi;
+4. load generator tạo được target users và không saturation;
+5. evaluation chỉ bắt đầu sau target-achieved timestamp;
+6. đủ minimum samples và mandatory telemetry;
+7. có raw evidence cho Last Passing, First Failing và saturation cùng timeline.
 
-Conservative breakpoint là successful RPS ở Last Passing Step. Overload phase không được dùng làm passing breakpoint; nó dùng để đánh giá load shedding, ưu tiên Checkout và khả năng phục hồi.
-
-### RESULT enum
-
-`RESULT` chỉ được chứa đúng một trong các verdict:
+`RESULT` chỉ được chứa một trong các verdict:
 
 | Verdict | Điều kiện |
 |---|---|
 | `PASS` | Run hợp lệ, tìm được Last Passing và First Failing Step, đủ SLO/correctness/saturation evidence |
-| `FAIL` | Run hoàn tất nhưng vi phạm execution contract hoặc acceptance không thuộc hard-stop |
-| `INVALID` | Infrastructure/profile/fixture/runtime invariant thay đổi hoặc load generator không hợp lệ |
+| `FAIL` | Run hoàn tất nhưng vi phạm acceptance không thuộc hard-stop |
+| `INVALID` | Infrastructure, profile, fixture hoặc runtime invariant thay đổi |
 | `HARD_STOP` | Run dừng theo safety/correctness hard-stop của D19-PERF-01 |
-| `INSUFFICIENT_DATA` | Thiếu actual target event, minimum samples hoặc mandatory telemetry |
-| `NO_BREAKPOINT_FOUND_WITHIN_PROFILE` | 275 users vẫn đạt toàn bộ SLO và không có saturation/plateau |
+| `INSUFFICIENT_DATA` | Thiếu target-achieved timestamp, minimum samples hoặc mandatory telemetry |
+| `NO_BREAKPOINT_FOUND_WITHIN_PROFILE` | 275 users vẫn đạt SLO và không có saturation/plateau |
 
-Runner khởi tạo `INSUFFICIENT_DATA`; evaluator chỉ đổi verdict sau khi kiểm tra raw evidence. `NO_BREAKPOINT_FOUND_WITHIN_PROFILE` bắt buộc tạo profile v2 và chạy lại cả baseline/post-tuning.
+Conservative breakpoint là successful RPS tại Last Passing Step. Overload phase dùng để đánh giá graceful degradation và Checkout protection, không tự động được xem là breakpoint.
 
 ## 9. Acceptance checklist
 
 - [x] Có immutable load profile và profile ID.
-- [x] Có endpoint weights.
-- [x] Có production-like background traffic.
-- [x] Có user data/correlation strategy.
-- [x] Có stepped ramp.
-- [x] Có fine-grained steps gần vùng breakpoint dự kiến.
-- [x] Runner ghi exact UTC timestamps.
-- [x] Runner lưu raw load-generator logs/CSV/HTML.
-- [x] Có actual phase-transition và target-achieved timestamps từ Locust shape.
-- [x] Evaluation chỉ bắt đầu sau khi actual users đạt target.
+- [x] Có endpoint weights và production-like background traffic.
+- [x] Có test data/correlation plan.
+- [x] Có stepped ramp và fine-grained steps.
+- [x] Có overload phase và no-breakpoint verdict.
+- [x] Có UI execution plan.
+- [x] Có actual UTC timestamp plan.
+- [x] Evaluation chỉ hợp lệ sau khi actual users đạt target.
 - [x] Có minimum sample count cho Browse, Cart và Checkout.
-- [x] Có CPU/memory/throttling/restart evidence cho load generator.
-- [x] Có digest cho profile, people, product fixture, image và runtime config.
-- [x] Synthetic cart/checkout correlation dùng UUID v4.
-- [x] Node timeline theo dõi UID/provider ID để phát hiện replacement.
-- [x] Có closed RESULT enum và no-breakpoint verdict.
-- [x] Baseline và post-tuning dùng cùng implementation/profile SHA.
-- [x] Không tự thay đổi node, HPA, flagd hoặc runtime capacity.
+- [x] Có load-generator saturation evidence plan.
+- [x] Có node identity/replacement evidence plan.
+- [x] Có closed RESULT enum.
+- [x] Baseline/post-tuning dùng cùng profile.
+- [x] Không thay đổi application/load-generator source.
+- [x] Không thay đổi Helm, Terraform, HPA, node hoặc flagd.
+- [ ] Runtime execution — NOT RUN.
+- [ ] Runtime evidence — pending approved test window.
 
-## 10. Trạng thái
+## 10. Verification status
 
 | Verification | Status |
 |---|---|
-| Python compile/profile assertions | PASS |
-| Git Bash syntax check | PASS |
+| Documentation review | PASS |
+| Source-code change | NONE |
+| Runner/automation script | NONE |
 | Runtime execution | NOT RUN |
 | Helm/deploy verification | N/A |
 
 ```text
-D19-PERF-02 PROFILE: COMPLETE
+D19-PERF-02 DELIVERABLE: PLAN ONLY
 PROFILE VERSION: d19-breakpoint-v1
 RUNTIME EXECUTION: NOT RUN
-HELM/DEPLOY VERIFICATION: N/A
+UI EXECUTION: PENDING APPROVED TEST WINDOW
 ```
