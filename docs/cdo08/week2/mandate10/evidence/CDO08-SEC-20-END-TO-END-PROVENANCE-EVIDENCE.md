@@ -1,30 +1,30 @@
 # CDO08-SEC-20 - Evidence Mandate 10: Secure Delivery Pipeline
 
-**Thoi diem kiem tra:** 2026-07-22T07:15:11Z  
+**Thời điểm kiểm tra:** 2026-07-22T07:15:11Z  
 **Cluster:** `techx-tf4-cluster`  
 **Namespace runtime:** `techx-tf4`  
-**Ket luan:** **PASS voi pham vi TF4 application images**
+**Kết luận:** **PASS với phạm vi TF4 application images**
 
-Mandate 10 yeu cau khi chi vao mot pod dang chay, team phai truy nguoc duoc:
+Mandate 10 yêu cầu khi chỉ vào một pod đang chạy, team phải truy ngược được:
 
 ```text
 running pod -> image digest -> source commit -> workflow -> signer -> SBOM/provenance
 ```
 
-Evidence duoi day dung pod `load-generator` lam mau live trace.
+Evidence dưới đây dùng pod `load-generator` làm mẫu live trace.
 
 ---
 
-## 1. Runtime dang chay image theo digest
+## 1. Runtime đang chạy image theo digest
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl -n techx-tf4 get pod -l opentelemetry.io/name=load-generator \
   -o jsonpath='{.items[0].metadata.name}{"\n"}{.items[0].spec.containers[0].image}{"\n"}{.items[0].status.containerStatuses[0].imageID}{"\n"}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 load-generator-777d9f8c68-bw855
@@ -32,16 +32,16 @@ load-generator-777d9f8c68-bw855
 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
 ```
 
-Danh gia:
+Đánh giá:
 
-- Pod dang chay dung image co digest bat bien.
-- Digest trong `spec.containers[0].image` khop voi `status.containerStatuses[0].imageID`.
+- Pod đang chạy đúng image có digest bất biến.
+- Digest trong `spec.containers[0].image` khớp với `status.containerStatuses[0].imageID`.
 
 ---
 
-## 2. Signature Cosign hop le
+## 2. Signature Cosign hợp lệ
 
-Lenh:
+Lệnh:
 
 ```sh
 cosign verify \
@@ -50,7 +50,7 @@ cosign verify \
   511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
 ```
 
-Ket qua rut gon:
+Kết quả rút gọn:
 
 ```text
 Verification for 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781 --
@@ -67,17 +67,17 @@ GitHub Workflow Ref: refs/heads/main
 GitHub Workflow SHA: 694654e2113b71d7d3ff188948fdb1b640cef3fc
 ```
 
-Danh gia:
+Đánh giá:
 
-- Image digest live da duoc ky bang Cosign keyless.
-- Signer la GitHub Actions OIDC cua repo `TF4-Phase3-TechX/tf4-phase3-repo`.
-- Workflow ky la `build-and-push.yaml` tren `refs/heads/main`.
+- Image digest live đã được ký bằng Cosign keyless.
+- Signer là GitHub Actions OIDC của repo `TF4-Phase3-TechX/tf4-phase3-repo`.
+- Workflow ký là `build-and-push.yaml` trên `refs/heads/main`.
 
 ---
 
-## 3. Provenance va SBOM attestation hop le
+## 3. Provenance và SBOM attestation hợp lệ
 
-Lenh:
+Lệnh:
 
 ```sh
 cosign verify-attestation \
@@ -89,7 +89,7 @@ cosign verify-attestation \
   > /private/tmp/sec20-load-generator-attestation.jsonl
 ```
 
-Ket qua verify rut gon:
+Kết quả verify rút gọn:
 
 ```text
 Verification for 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781 --
@@ -107,7 +107,7 @@ GitHub Workflow Repository: TF4-Phase3-TechX/tf4-phase3-repo
 GitHub Workflow Ref: refs/heads/main
 ```
 
-Lenh parse predicate:
+Lệnh parse predicate:
 
 ```sh
 jq -r '.payload' /private/tmp/sec20-load-generator-attestation.jsonl \
@@ -115,7 +115,7 @@ jq -r '.payload' /private/tmp/sec20-load-generator-attestation.jsonl \
   | jq '(.predicate.Data | fromjson) | {kind, repo, commit, workflow, run_id, service_name, image_digest, provenance, sbom: {kind: .sbom.kind, bomFormat: .sbom.bomFormat, documentBomFormat: .sbom.document.bomFormat, vulnerabilities: .sbom.document.vulnerabilities}}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```json
 {
@@ -143,23 +143,23 @@ Ket qua:
 }
 ```
 
-Danh gia:
+Đánh giá:
 
-- Attestation co provenance tro ve repo, commit, workflow, run id va service name.
-- Attestation co SBOM dang CycloneDX.
-- SBOM cua image mau khong con HIGH/CRITICAL vulnerability trong artifact da ky.
+- Attestation có provenance trỏ về repo, commit, workflow, run id và service name.
+- Attestation có SBOM dạng CycloneDX.
+- SBOM của image mẫu không còn HIGH/CRITICAL vulnerability trong artifact đã ký.
 
 ---
 
-## 4. Admission enforcement tren namespace runtime
+## 4. Admission enforcement trên namespace runtime
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl get ns techx-tf4 -o jsonpath='{.metadata.labels}{"\n"}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```json
 {
@@ -171,14 +171,14 @@ Ket qua:
 }
 ```
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl get imagevalidatingpolicy require-signed-techx-images \
   -o jsonpath='{.status.conditionStatus.ready}{"\n"}{.spec.validationActions}{"\n"}{.spec.matchConstraints.namespaceSelector}{"\n"}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 true
@@ -186,24 +186,24 @@ true
 {"matchLabels":{"techx.io/sec17-signature-enforce":"true"}}
 ```
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl get validatingadmissionpolicybinding require-digest-image-reference-binding \
   -o jsonpath='{.spec.validationActions}{"\n"}{.spec.matchResources.namespaceSelector}{"\n"}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 ["Deny"]
 {"matchLabels":{"techx.io/sec17-digest-enforce":"true"}}
 ```
 
-Danh gia:
+Đánh giá:
 
-- Namespace runtime da bat ca digest enforce va signature enforce.
-- Digest policy va signature policy deu chay o che do `Deny`.
+- Namespace runtime đã bật cả digest enforce và signature enforce.
+- Digest policy và signature policy đều chạy ở chế độ `Deny`.
 
 ---
 
@@ -211,7 +211,7 @@ Danh gia:
 
 ### 5.1. Reject image `latest`
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl -n techx-tf4 run sec20-latest-negative \
@@ -220,7 +220,7 @@ kubectl -n techx-tf4 run sec20-latest-negative \
   --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-latest-negative","image":"nginx:latest","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 The pods "sec20-latest-negative" is invalid: :
@@ -231,7 +231,7 @@ Image must pin a fixed tag or digest ... ':latest' ... are not allowed.
 
 ### 5.2. Reject TF4 ECR tag-only image
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl -n techx-tf4 run sec20-ecr-tagonly-negative \
@@ -240,7 +240,7 @@ kubectl -n techx-tf4 run sec20-ecr-tagonly-negative \
   --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-ecr-tagonly-negative","image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 The pods "sec20-ecr-tagonly-negative" is invalid: :
@@ -252,7 +252,7 @@ repo@sha256:<digest> or repo:tag@sha256:<digest>.
 
 ### 5.3. Accept signed TF4 ECR digest image
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl -n techx-tf4 run sec20-ecr-signed-digest-positive \
@@ -261,7 +261,7 @@ kubectl -n techx-tf4 run sec20-ecr-signed-digest-positive \
   --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-ecr-signed-digest-positive","image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
 ```
 
-Ket qua rut gon:
+Kết quả rút gọn:
 
 ```yaml
 apiVersion: v1
@@ -276,24 +276,24 @@ spec:
   - image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
 ```
 
-Danh gia:
+Đánh giá:
 
-- `latest` bi chan.
-- TF4 ECR tag-only image bi chan.
-- TF4 ECR signed digest image duoc chap nhan va Kyverno verify signature thanh cong.
+- `latest` bị chặn.
+- TF4 ECR tag-only image bị chặn.
+- TF4 ECR signed digest image được chấp nhận và Kyverno verify signature thành công.
 
 ---
 
 ## 6. Runtime image coverage
 
-Lenh:
+Lệnh:
 
 ```sh
 kubectl -n techx-tf4 get deploy -o wide
 kubectl -n techx-tf4 get rollout cart -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}{.status.phase}{"\n"}'
 ```
 
-Ket qua rut gon:
+Kết quả rút gọn:
 
 ```text
 accounting        ...:c553182-accounting@sha256:2989...        1/1
@@ -318,27 +318,27 @@ cart rollout:
 Healthy
 ```
 
-Ghi chu:
+Ghi chú:
 
-- `cart` dung Argo Rollout, khong phai Deployment, nhung Rollout `cart` dang `Healthy` va image cung da pin digest.
-- `flagd` la external control service `ghcr.io/open-feature/flagd:v0.12.9`, nam ngoai pham vi TF4 ECR image signing/enforcement va khong duoc sua theo quyet dinh cua team.
-- `kafka` khong con runtime app pod trong `techx-tf4` sau MSK cutover; entry tag-only trong GitOps neu con ton tai la stale/non-runtime va can don dep rieng neu muon dashboard GitOps sach hon.
+- `cart` dùng Argo Rollout, không phải Deployment, nhưng Rollout `cart` đang `Healthy` và image cũng đã pin digest.
+- `flagd` là external control service `ghcr.io/open-feature/flagd:v0.12.9`, nằm ngoài phạm vi TF4 ECR image signing/enforcement và không được sửa theo quyết định của team.
+- `kafka` không còn runtime app pod trong `techx-tf4` sau MSK cutover; entry tag-only trong GitOps nếu còn tồn tại là stale/non-runtime và cần dọn dẹp riêng nếu muốn dashboard GitOps sạch hơn.
 
 ---
 
 ## 7. Final verdict
 
-Mandate 10 dat muc **PASS cho TF4 application images**:
+Mandate 10 đạt mức **PASS cho TF4 application images**:
 
-- CI/CD da scan image truoc deploy va fail khi co HIGH/CRITICAL CVE.
-- ECR immutable da bat.
-- Runtime app images dang chay theo digest.
-- Cosign signature cua live digest verify thanh cong.
-- Provenance attestation tro ve repo, commit, workflow va run id.
-- SBOM CycloneDX ton tai trong attestation va khong co vulnerabilities trong image mau.
-- Admission policy chay `Deny`: reject `latest`, reject TF4 ECR tag-only, accept signed TF4 ECR digest.
+- CI/CD đã scan image trước deploy và fail khi có HIGH/CRITICAL CVE.
+- ECR immutable đã bật.
+- Runtime app images đang chạy theo digest.
+- Cosign signature của live digest verify thành công.
+- Provenance attestation trỏ về repo, commit, workflow và run id.
+- SBOM CycloneDX tồn tại trong attestation và không có vulnerabilities trong image mẫu.
+- Admission policy chạy `Deny`: reject `latest`, reject TF4 ECR tag-only, accept signed TF4 ECR digest.
 
-Phan can theo doi sau:
+Phần cần theo dõi sau:
 
-- Codify label `techx.io/sec17-signature-enforce=true` trong GitOps namespace management neu namespace label dang duoc quan ly ngoai cluster.
-- Don dep stale GitOps entry cho workload khong con runtime neu can lam Argo/GitOps sach hoan toan.
+- Codify label `techx.io/sec17-signature-enforce=true` trong GitOps namespace management nếu namespace label đang được quản lý ngoài cluster.
+- Dọn dẹp stale GitOps entry cho workload không còn runtime nếu cần làm Argo/GitOps sạch hoàn toàn.
