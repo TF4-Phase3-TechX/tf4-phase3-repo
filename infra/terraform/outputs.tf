@@ -351,3 +351,44 @@ output "postgresql_migration_backup_prefix" {
   description = "Prefix used for REL-15 PostgreSQL migration backup artifacts; lifecycle expires this prefix after 7 days"
   value       = local.postgresql_migration_backup_prefix
 }
+
+# Ref: AUDIT-015 — Athena Forensic Security Analytics outputs
+output "athena_workgroup_name" {
+  description = "Athena workgroup name cho forensic security analytics queries"
+  value       = aws_athena_workgroup.audit_forensics.name
+}
+
+output "athena_database_name" {
+  description = "Glue Data Catalog database name chứa audit forensics tables"
+  value       = aws_glue_catalog_database.audit_forensics.name
+}
+
+output "athena_results_bucket" {
+  description = "S3 bucket lưu trữ kết quả truy vấn Athena (auto-expire sau 7 ngày)"
+  value       = aws_s3_bucket.athena_results.id
+}
+
+output "athena_cloudtrail_table" {
+  description = "Glue table name cho CloudTrail events — WHO did WHAT"
+  value       = aws_glue_catalog_table.cloudtrail_events.name
+}
+
+output "athena_config_table" {
+  description = "Glue table name cho AWS Config history — infrastructure change timeline"
+  value       = aws_glue_catalog_table.aws_config_history.name
+}
+
+output "athena_eks_table" {
+  description = "Glue table name cho EKS audit events — K8s API server activity"
+  value       = aws_glue_catalog_table.eks_audit_events.name
+}
+
+output "athena_analyst_policy_arn" {
+  description = "IAM policy ARN cho CDO07 audit analysts sử dụng Athena forensics"
+  value       = aws_iam_policy.athena_audit_analyst.arn
+}
+
+output "cloudwatch_insights_forensics_policy_arn" {
+  description = "IAM policy ARN cho CloudWatch Logs Insights real-time forensic queries"
+  value       = aws_iam_policy.cloudwatch_insights_forensics.arn
+}
