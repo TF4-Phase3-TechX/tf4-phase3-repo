@@ -1200,9 +1200,14 @@ components:
       env: true
     service:
       port: 3551
+    ports:
+      - name: health
+        value: 3552
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
+      - name: PRODUCT_REVIEWS_HEALTH_PORT
+        value: "3552"
       - name: AWS_REGION
         value: us-east-1
       - name: BEDROCK_MODEL_ID
@@ -1223,6 +1228,12 @@ components:
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
         value: product-catalog:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: APP_ENV
+        value: production
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
