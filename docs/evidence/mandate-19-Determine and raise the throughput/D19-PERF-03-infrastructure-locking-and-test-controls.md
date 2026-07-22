@@ -127,11 +127,38 @@ Tất cả các storefront microservices khác (ngoài 3 services kích hoạt H
 
 ## 6. Phân bổ Pods Baseline (Pod Placement Inventory)
 
-Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` thuộc AZ `us-east-1a` và `ip-10-0-11-40` thuộc AZ `us-east-1b`) được ghi nhận chi tiết dưới đây:
+Dưới đây là so sánh chi tiết vị trí phân bổ pod trên 2 worker nodes baseline (`ip-10-0-10-231` thuộc AZ `us-east-1a` và `ip-10-0-11-40` thuộc AZ `us-east-1b`) trước và sau tối ưu/di trú dữ liệu:
 
-> [!NOTE]
-> *   **Trước tối ưu (Before - Baseline):** Cấu hình pod placement thô được ghi nhận đầy đủ tại tệp tin evidence gốc: [baseline-200-users-20260718T1850Z/resources/pods.txt](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/pods.txt).
-> *   **Sau tối ưu (After - Optimized):** Sau khi hoàn tất **Mandate 08** (di trú dữ liệu PostgreSQL sang RDS, Valkey sang ElastiCache, Kafka sang MSK), các pod lưu trữ dữ liệu tự chạy cũ (`postgresql`, `valkey-cart`, `kafka`) đã được dọn dẹp khỏi cluster EKS. Trạng thái pod placement thực tế được ghi nhận trong bảng dưới đây và tại tệp tin thô: [kubectl-get-pods-all-namespaces.txt](raw/kubectl-get-pods-all-namespaces.txt).
+### 6.1. Pod Placement - Trước di trú & tối ưu (Before - Baseline)
+Ghi nhận đầy đủ 22 pods, bao gồm cả các pods lưu trữ dữ liệu tự chạy (self-hosted) trong EKS. Dữ liệu gốc đối chứng: [baseline-200-users-20260718T1850Z/resources/pods.txt](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/pods.txt).
+
+| Node | Pod Name | Component Name | Ready Status | IP | Zone |
+| :--- | :--- | :--- | :---: | :--- | :---: |
+| **ip-10-0-10-231.ec2.internal** | `frontend-5c7f8786bf-dhncv` | `frontend` | 1/1 | 10.0.10.150 | us-east-1a |
+| | `frontend-proxy-b5b74455c-8whz9` | `frontend-proxy` | 1/1 | 10.0.10.128 | us-east-1a |
+| | `llm-656b5488c6-6g74z` | `llm` (Mock) | 1/1 | 10.0.10.13 | us-east-1a |
+| | `load-generator-84fbd78b6c-xpgbr` | `load-generator` | 1/1 | 10.0.10.151 | us-east-1a |
+| | `product-reviews-75fcd77f87-ftnc9` | `product-reviews` | 1/1 | 10.0.10.24 | us-east-1a |
+| | `quote-67b85c794b-vfg7c` | `quote` | 1/1 | 10.0.10.141 | us-east-1a |
+| | `shipping-969b87d57-vgblx` | `shipping` | 1/1 | 10.0.10.168 | us-east-1a |
+| | `valkey-cart-5866fc4b85-ktkxq` | `valkey-cart` | 1/1 | 10.0.10.184 | us-east-1a |
+| **ip-10-0-11-40.ec2.internal** | `accounting-6696f5bdb8-7wvkg` | `accounting` | 1/1 | 10.0.11.54 | us-east-1b |
+| | `ad-67488bccf4-kpwxw` | `ad` | 1/1 | 10.0.11.23 | us-east-1b |
+| | `cart-5bb9556668-m97cx` | `cart` | 1/1 | 10.0.11.235 | us-east-1b |
+| | `checkout-87c785988-dz7w4` | `checkout` | 1/1 | 10.0.11.232 | us-east-1b |
+| | `currency-5cd5dd67f-kwcn7` | `currency` | 1/1 | 10.0.11.20 | us-east-1b |
+| | `email-69dcc548bd-5g4p7` | `email` | 1/1 | 10.0.11.197 | us-east-1b |
+| | `flagd-64cd7974c8-dl9xp` | `flagd` | 1/1 | 10.0.11.250 | us-east-1b |
+| | `fraud-detection-5c5d9d899d-7z9qc` | `fraud-detection` | 1/1 | 10.0.11.245 | us-east-1b |
+| | `image-provider-798bdc847-mmfl8` | `image-provider` | 1/1 | 10.0.11.205 | us-east-1b |
+| | `kafka-6684fb88c5-l428d` | `kafka` | 1/1 | 10.0.11.75 | us-east-1b |
+| | `payment-786ff75dc5-jdnrx` | `payment` | 1/1 | 10.0.11.78 | us-east-1b |
+| | `postgresql-75fff48d97-6prp2` | `postgresql` | 1/1 | 10.0.11.113 | us-east-1b |
+| | `product-catalog-5698b468f4-8q7q6` | `product-catalog` | 1/1 | 10.0.11.206 | us-east-1b |
+| | `recommendation-5d6b6f8648-7h974` | `recommendation` | 1/1 | 10.0.11.177 | us-east-1b |
+
+### 6.2. Pod Placement - Sau di trú & tối ưu (After - Optimized)
+Sau khi hoàn tất **Mandate 08** (di trú dữ liệu PostgreSQL sang RDS, Valkey sang ElastiCache, Kafka sang MSK), các pod lưu trữ dữ liệu tự chạy cũ (`postgresql`, `valkey-cart`, `kafka`) đã được dọn dẹp khỏi cluster EKS để giải phóng compute requests/contention trên worker nodes. Dữ liệu thô đối chứng: [kubectl-get-pods-all-namespaces.txt](raw/kubectl-get-pods-all-namespaces.txt).
 
 | Node | Pod Name | Component Name | Ready Status | IP | Zone |
 | :--- | :--- | :--- | :---: | :--- | :---: |
@@ -154,7 +181,6 @@ Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` 
 | | `payment-786ff75dc5-jdnrx` | `payment` | 1/1 | 10.0.11.78 | us-east-1b |
 | | `product-catalog-5698b468f4-8q7q6` | `product-catalog` | 1/1 | 10.0.11.206 | us-east-1b |
 | | `recommendation-5d6b6f8648-7h974` | `recommendation` | 1/1 | 10.0.11.177 | us-east-1b |
-
 ---
 
 ## 7. Nhật Ký Node Count Theo Timeline (Node Count Timeline Log)
@@ -204,20 +230,20 @@ Bảng đối chiếu chi tiết chứng minh toàn bộ hạ tầng vật lý v
 | :--- | :--- | :--- | :---: | :--- |
 | **Cluster Name** | `techx-tf4-cluster` | `techx-tf4-cluster` | 100% Khớp | `providers.tf` |
 | **AWS Region / AZs** | `us-east-1` (1a, 1b) | `us-east-1` (1a, 1b) | 100% Khớp | `eks.tf` |
-| **Worker Node Count** | 2 Ready Nodes (xem [nodes.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/nodes.txt)) | 2 Ready Nodes (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes` |
+| **Worker Node Count** | 2 Ready Nodes (xem [nodes.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/nodes.txt)) | 2 Ready Nodes (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes` |
 | **Worker Instance Type** | `t3.large` | `t3.large` | 100% Khớp | `eks.tf` |
 | **Worker Node Group** | `techx-general-ng` (cùng labels) | `techx-general-ng` (cùng labels) | 100% Khớp | `kubectl get nodes --show-labels` |
 | **Node CPU / Memory Specs** | 2 vCPU, 8 GiB Memory per Node | 2 vCPU, 8 GiB Memory per Node | 100% Khớp | AWS Catalog |
-| **Node Allocatable CPU** | `1930m` Cores (xem [node-usage.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/node-usage.txt)) | `1930m` Cores (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes -o yaml` |
-| **Node Allocatable Memory** | ~7.2 GiB (7079–7101Mi) (xem [node-usage.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/node-usage.txt)) | ~7.2 GiB (7079–7101Mi) (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes -o yaml` |
+| **Node Allocatable CPU** | `1930m` Cores (xem [node-usage.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/node-usage.txt)) | `1930m` Cores (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes -o yaml` |
+| **Node Allocatable Memory** | ~7.2 GiB (7079–7101Mi) (xem [node-usage.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/node-usage.txt)) | ~7.2 GiB (7079–7101Mi) (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes -o yaml` |
 | **ASG Desired Capacity** | `desired_size = 2` | `desired_size = 2` | 100% Khớp | `eks.tf` |
 | **Karpenter NodePool Limit** | `limits.cpu: 4` (Karpenter locked) | `limits.cpu: 4` (Karpenter locked) | 100% Khớp | `nodepool.yaml` |
 | **ResourceQuota (hard limits)**| CPU: 8000m, RAM: 12Gi | CPU: 8000m, RAM: 12Gi (xem [kubectl-get-quota.txt After](raw/kubectl-get-quota.txt)) | 100% Khớp | `quota.yaml` / `kubectl get quota` |
 | **LimitRange Defaults** | None | None | 100% Khớp | `kubectl get limitrange` |
-| **HPA min/max (`checkout`)**| 2 / 3 replicas (xem [hpa.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
-| **HPA min/max (`currency`)**| 2 / 3 replicas (xem [hpa.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
-| **HPA min/max (`frontend`)**| 2 / 3 replicas (xem [hpa.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
-| **Static Replica Count (others)**| Xem [pods.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/pods.txt) | Xem mục 5.4 và [kubectl-get-pods-all-namespaces.txt After](raw/kubectl-get-pods-all-namespaces.txt) | 100% Khớp | `values.yaml` / `kubectl get pods` |
+| **HPA min/max (`checkout`)**| 2 / 3 replicas (xem [hpa.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
+| **HPA min/max (`currency`)**| 2 / 3 replicas (xem [hpa.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
+| **HPA min/max (`frontend`)**| 2 / 3 replicas (xem [hpa.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
+| **Static Replica Count (others)**| Xem [pods.txt Before](../mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/pods.txt) | Xem mục 5.4 và [kubectl-get-pods-all-namespaces.txt After](raw/kubectl-get-pods-all-namespaces.txt) | 100% Khớp | `values.yaml` / `kubectl get pods` |
 | **Deployment Revisions** | `checkout` rev 6, `currency` rev 3, `frontend` rev 5 | `checkout` rev 7, `currency` rev 4, `frontend` rev 6 | 100% Khớp | `kubectl rollout history` |
 | **Load-Generator Config** | 200 users, autostart=false | 200 users, autostart=false | 100% Khớp | `values-load-test-task4.yaml` |
 | **Git Commit/SHA** | `d80a53d2d5e3540a1da2234553ca5dafd245264a` | `6881118fa315db8d9ad7e14d4850fa9e394f4c2c` | Cải tiến Logic | `git log` |
@@ -237,4 +263,4 @@ Bảng đối chiếu chi tiết chứng minh toàn bộ hạ tầng vật lý v
 ## 11. Kết luận (Verdict)
 
 > [!IMPORTANT]
-> Toàn bộ 15 tham số bằng chứng vật lý/logic và 7 điều kiện kiểm soát tải (test controls) đã được thực thi và chứng minh tương thích 100% (Parity 100%). Sự thay đổi về breakpoint throughput và tail latency p95/p99 của cụm TechX storefront hoàn toàn do cải tiến cấu trúc concurrency (parallel catalog fetching & currency conversion) của service `checkout` ở tầng ứng dụng mang lại, không có sự tác động của việc mở rộng hạ tầng compute.
+> Toàn bộ 15 tham số bằng chứng vật lý/logic và 7 điều kiện kiểm soát tải (test controls) đã được thực thi và chứng minh tương thích 100% (Parity 100%). Sự thay đổi về breakpoint throughput và tail latency p95/p99 của cụm TechX storefront đến từ sự kết hợp của: (1) tối ưu hóa cấu trúc concurrency ở tầng ứng dụng (Go parallelization) và (2) giảm tải compute/contention trên cụm EKS nhờ di trú dữ liệu sang AWS Managed Services (RDS, ElastiCache, MSK) theo Mandate 08, đồng thời đảm bảo không nâng cấp cấu hình phần cứng worker node EKS (giữ nguyên t3.large, 2 nodes).
