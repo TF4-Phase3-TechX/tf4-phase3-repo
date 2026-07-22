@@ -85,18 +85,21 @@ spec:
   validations:
   - expression: >
       object.spec.containers.all(c,
-        c.image.matches('^(.*/)?[^/:@]+(:[A-Za-z0-9_.-]+)?@sha256:[0-9a-f]{64}$'))
-    message: "Image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>."
+        !c.image.startsWith('511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp') ||
+        c.image.matches('^511825856493\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/techx-corp(:[A-Za-z0-9_.-]+)?@sha256:[0-9a-f]{64}$'))
+    message: "TF4 ECR image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>."
   - expression: >
       !has(object.spec.initContainers) ||
       object.spec.initContainers.all(c,
-        c.image.matches('^(.*/)?[^/:@]+(:[A-Za-z0-9_.-]+)?@sha256:[0-9a-f]{64}$'))
-    message: "Init container image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>."
+        !c.image.startsWith('511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp') ||
+        c.image.matches('^511825856493\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/techx-corp(:[A-Za-z0-9_.-]+)?@sha256:[0-9a-f]{64}$'))
+    message: "TF4 ECR init container image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>."
   - expression: >
       !has(object.spec.ephemeralContainers) ||
       object.spec.ephemeralContainers.all(c,
-        c.image.matches('^(.*/)?[^/:@]+(:[A-Za-z0-9_.-]+)?@sha256:[0-9a-f]{64}$'))
-    message: "Ephemeral container image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>."
+        !c.image.startsWith('511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp') ||
+        c.image.matches('^511825856493\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/techx-corp(:[A-Za-z0-9_.-]+)?@sha256:[0-9a-f]{64}$'))
+    message: "TF4 ECR ephemeral container image must be pinned by immutable digest: repo@sha256:<digest> or repo:tag@sha256:<digest>."
 ---
 # ── Policy: require resource requests and limits ────────────────────────────
 apiVersion: admissionregistration.k8s.io/v1

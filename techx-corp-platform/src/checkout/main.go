@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -67,6 +69,8 @@ var logger *slog.Logger
 var tracer trace.Tracer
 var resource *sdkresource.Resource
 var initResourcesOnce sync.Once
+
+const maxConcurrentOrderItemPreparations = 2
 
 func initResource() *sdkresource.Resource {
 	initResourcesOnce.Do(func() {
@@ -351,6 +355,11 @@ func retryRead(ctx context.Context, perAttempt, backoff time.Duration, fn func(c
 }
 
 func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
+	userCurrency, err := normalizeCurrencyCode(req.GetUserCurrency())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	// Overall deadline: trần chống-treo cho toàn request (không phải mục tiêu SLO).
 	// Configurable qua env để tune không cần rebuild; mặc định 20s.
 	overall := 20 * time.Second
@@ -365,16 +374,15 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
 		attribute.String("app.user.id", req.UserId),
-		attribute.String("app.user.currency", req.UserCurrency),
+		attribute.String("app.user.currency", userCurrency),
 	)
 	logger.LogAttrs(
 		ctx,
 		slog.LevelInfo, "[PlaceOrder]",
 		slog.String("user_id", req.UserId),
-		slog.String("user_currency", req.UserCurrency),
+		slog.String("user_currency", userCurrency),
 	)
 
-	var err error
 	defer func() {
 		if err != nil {
 			span.AddEvent("error", trace.WithAttributes(semconv.ExceptionMessageKey.String(err.Error())))
@@ -386,19 +394,26 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 		return nil, status.Errorf(codes.Internal, "failed to generate order uuid")
 	}
 
-	prep, err := cs.prepareOrderItemsAndShippingQuoteFromCart(ctx, req.UserId, req.UserCurrency, req.Address)
+	prep, err := cs.prepareOrderItemsAndShippingQuoteFromCart(ctx, req.UserId, userCurrency, req.Address)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, checkoutStatusError(err)
 	}
 	span.AddEvent("prepared")
 
-	total := &pb.Money{CurrencyCode: req.UserCurrency,
-		Units: 0,
-		Nanos: 0}
-	total = money.Must(money.Sum(total, prep.shippingCostLocalized))
+	total := &pb.Money{CurrencyCode: userCurrency}
+	total, err = money.Sum(total, prep.shippingCostLocalized)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "invalid shipping cost")
+	}
 	for _, it := range prep.orderItems {
-		multPrice := money.MultiplySlow(it.Cost, uint32(it.GetItem().GetQuantity()))
-		total = money.Must(money.Sum(total, multPrice))
+		multPrice, multiplyErr := multiplyMoney(it.Cost, it.GetItem().GetQuantity())
+		if multiplyErr != nil {
+			return nil, status.Errorf(codes.Internal, "invalid item cost: %v", multiplyErr)
+		}
+		total, err = money.Sum(total, multPrice)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "invalid order total")
+		}
 	}
 
 	// Chỉ bắt đầu payment nếu còn ĐỦ budget cho toàn bộ write path (payment 5s + ship 3s).
@@ -483,27 +498,73 @@ type orderPrep struct {
 	shippingCostLocalized *pb.Money
 }
 
-func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Context, userID, userCurrency string, address *pb.Address) (orderPrep, error) {
+type orderItemsResult struct {
+	items []*pb.OrderItem
+	err   error
+}
 
+type shippingCostResult struct {
+	cost *pb.Money
+	err  error
+}
+
+func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Context, userID, userCurrency string, address *pb.Address) (orderPrep, error) {
 	ctx, span := tracer.Start(ctx, "prepareOrderItemsAndShippingQuoteFromCart")
 	defer span.End()
 
 	var out orderPrep
 	cartItems, err := cs.getUserCart(ctx, userID)
 	if err != nil {
-		return out, fmt.Errorf("cart failure: %+v", err)
+		return out, fmt.Errorf("cart failure: %w", err)
 	}
-	orderItems, err := cs.prepOrderItems(ctx, cartItems, userCurrency)
-	if err != nil {
-		return out, fmt.Errorf("failed to prepare order: %+v", err)
+
+	prepCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	orderItemsCh := make(chan orderItemsResult, 1)
+	shippingCostCh := make(chan shippingCostResult, 1)
+
+	go func() {
+		items, prepErr := cs.prepOrderItems(prepCtx, cartItems, userCurrency)
+		orderItemsCh <- orderItemsResult{items: items, err: prepErr}
+	}()
+	go func() {
+		shippingUSD, quoteErr := cs.quoteShipping(prepCtx, address, cartItems)
+		if quoteErr != nil {
+			shippingCostCh <- shippingCostResult{err: quoteErr}
+			return
+		}
+		if err := validateUSDMoney(shippingUSD); err != nil {
+			shippingCostCh <- shippingCostResult{err: fmt.Errorf("invalid shipping quote: %w", err)}
+			return
+		}
+		cost, convertErr := cs.convertCurrency(prepCtx, shippingUSD, userCurrency)
+		if convertErr == nil {
+			convertErr = validateMoneyInCurrency(cost, userCurrency)
+		}
+		shippingCostCh <- shippingCostResult{cost: cost, err: convertErr}
+	}()
+
+	var orderItems []*pb.OrderItem
+	var shippingPrice *pb.Money
+	var firstPrepErr error
+	for completed := 0; completed < 2; completed++ {
+		select {
+		case result := <-orderItemsCh:
+			orderItems = result.items
+			if result.err != nil && firstPrepErr == nil {
+				firstPrepErr = fmt.Errorf("failed to prepare order: %w", result.err)
+				cancel()
+			}
+		case result := <-shippingCostCh:
+			shippingPrice = result.cost
+			if result.err != nil && firstPrepErr == nil {
+				firstPrepErr = fmt.Errorf("shipping quote or currency conversion failure: %w", result.err)
+				cancel()
+			}
+		}
 	}
-	shippingUSD, err := cs.quoteShipping(ctx, address, cartItems)
-	if err != nil {
-		return out, fmt.Errorf("shipping quote failure: %+v", err)
-	}
-	shippingPrice, err := cs.convertCurrency(ctx, shippingUSD, userCurrency)
-	if err != nil {
-		return out, fmt.Errorf("failed to convert shipping cost to currency: %+v", err)
+	if firstPrepErr != nil {
+		return out, firstPrepErr
 	}
 
 	out.shippingCostLocalized = shippingPrice
@@ -515,11 +576,11 @@ func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Contex
 		totalCart += ci.Quantity
 	}
 	shippingCostFloat, _ := strconv.ParseFloat(fmt.Sprintf("%d.%02d", shippingPrice.GetUnits(), shippingPrice.GetNanos()/1000000000), 64)
-
 	span.SetAttributes(
 		attribute.Float64("app.shipping.amount", shippingCostFloat),
 		attribute.Int("app.cart.items.count", int(totalCart)),
 		attribute.Int("app.order.items.count", len(orderItems)),
+		attribute.Int("app.order.preparation.concurrency", maxConcurrentOrderItemPreparations),
 	)
 	return out, nil
 }
@@ -616,42 +677,232 @@ func (cs *checkout) emptyUserCart(ctx context.Context, userID string) error {
 }
 
 func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, userCurrency string) ([]*pb.OrderItem, error) {
-	out := make([]*pb.OrderItem, len(items))
+	products := make([]*pb.Product, len(items))
+	if err := cs.getProducts(ctx, items, products); err != nil {
+		return nil, err
+	}
 
+	prices := make([]*pb.Money, len(items))
+	for i, product := range products {
+		if err := validateUSDMoney(product.GetPriceUsd()); err != nil {
+			return nil, fmt.Errorf("invalid price for product #%q: %w", items[i].GetProductId(), err)
+		}
+		prices[i] = product.GetPriceUsd()
+	}
+
+	var converted []*pb.Money
+	var err error
+	if userCurrency == "USD" {
+		converted = make([]*pb.Money, len(prices))
+		for i, price := range prices {
+			converted[i], err = cs.convertCurrency(ctx, price, userCurrency)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert price of %q to %s: %w", items[i].GetProductId(), userCurrency, err)
+			}
+			if err := validateMoneyInCurrency(converted[i], userCurrency); err != nil {
+				return nil, fmt.Errorf("invalid converted price for product #%q: %w", items[i].GetProductId(), err)
+			}
+			converted[i] = copyMoney(converted[i])
+		}
+	} else {
+		converted, err = cs.batchConvertCurrency(ctx, prices, userCurrency)
+		if err != nil {
+			return nil, err
+		}
+	}
+	out := make([]*pb.OrderItem, len(items))
 	for i, item := range items {
-		var product *pb.Product
-		err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
-			var e error
-			product, e = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: item.GetProductId()})
-			return e
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get product #%q", item.GetProductId())
-		}
-		price, err := cs.convertCurrency(ctx, product.GetPriceUsd(), userCurrency)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert price of %q to %s", item.GetProductId(), userCurrency)
-		}
-		out[i] = &pb.OrderItem{
-			Item: item,
-			Cost: price}
+		out[i] = &pb.OrderItem{Item: item, Cost: converted[i]}
 	}
 	return out, nil
 }
 
-func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurrency string) (*pb.Money, error) {
-	var result *pb.Money
-	err := retryRead(ctx, 1*time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
-		var e error
-		result, e = cs.currencySvcClient.Convert(callCtx, &pb.CurrencyConversionRequest{
-			From:   from,
-			ToCode: toCurrency})
-		return e
+func (cs *checkout) getProducts(ctx context.Context, items []*pb.CartItem, products []*pb.Product) error {
+	if len(items) == 0 {
+		return nil
+	}
+	workerCount := len(items)
+	if workerCount > maxConcurrentOrderItemPreparations {
+		workerCount = maxConcurrentOrderItemPreparations
+	}
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	jobs := make(chan int)
+	var workers sync.WaitGroup
+	var firstErr error
+	var errOnce sync.Once
+	recordErr := func(err error) {
+		errOnce.Do(func() {
+			firstErr = err
+			cancel()
+		})
+	}
+	for range workerCount {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for {
+				select {
+				case <-workerCtx.Done():
+					return
+				case index, ok := <-jobs:
+					if !ok {
+						return
+					}
+					product, err := cs.getProduct(workerCtx, items[index].GetProductId())
+					if err != nil {
+						recordErr(fmt.Errorf("failed to get product #%q: %w", items[index].GetProductId(), err))
+						return
+					}
+					if product == nil {
+						recordErr(fmt.Errorf("product #%q response is empty", items[index].GetProductId()))
+						return
+					}
+					products[index] = product
+				}
+			}
+		}()
+	}
+
+enqueue:
+	for index := range items {
+		select {
+		case <-workerCtx.Done():
+			break enqueue
+		case jobs <- index:
+		}
+	}
+	close(jobs)
+	workers.Wait()
+	if firstErr != nil {
+		return firstErr
+	}
+	return ctx.Err()
+}
+
+func (cs *checkout) getProduct(ctx context.Context, productID string) (*pb.Product, error) {
+	var product *pb.Product
+	err := retryRead(ctx, time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+		var callErr error
+		product, callErr = cs.productCatalogSvcClient.GetProduct(callCtx, &pb.GetProductRequest{Id: productID})
+		return callErr
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert currency: %+v", err)
+		return nil, err
+	}
+	return product, nil
+}
+
+func (cs *checkout) batchConvertCurrency(ctx context.Context, from []*pb.Money, toCurrency string) ([]*pb.Money, error) {
+	var response *pb.BatchCurrencyConversionResponse
+	err := retryRead(ctx, time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+		var callErr error
+		response, callErr = cs.currencySvcClient.BatchConvert(callCtx, &pb.BatchCurrencyConversionRequest{
+			From:   from,
+			ToCode: toCurrency,
+		})
+		return callErr
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to batch convert item prices: %w", err)
+	}
+	if response == nil || len(response.GetConverted()) != len(from) {
+		return nil, status.Error(codes.Internal, "currency batch response cardinality mismatch")
+	}
+	converted := make([]*pb.Money, len(from))
+	for i, value := range response.GetConverted() {
+		if err := validateMoneyInCurrency(value, toCurrency); err != nil {
+			return nil, fmt.Errorf("invalid currency batch output #%d: %w", i, err)
+		}
+		converted[i] = copyMoney(value)
+	}
+	return converted, nil
+}
+
+func (cs *checkout) convertCurrency(ctx context.Context, from *pb.Money, toCurrency string) (*pb.Money, error) {
+	var result *pb.Money
+	err := retryRead(ctx, time.Second, 100*time.Millisecond, func(callCtx context.Context) error {
+		var callErr error
+		result, callErr = cs.currencySvcClient.Convert(callCtx, &pb.CurrencyConversionRequest{
+			From:   from,
+			ToCode: toCurrency,
+		})
+		return callErr
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert currency: %w", err)
 	}
 	return result, nil
+}
+
+func normalizeCurrencyCode(code string) (string, error) {
+	code = strings.ToUpper(code)
+	if len(code) != 3 {
+		return "", fmt.Errorf("user_currency must be a three-letter currency code")
+	}
+	for _, r := range code {
+		if r < 'A' || r > 'Z' {
+			return "", fmt.Errorf("user_currency must be a three-letter currency code")
+		}
+	}
+	return code, nil
+}
+
+func validateUSDMoney(value *pb.Money) error {
+	if err := validateMoneyInCurrency(value, "USD"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateMoneyInCurrency(value *pb.Money, currency string) error {
+	if value == nil || value.GetCurrencyCode() == "" || !money.IsValid(value) {
+		return fmt.Errorf("invalid money value")
+	}
+	if value.GetCurrencyCode() != currency {
+		return fmt.Errorf("unexpected currency %q", value.GetCurrencyCode())
+	}
+	return nil
+}
+
+func copyMoney(value *pb.Money) *pb.Money {
+	return &pb.Money{CurrencyCode: value.GetCurrencyCode(), Units: value.GetUnits(), Nanos: value.GetNanos()}
+}
+
+func multiplyMoney(value *pb.Money, quantity int32) (*pb.Money, error) {
+	if quantity < 0 || !money.IsValid(value) || value.GetCurrencyCode() == "" {
+		return nil, fmt.Errorf("invalid money multiplication: quantity=%d value=%v", quantity, value)
+	}
+	units := value.GetUnits() * int64(quantity)
+	nanos := int64(value.GetNanos()) * int64(quantity)
+	units += nanos / 1_000_000_000
+	nanos %= 1_000_000_000
+	if (units > 0 && nanos < 0) || (units < 0 && nanos > 0) {
+		if units > 0 {
+			units--
+			nanos += 1_000_000_000
+		} else {
+			units++
+			nanos -= 1_000_000_000
+		}
+	}
+	out := &pb.Money{CurrencyCode: value.GetCurrencyCode(), Units: units, Nanos: int32(nanos)}
+	if !money.IsValid(out) {
+		return nil, fmt.Errorf("invalid money multiplication result")
+	}
+	return out, nil
+}
+
+func checkoutStatusError(err error) error {
+	switch status.Code(err) {
+	case codes.InvalidArgument, codes.NotFound, codes.Unavailable, codes.DeadlineExceeded:
+		return status.Error(status.Code(err), err.Error())
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return status.Error(codes.DeadlineExceeded, err.Error())
+	}
+	return status.Error(codes.Internal, err.Error())
 }
 
 func (cs *checkout) chargeCard(ctx context.Context, amount *pb.Money, paymentInfo *pb.CreditCardInfo) (string, error) {
