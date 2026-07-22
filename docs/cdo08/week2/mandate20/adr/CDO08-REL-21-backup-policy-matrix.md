@@ -16,10 +16,10 @@ Retention chia 2 loại:
 | Store | RPO mục tiêu | Cơ chế đáp ứng | Cadence hiện tại | Retention ngắn hạn | Retention dài hạn (đề xuất thêm) | Có mâu thuẫn với RPO? | Giới hạn AWS cần lưu ý |
 |---|---|---|---|---|---|---|---|
 | RDS `accounting` | 15 phút | Automated backup + PITR (continuous transaction log, không phải chỉ snapshot ngày) | Daily snapshot window 18:00-19:00 UTC + continuous log backup | 7 ngày (đang có) | Đề xuất thêm: 1 snapshot thủ công/AWS Backup giữ 35 ngày, phòng lỗi phát hiện muộn | **Không** - PITR restore theo giây nên tần suất snapshot ngày không ảnh hưởng RPO | PITR chỉ restore trong đúng cửa sổ `backup_retention_period` (7 ngày) - muốn về mốc xa hơn phải có snapshot dài hạn riêng |
-| MSK `orders` | Best-effort | Không có cơ chế backup nào | N/A (chỉ có retention topic mặc định + replication factor 2) | N/A | Không áp dụng trừ khi quyết định thêm MSK Connect sink ra S3 (ngoài scope task này) | **Có, nếu ADR tuyên bố RPO chặt mà không làm gì thêm** - phải ghi rõ đây là rủi ro chấp nhận, không phải "đã đạt" | MSK không có API snapshot/backup - đây là giới hạn dịch vụ, không phải thiếu cấu hình |
+| MSK `orders` | 15 phút | MSK Connect + S3 Sink Connector, archival liên tục topic `orders` ra S3 (GAP-02) | Sink flush liên tục (chu kỳ ~5-15 phút tuỳ cấu hình connector) | 7 ngày trên S3 (khớp retention RDS) | Đề xuất thêm 35 ngày trên S3 (rẻ) | **Không** - miễn cadence flush ≤ 15 phút | MSK bản thân không có API snapshot/backup - lý do phải archival ra ngoài (S3) |
 | ElastiCache `valkey-cart` | Không cam kết | Automated snapshot (đã bật) | Daily, window 18:00-19:00 UTC | 7 ngày (đang có) | Không cần - dữ liệu ephemeral, mất cũng không ảnh hưởng tính đúng của hệ thống | Không | Snapshot restore có thể mất vài phút tuỳ kích thước - chấp nhận được vì RTO ở đây không chặt |
 | RDS `catalog` | N/A | Seed lại từ Helm/git, không dùng snapshot | N/A | N/A | N/A | Không áp dụng | Không |
-| RDS `reviews` | 1 giờ | Chung PITR với `accounting` (cùng instance) | Chung window với `accounting` | 7 ngày (đang có, dùng chung) | Dùng chung retention dài hạn với `accounting` nếu thêm | Không | Vì chung instance, restore `accounting` sẽ kéo theo restore `reviews` cùng lúc - cần test rõ trong drill |
+| RDS `reviews` | 1 giờ | PITR chung instance với `catalog` (đã tách khỏi `accounting`, xem GAP-06) | Chung window với `catalog` | 7 ngày (đang có, dùng chung với `catalog`) | Dùng chung retention dài hạn với `catalog` nếu cần | Không | Instance `catalog`+`reviews` restore chung không sao vì cả 2 đều không critical |
 
 ## Kiểm tra "cadence có mâu thuẫn với RPO không"
 
@@ -27,7 +27,7 @@ Nguyên tắc: **cadence backup phải nhỏ hơn hoặc bằng RPO**. Nếu RPO
 
 - RDS `accounting`/`reviews`: dùng PITR (continuous log), không phải chỉ snapshot ngày → RPO 15 phút/1 giờ đều đạt được, **không mâu thuẫn**.
 - ElastiCache: chỉ có snapshot ngày, nhưng vì không cam kết RPO chặt (dữ liệu ephemeral) nên **không mâu thuẫn**.
-- MSK: không có cơ chế nào để so sánh - đây là **gap cần ghi rõ trong ADR**, không phải mâu thuẫn cadence.
+- MSK: sau khi thêm MSK Connect + S3 Sink Connector, cadence flush của connector phải ≤ 15 phút để khớp RPO đã cam kết - cần cấu hình rõ khi triển khai (REL-25), không được để mặc định lỏng hơn 15 phút.
 
 ## Lý do từng mức retention
 
@@ -36,5 +36,20 @@ Nguyên tắc: **cadence backup phải nhỏ hơn hoặc bằng RPO**. Nếu RPO
 
 ## Nguồn tham khảo
 
-- **AWS Well-Architected - "Back up data"** (docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/back-up-data.html): mô tả backup strategy phải "meet requirements for recovery time objectives (RTO) and recovery point objectives (RPO)" - tức cadence/retention không phải chọn tuỳ ý, phải map ngược từ RPO/RTO đã chốt, đúng cách bảng này đang làm (chọn cadence trước dựa trên RPO, không phải ngược lại).
-- Nguyên tắc "cadence backup phải nhỏ hơn hoặc bằng RPO" lấy trực tiếp từ ví dụ trong chính [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) yêu cầu #2: *"tần suất backup phải đủ để đạt RPO đã cam kết (RPO 1 giờ mà backup mỗi ngày là mâu thuẫn)"*.
+> Đã tự vào đọc trực tiếp trang bên dưới để xác minh câu trích, không chỉ tin công cụ search.
+
+**Nguồn 1 - AWS Well-Architected Framework, "Back up data"**
+Link: https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/back-up-data.html
+
+Nguyên văn tiếng Anh: *"Back up data, applications, and configuration to meet requirements for recovery time objectives (RTO) and recovery point objectives (RPO)."*
+
+Dịch: *"Backup dữ liệu, ứng dụng và cấu hình để đáp ứng yêu cầu RTO/RPO."*
+
+Ý nghĩa cho bảng này: cadence/retention **không được chọn tuỳ ý trước rồi mới xem có đạt RPO không** - phải làm ngược lại, chốt RPO trước rồi mới chọn cadence để đáp ứng đúng RPO đó. Bảng ở trên đang làm đúng thứ tự này (cột "RPO mục tiêu" đứng trước, "Cơ chế đáp ứng"/"Cadence" đứng sau).
+
+**Nguồn 2 - chính văn bản Mandate 20 (nội bộ)**
+Link: [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md), yêu cầu #2
+
+Nguyên văn: *"tần suất backup phải đủ để đạt RPO đã cam kết (RPO 1 giờ mà backup mỗi ngày là mâu thuẫn)"*
+
+Đây là nguyên tắc "cadence backup phải nhỏ hơn hoặc bằng RPO" - lấy thẳng từ mandate, không phải suy diễn.

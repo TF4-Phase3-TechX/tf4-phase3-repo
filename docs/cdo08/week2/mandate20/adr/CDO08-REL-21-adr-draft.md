@@ -10,7 +10,7 @@
 
 ## 1. Scope
 
-ADR này chốt RPO/RTO, backup cadence, retention, và chiến lược restore cho từng tầng dữ liệu trên luồng browse -> cart -> checkout, theo yêu cầu #2 của Mandate 20. Không bao gồm: chịu mất AZ/region (Mandate 21), thực thi drill thật (task riêng, xem gap register REL-26).
+ADR này chốt RPO/RTO, backup cadence, retention, và chiến lược restore cho từng tầng dữ liệu trên luồng browse -> cart -> checkout, theo yêu cầu #2 của Mandate 20. Không bao gồm: chịu mất AZ/region (Mandate 21), thực thi drill thật (task riêng, xem gap register REL-26), và hạ tầng observability (`opensearch`/`prometheus`) - không nằm trên luồng browse->cart->checkout nên không thuộc phạm vi Mandate 20, không xét trong ADR này.
 
 ## 2. Inventory reference
 
@@ -23,7 +23,7 @@ Toàn bộ store liên quan đã inventory tại [CDO08-REL-20-stateful-store-in
 | Store | RPO | RTO |
 |---|---|---|
 | RDS `accounting` | *(đề xuất: 15 phút)* | *(đề xuất: 1 giờ)* |
-| MSK `orders` | *(đề xuất: best-effort, ghi rõ rủi ro)* | *(đề xuất: 2 giờ)* |
+| MSK `orders` | *(đề xuất: 15 phút)* | *(đề xuất: 2 giờ)* |
 | ElastiCache `valkey-cart` | *(đề xuất: không cam kết)* | *(đề xuất: 30 phút)* |
 | RDS `catalog` | N/A | *(đề xuất: ~10-15 phút)* |
 | RDS `reviews` | *(đề xuất: 1 giờ)* | *(đề xuất: 2 giờ)* |
@@ -34,7 +34,8 @@ Toàn bộ store liên quan đã inventory tại [CDO08-REL-20-stateful-store-in
 
 - RDS: automated backup + PITR, retention ngắn hạn 7 ngày *(đã có)* + đề xuất thêm retention dài hạn 35 ngày cho `accounting`.
 - ElastiCache: automated snapshot, retention 7 ngày *(đã có, giữ nguyên)*.
-- MSK: không có cơ chế backup - ghi nhận là giới hạn dịch vụ, không phải thiếu cấu hình.
+- MSK: MSK Connect + S3 Sink Connector, cadence flush ≤ 15 phút, retention 7 ngày trên S3 + đề xuất 35 ngày dài hạn (GAP-02).
+- RDS `accounting`: tách sang instance riêng (`db.t4g.micro`), tách khỏi `catalog`/`reviews` (GAP-06).
 
 ## 5. Encryption & separation of duties
 
@@ -50,21 +51,22 @@ Restore luôn thực hiện ra môi trường tách biệt (RDS point-in-time re
 
 - **RDS `accounting`**: giả lập mất dữ liệu bằng cách xoá/sửa 1 số bản ghi trong bảng `order` ở môi trường test, restore về mốc trước đó bằng PITR, so sánh dữ liệu khôi phục với snapshot kỳ vọng, đo thời gian từ lúc bắt đầu restore tới lúc `accounting` đọc lại đúng.
 - **ElastiCache `valkey-cart`**: giả lập mất cache, xác nhận cart service tự phục hồi (rỗng, không lỗi), đo thời gian tạo lại cluster.
-- *(Cần điền chi tiết drill cho MSK sau khi có quyết định về archival hoặc chấp nhận rủi ro)*
+- **MSK `orders`** (sau khi có S3 Sink Connector): giả lập mất cluster/topic, dựng lại MSK mới, replay message từ S3 archive vào `accounting`, đối chiếu số lượng order nhận được với số lượng order thật đã checkout trong khoảng thời gian đó - xác nhận không thiếu đơn hàng nào, đo thời gian từ lúc mất tới lúc replay xong.
 - Rollback/safety: toàn bộ drill chạy trên môi trường tách biệt/snapshot restore ra instance mới - không đụng production, không cần rollback plan riêng cho chính thao tác drill.
 
 ## 8. Người phê duyệt
 
 | Vai trò | Tên | Ngày ký |
 |---|---|---|
-| Techlead - chốt RPO/RTO & cadence | *(chưa ký)* | |
-| PM - xác nhận mức chấp nhận rủi ro (đặc biệt MSK) | Hải *(chưa ký)* | |
+| Techlead - chốt RPO/RTO & cadence, quyết định đầu tư MSK archival + tách RDS instance | Nguyên *(chưa ký)* | |
+| PM - xác nhận chi phí/effort thêm cho MSK Connect + S3 Sink và RDS instance mới | Hải *(chưa ký)* | |
 
 ---
 
 **Việc còn lại trước khi ký chính thức:**
-1. Nguyên research thêm để xác nhận/điều chỉnh số RPO/RTO ở mục 3 (đặc biệt MSK - chấp nhận rủi ro hay đầu tư thêm archival).
+1. Triển khai MSK Connect + S3 Sink Connector (GAP-02) và tách RDS instance cho `accounting` (GAP-06) - 2 quyết định đã chốt, cần thực hiện trước khi drill.
 2. Điền tên người approve xoá backup ở mục 5 sau khi GAP-01 (REL-24) có hướng xử lý.
-3. Sau khi 2 mục trên xong, chuyển trạng thái đầu file từ DRAFT sang SIGNED kèm ngày ký.
+3. Chạy drill thật (REL-26) để đo số thật, đối chiếu với target đã đề xuất.
+4. Sau khi các mục trên xong, chuyển trạng thái đầu file từ DRAFT sang SIGNED kèm ngày ký.
 
 **Quy trình chốt số (draft → sửa gap → test → điều chỉnh → ký)** được trình bày đầy đủ, kèm nguồn tham khảo (AWS Well-Architected, Google DiRT), tại [CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md](../review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md) - dùng file đó để trình PM trước khi chạy drill.

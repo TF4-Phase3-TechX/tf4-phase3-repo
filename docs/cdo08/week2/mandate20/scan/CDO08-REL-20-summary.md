@@ -2,7 +2,7 @@
 
 **Mandate:** [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) - Directive #20
 **Owner:** Nguyên (Techlead) / phối hợp PM Hải và các owner dữ liệu
-**Giai đoạn:** Chỉ mới làm phần inventory (subtask T1-T3). ADR RPO/RTO và restore drill thật (yêu cầu #2-#4 của mandate) là việc tiếp theo, chưa nằm trong tài liệu này - xem gap register để biết task ID theo dõi.
+**Giai đoạn:** Chỉ mới làm phần inventory (subtask T1-T3). ADR RPO/RTO và restore drill thật (yêu cầu #2-#4 của mandate) là việc tiếp theo - xem [CDO08-REL-21-summary.md](../adr/CDO08-REL-21-summary.md).
 
 Toàn bộ research đều read-only: `kubectl get/describe`, `aws ...describe-*/list-*`, đọc `infra/terraform/`, `techx-corp-chart/`, `techx-corp-platform/src/`. Không có tài nguyên nào bị tạo/sửa/xoá.
 
@@ -19,7 +19,7 @@ Toàn bộ research đều read-only: `kubectl get/describe`, `aws ...describe-*
 - Hệ thống đã cutover xong sang managed service: `product-catalog`/`accounting` dùng **RDS PostgreSQL**, `cart` dùng **ElastiCache Valkey**, `checkout`/`accounting`/`fraud-detection` dùng **MSK Kafka**. Không còn service self-hosted nào chạy trong cluster.
 - **DynamoDB không mang dữ liệu ứng dụng nào** - xác nhận qua rà soát Terraform/chart/source.
 - **Repo GitOps riêng (`tf4-phase3-gitops-manifests`) đã được kiểm tra trực tiếp** - host trên GitHub thật, có branch/lịch sử riêng, khai báo đúng các Application/ExternalSecret khớp với cluster đang chạy - không phải single point of failure.
-- 3 gap Critical: role CI apply có thể xoá bất kỳ backup RDS/DynamoDB/EC2/ElastiCache nào hoặc cả cluster MSK (GAP-01), MSK không có cơ chế backup nào cho topic `orders` (GAP-02), và chưa từng chạy restore drill nào (GAP-03).
+- 3 gap Critical: role CI apply có thể xoá bất kỳ backup RDS/DynamoDB/EC2/ElastiCache nào hoặc cả cluster MSK (GAP-01), MSK chưa có backup cho topic `orders` (GAP-02), và chưa từng chạy restore drill nào (GAP-03).
 - Các khu vực đã đạt chuẩn (RDS automated backup/PITR, ElastiCache automated snapshot, Terraform state, ExternalSecrets) được ghi rõ để không lên kế hoạch làm trùng.
 
 ## Checklist Definition of Done (để mentor kiểm tra)
@@ -28,4 +28,4 @@ Toàn bộ research đều read-only: `kubectl get/describe`, `aws ...describe-*
 - [x] Mỗi store có owner và phương thức khôi phục dự kiến - inventory §2, cột "Owner" và "Phương thức restore".
 - [x] Inventory đối chiếu với runtime, IaC/GitOps và cấu hình ứng dụng - trace dẫn evidence từ source/manifest/kubectl live; inventory dẫn output `aws`/`kubectl` thật, đối chiếu `infra/terraform/*.tf`.
 - [x] Gap register: mỗi gap có evidence, impact, owner, task xử lý; không có "TBD" - xem gap register.
-- [ ] ADR RPO/RTO, restore drill thật, xử lý phân quyền backup - chưa làm, theo dõi ở REL-24 đến REL-29 trong gap register.
+- [ ] ADR RPO/RTO, restore drill thật, xử lý phân quyền backup - chưa làm, theo dõi ở task ID tương ứng trong gap register.
