@@ -164,6 +164,36 @@ def slow_drift_breach(scores: dict[str, float]) -> bool:
     return scores.get("slow_drift", 0.0) >= 1.0
 
 
+def acute_window_breach(
+    points: list[float], floor: float, settings: Settings | None = None
+) -> bool:
+    """Require persistence inside the current range-query window.
+
+    The worker may still open an incident on its first poll, but one isolated
+    scrape sample cannot page.  Every candidate is compared with the same
+    earlier robust history so preceding incident samples do not inflate the
+    baseline and mask the next one.  The latest sample must still be breached;
+    this prevents paging after the signal has already recovered.
+    """
+
+    settings = settings or Settings()
+    window = max(settings.acute_confirmation_window, 1)
+    required = min(max(settings.acute_min_breach_points, 1), window)
+    if len(points) < window + 3:
+        scores = anomaly_scores(points, settings)
+        return points[-1] >= floor and acute_breach(scores, settings)
+
+    reference = points[:-window]
+    recent = points[-window:]
+    breaches = []
+    for candidate in recent:
+        candidate_scores = anomaly_scores([*reference, candidate], settings)
+        breaches.append(
+            candidate >= floor and acute_breach(candidate_scores, settings)
+        )
+    return breaches[-1] and sum(breaches) >= required
+
+
 def adaptive_breach(scores: dict[str, float], settings: Settings | None = None) -> bool:
     """Accept either an acute shift or a consistent multi-window drift."""
 
@@ -193,9 +223,7 @@ def signal_gate(
     # Acute anomalies must also violate the absolute safety floor. A gradual,
     # consistent drift is allowed to fire before the floor so memory-drain or
     # queue-growth symptoms are not hidden until the final spike.
-    breached = (
-        points[-1] >= floor and acute_breach(scores, settings)
-    ) or (
+    breached = acute_window_breach(points, floor, settings) or (
         slow_drift_breach(scores)
         and points[-1] >= floor * settings.trend_min_floor_ratio
     )
