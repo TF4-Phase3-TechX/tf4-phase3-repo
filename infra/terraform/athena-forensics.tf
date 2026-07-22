@@ -350,11 +350,11 @@ resource "aws_glue_catalog_table" "eks_audit_events" {
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    classification              = "json"
-    compressionType             = "gzip"
-    "projection.day.digits"     = "2"
-    "projection.day.range"      = "1,31"
-    "projection.day.type"       = "integer"
+    classification          = "json"
+    compressionType         = "gzip"
+    "projection.day.digits" = "2"
+    "projection.day.range"  = "1,31"
+    "projection.day.type"   = "integer"
     # Partition projection tự động tạo partition theo cấu trúc Firehose output
     "projection.enabled"        = "true"
     "projection.hour.digits"    = "2"
