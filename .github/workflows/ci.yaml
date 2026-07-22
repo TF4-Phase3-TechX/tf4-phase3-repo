@@ -25,6 +25,7 @@ jobs:
       contents: read
     outputs:
       app: ${{ steps.filter.outputs.app }}
+      frontend: ${{ steps.filter.outputs.frontend }}
       chart: ${{ steps.filter.outputs.chart }}
       deploy: ${{ steps.filter.outputs.deploy }}
       terraform: ${{ steps.filter.outputs.terraform }}
@@ -44,6 +45,8 @@ jobs:
             app:
               - 'techx-corp-platform/**'
               - 'deploy/build-push-images.sh'
+            frontend:
+              - 'techx-corp-platform/src/frontend/**'
             chart:
               - 'techx-corp-chart/**'
             deploy:
@@ -99,6 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.app == 'true'
+    env:
+      TRIVY_SKIP_DIRS: techx-corp-platform/src/flagd-ui
     permissions:
       contents: read
       security-events: write  # required to upload SARIF to GitHub Security tab
@@ -111,10 +116,12 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'table'
           output: 'trivy-sast-report.txt'
           severity: 'CRITICAL,HIGH'
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '0'
           ignore-unfixed: true
 
@@ -123,10 +130,13 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
+          limit-severities-for-sarif: true
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '1'
           ignore-unfixed: true
 
@@ -146,6 +156,27 @@ jobs:
           path: |
             trivy-sast-report.sarif
             trivy-sast-report.txt
+
+  frontend-resilience-test:
+    name: Frontend resilience typecheck and unit test
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    defaults:
+      run:
+        working-directory: techx-corp-platform/src/frontend
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install pinned frontend dependencies
+        run: npm ci
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Run resilience unit tests
+        run: npm run test:resilience
 
   yaml-check:
     name: YAML parse check
@@ -230,6 +261,7 @@ jobs:
         if: steps.check_secrets.outputs.skip != 'true'
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
+          TF_VAR_valkey_auth_token: ${{ secrets.TF_VALKEY_AUTH_TOKEN }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan

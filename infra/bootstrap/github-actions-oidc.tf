@@ -105,6 +105,9 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "application-autoscaling:Describe*",
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
+      "cloudwatch:DescribeAlarms",
+      "dms:Describe*",
+      "dms:List*",
       "access-analyzer:GetAnalyzer",
       "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
@@ -156,6 +159,37 @@ data "aws_iam_policy_document" "github_actions_plan" {
   }
 
   statement {
+    sid    = "ReadSecurityAlertingSqsState"
+    effect = "Allow"
+
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ListQueueTags",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-dlq",
+    ]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingSnsState"
+    effect = "Allow"
+
+    actions = [
+      "sns:GetTopicAttributes",
+      "sns:ListTagsForResource",
+      "sns:ListSubscriptionsByTopic",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts",
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
+    ]
+  }
+
+  statement {
     sid       = "ReadSecureSlackWebhookParameter"
     effect    = "Allow"
     actions   = ["ssm:GetParameter"]
@@ -167,6 +201,20 @@ data "aws_iam_policy_document" "github_actions_plan" {
     effect    = "Allow"
     actions   = ["ssm:DescribeParameters"]
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadCloudTrailRemediationSsmDocument"
+    effect = "Allow"
+
+    actions = [
+      "ssm:DescribeDocument",
+      "ssm:GetDocument",
+      "ssm:DescribeDocumentPermission",
+      "ssm:ListTagsForResource"
+    ]
+
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/tf4-restore-cloudtrail-logging"]
   }
 
   statement {
@@ -249,6 +297,7 @@ data "aws_iam_policy_document" "github_actions_build" {
       "ecr:InitiateLayerUpload",
       "ecr:ListImages",
       "ecr:PutImage",
+      "ecr:PutImageTagMutability",
       "ecr:UploadLayerPart"
     ]
 

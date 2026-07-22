@@ -160,9 +160,17 @@ techx-observability-alertmanager-0       1/1     Running     0          2m37s
 
 ## 5. Kết quả Cảnh báo nổ trên Slack & Email (Sub-task 4)
 
-*(Hình ảnh tin nhắn test notification từ kênh Slack và Email)*
+Minh chứng cảnh báo AlertManager được định tuyến và gửi thông báo thành công đến các kênh Slack:
 
-![Slack Alert Screenshot](./screenshots/slack_alert_fired.png)
+### 5.1 Cảnh báo giám sát Kubernetes & SLO Application (`#alert-k8s`)
+Kênh `#alert-k8s` nhận bản tin thông báo đầy đủ trạng thái `[FIRING]` và `[RESOLVED]` đối với các cảnh báo ứng dụng và tải (FrontendErrorRateHigh, CheckoutSuccessRateLow, BrowseSuccessRateLow, LoadGeneratorTrafficOutsideTestWindow):
+
+![AlertManager Notifications on Slack #alert-k8s](./images/slack_alert_k8s.png)
+
+### 5.2 Cảnh báo An ninh & Hạ tầng (`#alert-infra`)
+Kênh `#alert-infra` nhận bản tin Security Alert (ví dụ: `PutRolePolicy`) thời gian thực với độ trễ phát hiện (Detection latency) chỉ **2.30s - 6.60s** (vượt chỉ tiêu DOD p95 < 60s):
+
+![AlertManager Security Alert on Slack #alert-infra](./images/slack_alert_infra.png)
 
 ---
 

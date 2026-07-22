@@ -110,11 +110,13 @@ Allowlist được implement tại Lambda layer (không phải EventBridge filte
 
 | Rule | Pattern | Hành động |
 |---|---|---|
-| CI/CD allowlist | Actor ARN chứa `role/tf4-github-actions` | Drop — log CloudWatch, không bắn Slack |
+| Exact read allowlist | Khớp account + exact assumed role/AWS service + API + resource | Drop — structured log CloudWatch, không bắn Slack |
+| MSK service read | `AWSService`/`kafka.amazonaws.com` đọc đúng secret ARN `AmazonMSK_*` | Drop |
+| DMS migration read | Exact DMS role/session đọc đúng một trong hai PostgreSQL migration secret | Drop |
 | SG ingress filter | `AuthorizeSecurityGroupIngress` không phải `0.0.0.0/0`/`::/0` | Drop |
 | S3 policy filter | `PutBucketPolicy`/`PutBucketAcl` không grant public | Drop |
 
-Mọi alert lọt đến Slack đều có nhãn `Noise check: ❌ Không khớp allowlist CI/CD → cảnh báo thật` để người nhận tin tưởng.
+Mọi alert lọt đến Slack có resource bị tác động và nhãn noise check. Privileged write từ Terraform apply vẫn cảnh báo với nhãn CI/CD riêng; chỉ các read khớp chính xác identity + API + resource mới được bỏ Slack.
 
 ---
 
@@ -123,8 +125,8 @@ Mọi alert lọt đến Slack đều có nhãn `Noise check: ❌ Không khớp 
 | Yêu cầu | Target | Thực tế | Kết quả |
 |---|---|---|---|
 | Time-to-detect p95 | < 60 giây | **5.23 giây** | ✅ PASS (~11x tốt hơn target) |
-| Alert có đủ ngữ cảnh | actor/event/time/ip | Đủ 10 field + links | ✅ PASS |
-| Allowlist CI/CD | Không kêu khi CI/CD chạy | Filter `tf4-github-actions` | ✅ PASS |
+| Alert có đủ ngữ cảnh | actor/event/resource/time/ip | Đủ field điều tra + links | ✅ PASS |
+| Exact read allowlist | Giảm nhiễu, không tạo điểm mù | Unit test pass; chờ runtime evidence sau deploy | ⚠️ PENDING RUNTIME |
 | Chi phí | < $300/tuần | **~$0/tháng** | ✅ PASS |
 | Không ảnh hưởng storefront/flagd | Không đụng | Toàn serverless, no-op với app | ✅ PASS |
 

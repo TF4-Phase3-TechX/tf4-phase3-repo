@@ -1,0 +1,128 @@
+﻿{
+    "LoadBalancers": [
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:511825856493:loadbalancer/net/k8s-techxtf4-postgres-981d5617bf/18dcaaac76555685",
+            "DNSName": "k8s-techxtf4-postgres-981d5617bf-18dcaaac76555685.elb.us-east-1.amazonaws.com",
+            "CanonicalHostedZoneId": "Z26RNL4JYFTOTI",
+            "CreatedTime": "2026-07-20T08:45:02.757000+00:00",
+            "LoadBalancerName": "k8s-techxtf4-postgres-981d5617bf",
+            "Scheme": "internal",
+            "VpcId": "vpc-0a4e2abe9fbb70451",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "network",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-1a",
+                    "SubnetId": "subnet-0280b36e2249f33d8",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-1b",
+                    "SubnetId": "subnet-0753e69d90fe8f820",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "SecurityGroups": [
+                "sg-0074d25b1a6d9af39",
+                "sg-02523c2f001445c4a"
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        },
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:511825856493:loadbalancer/net/k8s-techxtf4-valkeymi-beee1cc957/8936634d35fbd8cd",
+            "DNSName": "k8s-techxtf4-valkeymi-beee1cc957-8936634d35fbd8cd.elb.us-east-1.amazonaws.com",
+            "CanonicalHostedZoneId": "Z26RNL4JYFTOTI",
+            "CreatedTime": "2026-07-21T02:33:41.712000+00:00",
+            "LoadBalancerName": "k8s-techxtf4-valkeymi-beee1cc957",
+            "Scheme": "internal",
+            "VpcId": "vpc-0a4e2abe9fbb70451",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "network",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-1a",
+                    "SubnetId": "subnet-0280b36e2249f33d8",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-1b",
+                    "SubnetId": "subnet-0753e69d90fe8f820",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "SecurityGroups": [
+                "sg-02523c2f001445c4a",
+                "sg-0f0ccc2152e9c1948"
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        },
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:511825856493:loadbalancer/net/k8s-techxobs-postgres-8d69757ceb/b76f75e1848b986d",
+            "DNSName": "k8s-techxobs-postgres-8d69757ceb-b76f75e1848b986d.elb.us-east-1.amazonaws.com",
+            "CanonicalHostedZoneId": "Z26RNL4JYFTOTI",
+            "CreatedTime": "2026-07-20T08:45:10.098000+00:00",
+            "LoadBalancerName": "k8s-techxobs-postgres-8d69757ceb",
+            "Scheme": "internal",
+            "VpcId": "vpc-0a4e2abe9fbb70451",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "network",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-1a",
+                    "SubnetId": "subnet-0280b36e2249f33d8",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-1b",
+                    "SubnetId": "subnet-0753e69d90fe8f820",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "SecurityGroups": [
+                "sg-00f3d2ee8e1b90ae1",
+                "sg-02523c2f001445c4a"
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        },
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:511825856493:loadbalancer/app/k8s-techxtf4-techxalb-a25731d323/ac6886fe4b4c4bfc",
+            "DNSName": "k8s-techxtf4-techxalb-a25731d323-237111145.us-east-1.elb.amazonaws.com",
+            "CanonicalHostedZoneId": "Z35SXDOTRQ7X7K",
+            "CreatedTime": "2026-07-07T13:53:58.477000+00:00",
+            "LoadBalancerName": "k8s-techxtf4-techxalb-a25731d323",
+            "Scheme": "internet-facing",
+            "VpcId": "vpc-0a4e2abe9fbb70451",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "application",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-1a",
+                    "SubnetId": "subnet-023018dac76fc69f3",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-1b",
+                    "SubnetId": "subnet-083aef93a4581136a",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "SecurityGroups": [
+                "sg-02523c2f001445c4a",
+                "sg-0e7717e5750bf3b39"
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        }
+    ]
+}
