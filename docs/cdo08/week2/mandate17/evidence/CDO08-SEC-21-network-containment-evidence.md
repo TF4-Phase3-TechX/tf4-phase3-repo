@@ -1,13 +1,185 @@
 # CDO08-SEC-21 Network Containment Evidence
 
-Date: 2026-07-21
+Date: 2026-07-22
 
-Status: pending PM execution.
+Status: applied and verified live after explicit user authorization.
 
 Reason:
-- The assistant is explicitly prohibited from running `kubectl apply` or other live rollout commands for this task.
-- SEC-21 NetworkPolicies are not live at the time this document is written.
-- This document records the evidence procedure, expected results, and capture template for PM to execute after applying the GitOps manifests.
+- User approved applying the NetworkPolicy manifest on 2026-07-22.
+- The assistant applied only `environments/production/raw/networkpolicies-techx-tf4.yaml`.
+- No Terraform, Helm, Argo sync, or unrelated manifest was applied.
+
+## Live Evidence
+
+Executed at: `2026-07-22 21:00:49 +07:00`
+
+Cluster context:
+
+```text
+arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+```
+
+Pre-apply NetworkPolicy check:
+
+```text
+No resources found in techx-tf4 namespace.
+```
+
+Pre-apply workload check:
+
+```text
+All techx-tf4 pods were Running/Ready. Deployments and rollouts were available before apply.
+```
+
+Server dry-run:
+
+```text
+networkpolicy.networking.k8s.io/sec21-default-deny-app-workloads created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-dns-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-telemetry-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-frontend-proxy-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-frontend-proxy-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-frontend-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-frontend-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-frontend-downstream-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-product-reviews-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-product-catalog-support-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-checkout-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-checkout-downstream-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-kafka-ingress-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-kafka-client-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-managed-msk-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-cart-valkey created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-cart-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-postgresql-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-postgresql-client-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-product-reviews-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-recommendation-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-shipping-quote-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-shipping-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-flagd-ingress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-flagd-client-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-load-generator-egress created (server dry run)
+networkpolicy.networking.k8s.io/sec21-allow-observability-scrape-ingress created (server dry run)
+```
+
+Apply output:
+
+```text
+27 SEC-21 NetworkPolicies created in namespace techx-tf4.
+```
+
+Post-apply NetworkPolicy list:
+
+```text
+networkpolicy.networking.k8s.io/sec21-allow-cart-egress
+networkpolicy.networking.k8s.io/sec21-allow-cart-valkey
+networkpolicy.networking.k8s.io/sec21-allow-checkout-downstream-ingress
+networkpolicy.networking.k8s.io/sec21-allow-checkout-egress
+networkpolicy.networking.k8s.io/sec21-allow-dns-egress
+networkpolicy.networking.k8s.io/sec21-allow-flagd-client-egress
+networkpolicy.networking.k8s.io/sec21-allow-flagd-ingress
+networkpolicy.networking.k8s.io/sec21-allow-frontend-downstream-ingress
+networkpolicy.networking.k8s.io/sec21-allow-frontend-egress
+networkpolicy.networking.k8s.io/sec21-allow-frontend-ingress
+networkpolicy.networking.k8s.io/sec21-allow-frontend-proxy-egress
+networkpolicy.networking.k8s.io/sec21-allow-frontend-proxy-ingress
+networkpolicy.networking.k8s.io/sec21-allow-kafka-client-egress
+networkpolicy.networking.k8s.io/sec21-allow-kafka-ingress-egress
+networkpolicy.networking.k8s.io/sec21-allow-load-generator-egress
+networkpolicy.networking.k8s.io/sec21-allow-managed-msk-egress
+networkpolicy.networking.k8s.io/sec21-allow-observability-scrape-ingress
+networkpolicy.networking.k8s.io/sec21-allow-postgresql-client-egress
+networkpolicy.networking.k8s.io/sec21-allow-postgresql-ingress
+networkpolicy.networking.k8s.io/sec21-allow-product-catalog-support-ingress
+networkpolicy.networking.k8s.io/sec21-allow-product-reviews-egress
+networkpolicy.networking.k8s.io/sec21-allow-product-reviews-ingress
+networkpolicy.networking.k8s.io/sec21-allow-recommendation-egress
+networkpolicy.networking.k8s.io/sec21-allow-shipping-egress
+networkpolicy.networking.k8s.io/sec21-allow-shipping-quote-ingress
+networkpolicy.networking.k8s.io/sec21-allow-telemetry-egress
+networkpolicy.networking.k8s.io/sec21-default-deny-app-workloads
+```
+
+Allowed attacker tests:
+
+```text
+DNS:
+Server: 172.20.0.10
+Name: frontend-proxy.techx-tf4.svc.cluster.local
+Address: 172.20.74.72
+
+Storefront API:
+HTTP/1.1 200 OK
+```
+
+Denied attacker tests:
+
+```text
+checkout: DENIED_EXPECTED_checkout
+grafana: DENIED_EXPECTED_grafana
+managed MSK: DENIED_EXPECTED_msk
+internet: DENIED_EXPECTED_internet
+wget: download timed out
+```
+
+Current `postgresql` and `kafka` services:
+
+```text
+kubectl get svc -n techx-tf4 postgresql kafka --ignore-not-found
+<no output>
+```
+
+These services are absent after managed data cutover. Kafka containment was tested against the managed MSK bootstrap endpoint on TCP/9096.
+
+Checkout smoke:
+
+```text
+products_http=200
+product_http=200
+cart_http=200
+checkout_http=200
+```
+
+Post-apply deployment readiness:
+
+```text
+accounting        1     1     1
+ad                1     1     1
+currency          2     2     2
+email             1     1     1
+flagd             1     1     1
+fraud-detection   1     1     1
+frontend          2     2     2
+frontend-proxy    1     1     1
+image-provider    1     1     1
+llm               1     1     1
+load-generator    1     1     1
+payment           1     1     1
+product-catalog   2     2     2
+product-reviews   1     1     1
+quote             1     1     1
+recommendation    1     1     1
+shipping          1     1     1
+```
+
+Post-apply rollout readiness:
+
+```text
+NAME       DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+cart       2         2         2            2           33h
+checkout   2         2         2            2           22h
+```
+
+Cleanup:
+
+```text
+pod "sec21-attacker" deleted from techx-tf4 namespace
+pod "sec21-checkout-smoke" deleted from techx-tf4 namespace
+
+kubectl get pod -n techx-tf4 -l cdo08.techx.io/test-role -o wide
+No resources found in techx-tf4 namespace.
+```
 
 ## Preconditions
 
