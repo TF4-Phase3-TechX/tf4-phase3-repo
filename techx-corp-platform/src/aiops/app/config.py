@@ -36,7 +36,16 @@ class Settings:
     tenant_id: str = os.getenv("AIOPS_TENANT_ID", "default")
     poll_seconds: int = int(os.getenv("AIOPS_POLL_SECONDS", "45"))
     lookback_minutes: int = int(os.getenv("AIOPS_LOOKBACK_MINUTES", "30"))
-    sustained_polls: int = int(os.getenv("AIOPS_SUSTAINED_POLLS", "2"))
+    sustained_polls: int = int(os.getenv("AIOPS_SUSTAINED_POLLS", "1"))
+    # One worker poll contains several Prometheus scrape samples.  Confirm an
+    # acute breach inside that range window so the detector can page within one
+    # poll without treating a single isolated sample as an incident.
+    acute_confirmation_window: int = int(
+        os.getenv("AIOPS_ACUTE_CONFIRMATION_WINDOW", "3")
+    )
+    acute_min_breach_points: int = int(
+        os.getenv("AIOPS_ACUTE_MIN_BREACH_POINTS", "2")
+    )
     recovery_polls: int = int(os.getenv("AIOPS_RECOVERY_POLLS", "2"))
     cooldown_seconds: int = int(os.getenv("AIOPS_COOLDOWN_SECONDS", "600"))
     minimum_request_count: int = int(os.getenv("AIOPS_MINIMUM_REQUEST_COUNT", "20"))

@@ -232,6 +232,10 @@ components:
       - name: AIOPS_LOOKBACK_MINUTES
         value: "30"
       - name: AIOPS_SUSTAINED_POLLS
+        value: "1"
+      - name: AIOPS_ACUTE_CONFIRMATION_WINDOW
+        value: "3"
+      - name: AIOPS_ACUTE_MIN_BREACH_POINTS
         value: "2"
       - name: AIOPS_MINIMUM_REQUEST_COUNT
         value: "20"
@@ -1212,9 +1216,14 @@ components:
       env: true
     service:
       port: 3551
+    ports:
+      - name: health
+        value: 3552
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
+      - name: PRODUCT_REVIEWS_HEALTH_PORT
+        value: "3552"
       - name: AWS_REGION
         value: us-east-1
       - name: BEDROCK_MODEL_ID
