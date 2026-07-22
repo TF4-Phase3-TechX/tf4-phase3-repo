@@ -1,8 +1,8 @@
 """Tests for the Mandate-15 external-scenario replay CLI (benchmark.replay).
 
 Covers:
-- real_incident: detector fires on decision.anomalous (streak >= sustained_polls)
-- masking: noise spike on main service doesn't trigger, while hidden target service/signal incident is caught
+- real_incident: detector fires within 1 detector cycle (lead_time_steps <= 1, 45s)
+- masking: noise spike on main service doesn't trigger, while hidden target service/signal incident is caught within 1 cycle
 - healthy_busy: no false alarm on high-load-but-healthy data
 - event-level confusion matrix (TP, FP, FN, TN) and precision/recall
 - schema validation errors & scenario parsing errors enforce all_passed = False and non-zero exit code
@@ -37,7 +37,7 @@ def _write_jsonl(tmp_path: Path, scenarios: list[dict]) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Validation
+# Validation Tests
 # ---------------------------------------------------------------------------
 
 
@@ -77,6 +77,22 @@ def test_validate_scenario_bad_kind():
         _validate_scenario(scenario, 1)
 
 
+def test_validate_scenario_unsupported_signal():
+    scenario = {
+        "id": "bad_signal",
+        "scenario_kind": "real_incident",
+        "description": "unsupported signal",
+        "expected_detected": True,
+        "expected_severity": "high",
+        "service": "frontend",
+        "signal": "unsupported_memory_leak",
+        "baseline_series": NORMAL_LATENCY,
+        "incident_series": HIGH_LATENCY,
+    }
+    with pytest.raises(ValueError, match="unsupported signal"):
+        _validate_scenario(scenario, 1)
+
+
 def test_validate_masking_scenario_missing_hidden_metadata():
     scenario = {
         "id": "bad_masking",
@@ -88,19 +104,19 @@ def test_validate_masking_scenario_missing_hidden_metadata():
         "signal": "error_rate",
         "baseline_series": NORMAL_ERROR,
         "incident_series": NORMAL_ERROR[:5],
-        "hidden_incident_series": HIGH_LATENCY,  # missing hidden_incident_service
+        "hidden_incident_series": HIGH_LATENCY,  # missing hidden_incident_service and other fields
     }
-    with pytest.raises(ValueError, match="missing hidden incident metadata"):
+    with pytest.raises(ValueError, match="missing required hidden fields"):
         _validate_scenario(scenario, 1)
 
 
 # ---------------------------------------------------------------------------
-# Core scenario behavior & streak / sustained_polls simulation
+# Core Scenario Behavior & 1 Detector Cycle Hard Bar Tests
 # ---------------------------------------------------------------------------
 
 
-def test_real_incident_latency_detected_on_sustained_polls(tmp_path: Path):
-    """A genuine latency spike must be detected on decision.anomalous after sustained_polls."""
+def test_real_incident_latency_detected_within_one_detector_cycle(tmp_path: Path):
+    """A genuine acute latency spike must fire within 1 detector cycle (lead_time_steps <= 1, 45s)."""
     scenarios = [
         {
             "id": "real-latency",
@@ -118,14 +134,12 @@ def test_real_incident_latency_detected_on_sustained_polls(tmp_path: Path):
     case = report["cases"][0]
     assert case["actual_detected"] is True, "Real incident must be detected"
     assert case["passed"] is True
-    settings = Settings()
-    # sustained_polls is 2 by default; lead-time step must be 2
-    assert case["lead_time_steps"] == settings.sustained_polls
-    assert case["lead_time_seconds"] == settings.sustained_polls * settings.poll_seconds
+    assert case["lead_time_steps"] <= 1, "Hard bar: real incident must fire within 1 detector cycle"
+    assert case["lead_time_seconds"] == 45.0
 
 
-def test_real_incident_error_rate_detected(tmp_path: Path):
-    """A genuine error-rate spike must be detected."""
+def test_real_incident_error_rate_detected_within_one_cycle(tmp_path: Path):
+    """A genuine error-rate spike must fire within 1 detector cycle."""
     scenarios = [
         {
             "id": "real-error",
@@ -140,8 +154,10 @@ def test_real_incident_error_rate_detected(tmp_path: Path):
         }
     ]
     report = replay(_write_jsonl(tmp_path, scenarios))
-    assert report["cases"][0]["actual_detected"] is True
-    assert report["cases"][0]["passed"] is True
+    case = report["cases"][0]
+    assert case["actual_detected"] is True
+    assert case["passed"] is True
+    assert case["lead_time_steps"] <= 1
 
 
 def test_healthy_busy_no_false_alarm_latency(tmp_path: Path):
@@ -166,9 +182,9 @@ def test_healthy_busy_no_false_alarm_latency(tmp_path: Path):
     assert case["passed"] is True
 
 
-def test_masking_hidden_incident_routed_correctly(tmp_path: Path):
-    """Noise spike on checkout does not alert, while hidden latency incident on product-reviews is caught."""
-    noise_error = [0.065, 0.010, 0.055, 0.009, 0.010, 0.008, 0.009, 0.008]
+def test_masking_hidden_incident_routed_and_detected_within_one_cycle(tmp_path: Path):
+    """Noise spike on checkout does not alert, while hidden latency incident on product-reviews is caught in 1 cycle."""
+    noise_error = [0.015, 0.010, 0.012, 0.009, 0.010, 0.008, 0.009, 0.008]
     scenarios = [
         {
             "id": "masking-01",
@@ -194,12 +210,13 @@ def test_masking_hidden_incident_routed_correctly(tmp_path: Path):
     assert case["hidden_event"] is not None
     assert case["hidden_event"]["service"] == "product-reviews"
     assert case["hidden_event"]["signal"] == "latency"
-    assert case["hidden_event"]["actual_detected"] is True, "Hidden product-reviews latency incident must be detected"
+    assert case["hidden_event"]["actual_detected"] is True, "Hidden latency incident must be detected"
+    assert case["hidden_event"]["lead_time_steps"] <= 1, "Hidden incident must fire within 1 cycle"
     assert case["passed"] is True
 
 
 # ---------------------------------------------------------------------------
-# Confusion matrix & Aggregation tests
+# Confusion Matrix & Aggregation Tests
 # ---------------------------------------------------------------------------
 
 
@@ -208,7 +225,7 @@ def test_aggregate_confusion_matrix_and_metrics():
         {
             "passed": True,
             "scenario_kind": "real_incident",
-            "events": [{"classification": "TP", "lead_time_seconds": 90.0}],
+            "events": [{"classification": "TP", "lead_time_seconds": 45.0}],
         },
         {
             "passed": True,
@@ -220,7 +237,7 @@ def test_aggregate_confusion_matrix_and_metrics():
             "scenario_kind": "masking",
             "events": [
                 {"classification": "TN", "lead_time_seconds": None},
-                {"classification": "TP", "lead_time_seconds": 90.0},
+                {"classification": "TP", "lead_time_seconds": 45.0},
             ],
         },
     ]
@@ -230,7 +247,7 @@ def test_aggregate_confusion_matrix_and_metrics():
     assert agg["confusion_matrix"] == {"TP": 2, "FP": 0, "FN": 0, "TN": 2}
     assert agg["precision"] == 1.0
     assert agg["recall"] == 1.0
-    assert agg["avg_lead_time_seconds"] == 90.0
+    assert agg["avg_lead_time_seconds"] == 45.0
 
 
 def test_aggregate_fails_on_errors():
@@ -255,7 +272,7 @@ def test_replay_on_invalid_file_reports_error_and_fails(tmp_path: Path):
 
 
 # ---------------------------------------------------------------------------
-# End-to-end report shape & dataset replay
+# End-to-End Report Schema
 # ---------------------------------------------------------------------------
 
 

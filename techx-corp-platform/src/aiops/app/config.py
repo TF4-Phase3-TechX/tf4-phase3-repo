@@ -32,7 +32,7 @@ class Settings:
     tenant_id: str = os.getenv("AIOPS_TENANT_ID", "default")
     poll_seconds: int = int(os.getenv("AIOPS_POLL_SECONDS", "45"))
     lookback_minutes: int = int(os.getenv("AIOPS_LOOKBACK_MINUTES", "30"))
-    sustained_polls: int = int(os.getenv("AIOPS_SUSTAINED_POLLS", "2"))
+    sustained_polls: int = int(os.getenv("AIOPS_SUSTAINED_POLLS", "1"))
     recovery_polls: int = int(os.getenv("AIOPS_RECOVERY_POLLS", "2"))
     cooldown_seconds: int = int(os.getenv("AIOPS_COOLDOWN_SECONDS", "600"))
     minimum_request_count: int = int(os.getenv("AIOPS_MINIMUM_REQUEST_COUNT", "20"))

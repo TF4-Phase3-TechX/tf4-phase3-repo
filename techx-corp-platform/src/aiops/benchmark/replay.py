@@ -4,7 +4,7 @@
 Accepts a labeled incident scenario file and runs the detector's scoring
 logic offline against each scenario's injected metric series. Replays poll by
 poll sequentially, evaluating `decision.anomalous` (which simulates streak >= sustained_polls)
-to accurately report per-case precision/recall contribution and lead-time.
+and enforcing that real incidents fire within 1 detector cycle (lead_time_steps <= 1).
 
 Usage (one-command repro):
     cd techx-corp-platform/src/aiops
@@ -38,6 +38,8 @@ except ImportError:
 
 
 SCHEMA_VERSION = 1
+ALLOWED_SIGNALS = {"latency", "error_rate", "llm_error"}
+ALLOWED_KINDS = {"real_incident", "masking", "healthy_busy"}
 
 
 def utc_now() -> str:
@@ -82,18 +84,36 @@ def _validate_scenario(scenario: dict[str, Any], index: int) -> None:
             f"Scenario #{index} (id={scenario.get('id')!r}) missing fields: {missing}"
         )
     kind = scenario["scenario_kind"]
-    if kind not in ("real_incident", "masking", "healthy_busy"):
+    if kind not in ALLOWED_KINDS:
         raise ValueError(
-            f"Scenario #{index}: unknown scenario_kind {kind!r}; "
-            "must be real_incident, masking, or healthy_busy"
+            f"Scenario #{index} (id={scenario.get('id')!r}): unknown scenario_kind {kind!r}; "
+            f"must be one of {sorted(ALLOWED_KINDS)}"
         )
-    if kind == "masking" and "hidden_incident_series" in scenario:
-        hidden_req = {"hidden_incident_service", "hidden_incident_signal"}
+    signal = scenario["signal"]
+    if signal not in ALLOWED_SIGNALS:
+        raise ValueError(
+            f"Scenario #{index} (id={scenario.get('id')!r}): unsupported signal {signal!r}; "
+            f"must be one of {sorted(ALLOWED_SIGNALS)}"
+        )
+    if kind == "masking":
+        hidden_req = {
+            "hidden_incident_service",
+            "hidden_incident_signal",
+            "hidden_expected_detected",
+            "hidden_baseline_series",
+            "hidden_incident_series",
+        }
         hidden_missing = hidden_req - set(scenario)
         if hidden_missing:
             raise ValueError(
                 f"Masking scenario #{index} (id={scenario.get('id')!r}) "
-                f"missing hidden incident metadata: {hidden_missing}"
+                f"missing required hidden fields: {hidden_missing}"
+            )
+        h_signal = scenario["hidden_incident_signal"]
+        if h_signal not in ALLOWED_SIGNALS:
+            raise ValueError(
+                f"Masking scenario #{index} (id={scenario.get('id')!r}): unsupported hidden signal {h_signal!r}; "
+                f"must be one of {sorted(ALLOWED_SIGNALS)}"
             )
 
 
@@ -113,8 +133,8 @@ def _simulate_event_polls(
 ) -> dict[str, Any]:
     """Replay poll by poll sequentially using a fresh Detector instance.
 
-    Checks decision.anomalous (streak >= sustained_polls) at each step to accurately
-    simulate worker incident creation and measure lead time.
+    Checks decision.anomalous at each step and enforces hard bar that real incidents
+    must fire within 1 detector cycle (lead_time_steps <= 1).
     """
     detector = Detector(settings)
     query = f"replay:{signal}:{service}"
@@ -131,8 +151,12 @@ def _simulate_event_polls(
         fake_series = _make_fake_series(current_points)
         if signal == "latency":
             decision = detector.latency(service, fake_series, query)
-        else:
+        elif signal == "error_rate":
             decision = detector.error_rate(service, fake_series, query)
+        elif signal == "llm_error":
+            decision = detector.llm_error(service, fake_series, query)
+        else:
+            raise ValueError(f"Unsupported signal '{signal}'")
 
         if decision.anomalous:
             if not detected:
@@ -148,7 +172,13 @@ def _simulate_event_polls(
         if (detected and expected_detected and expected_severity)
         else True
     )
-    passed = (detected == expected_detected) and severity_match
+
+    # MANDATE-15 Hard Bar: Real/Hidden incidents MUST fire within 1 detector cycle (lead_time_steps <= 1)
+    one_cycle_pass = (
+        (first_anomalous_step <= 1) if (expected_detected and detected) else True
+    )
+
+    passed = (detected == expected_detected) and severity_match and one_cycle_pass
     lead_time_seconds = (
         first_anomalous_step * settings.poll_seconds
         if first_anomalous_step is not None
@@ -176,6 +206,7 @@ def _simulate_event_polls(
         "confidence": round(detected_confidence, 3),
         "lead_time_steps": first_anomalous_step,
         "lead_time_seconds": lead_time_seconds,
+        "one_cycle_pass": one_cycle_pass,
         "passed": passed,
         "classification": classification,
         "runbook_id": runbook_id,
@@ -207,17 +238,12 @@ def _evaluate_scenario(
     )
 
     hidden_res: dict[str, Any] | None = None
-    if kind == "masking" and "hidden_incident_series" in scenario:
+    if kind == "masking":
         hidden_service = scenario["hidden_incident_service"]
         hidden_signal = scenario["hidden_incident_signal"]
-        hidden_baseline = list(
-            map(
-                float,
-                scenario.get("hidden_baseline_series", scenario["baseline_series"]),
-            )
-        )
+        hidden_baseline = list(map(float, scenario["hidden_baseline_series"]))
         hidden_incident = list(map(float, scenario["hidden_incident_series"]))
-        hidden_expected_detected = bool(scenario.get("hidden_expected_detected", True))
+        hidden_expected_detected = bool(scenario["hidden_expected_detected"])
         hidden_expected_severity = scenario.get("hidden_expected_severity")
 
         hidden_res = _simulate_event_polls(
@@ -230,7 +256,6 @@ def _evaluate_scenario(
             settings=settings,
         )
 
-    # Scenario overall pass require both primary and hidden events to pass
     passed = primary_res["passed"] and (hidden_res["passed"] if hidden_res else True)
 
     events = [primary_res]
@@ -267,7 +292,6 @@ def _aggregate(
     has_errors = len(errors) > 0
     all_passed = (total_cases > 0) and (passed_cases == total_cases) and (not has_errors)
 
-    # Aggregate confusion matrix across all evaluated events (main + hidden)
     all_events = []
     for c in cases:
         all_events.extend(c.get("events", []))
