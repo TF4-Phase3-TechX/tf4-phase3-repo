@@ -114,6 +114,7 @@ def route_search_products_ai(
     product_catalog_stub: Any,
     tracer: Any,
     record_metrics_fn: Callable,
+    user_id: str = "guest",
 ) -> demo_pb2.SearchProductsAIAssistantResponse:
     """Orchestrate per-turn dynamic intent classification and tool allow-list routing."""
     with tracer.start_as_current_span("search_products_ai") as span:
@@ -134,7 +135,7 @@ def route_search_products_ai(
 
         try:
             # --- 3. Fetch & sanitize multi-turn conversation history ---
-            raw_history = session_store.get_history("guest", session_id) if session_id else []
+            raw_history = session_store.get_history(user_id, session_id) if session_id else []
             sanitized_history = []
             for turn in raw_history[-HISTORY_WINDOW_N:]:
                 r = turn.get("role", "user")
@@ -211,8 +212,8 @@ def route_search_products_ai(
                 span.set_attribute("app.search.outcome", "chitchat")
                 msg = intent.get("response_message") or "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?"
                 if session_id:
-                    session_store.append_turn("guest", session_id, "user", query)
-                    session_store.append_turn("guest", session_id, "assistant", msg)
+                    session_store.append_turn(user_id, session_id, "user", query)
+                    session_store.append_turn(user_id, session_id, "assistant", msg)
                 return _refused_search_response(
                     parsed_intent=parsed_intent_json,
                     input_tokens=_in_tok,
@@ -224,8 +225,8 @@ def route_search_products_ai(
                 span.set_attribute("app.search.outcome", "unclear")
                 clarify_q = intent.get("clarify_question") or "Tôi chưa hiểu rõ ý định của bạn. Bạn muốn tìm kiếm sản phẩm hay xem đánh giá/review?"
                 if session_id:
-                    session_store.append_turn("guest", session_id, "user", query)
-                    session_store.append_turn("guest", session_id, "assistant", clarify_q)
+                    session_store.append_turn(user_id, session_id, "user", query)
+                    session_store.append_turn(user_id, session_id, "assistant", clarify_q)
                 return demo_pb2.SearchProductsAIAssistantResponse(
                     results=[],
                     trace=demo_pb2.SearchEvidenceTrace(
@@ -261,6 +262,9 @@ def route_search_products_ai(
                     qty = 1
 
                 if target:
+                    confirmation_token = session_store.create_cart_proposal(
+                        user_id, session_id, target.id, target.name, qty
+                    )
                     proposal = call_tool(
                         IntentLabel.PURCHASE,
                         "cart_action",
@@ -270,15 +274,15 @@ def route_search_products_ai(
                             product_name=target.name,
                             quantity=qty,
                             confirmation_required=True,
-                            idempotency_key=str(uuid.uuid4()),
+                            idempotency_key=confirmation_token,
                         ),
                     )
                     confirmation_msg = f"Tôi tìm thấy sản phẩm **{target.name}**. Bạn muốn thêm {qty} sản phẩm này vào giỏ hàng chứ?"
                     intent["response_message"] = confirmation_msg
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
                     if session_id:
-                        session_store.append_turn("guest", session_id, "user", query)
-                        session_store.append_turn("guest", session_id, "assistant", confirmation_msg)
+                        session_store.append_turn(user_id, session_id, "user", query)
+                        session_store.append_turn(user_id, session_id, "assistant", confirmation_msg)
                     return demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target],
                         trace=demo_pb2.SearchEvidenceTrace(
@@ -320,8 +324,8 @@ def route_search_products_ai(
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
 
                     if session_id:
-                        session_store.append_turn("guest", session_id, "user", query)
-                        session_store.append_turn("guest", session_id, "assistant", answer_text)
+                        session_store.append_turn(user_id, session_id, "user", query)
+                        session_store.append_turn(user_id, session_id, "assistant", answer_text)
 
                     return demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target_product],
@@ -343,8 +347,8 @@ def route_search_products_ai(
                     intent["response_message"] = clarify_q
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
                     if session_id:
-                        session_store.append_turn("guest", session_id, "user", query)
-                        session_store.append_turn("guest", session_id, "assistant", clarify_q)
+                        session_store.append_turn(user_id, session_id, "user", query)
+                        session_store.append_turn(user_id, session_id, "assistant", clarify_q)
                     return demo_pb2.SearchProductsAIAssistantResponse(
                         results=[],
                         trace=demo_pb2.SearchEvidenceTrace(
@@ -478,13 +482,13 @@ def route_search_products_ai(
                         }
                         for p in filtered
                     ]
-                    session_store.set_last_search_products("guest", session_id, prod_dicts)
+                    session_store.set_last_search_products(user_id, session_id, prod_dicts)
                 summary_text = intent.get("response_message") or f"Found {len(filtered)} products."
                 p_names = ", ".join(p.name for p in filtered[:3]) if filtered else ""
                 if p_names and p_names.lower() not in summary_text.lower():
                     summary_text += f" (Sản phẩm: {p_names})"
-                session_store.append_turn("guest", session_id, "user", query)
-                session_store.append_turn("guest", session_id, "assistant", summary_text)
+                session_store.append_turn(user_id, session_id, "user", query)
+                session_store.append_turn(user_id, session_id, "assistant", summary_text)
 
             return demo_pb2.SearchProductsAIAssistantResponse(
                 results=filtered,

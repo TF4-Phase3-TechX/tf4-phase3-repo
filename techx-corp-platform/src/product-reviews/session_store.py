@@ -135,7 +135,7 @@ class SessionStore:
     def set_last_search_products(self, user_id: str, session_id: str, products: list[dict]) -> None:
         if not session_id:
             return
-        key = self._make_key(user_id, session_id) + ":products"
+        key = self._history_key(user_id, session_id) + ":products"
         serialized = json.dumps(products, ensure_ascii=False)
         if self._valkey_client is not None:
             try:
@@ -149,7 +149,7 @@ class SessionStore:
     def get_last_search_products(self, user_id: str, session_id: str) -> list[dict]:
         if not session_id:
             return []
-        key = self._make_key(user_id, session_id) + ":products"
+        key = self._history_key(user_id, session_id) + ":products"
         if self._valkey_client is not None:
             try:
                 raw_data = self._valkey_client.get(key)
