@@ -372,6 +372,21 @@ Kết quả rút gọn:
         "require_code_owner_review": true,
         "require_last_push_approval": true
       }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          {"context": "Secret scan (Gitleaks)"},
+          {"context": "YAML parse check"},
+          {"context": "Helm lint and render"},
+          {"context": "Helm Manifest scan (kube-linter)"},
+          {"context": "Terraform IaC scan (tfsec)"},
+          {"context": "Terraform infra plan"},
+          {"context": "check-pinned-dependencies"}
+        ]
+      }
     }
   ],
   "bypass_actors": [
@@ -383,14 +398,16 @@ Kết quả rút gọn:
 Đánh giá:
 
 - Repo hiện đã có ruleset yêu cầu PR review, code owner review và linear history.
-- Ruleset hiện **chưa có required status checks**, nên chưa đủ mạnh để chứng minh “CI đỏ thì không merge được”.
-- Ruleset còn có bypass team, nên nếu người có bypass quyền merge thì vẫn có thể vượt rule.
+- Ruleset hiện đã có required status checks cho các gate chính.
+- PR #501 có check `Terraform infra plan` fail vì file Terraform cố tình sai cú pháp.
+- Vì `Terraform infra plan` nằm trong danh sách required status checks, PR đỏ không đạt điều kiện merge bình thường.
+- Ruleset còn có bypass team; bypass chỉ được xem là break-glass và không dùng cho Mandate 10 demo.
 
-Required follow-up:
+Kết luận:
 
-- Bổ sung required status checks cho `main`, tối thiểu gồm các CI/security gates chính.
-- Hạn chế hoặc document bypass actor; nếu giữ bypass, phải ghi rõ chỉ dùng cho break-glass và không dùng trong Mandate 10 demo.
-- Sau khi sửa rule, dùng PR #501 để mentor kiểm tra red CI bị chặn merge.
+```text
+Red CI evidence: PASS
+```
 
 ---
 
@@ -408,6 +425,5 @@ Mandate 10 đạt mức **PASS cho TF4 application images**:
 
 Phần cần theo dõi sau:
 
-- Sửa GitHub ruleset để required status checks thật sự chặn PR đỏ.
-- Codify label `techx.io/sec17-signature-enforce=true` trong GitOps namespace management nếu namespace label đang được quản lý ngoài cluster.
+- PR GitOps codify label `techx.io/sec17-signature-enforce=true` đã merge ở repo `tf4-phase3-gitops-manifests`.
 - Dọn dẹp stale GitOps entry cho workload không còn runtime nếu cần làm Argo/GitOps sạch hoàn toàn.
