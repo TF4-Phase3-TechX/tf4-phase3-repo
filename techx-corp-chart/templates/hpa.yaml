@@ -10,6 +10,7 @@
 {{- if gt (int $autoscaling.minReplicas) (int $autoscaling.maxReplicas) }}
 {{- fail (printf "components.%s.autoscaling minReplicas must not exceed maxReplicas" $name) }}
 {{- end }}
+{{- $useRollout := and ($.Values.rollouts.enabled | default false) ($component.useRollout | default false) }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -19,8 +20,13 @@ metadata:
     {{- include "techx-corp.labels" $component | nindent 4 }}
 spec:
   scaleTargetRef:
+    {{- if $useRollout }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    {{- else }}
     apiVersion: apps/v1
     kind: Deployment
+    {{- end }}
     name: {{ $name | lower }}
   minReplicas: {{ $autoscaling.minReplicas }}
   maxReplicas: {{ $autoscaling.maxReplicas }}

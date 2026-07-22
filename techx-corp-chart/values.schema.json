@@ -59,6 +59,13 @@
     "components": {
       "$ref": "#/definitions/Components"
     },
+    "aiopsRemediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "liveEnabled": { "type": "boolean" }
+      }
+    },
     "opentelemetry-collector": {
       "type": "object"
     },
@@ -120,7 +127,11 @@
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
-            "secretName": { "type": "string" }
+            "secretName": { "type": "string" },
+            "services": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["accounting", "checkout", "fraud-detection"] }
+            }
           }
         }
       }
@@ -137,6 +148,125 @@
       "required": [
         "enabled"
       ]
+    },
+    "valkeyMigrationBridge": {
+      "description": "Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the self-hosted valkey-cart source.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "riotRedisBackfill": {
+      "description": "CDO08-REL-16 rollback-only Job backfilling ElastiCache back to EKS valkey-cart using riot-redis.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "elasticacheAddress": {
+          "type": "string"
+        },
+        "targetAddress": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "rollouts": {
+      "description": "Argo Rollouts integration master switch. Requires the Argo Rollouts CRDs/controller installed in-cluster. Individual components opt in via components.<name>.useRollout.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "mirrormaker2": {
+      "description": "CDO08-REL-17 Strimzi KafkaMirrorMaker2 migration configuration for Kafka self-hosted to MSK.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "name": { "type": "string" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "version": { "type": "string" },
+        "connectCluster": { "type": "string" },
+        "sourceCluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "alias": { "type": "string" },
+            "bootstrapServers": { "type": "string" }
+          },
+          "required": [
+            "alias",
+            "bootstrapServers"
+          ]
+        },
+        "targetCluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "alias": { "type": "string" },
+            "bootstrapServers": { "type": "string" },
+            "securityProtocol": { "type": "string" },
+            "saslMechanism": { "type": "string" },
+            "username": { "type": "string" },
+            "passwordSecret": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "key": { "type": "string" }
+              },
+              "required": [
+                "name",
+                "key"
+              ]
+            }
+          },
+          "required": [
+            "alias",
+            "bootstrapServers",
+            "securityProtocol",
+            "saslMechanism",
+            "username",
+            "passwordSecret"
+          ]
+        },
+        "topicsPattern": { "type": "string" },
+        "groupsPattern": { "type": "string" },
+        "replicationPolicyClass": { "type": "string" },
+        "sourceConnector": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tasksMax": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
     }
   },
   "required": [
@@ -148,6 +278,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "aiops": {
+          "$ref": "#/definitions/Component"
+        },
         "accounting": {
           "$ref": "#/definitions/Component"
         },
@@ -224,6 +357,22 @@
         "enabled": {
           "type": "boolean"
         },
+        "useRollout": {
+          "description": "Render this component as an Argo Rollouts kind: Rollout instead of kind: Deployment. Requires rollouts.enabled: true and rolloutStrategy.canary or .blueGreen to be set.",
+          "type": "boolean"
+        },
+        "rolloutStrategy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "canary": {
+              "type": "object"
+            },
+            "blueGreen": {
+              "type": "object"
+            }
+          }
+        },
         "useDefault": {
           "type": "object",
           "additionalProperties": false,
@@ -281,6 +430,9 @@
           "items": {
             "$ref": "#/definitions/Env"
           }
+        },
+        "serviceAccountName": {
+          "type": "string"
         },
         "command": {
           "type": "array",

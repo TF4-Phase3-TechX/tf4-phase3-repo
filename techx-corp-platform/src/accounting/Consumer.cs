@@ -154,9 +154,61 @@ internal class Consumer : IDisposable
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = true
         };
+        ApplyKafkaSecurityConfig(conf);
 
         return new ConsumerBuilder<string, byte[]>(conf)
             .Build();
+    }
+
+    private static void ApplyKafkaSecurityConfig(ClientConfig conf)
+    {
+        var securityProtocol = Environment.GetEnvironmentVariable("KAFKA_SECURITY_PROTOCOL");
+        var saslMechanism = Environment.GetEnvironmentVariable("KAFKA_SASL_MECHANISM");
+        var username = Environment.GetEnvironmentVariable("KAFKA_USERNAME");
+        var password = Environment.GetEnvironmentVariable("KAFKA_PASSWORD");
+
+        if (string.IsNullOrWhiteSpace(securityProtocol) &&
+            string.IsNullOrWhiteSpace(saslMechanism) &&
+            string.IsNullOrWhiteSpace(username) &&
+            string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("KAFKA_USERNAME and KAFKA_PASSWORD must be set when Kafka SASL is enabled.");
+        }
+
+        conf.SecurityProtocol = ParseSecurityProtocol(securityProtocol);
+        conf.SaslMechanism = ParseSaslMechanism(saslMechanism);
+        conf.SaslUsername = username;
+        conf.SaslPassword = password;
+    }
+
+    private static SecurityProtocol ParseSecurityProtocol(string? value)
+    {
+        return value switch
+        {
+            null or "" => SecurityProtocol.SaslSsl,
+            "SASL_SSL" => SecurityProtocol.SaslSsl,
+            "SASL_PLAINTEXT" => SecurityProtocol.SaslPlaintext,
+            "SSL" => SecurityProtocol.Ssl,
+            "PLAINTEXT" => SecurityProtocol.Plaintext,
+            _ => throw new InvalidOperationException($"Unsupported KAFKA_SECURITY_PROTOCOL value: {value}")
+        };
+    }
+
+    private static SaslMechanism ParseSaslMechanism(string? value)
+    {
+        return value switch
+        {
+            null or "" => SaslMechanism.ScramSha512,
+            "SCRAM-SHA-512" => SaslMechanism.ScramSha512,
+            "SCRAM-SHA-256" => SaslMechanism.ScramSha256,
+            "PLAIN" => SaslMechanism.Plain,
+            _ => throw new InvalidOperationException($"Unsupported KAFKA_SASL_MECHANISM value: {value}")
+        };
     }
 
     public void Dispose()

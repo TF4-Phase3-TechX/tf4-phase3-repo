@@ -40,3 +40,13 @@ output "detection_latency_metric_names" {
     "NotificationLatencySeconds",
   ]
 }
+
+output "formatted_sns_topic_arn" {
+  description = "ARN of the SNS topic that delivers human-readable formatted security alert emails"
+  value       = aws_sns_topic.formatted_alerts.arn
+}
+
+output "alert_email_endpoint" {
+  description = "Email address subscribed to receive human-readable security alerts"
+  value       = var.alert_email_endpoint
+}

@@ -99,6 +99,16 @@ output "cloudtrail_log_group_arn" {
   value       = aws_cloudwatch_log_group.cloudtrail.arn
 }
 
+output "cloudtrail_auto_remediation_eventbridge_rule_name" {
+  description = "EventBridge rule that starts SSM Automation when CloudTrail StopLogging is detected"
+  value       = aws_cloudwatch_event_rule.cloudtrail_stoplogging_auto_remediation.name
+}
+
+output "cloudtrail_auto_remediation_ssm_document_name" {
+  description = "SSM Automation document used to re-enable CloudTrail logging"
+  value       = aws_ssm_document.cloudtrail_auto_remediation.name
+}
+
 output "karpenter_controller_role_arn" {
   description = "IAM role ARN used by the Karpenter controller service account"
   value       = module.karpenter.iam_role_arn
@@ -340,60 +350,4 @@ output "postgresql_migration_backup_bucket_arn" {
 output "postgresql_migration_backup_prefix" {
   description = "Prefix used for REL-15 PostgreSQL migration backup artifacts; lifecycle expires this prefix after 7 days"
   value       = local.postgresql_migration_backup_prefix
-}
-
-# REL-15 - PostgreSQL DMS baseline outputs
-output "postgresql_dms_replication_instance_arn" {
-  description = "AWS DMS replication instance ARN for PostgreSQL migration"
-  value       = aws_dms_replication_instance.postgresql.replication_instance_arn
-}
-
-output "postgresql_dms_replication_instance_id" {
-  description = "AWS DMS replication instance ID for PostgreSQL migration"
-  value       = aws_dms_replication_instance.postgresql.replication_instance_id
-}
-
-output "postgresql_dms_replication_instance_class" {
-  description = "AWS DMS replication instance class for PostgreSQL migration"
-  value       = aws_dms_replication_instance.postgresql.replication_instance_class
-}
-
-output "postgresql_dms_multi_az_enabled" {
-  description = "Whether the PostgreSQL DMS replication instance uses Multi-AZ"
-  value       = aws_dms_replication_instance.postgresql.multi_az
-}
-
-output "postgresql_dms_subnet_group_id" {
-  description = "AWS DMS private subnet group ID for PostgreSQL migration"
-  value       = aws_dms_replication_subnet_group.postgresql.id
-}
-
-output "postgresql_dms_security_group_id" {
-  description = "Security group ID attached to the PostgreSQL DMS replication instance"
-  value       = aws_security_group.dms_postgresql_migration.id
-}
-
-output "postgresql_dms_source_host" {
-  description = "Temporary internal NLB hostname used by DMS to reach the self-hosted PostgreSQL source"
-  value       = local.postgresql_dms_source_host
-}
-
-output "postgresql_dms_source_port" {
-  description = "PostgreSQL source listener port exposed through the temporary internal NLB bridge"
-  value       = 5432
-}
-
-output "postgresql_dms_source_secret_path" {
-  description = "Expected AWS Secrets Manager path for the PostgreSQL source DMS credential; secret value is created outside Terraform"
-  value       = local.postgresql_dms_source_secret_path
-}
-
-output "postgresql_dms_secrets_access_role_arn" {
-  description = "IAM role ARN that AWS DMS can use to read PostgreSQL migration endpoint secrets"
-  value       = aws_iam_role.postgresql_dms_secrets_access.arn
-}
-
-output "postgresql_dms_endpoint_task_handoff_note" {
-  description = "Handoff note for DMS endpoint/task creation"
-  value       = "REL-15 DMS baseline provisions the private replication instance only. DMS endpoint/task creation should use Secrets Manager ARNs for source/target credentials; do not put PostgreSQL passwords in Terraform state."
 }
