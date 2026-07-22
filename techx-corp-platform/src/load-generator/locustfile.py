@@ -8,7 +8,6 @@ import os
 import random
 import uuid
 import logging
-from datetime import datetime, timezone
 
 from locust import HttpUser, task, between, LoadTestShape
 from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry, event
@@ -184,7 +183,7 @@ class WebsiteUser(HttpUser):
     @task(13)
     def add_to_cart(self, user=""):
         if user == "":
-            user = str(uuid.uuid4())
+            user = str(uuid.uuid1())
         product = random.choice(products)
         quantity = random.choice([1, 2, 3, 4, 5, 10])
         with self.tracer.start_as_current_span("user_add_to_cart", context=Context(), attributes={"user.id": user, "product.id": product, "quantity": quantity}):
@@ -201,7 +200,7 @@ class WebsiteUser(HttpUser):
 
     @task(8)
     def checkout(self):
-        user = str(uuid.uuid4())
+        user = str(uuid.uuid1())
         with self.tracer.start_as_current_span("user_checkout_single", context=Context(), attributes={"user.id": user}):
             self.add_to_cart(user=user)
             checkout_person = random.choice(people)
@@ -211,7 +210,7 @@ class WebsiteUser(HttpUser):
 
     @task(7)
     def checkout_multi(self):
-        user = str(uuid.uuid4())
+        user = str(uuid.uuid1())
         item_count = random.choice([2, 3, 4])
         with self.tracer.start_as_current_span("user_checkout_multi", context=Context(),
                                             attributes={"user.id": user, "item.count": item_count}):
@@ -317,86 +316,5 @@ class Task4FlashSaleShape(LoadTestShape):
         return None
 
 
-class D19BreakpointShape:
-    """Immutable D19 stepped profile for baseline and post-tuning runs.
-
-    Each tuple is (phase name, target concurrent users, duration seconds,
-    spawn rate). Keep this schedule unchanged between comparable runs.
-    """
-
-    STEPS = (
-        ("warm-up", 25, 300, 5),
-        ("step-01", 50, 300, 5),
-        ("step-02", 75, 300, 5),
-        ("step-03", 100, 300, 5),
-        ("step-04", 125, 300, 5),
-        ("step-05", 150, 300, 5),
-        ("step-06", 175, 300, 5),
-        ("step-07", 200, 300, 5),
-        ("fine-01", 210, 300, 2),
-        ("fine-02", 220, 300, 2),
-        ("fine-03", 230, 300, 2),
-        ("fine-04", 240, 300, 2),
-        ("fine-05", 250, 300, 2),
-        ("overload", 275, 600, 2),
-    )
-
-    def tick(self):
-        run_time = self.get_run_time()
-        elapsed = 0
-        for _, users, duration, spawn_rate in self.STEPS:
-            elapsed += duration
-            if run_time < elapsed:
-                return users, spawn_rate
-        return None
-
-
-if os.environ.get("LOCUST_LOAD_SHAPE", "").lower() == "d19-breakpoint":
-    # Locust auto-discovers concrete LoadTestShape subclasses. Rebind the
-    # existing single concrete shape instead of exposing two competing shapes.
-    Task4FlashSaleShape.STEPS = D19BreakpointShape.STEPS
-
-    def record_d19_phase_event(event, phase, target_users, actual_users):
-        path = os.environ.get(
-            "D19_PHASE_TRANSITIONS_FILE",
-            "/tmp/d19-phase-transitions.csv",
-        )
-        write_header = not os.path.exists(path) or os.path.getsize(path) == 0
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-        with open(path, "a", encoding="utf-8") as timeline:
-            if write_header:
-                timeline.write("event,phase,target_users,actual_users,timestamp_utc\n")
-            timeline.write(
-                f"{event},{phase},{target_users},{actual_users},{timestamp}\n"
-            )
-        logging.info(
-            "D19_%s phase=%s target_users=%s actual_users=%s timestamp_utc=%s",
-            event.upper(),
-            phase,
-            target_users,
-            actual_users,
-            timestamp,
-        )
-
-    def d19_breakpoint_tick(self):
-        run_time = self.get_run_time()
-        elapsed = 0
-        for phase, users, duration, spawn_rate in self.STEPS:
-            elapsed += duration
-            if run_time < elapsed:
-                actual_users = self.runner.user_count if self.runner else 0
-                if getattr(self, "_d19_current_phase", None) != phase:
-                    self._d19_current_phase = phase
-                    self._d19_target_recorded = False
-                    record_d19_phase_event(
-                        "phase_transition", phase, users, actual_users
-                    )
-                if actual_users >= users and not self._d19_target_recorded:
-                    record_d19_phase_event(
-                        "target_achieved", phase, users, actual_users
-                    )
-                    self._d19_target_recorded = True
-                return users, spawn_rate
-        return None
-
-    Task4FlashSaleShape.tick = d19_breakpoint_tick
+if os.environ.get("LOCUST_LOAD_SHAPE", "").lower() == "task4":
+    load_shape = Task4FlashSaleShape
