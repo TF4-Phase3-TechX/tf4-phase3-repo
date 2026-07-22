@@ -71,7 +71,7 @@ The safety floors (latency: 1 000 ms, error rate: 5%) prevent a signal from bein
 
 ### 5. Sustained-breach requirement
 
-A single poll exceeding the gate does not produce an incident. The detector requires `AIOPS_SUSTAINED_POLLS` (default: 2) **consecutive** gate violations (`decision.anomalous == True`) before creating an incident. This eliminates transient measurement noise.
+A single poll exceeding the gate produces an incident when `AIOPS_SUSTAINED_POLLS=1` (default: 1, aligned across `app/config.py` and `techx-corp-chart/values.yaml`). This satisfies Mandate 15's hard bar of firing real acute incidents within 1 detector cycle (45s).
 
 ### 6. Safety floors (hard bars)
 
@@ -86,15 +86,15 @@ A single poll exceeding the gate does not produce an incident. The detector requ
 | Period | MTTD measurement method | Value |
 |---|---|---|
 | **Before** (historical static alert rules) | Estimated static threshold rule delay (`for: 5m` window) | ~300–600s (5–10 min) |
-| **After** (this detector eval) | Sequential poll simulation to `decision.anomalous` (`poll_seconds=45s`) | **90s** (2 poll cycles) |
+| **After** (this detector eval) | Sequential poll simulation to `decision.anomalous` (`poll_seconds=45s`) | **45s** (1 detector cycle) |
 
-On the labeled dataset, measured MTTD-after is **90s (2 poll cycles)** for acute incidents.
+On the labeled dataset, measured MTTD-after is **45s (1 detector cycle)** for acute incidents.
 
 ---
 
 ## Incident Summary Generation
 
-When the breach gate fires for `sustained_polls` consecutive cycles, the `IncidentSummaryGenerator.generate()` method produces a Markdown summary with:
+When the breach gate fires, the `IncidentSummaryGenerator.generate()` method produces a Markdown summary with:
 
 1. **Incident metadata** — ID, service, type, severity, confidence, detected-at.
 2. **Suspected cause** — human-readable root-cause string from `Decision.root_cause`.
@@ -102,14 +102,7 @@ When the breach gate fires for `sustained_polls` consecutive cycles, the `Incide
 4. **RCA candidates** — TORAI-lite weighted score per candidate service.
 5. **Response guidance** — runbook ID, recommended action, approval status.
 
-The summary is available at `GET /v1/incidents/{id}/summary` and is also stored in the IncidentStore for audit. Delivery to Alertmanager / Slack is triggered by the worker on incident creation.
-
-### Severity assignment
-
-| Condition | Severity |
-|---|---|
-| `current ≥ floor × HIGH_MULTIPLIER` (latency ×2, error ×2) | `high` |
-| Otherwise | `medium` |
+The summary is available at `GET /v1/incidents/{id}/summary` and is also stored in the IncidentStore for audit. Replay CLI (`benchmark/replay`) renders this summary for all detected events in its JSON report output.
 
 ---
 
@@ -127,7 +120,7 @@ The summary is available at `GET /v1/incidents/{id}/summary` and is also stored 
 ```bash
 cd techx-corp-platform/src/aiops
 .venv/bin/python -m benchmark.replay \
-  ../../../../docs/aio1/mandate-15/labeled-scenarios-v1.jsonl \
+  ../../../docs/aio1/mandate-15/labeled-scenarios-v1.jsonl \
   --output /tmp/m15-replay-report.json
 ```
 

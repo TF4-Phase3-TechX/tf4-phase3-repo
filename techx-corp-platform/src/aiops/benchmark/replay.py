@@ -3,13 +3,13 @@
 
 Accepts a labeled incident scenario file and runs the detector's scoring
 logic offline against each scenario's injected metric series. Replays poll by
-poll sequentially, evaluating `decision.anomalous` (which simulates streak >= sustained_polls)
-and enforcing that real incidents fire within 1 detector cycle (lead_time_steps <= 1).
+poll sequentially, evaluating `decision.anomalous` and enforcing that real incidents
+fire within 1 detector cycle (lead_time_steps <= 1).
 
-Usage (one-command repro):
+Usage (one-command repro from techx-corp-platform/src/aiops):
     cd techx-corp-platform/src/aiops
     .venv/bin/python -m benchmark.replay \\
-      ../../../../docs/aio1/mandate-15/labeled-scenarios-v1.jsonl \\
+      ../../../docs/aio1/mandate-15/labeled-scenarios-v1.jsonl \\
       --output /tmp/m15-replay-report.json
 
 On grading day, the BTC supplies a hidden scenario file:
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,17 +30,22 @@ from typing import Any
 try:
     from app.config import Settings
     from app.detection import Detector
+    from app.models import Evidence, Incident
+    from app.summary import IncidentSummaryGenerator
 except ImportError:
     _src = Path(__file__).resolve().parents[1]
     if str(_src) not in sys.path:
         sys.path.insert(0, str(_src))
     from app.config import Settings
     from app.detection import Detector
+    from app.models import Evidence, Incident
+    from app.summary import IncidentSummaryGenerator
 
 
 SCHEMA_VERSION = 1
 ALLOWED_SIGNALS = {"latency", "error_rate", "llm_error"}
 ALLOWED_KINDS = {"real_incident", "masking", "healthy_busy"}
+ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
 
 
 def utc_now() -> str:
@@ -66,9 +72,34 @@ def _load_scenarios(path: Path) -> list[dict[str, Any]]:
     return scenarios
 
 
-def _validate_scenario(scenario: dict[str, Any], index: int) -> None:
+def _validate_numeric_series(series: Any, name: str, index: int, sc_id: str) -> list[float]:
+    if not isinstance(series, list) or not series:
+        raise ValueError(f"Scenario #{index} (id={sc_id!r}): {name} must be a non-empty list of numbers")
+    floats = []
+    for i, v in enumerate(series):
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or math.isnan(v) or math.isinf(v):
+            raise ValueError(
+                f"Scenario #{index} (id={sc_id!r}): {name}[{i}] must be a finite number, got {v!r}"
+            )
+        floats.append(float(v))
+    return floats
+
+
+def _validate_scenario(scenario: dict[str, Any], index: int, seen_ids: set[str]) -> None:
+    sc_id = scenario.get("id")
+    if not sc_id or not isinstance(sc_id, str):
+        raise ValueError(f"Scenario #{index}: 'id' must be a non-empty string")
+    if sc_id in seen_ids:
+        raise ValueError(f"Scenario #{index}: duplicate scenario id {sc_id!r}")
+    seen_ids.add(sc_id)
+
+    version = scenario.get("schema_version")
+    if version != SCHEMA_VERSION:
+        raise ValueError(f"Scenario #{index} (id={sc_id!r}): schema_version must be 1, got {version!r}")
+
     required = {
         "id",
+        "schema_version",
         "scenario_kind",
         "description",
         "expected_detected",
@@ -81,40 +112,67 @@ def _validate_scenario(scenario: dict[str, Any], index: int) -> None:
     missing = required - set(scenario)
     if missing:
         raise ValueError(
-            f"Scenario #{index} (id={scenario.get('id')!r}) missing fields: {missing}"
+            f"Scenario #{index} (id={sc_id!r}) missing required fields: {sorted(missing)}"
         )
+
+    if not isinstance(scenario["expected_detected"], bool):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): 'expected_detected' must be a boolean (true/false), got {scenario['expected_detected']!r}"
+        )
+
+    exp_sev = scenario.get("expected_severity")
+    if exp_sev is not None and exp_sev not in ALLOWED_SEVERITIES:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): unknown expected_severity {exp_sev!r}; must be one of {sorted(ALLOWED_SEVERITIES)}"
+        )
+
     kind = scenario["scenario_kind"]
     if kind not in ALLOWED_KINDS:
         raise ValueError(
-            f"Scenario #{index} (id={scenario.get('id')!r}): unknown scenario_kind {kind!r}; "
+            f"Scenario #{index} (id={sc_id!r}): unknown scenario_kind {kind!r}; "
             f"must be one of {sorted(ALLOWED_KINDS)}"
         )
     signal = scenario["signal"]
     if signal not in ALLOWED_SIGNALS:
         raise ValueError(
-            f"Scenario #{index} (id={scenario.get('id')!r}): unsupported signal {signal!r}; "
+            f"Scenario #{index} (id={sc_id!r}): unsupported signal {signal!r}; "
             f"must be one of {sorted(ALLOWED_SIGNALS)}"
         )
+
+    _validate_numeric_series(scenario["baseline_series"], "baseline_series", index, sc_id)
+    _validate_numeric_series(scenario["incident_series"], "incident_series", index, sc_id)
+
     if kind == "masking":
         hidden_req = {
             "hidden_incident_service",
             "hidden_incident_signal",
             "hidden_expected_detected",
+            "hidden_expected_severity",
             "hidden_baseline_series",
             "hidden_incident_series",
         }
         hidden_missing = hidden_req - set(scenario)
         if hidden_missing:
             raise ValueError(
-                f"Masking scenario #{index} (id={scenario.get('id')!r}) "
-                f"missing required hidden fields: {hidden_missing}"
+                f"Masking scenario #{index} (id={sc_id!r}) "
+                f"missing required hidden fields: {sorted(hidden_missing)}"
+            )
+        if not isinstance(scenario["hidden_expected_detected"], bool):
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): 'hidden_expected_detected' must be a boolean"
+            )
+        h_sev = scenario.get("hidden_expected_severity")
+        if h_sev is not None and h_sev not in ALLOWED_SEVERITIES:
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): unknown hidden_expected_severity {h_sev!r}"
             )
         h_signal = scenario["hidden_incident_signal"]
         if h_signal not in ALLOWED_SIGNALS:
             raise ValueError(
-                f"Masking scenario #{index} (id={scenario.get('id')!r}): unsupported hidden signal {h_signal!r}; "
-                f"must be one of {sorted(ALLOWED_SIGNALS)}"
+                f"Masking scenario #{index} (id={sc_id!r}): unsupported hidden signal {h_signal!r}"
             )
+        _validate_numeric_series(scenario["hidden_baseline_series"], "hidden_baseline_series", index, sc_id)
+        _validate_numeric_series(scenario["hidden_incident_series"], "hidden_incident_series", index, sc_id)
 
 
 def _make_fake_series(points: list[float]) -> list[dict[str, Any]]:
@@ -122,7 +180,52 @@ def _make_fake_series(points: list[float]) -> list[dict[str, Any]]:
     return [{"metric": {}, "values": [[i, str(v)] for i, v in enumerate(points)]}]
 
 
+def _build_incident_summary(
+    sc_id: str,
+    service: str,
+    signal: str,
+    severity: str,
+    confidence: float,
+    evidence_val: float,
+    query: str,
+    runbook_id: str,
+    recommended_action: str,
+    settings: Settings,
+) -> str:
+    """Render markdown incident summary using runtime IncidentSummaryGenerator."""
+    inc = Incident(
+        incident_id=f"inc-replay-{sc_id}-{service}",
+        incident_type=f"service_{signal}_spike",
+        affected_service=service,
+        severity=severity,
+        confidence=confidence,
+        suspected_root_cause=f"Sustained {signal} degradation on {service}",
+        evidence=[
+            Evidence(
+                source="prometheus",
+                query=query,
+                window="30m",
+                value=round(evidence_val, 2),
+            )
+        ],
+        rca_candidates=[
+            {
+                "service": service,
+                "score": round(confidence, 3),
+                "signals": {"ratio": 2.0, "zscore": 4.0},
+            }
+        ],
+        runbook_id=runbook_id,
+        recommended_action=recommended_action,
+    )
+    grafana_url = getattr(settings, "grafana_url", "http://grafana:3000")
+    datasource_uid = getattr(settings, "opensearch_datasource_uid", "webstore-logs")
+    generator = IncidentSummaryGenerator(grafana_url, datasource_uid)
+    return generator.generate(inc)
+
+
 def _simulate_event_polls(
+    sc_id: str,
     service: str,
     signal: str,
     baseline_series: list[float],
@@ -143,6 +246,7 @@ def _simulate_event_polls(
     first_anomalous_step: int | None = None
     detected_severity: str | None = None
     detected_confidence: float = 0.0
+    detected_val: float = 0.0
     runbook_id: str = "observe-and-escalate"
     recommended_action: str = "Collect more evidence"
 
@@ -164,6 +268,7 @@ def _simulate_event_polls(
                 first_anomalous_step = step
                 detected_severity = decision.severity
                 detected_confidence = decision.confidence
+                detected_val = current_points[-1]
                 runbook_id = decision.runbook_id
                 recommended_action = decision.recommended_action
 
@@ -195,6 +300,21 @@ def _simulate_event_polls(
     else:
         classification = "TN"
 
+    incident_summary: str | None = None
+    if detected:
+        incident_summary = _build_incident_summary(
+            sc_id=sc_id,
+            service=service,
+            signal=signal,
+            severity=detected_severity or "medium",
+            confidence=detected_confidence,
+            evidence_val=detected_val,
+            query=query,
+            runbook_id=runbook_id,
+            recommended_action=recommended_action,
+            settings=settings,
+        )
+
     return {
         "service": service,
         "signal": signal,
@@ -211,6 +331,7 @@ def _simulate_event_polls(
         "classification": classification,
         "runbook_id": runbook_id,
         "recommended_action": recommended_action,
+        "incident_summary": incident_summary,
     }
 
 
@@ -219,6 +340,7 @@ def _evaluate_scenario(
     settings: Settings,
 ) -> dict[str, Any]:
     """Run detector simulation on one scenario, evaluating main and optional hidden events."""
+    sc_id = scenario["id"]
     service = scenario["service"]
     signal = scenario["signal"]
     kind = scenario["scenario_kind"]
@@ -228,6 +350,7 @@ def _evaluate_scenario(
     expected_severity = scenario.get("expected_severity")
 
     primary_res = _simulate_event_polls(
+        sc_id=sc_id,
         service=service,
         signal=signal,
         baseline_series=baseline_points,
@@ -247,6 +370,7 @@ def _evaluate_scenario(
         hidden_expected_severity = scenario.get("hidden_expected_severity")
 
         hidden_res = _simulate_event_polls(
+            sc_id=f"{sc_id}-hidden",
             service=hidden_service,
             signal=hidden_signal,
             baseline_series=hidden_baseline,
@@ -263,7 +387,7 @@ def _evaluate_scenario(
         events.append(hidden_res)
 
     return {
-        "scenario_id": scenario["id"],
+        "scenario_id": sc_id,
         "scenario_kind": kind,
         "service": service,
         "signal": signal,
@@ -276,6 +400,7 @@ def _evaluate_scenario(
         "confidence": primary_res["confidence"],
         "lead_time_steps": primary_res["lead_time_steps"],
         "lead_time_seconds": primary_res["lead_time_seconds"],
+        "incident_summary": primary_res["incident_summary"],
         "hidden_event": hidden_res,
         "events": events,
         "passed": passed,
@@ -301,15 +426,16 @@ def _aggregate(
     fn = sum(1 for e in all_events if e["classification"] == "FN")
     tn = sum(1 for e in all_events if e["classification"] == "TN")
 
-    precision = round(tp / (tp + fp), 4) if (tp + fp) > 0 else 1.0
-    recall = round(tp / (tp + fn), 4) if (tp + fn) > 0 else 1.0
+    precision = round(tp / (tp + fp), 4) if (tp + fp) > 0 else None
+    recall = round(tp / (tp + fn), 4) if (tp + fn) > 0 else None
 
-    lead_times = [
+    # Compute MTTD ONLY over True Positives (TPs)
+    tp_lead_times = [
         e["lead_time_seconds"]
         for e in all_events
-        if e.get("lead_time_seconds") is not None
+        if e["classification"] == "TP" and e.get("lead_time_seconds") is not None
     ]
-    avg_lead_time_s = round(mean(lead_times), 1) if lead_times else None
+    avg_lead_time_s = round(mean(tp_lead_times), 1) if tp_lead_times else None
 
     by_kind: dict[str, dict[str, Any]] = {}
     for kind in ("real_incident", "masking", "healthy_busy"):
@@ -342,6 +468,7 @@ def replay(
 
     results: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
 
     try:
         raw = _load_scenarios(scenarios_path)
@@ -352,7 +479,7 @@ def replay(
     for i, scenario in enumerate(raw, 1):
         sc_id = scenario.get("id", f"#{i}")
         try:
-            _validate_scenario(scenario, i)
+            _validate_scenario(scenario, i, seen_ids)
             result = _evaluate_scenario(scenario, settings)
             results.append(result)
             status = "PASS" if result["passed"] else "FAIL"
