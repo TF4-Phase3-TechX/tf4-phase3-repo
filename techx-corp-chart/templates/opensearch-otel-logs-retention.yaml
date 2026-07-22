@@ -37,29 +37,48 @@ spec:
               args:
                 - |
                   endpoint={{ .Values.opensearch.otelLogsLifecycle.endpoint | quote }}
-                  pattern={{ .Values.opensearch.otelLogsLifecycle.indexPattern | quote }}
+                  pattern='otel-logs-*'
                   policy={{ .Values.opensearch.otelLogsLifecycle.policyId | quote }}
                   retention={{ .Values.opensearch.otelLogsLifecycle.retention | quote }}
 
-                  curl -fsS --retry 12 --retry-connrefused "$endpoint/_cluster/health?wait_for_status=yellow&timeout=30s" >/dev/null
+                  request() {
+                    curl -fsS --retry 3 --retry-all-errors --retry-delay 1 "$@"
+                  }
 
-                  curl -fsS -X PUT "$endpoint/_plugins/_ism/policies/$policy" \
-                    -H 'Content-Type: application/json' \
-                    --data "{\"policy\":{\"description\":\"Delete $pattern after $retention\",\"default_state\":\"hot\",\"ism_template\":[{\"index_patterns\":[\"$pattern\"],\"priority\":100}],\"states\":[{\"name\":\"hot\",\"actions\":[],\"transitions\":[{\"state_name\":\"delete\",\"conditions\":{\"min_index_age\":\"$retention\"}}]},{\"name\":\"delete\",\"actions\":[{\"delete\":{}}],\"transitions\":[]}]}}" >/dev/null
+                  request "$endpoint/_cluster/health?wait_for_status=yellow&timeout=30s" >/dev/null
 
-                  curl -fsS -X PUT "$endpoint/_index_template/otel-logs-single-node" \
+                  policy_status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 -o /dev/null -w '%{http_code}' "$endpoint/_plugins/_ism/policies/$policy")"
+                  case "$policy_status" in
+                    200) ;;
+                    404)
+                      request -X PUT "$endpoint/_plugins/_ism/policies/$policy" \
+                        -H 'Content-Type: application/json' \
+                        --data "{\"policy\":{\"description\":\"Delete $pattern after $retention\",\"default_state\":\"hot\",\"ism_template\":[{\"index_patterns\":[\"$pattern\"],\"priority\":100}],\"states\":[{\"name\":\"hot\",\"actions\":[],\"transitions\":[{\"state_name\":\"delete\",\"conditions\":{\"min_index_age\":\"$retention\"}}]},{\"name\":\"delete\",\"actions\":[{\"delete\":{}}],\"transitions\":[]}]}}" >/dev/null
+                      policy_created=true
+                      ;;
+                    *) echo "Unexpected ISM policy status: $policy_status" >&2; exit 1 ;;
+                  esac
+
+                  request -X PUT "$endpoint/_index_template/otel-logs-single-node" \
                     -H 'Content-Type: application/json' \
                     --data "{\"index_patterns\":[\"$pattern\"],\"priority\":100,\"template\":{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0}}}" >/dev/null
 
-                  indexes="$(curl -fsS "$endpoint/_cat/indices/$pattern?h=index" | paste -sd, -)"
-                  if [ -n "$indexes" ]; then
-                    curl -fsS -X POST "$endpoint/_plugins/_ism/add/$indexes" \
+                  indexes="$(request "$endpoint/_cat/indices/$pattern?h=index")"
+                  for index in $indexes; do
+                    if ! request -X POST "$endpoint/_plugins/_ism/add/$index" \
                       -H 'Content-Type: application/json' \
-                      --data "{\"policy_id\":\"$policy\"}" >/dev/null || true
-                    curl -fsS -X PUT "$endpoint/$indexes/_settings" \
+                      --data "{\"policy_id\":\"$policy\"}" >/dev/null; then
+                      echo "ISM add returned an error for $index; verifying current assignment" >&2
+                    fi
+                    assignment="$(request "$endpoint/_plugins/_ism/explain/$index?show_policy=true")"
+                    printf '%s' "$assignment" | grep -Eq "\"(index\\.plugins\\.index_state_management\\.policy_id|index\\.opendistro\\.index_state_management\\.policy_id)\"[[:space:]]*:[[:space:]]*\"$policy\"" || {
+                      echo "Unexpected ISM policy for $index" >&2
+                      exit 1
+                    }
+                    request -X PUT "$endpoint/$index/_settings" \
                       -H 'Content-Type: application/json' \
                       --data '{"index":{"number_of_replicas":0}}' >/dev/null
-                  fi
+                  done
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:

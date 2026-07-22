@@ -2299,10 +2299,9 @@ opensearch:
 
   otelLogsLifecycle:
     enabled: false
-    image: curlimages/curl:8.15.0
+    image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
     schedule: "45 23 * * *"
     endpoint: http://opensearch:9200
-    indexPattern: "otel-logs-*"
     policyId: otel-logs-retention
     retention: 3d
     resources:
