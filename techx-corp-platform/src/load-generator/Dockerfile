@@ -2,10 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM python:3.12-alpine3.23@sha256:601d3d3797e90e2534782e69c85fafb7971b43f24c7b1b079b7e48dd435e458d AS base
+FROM python:3.12-slim-trixie@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de AS base
+
+RUN apt-get -qq update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM base AS builder
-RUN apk add --no-cache build-base
+RUN apt-get -qq update \
+    && apt-get install -y --no-install-recommends g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY ./src/load-generator/requirements.txt .
 RUN pip install --prefix="/reqs" -r requirements.txt
