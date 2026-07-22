@@ -237,6 +237,7 @@ jobs:
         if: steps.check_secrets.outputs.skip != 'true'
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
+          TF_VAR_valkey_auth_token: ${{ secrets.TF_VALKEY_AUTH_TOKEN }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan

@@ -29,8 +29,9 @@ case "$PHASE" in
     ;;
   3)
     echo "Phase 3: flip ElastiCache to transit_encryption_mode=required (Terraform)."
-    echo "Requires TF_VALKEY_AUTH_TOKEN GitHub secret set and infra/terraform/elasticache.tf"
-    echo "updated to transit_encryption_mode=\"required\" + auth_token=var.valkey_auth_token."
+    echo "Requires TF_VALKEY_AUTH_TOKEN GitHub secret set; the workflow passes it as"
+    echo "TF_VAR_valkey_auth_token. Set valkey_transit_encryption_mode=\"required\""
+    echo "only after Cart is confirmed to connect through TLS."
     echo "Apply via the terraform-apply pipeline, not directly from this script."
     ;;
   *)
