@@ -72,11 +72,12 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   at_rest_encryption_enabled = true
 
   # REL-16 post-cutover hardening: Online Migration is complete, so the managed
-  # target can now accept TLS clients. Promote preferred -> required before
-  # introducing AUTH because AWS rejects auth-token changes while the group is
-  # still in preferred mode.
+  # target now requires TLS, so AUTH can be introduced with ROTATE. Keep ROTATE
+  # until Cart proves it can authenticate, then move to SET in a follow-up.
   transit_encryption_enabled = true
   transit_encryption_mode    = var.valkey_transit_encryption_mode
+  auth_token                 = var.valkey_auth_token
+  auth_token_update_strategy = "ROTATE"
 
   snapshot_retention_limit = 7
   snapshot_window          = "18:00-19:00"
