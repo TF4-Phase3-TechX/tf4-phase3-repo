@@ -72,12 +72,13 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   at_rest_encryption_enabled = true
 
   # REL-16 post-cutover hardening: Online Migration is complete, so the managed
-  # target can now accept TLS clients. Keep "preferred" until Cart proves TLS
-  # traffic is stable. AUTH token cannot be added in the same modify operation
-  # that first enables transit encryption on an existing replication group; add
-  # auth_token in a follow-up reviewed change after this stage converges.
+  # target can now accept TLS clients. Keep "preferred" while enabling AUTH so
+  # existing clients can validate password/TLS behavior before the final
+  # "required" transit encryption promotion.
   transit_encryption_enabled = true
   transit_encryption_mode    = var.valkey_transit_encryption_mode
+  auth_token                 = var.valkey_auth_token
+  auth_token_update_strategy = "SET"
 
   snapshot_retention_limit = 7
   snapshot_window          = "18:00-19:00"
@@ -87,14 +88,6 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   # AWS requires transit encryption toggles to apply immediately.
   apply_immediately         = true
   final_snapshot_identifier = "techx-tf4-valkey-cart-final"
-
-  lifecycle {
-    # The failed first TLS+AUTH apply left this provider-only field in state as
-    # SET. During the TLS-only stage, leaving it unmanaged avoids an unnecessary
-    # auth modification API call. Remove this ignore in the follow-up AUTH token
-    # PR that explicitly manages auth_token/auth_token_update_strategy.
-    ignore_changes = [auth_token_update_strategy]
-  }
 
   tags = merge(var.tags, {
     Name = "techx-tf4-valkey-cart"
