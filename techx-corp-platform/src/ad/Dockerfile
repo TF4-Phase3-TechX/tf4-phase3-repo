@@ -18,6 +18,10 @@ ARG _JAVA_OPTIONS
 
 WORKDIR /usr/src/app/
 
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /usr/src/app/build/install/techx-corp-ad/ ./build/install/techx-corp-ad/
 ADD --chmod=644 https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v$OTEL_JAVA_AGENT_VERSION/opentelemetry-javaagent.jar /usr/src/app/opentelemetry-javaagent.jar
 ENV JAVA_TOOL_OPTIONS=-javaagent:/usr/src/app/opentelemetry-javaagent.jar
