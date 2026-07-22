@@ -23,16 +23,22 @@ def must_map_env(key: str):
 db_connection_str = must_map_env('DB_CONNECTION_STRING')
 db_max_conn = int(os.getenv("DB_MAX_CONN", "20"))
 
-try:
-    db_pool = pool.ThreadedConnectionPool(
-        minconn=0, 
-        maxconn=db_max_conn, 
-        dsn=db_connection_str
-    )
-    logging.info(f"Khởi tạo ThreadedConnectionPool thành công (maxconn={db_max_conn}).")
-except Exception as e:
-    logging.critical(f"Lỗi khởi tạo DB Pool: {e}")
-    raise e
+_db_pool = None
+
+def get_pool():
+    global _db_pool
+    if _db_pool is None:
+        try:
+            _db_pool = pool.ThreadedConnectionPool(
+                minconn=0, 
+                maxconn=db_max_conn, 
+                dsn=db_connection_str
+            )
+            logging.info(f"Database connection pool initialized (maxconn={db_max_conn}).")
+        except Exception as e:
+            logging.error(f"Failed to initialize connection pool: {e}")
+            raise
+    return _db_pool
 
 
 @contextmanager
@@ -42,7 +48,7 @@ def get_db_connection():
     retries = 3
     for _ in range(retries):
         try:
-            conn = db_pool.getconn()
+            conn = get_pool().getconn()
             break
         except pool.PoolError:
             logging.warning("Hết kết nối trong Pool, chờ 1.5 giây để thử lại...")
@@ -53,8 +59,11 @@ def get_db_connection():
 
     try:
         yield conn
+    except Exception:
+        conn.rollback()
+        raise
     finally:
-        db_pool.putconn(conn)
+        get_pool().putconn(conn)
 
 
 def fetch_product_reviews(product_id):
