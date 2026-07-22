@@ -88,6 +88,14 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
   apply_immediately         = true
   final_snapshot_identifier = "techx-tf4-valkey-cart-final"
 
+  lifecycle {
+    # The failed first TLS+AUTH apply left this provider-only field in state as
+    # SET. During the TLS-only stage, leaving it unmanaged avoids an unnecessary
+    # auth modification API call. Remove this ignore in the follow-up AUTH token
+    # PR that explicitly manages auth_token/auth_token_update_strategy.
+    ignore_changes = [auth_token_update_strategy]
+  }
+
   tags = merge(var.tags, {
     Name = "techx-tf4-valkey-cart"
   })
