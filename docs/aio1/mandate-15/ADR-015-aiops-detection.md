@@ -1,7 +1,7 @@
 # ADR-015 — AIOps Incident Detection: Baseline, Thresholds, and Incident-Summary Generation
 
 **Status:** Accepted (Phase 1 Eval)
-**Date:** 2026-07-21 (Updated: 2026-07-22)
+**Date:** 2026-07-21 (Updated: 2026-07-22; config/dataset aligned 2026-07-22)
 **Ticket:** TF4AIO-80 (AI MANDATE #15)
 **Author:** Đình Thông Trần (Assignee, AIOps Lead)
 **Reviewer:** _(Tech Lead signature pending live cluster evidence)_
@@ -63,9 +63,10 @@ breached = (current ≥ safety_floor) AND (ratio ≥ RATIO_THRESHOLD=1.5 OR (zsc
 **Gradual drift path (slow degradation):**
 ```
 breached = trend ≥ 25% relative change AND consistency ≥ 75% monotone AND current_ratio ≥ 1.2
+         AND current ≥ safety_floor × trend_min_floor_ratio (default 0.7)
 ```
 
-The safety floors (latency: 1 000 ms, error rate: 5%) prevent a signal from being anomalous at an absolutely negligible value (e.g., z-score = 4 on a 0.01 ms baseline).
+The safety floors (latency: 1 000 ms, error rate: 5%) prevent a signal from being anomalous at an absolutely negligible value (e.g., z-score = 4 on a 0.01 ms baseline). The `trend_min_floor_ratio = 0.7` guard ensures a memory-drain or queue-growth drift on a very-low-baseline service does not page until the absolute value is non-trivial, while still firing ahead of the full floor for gradual symptoms.
 
 **How it avoids masking:** A noise spike that would inflate `baseline_mean` is stripped by the MAD filter. A second, simultaneous signal on another service uses an independent detector instance (independent streak state), so the spike on service A cannot silence a breach on service B.
 
@@ -86,9 +87,12 @@ A single poll exceeding the gate produces an incident when `AIOPS_SUSTAINED_POLL
 | Period | MTTD measurement method | Value |
 |---|---|---|
 | **Before** (historical static alert rules) | Estimated static threshold rule delay (`for: 5m` window) | ~300–600s (5–10 min) |
-| **After** (this detector eval) | Sequential poll simulation to `decision.anomalous` (`poll_seconds=45s`) | **45s** (1 detector cycle) |
+| **After — offline simulation** (this harness) | Sequential poll simulation on labeled scenarios; `decision.anomalous` at `poll_seconds=45s`, `sustained_polls=1` | **45s** (1 detector cycle) |
+| **After — live cluster** | Continuous pod proof; real on-call timestamps from TF4AIO-80/77 | Pending live evidence |
 
-On the labeled dataset, measured MTTD-after is **45s (1 detector cycle)** for acute incidents.
+> **Note:** The offline MTTD of 45s is reproducible from the committed JSONL dataset (`labeled-scenarios-v1.jsonl`) using the one-command repro below. Live cluster MTTD will be recorded when continuous pod proof is available; it may differ due to real Prometheus scrape jitter and network latency. Do not conflate the two measurements.
+
+On the labeled dataset, **offline simulated MTTD-after is 45s (1 detector cycle)** for all real_incident cases (TP=3, avg_lead_time_seconds=45.0).
 
 ---
 
@@ -131,11 +135,14 @@ cd techx-corp-platform/src/aiops
 Accept this algorithm as the MANDATE-15 standard. It satisfies:
 
 - ✅ Relative baseline (no fixed absolute threshold as primary gate)
-- ✅ Masking resistance (MAD filter + independent streak state per service)
+- ✅ Masking resistance (MAD filter + independent streak state per service; proven by `m15-masking-01`: noise spike 0.8%→1.3% on checkout exceeds ratio gate but is blocked by 5% hard floor, while independent product-reviews detector catches 0.8%→10% error-rate incident within 1 cycle)
+- ✅ Safety floor blocks ratio-only FP (regression test `test_transient_below_floor_no_false_alarm`)
 - ✅ Continuous workload (FastAPI + asyncio event loop, runs permanently)
 - ✅ External-scenario replay entry (CLI accepts any JSONL scenario file)
 - ✅ Auditable scoring logic (all formulas in this ADR and in `detection.py`)
+- ✅ Incident summary artifact per detected event (service, severity, runbook, evidence; validated by `test_incident_summary_contains_service_severity_runbook`)
 - ✅ Hard floors: PII leakage = N/A (AIOps detector does not handle PII); unauthorized writes = blocked by `REMEDIATION_MODE=dry-run` default + approval gate
+- ⏳ Live cluster / continuous pod proof and real on-call timestamps: tracked in TF4AIO-80/77 (not blocked by this phase-1 harness PR)
 
 ---
 

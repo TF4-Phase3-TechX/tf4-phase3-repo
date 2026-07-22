@@ -280,3 +280,80 @@ def test_aggregate_handles_zero_denominator_gracefully():
     assert agg["precision"] is None
     assert agg["recall"] is None
     assert agg["avg_lead_time_seconds"] is None
+
+
+# ---------------------------------------------------------------------------
+# Safety Floor Regression — no FP even when ratio gate fires
+# ---------------------------------------------------------------------------
+
+
+def test_transient_below_floor_no_false_alarm(tmp_path: Path):
+    """A noise spike that exceeds the ratio gate (1.625x baseline) but stays below the
+    5% hard safety floor must not produce a false alert.
+
+    This is the canonical proof that the absolute floor prevents FP even when
+    the relative scoring would otherwise breach.  The series mirrors the
+    m15-masking-01 noise path in the committed dataset.
+    """
+    # baseline ~0.8%; incident_series peak ~1.3% (1.625x ratio, but < 5% floor)
+    noise_baseline = [0.008] * 30
+    noise_spike = [0.013, 0.012, 0.013, 0.011, 0.012, 0.013, 0.011, 0.012]
+    scenarios = [
+        {
+            "id": "floor-guard-01",
+            "schema_version": 1,
+            "scenario_kind": "healthy_busy",
+            "description": "ratio-level spike blocked by absolute safety floor",
+            "expected_detected": False,
+            "expected_severity": "medium",
+            "service": "checkout",
+            "signal": "error_rate",
+            "baseline_series": noise_baseline,
+            "incident_series": noise_spike,
+        }
+    ]
+    report = replay(_write_jsonl(tmp_path, scenarios))
+    case = report["cases"][0]
+    assert case["actual_detected"] is False, (
+        "Safety floor must block FP: 1.3% error rate is above ratio threshold "
+        "but below the 5% hard floor"
+    )
+    assert case["passed"] is True
+
+
+# ---------------------------------------------------------------------------
+# Incident Summary Validation
+# ---------------------------------------------------------------------------
+
+
+def test_incident_summary_contains_service_severity_runbook(tmp_path: Path):
+    """Incident summary rendered by IncidentSummaryGenerator must contain the
+    affected service name, severity label, and runbook identifier so the BTC
+    hidden-set replay artifact is auditable.
+    """
+    scenarios = [
+        {
+            "id": "summary-check-01",
+            "schema_version": 1,
+            "scenario_kind": "real_incident",
+            "description": "high-confidence latency spike — validate summary artifact",
+            "expected_detected": True,
+            "expected_severity": "high",
+            "service": "frontend",
+            "signal": "latency",
+            "baseline_series": NORMAL_LATENCY,
+            "incident_series": HIGH_LATENCY,
+        }
+    ]
+    report = replay(_write_jsonl(tmp_path, scenarios))
+    case = report["cases"][0]
+    assert case["actual_detected"] is True
+    summary = case["incident_summary"]
+    assert summary is not None, "Detected incident must include an incident_summary"
+    # Service name must appear in the summary so the responder knows which service to act on
+    assert "frontend" in summary, "Summary must name the affected service"
+    # Severity label must be present
+    assert "high" in summary.lower(), "Summary must include the severity"
+    # Runbook identifier must be present for on-call routing
+    assert case["runbook_id"] in summary, "Summary must embed the runbook_id"
+
