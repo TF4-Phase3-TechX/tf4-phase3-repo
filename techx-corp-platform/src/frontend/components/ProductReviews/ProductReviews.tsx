@@ -135,7 +135,9 @@ const ProductReviews = () => {
             {aiResponse && (
                 <S.AIMessage aria-live="polite" data-cy="AIAnswer">
                     <strong>AI Response:</strong>{' '}
-                    {typeof aiResponse === 'string' ? aiResponse : aiResponse.text}
+                    {typeof aiResponse === 'string'
+                      ? aiResponse
+                      : (aiResponse as any).response || (aiResponse as any).text}
                 </S.AIMessage>
             )}
         </S.AskAISection>

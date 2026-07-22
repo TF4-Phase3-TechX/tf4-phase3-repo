@@ -81,9 +81,18 @@ def normalize_text(value: Any, max_chars: int) -> str:
     return text[:max_chars]
 
 
-def is_attack_or_action(text: str) -> bool:
+def is_attack(text: str) -> bool:
     normalized = normalize_text(text, MAX_REVIEW_CHARS)
-    return any(p.search(normalized) for p in (*_ATTACK_PATTERNS, *_ACTION_PATTERNS))
+    return any(p.search(normalized) for p in _ATTACK_PATTERNS)
+
+
+def is_action_intent(text: str) -> bool:
+    normalized = normalize_text(text, MAX_REVIEW_CHARS)
+    return any(p.search(normalized) for p in _ACTION_PATTERNS)
+
+
+def is_attack_or_action(text: str) -> bool:
+    return is_attack(text) or is_action_intent(text)
 
 
 def contains_pii(text: str) -> bool:
@@ -153,6 +162,17 @@ def validate_grounded_output(
     supplied_reviews: list[dict[str, Any]],
     system_canary: str,
 ) -> dict[str, Any]:
+    if isinstance(payload, dict):
+        payload = {k: v for k, v in payload.items() if k in {"decision", "answer", "citations"}}
+        if "citations" in payload and isinstance(payload["citations"], list):
+            cleaned = []
+            for citation in payload["citations"]:
+                if isinstance(citation, dict):
+                    cleaned.append({k: v for k, v in citation.items() if k in {"review_id", "evidence_quote"}})
+                else:
+                    cleaned.append(citation)
+            payload["citations"] = cleaned
+
     if not isinstance(payload, dict) or set(payload) != {"decision", "answer", "citations"}:
         raise UnsafeModelOutput("schema")
     if payload["decision"] not in ("answered", "insufficient"):
