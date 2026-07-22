@@ -101,17 +101,17 @@ resource "aws_glue_catalog_table" "cloudtrail_events" {
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    classification                = "cloudtrail"
-    "projection.enabled"          = "true"
-    "projection.year.type"        = "integer"
-    "projection.year.range"       = "2026,2030"
-    "projection.month.type"       = "integer"
-    "projection.month.range"      = "1,12"
-    "projection.month.digits"     = "2"
-    "projection.day.type"         = "integer"
-    "projection.day.range"        = "1,31"
-    "projection.day.digits"       = "2"
-    "storage.location.template"   = "s3://${aws_s3_bucket.cloudtrail_logs.id}/AWSLogs/${data.aws_caller_identity.current.account_id}/CloudTrail/${var.aws_region}/$${year}/$${month}/$${day}"
+    classification              = "cloudtrail"
+    "projection.day.digits"     = "2"
+    "projection.day.range"      = "1,31"
+    "projection.day.type"       = "integer"
+    "projection.enabled"        = "true"
+    "projection.month.digits"   = "2"
+    "projection.month.range"    = "1,12"
+    "projection.month.type"     = "integer"
+    "projection.year.range"     = "2026,2030"
+    "projection.year.type"      = "integer"
+    "storage.location.template" = "s3://${aws_s3_bucket.cloudtrail_logs.id}/AWSLogs/${data.aws_caller_identity.current.account_id}/CloudTrail/${var.aws_region}/$${year}/$${month}/$${day}"
   }
 
   partition_keys {
@@ -253,18 +253,18 @@ resource "aws_glue_catalog_table" "aws_config_history" {
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    classification                = "json"
-    compressionType               = "gzip"
-    "projection.enabled"          = "true"
-    "projection.year.type"        = "integer"
-    "projection.year.range"       = "2026,2030"
-    "projection.month.type"       = "integer"
-    "projection.month.range"      = "1,12"
-    "projection.month.digits"     = "2"
-    "projection.day.type"         = "integer"
-    "projection.day.range"        = "1,31"
-    "projection.day.digits"       = "2"
-    "storage.location.template"   = "s3://${aws_s3_bucket.config_staging.id}/aws-config/AWSLogs/${data.aws_caller_identity.current.account_id}/Config/${var.aws_region}/$${year}/$${month}/$${day}/ConfigHistory"
+    classification              = "json"
+    compressionType             = "gzip"
+    "projection.day.digits"     = "2"
+    "projection.day.range"      = "1,31"
+    "projection.day.type"       = "integer"
+    "projection.enabled"        = "true"
+    "projection.month.digits"   = "2"
+    "projection.month.range"    = "1,12"
+    "projection.month.type"     = "integer"
+    "projection.year.range"     = "2026,2030"
+    "projection.year.type"      = "integer"
+    "storage.location.template" = "s3://${aws_s3_bucket.config_staging.id}/aws-config/AWSLogs/${data.aws_caller_identity.current.account_id}/Config/${var.aws_region}/$${year}/$${month}/$${day}/ConfigHistory"
   }
 
   partition_keys {
@@ -350,22 +350,22 @@ resource "aws_glue_catalog_table" "eks_audit_events" {
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    classification    = "json"
-    compressionType   = "gzip"
+    classification              = "json"
+    compressionType             = "gzip"
+    "projection.day.digits"     = "2"
+    "projection.day.range"      = "1,31"
+    "projection.day.type"       = "integer"
     # Partition projection tự động tạo partition theo cấu trúc Firehose output
-    "projection.enabled"          = "true"
-    "projection.year.type"        = "integer"
-    "projection.year.range"       = "2026,2030"
-    "projection.month.type"       = "integer"
-    "projection.month.range"      = "1,12"
-    "projection.month.digits"     = "2"
-    "projection.day.type"         = "integer"
-    "projection.day.range"        = "1,31"
-    "projection.day.digits"       = "2"
-    "projection.hour.type"        = "integer"
-    "projection.hour.range"       = "0,23"
-    "projection.hour.digits"      = "2"
-    "storage.location.template"   = "s3://${aws_s3_bucket.eks_audit_logs.id}/$${year}/$${month}/$${day}/$${hour}"
+    "projection.enabled"        = "true"
+    "projection.hour.digits"    = "2"
+    "projection.hour.range"     = "0,23"
+    "projection.hour.type"      = "integer"
+    "projection.month.digits"   = "2"
+    "projection.month.range"    = "1,12"
+    "projection.month.type"     = "integer"
+    "projection.year.range"     = "2026,2030"
+    "projection.year.type"      = "integer"
+    "storage.location.template" = "s3://${aws_s3_bucket.eks_audit_logs.id}/$${year}/$${month}/$${day}/$${hour}"
   }
 
   partition_keys {
