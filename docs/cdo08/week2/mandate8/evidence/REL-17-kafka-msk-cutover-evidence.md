@@ -1,29 +1,31 @@
 # REL-17 Kafka -> MSK Cutover Evidence
 
-## Scope
+## 1. Phạm vi
 
-This evidence records the runtime cutover of the checkout event flow from self-hosted Kafka to Amazon MSK.
+Tài liệu này ghi lại bằng chứng runtime cutover luồng event sau checkout từ Kafka self-hosted sang Amazon MSK.
 
-Components in scope:
+Các component trong phạm vi:
 
 - Producer: `checkout`
 - Consumers: `accounting`, `fraud-detection`
 - Migration bridge: `KafkaMirrorMaker2/orders-mirrormaker2`
 - Namespace: `techx-tf4`
 
-Time window:
+Thời gian kiểm tra:
 
-- Runtime checks and promote were executed on 2026-07-22 ICT.
+- Pre-check, promote và post-check được thực hiện trong ngày 2026-07-22 ICT.
 
-## Pre-Cutover State
+## 2. Trạng thái trước cutover
 
-`checkout` was paused in blue/green mode before promotion.
+Trước khi promote, rollout `checkout` đang ở trạng thái blue/green pause.
+
+Lệnh kiểm tra:
 
 ```text
 kubectl argo rollouts get rollout checkout -n techx-tf4
 ```
 
-Observed state:
+Kết quả quan sát:
 
 ```text
 Rollout: checkout
@@ -38,27 +40,27 @@ revision 7: checkout-6bfcbcdb7d, Healthy, preview
 revision 6: checkout-54ff8fcc6c, Healthy, stable, active
 ```
 
-Service selectors before cutover:
+Service selector trước cutover:
 
 ```text
 kubectl -n techx-tf4 get svc checkout checkout-preview -o jsonpath='{range .items[*]}{.metadata.name}{" selector="}{.spec.selector}{"\n"}{end}'
 ```
 
-Result:
+Kết quả:
 
 ```text
 checkout selector={"opentelemetry.io/name":"checkout","rollouts-pod-template-hash":"54ff8fcc6c"}
 checkout-preview selector={"opentelemetry.io/name":"checkout","rollouts-pod-template-hash":"6bfcbcdb7d"}
 ```
 
-`checkout` active revision still used self-hosted Kafka:
+Active revision của `checkout` vẫn dùng Kafka self-hosted:
 
 ```text
 checkout-54ff8fcc6c
 KAFKA_ADDR=kafka:9092
 ```
 
-`checkout` preview revision used MSK secret-backed config:
+Preview revision của `checkout` đã dùng cấu hình MSK qua Kubernetes Secret:
 
 ```text
 checkout-6bfcbcdb7d
@@ -69,7 +71,7 @@ KAFKA_USERNAME=msk-kafka-secret:username
 KAFKA_PASSWORD=msk-kafka-secret:password
 ```
 
-Consumers were already on MSK-backed config:
+Các consumer đã chuyển sang cấu hình MSK trước khi promote producer:
 
 ```text
 accounting ready=1/1
@@ -87,41 +89,45 @@ KAFKA_USERNAME=msk-kafka-secret:username
 KAFKA_PASSWORD=msk-kafka-secret:password
 ```
 
-MirrorMaker2 was ready:
+MirrorMaker2 đang sẵn sàng trong rollback window:
 
 ```text
 kubectl -n techx-tf4 get kafkamirrormaker2 orders-mirrormaker2 -o jsonpath='{.metadata.name}{" conditions="}{range .status.conditions[*]}{.type}{":"}{.status}{" "}{end}{"\n"}'
 ```
 
-Result:
+Kết quả:
 
 ```text
 orders-mirrormaker2 conditions=Ready:True
 ```
 
-## Cutover Action
+## 3. Hành động cutover
 
-The checkout producer was promoted from the active self-hosted Kafka revision to the MSK revision.
+Promote `checkout` producer từ active revision dùng Kafka self-hosted sang revision dùng MSK.
+
+Lệnh thực hiện:
 
 ```text
 kubectl argo rollouts promote checkout -n techx-tf4
 ```
 
-Result:
+Kết quả:
 
 ```text
 rollout 'checkout' promoted
 ```
 
-## Post-Cutover State
+## 4. Trạng thái sau cutover
 
-`checkout` is now healthy and active on the MSK revision.
+Sau promote, `checkout` Healthy và active service đã trỏ sang revision dùng MSK.
+
+Lệnh kiểm tra:
 
 ```text
 kubectl argo rollouts get rollout checkout -n techx-tf4
 ```
 
-Observed state:
+Kết quả quan sát:
 
 ```text
 Rollout: checkout
@@ -136,22 +142,22 @@ revision 7: checkout-6bfcbcdb7d, Healthy, stable, active
 revision 6: checkout-54ff8fcc6c, ScaledDown
 ```
 
-Service selectors after cutover:
+Service selector sau cutover:
 
 ```text
 checkout selector={"opentelemetry.io/name":"checkout","rollouts-pod-template-hash":"6bfcbcdb7d"}
 checkout-preview selector={"opentelemetry.io/name":"checkout","rollouts-pod-template-hash":"6bfcbcdb7d"}
 ```
 
-## Producer Consumer Evidence
+## 5. Evidence producer/consumer
 
-After promote, `accounting` continued consuming order events:
+Sau khi promote, `accounting` tiếp tục consume order event:
 
 ```text
 kubectl -n techx-tf4 logs deployment/accounting --since=3m --tail=100
 ```
 
-Representative result:
+Kết quả đại diện:
 
 ```text
 Order details: { "orderId": "a9676f24-8575-11f1-bb7a-e6c3e69d57b7", ... }
@@ -159,13 +165,13 @@ Order details: { "orderId": "b2463f0d-8575-11f1-bb7a-e6c3e69d57b7", ... }
 Order details: { "orderId": "f0815f45-8575-11f1-ab2f-8a2288188d13", ... }
 ```
 
-After promote, `fraud-detection` continued consuming order events:
+Sau khi promote, `fraud-detection` tiếp tục consume order event:
 
 ```text
 kubectl -n techx-tf4 logs deployment/fraud-detection --since=3m --tail=100
 ```
 
-Representative result:
+Kết quả đại diện:
 
 ```text
 Consumed record with orderId: a9676f24-8575-11f1-bb7a-e6c3e69d57b7, and updated total count to: 361
@@ -173,9 +179,37 @@ Consumed record with orderId: b2463f0d-8575-11f1-bb7a-e6c3e69d57b7, and updated 
 Consumed record with orderId: f0815f45-8575-11f1-ab2f-8a2288188d13, and updated total count to: 372
 ```
 
-This confirms the MSK producer/consumer path is active for the post-checkout order event flow.
+Kết luận: luồng MSK producer/consumer đã active cho post-checkout order event flow.
 
-## Current Status
+## 6. Trạng thái sau REL-18 cleanup
+
+Sau khi cleanup được merge và sync/prune qua Argo CD, các runtime resource Kafka self-hosted và MirrorMaker2 không còn chạy trong namespace `techx-tf4`.
+
+Lệnh kiểm tra:
+
+```text
+kubectl -n techx-tf4 get pods
+kubectl -n techx-tf4 get svc
+```
+
+Kết quả:
+
+```text
+Không còn pod kafka
+Không còn pod orders-mirrormaker2
+Không còn service kafka
+Không còn service orders-mirrormaker2-*
+```
+
+PVC `kafka-pvc` vẫn được giữ lại tạm thời:
+
+```text
+kafka-pvc   Bound   10Gi   gp2
+```
+
+PVC này chỉ phục vụ rollback/data-retention tạm thời, không còn phục vụ traffic runtime.
+
+## 7. Trạng thái hiện tại
 
 Runtime cutover status:
 
@@ -183,25 +217,29 @@ Runtime cutover status:
 PASS
 ```
 
-What has passed:
+Các điểm đã đạt:
 
-- `checkout` active service now targets MSK-backed revision `6bfcbcdb7d`.
-- `checkout` rollout is `Healthy`.
-- `accounting` is ready and consumes order events through MSK config.
-- `fraud-detection` is ready and consumes order events through MSK config.
-- `orders-mirrormaker2` remains `Ready=True` during rollback window.
+- `checkout` active service đã target revision MSK-backed `6bfcbcdb7d`.
+- `checkout` rollout Healthy.
+- `accounting` Ready và consume order event qua cấu hình MSK.
+- `fraud-detection` Ready và consume order event qua cấu hình MSK.
+- Kafka self-hosted đã được tắt khỏi runtime sau cleanup.
+- MirrorMaker2 đã được tắt khỏi runtime sau cleanup.
+- `kafka-pvc` được giữ lại tạm thời cho rollback/data-retention.
 
-Remaining work before closing Mandate 8:
+## 8. Ranh giới rollback
 
-- Keep self-hosted Kafka and MirrorMaker2 during the approved observation window.
-- Capture SLO/dashboard evidence for checkout success, error rate and latency after cutover.
-- Run REL-18 cleanup only after PM/owner approval: disable self-hosted PostgreSQL, Valkey, Kafka and temporary migration bridge resources through GitOps.
+Nếu cần rollback trong rollback window:
 
-## Rollback Boundary
+1. Revert GitOps app values để `checkout`, `accounting` và `fraud-detection` quay lại cấu hình Kafka self-hosted.
+2. Khôi phục Kafka/MirrorMaker2 từ GitOps nếu rollback cần replay/sync event.
+3. Dùng `kafka-pvc` đang được giữ lại để hỗ trợ rollback/data investigation.
+4. Không xóa `kafka-pvc` trước khi PM/owner xác nhận rollback window đã đóng.
 
-If MSK cutover fails during the observation window:
+## 9. Việc còn lại sau observation window
 
-1. Abort or roll back the `checkout` rollout to the previous stable revision.
-2. Revert GitOps app values so `checkout`, `accounting` and `fraud-detection` use self-hosted Kafka config.
-3. Keep MirrorMaker2 available until rollback data handling is explicitly closed.
-4. Do not delete self-hosted Kafka or MirrorMaker2 before REL-18 cleanup approval.
+Các việc sau không chặn Mandate 08 runtime cutover:
+
+1. Theo dõi SLO checkout và consumer lag MSK trong observation window.
+2. Chốt thời điểm archive hoặc xóa `kafka-pvc`.
+3. Cập nhật GitOps/Argo sau khi rollback window đóng để loại bỏ orphan warning liên quan resource Kafka cũ.
