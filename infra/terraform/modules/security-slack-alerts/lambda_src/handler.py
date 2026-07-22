@@ -12,9 +12,11 @@ logger.setLevel(logging.INFO)
 
 ssm_client = boto3.client('ssm')
 cloudwatch_client = boto3.client('cloudwatch')
+sns_client = boto3.client('sns')
 WEBHOOK_URL = None
 METRIC_NAMESPACE = os.environ.get('DETECTION_METRIC_NAMESPACE', 'Mandate11/DetectionLatency')
 DETECTION_TARGET_SECONDS = float(os.environ.get('DETECTION_LATENCY_TARGET_SECONDS', '60'))
+FORMATTED_SNS_TOPIC_ARN = os.environ.get('FORMATTED_SNS_TOPIC_ARN', '')
 SLACK_ALERT_LAMBDA_ROLE = 'SecuritySlackAlertsLambdaRole'
 TERRAFORM_APPLY_ROLE = 'tf4-github-actions-terraform-apply'
 TERRAFORM_PLAN_ROLE = 'tf4-github-actions-plan'
@@ -161,6 +163,76 @@ def get_webhook_url():
     except Exception as e:
         logger.error(f"Failed to fetch SSM parameter {param_name}: {e}")
         raise
+
+
+def publish_formatted_email(
+    event_name,
+    severity,
+    display_time,
+    account,
+    region,
+    short_actor,
+    actor,
+    source_ip,
+    resource_identifier,
+    event_id,
+    latency_msg,
+    noise_check,
+    cloudtrail_link,
+    runbook_link,
+):
+    """Publish a human-readable plain-text alert to the formatted SNS topic.
+
+    This runs *before* the Slack webhook call so the email backup is sent even
+    if Slack is temporarily unavailable.  Any failure here is logged as a
+    warning but must NOT block the Slack notification path.
+    """
+    if not FORMATTED_SNS_TOPIC_ARN:
+        logger.warning("FORMATTED_SNS_TOPIC_ARN is not set; skipping formatted email.")
+        return
+
+    # SNS email Subject is limited to 100 characters.
+    raw_subject = f"\U0001f6a8 Security Alert: {event_name} ({severity.upper()})"
+    subject = raw_subject[:100]
+
+    separator = "-" * 45
+    body = (
+        f"\U0001f6a8 SECURITY ALERT: {event_name}\n"
+        f"{separator}\n"
+        f"Severity : {severity.upper()}\n"
+        f"Time     : {display_time}\n"
+        f"Account  : {account}\n"
+        f"Region   : {region}\n"
+        f"Actor    : {short_actor}\n"
+        f"           {actor}\n"
+        f"Source IP: {source_ip}\n"
+        f"Resource : {resource_identifier}\n"
+        f"Event ID : {event_id}\n"
+        f"Latency  : {latency_msg}\n"
+        f"Noise    : {noise_check}\n"
+        f"{separator}\n"
+        f"Investigate : {cloudtrail_link}\n"
+        f"Runbook     : {runbook_link}\n"
+        f"{separator}\n"
+        f"This email is sent by the TF4 security alert pipeline (Mandate-11).\n"
+        f"Do NOT reply — this mailbox is unmonitored.\n"
+    )
+
+    try:
+        sns_client.publish(
+            TopicArn=FORMATTED_SNS_TOPIC_ARN,
+            Subject=subject,
+            Message=body,
+        )
+        logger.info(json.dumps({
+            'marker': 'MANDATE11_EMAIL_SENT',
+            'eventName': event_name,
+            'severity': severity,
+            'eventId': event_id,
+        }))
+    except Exception as exc:
+        # Email delivery failure must never suppress the Slack notification.
+        logger.warning(f"Failed to publish formatted email alert: {exc}")
 
 def is_public_sg_ingress(request_params):
     if not request_params:
@@ -552,10 +624,29 @@ def lambda_handler(event, context):
             
         runbook_link = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/mandate-11-incident-response.md"
             
+        # Send formatted plain-text alert to email via dedicated SNS topic.
+        # This runs before the Slack call so the backup channel is notified
+        # even when Slack is temporarily unavailable.
+        publish_formatted_email(
+            event_name=event_name,
+            severity=severity,
+            display_time=display_time,
+            account=account,
+            region=region,
+            short_actor=short_actor,
+            actor=actor,
+            source_ip=source_ip,
+            resource_identifier=resource_identifier,
+            event_id=event_id,
+            latency_msg=latency_msg,
+            noise_check=noise_check,
+            cloudtrail_link=cloudtrail_link,
+            runbook_link=runbook_link,
+        )
+
         # Build Slack Message (Block Kit)
         color = "#ff0000" if severity == "critical" else "#ff9900"
-        slack_message = {
-            "attachments": [
+        slack_message = {            "attachments": [
                 {
                     "color": color,
                     "blocks": [

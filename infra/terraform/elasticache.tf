@@ -71,19 +71,20 @@ resource "aws_elasticache_replication_group" "valkey_cart" {
 
   at_rest_encryption_enabled = true
 
-  # AWS Online Migration (used for the REL-16 cutover) rejects StartMigration against
-  # any replication group with transit encryption enabled, even in "preferred" mode —
-  # must stay disabled here and be enabled post-cutover via 07-enable-tls.sh.
-  #tfsec:ignore:aws-elasticache-enable-in-transit-encryption -- temporary for the REL-16 migration window, re-enabled post-cutover via 07-enable-tls.sh
-  transit_encryption_enabled = false
+  # REL-16 post-cutover hardening: Online Migration is complete, so the managed
+  # target now requires TLS, so AUTH can be introduced with ROTATE. Keep ROTATE
+  # until Cart proves it can authenticate, then move to SET in a follow-up.
+  transit_encryption_enabled = true
+  transit_encryption_mode    = var.valkey_transit_encryption_mode
+  auth_token                 = var.valkey_auth_token
+  auth_token_update_strategy = "ROTATE"
 
   snapshot_retention_limit = 7
   snapshot_window          = "18:00-19:00"
   maintenance_window       = "sun:19:00-sun:20:00"
 
   auto_minor_version_upgrade = false
-  # AWS requires transit encryption toggles to apply immediately (rejects the
-  # change otherwise) — must stay true through the REL-16 migration window.
+  # AWS requires transit encryption toggles to apply immediately.
   apply_immediately         = true
   final_snapshot_identifier = "techx-tf4-valkey-cart-final"
 

@@ -13,6 +13,15 @@ class FakeSSMClient:
         return {'Parameter': {'Value': 'https://hooks.slack.com/services/test'}}
 
 
+class FakeSNSClient:
+    def __init__(self):
+        self.publishes = []
+
+    def publish(self, **kwargs):
+        self.publishes.append(kwargs)
+        return {'MessageId': 'fake-message-id'}
+
+
 class FakeCloudWatchClient:
     def __init__(self):
         self.requests = []
@@ -40,11 +49,13 @@ class HandlerTests(unittest.TestCase):
         os.environ['AWS_EC2_METADATA_DISABLED'] = 'true'
 
         cls.cloudwatch = FakeCloudWatchClient()
-        with patch('boto3.client', side_effect=[FakeSSMClient(), cls.cloudwatch]):
+        cls.sns = FakeSNSClient()
+        with patch('boto3.client', side_effect=[FakeSSMClient(), cls.cloudwatch, cls.sns]):
             cls.handler = importlib.import_module('handler')
 
     def setUp(self):
         self.cloudwatch.requests.clear()
+        self.sns.publishes.clear()
         self.handler.WEBHOOK_URL = None
 
     def test_calculate_latency_accepts_cloudtrail_fractional_timestamp(self):
@@ -569,6 +580,114 @@ class HandlerTests(unittest.TestCase):
 
         valid = 'https://hooks.slack.com/services/test'
         self.assertEqual(self.handler.validate_webhook_url(valid), valid)
+
+    def test_formatted_email_published_before_slack_for_real_alert(self):
+        """publish_formatted_email is called with correct fields for a real alert."""
+        os.environ['FORMATTED_SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:511825856493:audit-security-alerts-formatted'
+        self.handler.FORMATTED_SNS_TOPIC_ARN = os.environ['FORMATTED_SNS_TOPIC_ARN']
+
+        event_time = datetime.now(timezone.utc) - timedelta(seconds=8)
+        cloudtrail_event = {
+            'source': 'aws.iam',
+            'detail-type': 'AWS API Call via CloudTrail',
+            'account': '511825856493',
+            'region': 'us-east-1',
+            'time': event_time.isoformat().replace('+00:00', 'Z'),
+            'detail': {
+                'eventID': 'ffffffff-0000-1111-2222-333333333333',
+                'eventName': 'CreateAccessKey',
+                'eventTime': event_time.isoformat().replace('+00:00', 'Z'),
+                'sourceIPAddress': '1.2.3.4',
+                'userIdentity': {
+                    'arn': 'arn:aws:sts::511825856493:assumed-role/TF4-Test/attacker',
+                },
+                'requestParameters': {
+                    'userName': 'test-backdoor-user',
+                },
+            },
+        }
+        sns_event = {
+            'Records': [{'Sns': {'Message': json.dumps(cloudtrail_event)}}]
+        }
+
+        with patch.object(
+            self.handler.urllib.request,
+            'urlopen',
+            return_value=FakeHTTPResponse(),
+        ):
+            self.handler.lambda_handler(sns_event, None)
+
+        # SNS publish must have been called exactly once
+        self.assertEqual(len(self.sns.publishes), 1)
+        publish_call = self.sns.publishes[0]
+
+        self.assertEqual(
+            publish_call['TopicArn'],
+            'arn:aws:sns:us-east-1:511825856493:audit-security-alerts-formatted',
+        )
+        # Subject must not exceed SNS 100-character limit
+        self.assertLessEqual(len(publish_call['Subject']), 100)
+        self.assertIn('CreateAccessKey', publish_call['Subject'])
+        self.assertIn('HIGH', publish_call['Subject'])
+
+        # Body must contain key alert fields
+        body = publish_call['Message']
+        self.assertIn('CreateAccessKey', body)
+        self.assertIn('HIGH', body)
+        self.assertIn('1.2.3.4', body)
+        self.assertIn('test-backdoor-user', body)
+        self.assertIn('ffffffff-0000-1111-2222-333333333333', body)
+
+    def test_email_failure_does_not_block_slack(self):
+        """If SNS publish raises, the Slack notification must still be sent."""
+        os.environ['FORMATTED_SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:511825856493:audit-security-alerts-formatted'
+        self.handler.FORMATTED_SNS_TOPIC_ARN = os.environ['FORMATTED_SNS_TOPIC_ARN']
+
+        event_time = datetime.now(timezone.utc) - timedelta(seconds=5)
+        cloudtrail_event = {
+            'source': 'aws.cloudtrail',
+            'detail-type': 'AWS API Call via CloudTrail',
+            'account': '511825856493',
+            'region': 'us-east-1',
+            'time': event_time.isoformat().replace('+00:00', 'Z'),
+            'detail': {
+                'eventID': 'aaaabbbb-cccc-dddd-eeee-ffffffffffff',
+                'eventName': 'StopLogging',
+                'eventTime': event_time.isoformat().replace('+00:00', 'Z'),
+                'sourceIPAddress': '5.6.7.8',
+                'userIdentity': {
+                    'arn': 'arn:aws:sts::511825856493:assumed-role/TF4-Test/attacker',
+                },
+            },
+        }
+        sns_event = {
+            'Records': [{'Sns': {'Message': json.dumps(cloudtrail_event)}}]
+        }
+
+        # Make SNS publish raise an exception
+        original_publish = self.handler.sns_client.publish
+        call_count = {'slack': 0}
+
+        def failing_publish(**kwargs):
+            raise Exception("SNS service unavailable")
+
+        self.handler.sns_client.publish = failing_publish
+
+        try:
+            with patch.object(
+                self.handler.urllib.request,
+                'urlopen',
+                return_value=FakeHTTPResponse(),
+            ) as urlopen:
+                # Must NOT raise despite SNS failure
+                self.handler.lambda_handler(sns_event, None)
+
+            # Slack must still have been called
+            urlopen.assert_called_once()
+            slack_payload = urlopen.call_args.args[0].data.decode('utf-8')
+            self.assertIn('StopLogging', slack_payload)
+        finally:
+            self.handler.sns_client.publish = original_publish
 
 
 if __name__ == '__main__':
