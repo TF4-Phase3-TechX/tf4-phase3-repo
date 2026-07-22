@@ -44,7 +44,7 @@ bastionPortalAccess: { enabled: true }
 cloudflareAccess:
   enabled: true
   namespace: cloudflare-access
-  createNamespace: true
+  createNamespace: false
   replicas: 2
   tokenSecret:
     name: cloudflare-tunnel-token
