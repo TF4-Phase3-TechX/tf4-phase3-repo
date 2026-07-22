@@ -58,6 +58,8 @@ if (typeof window !== 'undefined') {
 
 const queryClient = new QueryClient();
 
+import CopilotChatModal from '../components/Copilot/CopilotChatModal';
+
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <ThemeProvider theme={Theme}>
@@ -66,6 +68,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           <CurrencyProvider>
             <CartProvider>
               <Component {...pageProps} />
+              <CopilotChatModal />
             </CartProvider>
           </CurrencyProvider>
         </QueryClientProvider>

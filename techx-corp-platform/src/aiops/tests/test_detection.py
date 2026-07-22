@@ -24,7 +24,7 @@ def test_statistical_scores_detect_latest_spike():
 
 def test_latency_requires_sustained_polls():
     detector = Detector(settings(sustained_polls=2, latency_threshold_ms=1000))
-    series = [{"values": [[i, str(v)] for i, v in enumerate([100] * 8 + [1800])]}]
+    series = [{"values": [[i, str(v)] for i, v in enumerate([100] * 7 + [1750, 1800])]}]
     assert detector.latency("checkout", series, "q").anomalous is False
     assert detector.latency("checkout", series, "q").anomalous is True
 
@@ -39,7 +39,7 @@ def test_single_latency_spike_resets_when_signal_recovers():
 
 def test_error_rate_uses_per_service_span_metrics_and_requires_sustained_polls():
     detector = Detector(settings(sustained_polls=2, error_rate_threshold=0.05))
-    series = [{"values": [[i, str(v)] for i, v in enumerate([0.005] * 8 + [0.12])]}]
+    series = [{"values": [[i, str(v)] for i, v in enumerate([0.005] * 7 + [0.11, 0.12])]}]
     query = error_rate_query("checkout")
     assert 'service_name="checkout"' in query
     assert 'span_kind="SPAN_KIND_SERVER"' in query
@@ -112,7 +112,7 @@ def test_llm_error_requires_adaptive_metric_breach_and_treats_logs_as_evidence_o
         is False
     )
 
-    degraded = [{"values": [[i, str(v)] for i, v in enumerate([0.01] * 8 + [0.08])]}]
+    degraded = [{"values": [[i, str(v)] for i, v in enumerate([0.01] * 7 + [0.075, 0.08])]}]
     decision = detector.llm_error("product-reviews", degraded, "q", log_count=1)
     assert decision.anomalous is True
     assert decision.service == "product-reviews"
@@ -186,7 +186,7 @@ def test_isolation_forest_is_configurable_confidence_evidence_not_a_gate():
         {
             "values": [
                 [i, str(v)]
-                for i, v in enumerate([100, 101, 99, 102, 98, 100, 101, 100, 1800])
+                for i, v in enumerate([100, 101, 99, 102, 98, 100, 101, 1750, 1800])
             ]
         }
     ]
