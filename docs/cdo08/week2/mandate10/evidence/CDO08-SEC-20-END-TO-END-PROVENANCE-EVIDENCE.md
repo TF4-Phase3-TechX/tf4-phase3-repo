@@ -326,7 +326,75 @@ Ghi chú:
 
 ---
 
-## 7. Final verdict
+## 7. PR đỏ cố tình để kiểm tra branch rule
+
+Mandate 10 yêu cầu mở một PR có CI cố tình đỏ và chứng minh PR đó không được merge.
+
+PR evidence:
+
+```text
+https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/501
+```
+
+PR này cố tình thêm file Terraform sai cú pháp:
+
+```text
+infra/terraform/sec20-intentional-red-ci.tf
+```
+
+Expected:
+
+```text
+CI/Terraform validation phải fail.
+PR phải bị chặn merge do required status checks.
+```
+
+Kiểm tra ruleset hiện tại:
+
+```sh
+gh api repos/TF4-Phase3-TechX/tf4-phase3-repo/rulesets/18601993
+```
+
+Kết quả rút gọn:
+
+```json
+{
+  "name": "main",
+  "enforcement": "active",
+  "rules": [
+    {"type": "deletion"},
+    {"type": "non_fast_forward"},
+    {"type": "required_linear_history"},
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 2,
+        "require_code_owner_review": true,
+        "require_last_push_approval": true
+      }
+    }
+  ],
+  "bypass_actors": [
+    {"actor_type": "Team", "bypass_mode": "always"}
+  ]
+}
+```
+
+Đánh giá:
+
+- Repo hiện đã có ruleset yêu cầu PR review, code owner review và linear history.
+- Ruleset hiện **chưa có required status checks**, nên chưa đủ mạnh để chứng minh “CI đỏ thì không merge được”.
+- Ruleset còn có bypass team, nên nếu người có bypass quyền merge thì vẫn có thể vượt rule.
+
+Required follow-up:
+
+- Bổ sung required status checks cho `main`, tối thiểu gồm các CI/security gates chính.
+- Hạn chế hoặc document bypass actor; nếu giữ bypass, phải ghi rõ chỉ dùng cho break-glass và không dùng trong Mandate 10 demo.
+- Sau khi sửa rule, dùng PR #501 để mentor kiểm tra red CI bị chặn merge.
+
+---
+
+## 8. Final verdict
 
 Mandate 10 đạt mức **PASS cho TF4 application images**:
 
@@ -340,5 +408,6 @@ Mandate 10 đạt mức **PASS cho TF4 application images**:
 
 Phần cần theo dõi sau:
 
+- Sửa GitHub ruleset để required status checks thật sự chặn PR đỏ.
 - Codify label `techx.io/sec17-signature-enforce=true` trong GitOps namespace management nếu namespace label đang được quản lý ngoài cluster.
 - Dọn dẹp stale GitOps entry cho workload không còn runtime nếu cần làm Argo/GitOps sạch hoàn toàn.
