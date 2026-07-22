@@ -85,6 +85,25 @@ def _validate_numeric_series(series: Any, name: str, index: int, sc_id: str) -> 
     return floats
 
 
+def _validate_signal_range(
+    signal: str,
+    values: list[float],
+    name: str,
+    index: int,
+    sc_id: str,
+) -> None:
+    if signal == "latency" and any(value < 0 for value in values):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): {name} latency values must be >= 0"
+        )
+    if signal in {"error_rate", "llm_error"} and any(
+        value < 0 or value > 1 for value in values
+    ):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): {name} {signal} values must be between 0 and 1"
+        )
+
+
 def _validate_scenario(scenario: dict[str, Any], index: int, seen_ids: set[str]) -> None:
     sc_id = scenario.get("id")
     if not sc_id or not isinstance(sc_id, str):
@@ -106,6 +125,7 @@ def _validate_scenario(scenario: dict[str, Any], index: int, seen_ids: set[str])
         "expected_severity",
         "service",
         "signal",
+        "sample_interval_seconds",
         "baseline_series",
         "incident_series",
     }
@@ -139,8 +159,33 @@ def _validate_scenario(scenario: dict[str, Any], index: int, seen_ids: set[str])
             f"must be one of {sorted(ALLOWED_SIGNALS)}"
         )
 
-    _validate_numeric_series(scenario["baseline_series"], "baseline_series", index, sc_id)
-    _validate_numeric_series(scenario["incident_series"], "incident_series", index, sc_id)
+    sample_interval = scenario["sample_interval_seconds"]
+    if (
+        not isinstance(sample_interval, (int, float))
+        or isinstance(sample_interval, bool)
+        or not math.isfinite(sample_interval)
+        or sample_interval <= 0
+    ):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): sample_interval_seconds must be a positive finite number"
+        )
+    if not isinstance(scenario["service"], str) or not scenario["service"].strip():
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): service must be a non-empty string"
+        )
+    if scenario["expected_detected"] and exp_sev is None:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): expected_severity is required when expected_detected=true"
+        )
+
+    baseline = _validate_numeric_series(
+        scenario["baseline_series"], "baseline_series", index, sc_id
+    )
+    incident = _validate_numeric_series(
+        scenario["incident_series"], "incident_series", index, sc_id
+    )
+    _validate_signal_range(signal, baseline, "baseline_series", index, sc_id)
+    _validate_signal_range(signal, incident, "incident_series", index, sc_id)
 
     if kind == "masking":
         hidden_req = {
@@ -166,13 +211,34 @@ def _validate_scenario(scenario: dict[str, Any], index: int, seen_ids: set[str])
             raise ValueError(
                 f"Masking scenario #{index} (id={sc_id!r}): unknown hidden_expected_severity {h_sev!r}"
             )
+        if scenario["hidden_expected_detected"] and h_sev is None:
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): hidden_expected_severity is required when hidden_expected_detected=true"
+            )
+        if (
+            not isinstance(scenario["hidden_incident_service"], str)
+            or not scenario["hidden_incident_service"].strip()
+        ):
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): hidden_incident_service must be a non-empty string"
+            )
         h_signal = scenario["hidden_incident_signal"]
         if h_signal not in ALLOWED_SIGNALS:
             raise ValueError(
                 f"Masking scenario #{index} (id={sc_id!r}): unsupported hidden signal {h_signal!r}"
             )
-        _validate_numeric_series(scenario["hidden_baseline_series"], "hidden_baseline_series", index, sc_id)
-        _validate_numeric_series(scenario["hidden_incident_series"], "hidden_incident_series", index, sc_id)
+        hidden_baseline = _validate_numeric_series(
+            scenario["hidden_baseline_series"], "hidden_baseline_series", index, sc_id
+        )
+        hidden_incident = _validate_numeric_series(
+            scenario["hidden_incident_series"], "hidden_incident_series", index, sc_id
+        )
+        _validate_signal_range(
+            h_signal, hidden_baseline, "hidden_baseline_series", index, sc_id
+        )
+        _validate_signal_range(
+            h_signal, hidden_incident, "hidden_incident_series", index, sc_id
+        )
 
 
 def _make_fake_series(points: list[float]) -> list[dict[str, Any]]:
@@ -232,6 +298,7 @@ def _simulate_event_polls(
     incident_series: list[float],
     expected_detected: bool,
     expected_severity: str | None,
+    sample_interval_seconds: float,
     settings: Settings,
 ) -> dict[str, Any]:
     """Replay poll by poll sequentially using a fresh Detector instance.
@@ -250,8 +317,23 @@ def _simulate_event_polls(
     runbook_id: str = "observe-and-escalate"
     recommended_action: str = "Collect more evidence"
 
-    for step in range(1, len(incident_series) + 1):
-        current_points = baseline_series + incident_series[:step]
+    samples_per_poll_exact = settings.poll_seconds / sample_interval_seconds
+    if samples_per_poll_exact < 1 or not samples_per_poll_exact.is_integer():
+        raise ValueError(
+            "sample_interval_seconds must divide poll_seconds exactly and cannot exceed it"
+        )
+    samples_per_poll = int(samples_per_poll_exact)
+    for step, end in enumerate(
+        range(
+            samples_per_poll,
+            len(incident_series) + samples_per_poll,
+            samples_per_poll,
+        ),
+        1,
+    ):
+        current_points = baseline_series + incident_series[
+            : min(end, len(incident_series))
+        ]
         fake_series = _make_fake_series(current_points)
         if signal == "latency":
             decision = detector.latency(service, fake_series, query)
@@ -326,6 +408,8 @@ def _simulate_event_polls(
         "confidence": round(detected_confidence, 3),
         "lead_time_steps": first_anomalous_step,
         "lead_time_seconds": lead_time_seconds,
+        "sample_interval_seconds": sample_interval_seconds,
+        "samples_per_poll": samples_per_poll,
         "one_cycle_pass": one_cycle_pass,
         "passed": passed,
         "classification": classification,
@@ -348,6 +432,7 @@ def _evaluate_scenario(
     incident_points = list(map(float, scenario["incident_series"]))
     expected_detected = bool(scenario["expected_detected"])
     expected_severity = scenario.get("expected_severity")
+    sample_interval_seconds = float(scenario["sample_interval_seconds"])
 
     primary_res = _simulate_event_polls(
         sc_id=sc_id,
@@ -357,6 +442,7 @@ def _evaluate_scenario(
         incident_series=incident_points,
         expected_detected=expected_detected,
         expected_severity=expected_severity,
+        sample_interval_seconds=sample_interval_seconds,
         settings=settings,
     )
 
@@ -377,6 +463,7 @@ def _evaluate_scenario(
             incident_series=hidden_incident,
             expected_detected=hidden_expected_detected,
             expected_severity=hidden_expected_severity,
+            sample_interval_seconds=sample_interval_seconds,
             settings=settings,
         )
 
@@ -477,6 +564,18 @@ def replay(
         raw = []
 
     for i, scenario in enumerate(raw, 1):
+        if not isinstance(scenario, dict):
+            errors.append(
+                {
+                    "scenario_id": f"#{i}",
+                    "error": f"ValueError: Scenario #{i} must be a JSON object",
+                }
+            )
+            print(
+                f"[{i}/{len(raw)}] #{i}: ERROR scenario must be a JSON object",
+                flush=True,
+            )
+            continue
         sc_id = scenario.get("id", f"#{i}")
         try:
             _validate_scenario(scenario, i, seen_ids)
@@ -500,10 +599,12 @@ def replay(
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": utc_now(),
-        "scenarios_file": str(scenarios_path),
+        "scenarios_file": scenarios_path.as_posix(),
         "detector_config": {
             "poll_seconds": settings.poll_seconds,
             "sustained_polls": settings.sustained_polls,
+            "acute_confirmation_window": settings.acute_confirmation_window,
+            "acute_min_breach_points": settings.acute_min_breach_points,
             "latency_threshold_ms": settings.latency_threshold_ms,
             "error_rate_threshold": settings.error_rate_threshold,
             "zscore_threshold": settings.zscore_threshold,
@@ -516,7 +617,8 @@ def replay(
         "errors": errors,
         "limitations": [
             "This replay uses synthetic metric series, not live Prometheus data.",
-            "Lead-time is measured in poll-cycle steps where decision.anomalous became True.",
+            "Each scenario declares sample_interval_seconds; samples are grouped into detector polls using the configured poll_seconds.",
+            "Lead-time is measured at the end of the first poll where decision.anomalous became True.",
             "Precision and recall are computed across all evaluated primary and hidden events.",
             "Each target signal evaluation uses a fresh Detector instance to isolate streak state.",
         ],

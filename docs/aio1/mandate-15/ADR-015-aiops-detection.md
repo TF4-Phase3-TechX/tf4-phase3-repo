@@ -26,7 +26,7 @@ The detector polls Prometheus every **`AIOPS_POLL_SECONDS` (default: 45 s)** for
 | `error_rate` | error-span rate / all-span rate | ratio [0,1] |
 | `llm_error` | LLM error call rate / total call rate | ratio [0,1] |
 
-Raw Prometheus `range_query` results are an ordered list of `(timestamp, value)` pairs. The detector uses the **value sequence** (last `AIOPS_LOOKBACK_MINUTES=30` minutes, step = poll window).
+Raw Prometheus `range_query` results are an ordered list of `(timestamp, value)` pairs. The detector uses the **value sequence** from the last `AIOPS_LOOKBACK_MINUTES=30` minutes. A worker poll is not one metric sample: with the default 15-second scrape interval, one 45-second poll observes three new samples. Offline scenarios declare `sample_interval_seconds`; replay groups samples into polls instead of assuming that each JSON value is one poll.
 
 ### 2. Baseline construction — Robust Median/MAD filter
 
@@ -57,8 +57,11 @@ Three independent scores are computed and any one can contribute to a breach dec
 
 **Acute path (sudden incident):**
 ```
-breached = (current ≥ safety_floor) AND (ratio ≥ RATIO_THRESHOLD=1.5 OR (zscore ≥ 3 AND ewma ≥ 1))
+sample_breach = (sample ≥ safety_floor) AND (ratio ≥ 1.5 OR (zscore ≥ 3 AND ewma ≥ 1))
+acute_breach = latest sample breaches AND at least 2 of the latest 3 samples breach
 ```
+
+Each candidate sample is scored against the same earlier robust baseline. This allows the first worker poll to open a real incident while preventing one isolated above-floor scrape spike from paging.
 
 **Gradual drift path (slow degradation):**
 ```
@@ -68,11 +71,11 @@ breached = trend ≥ 25% relative change AND consistency ≥ 75% monotone AND cu
 
 The safety floors (latency: 1 000 ms, error rate: 5%) prevent a signal from being anomalous at an absolutely negligible value (e.g., z-score = 4 on a 0.01 ms baseline). The `trend_min_floor_ratio = 0.7` guard ensures a memory-drain or queue-growth drift on a very-low-baseline service does not page until the absolute value is non-trivial, while still firing ahead of the full floor for gradual symptoms.
 
-**How it avoids masking:** A noise spike that would inflate `baseline_mean` is stripped by the MAD filter. A second, simultaneous signal on another service uses an independent detector instance (independent streak state), so the spike on service A cannot silence a breach on service B.
+**How it avoids masking:** A noise spike inside the target signal's own history that would inflate `baseline_mean` is stripped by the MAD filter. The committed masking scenario places a 20% error-rate outlier in the same checkout history used to detect a sustained 6.2-6.4% incident against that service's 4% normal. Service/signal-specific detector state additionally prevents unrelated services from sharing streak state.
 
 ### 5. Sustained-breach requirement
 
-A single poll exceeding the gate produces an incident when `AIOPS_SUSTAINED_POLLS=1` (default: 1, aligned across `app/config.py` and `techx-corp-chart/values.yaml`). This satisfies Mandate 15's hard bar of firing real acute incidents within 1 detector cycle (45s).
+A single worker poll may produce an incident when `AIOPS_SUSTAINED_POLLS=1`, but an acute incident first needs within-window confirmation: `AIOPS_ACUTE_MIN_BREACH_POINTS=2` of `AIOPS_ACUTE_CONFIRMATION_WINDOW=3`, including the latest sample. Defaults are aligned across `app/config.py` and the Helm chart. Thus a persistent incident fires within one 45-second worker cycle while a lone above-floor sample followed by recovery does not page.
 
 ### 6. Safety floors (hard bars)
 
@@ -87,7 +90,7 @@ A single poll exceeding the gate produces an incident when `AIOPS_SUSTAINED_POLL
 | Period | MTTD measurement method | Value |
 |---|---|---|
 | **Before** (historical static alert rules) | Estimated static threshold rule delay (`for: 5m` window) | ~300–600s (5–10 min) |
-| **After — offline simulation** (this harness) | Sequential poll simulation on labeled scenarios; `decision.anomalous` at `poll_seconds=45s`, `sustained_polls=1` | **45s** (1 detector cycle) |
+| **After — offline simulation** (this harness) | Scenarios declare 15-second sample intervals; replay groups three samples per 45-second poll and records the first `decision.anomalous` poll | **45s** (1 detector cycle) |
 | **After — live cluster** | Continuous pod proof; real on-call timestamps from TF4AIO-80/77 | Pending live evidence |
 
 > **Note:** The offline MTTD of 45s is reproducible from the committed JSONL dataset (`labeled-scenarios-v1.jsonl`) using the one-command repro below. Live cluster MTTD will be recorded when continuous pod proof is available; it may differ due to real Prometheus scrape jitter and network latency. Do not conflate the two measurements.
@@ -115,6 +118,7 @@ The summary is available at `GET /v1/incidents/{id}/summary` and is also stored 
 - The default thresholds were calibrated on labeled incident windows.
 - Thresholds are all `AIOPS_*` environment variables; no code change is needed to recalibrate.
 - The replay CLI (`.venv/bin/python -m benchmark.replay`) is the canonical offline evaluation tool.
+- External JSONL is fail-closed: schema v1, positive sample interval, finite signal ranges, non-empty service IDs and required expected severity are validated before scoring.
 - No LLM judge is used for the detection eval; all scoring is deterministic and fully auditable from source.
 
 ---
@@ -128,6 +132,8 @@ cd techx-corp-platform/src/aiops
   --output /tmp/m15-replay-report.json
 ```
 
+The final-head reproducible artifact is committed as `docs/aio1/mandate-15/replay-report-v1.json`.
+
 ---
 
 ## Decision
@@ -135,8 +141,8 @@ cd techx-corp-platform/src/aiops
 Accept this algorithm as the MANDATE-15 standard. It satisfies:
 
 - ✅ Relative baseline (no fixed absolute threshold as primary gate)
-- ✅ Masking resistance (MAD filter + independent streak state per service; proven by `m15-masking-01`: noise spike 0.8%→1.3% on checkout exceeds ratio gate but is blocked by 5% hard floor, while independent product-reviews detector catches 0.8%→10% error-rate incident within 1 cycle)
-- ✅ Safety floor blocks ratio-only FP (regression test `test_transient_below_floor_no_false_alarm`)
+- ✅ Masking resistance (the target baseline contains an isolated 20% outlier, while a subsequent sustained 6.2-6.4% incident against the same checkout 4% normal still fires in one cycle)
+- ✅ Above-floor transient rejection (regression test `test_transient_above_floor_no_false_alarm`)
 - ✅ Continuous workload (FastAPI + asyncio event loop, runs permanently)
 - ✅ External-scenario replay entry (CLI accepts any JSONL scenario file)
 - ✅ Auditable scoring logic (all formulas in this ADR and in `detection.py`)

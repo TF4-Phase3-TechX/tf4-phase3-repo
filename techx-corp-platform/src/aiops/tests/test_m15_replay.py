@@ -33,7 +33,11 @@ HIGH_ERROR = [0.10] * 8       # 10% — above 5% floor
 
 def _write_jsonl(tmp_path: Path, scenarios: list[dict]) -> Path:
     path = tmp_path / "scenarios.jsonl"
-    path.write_text("\n".join(json.dumps(s) for s in scenarios), encoding="utf-8")
+    normalized = [
+        dict(s, sample_interval_seconds=s.get("sample_interval_seconds", 15))
+        for s in scenarios
+    ]
+    path.write_text("\n".join(json.dumps(s) for s in normalized), encoding="utf-8")
     return path
 
 
@@ -46,6 +50,7 @@ def test_validate_scenario_ok():
     scenario = {
         "id": "test-01",
         "schema_version": 1,
+        "sample_interval_seconds": 15,
         "scenario_kind": "real_incident",
         "description": "ok",
         "expected_detected": True,
@@ -79,6 +84,7 @@ def test_validate_scenario_non_bool_expected_detected():
     scenario = {
         "id": "test-non-bool",
         "schema_version": 1,
+        "sample_interval_seconds": 15,
         "scenario_kind": "real_incident",
         "description": "non bool flag",
         "expected_detected": "true",  # string instead of boolean
@@ -96,6 +102,7 @@ def test_validate_scenario_duplicate_id():
     scenario = {
         "id": "dup-id",
         "schema_version": 1,
+        "sample_interval_seconds": 15,
         "scenario_kind": "real_incident",
         "description": "dup",
         "expected_detected": True,
@@ -114,6 +121,7 @@ def test_validate_scenario_unsupported_signal():
     scenario = {
         "id": "bad_signal",
         "schema_version": 1,
+        "sample_interval_seconds": 15,
         "scenario_kind": "real_incident",
         "description": "unsupported signal",
         "expected_detected": True,
@@ -125,6 +133,77 @@ def test_validate_scenario_unsupported_signal():
     }
     with pytest.raises(ValueError, match="unsupported signal"):
         _validate_scenario(scenario, 1, set())
+
+
+@pytest.mark.parametrize(
+    ("signal", "series", "message"),
+    [
+        ("error_rate", [1.01], "between 0 and 1"),
+        ("llm_error", [-0.01], "between 0 and 1"),
+        ("latency", [-1.0], "must be >= 0"),
+    ],
+)
+def test_validate_scenario_rejects_out_of_range_values(signal, series, message):
+    scenario = {
+        "id": f"bad-range-{signal}",
+        "schema_version": 1,
+        "sample_interval_seconds": 15,
+        "scenario_kind": "real_incident",
+        "description": "bad range",
+        "expected_detected": True,
+        "expected_severity": "high",
+        "service": "frontend",
+        "signal": signal,
+        "baseline_series": [0.01] if signal != "latency" else [100.0],
+        "incident_series": series,
+    }
+    with pytest.raises(ValueError, match=message):
+        _validate_scenario(scenario, 1, set())
+
+
+def test_validate_scenario_requires_severity_for_expected_incident():
+    scenario = {
+        "id": "missing-severity",
+        "schema_version": 1,
+        "sample_interval_seconds": 15,
+        "scenario_kind": "real_incident",
+        "description": "missing severity",
+        "expected_detected": True,
+        "expected_severity": None,
+        "service": "frontend",
+        "signal": "latency",
+        "baseline_series": NORMAL_LATENCY,
+        "incident_series": HIGH_LATENCY,
+    }
+    with pytest.raises(ValueError, match="expected_severity is required"):
+        _validate_scenario(scenario, 1, set())
+
+
+def test_replay_rejects_non_object_json_without_crashing(tmp_path: Path):
+    path = tmp_path / "non-object.jsonl"
+    path.write_text("[]\n", encoding="utf-8")
+    report = replay(path)
+    assert report["aggregate"]["all_passed"] is False
+    assert "must be a JSON object" in report["errors"][0]["error"]
+
+
+def test_replay_rejects_ambiguous_sample_to_poll_mapping(tmp_path: Path):
+    scenario = {
+        "id": "ambiguous-cadence",
+        "schema_version": 1,
+        "sample_interval_seconds": 20,
+        "scenario_kind": "real_incident",
+        "description": "45 second poll cannot contain an integer number of 20 second samples",
+        "expected_detected": True,
+        "expected_severity": "high",
+        "service": "frontend",
+        "signal": "latency",
+        "baseline_series": NORMAL_LATENCY,
+        "incident_series": HIGH_LATENCY,
+    }
+    report = replay(_write_jsonl(tmp_path, [scenario]))
+    assert report["aggregate"]["all_passed"] is False
+    assert "must divide poll_seconds exactly" in report["errors"][0]["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -182,36 +261,37 @@ def test_healthy_busy_high_baseline_no_false_alarm(tmp_path: Path):
     assert case["passed"] is True
 
 
-def test_masking_hidden_incident_routed_and_detected_within_one_cycle(tmp_path: Path):
-    """Noise spike on checkout error rate is below floor, while hidden latency incident on product-reviews is caught in 1 cycle."""
-    noise_error = [0.015, 0.010, 0.012, 0.009, 0.010, 0.008, 0.009, 0.008]
+def test_masking_noise_in_target_window_does_not_hide_subtle_incident(tmp_path: Path):
+    """An isolated 20% sample is rejected and cannot inflate the target's 4% baseline."""
+    normal = [0.04] * 30
+    noisy_target_history = [*normal[:-2], 0.20, 0.04]
     scenarios = [
         {
             "id": "masking-01",
             "schema_version": 1,
             "scenario_kind": "masking",
-            "description": "noise on checkout, hidden latency on product-reviews",
+            "description": "transient noise and subtle incident on the same service/signal window",
             "expected_detected": False,
             "expected_severity": "medium",
             "service": "checkout",
             "signal": "error_rate",
-            "baseline_series": NORMAL_ERROR,
-            "incident_series": noise_error,
-            "hidden_incident_service": "product-reviews",
-            "hidden_incident_signal": "latency",
+            "baseline_series": normal,
+            "incident_series": [0.20, 0.04, 0.04],
+            "hidden_incident_service": "checkout",
+            "hidden_incident_signal": "error_rate",
             "hidden_expected_detected": True,
             "hidden_expected_severity": "medium",
-            "hidden_baseline_series": NORMAL_LATENCY,
-            "hidden_incident_series": [1100.0, 1150.0, 1180.0, 1220.0],
+            "hidden_baseline_series": noisy_target_history,
+            "hidden_incident_series": [0.062, 0.064, 0.063],
         }
     ]
     report = replay(_write_jsonl(tmp_path, scenarios))
     case = report["cases"][0]
-    assert case["actual_detected"] is False, "Checkout noise spike should not trigger incident"
+    assert case["actual_detected"] is False, "A single above-floor spike must not trigger an incident"
     assert case["hidden_event"] is not None
-    assert case["hidden_event"]["service"] == "product-reviews"
-    assert case["hidden_event"]["signal"] == "latency"
-    assert case["hidden_event"]["actual_detected"] is True, "Hidden latency incident must be detected"
+    assert case["hidden_event"]["service"] == "checkout"
+    assert case["hidden_event"]["signal"] == "error_rate"
+    assert case["hidden_event"]["actual_detected"] is True, "Subtle incident must survive the noisy baseline"
     assert case["hidden_event"]["lead_time_steps"] <= 1, "Hidden incident must fire within 1 cycle"
     assert case["passed"] is True
 
@@ -287,23 +367,16 @@ def test_aggregate_handles_zero_denominator_gracefully():
 # ---------------------------------------------------------------------------
 
 
-def test_transient_below_floor_no_false_alarm(tmp_path: Path):
-    """A noise spike that exceeds the ratio gate (1.625x baseline) but stays below the
-    5% hard safety floor must not produce a false alert.
-
-    This is the canonical proof that the absolute floor prevents FP even when
-    the relative scoring would otherwise breach.  The series mirrors the
-    m15-masking-01 noise path in the committed dataset.
-    """
-    # baseline ~0.8%; incident_series peak ~1.3% (1.625x ratio, but < 5% floor)
-    noise_baseline = [0.008] * 30
-    noise_spike = [0.013, 0.012, 0.013, 0.011, 0.012, 0.013, 0.011, 0.012]
+def test_transient_above_floor_no_false_alarm(tmp_path: Path):
+    """One 20% scrape sample must not page even though it exceeds every acute gate."""
+    noise_baseline = [0.04] * 30
+    noise_spike = [0.20, 0.04, 0.04]
     scenarios = [
         {
             "id": "floor-guard-01",
             "schema_version": 1,
             "scenario_kind": "healthy_busy",
-            "description": "ratio-level spike blocked by absolute safety floor",
+            "description": "one above-floor scrape spike followed by recovery",
             "expected_detected": False,
             "expected_severity": "medium",
             "service": "checkout",
@@ -315,8 +388,7 @@ def test_transient_below_floor_no_false_alarm(tmp_path: Path):
     report = replay(_write_jsonl(tmp_path, scenarios))
     case = report["cases"][0]
     assert case["actual_detected"] is False, (
-        "Safety floor must block FP: 1.3% error rate is above ratio threshold "
-        "but below the 5% hard floor"
+        "Within-poll confirmation must block a single above-floor scrape spike"
     )
     assert case["passed"] is True
 

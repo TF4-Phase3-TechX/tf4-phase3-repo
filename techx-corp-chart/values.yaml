@@ -217,6 +217,10 @@ components:
         value: "30"
       - name: AIOPS_SUSTAINED_POLLS
         value: "1"
+      - name: AIOPS_ACUTE_CONFIRMATION_WINDOW
+        value: "3"
+      - name: AIOPS_ACUTE_MIN_BREACH_POINTS
+        value: "2"
       - name: AIOPS_MINIMUM_REQUEST_COUNT
         value: "20"
       - name: AIOPS_LLM_MINIMUM_CALL_COUNT
