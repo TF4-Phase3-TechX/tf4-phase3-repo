@@ -125,9 +125,9 @@ variable "valkey_auth_token" {
 }
 
 variable "valkey_transit_encryption_mode" {
-  description = "ElastiCache Valkey transit encryption mode. Use preferred during app cutover validation, then required after all clients are confirmed TLS-capable."
+  description = "ElastiCache Valkey transit encryption mode. Mandate 08 final target is required after Cart is confirmed TLS-capable."
   type        = string
-  default     = "preferred"
+  default     = "required"
 
   validation {
     condition     = contains(["preferred", "required"], var.valkey_transit_encryption_mode)
