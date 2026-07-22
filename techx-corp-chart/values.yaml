@@ -2196,6 +2196,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  rbac:
+    # The upstream role always includes Secrets. SEC-22 supplies a ConfigMap-only Role.
+    create: false
   testFramework:
     enabled: false
   grafana.ini:
@@ -2214,10 +2217,13 @@ grafana:
   sidecar:
     alerts:
       enabled: true
+      resource: configmap
     dashboards:
       enabled: true
+      resource: configmap
     datasources:
       enabled: true
+      resource: configmap
     resources:
       requests:
         cpu: 20m
