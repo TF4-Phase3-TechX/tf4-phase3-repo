@@ -529,6 +529,8 @@ services:
     restart: unless-stopped
     ports:
       - "${PRODUCT_REVIEWS_PORT}"
+    volumes:
+      - ./src/product-reviews:/app
     environment:
       - PRODUCT_REVIEWS_PORT
       - OTEL_PYTHON_LOG_CORRELATION=true
@@ -552,10 +554,13 @@ services:
       - BEDROCK_OUTPUT_USD_PER_MILLION=2.50
       - BEDROCK_SYSTEM_CANARY
       - PRODUCT_CATALOG_ADDR
+      - CART_ADDR
       - FLAGD_HOST
       - FLAGD_PORT
     depends_on:
       product-catalog:
+        condition: service_started
+      cart:
         condition: service_started
       postgresql:
         condition: service_started
