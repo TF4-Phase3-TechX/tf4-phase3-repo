@@ -108,3 +108,29 @@ variable "budget_notification_emails" {
     error_message = "Each budget_notification_emails entry must be a valid email address."
   }
 }
+
+variable "valkey_auth_token" {
+  description = "Sensitive auth token for the managed ElastiCache Valkey replication group. Provide through TF_VAR_valkey_auth_token only; do not commit the value."
+  type        = string
+  sensitive   = true
+  default     = null
+
+  validation {
+    condition = (
+      var.valkey_auth_token == null ||
+      can(regex("^[^@\"/ ]{16,128}$", var.valkey_auth_token))
+    )
+    error_message = "valkey_auth_token must be 16-128 characters and must not contain spaces, double quotes, slash, or @."
+  }
+}
+
+variable "valkey_transit_encryption_mode" {
+  description = "ElastiCache Valkey transit encryption mode. Use preferred during app cutover validation, then required after all clients are confirmed TLS-capable."
+  type        = string
+  default     = "preferred"
+
+  validation {
+    condition     = contains(["preferred", "required"], var.valkey_transit_encryption_mode)
+    error_message = "valkey_transit_encryption_mode must be preferred or required."
+  }
+}
