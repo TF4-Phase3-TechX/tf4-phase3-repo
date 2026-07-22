@@ -6,6 +6,7 @@ import { useProductReview } from '../../providers/ProductReview.provider';
 import { useAiAssistant } from '../../providers/ProductAIAssistant.provider';
 import React, { useState, useMemo } from 'react';
 import { CypressFields } from '../../utils/enums/CypressFields';
+import CartActionCard from '../Copilot/CartActionCard';
 
 const clamp = (n: number, min = 0, max = 5) => Math.max(min, Math.min(max, n));
 
@@ -54,7 +55,8 @@ const ProductReviews = () => {
 
     // AI Assistant (provider-driven)
     const [aiQuestion, setAiQuestion] = useState('');
-    const { sendAiRequest, aiResponse, aiLoading, aiError, reset } = useAiAssistant();
+    const { sendAiRequest, aiResponse, aiLoading, aiError, reset, sessionId, userId } = useAiAssistant();
+    const actionProposal = typeof aiResponse === 'object' && aiResponse ? aiResponse.actionProposal : undefined;
 
     const handleAskAI = (questionOverride?: string) => {
         const q = (questionOverride ?? aiQuestion).trim();
@@ -133,12 +135,17 @@ const ProductReviews = () => {
             )}
 
             {aiResponse && (
-                <S.AIMessage aria-live="polite" data-cy="AIAnswer">
-                    <strong>AI Response:</strong>{' '}
-                    {typeof aiResponse === 'string'
-                      ? aiResponse
-                      : (aiResponse as any).response || (aiResponse as any).text}
-                </S.AIMessage>
+                <>
+                    <S.AIMessage aria-live="polite" data-cy="AIAnswer">
+                        <strong>AI Response:</strong>{' '}
+                        {typeof aiResponse === 'string'
+                          ? aiResponse
+                          : (aiResponse as any).response || (aiResponse as any).text}
+                    </S.AIMessage>
+                    {actionProposal && (
+                        <CartActionCard proposal={actionProposal} userId={userId} sessionId={sessionId} />
+                    )}
+                </>
             )}
         </S.AskAISection>
 

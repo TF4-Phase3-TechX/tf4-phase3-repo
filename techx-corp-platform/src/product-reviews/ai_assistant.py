@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 import re
-import uuid
 from bedrock_adapter import BedrockAdapter, ProviderFailure
 import demo_pb2
 from safety import (
@@ -52,27 +51,32 @@ class GroundedAssistant:
         self.fetch_reviews = fetch_reviews
         self.system_canary = system_canary
 
-    def answer(self, product_id: str, question: str, session_id: str = "") -> AssistantOutcome:
+    def answer(self, product_id: str, question: str, session_id: str = "", user_id: str = "guest") -> AssistantOutcome:
         quarantined_reviews = 0
         if not question or is_attack(question):
             return AssistantOutcome(response=BLOCKED_RESPONSE, outcome="blocked")
         elif is_action_intent(question):
             try:
+                if not session_id:
+                    return AssistantOutcome(response=BLOCKED_RESPONSE, outcome="blocked")
                 product = self.fetch_product(product_id)
                 prod_name = product.get("name", "Product") if isinstance(product, dict) else "Product"
                 qty_match = re.search(r"(?:thêm|add)\s+(\d{1,2})", question.lower())
                 qty = max(1, min(int(qty_match.group(1)), 10)) if qty_match else 1
+                confirmation_token = session_store.create_cart_proposal(
+                    user_id, session_id, product_id, prod_name, qty
+                )
                 proposal = demo_pb2.CartActionProposal(
                     action_type="ADD_TO_CART",
                     product_id=product_id,
                     product_name=prod_name,
                     quantity=qty,
                     confirmation_required=True,
-                    idempotency_key=str(uuid.uuid4()),
+                    idempotency_key=confirmation_token,
                 )
                 if session_id:
-                    session_store.append_turn("guest", session_id, "user", question)
-                    session_store.append_turn("guest", session_id, "assistant", f"I can help add '{prod_name}' to your cart.")
+                    session_store.append_turn(user_id, session_id, "user", question)
+                    session_store.append_turn(user_id, session_id, "assistant", f"I can help add '{prod_name}' to your cart.")
                 return AssistantOutcome(
                     response=f"I can help add '{prod_name}' to your cart. Please confirm below.",
                     outcome="answered",
@@ -94,8 +98,8 @@ class GroundedAssistant:
             result = self.provider.converse(prepared.question, prepared.product, prepared.reviews)
             validated = validate_grounded_output(result.payload, prepared.reviews, self.system_canary)
             if session_id and validated.get("answer"):
-                session_store.append_turn("guest", session_id, "user", question)
-                session_store.append_turn("guest", session_id, "assistant", validated["answer"])
+                session_store.append_turn(user_id, session_id, "user", question)
+                session_store.append_turn(user_id, session_id, "assistant", validated["answer"])
             return AssistantOutcome(
                 response=validated["answer"],
                 outcome=validated["decision"],

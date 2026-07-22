@@ -19,12 +19,24 @@ version = "0.1.0-SNAPSHOT"
 def opentelemetryVersion = "1.57.0"
 def opentelemetryInstrumentationVersion = "2.23.0"
 def grpcVersion = "1.78.0"
-def jacksonVersion = "2.20.1"
+def jacksonVersion = "2.21.4"
+def nettyVersion = "4.1.135.Final"
 def protocVersion = "4.33.2"
 
 tasks.withType(JavaCompile).configureEach {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
+}
+
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "io.netty" &&
+                details.requested.name.startsWith("netty-") &&
+                !details.requested.name.startsWith("netty-tcnative")) {
+            details.useVersion nettyVersion
+            details.because "Keep Netty runtime modules on the patched 4.1 line for CI image vulnerability gates."
+        }
+    }
 }
 
 ext {

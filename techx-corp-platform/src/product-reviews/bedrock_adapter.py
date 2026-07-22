@@ -437,9 +437,12 @@ class BedrockAdapter:
                 {"text": question},
             ]
         else:
+            # Contextual qualifiers alone exclude these blocks from the other
+            # Guardrail policies. Keep guard_content so prompt-attack, content,
+            # and sensitive-information checks remain active as well.
             content = [
-                {"guardContent": {"text": {"text": context, "qualifiers": ["grounding_source"]}}},
-                {"guardContent": {"text": {"text": question, "qualifiers": ["query"]}}},
+                {"guardContent": {"text": {"text": context, "qualifiers": ["grounding_source", "guard_content"]}}},
+                {"guardContent": {"text": {"text": question, "qualifiers": ["query", "guard_content"]}}},
             ]
         request: dict[str, Any] = {
             "modelId": self.model_id,

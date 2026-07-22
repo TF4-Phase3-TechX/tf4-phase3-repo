@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState } from 'react';
-import { useCart } from '../../providers/Cart.provider';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface CartActionProposalData {
     actionType: string;
@@ -15,12 +15,14 @@ export interface CartActionProposalData {
 
 interface CartActionCardProps {
     proposal: CartActionProposalData;
+    userId: string;
+    sessionId: string;
     onConfirmed?: () => void;
     onCancelled?: () => void;
 }
 
-export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, onConfirmed, onCancelled }) => {
-    const { addItem } = useCart();
+export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId, sessionId, onConfirmed, onCancelled }) => {
+    const queryClient = useQueryClient();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [isCancelled, setIsCancelled] = useState(false);
@@ -29,11 +31,18 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, onConf
         if (isSubmitting || isConfirmed || isCancelled) return;
         setIsSubmitting(true);
         try {
-            await addItem({
-                productId: proposal.productId,
-                quantity: proposal.quantity || 1,
+            const response = await fetch('/api/copilot-cart-confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    sessionId,
+                    confirmationToken: proposal.idempotencyKey,
+                }),
             });
+            if (!response.ok) throw new Error('Proposal is invalid, expired, or already used');
             setIsConfirmed(true);
+            await queryClient.invalidateQueries({ queryKey: ['cart'] });
             if (onConfirmed) onConfirmed();
         } catch (error) {
             console.error('Failed to add item to cart via Copilot proposal:', error);

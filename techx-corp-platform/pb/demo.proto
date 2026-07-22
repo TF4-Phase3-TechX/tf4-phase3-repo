@@ -109,6 +109,7 @@ service ProductReviewService {
   rpc GetAverageProductReviewScore(GetAverageProductReviewScoreRequest) returns (GetAverageProductReviewScoreResponse){}
   rpc AskProductAIAssistant(AskProductAIAssistantRequest) returns (AskProductAIAssistantResponse){}
   rpc SearchProductsAIAssistant(SearchProductsAIAssistantRequest) returns (SearchProductsAIAssistantResponse){}
+  rpc ConfirmCartAction(ConfirmCartActionRequest) returns (ConfirmCartActionResponse){}
 }
 
 message ProductReview {
@@ -146,6 +147,7 @@ message AskProductAIAssistantRequest {
     string product_id = 1;
     string question = 2;
     string session_id = 3;
+    string user_id = 4;
 }
 
 message AskProductAIAssistantResponse {
@@ -156,6 +158,7 @@ message AskProductAIAssistantResponse {
 message SearchProductsAIAssistantRequest {
     string query = 1;
     string session_id = 2;
+    string user_id = 3;
 }
 
 message SearchProductsAIAssistantResponse {
@@ -173,6 +176,17 @@ message SearchEvidenceTrace {
     int32 input_tokens = 6;
     int32 output_tokens = 7;
     double estimated_cost_usd = 8;
+}
+
+message ConfirmCartActionRequest {
+    string user_id = 1;
+    string session_id = 2;
+    string confirmation_token = 3;
+}
+
+message ConfirmCartActionResponse {
+    bool applied = 1;
+    string outcome = 2;
 }
 
 // ---------------Shipping Service----------
@@ -213,6 +227,7 @@ message Address {
 service CurrencyService {
     rpc GetSupportedCurrencies(Empty) returns (GetSupportedCurrenciesResponse) {}
     rpc Convert(CurrencyConversionRequest) returns (Money) {}
+    rpc BatchConvert(BatchCurrencyConversionRequest) returns (BatchCurrencyConversionResponse) {}
 }
 
 // Represents an amount of money with its currency type.
@@ -243,6 +258,15 @@ message CurrencyConversionRequest {
 
     // The 3-letter currency code defined in ISO 4217.
     string to_code = 2;
+}
+
+message BatchCurrencyConversionRequest {
+    repeated Money from = 1;
+    string to_code = 2;
+}
+
+message BatchCurrencyConversionResponse {
+    repeated Money converted = 1;
 }
 
 // -------------Payment service-----------------
