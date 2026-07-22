@@ -5,7 +5,7 @@ import warnings
 
 import demo_pb2 as demo__pb2
 
-GRPC_GENERATED_VERSION = '1.68.1'
+GRPC_GENERATED_VERSION = '1.71.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -462,6 +462,11 @@ class ProductReviewServiceStub(object):
                 request_serializer=demo__pb2.SearchProductsAIAssistantRequest.SerializeToString,
                 response_deserializer=demo__pb2.SearchProductsAIAssistantResponse.FromString,
                 _registered_method=True)
+        self.ConfirmCartAction = channel.unary_unary(
+                '/oteldemo.ProductReviewService/ConfirmCartAction',
+                request_serializer=demo__pb2.ConfirmCartActionRequest.SerializeToString,
+                response_deserializer=demo__pb2.ConfirmCartActionResponse.FromString,
+                _registered_method=True)
 
 
 class ProductReviewServiceServicer(object):
@@ -493,6 +498,12 @@ class ProductReviewServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ConfirmCartAction(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ProductReviewServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -515,6 +526,11 @@ def add_ProductReviewServiceServicer_to_server(servicer, server):
                     servicer.SearchProductsAIAssistant,
                     request_deserializer=demo__pb2.SearchProductsAIAssistantRequest.FromString,
                     response_serializer=demo__pb2.SearchProductsAIAssistantResponse.SerializeToString,
+            ),
+            'ConfirmCartAction': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConfirmCartAction,
+                    request_deserializer=demo__pb2.ConfirmCartActionRequest.FromString,
+                    response_serializer=demo__pb2.ConfirmCartActionResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -627,6 +643,33 @@ class ProductReviewService(object):
             '/oteldemo.ProductReviewService/SearchProductsAIAssistant',
             demo__pb2.SearchProductsAIAssistantRequest.SerializeToString,
             demo__pb2.SearchProductsAIAssistantResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ConfirmCartAction(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/oteldemo.ProductReviewService/ConfirmCartAction',
+            demo__pb2.ConfirmCartActionRequest.SerializeToString,
+            demo__pb2.ConfirmCartActionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -780,6 +823,11 @@ class CurrencyServiceStub(object):
                 request_serializer=demo__pb2.CurrencyConversionRequest.SerializeToString,
                 response_deserializer=demo__pb2.Money.FromString,
                 _registered_method=True)
+        self.BatchConvert = channel.unary_unary(
+                '/oteldemo.CurrencyService/BatchConvert',
+                request_serializer=demo__pb2.BatchCurrencyConversionRequest.SerializeToString,
+                response_deserializer=demo__pb2.BatchCurrencyConversionResponse.FromString,
+                _registered_method=True)
 
 
 class CurrencyServiceServicer(object):
@@ -799,6 +847,12 @@ class CurrencyServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def BatchConvert(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CurrencyServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -811,6 +865,11 @@ def add_CurrencyServiceServicer_to_server(servicer, server):
                     servicer.Convert,
                     request_deserializer=demo__pb2.CurrencyConversionRequest.FromString,
                     response_serializer=demo__pb2.Money.SerializeToString,
+            ),
+            'BatchConvert': grpc.unary_unary_rpc_method_handler(
+                    servicer.BatchConvert,
+                    request_deserializer=demo__pb2.BatchCurrencyConversionRequest.FromString,
+                    response_serializer=demo__pb2.BatchCurrencyConversionResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -869,6 +928,33 @@ class CurrencyService(object):
             '/oteldemo.CurrencyService/Convert',
             demo__pb2.CurrencyConversionRequest.SerializeToString,
             demo__pb2.Money.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BatchConvert(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/oteldemo.CurrencyService/BatchConvert',
+            demo__pb2.BatchCurrencyConversionRequest.SerializeToString,
+            demo__pb2.BatchCurrencyConversionResponse.FromString,
             options,
             channel_credentials,
             insecure,

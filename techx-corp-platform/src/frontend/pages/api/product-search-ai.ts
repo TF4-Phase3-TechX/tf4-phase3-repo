@@ -8,8 +8,11 @@ import ProductReviewGateway from '../../gateways/rpc/ProductReview.gateway';
 const handler = async ({ method, body }: NextApiRequest, res: NextApiResponse) => {
     switch (method) {
         case 'POST': {
-            const { query = '', sessionId = '' } = body;
-            const response = await ProductReviewGateway.searchProductsAIAssistant(query, sessionId);
+            const { query = '', sessionId = '', userId = '' } = body;
+            if (![query, sessionId, userId].every((value) => typeof value === 'string') || !query.trim() || !sessionId || !userId) {
+                return res.status(400).json({ error: 'query, sessionId and userId are required' });
+            }
+            const response = await ProductReviewGateway.searchProductsAIAssistant(query, sessionId, userId);
             return res.status(200).json(response);
         }
         default: {

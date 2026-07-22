@@ -564,6 +564,12 @@ components:
         value: payment:8080
       - name: PRODUCT_CATALOG_ADDR
         value: product-catalog:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: APP_ENV
+        value: production
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
       - name: SHIPPING_ADDR
         value: http://shipping:8080
       - name: KAFKA_ADDR

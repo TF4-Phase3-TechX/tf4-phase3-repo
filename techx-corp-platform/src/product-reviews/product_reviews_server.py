@@ -31,7 +31,6 @@ from database import fetch_avg_product_review_score_from_db, fetch_product_revie
 import demo_pb2
 import demo_pb2_grpc
 from metrics import init_metrics, llm_metric_identity
-import uuid
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
 from session_store import session_store
 
@@ -40,6 +39,7 @@ logger = logging.getLogger("main")
 tracer = trace.get_tracer("product-reviews")
 product_review_svc_metrics = None
 product_catalog_stub = None
+cart_stub = None
 assistant = None
 
 SEARCH_UNAVAILABLE_RESPONSE = "I can only help you search for products in our catalog."
@@ -69,12 +69,17 @@ class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
         # Question content is intentionally absent from logs and trace attributes.
         logger.info("ai_assistant_request", extra={"product_id": request.product_id})
         session_id = getattr(request, "session_id", "")
-        return get_ai_assistant_response(request.product_id, request.question, session_id)
+        user_id = getattr(request, "user_id", "guest") or "guest"
+        return get_ai_assistant_response(request.product_id, request.question, session_id, user_id)
 
     def SearchProductsAIAssistant(self, request, context):
         logger.info("nl_search_request")
         session_id = getattr(request, "session_id", "")
-        return search_products_ai(request.query, session_id)
+        user_id = getattr(request, "user_id", "guest") or "guest"
+        return search_products_ai(request.query, session_id, user_id)
+
+    def ConfirmCartAction(self, request, context):
+        return confirm_cart_action(request.user_id, request.session_id, request.confirmation_token)
 
     def Check(self, request, context):
         return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.SERVING)
@@ -111,7 +116,7 @@ def fetch_product_info(product_id: str) -> dict:
     return MessageToDict(product, preserving_proto_field_name=True)
 
 
-def get_ai_assistant_response(request_product_id: str, question: str, session_id: str = ""):
+def get_ai_assistant_response(request_product_id: str, question: str, session_id: str = "", user_id: str = "guest"):
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
         span.set_attribute("app.product.id", request_product_id)
         span.set_attribute("app.caller.feature", "product_qa")
@@ -126,7 +131,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                 error_class="injected_rate_limit",
             )
         else:
-            outcome = assistant.answer(request_product_id, question, session_id)
+            outcome = assistant.answer(request_product_id, question, session_id, user_id)
             if check_feature_flag("llmInaccurateResponse") and request_product_id == "L9ECAV7KIM":
                 outcome = AssistantOutcome(
                     response=INSUFFICIENT_RESPONSE,
@@ -268,7 +273,7 @@ def _fuzzy_match_product_by_name(query_name: str, products: list) -> list:
     return [p for _, p in scored_products]
 
 
-def search_products_ai(query: str, session_id: str = ""):
+def search_products_ai(query: str, session_id: str = "", user_id: str = "guest"):
     with tracer.start_as_current_span("search_products_ai") as span:
         span.set_attribute("app.caller.feature", "copilot_search")
         # --- Input validation ---
@@ -287,7 +292,7 @@ def search_products_ai(query: str, session_id: str = ""):
 
         try:
             # --- Fetch multi-turn conversation history ---
-            history = session_store.get_history("guest", session_id) if session_id else []
+            history = session_store.get_history(user_id, session_id) if session_id else []
 
             # --- Parse intent via LLM with multi-turn history ---
             intent = assistant.provider.parse_search_intent(query, history=history)
@@ -327,8 +332,8 @@ def search_products_ai(query: str, session_id: str = ""):
             if intent.get("search_type") == "clarify":
                 clarify_q = intent.get("clarify_question") or "Bạn có thể cho biết rõ hơn loại sản phẩm bạn đang tìm kiếm không?"
                 if session_id:
-                    session_store.append_turn("guest", session_id, "user", query)
-                    session_store.append_turn("guest", session_id, "assistant", clarify_q)
+                    session_store.append_turn(user_id, session_id, "user", query)
+                    session_store.append_turn(user_id, session_id, "assistant", clarify_q)
                 span.set_attribute("app.search.outcome", "clarify")
                 return demo_pb2.SearchProductsAIAssistantResponse(
                     results=[],
@@ -356,18 +361,30 @@ def search_products_ai(query: str, session_id: str = ""):
                     qty = 1
 
                 if matched:
+                    if not session_id:
+                        return _refused_search_response(
+                            parsed_intent=parsed_intent_json,
+                            filter_applied="cart_confirmation_session_required",
+                            before=candidate_count_before,
+                            after=0,
+                            input_tokens=_in_tok,
+                            output_tokens=_out_tok,
+                        )
                     target = matched[0]
+                    confirmation_token = session_store.create_cart_proposal(
+                        user_id, session_id, target.id, target.name, qty
+                    )
                     proposal = demo_pb2.CartActionProposal(
                         action_type="ADD_TO_CART",
                         product_id=target.id,
                         product_name=target.name,
                         quantity=qty,
                         confirmation_required=True,
-                        idempotency_key=str(uuid.uuid4()),
+                        idempotency_key=confirmation_token,
                     )
                     if session_id:
-                        session_store.append_turn("guest", session_id, "user", query)
-                        session_store.append_turn("guest", session_id, "assistant", f"I can help add '{target.name}' to your cart.")
+                        session_store.append_turn(user_id, session_id, "user", query)
+                        session_store.append_turn(user_id, session_id, "assistant", f"I can help add '{target.name}' to your cart.")
                     return demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target],
                         trace=demo_pb2.SearchEvidenceTrace(
@@ -415,14 +432,14 @@ def search_products_ai(query: str, session_id: str = ""):
                     target_product = all_products[0]
 
                 if target_product:
-                    review_outcome = assistant.answer(target_product.id, query, session_id)
+                    review_outcome = assistant.answer(target_product.id, query, session_id, user_id)
                     answer_text = review_outcome.response
                     intent["response_message"] = answer_text
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
 
                     if session_id:
-                        session_store.append_turn("guest", session_id, "user", query)
-                        session_store.append_turn("guest", session_id, "assistant", answer_text)
+                        session_store.append_turn(user_id, session_id, "user", query)
+                        session_store.append_turn(user_id, session_id, "assistant", answer_text)
 
                     return demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target_product],
@@ -500,8 +517,8 @@ def search_products_ai(query: str, session_id: str = ""):
 
             if session_id and filtered:
                 res_names = ", ".join([p.name for p in filtered[:3]])
-                session_store.append_turn("guest", session_id, "user", query)
-                session_store.append_turn("guest", session_id, "assistant", f"Found products: {res_names}")
+                session_store.append_turn(user_id, session_id, "user", query)
+                session_store.append_turn(user_id, session_id, "assistant", f"Found products: {res_names}")
 
 
             # Compare filter — fail closed on any ambiguity.
@@ -594,8 +611,8 @@ def search_products_ai(query: str, session_id: str = ""):
 
             if session_id:
                 p_names = ", ".join(p.name for p in filtered[:3]) if filtered else "không có sản phẩm"
-                session_store.append_turn("guest", session_id, "user", query)
-                session_store.append_turn("guest", session_id, "assistant", f"Dưới đây là các sản phẩm phù hợp: {p_names}")
+                session_store.append_turn(user_id, session_id, "user", query)
+                session_store.append_turn(user_id, session_id, "assistant", f"Dưới đây là các sản phẩm phù hợp: {p_names}")
 
             return demo_pb2.SearchProductsAIAssistantResponse(
                 results=filtered,
@@ -627,6 +644,41 @@ def search_products_ai(query: str, session_id: str = ""):
             logger.info("nl_search_unexpected_error", extra={"error": str(exc)[:200]})
             return _refused_search_response()
 
+
+
+def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
+    """Atomically consume a proposal, then perform the only Copilot cart write."""
+    with tracer.start_as_current_span("confirm_cart_action") as span:
+        try:
+            proposal = session_store.consume_cart_proposal(user_id, session_id, confirmation_token)
+        except (ValueError, RuntimeError):
+            proposal = None
+        if not proposal:
+            span.set_attribute("app.cart.confirmation.outcome", "invalid_or_expired")
+            return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="invalid_or_expired")
+
+        try:
+            cart_stub.AddItem(
+                demo_pb2.AddItemRequest(
+                    user_id=proposal["user_id"],
+                    item=demo_pb2.CartItem(
+                        product_id=proposal["product_id"],
+                        quantity=proposal["quantity"],
+                    ),
+                ),
+                timeout=2.0,
+            )
+        except grpc.RpcError as exc:
+            # The token is intentionally already consumed: retrying below the
+            # confirmation boundary could duplicate a write. The user must ask
+            # for a fresh proposal after a downstream failure.
+            logger.warning("copilot_cart_confirmation_failed", extra={"grpc_code": str(exc.code())})
+            span.set_attribute("app.cart.confirmation.outcome", "downstream_failed")
+            return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="downstream_failed")
+
+        span.set_attribute("app.cart.confirmation.outcome", "applied")
+        span.set_attribute("app.cart.product_id", proposal["product_id"])
+        return demo_pb2.ConfirmCartActionResponse(applied=True, outcome="applied")
 
 
 def _record_search_metrics(
@@ -679,7 +731,7 @@ def configure_logging(service_name: str) -> None:
 
 
 def main() -> None:
-    global tracer, product_review_svc_metrics, product_catalog_stub, assistant
+    global tracer, product_review_svc_metrics, product_catalog_stub, cart_stub, assistant
     service_name = must_map_env("OTEL_SERVICE_NAME")
     api.set_provider(
         FlagdProvider(host=os.environ.get("FLAGD_HOST", "flagd"), port=int(os.environ.get("FLAGD_PORT", "8013")))
@@ -690,6 +742,9 @@ def main() -> None:
 
     product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(
         grpc.insecure_channel(must_map_env("PRODUCT_CATALOG_ADDR"))
+    )
+    cart_stub = demo_pb2_grpc.CartServiceStub(
+        grpc.insecure_channel(must_map_env("CART_ADDR"))
     )
     system_canary = os.environ.get("BEDROCK_SYSTEM_CANARY", "")
     provider = BedrockAdapter(

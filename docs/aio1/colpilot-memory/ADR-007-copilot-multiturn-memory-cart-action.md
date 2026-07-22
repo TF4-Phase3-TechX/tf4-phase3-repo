@@ -1,8 +1,8 @@
 # ADR-007: Bounded multi-turn memory and confirmed cart action (excessive-agency control) for the Shopping Copilot
 
 - Date: 2026-07-21
-- Status: **Proposed** (design complete across v1–v5 iterations; no code written yet; runtime evidence gates pending)
-- Owner: HuyVu
+- Status: **Implemented, verification pending** (local unit/type checks pass; runtime canary and named approvals remain)
+- Owner: Huy Vũ
 - Required approvers: AIO1 Tech Lead (Nam), CartService owner (cross-team dependency, see Open Items), CDO-07 Audit
 - Signatures: to be recorded through the closure PR once runtime gates pass
 
@@ -51,9 +51,11 @@ Neither surface uses an LLM-produced `product_id` directly. A new `_fuzzy_match_
 
 `quantity` is clamped to `max(1, min(proposed_qty, 10))` regardless of source (LLM or regex).
 
-### 5. Idempotency is enforced at the frontend boundary, and this boundary is explicitly disclosed
+### 5. Confirmation is server-authorized and single-use
 
-`AddItemRequest` in `CartService`'s proto currently has no `idempotency_key` field. Rather than claim a guarantee the stack cannot yet provide, the design generates an `idempotency_key` (UUID) per `CartActionProposal` and enforces single-use at the Frontend (`isSubmitting=true` disables the confirm button on first click). **This does not protect against retries below the button** (e.g. browser-level request retry) since `CartService` itself does not dedupe. This is recorded as an accepted gap, not a resolved one — see Open Items.
+`product-reviews` creates an opaque 256-bit confirmation token and stores the authoritative proposal in Valkey with a five-minute TTL. The client receives the token in the existing `idempotency_key` field but never supplies `product_id` or quantity to the write path. A separate `ConfirmCartAction` RPC atomically validates the token's `user_id` and `session_id`, consumes it, then calls `CartService.AddItem` using only the server-stored values. Replay, cross-user and cross-session confirmation therefore fail before a cart write.
+
+The token is consumed before the downstream call. This gives at-most-once execution at the Copilot boundary: after a timeout or CartService failure the request is not retried because the first call may have applied. The user must request a fresh proposal. Native deduplication inside `CartService` remains a broader cross-team improvement, not a prerequisite for preventing Copilot replay.
 
 ### 6. Caller observability
 
@@ -71,9 +73,11 @@ query/question + session_id -> NFKC/size validation
   -> deterministic catalog resolution (_fuzzy_match_product_by_name)
        0 match -> refuse | 1 match -> proposal | >=2 matches -> clarify, no auto-select
   -> quantity clamp [1,10]
-  -> CartActionProposal (idempotency_key, confirmation_required=true)
+  -> authoritative proposal stored in Valkey with 5-minute TTL
+  -> CartActionProposal (opaque confirmation token, confirmation_required=true)
   -> Frontend confirmation gate (human click required)
-  -> CartService.AddItem (only path with write privilege; LLM/backend never calls it directly)
+  -> ConfirmCartAction validates user/session + atomically consumes token
+  -> CartService.AddItem using server-stored product and quantity
 ```
 
 The LLM never calls `CartService` directly, never selects a `product_id` that reaches the cart write path unresolved, and never bypasses the confirmation gate. This preserves the `Unauthorized Writes = 0` bar established under Mandate 6/14.
@@ -85,7 +89,8 @@ The LLM never calls `CartService` directly, never selects a `product_id` that re
 - **Auto-selecting the first fuzzy-match product on ambiguity**: creates a real risk of confirming a cart-add for the wrong product if the user does not read the confirmation card carefully. Rejected in favor of a mandatory clarification turn.
 - **Trusting an LLM-emitted `product_id` directly**: the model has no reliable memory of real catalog IDs; using it as a database key risks displaying/adding an incorrect or non-existent product. Rejected in favor of deterministic catalog resolution.
 - **In-memory session store fallback in production EKS**: silently breaks under multi-pod routing (session lost when a later turn lands on a different pod than an earlier one). Restricted to local single-instance dev only; Valkey/Redis is mandatory in staging/production.
-- **Claiming gRPC-level idempotency**: `CartService`'s current proto has no field for it. Rejected as a false guarantee; recorded instead as a disclosed, frontend-only mitigation pending a cross-team proto change.
+- **Frontend-only confirmation/idempotency**: a disabled button cannot stop HTTP/gRPC retries or a crafted request. Rejected in favor of an authoritative, atomic, single-use proposal store at the product-reviews boundary.
+- **Retrying `AddItem` after timeout**: the first call may already have mutated the cart. Rejected; consume-before-call provides at-most-once behavior and requires a fresh user-confirmed proposal after failure.
 
 ## Consequences and open items
 
@@ -93,18 +98,20 @@ Cart action and multi-turn memory add a new trust boundary (session store) and a
 
 | Item | Status | Notes |
 |---|---|---|
-| `CartService.AddItem` server-side dedupe | Open, cross-team | Idempotency currently frontend-only; needs a proto change owned outside `product-reviews`/AIO1 if pursued |
-| `cart_action` schema validation in `bedrock_adapter.py` | Design complete, not yet implemented | New `SEARCH_INTENT_SCHEMA` branch + `_validate_search_intent()` case |
+| `CartService.AddItem` native dedupe | Optional, cross-team | Copilot consumes proposals once; CartService-wide idempotency would protect other callers too |
+| `cart_action` schema validation in `bedrock_adapter.py` | Implemented | Strict branch in `SEARCH_INTENT_SCHEMA` and `_validate_search_intent()` |
 | Ambiguity-resolution eval coverage | Design complete, dataset pending | `cart_action_ambiguous_match`, `cart_action_qa_surface_no_reviews`, `multi_turn_ambiguity_followup` test groups to be added to `generate_dataset.py` |
 | Multi-turn quality vs. security rubric split | Noted, not yet reflected in `AI_EVAL_RUBRIC.md` | `multi_turn_ambiguity_followup` measures memory quality (partial-pass possible); `fake_history_attack` measures a hard security gate (pass/fail only) — these should not share one scoring rubric |
-| Valkey/Redis availability in staging/production | Operational requirement, not yet provisioned | Must be confirmed before canary; local dev fallback is explicitly not production-eligible |
-| Session identity binding without full auth | Accepted risk | `guest` sessions keyed by UUID only; acceptable given UUIDv4 unguessability, revisit if abuse observed |
+| Valkey/Redis availability in staging/production | Configured, runtime proof pending | Chart points product-reviews at `valkey-cart`; startup and runtime fail closed when unavailable outside local dev |
+| Session identity binding without full auth | Accepted platform constraint | Current storefront identity is client-generated. Tokens remain high-entropy, short-lived and user/session-bound; replace with authenticated subject when platform auth exists |
 
 | Evidence | Link/status |
 |---|---|
 | Design iteration record (v1–v5) | Complete: this document supersedes `implementation_plan.md` v1–v5 |
-| Proto changes (`demo.proto`) | Drafted, not yet merged |
-| `bedrock_adapter.py` cart_action schema | Not yet implemented |
+| Proto changes (`demo.proto`) | Implemented on integration branch |
+| `bedrock_adapter.py` cart_action schema | Implemented on integration branch |
+| Session/proposal safety unit tests | Local pass: bounded/scoped history, invalid IDs, expiry, cross-user/cross-session rejection and replay rejection |
+| Frontend type check | Local `npx tsc --noEmit` pass |
 | Eval dataset additions (6 new test groups) | Not yet implemented |
 | Runtime canary (multi-pod session store, cart confirmation flow) | Pending |
 | AIO1 Tech Lead (Nam) | Review required |

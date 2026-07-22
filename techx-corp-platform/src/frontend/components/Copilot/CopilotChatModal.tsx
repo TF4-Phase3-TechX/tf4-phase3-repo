@@ -3,6 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import CartActionCard, { CartActionProposalData } from './CartActionCard';
+import SessionGateway from '../../gateways/Session.gateway';
 
 interface ChatMessage {
     id: string;
@@ -17,6 +18,7 @@ export const CopilotChatModal: React.FC = () => {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const userId = useMemo(() => SessionGateway.getSession().userId, []);
 
     const sessionId = useMemo(() => {
         if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -44,7 +46,7 @@ export const CopilotChatModal: React.FC = () => {
             const response = await fetch('/api/product-search-ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: userMsgText, sessionId }),
+                body: JSON.stringify({ query: userMsgText, sessionId, userId }),
             });
             const data = await response.json();
 
@@ -230,7 +232,7 @@ export const CopilotChatModal: React.FC = () => {
                         </div>
                         {msg.proposal && (
                             <div style={{ width: '100%', marginTop: '4px' }}>
-                                <CartActionCard proposal={msg.proposal} />
+                                <CartActionCard proposal={msg.proposal} userId={userId} sessionId={sessionId} />
                             </div>
                         )}
                         {msg.results && msg.results.length > 0 && (
