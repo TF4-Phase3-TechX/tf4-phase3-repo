@@ -1,0 +1,90 @@
+﻿{
+    "Addresses": [
+        {
+            "AllocationId": "eipalloc-094e405d1f27d4ab3",
+            "AssociationId": "eipassoc-0b191137d8f4a3451",
+            "Domain": "vpc",
+            "NetworkInterfaceId": "eni-0ae19ffaaa4ad0df9",
+            "NetworkInterfaceOwnerId": "511825856493",
+            "PrivateIpAddress": "10.0.1.145",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "techx-vpc-us-east-1a"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "Phase3"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "TF4"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "CDO_04"
+                }
+            ],
+            "PublicIpv4Pool": "amazon",
+            "NetworkBorderGroup": "us-east-1",
+            "PublicIp": "18.204.125.157"
+        },
+        {
+            "AllocationId": "eipalloc-02d48563f995b22e7",
+            "Domain": "vpc",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "tf4-cdo04-sandbox-nat-eip"
+                },
+                {
+                    "Key": "ManagedBy",
+                    "Value": "terraform"
+                },
+                {
+                    "Key": "cloud-nuke-first-seen",
+                    "Value": "2026-07-07T07:43:47Z"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "sandbox"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "tf4-cdo04"
+                }
+            ],
+            "PublicIpv4Pool": "amazon",
+            "NetworkBorderGroup": "us-east-1",
+            "PublicIp": "32.192.113.119"
+        },
+        {
+            "AllocationId": "eipalloc-058c21d1d7aebfb3e",
+            "AssociationId": "eipassoc-055e52c1e836af8bb",
+            "Domain": "vpc",
+            "NetworkInterfaceId": "eni-0e8a3ee8777947427",
+            "NetworkInterfaceOwnerId": "511825856493",
+            "PrivateIpAddress": "10.0.1.141",
+            "PublicIpv4Pool": "amazon",
+            "NetworkBorderGroup": "us-east-1",
+            "ServiceManaged": "alb",
+            "PublicIp": "35.153.42.208"
+        },
+        {
+            "AllocationId": "eipalloc-090a7ac55788bf134",
+            "AssociationId": "eipassoc-0a53c37426c8f58ec",
+            "Domain": "vpc",
+            "NetworkInterfaceId": "eni-0501db45a02fd95d6",
+            "NetworkInterfaceOwnerId": "511825856493",
+            "PrivateIpAddress": "10.0.2.32",
+            "PublicIpv4Pool": "amazon",
+            "NetworkBorderGroup": "us-east-1",
+            "ServiceManaged": "alb",
+            "PublicIp": "54.243.175.192"
+        }
+    ]
+}
