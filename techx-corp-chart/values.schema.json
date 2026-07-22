@@ -395,6 +395,10 @@
         "serviceAccountName": {
           "type": "string"
         },
+        "automountServiceAccountToken": {
+          "type": "boolean",
+          "default": false
+        },
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"
         },
@@ -430,9 +434,6 @@
           "items": {
             "$ref": "#/definitions/Env"
           }
-        },
-        "serviceAccountName": {
-          "type": "string"
         },
         "command": {
           "type": "array",
