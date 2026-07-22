@@ -40,6 +40,8 @@ OpenSearch subchart tạo một Role namespace chỉ có quyền `use` một Pod
 
 Grafana dùng Role namespace do chart cha quản lý. RBAC mặc định của subchart đã tắt vì nó cho phép đọc cả Secret và dùng ClusterRole.
 
+Do Argo CD đang đặt `prune: false`, hai resource cũ `grafana-clusterrole` và `grafana-clusterrolebinding` không tự bị xóa khi chúng biến mất khỏi manifest của subchart. Chart vì vậy render tombstone cùng tên với `rules: []` và `subjects: []` để vô hiệu hóa quyền cũ mà không cần xóa trực tiếp trên production. Tombstone không cấp bất kỳ quyền nào; có thể xóa trong một đợt cleanup được duyệt sau khi bật prune có kiểm soát.
+
 Không Role nào của SEC-22 dùng wildcard verb/resource. Không ServiceAccount nào được cấp `cluster-admin`.
 
 ## 4. Kiểm tra manifest trước deploy
@@ -55,7 +57,7 @@ helm template techx-observability .\techx-corp-chart `
   -f ..\tf4-phase3-gitops-manifests\environments\production\alertmanager-routing-values.yaml
 ```
 
-Kết quả tại thời điểm viết tài liệu: Helm lint và render thành công. Grafana chỉ render Role `grafana-sidecar-configmaps` với resource `configmaps` và verb `get/list/watch`; không render Grafana ClusterRole.
+Kết quả tại thời điểm viết tài liệu: Helm lint và render thành công. Quyền có hiệu lực của Grafana nằm ở Role `grafana-sidecar-configmaps`, với resource `configmaps` và verb `get/list/watch`. Hai object cluster-scope cũ được render dưới dạng tombstone rỗng để xử lý an toàn môi trường `prune: false`.
 
 ## 5. Điều kiện trước khi lấy bằng chứng runtime
 
