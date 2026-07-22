@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "node --require ./Instrumentation.js server.js",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:resilience": "tsc utils/resilience/optionalDependency.ts utils/resilience/optionalDependency.test.ts --target ES2022 --module commonjs --moduleResolution node --rootDir utils/resilience --outDir .next/cache/resilience-tests --noEmit false --esModuleInterop --skipLibCheck && node --test .next/cache/resilience-tests/optionalDependency.test.js",
     "cy:open": "cypress open",
     "grpc:generate": "mkdir -p ./protos && protoc -I ./pb  --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=esModuleInterop=true --ts_proto_out=./protos --ts_proto_opt=outputServices=grpc-js demo.proto"
   },
@@ -44,7 +46,7 @@
     "next": "16.2.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "sharp": "0.34.5",
+    "sharp": "0.35.0",
     "styled-components": "6.2.0",
     "uuid": "13.0.0"
   },
@@ -66,8 +68,10 @@
     "typescript": "5.9.3"
   },
   "overrides": {
+    "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.1",
-    "fast-uri": "3.1.2",
-    "minimatch": "10.2.5"
+    "fast-uri": "3.1.4",
+    "minimatch": "10.2.5",
+    "sharp": "0.35.0"
   }
 }
