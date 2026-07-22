@@ -10,7 +10,6 @@ import uuid
 import logging
 
 from locust import HttpUser, task, between, LoadTestShape
-from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry, event
 
 from opentelemetry import context, baggage, trace
 from opentelemetry.context import Context
@@ -35,8 +34,6 @@ from opentelemetry.sdk.resources import Resource
 from openfeature import api
 from openfeature.contrib.provider.ofrep import OFREPProvider
 from openfeature.contrib.hook.opentelemetry import TracingHook
-
-from playwright.async_api import Route, Request
 
 # Configure tracer provider first (needed for trace context in logs)
 tracer_provider = TracerProvider()
@@ -243,6 +240,8 @@ class WebsiteUser(HttpUser):
 browser_traffic_enabled = os.environ.get("LOCUST_BROWSER_TRAFFIC_ENABLED", "").lower() in ("true", "yes", "on")
 
 if browser_traffic_enabled:
+    from locust_plugins.users.playwright import PlaywrightUser, PageWithRetry, pw
+
     class WebsiteBrowserUser(PlaywrightUser):
         headless = True  # to use a headless browser, without a GUI
 
@@ -281,7 +280,7 @@ if browser_traffic_enabled:
                 except Exception as e:
                     logging.error(f"Error in add to cart task: {str(e)}")
 
-async def add_baggage_header(route: Route, request: Request):
+async def add_baggage_header(route, request):
     existing_baggage = request.headers.get('baggage', '')
     headers = {
         **request.headers,
