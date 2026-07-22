@@ -826,6 +826,8 @@ components:
         value: :8080
       - name: AD_ADDR
         value: ad:8080
+      - name: AD_TIMEOUT_MS
+        value: "750"
       - name: CART_ADDR
         value: cart:8080
       - name: CHECKOUT_ADDR
