@@ -352,88 +352,43 @@ output "postgresql_migration_backup_prefix" {
   value       = local.postgresql_migration_backup_prefix
 }
 
-# REL-15 - PostgreSQL DMS baseline outputs
-output "postgresql_dms_replication_instance_arn" {
-  description = "AWS DMS replication instance ARN for PostgreSQL migration"
-  value       = aws_dms_replication_instance.postgresql.replication_instance_arn
+# Ref: AUDIT-015 — Athena Forensic Security Analytics outputs
+output "athena_workgroup_name" {
+  description = "Athena workgroup name cho forensic security analytics queries"
+  value       = aws_athena_workgroup.audit_forensics.name
 }
 
-output "postgresql_dms_replication_instance_id" {
-  description = "AWS DMS replication instance ID for PostgreSQL migration"
-  value       = aws_dms_replication_instance.postgresql.replication_instance_id
+output "athena_database_name" {
+  description = "Glue Data Catalog database name chứa audit forensics tables"
+  value       = aws_glue_catalog_database.audit_forensics.name
 }
 
-output "postgresql_dms_replication_instance_class" {
-  description = "AWS DMS replication instance class for PostgreSQL migration"
-  value       = aws_dms_replication_instance.postgresql.replication_instance_class
+output "athena_results_bucket" {
+  description = "S3 bucket lưu trữ kết quả truy vấn Athena (auto-expire sau 7 ngày)"
+  value       = aws_s3_bucket.athena_results.id
 }
 
-output "postgresql_dms_multi_az_enabled" {
-  description = "Whether the PostgreSQL DMS replication instance uses Multi-AZ"
-  value       = aws_dms_replication_instance.postgresql.multi_az
+output "athena_cloudtrail_table" {
+  description = "Glue table name cho CloudTrail events — WHO did WHAT"
+  value       = aws_glue_catalog_table.cloudtrail_events.name
 }
 
-output "postgresql_dms_subnet_group_id" {
-  description = "AWS DMS private subnet group ID for PostgreSQL migration"
-  value       = aws_dms_replication_subnet_group.postgresql.id
+output "athena_config_table" {
+  description = "Glue table name cho AWS Config history — infrastructure change timeline"
+  value       = aws_glue_catalog_table.aws_config_history.name
 }
 
-output "postgresql_dms_security_group_id" {
-  description = "Security group ID attached to the PostgreSQL DMS replication instance"
-  value       = aws_security_group.dms_postgresql_migration.id
+output "athena_eks_table" {
+  description = "Glue table name cho EKS audit events — K8s API server activity"
+  value       = aws_glue_catalog_table.eks_audit_events.name
 }
 
-output "postgresql_dms_source_host" {
-  description = "Temporary internal NLB hostname used by DMS to reach the self-hosted PostgreSQL source"
-  value       = local.postgresql_dms_source_host
+output "athena_analyst_policy_arn" {
+  description = "IAM policy ARN cho CDO07 audit analysts sử dụng Athena forensics"
+  value       = aws_iam_policy.athena_audit_analyst.arn
 }
 
-output "postgresql_dms_source_port" {
-  description = "PostgreSQL source listener port exposed through the temporary internal NLB bridge"
-  value       = 5432
-}
-
-output "postgresql_dms_source_secret_path" {
-  description = "Expected AWS Secrets Manager path for the PostgreSQL source DMS credential; secret value is created outside Terraform"
-  value       = local.postgresql_dms_source_secret_path
-}
-
-output "postgresql_dms_secrets_access_role_arn" {
-  description = "IAM role ARN that AWS DMS can use to read PostgreSQL migration endpoint secrets"
-  value       = aws_iam_role.postgresql_dms_secrets_access.arn
-}
-
-output "postgresql_dms_endpoint_task_handoff_note" {
-  description = "Handoff note for DMS endpoint/task creation"
-  value       = "REL-15 DMS endpoints/tasks use Secrets Manager ARNs for source/target credentials. PostgreSQL passwords are not stored directly in Terraform configuration/state."
-}
-
-output "postgresql_dms_source_endpoint_arn" {
-  description = "AWS DMS source endpoint ARN for the self-hosted PostgreSQL source"
-  value       = aws_dms_endpoint.postgresql_source.endpoint_arn
-}
-
-output "postgresql_dms_target_endpoint_arn" {
-  description = "AWS DMS target endpoint ARN for the RDS PostgreSQL target"
-  value       = aws_dms_endpoint.postgresql_target.endpoint_arn
-}
-
-output "postgresql_dms_forward_task_arn" {
-  description = "AWS DMS forward full-load-and-cdc task ARN for PostgreSQL EKS to RDS"
-  value       = aws_dms_replication_task.postgresql_forward.replication_task_arn
-}
-
-output "postgresql_dms_forward_task_id" {
-  description = "AWS DMS forward full-load-and-cdc task ID for PostgreSQL EKS to RDS"
-  value       = aws_dms_replication_task.postgresql_forward.replication_task_id
-}
-
-output "postgresql_dms_target_secret_path" {
-  description = "AWS Secrets Manager path used by DMS target endpoint for RDS PostgreSQL"
-  value       = local.postgresql_dms_target_secret_path
-}
-
-output "postgresql_dms_reverse_task_note" {
-  description = "Reverse CDC readiness note for rollback planning"
-  value       = "Reverse RDS-to-EKS DMS task is not created in this PR because EKS target write-back credential is not ready. Create a separate reverse target credential/task before post-write cutover if rollback requires reverse CDC."
+output "cloudwatch_insights_forensics_policy_arn" {
+  description = "IAM policy ARN cho CloudWatch Logs Insights real-time forensic queries"
+  value       = aws_iam_policy.cloudwatch_insights_forensics.arn
 }

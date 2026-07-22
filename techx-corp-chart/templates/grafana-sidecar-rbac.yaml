@@ -1,0 +1,32 @@
+{{- if .Values.grafana.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grafana-sidecar-configmaps
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-sidecar-configmaps
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.grafana.serviceAccount.name | default .Values.grafana.fullnameOverride | default "grafana" }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: grafana-sidecar-configmaps
+{{- end }}
