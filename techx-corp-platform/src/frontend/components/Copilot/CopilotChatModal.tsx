@@ -83,7 +83,7 @@ export const CopilotChatModal: React.FC = () => {
                 const askRes = await fetch(`/api/product-ask-ai-assistant/${lastProductId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: userMsgText, sessionId }),
+                    body: JSON.stringify({ question: userMsgText, sessionId, userId }),
                 });
                 const askData = await askRes.json();
                 const reviewAnswerText = askData.response || `Dưới đây là thông tin về sản phẩm bạn đang quan tâm.`;
