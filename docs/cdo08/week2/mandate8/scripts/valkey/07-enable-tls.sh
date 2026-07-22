@@ -28,11 +28,13 @@ case "$PHASE" in
     echo "Verify no plaintext connections remain (check cart logs for ssl=false) before phase 3."
     ;;
   3)
-    echo "Phase 3: add AUTH token while ElastiCache remains transit_encryption_mode=preferred (Terraform)."
+    echo "Phase 3: add AUTH token with auth_token_update_strategy=ROTATE while"
+    echo "ElastiCache remains transit_encryption_mode=preferred (Terraform)."
     echo "Requires TF_VALKEY_AUTH_TOKEN GitHub secret set; the workflow passes it as"
     echo "TF_VAR_valkey_auth_token. After this stage converges and Cart is confirmed"
-    echo "to connect with VALKEY_TLS=true and VALKEY_PASSWORD, create the final PR to"
-    echo "set valkey_transit_encryption_mode=\"required\"."
+    echo "to connect with VALKEY_TLS=true and VALKEY_PASSWORD, create the final PR"
+    echo "to switch auth_token_update_strategy=SET and"
+    echo "valkey_transit_encryption_mode=\"required\"."
     echo "Apply via the terraform-apply pipeline, not directly from this script."
     ;;
   *)
