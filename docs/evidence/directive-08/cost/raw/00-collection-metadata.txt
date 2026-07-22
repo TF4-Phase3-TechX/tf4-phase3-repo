@@ -1,0 +1,12 @@
+D8-COST-02 — Pass 1 collection metadata
+Collected (UTC): 2026-07-22T03:31:03Z
+Collected (ICT, UTC+7): 2026-07-22 03:31:03 +0000
+Cluster: techx-tf4-cluster (arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster)
+Namespace: techx-tf4
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan
+
+Trigger: user (Tuan) requested execution NOW, explicitly NOT waiting for the 48h stabilization window.
+This is Pass 1 (immediate post-cutover snapshot) only. Pass 2 (4-6h+ later, per plan section 3) has NOT been run.
+CDO-08 mandate evidence (docs/cdo08/week2/mandate8/evidence/MANDATE-08-MANAGED-DATA-MIGRATION-EVIDENCE.md) records
+self-hosted postgresql/valkey-cart/kafka pod termination at approx 2026-07-22 ~09:40-09:50 ICT (Killing events).
+Data parity PASS (post-cutover) and stabilization PASS are NOT independently confirmed as of this collection -- see plan doc caveats.

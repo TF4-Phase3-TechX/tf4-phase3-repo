@@ -1,0 +1,9 @@
+=== 05-nodeclaims-pass1 (retry under TF4-CostPerfReadOnlyAlerting) ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T03:51:36Z
+
+--- Attempt 1: TF4-BaseReadOnly (2026-07-22T03:31Z) ---
+Error from server (Forbidden): nodeclaims.karpenter.sh is forbidden: User "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-BaseReadOnly_5e03394d61df47e7/tuan" cannot list resource "nodeclaims" in API group "karpenter.sh" at the cluster scope
+
+--- Attempt 2: TF4-CostPerfReadOnlyAlerting (retry after role switch) ---
+Error from server (Forbidden): nodeclaims.karpenter.sh is forbidden: User "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan" cannot list resource "nodeclaims" in API group "karpenter.sh" at the cluster scope
