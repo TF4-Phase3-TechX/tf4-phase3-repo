@@ -44,7 +44,7 @@
     "next": "16.2.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "sharp": "0.34.5",
+    "sharp": "0.35.0",
     "styled-components": "6.2.0",
     "uuid": "13.0.0"
   },
@@ -66,8 +66,10 @@
     "typescript": "5.9.3"
   },
   "overrides": {
+    "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.1",
-    "fast-uri": "3.1.2",
-    "minimatch": "10.2.5"
+    "fast-uri": "3.1.4",
+    "minimatch": "10.2.5",
+    "sharp": "0.35.0"
   }
 }
