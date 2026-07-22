@@ -1,4 +1,11 @@
 # D19-PERF-03: Khóa Hạ Tầng và Ghi Test Controls cho phép so sánh Trước-Sau
+
+**Owner:** CDO-04  
+**Reviewer/notify:** CDO-08 / Tech Lead  
+**Trạng thái (Status):** Ready for Review (Locking baseline complete post-migration)  
+**Vùng (Region):** `us-east-1`  
+**Tài khoản (Account):** `511825856493`  
+
 ---
 
 ## 1. Mục tiêu (Objective)
