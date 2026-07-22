@@ -104,6 +104,9 @@ Chỉ có 3 microservices được kích hoạt HPA trong `values.yaml`, cấu h
 
 Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` thuộc AZ `us-east-1a` và `ip-10-0-11-40` thuộc AZ `us-east-1b`) được ghi nhận chi tiết, chứng minh phân phối tải cân bằng trên multi-AZ:
 
+> [!NOTE]
+> Theo **Mandate 08**, toàn bộ các dịch vụ cơ sở dữ liệu và hàng đợi (PostgreSQL, Valkey, Kafka) đã được di trú thành công sang **AWS Managed Services** (RDS, ElastiCache, MSK). Các Pod tự chạy (self-hosted) tương ứng cũ đã được dọn dẹp và không còn chạy trong namespace `techx-tf4`.
+
 | Node | Pod Name | Component Name | Ready Status | IP | Zone |
 | :--- | :--- | :--- | :---: | :--- | :---: |
 | **ip-10-0-10-231.ec2.internal** | `frontend-5c7f8786bf-dhncv` | `frontend` | 1/1 | 10.0.10.150 | us-east-1a |
@@ -113,7 +116,6 @@ Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` 
 | | `product-reviews-75fcd77f87-ftnc9` | `product-reviews` | 1/1 | 10.0.10.24 | us-east-1a |
 | | `quote-67b85c794b-vfg7c` | `quote` | 1/1 | 10.0.10.141 | us-east-1a |
 | | `shipping-969b87d57-vgblx` | `shipping` | 1/1 | 10.0.10.168 | us-east-1a |
-| | `valkey-cart-5866fc4b85-ktkxq` | `valkey-cart` | 1/1 | 10.0.10.184 | us-east-1a |
 | **ip-10-0-11-40.ec2.internal** | `accounting-6696f5bdb8-7wvkg` | `accounting` | 1/1 | 10.0.11.54 | us-east-1b |
 | | `ad-67488bccf4-kpwxw` | `ad` | 1/1 | 10.0.11.23 | us-east-1b |
 | | `cart-5bb9556668-m97cx` | `cart` | 1/1 | 10.0.11.235 | us-east-1b |
@@ -123,9 +125,7 @@ Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` 
 | | `flagd-64cd7974c8-dl9xp` | `flagd` | 1/1 | 10.0.11.250 | us-east-1b |
 | | `fraud-detection-5c5d9d899d-7z9qc` | `fraud-detection` | 1/1 | 10.0.11.245 | us-east-1b |
 | | `image-provider-798bdc847-mmfl8` | `image-provider` | 1/1 | 10.0.11.205 | us-east-1b |
-| | `kafka-6684fb88c5-l428d` | `kafka` | 1/1 | 10.0.11.75 | us-east-1b |
 | | `payment-786ff75dc5-jdnrx` | `payment` | 1/1 | 10.0.11.78 | us-east-1b |
-| | `postgresql-75fff48d97-6prp2` | `postgresql` | 1/1 | 10.0.11.113 | us-east-1b |
 | | `product-catalog-5698b468f4-8q7q6` | `product-catalog` | 1/1 | 10.0.11.206 | us-east-1b |
 | | `recommendation-5d6b6f8648-7h974` | `recommendation` | 1/1 | 10.0.11.177 | us-east-1b |
 
@@ -152,7 +152,7 @@ Theo dõi số lượng node trong suốt test window (từ chuẩn bị trướ
 
 ## 8. Phiên Bản Phần Mềm & Provenance (Software Versions & SHA)
 
-*   **Repository Git SHA:** `a6137944aff38800f5f016f7f7c41b7606cf13e0` ( HEAD commit bao gồm code checkout parallelization)
+*   **Repository Git SHA:** `6881118fa315db8d9ad7e14d4850fa9e394f4c2c` (HEAD commit bao gồm code checkout parallelization và tích hợp di trú managed data)
 *   **Helm Release AppVersion:** `2.2.0` (Chart version `0.40.9`)
 *   **Image Tag Mặc định (Storefront & Checkout):** `8340af1`
 *   **Cấu hình Load-Generator:**
@@ -186,7 +186,7 @@ Bảng đối chiếu chi tiết chứng minh toàn bộ hạ tầng vật lý v
 | **HPA min/max (`frontend`)**| 2 / 3 replicas | 2 / 3 replicas | 100% Khớp | `values.yaml` |
 | **Static Replica Count (others)**| 1 or 2 replicas | 1 or 2 replicas | 100% Khớp | `values.yaml` |
 | **Load-Generator Config** | 200 users, autostart=false | 200 users, autostart=false | 100% Khớp | `values-load-test-task4.yaml` |
-| **Git Commit/SHA** | Baseline commits | `a6137944aff38800f5f016f7f7c41b7606cf13e0` | Code Optimized | `git log` |
+| **Git Commit/SHA** | Baseline commits | `6881118fa315db8d9ad7e14d4850fa9e394f4c2c` | Code Optimized | `git log` |
 
 ---
 
