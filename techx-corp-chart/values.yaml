@@ -1196,9 +1196,14 @@ components:
       env: true
     service:
       port: 3551
+    ports:
+      - name: health
+        value: 3552
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
+      - name: PRODUCT_REVIEWS_HEALTH_PORT
+        value: "3552"
       - name: AWS_REGION
         value: us-east-1
       - name: BEDROCK_MODEL_ID
