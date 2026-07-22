@@ -389,9 +389,8 @@ Kết quả rút gọn:
       }
     }
   ],
-  "bypass_actors": [
-    {"actor_type": "Team", "bypass_mode": "always"}
-  ]
+  "bypass_actors": [],
+  "current_user_can_bypass": "never"
 }
 ```
 
@@ -401,7 +400,7 @@ Kết quả rút gọn:
 - Ruleset hiện đã có required status checks cho các gate chính.
 - PR #501 có check `Terraform infra plan` fail vì file Terraform cố tình sai cú pháp.
 - Vì `Terraform infra plan` nằm trong danh sách required status checks, PR đỏ không đạt điều kiện merge bình thường.
-- Ruleset còn có bypass team; bypass chỉ được xem là break-glass và không dùng cho Mandate 10 demo.
+- Ruleset không còn bypass actor; `current_user_can_bypass=never`, nên CI đỏ không thể được merge bằng bypass ruleset.
 
 Kết luận:
 
