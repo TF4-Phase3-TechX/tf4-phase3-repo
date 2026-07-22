@@ -59,6 +59,13 @@
     "components": {
       "$ref": "#/definitions/Components"
     },
+    "aiopsRemediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "liveEnabled": { "type": "boolean" }
+      }
+    },
     "opentelemetry-collector": {
       "type": "object"
     },
@@ -120,7 +127,11 @@
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
-            "secretName": { "type": "string" }
+            "secretName": { "type": "string" },
+            "services": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["accounting", "checkout", "fraud-detection"] }
+            }
           }
         }
       }
@@ -267,6 +278,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "aiops": {
+          "$ref": "#/definitions/Component"
+        },
         "accounting": {
           "$ref": "#/definitions/Component"
         },
@@ -380,6 +394,10 @@
         },
         "serviceAccountName": {
           "type": "string"
+        },
+        "automountServiceAccountToken": {
+          "type": "boolean",
+          "default": false
         },
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"
