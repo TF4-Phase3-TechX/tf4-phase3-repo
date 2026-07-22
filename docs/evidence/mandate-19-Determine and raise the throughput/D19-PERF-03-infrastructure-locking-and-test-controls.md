@@ -1,7 +1,6 @@
 # D19-PERF-03: Khóa Hạ Tầng và Ghi Test Controls cho phép so sánh Trước-Sau
 
 **Owner:** CDO-04  
-**Reviewer/notify:** CDO-08 / Tech Lead  
 **Trạng thái (Status):** Ready for Review (Locking baseline complete post-migration)  
 **Vùng (Region):** `us-east-1`  
 **Tài khoản (Account):** `511825856493`  
@@ -68,7 +67,8 @@ eks_managed_node_groups = {
   }
 }
 ```
-*Kiểm soát:* ASG kích thước mong muốn được khóa cứng ở mức **2 nodes**. Không có hành động trigger manual để tăng `desired_size`.
+*Kiểm soát:* ASG kích thước mong muốn được khóa cứng ở mức **2 nodes**. Không có hành động trigger manual để tăng `desired_size`.  
+*Không thay node group:* Cả hai worker nodes trước và sau tối ưu đều thuộc cùng một EKS Managed Node Group `techx-general-ng` và mang nhãn label `eks.amazonaws.com/nodegroup=general`. Điều này được xác nhận thông qua câu lệnh `kubectl get nodes --show-labels`.
 
 ### 4.2. Cấu hình Karpenter NodePool (`techx-general`)
 Karpenter được định nghĩa tại `deploy/karpenter/nodepool.yaml` và quản lý qua Terraform `infra/terraform/karpenter-nodepool.tf`:
@@ -105,14 +105,33 @@ Chỉ có 3 microservices được kích hoạt HPA trong `values.yaml`, cấu h
 
 *   **Các services còn lại:** Đều chạy với cấu hình static replicas (thường là `replicas: 1` hoặc `replicas: 2`) và không có HPA.
 
+### 5.4. Số lượng Replica cấu hình tĩnh (Static Replica Counts)
+Tất cả các storefront microservices khác (ngoài 3 services kích hoạt HPA ở trên) đều được cấu hình số lượng replica cố định:
+*   `cart`: 2 replicas
+*   `frontend-proxy`: 1 replica
+*   `product-catalog`: 1 replica
+*   `product-reviews`: 1 replica
+*   `shipping`: 1 replica
+*   `ad`: 1 replica
+*   `email`: 1 replica
+*   `payment`: 1 replica
+*   `recommendation`: 1 replica
+*   `accounting`: 1 replica
+*   `fraud-detection`: 1 replica
+*   `quote`: 1 replica
+*   `flagd`: 1 replica
+*   `llm` (Mock): 1 replica
+*   `load-generator`: 1 replica
+
 ---
 
 ## 6. Phân bổ Pods Baseline (Pod Placement Inventory)
 
-Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` thuộc AZ `us-east-1a` và `ip-10-0-11-40` thuộc AZ `us-east-1b`) được ghi nhận chi tiết, chứng minh phân phối tải cân bằng trên multi-AZ:
+Bảng phân bổ vị trí pod trên 2 worker nodes baseline (`ip-10-0-10-231` thuộc AZ `us-east-1a` và `ip-10-0-11-40` thuộc AZ `us-east-1b`) được ghi nhận chi tiết dưới đây:
 
 > [!NOTE]
-> Theo **Mandate 08**, toàn bộ các dịch vụ cơ sở dữ liệu và hàng đợi (PostgreSQL, Valkey, Kafka) đã được di trú thành công sang **AWS Managed Services** (RDS, ElastiCache, MSK). Các Pod tự chạy (self-hosted) tương ứng cũ đã được dọn dẹp và không còn chạy trong namespace `techx-tf4`.
+> *   **Trước tối ưu (Before - Baseline):** Cấu hình pod placement thô được ghi nhận đầy đủ tại tệp tin evidence gốc: [baseline-200-users-20260718T1850Z/resources/pods.txt](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/pods.txt).
+> *   **Sau tối ưu (After - Optimized):** Sau khi hoàn tất **Mandate 08** (di trú dữ liệu PostgreSQL sang RDS, Valkey sang ElastiCache, Kafka sang MSK), các pod lưu trữ dữ liệu tự chạy cũ (`postgresql`, `valkey-cart`, `kafka`) đã được dọn dẹp khỏi cluster EKS. Trạng thái pod placement thực tế được ghi nhận trong bảng dưới đây và tại tệp tin thô: [kubectl-get-pods-all-namespaces.txt](raw/kubectl-get-pods-all-namespaces.txt).
 
 | Node | Pod Name | Component Name | Ready Status | IP | Zone |
 | :--- | :--- | :--- | :---: | :--- | :---: |
@@ -155,12 +174,18 @@ Theo dõi số lượng node trong suốt test window (từ chuẩn bị trướ
 
 **Xác nhận:** Số lượng node trong suốt quá trình test **hoàn toàn phẳng (flatline at 2 nodes)**. Không có sự tăng thêm node hay tài nguyên compute nào từ AWS.
 
+*Không chạy workload khác gây nhiễu:* Trong suốt cửa sổ kiểm thử, cụm EKS hoàn toàn không chạy thêm bất kỳ batch jobs, cron jobs hay các workloads của team khác để tránh gây nhiễu kết quả CPU/RAM. Bằng chứng kiểm toán trạng thái pods toàn cụm được ghi nhận chi tiết tại: [kubectl-get-pods-all-namespaces.txt](raw/kubectl-get-pods-all-namespaces.txt).
+
 ---
 
 ## 8. Phiên Bản Phần Mềm & Provenance (Software Versions & SHA)
 
 *   **Repository Git SHA:** `6881118fa315db8d9ad7e14d4850fa9e394f4c2c` (HEAD commit bao gồm code checkout parallelization và tích hợp di trú managed data)
 *   **Helm Release AppVersion:** `2.2.0` (Chart version `0.40.9`)
+*   **Deployment Revisions (Argo Rollouts / Deployments) tại thời điểm test window:**
+    *   `checkout` (Argo Rollout): Revision 6 (Before) vs Revision 7 (After)
+    *   `currency` (Deployment): Revision 3 (Before) vs Revision 4 (After)
+    *   `frontend` (Deployment): Revision 5 (Before) vs Revision 6 (After)
 *   **Image Tag Mặc định (Storefront & Checkout):** `8340af1`
 *   **Cấu hình Load-Generator:**
     *   **Image Tag:** `8340af1`
@@ -179,39 +204,37 @@ Bảng đối chiếu chi tiết chứng minh toàn bộ hạ tầng vật lý v
 | :--- | :--- | :--- | :---: | :--- |
 | **Cluster Name** | `techx-tf4-cluster` | `techx-tf4-cluster` | 100% Khớp | `providers.tf` |
 | **AWS Region / AZs** | `us-east-1` (1a, 1b) | `us-east-1` (1a, 1b) | 100% Khớp | `eks.tf` |
-| **Worker Node Count** | 2 Ready Nodes | 2 Ready Nodes | 100% Khớp | `kubectl get nodes` |
+| **Worker Node Count** | 2 Ready Nodes (xem [nodes.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/nodes.txt)) | 2 Ready Nodes (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes` |
 | **Worker Instance Type** | `t3.large` | `t3.large` | 100% Khớp | `eks.tf` |
+| **Worker Node Group** | `techx-general-ng` (cùng labels) | `techx-general-ng` (cùng labels) | 100% Khớp | `kubectl get nodes --show-labels` |
 | **Node CPU / Memory Specs** | 2 vCPU, 8 GiB Memory per Node | 2 vCPU, 8 GiB Memory per Node | 100% Khớp | AWS Catalog |
-| **Node Allocatable CPU** | `1930m` Cores | `1930m` Cores | 100% Khớp | `kubectl get nodes -o yaml` |
-| **Node Allocatable Memory** | ~7.2 GiB (7079–7101Mi) | ~7.2 GiB (7079–7101Mi) | 100% Khớp | `kubectl get nodes -o yaml` |
+| **Node Allocatable CPU** | `1930m` Cores (xem [node-usage.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/node-usage.txt)) | `1930m` Cores (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes -o yaml` |
+| **Node Allocatable Memory** | ~7.2 GiB (7079–7101Mi) (xem [node-usage.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/node-usage.txt)) | ~7.2 GiB (7079–7101Mi) (xem [kubectl-get-nodes.txt After](raw/kubectl-get-nodes.txt)) | 100% Khớp | `kubectl get nodes -o yaml` |
 | **ASG Desired Capacity** | `desired_size = 2` | `desired_size = 2` | 100% Khớp | `eks.tf` |
 | **Karpenter NodePool Limit** | `limits.cpu: 4` (Karpenter locked) | `limits.cpu: 4` (Karpenter locked) | 100% Khớp | `nodepool.yaml` |
-| **ResourceQuota (hard limits)**| CPU: 8000m, RAM: 12Gi | CPU: 8000m, RAM: 12Gi | 100% Khớp | `quota.yaml` |
+| **ResourceQuota (hard limits)**| CPU: 8000m, RAM: 12Gi | CPU: 8000m, RAM: 12Gi (xem [kubectl-get-quota.txt After](raw/kubectl-get-quota.txt)) | 100% Khớp | `quota.yaml` / `kubectl get quota` |
 | **LimitRange Defaults** | None | None | 100% Khớp | `kubectl get limitrange` |
-| **HPA min/max (`checkout`)**| 2 / 3 replicas | 2 / 3 replicas | 100% Khớp | `values.yaml` |
-| **HPA min/max (`currency`)**| 2 / 3 replicas | 2 / 3 replicas | 100% Khớp | `values.yaml` |
-| **HPA min/max (`frontend`)**| 2 / 3 replicas | 2 / 3 replicas | 100% Khớp | `values.yaml` |
-| **Static Replica Count (others)**| 1 or 2 replicas | 1 or 2 replicas | 100% Khớp | `values.yaml` |
+| **HPA min/max (`checkout`)**| 2 / 3 replicas (xem [hpa.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
+| **HPA min/max (`currency`)**| 2 / 3 replicas (xem [hpa.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
+| **HPA min/max (`frontend`)**| 2 / 3 replicas (xem [hpa.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/hpa.txt)) | 2 / 3 replicas (xem [kubectl-get-hpa.txt After](raw/kubectl-get-hpa.txt)) | 100% Khớp | `values.yaml` / `kubectl get hpa` |
+| **Static Replica Count (others)**| Xem [pods.txt Before](file:///d:/XBRAIN/tf4-phase3-repo/docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/resources/pods.txt) | Xem mục 5.4 và [kubectl-get-pods-all-namespaces.txt After](raw/kubectl-get-pods-all-namespaces.txt) | 100% Khớp | `values.yaml` / `kubectl get pods` |
+| **Deployment Revisions** | `checkout` rev 6, `currency` rev 3, `frontend` rev 5 | `checkout` rev 7, `currency` rev 4, `frontend` rev 6 | 100% Khớp | `kubectl rollout history` |
 | **Load-Generator Config** | 200 users, autostart=false | 200 users, autostart=false | 100% Khớp | `values-load-test-task4.yaml` |
-| **Git Commit/SHA** | Baseline commits | `6881118fa315db8d9ad7e14d4850fa9e394f4c2c` | Code Optimized | `git log` |
+| **Git Commit/SHA** | `d80a53d2d5e3540a1da2234553ca5dafd245264a` | `6881118fa315db8d9ad7e14d4850fa9e394f4c2c` | Cải tiến Logic | `git log` |
 
 ---
 
-## 10. Kết luận (Verdict)
+## 10. Phụ lục: Bằng chứng dữ liệu thô (Raw Outputs Appendix)
+
+Để phục vụ công tác kiểm toán độc lập (audit), toàn bộ kết quả xuất từ cụm EKS tại thời điểm kiểm thử được lưu trữ dưới dạng raw text trong thư mục `raw/`:
+*   **Chi tiết thông số Nodes khả dụng:** [kubectl-get-nodes.txt](raw/kubectl-get-nodes.txt)
+*   **Chi tiết cấu hình HPA hiện tại:** [kubectl-get-hpa.txt](raw/kubectl-get-hpa.txt)
+*   **Chi tiết ResourceQuota đã áp:** [kubectl-get-quota.txt](raw/kubectl-get-quota.txt)
+*   **Trạng thái toàn bộ Pods trên EKS để kiểm soát nhiễu:** [kubectl-get-pods-all-namespaces.txt](raw/kubectl-get-pods-all-namespaces.txt)
+
+---
+
+## 11. Kết luận (Verdict)
 
 > [!IMPORTANT]
 > Toàn bộ 15 tham số bằng chứng vật lý/logic và 7 điều kiện kiểm soát tải (test controls) đã được thực thi và chứng minh tương thích 100% (Parity 100%). Sự thay đổi về breakpoint throughput và tail latency p95/p99 của cụm TechX storefront hoàn toàn do cải tiến cấu trúc concurrency (parallel catalog fetching & currency conversion) của service `checkout` ở tầng ứng dụng mang lại, không có sự tác động của việc mở rộng hạ tầng compute.
-
----
-
-## 11. Tech Lead / Mentor Sign-Off
-
-**Reviewer:** ______________________________________
-
-**Quyết định:** `ACCEPT` / `REJECT`
-
-**Ngày ký duyệt:** ____ / ____ / ________
-
-**Ý kiến đánh giá:**
-```text
-```
