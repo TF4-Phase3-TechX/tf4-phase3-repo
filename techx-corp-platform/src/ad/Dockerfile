@@ -20,6 +20,7 @@ WORKDIR /usr/src/app/
 
 RUN apt-get update \
     && apt-get upgrade -y \
+    && rm -f /usr/bin/pebble \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/app/build/install/techx-corp-ad/ ./build/install/techx-corp-ad/
