@@ -1,0 +1,225 @@
+=== 22-msk-describe-cluster-confirmed ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T06:00:33Z
+Ghi chú: gọi độc lập describe-cluster/describe-cluster-v2 để xác nhận đúng action kafka:DescribeCluster/DescribeClusterV2 (không chỉ suy diễn từ list-clusters)
+
+{
+    "ClusterInfo": {
+        "BrokerNodeGroupInfo": {
+            "BrokerAZDistribution": "DEFAULT",
+            "ClientSubnets": [
+                "subnet-0280b36e2249f33d8",
+                "subnet-0753e69d90fe8f820"
+            ],
+            "InstanceType": "kafka.t3.small",
+            "SecurityGroups": [
+                "sg-0b15c69a8c397e9d6"
+            ],
+            "StorageInfo": {
+                "EbsStorageInfo": {
+                    "VolumeSize": 10
+                }
+            },
+            "ConnectivityInfo": {
+                "PublicAccess": {
+                    "Type": "DISABLED"
+                },
+                "VpcConnectivity": {
+                    "ClientAuthentication": {
+                        "Sasl": {
+                            "Scram": {
+                                "Enabled": false
+                            },
+                            "Iam": {
+                                "Enabled": false
+                            }
+                        },
+                        "Tls": {
+                            "Enabled": false
+                        }
+                    }
+                },
+                "NetworkType": "IPV4"
+            },
+            "ZoneIds": [
+                "use1-az1",
+                "use1-az2"
+            ]
+        },
+        "ClientAuthentication": {
+            "Sasl": {
+                "Scram": {
+                    "Enabled": true
+                },
+                "Iam": {
+                    "Enabled": false
+                }
+            },
+            "Unauthenticated": {
+                "Enabled": false
+            }
+        },
+        "ClusterArn": "arn:aws:kafka:us-east-1:511825856493:cluster/techx-tf4-orders/71e62f82-16ff-4111-b94d-704cccf87259-2",
+        "ClusterName": "techx-tf4-orders",
+        "CreationTime": "2026-07-19T14:25:48.129000+00:00",
+        "CurrentBrokerSoftwareInfo": {
+            "ConfigurationArn": "arn:aws:kafka:us-east-1:511825856493:configuration/techx-tf4-orders/4483f6d6-980e-4fb8-a172-87fdd04c41a9-2",
+            "ConfigurationRevision": 1,
+            "KafkaVersion": "3.9.x"
+        },
+        "CurrentVersion": "K1X6FK5RDHNB96",
+        "EncryptionInfo": {
+            "EncryptionAtRest": {
+                "DataVolumeKMSKeyId": "arn:aws:kms:us-east-1:511825856493:key/e9f0c549-066e-41b0-bf07-bc2fe404b966"
+            },
+            "EncryptionInTransit": {
+                "ClientBroker": "TLS",
+                "InCluster": true
+            }
+        },
+        "EnhancedMonitoring": "DEFAULT",
+        "OpenMonitoring": {
+            "Prometheus": {
+                "JmxExporter": {
+                    "EnabledInBroker": false
+                },
+                "NodeExporter": {
+                    "EnabledInBroker": false
+                }
+            }
+        },
+        "LoggingInfo": {
+            "BrokerLogs": {
+                "CloudWatchLogs": {
+                    "Enabled": true,
+                    "LogGroup": "/aws/msk/techx-tf4-orders"
+                }
+            }
+        },
+        "NumberOfBrokerNodes": 2,
+        "State": "ACTIVE",
+        "Tags": {
+            "Project": "TF4",
+            "Environment": "Phase3",
+            "Owner": "CDO_04",
+            "Team": "CDO_04",
+            "Name": "techx-tf4-orders"
+        },
+        "ZookeeperConnectString": "z-3.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2181,z-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2181,z-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2181",
+        "ZookeeperConnectStringTls": "z-3.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2182,z-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2182,z-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2182",
+        "StorageMode": "LOCAL",
+        "CustomerActionStatus": "NONE"
+    }
+}
+
+{
+    "ClusterInfo": {
+        "ClusterType": "PROVISIONED",
+        "ClusterArn": "arn:aws:kafka:us-east-1:511825856493:cluster/techx-tf4-orders/71e62f82-16ff-4111-b94d-704cccf87259-2",
+        "ClusterName": "techx-tf4-orders",
+        "CreationTime": "2026-07-19T14:25:48.129000+00:00",
+        "CurrentVersion": "K1X6FK5RDHNB96",
+        "State": "ACTIVE",
+        "Tags": {
+            "Project": "TF4",
+            "Environment": "Phase3",
+            "Owner": "CDO_04",
+            "Team": "CDO_04",
+            "Name": "techx-tf4-orders"
+        },
+        "Provisioned": {
+            "BrokerNodeGroupInfo": {
+                "BrokerAZDistribution": "DEFAULT",
+                "ClientSubnets": [
+                    "subnet-0280b36e2249f33d8",
+                    "subnet-0753e69d90fe8f820"
+                ],
+                "InstanceType": "kafka.t3.small",
+                "SecurityGroups": [
+                    "sg-0b15c69a8c397e9d6"
+                ],
+                "StorageInfo": {
+                    "EbsStorageInfo": {
+                        "VolumeSize": 10
+                    }
+                },
+                "ConnectivityInfo": {
+                    "PublicAccess": {
+                        "Type": "DISABLED"
+                    },
+                    "VpcConnectivity": {
+                        "ClientAuthentication": {
+                            "Sasl": {
+                                "Scram": {
+                                    "Enabled": false
+                                },
+                                "Iam": {
+                                    "Enabled": false
+                                }
+                            },
+                            "Tls": {
+                                "Enabled": false
+                            }
+                        }
+                    },
+                    "NetworkType": "IPV4"
+                },
+                "ZoneIds": [
+                    "use1-az1",
+                    "use1-az2"
+                ]
+            },
+            "CurrentBrokerSoftwareInfo": {
+                "ConfigurationArn": "arn:aws:kafka:us-east-1:511825856493:configuration/techx-tf4-orders/4483f6d6-980e-4fb8-a172-87fdd04c41a9-2",
+                "ConfigurationRevision": 1,
+                "KafkaVersion": "3.9.x"
+            },
+            "ClientAuthentication": {
+                "Sasl": {
+                    "Scram": {
+                        "Enabled": true
+                    },
+                    "Iam": {
+                        "Enabled": false
+                    }
+                },
+                "Unauthenticated": {
+                    "Enabled": false
+                }
+            },
+            "EncryptionInfo": {
+                "EncryptionAtRest": {
+                    "DataVolumeKMSKeyId": "arn:aws:kms:us-east-1:511825856493:key/e9f0c549-066e-41b0-bf07-bc2fe404b966"
+                },
+                "EncryptionInTransit": {
+                    "ClientBroker": "TLS",
+                    "InCluster": true
+                }
+            },
+            "EnhancedMonitoring": "DEFAULT",
+            "OpenMonitoring": {
+                "Prometheus": {
+                    "JmxExporter": {
+                        "EnabledInBroker": false
+                    },
+                    "NodeExporter": {
+                        "EnabledInBroker": false
+                    }
+                }
+            },
+            "LoggingInfo": {
+                "BrokerLogs": {
+                    "CloudWatchLogs": {
+                        "Enabled": true,
+                        "LogGroup": "/aws/msk/techx-tf4-orders"
+                    }
+                }
+            },
+            "NumberOfBrokerNodes": 2,
+            "ZookeeperConnectString": "z-3.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2181,z-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2181,z-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2181",
+            "ZookeeperConnectStringTls": "z-3.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2182,z-1.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2182,z-2.techxtf4orders.5n1354.c2.kafka.us-east-1.amazonaws.com:2182",
+            "StorageMode": "LOCAL",
+            "CustomerActionStatus": "NONE"
+        }
+    }
+}

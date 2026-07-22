@@ -1,0 +1,6 @@
+=== 21-nodepools-still-denied ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T05:49:15Z
+Ghi chú: nodeclaims đã được cấp quyền, nhưng nodepools.karpenter.sh vẫn Forbidden — RBAC grant chỉ áp cho resource nodeclaims, chưa gồm nodepools như đề nghị ban đầu
+
+Error from server (Forbidden): nodepools.karpenter.sh is forbidden: User "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan" cannot list resource "nodepools" in API group "karpenter.sh" at the cluster scope
