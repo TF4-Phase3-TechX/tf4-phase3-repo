@@ -1219,6 +1219,12 @@ components:
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
         value: product-catalog:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: APP_ENV
+        value: production
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
