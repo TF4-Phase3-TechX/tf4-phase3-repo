@@ -1,6 +1,6 @@
-# Mandate 20 - DR / Backup & Restore - Giai đoạn Inventory (T1-T3)
+# CDO08-REL-20 - Tổng kết Inventory (T1-T3)
 
-**Directive:** [MANDATE-20-dr-backup-restore.md](../../../../mandates/MANDATE-20-dr-backup-restore.md)
+**Mandate:** [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) - Directive #20
 **Owner:** Nguyên (Techlead) / phối hợp PM Hải và các owner dữ liệu
 **Giai đoạn:** Chỉ mới làm phần inventory (subtask T1-T3). ADR RPO/RTO và restore drill thật (yêu cầu #2-#4 của mandate) là việc tiếp theo, chưa nằm trong tài liệu này - xem gap register để biết task ID theo dõi.
 
@@ -10,9 +10,9 @@ Toàn bộ research đều read-only: `kubectl get/describe`, `aws ...describe-*
 
 | Tài liệu | Nội dung | Ứng với |
 |---|---|---|
-| [CDO08-REL-20-revenue-path-dependency-trace.md](scan/CDO08-REL-20-revenue-path-dependency-trace.md) | Trace service -> dependency -> dữ liệu -> mức độ quan trọng của luồng browse -> cart -> checkout -> payment -> order -> async event. Xác nhận store nào thực sự tồn tại. | Subtask T1 |
-| [CDO08-REL-20-stateful-store-inventory.md](scan/CDO08-REL-20-stateful-store-inventory.md) | Inventory đầy đủ RDS, ElastiCache, MSK, Terraform state, ArgoCD, ExternalSecrets, và quyền IAM liên quan xoá backup. Mỗi dòng có owner, cơ chế backup, trạng thái, phương thức restore, tình trạng mã hoá. | Subtask T2 |
-| [CDO08-REL-20-gap-register.md](scan/CDO08-REL-20-gap-register.md) | 6 gap xếp theo severity, mỗi gap có evidence, impact, owner, deadline, task theo dõi. | Subtask T3 |
+| [CDO08-REL-20-revenue-path-dependency-trace.md](CDO08-REL-20-revenue-path-dependency-trace.md) | Trace service -> dependency -> dữ liệu -> mức độ quan trọng của luồng browse -> cart -> checkout -> payment -> order -> async event. Xác nhận store nào thực sự tồn tại. | Subtask T1 |
+| [CDO08-REL-20-stateful-store-inventory.md](CDO08-REL-20-stateful-store-inventory.md) | Inventory đầy đủ RDS, ElastiCache, MSK, Terraform state, ArgoCD, ExternalSecrets, và quyền IAM liên quan xoá backup. Mỗi dòng có owner, cơ chế backup, trạng thái, phương thức restore, tình trạng mã hoá. | Subtask T2 |
+| [CDO08-REL-20-gap-register.md](CDO08-REL-20-gap-register.md) | 6 gap xếp theo severity, mỗi gap có evidence, impact, owner, deadline, task theo dõi. | Subtask T3 |
 
 ## Phát hiện chính
 
