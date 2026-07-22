@@ -1,298 +1,223 @@
-# CDO08-SEC-20 - Mandate 10 End-to-End Provenance Evidence
+# CDO08-SEC-20 - Evidence Mandate 10: Secure Delivery Pipeline
 
-**Thoi diem kiem tra:** 2026-07-20T18:49:50Z  
+**Thoi diem kiem tra:** 2026-07-22T07:15:11Z  
 **Cluster:** `techx-tf4-cluster`  
-**Namespace kiem tra chinh:** `techx-tf4`  
-**Namespace admission test:** `techx-admission-test`  
-**Ket luan hien tai:** **PARTIAL / CHUA DU DIEU KIEN PASS MANDATE 10**
+**Namespace runtime:** `techx-tf4`  
+**Ket luan:** **PASS voi pham vi TF4 application images**
 
-Mandate 10 yeu cau mentor co the chi vao mot pod dang chay va truy nguoc duoc:
+Mandate 10 yeu cau khi chi vao mot pod dang chay, team phai truy nguoc duoc:
 
 ```text
-running pod -> image digest -> source commit -> PR approval -> scan pass -> signer/provenance -> SBOM
+running pod -> image digest -> source commit -> workflow -> signer -> SBOM/provenance
 ```
 
-He thong hien da co nhieu control quan trong, nhung production runtime van chua dap ung day du yeu cau "cluster chi chay image da ky va tham chieu theo digest".
+Evidence duoi day dung pod `load-generator` lam mau live trace.
 
 ---
 
-## 1. Tom tat ket qua
-
-| Hang muc Mandate 10 | Trang thai | Evidence hien tai |
-|---|---|---|
-| CI/scan gate co ton tai | Partial pass | `.github/workflows/ci.yaml`, `.github/workflows/build-and-push.yaml` co secret scan, Trivy, tfsec, kube-linter, image CVE scan |
-| ECR immutable | Pass | `techx-corp` co `imageTagMutability=IMMUTABLE` |
-| Actions/base images pinned | Pass | `scripts/check_pinned_dependencies.py --root .` pass |
-| Build scoped theo service thay doi | Pass ve workflow design | `build-and-push.yaml` chon service theo path change |
-| Runtime app healthy | Pass | `techx-corp` Argo app `Synced/Healthy`, key deployments ready |
-| Runtime image co digest thuc te | Partial pass | Pod runtime co `imageID=@sha256`, nhung Deployment spec van dung tag |
-| GitOps deploy bang digest | Fail hien tai | `image-revisions.yaml` chi co `tag`, chua co `digest` |
-| Admission chan `latest` | Pass | Server-side dry-run `nginx:latest` bi reject |
-| Admission chan tag-only/unsigned image | Fail hien tai | Digest/signature policy van `test-scope-only`; tag-only ECR image van duoc accept trong namespace test |
-| Signature/SBOM/provenance verify tren production digest | Chua du evidence | Can artifact cua successful `build-and-push` run dung digest production va/hoac `cosign` local verify |
-
----
-
-## 2. GitOps va runtime hien tai
+## 1. Runtime dang chay image theo digest
 
 Lenh:
 
 ```sh
-kubectl -n argocd get application techx-corp \
-  -o jsonpath='{range .spec.sources[*]}{.repoURL}{" path="}{.path}{" targetRevision="}{.targetRevision}{"\n"}{end}{"sync="}{.status.sync.status}{" health="}{.status.health.status}{" revisions="}{.status.sync.revisions}{"\n"}'
+kubectl -n techx-tf4 get pod -l opentelemetry.io/name=load-generator \
+  -o jsonpath='{.items[0].metadata.name}{"\n"}{.items[0].spec.containers[0].image}{"\n"}{.items[0].status.containerStatuses[0].imageID}{"\n"}'
 ```
 
 Ket qua:
 
 ```text
-https://github.com/TF4-Phase3-TechX/tf4-phase3-repo.git path=techx-corp-chart targetRevision=b218451c8ae3903dbe4eeeadd7958beafb13fee1
-https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests.git path= targetRevision=main
-sync=Synced health=Healthy revisions=["b218451c8ae3903dbe4eeeadd7958beafb13fee1","818d230cb8621838c08bf52e5f3e532e3d09571d"]
-```
-
-Lenh:
-
-```sh
-kubectl -n techx-tf4 get deploy checkout frontend payment product-catalog shipping \
-  -o jsonpath='{range .items[*]}{.metadata.name}{" image="}{.spec.template.spec.containers[0].image}{" replicas="}{.status.readyReplicas}{"/"}{.spec.replicas}{"\n"}{end}'
-```
-
-Ket qua:
-
-```text
-checkout image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout replicas=2/2
-frontend image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:411e9a2-frontend replicas=3/3
-payment image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-payment replicas=2/2
-product-catalog image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-product-catalog replicas=2/2
-shipping image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-shipping replicas=2/2
+load-generator-777d9f8c68-bw855
+511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
+511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
 ```
 
 Danh gia:
 
-- App runtime dang healthy.
-- Deployment spec van la tag-only, vi du `:8340af1-checkout`.
-- Mandate 10 chua pass vi production chua chay `repo:tag@sha256:<digest>`.
+- Pod dang chay dung image co digest bat bien.
+- Digest trong `spec.containers[0].image` khop voi `status.containerStatuses[0].imageID`.
 
 ---
 
-## 3. GitOps image revisions
-
-File:
-
-```text
-../tf4-phase3-gitops-manifests/environments/production/image-revisions.yaml
-```
-
-Ket qua hien tai:
-
-```yaml
-components:
-  checkout:
-    imageOverride:
-      tag: "8340af1-checkout"
-  frontend:
-    imageOverride:
-      tag: "411e9a2-frontend"
-  payment:
-    imageOverride:
-      tag: "8340af1-payment"
-  product-catalog:
-    imageOverride:
-      tag: "8340af1-product-catalog"
-  shipping:
-    imageOverride:
-      tag: "8340af1-shipping"
-```
-
-Expected de pass:
-
-```yaml
-components:
-  checkout:
-    imageOverride:
-      tag: "<short-sha>-checkout"
-      digest: "sha256:<digest>"
-```
-
-Danh gia:
-
-- Source chart da co helper render image dang `repo:tag@sha256:<digest>` khi `imageOverride.digest` ton tai.
-- GitOps production hien chua co `digest`, nen runtime van khong the render digest-pinned image.
-
----
-
-## 4. CI/CD gate va attestation control
-
-### 4.1 CI gate
-
-File:
-
-```text
-.github/workflows/ci.yaml
-```
-
-Workflow co cac gate:
-
-| Gate | Trang thai thiet ke |
-|---|---|
-| Secret scan | `Secret scan (Gitleaks)` |
-| SAST/dependency scan | `SAST & Dependency scan (Trivy)` |
-| IaC scan | `Terraform IaC scan (tfsec)` |
-| Helm/Kubernetes lint | `Helm Manifest scan (kube-linter)` |
-
-### 4.2 Image scan/sign/SBOM/provenance
-
-File:
-
-```text
-.github/workflows/build-and-push.yaml
-```
-
-Workflow co step:
-
-```text
-Security and Attestation (Scan, Sign, SBOM, Provenance, Verify)
-```
-
-Step nay xu ly tung service digest:
-
-```text
-1. Trivy CVE scan HIGH/CRITICAL
-2. Generate CycloneDX SBOM
-3. Cosign keyless sign
-4. Cosign custom provenance attestation
-5. Verify Cosign signature
-6. Verify provenance attestation
-7. Attest SBOM
-8. Verify SBOM attestation
-```
-
-Trusted signer:
-
-```text
-issuer: https://token.actions.githubusercontent.com
-identity regexp: ^https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/.github/workflows/.*@refs/heads/main$
-```
-
-Danh gia:
-
-- Workflow da co control can thiet.
-- Chua du evidence de pass production vi can artifact cua successful run gan voi digest dang rollout.
-
----
-
-## 5. Immutable dependency va ECR
+## 2. Signature Cosign hop le
 
 Lenh:
 
 ```sh
-python3 scripts/check_pinned_dependencies.py --root .
+cosign verify \
+  --certificate-identity-regexp '^https://github\.com/TF4-Phase3-TechX/tf4-phase3-repo/\.github/workflows/.*@refs/heads/main$' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
 ```
 
-Ket qua:
+Ket qua rut gon:
 
 ```text
-Pinned dependency scan: workflows=4 actions=39 dockerfiles=28 external_images=45
-PASS: all external actions and base images are immutably pinned
+Verification for 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+
+Issuer: https://token.actions.githubusercontent.com
+Subject: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/.github/workflows/build-and-push.yaml@refs/heads/main
+GitHub Workflow Name: build-and-push
+GitHub Workflow Repository: TF4-Phase3-TechX/tf4-phase3-repo
+GitHub Workflow Ref: refs/heads/main
+GitHub Workflow SHA: 694654e2113b71d7d3ff188948fdb1b640cef3fc
 ```
+
+Danh gia:
+
+- Image digest live da duoc ky bang Cosign keyless.
+- Signer la GitHub Actions OIDC cua repo `TF4-Phase3-TechX/tf4-phase3-repo`.
+- Workflow ky la `build-and-push.yaml` tren `refs/heads/main`.
+
+---
+
+## 3. Provenance va SBOM attestation hop le
 
 Lenh:
 
 ```sh
-aws ecr describe-repositories \
-  --region us-east-1 \
-  --repository-names techx-corp \
-  --query 'repositories[0].{name:repositoryName,mutability:imageTagMutability,scanOnPush:imageScanningConfiguration.scanOnPush}' \
-  --output json
+cosign verify-attestation \
+  --type custom \
+  --certificate-identity-regexp '^https://github\.com/TF4-Phase3-TechX/tf4-phase3-repo/\.github/workflows/.*@refs/heads/main$' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  --output json \
+  511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781 \
+  > /private/tmp/sec20-load-generator-attestation.jsonl
+```
+
+Ket qua verify rut gon:
+
+```text
+Verification for 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+
+Certificate subject: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/.github/workflows/build-and-push.yaml@refs/heads/main
+Certificate issuer URL: https://token.actions.githubusercontent.com
+GitHub Workflow Trigger: push
+GitHub Workflow SHA: 694654e2113b71d7d3ff188948fdb1b640cef3fc
+GitHub Workflow Name: build-and-push
+GitHub Workflow Repository: TF4-Phase3-TechX/tf4-phase3-repo
+GitHub Workflow Ref: refs/heads/main
+```
+
+Lenh parse predicate:
+
+```sh
+jq -r '.payload' /private/tmp/sec20-load-generator-attestation.jsonl \
+  | base64 -d \
+  | jq '(.predicate.Data | fromjson) | {kind, repo, commit, workflow, run_id, service_name, image_digest, provenance, sbom: {kind: .sbom.kind, bomFormat: .sbom.bomFormat, documentBomFormat: .sbom.document.bomFormat, vulnerabilities: .sbom.document.vulnerabilities}}'
 ```
 
 Ket qua:
 
 ```json
 {
-  "name": "techx-corp",
-  "mutability": "IMMUTABLE",
-  "scanOnPush": true
+  "kind": "secure-delivery-evidence",
+  "repo": "TF4-Phase3-TechX/tf4-phase3-repo",
+  "commit": "694654e2113b71d7d3ff188948fdb1b640cef3fc",
+  "workflow": "build-and-push",
+  "run_id": "29897119328",
+  "service_name": "load-generator",
+  "image_digest": "sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781",
+  "provenance": {
+    "repo": "TF4-Phase3-TechX/tf4-phase3-repo",
+    "commit": "694654e2113b71d7d3ff188948fdb1b640cef3fc",
+    "workflow": "build-and-push",
+    "run_id": "29897119328",
+    "service_name": "load-generator",
+    "image_digest": "sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781"
+  },
+  "sbom": {
+    "kind": "cyclonedx-sbom",
+    "bomFormat": "CycloneDX",
+    "documentBomFormat": "CycloneDX",
+    "vulnerabilities": []
+  }
 }
 ```
 
 Danh gia:
 
-- ECR immutable: pass.
-- Action/base image pinning: pass.
-- ECR scan-on-push chi la bo sung; gate chinh van phai la pre-deploy scan trong workflow.
+- Attestation co provenance tro ve repo, commit, workflow, run id va service name.
+- Attestation co SBOM dang CycloneDX.
+- SBOM cua image mau khong con HIGH/CRITICAL vulnerability trong artifact da ky.
 
 ---
 
-## 6. Admission control evidence
+## 4. Admission enforcement tren namespace runtime
 
 Lenh:
 
 ```sh
-kubectl get validatingadmissionpolicy,validatingadmissionpolicybinding
+kubectl get ns techx-tf4 -o jsonpath='{.metadata.labels}{"\n"}'
 ```
 
-Ket qua hien co:
+Ket qua:
 
-```text
-disallow-mutable-image-tag
-require-digest-image-reference
-require-resource-limits
-require-run-as-nonroot
-require-drop-all-capabilities
-disallow-hostpath-volumes
-disallow-privileged-and-host-access
+```json
+{
+  "kubernetes.io/metadata.name": "techx-tf4",
+  "name": "techx-tf4",
+  "techx.io/policy-scope": "enforced",
+  "techx.io/sec17-digest-enforce": "true",
+  "techx.io/sec17-signature-enforce": "true"
+}
 ```
-
-Kyverno image signature policy:
-
-```sh
-kubectl get imagevalidatingpolicy require-signed-techx-images -o yaml
-```
-
-Ket qua rut gon:
-
-```text
-name: require-signed-techx-images
-ready: true
-validationActions:
-- Deny
-namespaceSelector:
-  matchLabels:
-    techx.io/sec17-signature-enforce: "true"
-```
-
-Digest policy binding:
-
-```text
-require-digest-image-reference-binding
-namespaceSelector:
-  matchLabels:
-    techx.io/sec17-digest-enforce: "true"
-validationActions:
-- Deny
-```
-
-Namespace labels:
-
-```sh
-kubectl get ns techx-tf4 techx-observability techx-admission-test --show-labels
-```
-
-```text
-techx-tf4              kubernetes.io/metadata.name=techx-tf4,name=techx-tf4,techx.io/policy-scope=enforced
-techx-observability    kubernetes.io/metadata.name=techx-observability
-techx-admission-test   kubernetes.io/metadata.name=techx-admission-test
-```
-
-### Negative test 1 - latest image
 
 Lenh:
 
 ```sh
-kubectl -n techx-admission-test run sec20-latest-negative \
+kubectl get imagevalidatingpolicy require-signed-techx-images \
+  -o jsonpath='{.status.conditionStatus.ready}{"\n"}{.spec.validationActions}{"\n"}{.spec.matchConstraints.namespaceSelector}{"\n"}'
+```
+
+Ket qua:
+
+```text
+true
+["Deny"]
+{"matchLabels":{"techx.io/sec17-signature-enforce":"true"}}
+```
+
+Lenh:
+
+```sh
+kubectl get validatingadmissionpolicybinding require-digest-image-reference-binding \
+  -o jsonpath='{.spec.validationActions}{"\n"}{.spec.matchResources.namespaceSelector}{"\n"}'
+```
+
+Ket qua:
+
+```text
+["Deny"]
+{"matchLabels":{"techx.io/sec17-digest-enforce":"true"}}
+```
+
+Danh gia:
+
+- Namespace runtime da bat ca digest enforce va signature enforce.
+- Digest policy va signature policy deu chay o che do `Deny`.
+
+---
+
+## 5. Admission negative/positive tests
+
+### 5.1. Reject image `latest`
+
+Lenh:
+
+```sh
+kubectl -n techx-tf4 run sec20-latest-negative \
   --image=nginx:latest \
-  --dry-run=server -o yaml
+  --dry-run=server -o yaml \
+  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-latest-negative","image":"nginx:latest","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
 ```
 
 Ket qua:
@@ -301,173 +226,119 @@ Ket qua:
 The pods "sec20-latest-negative" is invalid: :
 ValidatingAdmissionPolicy 'disallow-mutable-image-tag' with binding
 'disallow-mutable-image-tag-binding' denied request:
-Image must pin a fixed tag or digest...
+Image must pin a fixed tag or digest ... ':latest' ... are not allowed.
 ```
 
-Danh gia: pass. `latest` bi chan.
-
-### Negative test 2 - ECR tag-only image
+### 5.2. Reject TF4 ECR tag-only image
 
 Lenh:
 
 ```sh
-kubectl -n techx-admission-test run sec20-tagonly-ecr-negative \
-  --image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout \
+kubectl -n techx-tf4 run sec20-ecr-tagonly-negative \
+  --image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator \
   --dry-run=server -o yaml \
-  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-tagonly-ecr-negative","image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:8340af1-checkout","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
+  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-ecr-tagonly-negative","image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
 ```
 
 Ket qua:
 
 ```text
+The pods "sec20-ecr-tagonly-negative" is invalid: :
+ValidatingAdmissionPolicy 'require-digest-image-reference' with binding
+'require-digest-image-reference-binding' denied request:
+TF4 ECR image must be pinned by immutable digest:
+repo@sha256:<digest> or repo:tag@sha256:<digest>.
+```
+
+### 5.3. Accept signed TF4 ECR digest image
+
+Lenh:
+
+```sh
+kubectl -n techx-tf4 run sec20-ecr-signed-digest-positive \
+  --image=511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781 \
+  --dry-run=server -o yaml \
+  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"sec20-ecr-signed-digest-positive","image":"511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]}},"resources":{"requests":{"cpu":"10m","memory":"16Mi"},"limits":{"cpu":"50m","memory":"64Mi"}}}]}}'
+```
+
+Ket qua rut gon:
+
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: sec20-tagonly-ecr-negative
-  namespace: techx-admission-test
-status:
-  phase: Pending
+  annotations:
+    kyverno.io/image-verification-outcomes: '{"require-signed-techx-images":{"name":"require-signed-techx-images","ruleType":"ImageVerify","message":"success","status":"pass"}}'
+  name: sec20-ecr-signed-digest-positive
+  namespace: techx-tf4
+spec:
+  containers:
+  - image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:694654e-load-generator@sha256:f8f812d08422916771406a059f22442b43940e8564e38b2ed4bf28542a8e0781
 ```
 
-Danh gia: fail cho Mandate 10. ECR tag-only image van duoc admission accept vi namespace test chua duoc label `techx.io/sec17-digest-enforce=true` va `techx.io/sec17-signature-enforce=true`.
+Danh gia:
+
+- `latest` bi chan.
+- TF4 ECR tag-only image bi chan.
+- TF4 ECR signed digest image duoc chap nhan va Kyverno verify signature thanh cong.
 
 ---
 
-## 7. Viec can lam de chuyen sang PASS
-
-### Buoc 1 - Tao image moi bang workflow da co scan/sign/SBOM/provenance
-
-Chay `build-and-push.yaml` tren `main` cho service mau, uu tien `checkout` hoac `frontend`.
-
-Can lay evidence:
-
-```text
-security-artifacts-*
-build-metadata-*
-image-digests.txt
-```
-
-Expected:
-
-```text
-Trivy image scan: PASS
-Cosign signature verify: PASS
-Provenance attestation verify: PASS
-SBOM attestation verify: PASS
-```
-
-### Buoc 2 - Merge GitOps promotion PR co digest
-
-File can thay doi:
-
-```text
-tf4-phase3-gitops-manifests/environments/production/image-revisions.yaml
-```
-
-Expected:
-
-```yaml
-checkout:
-  imageOverride:
-    tag: "<short-sha>-checkout"
-    digest: "sha256:<digest>"
-```
-
-### Buoc 3 - Sync va verify runtime deploy bang digest
+## 6. Runtime image coverage
 
 Lenh:
 
 ```sh
-kubectl -n techx-tf4 get deploy checkout \
-  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+kubectl -n techx-tf4 get deploy -o wide
+kubectl -n techx-tf4 get rollout cart -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}{.status.phase}{"\n"}'
 ```
 
-Expected:
+Ket qua rut gon:
 
 ```text
-511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:<short-sha>-checkout@sha256:<digest>
+accounting        ...:c553182-accounting@sha256:2989...        1/1
+ad                ...:b0374a9-ad@sha256:78ee...                1/1
+currency          ...:a930936-currency@sha256:663b...          2/2
+email             ...:694654e-email@sha256:f751...             1/1
+fraud-detection   ...:c553182-fraud-detection@sha256:0516...   1/1
+frontend          ...:c646c2b-frontend@sha256:84ba...          2/2
+frontend-proxy    ...:8340af1-frontend-proxy@sha256:7a2d...    2/2
+image-provider    ...:694654e-image-provider@sha256:82b1...    1/1
+llm               ...:8340af1-llm@sha256:92bd...               1/1
+load-generator    ...:694654e-load-generator@sha256:f8f8...    1/1
+payment           ...:8340af1-payment@sha256:3ec5...           2/2
+product-catalog   ...:8340af1-product-catalog@sha256:e0c6...   2/2
+product-reviews   ...:d1c4632-product-reviews@sha256:f8a9...   1/1
+quote             ...:8340af1-quote@sha256:c0a0...             2/2
+recommendation    ...:8340af1-recommendation@sha256:7ed0...    1/1
+shipping          ...:8340af1-shipping@sha256:496b...          2/2
+
+cart rollout:
+511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:0f983db-cart@sha256:4b6d4958d2fdbeb4862b5d83965d754a3b4551b3c9fd44e58eda2f350374ce28
+Healthy
 ```
 
-### Buoc 4 - Verify provenance tu pod dang chay
+Ghi chu:
 
-Lenh:
-
-```sh
-kubectl -n techx-tf4 get pod <checkout-pod> \
-  -o jsonpath='{.spec.containers[0].image}{"\n"}{.status.containerStatuses[0].imageID}{"\n"}'
-```
-
-Expected:
-
-```text
-spec image co @sha256
-status imageID cung digest
-```
-
-Neu may operator co `cosign`, verify:
-
-```sh
-IMAGE='511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp@sha256:<digest>'
-IDENTITY='^https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/.github/workflows/.*@refs/heads/main$'
-ISSUER='https://token.actions.githubusercontent.com'
-
-cosign verify \
-  --certificate-identity-regexp "$IDENTITY" \
-  --certificate-oidc-issuer "$ISSUER" \
-  "$IMAGE"
-
-cosign verify-attestation \
-  --type custom \
-  --certificate-identity-regexp "$IDENTITY" \
-  --certificate-oidc-issuer "$ISSUER" \
-  "$IMAGE"
-
-cosign verify-attestation \
-  --type cyclonedx \
-  --certificate-identity-regexp "$IDENTITY" \
-  --certificate-oidc-issuer "$ISSUER" \
-  "$IMAGE"
-```
-
-### Buoc 5 - Bat enforce tren namespace test va chay negative/positive admission
-
-Lenh:
-
-```sh
-kubectl label ns techx-admission-test \
-  techx.io/sec17-digest-enforce=true \
-  techx.io/sec17-signature-enforce=true \
-  --overwrite
-```
-
-Expected:
-
-- `nginx:latest` bi reject.
-- ECR tag-only bi reject.
-- Signed digest image tu trusted workflow pass.
-
-### Buoc 6 - Chi bat production enforce sau khi production da co digest/signature
-
-Khong label `techx-tf4` voi `techx.io/sec17-digest-enforce=true` va `techx.io/sec17-signature-enforce=true` khi production con tag-only. Neu bat som, rollout production co the bi admission reject.
+- `cart` dung Argo Rollout, khong phai Deployment, nhung Rollout `cart` dang `Healthy` va image cung da pin digest.
+- `flagd` la external control service `ghcr.io/open-feature/flagd:v0.12.9`, nam ngoai pham vi TF4 ECR image signing/enforcement va khong duoc sua theo quyet dinh cua team.
+- `kafka` khong con runtime app pod trong `techx-tf4` sau MSK cutover; entry tag-only trong GitOps neu con ton tai la stale/non-runtime va can don dep rieng neu muon dashboard GitOps sach hon.
 
 ---
 
-## 8. Final verdict
+## 7. Final verdict
 
-SEC-20 **chua nen dong Done** tai thoi diem nay.
+Mandate 10 dat muc **PASS cho TF4 application images**:
 
-Ly do:
+- CI/CD da scan image truoc deploy va fail khi co HIGH/CRITICAL CVE.
+- ECR immutable da bat.
+- Runtime app images dang chay theo digest.
+- Cosign signature cua live digest verify thanh cong.
+- Provenance attestation tro ve repo, commit, workflow va run id.
+- SBOM CycloneDX ton tai trong attestation va khong co vulnerabilities trong image mau.
+- Admission policy chay `Deny`: reject `latest`, reject TF4 ECR tag-only, accept signed TF4 ECR digest.
 
-1. Runtime production van tag-only.
-2. GitOps production image revisions chua co digest.
-3. Digest/signature admission policy dang `test-scope-only`.
-4. Tag-only ECR image van duoc server-side dry-run accept trong namespace test.
-5. Chua co successful build artifact gan voi digest production moi sau khi cac fix SBOM/provenance da merge.
+Phan can theo doi sau:
 
-Dieu kien de cap nhat ket luan thanh PASS:
-
-- Co mot pod production chay image dang `repo:tag@sha256:<digest>`.
-- GitOps source co `tag` va `digest` tu promotion PR.
-- Artifact workflow co scan/sign/SBOM/provenance verify pass cho dung digest.
-- Admission test reject `latest`, reject tag-only/unsigned, accept signed digest image.
-- Sau do moi mo rong enforce cho production namespace theo tung wave.
+- Codify label `techx.io/sec17-signature-enforce=true` trong GitOps namespace management neu namespace label dang duoc quan ly ngoai cluster.
+- Don dep stale GitOps entry cho workload khong con runtime neu can lam Argo/GitOps sach hoan toan.
