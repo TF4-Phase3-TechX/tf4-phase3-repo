@@ -1190,6 +1190,8 @@ components:
   product-reviews:
     enabled: true
     serviceAccountName: product-reviews-bedrock
+    # EKS Pod Identity provides AWS credentials; this service does not need the Kubernetes API token.
+    automountServiceAccountToken: false
     useDefault:
       env: true
     service:
@@ -1892,6 +1894,8 @@ jaeger:
   enabled: true
   fullnameOverride: jaeger
   jaeger:
+    serviceAccount:
+      automountServiceAccountToken: false
     storage:
       type: elasticsearch
     securityContext:
@@ -2021,6 +2025,7 @@ prometheus:
   enabled: true
   alertmanager:
     enabled: true
+    automountServiceAccountToken: false
     securityContext:
       runAsUser: 65534
       runAsGroup: 65534
@@ -2231,6 +2236,10 @@ grafana:
 opensearch:
   enabled: true
   fullnameOverride: opensearch
+  rbac:
+    create: true
+    serviceAccountName: opensearch
+    automountServiceAccountToken: false
   clusterName: demo-cluster
   nodeGroup: techx-corp
   singleNode: true
