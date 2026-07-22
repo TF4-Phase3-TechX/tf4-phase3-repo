@@ -1812,13 +1812,27 @@ opentelemetry-collector:
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       otlphttp/prometheus:
         endpoint: http://prometheus:9090/api/v1/otlp
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       opensearch:
         logs_index: otel-logs
         logs_index_time_format: "yyyy-MM-dd"
@@ -1826,6 +1840,15 @@ opentelemetry-collector:
           endpoint: http://opensearch:9200
           tls:
             insecure: true
+        sending_queue:
+          num_consumers: 10
+          queue_size: 1000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
 
     processors:
       memory_limiter:
@@ -1869,14 +1892,14 @@ opentelemetry-collector:
       pipelines:
         traces:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [otlp/jaeger, debug, spanmetrics]
+          exporters: [otlp/jaeger, spanmetrics]
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [otlphttp/prometheus, debug]
+          exporters: [otlphttp/prometheus]
         logs:
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [opensearch, debug]
+          exporters: [opensearch]
       telemetry:
         metrics:
           level: detailed
@@ -2273,6 +2296,22 @@ opensearch:
     limits:
       cpu: 1000m
       memory: 2Gi
+
+  otelLogsLifecycle:
+    enabled: false
+    image: curlimages/curl:8.15.0
+    schedule: "45 23 * * *"
+    endpoint: http://opensearch:9200
+    indexPattern: "otel-logs-*"
+    policyId: otel-logs-retention
+    retention: 3d
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
 
 bastionPortalAccess:
   enabled: false

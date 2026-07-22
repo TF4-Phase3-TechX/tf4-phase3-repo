@@ -1,0 +1,76 @@
+{{- if .Values.opensearch.otelLogsLifecycle.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: opensearch-otel-logs-retention
+  labels:
+    app.kubernetes.io/name: opensearch-otel-logs-retention
+    app.kubernetes.io/component: observability-retention
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: Helm
+spec:
+  schedule: {{ .Values.opensearch.otelLogsLifecycle.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: opensearch-otel-logs-retention
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsUser: 100
+            runAsGroup: 101
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: retention
+              image: {{ .Values.opensearch.otelLogsLifecycle.image | quote }}
+              command: [sh, -ec]
+              args:
+                - |
+                  endpoint={{ .Values.opensearch.otelLogsLifecycle.endpoint | quote }}
+                  pattern={{ .Values.opensearch.otelLogsLifecycle.indexPattern | quote }}
+                  policy={{ .Values.opensearch.otelLogsLifecycle.policyId | quote }}
+                  retention={{ .Values.opensearch.otelLogsLifecycle.retention | quote }}
+
+                  curl -fsS --retry 12 --retry-connrefused "$endpoint/_cluster/health?wait_for_status=yellow&timeout=30s" >/dev/null
+
+                  curl -fsS -X PUT "$endpoint/_plugins/_ism/policies/$policy" \
+                    -H 'Content-Type: application/json' \
+                    --data "{\"policy\":{\"description\":\"Delete $pattern after $retention\",\"default_state\":\"hot\",\"ism_template\":[{\"index_patterns\":[\"$pattern\"],\"priority\":100}],\"states\":[{\"name\":\"hot\",\"actions\":[],\"transitions\":[{\"state_name\":\"delete\",\"conditions\":{\"min_index_age\":\"$retention\"}}]},{\"name\":\"delete\",\"actions\":[{\"delete\":{}}],\"transitions\":[]}]}}" >/dev/null
+
+                  curl -fsS -X PUT "$endpoint/_index_template/otel-logs-single-node" \
+                    -H 'Content-Type: application/json' \
+                    --data "{\"index_patterns\":[\"$pattern\"],\"priority\":100,\"template\":{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0}}}" >/dev/null
+
+                  indexes="$(curl -fsS "$endpoint/_cat/indices/$pattern?h=index" | paste -sd, -)"
+                  if [ -n "$indexes" ]; then
+                    curl -fsS -X POST "$endpoint/_plugins/_ism/add/$indexes" \
+                      -H 'Content-Type: application/json' \
+                      --data "{\"policy_id\":\"$policy\"}" >/dev/null || true
+                    curl -fsS -X PUT "$endpoint/$indexes/_settings" \
+                      -H 'Content-Type: application/json' \
+                      --data '{"index":{"number_of_replicas":0}}' >/dev/null
+                  fi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                readOnlyRootFilesystem: true
+              resources:
+{{ toYaml .Values.opensearch.otelLogsLifecycle.resources | indent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}
