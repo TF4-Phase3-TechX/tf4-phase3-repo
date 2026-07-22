@@ -45,6 +45,7 @@ fun main() {
         exitProcess(1)
     }
     props[BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
+    applyKafkaSecurityConfig(props)
     val consumer = KafkaConsumer<String, ByteArray>(props).apply {
         subscribe(listOf(topic))
     }
@@ -67,6 +68,37 @@ fun main() {
                 }
         }
     }
+}
+
+fun applyKafkaSecurityConfig(props: Properties) {
+    val securityProtocol = System.getenv("KAFKA_SECURITY_PROTOCOL")
+    val saslMechanism = System.getenv("KAFKA_SASL_MECHANISM")
+    val username = System.getenv("KAFKA_USERNAME")
+    val password = System.getenv("KAFKA_PASSWORD")
+
+    if (securityProtocol.isNullOrBlank() &&
+        saslMechanism.isNullOrBlank() &&
+        username.isNullOrBlank() &&
+        password.isNullOrBlank()
+    ) {
+        return
+    }
+
+    if (username.isNullOrBlank() || password.isNullOrBlank()) {
+        throw IllegalStateException("KAFKA_USERNAME and KAFKA_PASSWORD must be set when Kafka SASL is enabled.")
+    }
+
+    val protocol = securityProtocol.takeUnless { it.isNullOrBlank() } ?: "SASL_SSL"
+    val mechanism = saslMechanism.takeUnless { it.isNullOrBlank() } ?: "SCRAM-SHA-512"
+
+    props["security.protocol"] = protocol
+    props["sasl.mechanism"] = mechanism
+    props["sasl.jaas.config"] =
+        "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${escapeJaas(username)}\" password=\"${escapeJaas(password)}\";"
+}
+
+fun escapeJaas(value: String): String {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
 /**

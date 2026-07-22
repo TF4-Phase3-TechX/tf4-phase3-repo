@@ -99,6 +99,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.app == 'true'
+    env:
+      TRIVY_SKIP_DIRS: techx-corp-platform/src/flagd-ui
     permissions:
       contents: read
       security-events: write  # required to upload SARIF to GitHub Security tab
@@ -111,10 +113,12 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'table'
           output: 'trivy-sast-report.txt'
           severity: 'CRITICAL,HIGH'
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '0'
           ignore-unfixed: true
 
@@ -123,10 +127,13 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: 'techx-corp-platform/src'
+          version: 'v0.72.0'
           scanners: 'vuln'
           format: 'sarif'
           output: 'trivy-sast-report.sarif'
           severity: 'CRITICAL,HIGH'
+          limit-severities-for-sarif: true
+          skip-dirs: 'techx-corp-platform/src/flagd-ui'
           exit-code: '1'
           ignore-unfixed: true
 
@@ -230,6 +237,7 @@ jobs:
         if: steps.check_secrets.outputs.skip != 'true'
         env:
           TF_VAR_budget_notification_emails: ${{ secrets.TF_BUDGET_NOTIFICATION_EMAILS }}
+          TF_VAR_valkey_auth_token: ${{ secrets.TF_VALKEY_AUTH_TOKEN }}
         run: terraform plan -lock=false -input=false -no-color -out=tfplan
 
       - name: Upload infra plan

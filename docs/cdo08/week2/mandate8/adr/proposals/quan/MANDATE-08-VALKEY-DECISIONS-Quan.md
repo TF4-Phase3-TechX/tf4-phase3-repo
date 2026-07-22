@@ -8,6 +8,13 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 ## QUYẾT ĐỊNH VK-01: LỰA CHỌN CHÍNH SÁCH DỮ LIỆU GIỎ HÀNG (CART DATA POLICY)
 
+> **CẬP NHẬT (REL-16, 2026-07-20) — QUYẾT ĐỊNH DƯỚI ĐÂY ĐÃ BỊ SUPERSEDE:** Task chính thức yêu cầu follow
+> đúng `VALKEY-MIGRATION-PLAN.md` (Argo Rollouts Blue-Green + AWS ElastiCache Online Migration), không phải
+> cold cutover. Online Migration replicate dữ liệu sống từ `valkey-cart` sang ElastiCache qua NLB bridge
+> trước khi cutover — nghĩa là **Phương án A (Active Cart Migration), không phải B**, giờ mới là hướng
+> triển khai thật. Giữ nguyên phân tích gốc bên dưới để có lịch sử quyết định, nhưng **không dùng làm căn
+> cứ triển khai nữa.**
+
 ### 1. Mô tả Quyết định & Các Hướng đề xuất
 * **Phương án A:** Di trú giỏ hàng đang hoạt động (Active Cart Migration).
 * **Phương án B:** Chuyển đổi lạnh (Cold Cutover / Discard Carts).
@@ -42,6 +49,14 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 
 ## QUYẾT ĐỊNH VK-03: LỰA CHỌN KỸ THUẬT DI TRÚ (MIGRATION TECHNIQUE)
 
+> **CẬP NHẬT (REL-16, 2026-07-20) — QUYẾT ĐỊNH DƯỚI ĐÂY ĐÃ BỊ SUPERSEDE:** Cả 2 phương án A (RDB
+> export/import) và B (Dual-Write & SCAN Backfill) đều không còn là lựa chọn thật — `VALKEY-MIGRATION-PLAN.md`
+> dùng **AWS ElastiCache Online Migration**, một kỹ thuật native thứ 3 của AWS (replication link thời gian
+> thực qua NLB bridge, gọi `start-migration`/`complete-migration`), nằm ngoài khung A/B ban đầu của quyết
+> định này. Không cần dual-write thủ công (AWS tự quản lý), nhưng cũng không đơn giản như RDB dump một lần
+> — cần NLB bridge tạm thời + theo dõi `ReplicationLag` qua CloudWatch trước khi cutover. Xem
+> `docs/cdo08/week2/mandate8/scripts/valkey/02-start-migration.sh` và `03-monitor-lag.sh`.
+
 ### 1. Mô tả Quyết định & Các Hướng đề xuất
 * **Phương án A:** RDB Export & Import.
 * **Phương án B:** Application Dual-Write & SCAN Backfill.
@@ -63,6 +78,15 @@ Tài liệu này cung cấp khung mẫu quyết định thiết kế kiến trú
 ---
 
 ## QUYẾT ĐỊNH VK-04: CHIẾN LƯỢC ROLLBACK SAU KHI CÓ DỮ LIỆU GHI MỚI
+
+> **CẬP NHẬT (REL-16, 2026-07-20) — QUYẾT ĐỊNH DƯỚI ĐÂY ĐÃ BỊ SUPERSEDE:** Vì VK-01 giờ là Active
+> Migration (dữ liệu cart là thật, không phải bỏ), rollback không còn được phép "chấp nhận mất cart mới"
+> như Phương án C nữa — dữ liệu ghi trên ElastiCache sau cutover cũng là dữ liệu thật cần bảo toàn khi
+> rollback. `VALKEY-MIGRATION-PLAN.md` §4 TRƯỜNG HỢP 2 chọn hướng gần với **Phương án B (Reconcile/Backfill)**
+> đã bị loại ở dưới: dùng Job `riot-redis-backfill` (xem
+> `techx-corp-chart/templates/riot-redis-backfill-job.yaml`) để FLUSHALL + kéo ngược dữ liệu mới nhất từ
+> ElastiCache về `valkey-cart` trước khi abort rollout. TRƯỜNG HỢP 1 (rollback trước khi có ghi mới, RPO=0)
+> vẫn đơn giản như Phương án C cũ (chỉ abort rollout), không cần backfill.
 
 ### 1. Mô tả Quyết định & Các Hướng đề xuất
 * **Phương án A:** Rollback tức thì sử dụng dữ liệu ghi nhận song song.

@@ -1,0 +1,66 @@
+{{- $mm2 := .Values.mirrormaker2 | default dict -}}
+{{- if ($mm2.enabled | default false) -}}
+{{- $source := $mm2.sourceCluster | default dict -}}
+{{- $target := $mm2.targetCluster | default dict -}}
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaMirrorMaker2
+metadata:
+  name: {{ $mm2.name | default "orders-mirrormaker2" | quote }}
+  labels:
+    {{- include "techx-corp.labels" (dict "Chart" .Chart "Release" .Release "name" "mirrormaker2") | nindent 4 }}
+spec:
+  version: {{ $mm2.version | default "3.9.0" | quote }}
+  replicas: {{ $mm2.replicas | default 1 }}
+  target:
+    alias: {{ $target.alias | default "msk" | quote }}
+    bootstrapServers: {{ required "mirrormaker2.targetCluster.bootstrapServers is required when mirrormaker2.enabled=true" $target.bootstrapServers | quote }}
+    tls: {}
+    authentication:
+      type: scram-sha-512
+      username: {{ required "mirrormaker2.targetCluster.username is required" $target.username | quote }}
+      passwordSecret:
+        secretName: {{ required "mirrormaker2.targetCluster.passwordSecret.name is required" (($target.passwordSecret).name) | quote }}
+        password: {{ required "mirrormaker2.targetCluster.passwordSecret.key is required" (($target.passwordSecret).key) | quote }}
+    config:
+      security.protocol: {{ $target.securityProtocol | default "SASL_SSL" | quote }}
+      sasl.mechanism: {{ $target.saslMechanism | default "SCRAM-SHA-512" | quote }}
+      config.storage.replication.factor: {{ $target.configStorageReplicationFactor | default 2 | quote }}
+      offset.storage.replication.factor: {{ $target.offsetStorageReplicationFactor | default 2 | quote }}
+      status.storage.replication.factor: {{ $target.statusStorageReplicationFactor | default 2 | quote }}
+    configStorageTopic: {{ (($target.connectStorageTopics | default dict).config) | default "mm2-configs" | quote }}
+    offsetStorageTopic: {{ (($target.connectStorageTopics | default dict).offset) | default "mm2-offsets" | quote }}
+    statusStorageTopic: {{ (($target.connectStorageTopics | default dict).status) | default "mm2-status" | quote }}
+    groupId: {{ $target.groupId | default "orders-mirrormaker2" | quote }}
+  mirrors:
+    - source:
+        alias: {{ $source.alias | default "self-hosted" | quote }}
+        bootstrapServers: {{ required "mirrormaker2.sourceCluster.bootstrapServers is required" $source.bootstrapServers | quote }}
+      topicsPattern: {{ $mm2.topicsPattern | default "orders" | quote }}
+      groupsPattern: {{ $mm2.groupsPattern | default "accounting|fraud-detection" | quote }}
+      sourceConnector:
+        tasksMax: {{ (($mm2.sourceConnector | default dict).tasksMax) | default 1 }}
+        config:
+          replication.policy.class: {{ $mm2.replicationPolicyClass | default "org.apache.kafka.connect.mirror.IdentityReplicationPolicy" | quote }}
+          sync.topic.acls.enabled: "false"
+          refresh.topics.interval.seconds: "30"
+      checkpointConnector:
+        tasksMax: 1
+        config:
+          replication.policy.class: {{ $mm2.replicationPolicyClass | default "org.apache.kafka.connect.mirror.IdentityReplicationPolicy" | quote }}
+          checkpoints.topic.replication.factor: "2"
+          sync.group.offsets.enabled: "true"
+          sync.group.offsets.interval.seconds: "30"
+  resources:
+    {{- toYaml ($mm2.resources | default dict) | nindent 4 }}
+  template:
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+    connectContainer:
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+{{- end }}
