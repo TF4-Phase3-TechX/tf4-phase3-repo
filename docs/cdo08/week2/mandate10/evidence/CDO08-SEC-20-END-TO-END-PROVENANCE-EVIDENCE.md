@@ -421,8 +421,4 @@ Mandate 10 đạt mức **PASS cho TF4 application images**:
 - Provenance attestation trỏ về repo, commit, workflow và run id.
 - SBOM CycloneDX tồn tại trong attestation và không có vulnerabilities trong image mẫu.
 - Admission policy chạy `Deny`: reject `latest`, reject TF4 ECR tag-only, accept signed TF4 ECR digest.
-
-Phần cần theo dõi sau:
-
-- PR GitOps codify label `techx.io/sec17-signature-enforce=true` đã merge ở repo `tf4-phase3-gitops-manifests`.
-- Dọn dẹp stale GitOps entry cho workload không còn runtime nếu cần làm Argo/GitOps sạch hoàn toàn.
+- Các third-party/system images như `flagd` nằm ngoài TF4 build pipeline và được quản lý bằng exception riêng.
