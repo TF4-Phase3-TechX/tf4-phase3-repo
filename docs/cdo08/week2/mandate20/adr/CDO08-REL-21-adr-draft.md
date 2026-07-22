@@ -66,3 +66,5 @@ Restore luôn thực hiện ra môi trường tách biệt (RDS point-in-time re
 1. Nguyên research thêm để xác nhận/điều chỉnh số RPO/RTO ở mục 3 (đặc biệt MSK - chấp nhận rủi ro hay đầu tư thêm archival).
 2. Điền tên người approve xoá backup ở mục 5 sau khi GAP-01 (REL-24) có hướng xử lý.
 3. Sau khi 2 mục trên xong, chuyển trạng thái đầu file từ DRAFT sang SIGNED kèm ngày ký.
+
+**Quy trình chốt số (draft → sửa gap → test → điều chỉnh → ký)** được trình bày đầy đủ, kèm nguồn tham khảo (AWS Well-Architected, Google DiRT), tại [CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md](../review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md) - dùng file đó để trình PM trước khi chạy drill.

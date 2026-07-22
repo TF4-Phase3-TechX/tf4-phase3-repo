@@ -29,3 +29,10 @@
 
 - Số RPO/RTO ở trên là **đề xuất dựa trên khả năng thực tế của cơ chế backup hiện có** (xem inventory), không phải số đã được business duyệt. Cần Hải/owner dữ liệu xác nhận mức chấp nhận rủi ro trước khi chốt, nhất là dòng MSK `orders` (hiện chưa có cách nào bảo vệ chặt).
 - RDS `accounting` và `reviews` dùng chung 1 instance vật lý - restore 1 schema về 1 mốc thời gian sẽ ảnh hưởng cả 2 schema cùng lúc. Cần quyết định: có tách instance riêng cho `accounting` không, hay chấp nhận restore chung.
+- **Số trong matrix này là target ban đầu, chưa phải số đã đo thật** - xem quy trình chốt số đầy đủ (draft → sửa gap → test → điều chỉnh → ký) tại [CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md](../review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md).
+
+## Nguồn tham khảo cho cách đặt số
+
+- **AWS Well-Architected Framework - Reliability Pillar, "Use defined recovery strategies to meet the recovery objectives"** (docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_planning_for_recovery_disaster_recovery.html): định nghĩa RTO là "the maximum acceptable delay between the interruption of service and restoration of service" và RPO là "the maximum acceptable amount of time since the last data recovery point". Tài liệu này cũng liệt kê các chiến lược DR theo tier: **Backup and Restore** (RTO/RPO tính bằng **giờ**, rẻ nhất, chậm nhất), Pilot Light / Warm Standby (RTO/RPO tính bằng phút/giây), Active-Active (gần như 0). Hệ của mình đang dùng chiến lược **Backup and Restore** (RDS point-in-time restore ra instance mới) - baseline mặc định của tier này là RTO/RPO tính bằng giờ, nhưng vì RDS có PITR (continuous transaction log backup, không chỉ snapshot ngày) nên RPO thực tế siết được xuống mức phút thay vì giờ - đây là lý do bảng trên đề xuất 15 phút thay vì "vài giờ" như baseline chung của tier Backup and Restore.
+- **AWS Well-Architected - "Back up data"** (docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/back-up-data.html): nhấn mạnh "Regular, automated restoration tests with actual RTO/RPO metrics are essential" - đúng lý do vì sao matrix này chỉ là target, phải có drill thật (REL-26) mới xác nhận được.
+

@@ -33,3 +33,8 @@ Nguyên tắc: **cadence backup phải nhỏ hơn hoặc bằng RPO**. Nếu RPO
 
 - **7 ngày (ngắn hạn, RDS/ElastiCache)**: đủ để bắt lỗi phát hiện trong tuần (case phổ biến nhất - migration lỗi, bug mới deploy), khớp với cấu hình đang chạy thật, không cần đổi gì thêm.
 - **35 ngày (dài hạn, đề xuất thêm cho `accounting`)**: đủ để bắt lỗi phát hiện muộn hơn (VD: audit hàng tháng, khách khiếu nại trễ), nhưng không giữ vô tận để tránh phát sinh chi phí lưu trữ không cần thiết - đúng tinh thần "retention hợp lý, không giữ vô tận" của mandate.
+
+## Nguồn tham khảo
+
+- **AWS Well-Architected - "Back up data"** (docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/back-up-data.html): mô tả backup strategy phải "meet requirements for recovery time objectives (RTO) and recovery point objectives (RPO)" - tức cadence/retention không phải chọn tuỳ ý, phải map ngược từ RPO/RTO đã chốt, đúng cách bảng này đang làm (chọn cadence trước dựa trên RPO, không phải ngược lại).
+- Nguyên tắc "cadence backup phải nhỏ hơn hoặc bằng RPO" lấy trực tiếp từ ví dụ trong chính [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) yêu cầu #2: *"tần suất backup phải đủ để đạt RPO đã cam kết (RPO 1 giờ mà backup mỗi ngày là mâu thuẫn)"*.
