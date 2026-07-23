@@ -692,14 +692,7 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 	if userCurrency == "USD" {
 		converted = make([]*pb.Money, len(prices))
 		for i, price := range prices {
-			converted[i], err = cs.convertCurrency(ctx, price, userCurrency)
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert price of %q to %s: %w", items[i].GetProductId(), userCurrency, err)
-			}
-			if err := validateMoneyInCurrency(converted[i], userCurrency); err != nil {
-				return nil, fmt.Errorf("invalid converted price for product #%q: %w", items[i].GetProductId(), err)
-			}
-			converted[i] = copyMoney(converted[i])
+			converted[i] = copyMoney(price)
 		}
 	} else {
 		converted, err = cs.batchConvertCurrency(ctx, prices, userCurrency)
@@ -709,7 +702,16 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 	}
 	out := make([]*pb.OrderItem, len(items))
 	for i, item := range items {
-		out[i] = &pb.OrderItem{Item: item, Cost: converted[i]}
+		product := products[i]
+		out[i] = &pb.OrderItem{
+			Item: item,
+			Cost: converted[i],
+			ProductDisplay: &pb.ProductDisplay{
+				Name:       product.GetName(),
+				Picture:    product.GetPicture(),
+				Categories: product.GetCategories(),
+			},
+		}
 	}
 	return out, nil
 }
