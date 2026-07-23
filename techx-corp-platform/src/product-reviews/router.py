@@ -19,7 +19,6 @@ from bedrock_adapter import (
     call_tool,
     _map_search_type_to_intent,
     _is_fastpath_chitchat,
-    _is_review_query,
     resolve_referenced_product,
 )
 from safety import MAX_QUESTION_CHARS, contains_pii, is_attack, normalize_text
@@ -150,12 +149,6 @@ def route_search_products_ai(
                     "search_type": "chitchat",
                     "confidence_score": 1.0,
                     "response_message": "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
-                }
-            elif _is_review_query(query):
-                intent = {
-                    "search_type": "reviews",
-                    "confidence_score": 1.0,
-                    "keywords": "",
                 }
             else:
                 intent = assistant.provider.parse_search_intent(query, history=sanitized_history)

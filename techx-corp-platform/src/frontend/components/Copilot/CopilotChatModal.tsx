@@ -72,29 +72,7 @@ export const CopilotChatModal: React.FC = () => {
         setInput('');
         setLoading(true);
 
-        const isReviewQuery = ['review', 'đánh giá', 'nhận xét', 'chất lượng', 'dùng tốt không', 'tốt không'].some(kw => userMsgText.toLowerCase().includes(kw));
-
         try {
-            if (isReviewQuery && lastProductId) {
-                const askRes = await fetch(`/api/product-ask-ai-assistant/${lastProductId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: userMsgText, sessionId, userId }),
-                });
-                const askData = await askRes.json();
-                const reviewAnswerText = askData.response || `Dưới đây là thông tin về sản phẩm bạn đang quan tâm.`;
-
-                const assistantMsg: ChatMessage = {
-                    id: `msg_${Date.now() + 1}`,
-                    sender: 'assistant',
-                    text: reviewAnswerText,
-                    proposal: askData.action_proposal || askData.actionProposal,
-                };
-                setMessages((prev) => [...prev, assistantMsg]);
-                setLoading(false);
-                return;
-            }
-
             const response = await fetch('/api/product-search-ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -115,7 +93,7 @@ export const CopilotChatModal: React.FC = () => {
                 try {
                     const parsed = typeof rawIntent === 'string' ? JSON.parse(rawIntent) : rawIntent;
                     parsedType = parsed.search_type || '';
-                    if (parsedType !== 'reviews' && parsed.response_message) {
+                    if (parsed.response_message) {
                         assistantText = parsed.response_message;
                     } else if ((parsed.search_type === 'clarify' || parsed.search_type === 'unclear') && parsed.clarify_question) {
                         assistantText = parsed.clarify_question;

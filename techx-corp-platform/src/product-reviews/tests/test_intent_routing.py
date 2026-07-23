@@ -23,11 +23,17 @@ from safety import is_attack, contains_pii, normalize_text, MAX_QUESTION_CHARS
 INTENT_CONFIDENCE_THRESHOLD = 0.6
 
 
+class DummyPrice:
+    def __init__(self, units: int = 0):
+        self.units = units
+        self.nanos = 0
+
 class DummyProduct:
-    def __init__(self, pid: str, name: str, categories: list = None):
+    def __init__(self, pid: str, name: str, categories: list = None, price: int = 0):
         self.id = pid
         self.name = name
         self.categories = categories or []
+        self.price_usd = DummyPrice(price)
 
 
 def test_tool_allow_list_enforcement():
@@ -127,3 +133,32 @@ def test_review_qa_without_prior_context_returns_none():
     # Turn 1 with no prior context or keywords MUST return None to prompt for clarification
     res = resolve_referenced_product(empty_history, products, keywords="")
     assert res is None
+
+
+def test_multilingual_followup_product_resolution():
+    """Verify resolving referenced product from prior assistant message for multi-lingual queries."""
+    products = [
+        DummyProduct("1", "Explorascope 60AZ", ["telescopes"], price=50),
+        DummyProduct("2", "Eclipsmart Travel Refractor Telescope", ["telescopes"], price=130),
+    ]
+
+    history1 = [
+        {"role": "user", "content": "tìm kính thiên văn"},
+        {"role": "assistant", "content": "Based on the reviews, users generally appreciate Explorascope 60AZ for its ease of use."},
+    ]
+    res1 = resolve_referenced_product(history1, products, query="sản phẩm có đặc điểm chi nổi bật")
+    assert res1 is not None
+    assert res1.name == "Explorascope 60AZ"
+
+    history2 = [
+        {"role": "user", "content": "tôi muốn mua kính thiên văn đắt nhất"},
+        {"role": "assistant", "content": "Đây là Eclipsmart Travel Refractor Telescope giá $129.95"},
+    ]
+    res2 = resolve_referenced_product(history2, products, query="vì sao tôi lại chọn đó")
+    assert res2 is not None
+    assert res2.name == "Eclipsmart Travel Refractor Telescope"
+
+    res3 = resolve_referenced_product(history2, products, query="why should I choose this?")
+    assert res3 is not None
+    assert res3.name == "Eclipsmart Travel Refractor Telescope"
+
