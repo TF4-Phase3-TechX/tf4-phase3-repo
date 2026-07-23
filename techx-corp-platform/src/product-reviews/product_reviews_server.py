@@ -175,21 +175,29 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
             product_review_svc_metrics["app_ai_fallback_counter"].add(1, attributes)
         if outcome.outcome == "unavailable":
             product_review_svc_metrics["app_llm_error_counter"].add(1, attributes)
-        logger.info(
-            "ai_assistant_completed",
-            extra={
-                "model_id": assistant.provider.model_id,
-                "guardrail_version": assistant.provider.guardrail_version,
-                "outcome": outcome.outcome,
-                "latency_ms": round(outcome.latency_ms, 1),
-                "input_tokens": outcome.input_tokens,
-                "output_tokens": outcome.output_tokens,
-                "estimated_cost_usd": round(estimated_cost, 8),
-                "error_class": outcome.error_class or "none",
-                "provider_stop_reason": outcome.provider_stop_reason,
-                "response_contract_stage": outcome.response_contract_stage,
-                "quarantined_reviews": outcome.quarantined_reviews,
-            },
+        safety_decision = "allow"
+        if outcome.outcome == "blocked":
+            safety_decision = "block"
+        elif outcome.outcome == "insufficient":
+            safety_decision = "refuse"
+        elif outcome.outcome == "unavailable":
+            safety_decision = "provider_unavailable"
+
+        _log_ai_tool_audit(
+            surface="product_qa",
+            model_id=assistant.provider.model_id,
+            tool_name="bedrock.converse",
+            safety_decision=safety_decision,
+            confirmation_status="not_required",
+            guardrail_version=assistant.provider.guardrail_version,
+            latency_ms=round(outcome.latency_ms, 1),
+            input_tokens=outcome.input_tokens,
+            output_tokens=outcome.output_tokens,
+            estimated_cost_usd=round(estimated_cost, 8),
+            error_class=outcome.error_class or "none",
+            provider_stop_reason=outcome.provider_stop_reason,
+            response_contract_stage=outcome.response_contract_stage,
+            quarantined_reviews=outcome.quarantined_reviews,
         )
         return demo_pb2.AskProductAIAssistantResponse(
             response=outcome.response,
@@ -597,16 +605,18 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
                 estimated_cost_usd=cost,
             )
 
-            logger.info(
-                "nl_search_completed",
-                extra={
-                    "search_type": intent.get("search_type"),
-                    "candidate_count_before": candidate_count_before,
-                    "candidate_count_after": candidate_count_after,
-                    "input_tokens": _in_tok,
-                    "output_tokens": _out_tok,
-                    "estimated_cost_usd": round(cost, 8),
-                },
+            _log_ai_tool_audit(
+                surface="copilot_search",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision="allow",
+                confirmation_status="not_required",
+                search_type=intent.get("search_type"),
+                candidate_count_before=candidate_count_before,
+                candidate_count_after=candidate_count_after,
+                input_tokens=_in_tok,
+                output_tokens=_out_tok,
+                estimated_cost_usd=round(cost, 8),
             )
 
             if session_id:
@@ -622,7 +632,14 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
         except ProviderFailure as exc:
             span.set_attribute("app.search.outcome", "provider_failure")
             span.set_attribute("app.search.error_class", exc.error_class)
-            logger.info("nl_search_provider_failure", extra={"error_class": exc.error_class})
+            _log_ai_tool_audit(
+                surface="copilot_search",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision="provider_unavailable",
+                confirmation_status="not_required",
+                error_class=exc.error_class,
+            )
             # Record telemetry so budget-cap alerts cover search Bedrock calls.
             _record_search_metrics(
                 model_id=assistant.provider.model_id,
@@ -641,7 +658,14 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
 
         except Exception as exc:
             span.set_attribute("app.search.outcome", "unexpected_error")
-            logger.info("nl_search_unexpected_error", extra={"error": str(exc)[:200]})
+            _log_ai_tool_audit(
+                surface="copilot_search",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision="provider_unavailable",
+                confirmation_status="not_required",
+                error=str(exc)[:200],
+            )
             return _refused_search_response()
 
 
@@ -655,6 +679,14 @@ def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
             proposal = None
         if not proposal:
             span.set_attribute("app.cart.confirmation.outcome", "invalid_or_expired")
+            _log_ai_tool_audit(
+                surface="copilot_search",
+                model_id="N/A",
+                tool_name="modify_cart",
+                safety_decision="allow",
+                confirmation_status="rejected",
+                outcome="invalid_or_expired"
+            )
             return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="invalid_or_expired")
 
         try:
@@ -674,10 +706,26 @@ def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
             # for a fresh proposal after a downstream failure.
             logger.warning("copilot_cart_confirmation_failed", extra={"grpc_code": str(exc.code())})
             span.set_attribute("app.cart.confirmation.outcome", "downstream_failed")
+            _log_ai_tool_audit(
+                surface="copilot_search",
+                model_id="N/A",
+                tool_name="modify_cart",
+                safety_decision="provider_unavailable",
+                confirmation_status="rejected",
+                grpc_code=str(exc.code())
+            )
             return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="downstream_failed")
 
         span.set_attribute("app.cart.confirmation.outcome", "applied")
         span.set_attribute("app.cart.product_id", proposal["product_id"])
+        _log_ai_tool_audit(
+            surface="copilot_search",
+            model_id="N/A",
+            tool_name="modify_cart",
+            safety_decision="allow",
+            confirmation_status="confirmed",
+            product_id=proposal["product_id"]
+        )
         return demo_pb2.ConfirmCartActionResponse(applied=True, outcome="applied")
 
 
@@ -721,6 +769,31 @@ def _record_search_metrics(
         product_review_svc_metrics["app_ai_fallback_counter"].add(1, attributes)
         product_review_svc_metrics["app_llm_error_counter"].add(1, attributes)
 
+
+
+
+def _log_ai_tool_audit(
+    surface: str,
+    model_id: str,
+    tool_name: str,
+    safety_decision: str,
+    confirmation_status: str = "not_required",
+    **extra_kwargs
+):
+    ctx = trace.get_current_span().get_span_context()
+    trace_id = format(ctx.trace_id, '032x') if ctx.is_valid else ""
+    extra = {
+        "log_type": "ai_tool_audit",
+        "trace_id": trace_id,
+        "surface": surface,
+        "model_id": model_id,
+        "tool_name": tool_name,
+        "tool_input_redacted": {"redacted": True, "content_logged": False},
+        "safety_decision": safety_decision,
+        "confirmation_status": confirmation_status,
+    }
+    extra.update(extra_kwargs)
+    logger.info("ai_tool_audit", extra=extra)
 
 
 def configure_logging(service_name: str) -> None:
