@@ -139,3 +139,77 @@ class GroundedAssistant:
                 error_class=type(exc).__name__.lower()[:64],
                 quarantined_reviews=quarantined_reviews,
             )
+
+def log_tool_audit(tool_name: str, args: dict, trace_id: str):
+    sanitized_args = copy.deepcopy(args)
+    sensitive_keys = ('password', 'secret', 'token', 'key', 'email', 'phone')
+    for k in list(sanitized_args.keys()):
+        if any(sensitive in k.lower() for sensitive in sensitive_keys):
+            sanitized_args[k] = "[REDACTED_SECRET]"
+            
+    logger.info(
+        "agent_tool_call",
+        extra={
+            "event": "agent_tool_call",
+            "trace_id": trace_id,
+            "tool_name": tool_name,
+            "sanitized_args": sanitized_args
+        }
+    )
+
+def run_copilot_loop(user_query: str, tool_response: dict = None):
+    MAX_ITERATIONS = 25
+    LATENCY_BUDGET_SEC = 4.5
+    start_time = time.monotonic()
+    
+    ALLOWED_COPILOT_TOOLS = {"search_products", "fetch_product_reviews", "fetch_product_info", "add_to_cart", "remove_from_cart", "update_cart"}
+    CART_MUTATION_TOOLS = {"add_to_cart", "remove_from_cart", "update_cart"}
+    
+    if tool_response:
+        tool_result_block = {
+            "toolUseId": tool_response.get("tool_use_id"),
+            "content": [{"json": {"status": tool_response.get("status", "success")}}]
+        }
+        return "Mình đã thao tác thành công trên giỏ hàng cho anh/chị rồi!"
+    
+    for iteration in range(MAX_ITERATIONS):
+        # a. [Pre-flight Check]
+        elapsed_time = time.monotonic() - start_time
+        if elapsed_time >= LATENCY_BUDGET_SEC:
+            logger.warning("Latency budget exhausted")
+            break
+            
+        # b. [Mock Action]
+        # Giả lập LLM trả về tool, cho phép tiêm tool lỗi để test
+        if "delete_user_account" in user_query.lower():
+            mock_tool_name = "delete_user_account"
+            mock_args = {"user_id": "123"}
+        else:
+            mock_tool_name = "add_to_cart" if "thêm" in user_query.lower() else "search_products"
+            mock_args = {"product_id": "123", "quantity": 1} if mock_tool_name in CART_MUTATION_TOOLS else {"query": user_query}
+        
+        # [SECURITY GUARDRAIL] Excessive-Agency & Allow-List Check
+        if mock_tool_name not in ALLOWED_COPILOT_TOOLS:
+            logger.error(f"SECURITY ALERT: Excessive agency blocked. Tool '{mock_tool_name}' is not in allow-list.")
+            return f"System Error: Tool {mock_tool_name} is unauthorized."
+        
+        logger.info(f"AUDIT LOG: Authorized tool invoked - Name: {mock_tool_name}, args: {mock_args}")
+        
+        if mock_tool_name in CART_MUTATION_TOOLS:
+            # Ngắt vòng lặp Agent (Break) và trả về chuẩn gRPC CartActionProposal cho Frontend
+            return {
+                "type": "CartActionProposal",
+                "tool_name": mock_tool_name,
+                "arguments": mock_args,
+                "message": "Mình đã chuẩn bị xong thông tin. Anh/chị có chắc chắn muốn thực hiện thay đổi giỏ hàng này không?"
+            }
+        
+        # c. [Audit]
+        log_tool_audit(tool_name=mock_tool_name, args=mock_args, trace_id="mock_trace_123")
+        
+        # d. [Safety Net]
+        if iteration == MAX_ITERATIONS - 1:
+            logger.warning("Max iterations reached")
+            break
+            
+    return "Tôi đang xử lý quá nhiều thông tin, vui lòng thử lại với câu hỏi ngắn gọn hơn."
