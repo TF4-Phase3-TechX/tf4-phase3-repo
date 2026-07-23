@@ -1,6 +1,6 @@
-# ADR-005: Bật EKS Control Plane Logging (api, audit, authenticator)
+# ADR-005: Bật EKS Control Plane Logging (audit, authenticator)
 
-**Ngày:** 2026-07-08
+**Ngày:** 2026-07-08 (Cập nhật: 2026-07-23 - Tắt `api` log để tối ưu chi phí)
 **Trạng thái:** Accepted — Implemented
 **Người quyết định:** CDO-04 (Infrastructure Owner: Huy Hoàng) — theo yêu cầu của CDO-07 (AUDIT-001)
 **Người review:** CDO-07 (Audit)
@@ -15,7 +15,7 @@ Kubernetes EKS Control Plane tạo ra các loại log quan trọng cho audit:
 
 | Log type | Nội dung |
 |---|---|
-| `api` | API server request/response, bao gồm cả kubectl commands |
+| `api` | (Đã tắt để cắt giảm chi phí CloudWatch Ingestion) API server verbose request/response |
 | `audit` | Mọi action lên Kubernetes API (create/delete/get resource, đọc Secret...) |
 | `authenticator` | Quá trình xác thực IAM → K8s identity |
 | `controllerManager` | (optional) Hoạt động của controller |
@@ -27,23 +27,21 @@ Mặc định, EKS **không bật** Control Plane Logging. Không có log = khô
 
 ## 2. Quyết định (Decision)
 
-**Bật 3 log type bắt buộc cho EKS cluster `techx-tf4-cluster`:**
+**Bật 2 log type cốt lõi cho EKS cluster `techx-tf4-cluster` (đã tắt `api` log để giảm chi phí CloudWatch Ingestion):**
 
 ```hcl
 # infra/terraform/eks.tf
-cluster_enabled_log_types = ["api", "audit", "authenticator"]
+cluster_enabled_log_types = ["audit", "authenticator"]
 ```
 
 **Kết quả thực tế:**
-- CloudWatch Log Group: `/aws/eks/techx-tf4-cluster/cluster` — retention 90 ngày.
-- Log streams: `kube-apiserver-audit-*`, `kube-apiserver-*`, `authenticator-*`.
+- CloudWatch Log Group: `/aws/eks/techx-tf4-cluster/cluster` — retention 7 ngày (stream sang S3 WORM 90 ngày).
+- Log streams: `kube-apiserver-audit-*`, `authenticator-*`.
 
-**Không bật:** `controllerManager`, `scheduler` — **quyết định có chủ đích, không phải thiếu sót.**
+**Không bật / Đã tắt:** `api`, `controllerManager`, `scheduler` — **quyết định có chủ đích để tối ưu chi phí CloudWatch Logs Ingestion.**
 
-Confirmed bởi CDO-07 (Đinh Văn Ty, 2026-07-10):
-> "cái ni không phải là lỗi nha, vì phân tích hiện tại cho thấy 2 cái này chưa quá quan trọng và cũng như nếu dùng sẽ tăng chi phí → đẩy lên các tuần sau mới làm"
-
-Chi phí ước tính nếu bật thêm: ~$5-10/tuần. Defer sang Week 2+ khi có runtime evidence cần thiết.
+Confirmed bởi CDO-07 & CDO-04 (2026-07-23):
+> Log type `api` phát sinh dung lượng vô cùng lớn (API server verbose logs) nhưng không cần thiết cho audit vết người dùng vì `audit` và `authenticator` đã ghi lại trọn vẹn 100% thao tác API và IAM identity. Tắt `api` log giúp cắt giảm chi phí CloudWatch Ingestion mà vẫn đảm bảo tiêu chuẩn kiểm toán.
 
 ---
 
