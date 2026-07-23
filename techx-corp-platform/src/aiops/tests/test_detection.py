@@ -6,6 +6,7 @@ from app.detection import (
     error_rate_query,
     latency_query,
     llm_error_query,
+    signal_gate,
     torai_lite_score,
 )
 
@@ -20,6 +21,25 @@ def test_statistical_scores_detect_latest_spike():
     assert scores["ratio"] > 20
     assert scores["zscore"] > 3
     assert scores["isolation"] > 0
+
+
+def test_acute_confirmation_does_not_refit_confidence_only_isolation_forest(
+    monkeypatch,
+):
+    import app.detection as detection
+
+    original = detection.anomaly_scores
+    isolation_flags = []
+
+    def recording_scores(points, settings=None, *, include_isolation=True):
+        isolation_flags.append(include_isolation)
+        return original(points, settings, include_isolation=include_isolation)
+
+    monkeypatch.setattr(detection, "anomaly_scores", recording_scores)
+
+    signal_gate([100, 101, 99, 100, 102, 130, 150, 180], 120)
+
+    assert isolation_flags == [True, False, False, False]
 
 
 def test_latency_requires_sustained_polls():
