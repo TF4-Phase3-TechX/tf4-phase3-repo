@@ -27,7 +27,8 @@ module "eks" {
   }
 
   # Bật Control Plane Logging theo tuân thủ ADR-005 / AUDIT-001
-  cluster_enabled_log_types = ["api", "audit", "authenticator"]
+  cluster_enabled_log_types              = ["api", "audit", "authenticator"]
+  cloudwatch_log_group_retention_in_days = 7
 
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true
