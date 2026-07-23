@@ -44,16 +44,31 @@ locals {
     }],
     [for i, svc in local.ecr_services : {
       rulePriority = i + 2
-      description  = "Giữ tối đa 3 ảnh mới nhất cho service ${svc}"
+      description  = "Giữ tối đa 2 ảnh mới nhất cho service ${svc}"
       selection = {
         tagStatus      = "tagged"
         tagPatternList = ["*-${svc}"]
         countType      = "imageCountMoreThan"
-        countNumber    = 3
+        countNumber    = 2
       }
       action = { type = "expire" }
     }]
   )
+
+  # Cosign sinh 2 tag phụ cho mỗi image đã ký thành công: "sha256-<digest>.sig"
+  # (chữ ký, ~0.5 KB) và "sha256-<digest>.att" (attestation kèm SBOM, trung bình
+  # ~365 KB). Ở policy CŨ (tagStatus: any, count>50 — bản trước PR này), 2 tag
+  # phụ này bị đếm CHUNG vào đúng 1 quỹ 50 với image ứng dụng: mỗi lần build ký
+  # thành công tốn 3 slot (app + sig + att) thay vì 1, nên quỹ "50" thực chất chỉ
+  # chứa được ~16-17 lần build thật — đẩy nhanh việc xóa nhầm digest đang chạy.
+  #
+  # Ở policy per-service này, pattern "*-${svc}" neo cuối chuỗi nên KHÔNG khớp
+  # "sha256-....sig"/".att" (không kết thúc bằng "-<service>") — 2 tag phụ này
+  # không bị rule nào chọn nên KHÔNG bao giờ bị xóa, tồn tại vô thời hạn. Đây là
+  # đánh đổi có chủ đích, không phải sơ sót: dung lượng 1 cặp .sig+.att trung
+  # bình chỉ ~365 KB (~$0.10/GB-tháng của ECR ⇒ ~$0.035/tháng cho mỗi 1.000 cặp
+  # tích lũy) — không đáng kể so với rủi ro xóa nhầm chữ ký của 1 image còn sống
+  # nếu áp expiry theo tuổi cho các tag này.
 }
 
 resource "aws_ecr_lifecycle_policy" "techx_corp_policy" {
