@@ -1,8 +1,10 @@
 import os
+from unittest.mock import patch
 
 os.environ.setdefault("DB_CONNECTION_STRING", "postgresql://unused:unused@127.0.0.1:1/unused")
 
-import product_reviews_server as server
+with patch("psycopg2.pool.ThreadedConnectionPool"):
+    import product_reviews_server as server
 from session_store import SessionStore
 
 

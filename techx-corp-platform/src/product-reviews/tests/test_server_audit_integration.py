@@ -1,8 +1,11 @@
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from ai_assistant import AssistantOutcome
 from bedrock_adapter import ProviderFailure
-import product_reviews_server as server
+
+with patch("psycopg2.pool.ThreadedConnectionPool"):
+    import product_reviews_server as server
 
 
 class Counter:
