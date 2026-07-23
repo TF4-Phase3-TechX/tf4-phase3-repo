@@ -23,7 +23,7 @@ Hệ thống Athena Forensic Security Analytics được định nghĩa hoàn to
 ### 1.3 Athena Workgroup
 - **`aws_athena_workgroup.audit_forensics`**: Workgroup tên `tf4-audit-forensics`.
 - **Cấu hình bắt buộc (Enforced)**: Ép buộc tất cả query xuất kết quả về `s3://${athena_results}/results/` có bật mã hóa SSE_S3.
-- **Chống vọt chi phí**: Cài đặt `bytes_scanned_cutoff_per_query = 1073741824` (1 GB/query).
+- **Chống vọt chi phí**: Cài đặt `bytes_scanned_cutoff_per_query = 10737418240` (10 GB/query), đảm bảo đủ hạn mức truy vấn EKS logs mà không bị hủy câu lệnh SQL (Canceled).
 
 ### 1.4 Glue Catalog Tables (3 Nguồn Logs chính)
 1. **`cloudtrail_events`**: 
@@ -39,8 +39,8 @@ Hệ thống Athena Forensic Security Analytics được định nghĩa hoàn to
    - Partition Projection 4 cấp `year/month/day/hour` tương thích 100% với định dạng xuất mặc định của Kinesis Data Firehose (`YYYY/MM/DD/HH`).
 
 ### 1.5 IAM Policies (Phân quyền Least Privilege)
-1. **`aws_iam_policy.athena_audit_analyst`**: Cấp quyền chạy truy vấn Athena, đọc Glue Catalog, đọc dữ liệu nguồn tại 3 S3 WORM log buckets và ghi kết quả truy vấn tại S3 results bucket.
-2. **`aws_iam_policy.cloudwatch_insights_forensics`**: Cấp quyền chạy truy vấn CloudWatch Logs Insights real-time.
+1. **`aws_iam_policy.athena_audit_analyst`**: Cấp quyền chạy truy vấn Athena, điều hướng Console UI (Workgroup & Catalog listing), đọc Glue Catalog (`glue:GetDatabases`, `glue:GetTables`...), đọc dữ liệu nguồn tại 3 S3 WORM log buckets và ghi kết quả truy vấn tại S3 results bucket.
+2. **`aws_iam_policy.cloudwatch_insights_forensics`**: Cấp quyền hiển thị danh sách Log Groups trên Console và chạy truy vấn CloudWatch Logs Insights real-time.
 
 ---
 
@@ -86,7 +86,7 @@ Amazon Athena áp dụng mô hình chi phí **Pay-Per-Query (Serverless)**:
    - Khi chạy truy vấn SQL chỉ định mốc thời gian (ví dụ: `WHERE year='2026' AND month='07' AND day='22'`), Athena chỉ quét dữ liệu đúng thư mục ngày đó trên S3 thay vì quét toàn bộ bucket.
    - Giúp giảm dung lượng quét từ 90% - 99% (Ví dụ: Một truy vấn chỉ quét 20 MB thay vì 50 GB log).
 2. **Workgroup Bytes Scanned Cutoff**:
-   - Cài đặt `bytes_scanned_cutoff_per_query = 1GB` tự động chặn các câu lệnh SQL thiếu điều kiện `WHERE` quét toàn bộ bucket. Chi phí tối đa cho 1 query không bao giờ vượt quá **$0.005 USD**.
+   - Cài đặt `bytes_scanned_cutoff_per_query = 10GB` tự động chặn các câu lệnh SQL thiếu điều kiện `WHERE` quét toàn bộ bucket. Chi phí tối đa cho 1 query không bao giờ vượt quá **$0.05 USD** (~1.200 VNĐ).
 3. **Tự động xóa Query Results sau 7 ngày**:
    - Kết quả SQL lưu trên S3 được tự động dọn dẹp bằng Lifecycle Policy, giữ chi phí lưu trữ kết quả xấp xỉ $0.
 4. **Glue Data Catalog**:

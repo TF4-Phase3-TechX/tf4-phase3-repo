@@ -70,8 +70,6 @@ var tracer trace.Tracer
 var resource *sdkresource.Resource
 var initResourcesOnce sync.Once
 
-const maxConcurrentOrderItemPreparations = 2
-
 func initResource() *sdkresource.Resource {
 	initResourcesOnce.Do(func() {
 		extraResources, _ := sdkresource.New(
@@ -580,7 +578,6 @@ func (cs *checkout) prepareOrderItemsAndShippingQuoteFromCart(ctx context.Contex
 		attribute.Float64("app.shipping.amount", shippingCostFloat),
 		attribute.Int("app.cart.items.count", int(totalCart)),
 		attribute.Int("app.order.items.count", len(orderItems)),
-		attribute.Int("app.order.preparation.concurrency", maxConcurrentOrderItemPreparations),
 	)
 	return out, nil
 }
@@ -695,14 +692,7 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 	if userCurrency == "USD" {
 		converted = make([]*pb.Money, len(prices))
 		for i, price := range prices {
-			converted[i], err = cs.convertCurrency(ctx, price, userCurrency)
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert price of %q to %s: %w", items[i].GetProductId(), userCurrency, err)
-			}
-			if err := validateMoneyInCurrency(converted[i], userCurrency); err != nil {
-				return nil, fmt.Errorf("invalid converted price for product #%q: %w", items[i].GetProductId(), err)
-			}
-			converted[i] = copyMoney(converted[i])
+			converted[i] = copyMoney(price)
 		}
 	} else {
 		converted, err = cs.batchConvertCurrency(ctx, prices, userCurrency)
@@ -712,73 +702,32 @@ func (cs *checkout) prepOrderItems(ctx context.Context, items []*pb.CartItem, us
 	}
 	out := make([]*pb.OrderItem, len(items))
 	for i, item := range items {
-		out[i] = &pb.OrderItem{Item: item, Cost: converted[i]}
+		product := products[i]
+		out[i] = &pb.OrderItem{
+			Item: item,
+			Cost: converted[i],
+			ProductDisplay: &pb.ProductDisplay{
+				Name:       product.GetName(),
+				Picture:    product.GetPicture(),
+				Categories: product.GetCategories(),
+			},
+		}
 	}
 	return out, nil
 }
 
 func (cs *checkout) getProducts(ctx context.Context, items []*pb.CartItem, products []*pb.Product) error {
-	if len(items) == 0 {
-		return nil
-	}
-	workerCount := len(items)
-	if workerCount > maxConcurrentOrderItemPreparations {
-		workerCount = maxConcurrentOrderItemPreparations
-	}
-
-	workerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	jobs := make(chan int)
-	var workers sync.WaitGroup
-	var firstErr error
-	var errOnce sync.Once
-	recordErr := func(err error) {
-		errOnce.Do(func() {
-			firstErr = err
-			cancel()
-		})
-	}
-	for range workerCount {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
-			for {
-				select {
-				case <-workerCtx.Done():
-					return
-				case index, ok := <-jobs:
-					if !ok {
-						return
-					}
-					product, err := cs.getProduct(workerCtx, items[index].GetProductId())
-					if err != nil {
-						recordErr(fmt.Errorf("failed to get product #%q: %w", items[index].GetProductId(), err))
-						return
-					}
-					if product == nil {
-						recordErr(fmt.Errorf("product #%q response is empty", items[index].GetProductId()))
-						return
-					}
-					products[index] = product
-				}
-			}
-		}()
-	}
-
-enqueue:
-	for index := range items {
-		select {
-		case <-workerCtx.Done():
-			break enqueue
-		case jobs <- index:
+	for i, item := range items {
+		product, err := cs.getProduct(ctx, item.GetProductId())
+		if err != nil {
+			return fmt.Errorf("failed to get product #%q: %w", item.GetProductId(), err)
 		}
+		if product == nil {
+			return fmt.Errorf("product #%q response is empty", item.GetProductId())
+		}
+		products[i] = product
 	}
-	close(jobs)
-	workers.Wait()
-	if firstErr != nil {
-		return firstErr
-	}
-	return ctx.Err()
+	return nil
 }
 
 func (cs *checkout) getProduct(ctx context.Context, productID string) (*pb.Product, error) {

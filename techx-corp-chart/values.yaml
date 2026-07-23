@@ -54,6 +54,28 @@ prometheusRetainStorageClass:
   provisioner: kubernetes.io/aws-ebs
   allowVolumeExpansion: false
 
+cloudflareAccess:
+  enabled: false
+  namespace: cloudflare-access
+  createNamespace: true
+  replicas: 2
+  image:
+    repository: cloudflare/cloudflared
+    tag: "2025.7.0"
+    pullPolicy: IfNotPresent
+  tokenSecret:
+    name: cloudflare-tunnel-token
+    key: token
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  metrics:
+    port: 2000
+
 components:
   ## Demo Components are named objects (services) with several properties
   # demoService:
@@ -203,6 +225,22 @@ components:
         value: webstore-logs
       - name: REMEDIATION_MODE
         value: dry-run
+      # Both switches remain off until CDO signs the exact Mandate-22 policy,
+      # target and drill window. Live RBAC is separately gated below.
+      - name: AIOPS_AUTONOMOUS_REMEDIATION_ENABLED
+        value: "false"
+      - name: AIOPS_REMEDIATION_POLICY_VERSION
+        value: "m22-v1"
+      - name: AIOPS_AUTONOMOUS_RUNBOOKS
+        value: "deployment-latency-rollback"
+      - name: AIOPS_VERIFICATION_POLLS
+        value: "3"
+      - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
+        value: "3"
+      - name: AIOPS_VERIFICATION_INTERVAL_SECONDS
+        value: "20"
+      - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
+        value: "900"
       - name: AIOPS_TARGET_NAMESPACE
         valueFrom:
           fieldRef:
@@ -358,6 +396,8 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: DB_CONNECTION_STRING
         value: Host=postgresql;Username=otelu;Password=otelp;Database=otel
+      - name: PGAPPNAME
+        value: accounting
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
@@ -445,11 +485,22 @@ components:
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: cart
+        - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: cart
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -515,6 +566,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   checkout:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
     enabled: true
     # Ref: CDO08-REL-17 - Blue-Green cutover to MSK Kafka. Disabled by default;
     # flip alongside the top-level rollouts.enabled only for the actual cutover
@@ -541,14 +606,6 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: checkout
     useDefault:
       env: true
     service:
@@ -625,6 +682,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   currency:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
     enabled: true
     replicas: 2
     autoscaling:
@@ -642,14 +713,6 @@ components:
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: currency
     useDefault:
       env: true
     service:
@@ -790,6 +853,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   frontend:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
     enabled: true
     replicas: 2
     podDisruptionBudget:
@@ -807,14 +884,6 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: frontend
     useDefault:
       env: true
     service:
@@ -889,19 +958,25 @@ components:
         type: RuntimeDefault
 
   frontend-proxy:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend-proxy
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: frontend-proxy
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -1070,19 +1145,25 @@ components:
         type: RuntimeDefault
 
   payment:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: payment
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: payment
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -1101,8 +1182,8 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      requests: { cpu: 50m, memory: 64Mi }
-      limits: { cpu: 200m, memory: 128Mi }
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 256Mi }
     livenessProbe:
       grpc:
         port: 8080
@@ -1129,19 +1210,25 @@ components:
         type: RuntimeDefault
 
   product-catalog:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: product-catalog
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: product-catalog
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -1159,6 +1246,8 @@ components:
         value: 16MiB
       - name: DB_CONNECTION_STRING
         value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+      - name: PGAPPNAME
+        value: product-catalog
       - name: OTEL_SEMCONV_STABILITY_OPT_IN
         value: database
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -1240,6 +1329,8 @@ components:
         value: "8013"
       - name: DB_CONNECTION_STRING
         value: host=postgresql user=otelu password=otelp dbname=otel
+      - name: PGAPPNAME
+        value: product-reviews
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: OTEL_PYTHON_LOG_CORRELATION
@@ -1375,19 +1466,25 @@ components:
         type: RuntimeDefault
 
   shipping:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: shipping
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: shipping
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -2354,10 +2451,13 @@ managedData:
     enabled: false
     secretName: rds-postgres-secret
 
-  # Wire cart to ElastiCache via elasticache-valkey-secret
+  # Wire cart and product-reviews Copilot state to ElastiCache via
+  # elasticache-valkey-secret. `services` keeps the consumers explicit so a new
+  # VALKEY_ADDR user cannot silently retain the in-cluster fallback in production.
   valkey:
     enabled: false
     secretName: elasticache-valkey-secret
+    services: [cart, product-reviews]
 
   # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret.
   # `services` controls which of the 3 get the MSK/SCRAM env when enabled=true —

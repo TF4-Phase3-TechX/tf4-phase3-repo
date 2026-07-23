@@ -25,6 +25,7 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 
 from ai_assistant import AssistantOutcome, GroundedAssistant
+from audit_logging import emit_ai_tool_audit, safety_decision_for_outcome
 from bedrock_adapter import BedrockAdapter
 from bedrock_adapter import ProviderFailure
 from database import fetch_avg_product_review_score_from_db, fetch_product_reviews_from_db
@@ -141,6 +142,9 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                     output_tokens=outcome.output_tokens,
                     error_class="injected_inaccurate_response_blocked",
                     quarantined_reviews=outcome.quarantined_reviews,
+                    provider_stop_reason=outcome.provider_stop_reason,
+                    response_contract_stage=outcome.response_contract_stage,
+                    provider_attempted=outcome.provider_attempted,
                 )
         attributes = llm_metric_identity(
             os.environ.get("OTEL_SERVICE_NAME", "product-reviews")
@@ -191,6 +195,15 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                 "quarantined_reviews": outcome.quarantined_reviews,
             },
         )
+        if outcome.provider_attempted:
+            emit_ai_tool_audit(
+                logger,
+                surface="product_qa",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision=safety_decision_for_outcome(outcome.outcome),
+                confirmation_status="not_required",
+            )
         return demo_pb2.AskProductAIAssistantResponse(
             response=outcome.response,
             action_proposal=outcome.action_proposal,
@@ -314,6 +327,14 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
                 input_tokens=_in_tok,
                 output_tokens=_out_tok,
             )
+            emit_ai_tool_audit(
+                logger,
+                surface="copilot_search",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision=safety_decision_for_outcome(intent.get("search_type", "")),
+                confirmation_status="not_required",
+            )
 
             if intent.get("search_type") == "out_of_scope":
                 span.set_attribute("app.search.outcome", "out_of_scope")
@@ -433,6 +454,15 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
 
                 if target_product:
                     review_outcome = assistant.answer(target_product.id, query, session_id, user_id)
+                    if review_outcome.provider_attempted:
+                        emit_ai_tool_audit(
+                            logger,
+                            surface="copilot_search",
+                            model_id=assistant.provider.model_id,
+                            tool_name="bedrock.converse",
+                            safety_decision=safety_decision_for_outcome(review_outcome.outcome),
+                            confirmation_status="not_required",
+                        )
                     answer_text = review_outcome.response
                     intent["response_message"] = answer_text
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
@@ -633,6 +663,14 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
                 input_tokens=exc.input_tokens,
                 output_tokens=exc.output_tokens,
             )
+            emit_ai_tool_audit(
+                logger,
+                surface="copilot_search",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision="provider_unavailable",
+                confirmation_status="not_required",
+            )
             return _refused_search_response(
                 parsed_intent=exc.error_class,
                 input_tokens=exc.input_tokens,
@@ -655,6 +693,14 @@ def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
             proposal = None
         if not proposal:
             span.set_attribute("app.cart.confirmation.outcome", "invalid_or_expired")
+            emit_ai_tool_audit(
+                logger,
+                surface="shopping_copilot",
+                model_id="not_applicable",
+                tool_name="modify_cart",
+                safety_decision="refuse",
+                confirmation_status="rejected",
+            )
             return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="invalid_or_expired")
 
         try:
@@ -674,10 +720,26 @@ def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
             # for a fresh proposal after a downstream failure.
             logger.warning("copilot_cart_confirmation_failed", extra={"grpc_code": str(exc.code())})
             span.set_attribute("app.cart.confirmation.outcome", "downstream_failed")
+            emit_ai_tool_audit(
+                logger,
+                surface="shopping_copilot",
+                model_id="not_applicable",
+                tool_name="modify_cart",
+                safety_decision="allow",
+                confirmation_status="confirmed",
+            )
             return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="downstream_failed")
 
         span.set_attribute("app.cart.confirmation.outcome", "applied")
         span.set_attribute("app.cart.product_id", proposal["product_id"])
+        emit_ai_tool_audit(
+            logger,
+            surface="shopping_copilot",
+            model_id="not_applicable",
+            tool_name="modify_cart",
+            safety_decision="allow",
+            confirmation_status="confirmed",
+        )
         return demo_pb2.ConfirmCartActionResponse(applied=True, outcome="applied")
 
 
@@ -772,7 +834,7 @@ def main() -> None:
     health_server.add_insecure_port(f"[::]:{health_port}")
     health_server.start()
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))  # TC-03: raised from 10; matches DB pool maxconn=50
     service = ProductReviewService()
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
     port = must_map_env("PRODUCT_REVIEWS_PORT")

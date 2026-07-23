@@ -8,6 +8,10 @@ def _csv(name: str, default: str) -> tuple[str, ...]:
     return tuple(x.strip() for x in os.getenv(name, default).split(",") if x.strip())
 
 
+def _bool(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     prometheus_url: str = os.getenv(
@@ -136,6 +140,27 @@ class Settings:
         os.getenv("AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD", "0.01")
     )
     remediation_mode: str = os.getenv("REMEDIATION_MODE", "dry-run")
+    autonomous_remediation_enabled: bool = _bool(
+        "AIOPS_AUTONOMOUS_REMEDIATION_ENABLED"
+    )
+    remediation_policy_version: str = os.getenv(
+        "AIOPS_REMEDIATION_POLICY_VERSION", "m22-v1"
+    )
+    autonomous_runbooks: tuple[str, ...] = field(
+        default_factory=lambda: _csv(
+            "AIOPS_AUTONOMOUS_RUNBOOKS", "deployment-latency-rollback"
+        )
+    )
+    verification_polls: int = int(os.getenv("AIOPS_VERIFICATION_POLLS", "3"))
+    rollback_verification_polls: int = int(
+        os.getenv("AIOPS_ROLLBACK_VERIFICATION_POLLS", "3")
+    )
+    verification_interval_seconds: float = float(
+        os.getenv("AIOPS_VERIFICATION_INTERVAL_SECONDS", "20")
+    )
+    remediation_lock_ttl_seconds: int = int(
+        os.getenv("AIOPS_REMEDIATION_LOCK_TTL_SECONDS", "900")
+    )
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
     deployment_recency_hours: int = int(
