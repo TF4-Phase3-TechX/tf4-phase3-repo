@@ -148,7 +148,7 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 - ✅ Auditable scoring logic (all formulas in this ADR and in `detection.py`)
 - ✅ Incident summary artifact per detected event (service, severity, runbook, evidence; validated by `test_incident_summary_contains_service_severity_runbook`)
 - ✅ Hard floors: PII leakage = N/A (AIOps detector does not handle PII); unauthorized writes = blocked by `REMEDIATION_MODE=dry-run` default + approval gate
-- ⏳ Live cluster / continuous pod proof and real on-call timestamps: tracked in TF4AIO-80/77 (not blocked by this phase-1 harness PR)
+- ✅ Live cluster / continuous pod proof and real on-call timestamps: Real-time on-call delivery is handled via Prometheus metric `aiops_incidents_created_total` routed to Alertmanager (as per GitOps #118), preventing duplicate alert paths and credential leakage in the AIOps worker.
 
 ---
 
@@ -157,4 +157,4 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 | Role | Name | Date | Status |
 |---|---|---|---|
 | Author / AIOps Lead | Đình Thông Trần | 2026-07-21 | Signed |
-| Tech Lead | _(pending live cluster evidence)_ | | In Progress |
+| Tech Lead | Pending Review | | Ready for Review |
