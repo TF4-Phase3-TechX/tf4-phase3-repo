@@ -34,23 +34,26 @@ CDO08 vui lòng gán 2 IAM Policy ARN sau vào SSO Permission Set của Audit An
 
 1. **`tf4-athena-audit-analyst-policy`**
    - **ARN Output**: `aws_iam_policy.athena_audit_analyst.arn` (`athena_analyst_policy_arn`)
-   - **Chức năng**:
-     - Cấp quyền chạy truy vấn Athena trong Workgroup `tf4-audit-forensics`.
-     - Quyền đọc thông tin Glue Catalog database `tf4_audit_forensics` và các tables (`cloudtrail_events`, `aws_config_history`, `eks_audit_events`).
-     - Quyền đọc (`s3:GetObject`, `s3:ListBucket`) trên 3 nguồn log buckets WORM (CloudTrail, AWS Config staging, EKS audit logs).
-     - Quyền đọc/ghi kết quả truy vấn trên bucket `tf4-athena-query-results-*`.
-     - Quyền giải mã KMS `kms:Decrypt` trên chìa khóa CloudTrail KMS CMK.
+   - **Chức năng chi tiết**:
+     - **Điều hướng Athena Console UI**: Cấp quyền `athena:ListWorkGroups`, `athena:ListDataCatalogs`, `athena:GetDataCatalog` (`Resource: "*"`) để hiển thị danh sách Workgroup và Data Catalog trên giao diện web.
+     - **Thực thi truy vấn Athena**: Cấp quyền `athena:StartQueryExecution`, `athena:StopQueryExecution`, `athena:GetQueryExecution`, `athena:GetQueryResults`, `athena:GetQueryResultsStream`, `athena:GetWorkGroup`, `athena:ListQueryExecutions` trên Workgroup `tf4-audit-forensics`.
+     - **Đọc Glue Data Catalog**: Cấp quyền `glue:GetDatabase`, `glue:GetDatabases`, `glue:GetTable`, `glue:GetTables`, `glue:GetPartition`, `glue:GetPartitions`, `glue:BatchGetPartition` trên Catalog và Database `tf4_audit_forensics` cùng các bảng (`cloudtrail_events`, `aws_config_history`, `eks_audit_events`).
+     - **Đọc dữ liệu nguồn S3 WORM**: Quyền đọc (`s3:GetObject`, `s3:ListBucket`, `s3:GetBucketLocation`) trên 3 nguồn log buckets WORM (CloudTrail, AWS Config staging, EKS audit logs).
+     - **Ghi kết quả truy vấn**: Quyền ghi (`s3:PutObject`, `s3:GetObject`, `s3:ListBucket`, `s3:GetBucketLocation`, `s3:AbortMultipartUpload`, `s3:DeleteObject`) trên bucket `tf4-athena-query-results-*`.
+     - **Giải mã KMS Log**: Quyền `kms:Decrypt`, `kms:DescribeKey` trên chìa khóa CloudTrail KMS CMK (`aws_kms_key.cloudtrail.arn`).
 
 2. **`tf4-cloudwatch-insights-forensics-policy`**
    - **ARN Output**: `aws_iam_policy.cloudwatch_insights_forensics.arn` (`cloudwatch_insights_forensics_policy_arn`)
-   - **Chức năng**: Cấp quyền chạy truy vấn CloudWatch Logs Insights real-time (< 1 giờ) đối với log group CloudTrail và EKS cluster audit log group.
+   - **Chức năng chi tiết**:
+     - **Liệt kê Log Groups trên Console**: Cấp quyền `logs:DescribeLogGroups` (`Resource: "*"`) để hiển thị danh sách Log Groups trên giao diện CloudWatch Logs Insights Console.
+     - **Chạy truy vấn Real-time Insights**: Cấp quyền `logs:StartQuery`, `logs:StopQuery`, `logs:GetQueryResults`, `logs:GetLogEvents`, `logs:FilterLogEvents`, `logs:DescribeLogStreams` trên Log Group CloudTrail (`tf4-cloudtrail-logs`) và EKS Audit Log Group (`/aws/eks/*/cluster`).
 
 ---
 
 ## 3. Chính sách bảo mật & Least Privilege
 
-- **Không có quyền ghi/sửa/xóa log gốc**: Cả 2 policy đều giới hạn ở các hành động `s3:GetObject`, `s3:ListBucket`, `glue:Get*`, `logs:StartQuery`. Tuyệt đối không cho phép `s3:DeleteObject` hay `s3:PutObject` trên các bucket lưu trữ log nguồn.
-- **Giới hạn phạm vi (Scoped Resources)**: Các quyền Athena, Glue và CloudWatch Logs đều được trỏ chính xác tới ARN của Workgroup, Database và Log Group dành riêng cho TF4 Audit.
+- **Không có quyền ghi/sửa/xóa log gốc**: Cả 2 policy đều tuân thủ chặt chẽ nguyên tắc Least Privilege, chỉ cho phép các hành động đọc (`s3:GetObject`, `s3:ListBucket`, `glue:Get*`, `logs:StartQuery`). Tuyệt đối không cho phép `s3:DeleteObject` hay `s3:PutObject` trên các bucket lưu trữ log nguồn.
+- **Giới hạn phạm vi (Scoped Resources)**: ngoại trừ các quyền liệt kê danh mục cấp Console bắt buộc (`athena:ListWorkGroups`, `athena:ListDataCatalogs`, `glue:GetDatabases`, `logs:DescribeLogGroups`), tất cả các quyền thực thi Athena, Glue metadata và CloudWatch Logs đều được trỏ chính xác tới ARN của Workgroup, Database và Log Group dành riêng cho TF4 Audit.
 
 ---
 
@@ -58,8 +61,11 @@ CDO08 vui lòng gán 2 IAM Policy ARN sau vào SSO Permission Set của Audit An
 
 Sau khi CDO08 đính kèm 2 policy trên:
 1. CDO07 đăng nhập SSO bằng profile `TF4-AuditReadOnlyAndAnalyze`.
-2. Thực thi kiểm tra các truy vấn mẫu qua Athena CLI / Console:
+2. Mở AWS Console (web UI) kiểm tra:
+   - Truy cập Athena Query Editor: Xác nhận Workgroup `tf4-audit-forensics` và Database `tf4_audit_forensics` hiển thị thành công trong menu dropdown mà không bị lỗi `AccessDenied`.
+   - Truy cập CloudWatch Logs Insights: Xác nhận hiển thị danh sách Log Groups audit.
+3. Thực thi kiểm tra các truy vấn mẫu qua Athena CLI / Console:
    - Truy vấn CloudTrail: `SELECT eventtime, eventname, useridentity.arn FROM cloudtrail_events LIMIT 10;`
    - Truy vấn AWS Config: `SELECT resourceid, resourcetype FROM aws_config_history LIMIT 10;`
    - Truy vấn EKS Audit: `SELECT verb, user.username, objectref.resource FROM eks_audit_events LIMIT 10;`
-3. Lưu trữ kết quả nghiệm thu vào `docs/evidence/mandate-04-forensic/`.
+4. Lưu trữ kết quả nghiệm thu vào `docs/evidence/mandate-04-forensic/`.
