@@ -62,7 +62,7 @@ def test_external_labelled_dataset_can_be_replayed(tmp_path):
                     },
                     {
                         "name": "incident",
-                        "points": [100, 101, 99, 100, 1800],
+                        "points": [100, 101, 99, 100, 1750, 1800],
                         "floor": 1000,
                         "anomalous": True,
                     },

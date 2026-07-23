@@ -24,7 +24,7 @@ Khi đăng nhập bằng profile SSO `TF4-AuditReadOnlyAndAnalyze` (`hoang.nguye
 - `athena:GetWorkGroup` trên Workgroup `tf4-audit-forensics` bị từ chối.
 - `glue:GetDatabases` trên Catalog `arn:aws:glue:us-east-1:511825856493:catalog` bị từ chối do chưa được gán Identity-based Policy.
 
-Ticket này được khởi tạo để yêu cầu CDO08 gán 2 IAM Policy đã được định nghĩa trong Terraform vào SSO Permission Set / IAM Role của Chuyên viên Audit (`TF4-AuditReadOnlyAndAnalyze`).
+Ticket này được khởi tạo để yêu cầu CDO08 gán 2 IAM Policy đã được định nghĩa trong Terraform vào SSO Permission Set / IAM Role của Chuyên viên Audit (`TF4-AuditReadOnlyAndAnalyze` hoặc role tương đương).
 
 ---
 
