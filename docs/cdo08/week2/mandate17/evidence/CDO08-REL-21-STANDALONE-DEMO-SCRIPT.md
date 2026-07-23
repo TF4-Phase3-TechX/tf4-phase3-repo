@@ -69,9 +69,10 @@
 
 - **Mục đích**: Xác nhận cụm EKS và các Pods đang ở trạng thái cân bằng Multi-AZ 50/50 trước khi diễn tập.
 
-#### Command 1.1: Cập nhật Kubeconfig
+#### Command 1.1: Đăng nhập AWS SSO & Cập nhật Kubeconfig
 ```powershell
-aws eks update-kubeconfig --name techx-tf4-cluster --region us-east-1 --profile TF4-SecReliabilityReadOnlyAudit-511825856493
+aws sso login --sso-session tf4-sso
+aws eks update-kubeconfig --name techx-tf4-cluster --region us-east-1 --profile TF4-SecurityIAMSSOManager-511825856493
 ```
 - **Expected Result**: Thông báo `Updated context arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster in C:\Users\...`.
 
