@@ -20,7 +20,7 @@ def opentelemetryVersion = "1.57.0"
 def opentelemetryInstrumentationVersion = "2.23.0"
 def grpcVersion = "1.78.0"
 def jacksonVersion = "2.21.4"
-def nettyVersion = "4.1.135.Final"
+def nettyVersion = "4.1.136.Final" // CVE-2026-59901, CVE-2026-55831, CVE-2026-55833, CVE-2026-56745
 def protocVersion = "4.33.2"
 
 tasks.withType(JavaCompile).configureEach {

@@ -189,6 +189,27 @@ output "msk_orders_client_port" {
   value       = 9096
 }
 
+# REL-22 - MSK orders S3 archive outputs
+output "msk_orders_archive_bucket_name" {
+  description = "S3 bucket used for REL-22 MSK orders archive"
+  value       = aws_s3_bucket.msk_orders_archive.id
+}
+
+output "msk_orders_archive_bucket_arn" {
+  description = "ARN of the S3 bucket used for REL-22 MSK orders archive"
+  value       = aws_s3_bucket.msk_orders_archive.arn
+}
+
+output "msk_orders_archive_prefix" {
+  description = "Prefix reserved for MSK orders archived records"
+  value       = local.msk_orders_archive_prefix
+}
+
+output "msk_orders_archive_partition_convention" {
+  description = "Expected S3 partition convention for MSK Connect orders archive"
+  value       = local.msk_orders_archive_partition_convention
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
@@ -334,6 +355,27 @@ output "rds_postgresql_kubernetes_secret_namespace" {
 output "rds_postgresql_credential_handoff_note" {
   description = "Credential handoff note for SEC-13"
   value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
+}
+
+# REL-22 - RDS PostgreSQL AWS Backup retention outputs
+output "rds_postgresql_backup_vault_name" {
+  description = "AWS Backup vault name for REL-22 RDS PostgreSQL 35-day recovery points"
+  value       = aws_backup_vault.rds_postgresql.name
+}
+
+output "rds_postgresql_backup_vault_arn" {
+  description = "AWS Backup vault ARN for REL-22 RDS PostgreSQL recovery points"
+  value       = aws_backup_vault.rds_postgresql.arn
+}
+
+output "rds_postgresql_backup_plan_id" {
+  description = "AWS Backup plan ID for REL-22 RDS PostgreSQL 35-day retention"
+  value       = aws_backup_plan.rds_postgresql.id
+}
+
+output "rds_postgresql_backup_role_arn" {
+  description = "AWS Backup service role ARN used for REL-22 RDS PostgreSQL backup and restore readiness"
+  value       = aws_iam_role.rds_backup.arn
 }
 
 output "cloudflare_tunnel_token_secret_path" {
