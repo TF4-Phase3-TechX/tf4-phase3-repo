@@ -3,14 +3,7 @@
 
 resource "aws_ecr_repository" "techx_corp" {
   name                 = "techx-corp"
-  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
-
-  image_tag_mutability_exclusion_filter = [
-    {
-      filter      = "sha256-*"
-      filter_type = "WILDCARD"
-    }
-  ]
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -18,6 +11,13 @@ resource "aws_ecr_repository" "techx_corp" {
 
   encryption_configuration {
     encryption_type = "AES256"
+  }
+
+  lifecycle {
+    # Runtime uses IMMUTABLE_WITH_EXCLUSION for sha256-* artifact tags used by
+    # signing/attestation workflows. The current AWS provider schema in this
+    # repo cannot model that exclusion yet, so do not revert it to IMMUTABLE.
+    ignore_changes = [image_tag_mutability]
   }
 }
 
