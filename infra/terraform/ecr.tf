@@ -12,6 +12,13 @@ resource "aws_ecr_repository" "techx_corp" {
   encryption_configuration {
     encryption_type = "AES256"
   }
+
+  lifecycle {
+    # Runtime uses IMMUTABLE_WITH_EXCLUSION for sha256-* artifact tags used by
+    # signing/attestation workflows. The current AWS provider schema in this
+    # repo cannot model that exclusion yet, so do not revert it to IMMUTABLE.
+    ignore_changes = [image_tag_mutability]
+  }
 }
 
 resource "aws_ecr_lifecycle_policy" "techx_corp_policy" {
