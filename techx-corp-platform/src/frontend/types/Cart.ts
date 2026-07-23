@@ -1,9 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import {Address, Cart, OrderItem, OrderResult, Product} from '../protos/demo';
-
-export type ProductDisplay = Pick<Product, 'name' | 'picture' | 'categories'>;
+import {Address, Cart, OrderItem, OrderResult, Product, ProductDisplay} from '../protos/demo';
 
 export interface IProductCartItem {
   productId: string;
@@ -11,11 +9,11 @@ export interface IProductCartItem {
   product: Product;
 }
 
-export interface IProductCheckoutItem extends OrderItem {
+export interface IProductCheckoutItem extends Omit<OrderItem, 'item' | 'productDisplay'> {
   item: Omit<IProductCartItem, 'product'> & { product: ProductDisplay };
 }
 
-export interface IProductCheckout extends OrderResult {
+export interface IProductCheckout extends Omit<OrderResult, 'items'> {
   items: IProductCheckoutItem[];
   shippingAddress: Address;
 }

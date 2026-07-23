@@ -494,6 +494,8 @@ const (
 	ProductReviewService_GetProductReviews_FullMethodName            = "/oteldemo.ProductReviewService/GetProductReviews"
 	ProductReviewService_GetAverageProductReviewScore_FullMethodName = "/oteldemo.ProductReviewService/GetAverageProductReviewScore"
 	ProductReviewService_AskProductAIAssistant_FullMethodName        = "/oteldemo.ProductReviewService/AskProductAIAssistant"
+	ProductReviewService_SearchProductsAIAssistant_FullMethodName    = "/oteldemo.ProductReviewService/SearchProductsAIAssistant"
+	ProductReviewService_ConfirmCartAction_FullMethodName            = "/oteldemo.ProductReviewService/ConfirmCartAction"
 )
 
 // ProductReviewServiceClient is the client API for ProductReviewService service.
@@ -503,6 +505,8 @@ type ProductReviewServiceClient interface {
 	GetProductReviews(ctx context.Context, in *GetProductReviewsRequest, opts ...grpc.CallOption) (*GetProductReviewsResponse, error)
 	GetAverageProductReviewScore(ctx context.Context, in *GetAverageProductReviewScoreRequest, opts ...grpc.CallOption) (*GetAverageProductReviewScoreResponse, error)
 	AskProductAIAssistant(ctx context.Context, in *AskProductAIAssistantRequest, opts ...grpc.CallOption) (*AskProductAIAssistantResponse, error)
+	SearchProductsAIAssistant(ctx context.Context, in *SearchProductsAIAssistantRequest, opts ...grpc.CallOption) (*SearchProductsAIAssistantResponse, error)
+	ConfirmCartAction(ctx context.Context, in *ConfirmCartActionRequest, opts ...grpc.CallOption) (*ConfirmCartActionResponse, error)
 }
 
 type productReviewServiceClient struct {
@@ -543,6 +547,26 @@ func (c *productReviewServiceClient) AskProductAIAssistant(ctx context.Context, 
 	return out, nil
 }
 
+func (c *productReviewServiceClient) SearchProductsAIAssistant(ctx context.Context, in *SearchProductsAIAssistantRequest, opts ...grpc.CallOption) (*SearchProductsAIAssistantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchProductsAIAssistantResponse)
+	err := c.cc.Invoke(ctx, ProductReviewService_SearchProductsAIAssistant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *productReviewServiceClient) ConfirmCartAction(ctx context.Context, in *ConfirmCartActionRequest, opts ...grpc.CallOption) (*ConfirmCartActionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmCartActionResponse)
+	err := c.cc.Invoke(ctx, ProductReviewService_ConfirmCartAction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProductReviewServiceServer is the server API for ProductReviewService service.
 // All implementations must embed UnimplementedProductReviewServiceServer
 // for forward compatibility.
@@ -550,6 +574,8 @@ type ProductReviewServiceServer interface {
 	GetProductReviews(context.Context, *GetProductReviewsRequest) (*GetProductReviewsResponse, error)
 	GetAverageProductReviewScore(context.Context, *GetAverageProductReviewScoreRequest) (*GetAverageProductReviewScoreResponse, error)
 	AskProductAIAssistant(context.Context, *AskProductAIAssistantRequest) (*AskProductAIAssistantResponse, error)
+	SearchProductsAIAssistant(context.Context, *SearchProductsAIAssistantRequest) (*SearchProductsAIAssistantResponse, error)
+	ConfirmCartAction(context.Context, *ConfirmCartActionRequest) (*ConfirmCartActionResponse, error)
 	mustEmbedUnimplementedProductReviewServiceServer()
 }
 
@@ -568,6 +594,12 @@ func (UnimplementedProductReviewServiceServer) GetAverageProductReviewScore(cont
 }
 func (UnimplementedProductReviewServiceServer) AskProductAIAssistant(context.Context, *AskProductAIAssistantRequest) (*AskProductAIAssistantResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AskProductAIAssistant not implemented")
+}
+func (UnimplementedProductReviewServiceServer) SearchProductsAIAssistant(context.Context, *SearchProductsAIAssistantRequest) (*SearchProductsAIAssistantResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchProductsAIAssistant not implemented")
+}
+func (UnimplementedProductReviewServiceServer) ConfirmCartAction(context.Context, *ConfirmCartActionRequest) (*ConfirmCartActionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfirmCartAction not implemented")
 }
 func (UnimplementedProductReviewServiceServer) mustEmbedUnimplementedProductReviewServiceServer() {}
 func (UnimplementedProductReviewServiceServer) testEmbeddedByValue()                              {}
@@ -644,6 +676,42 @@ func _ProductReviewService_AskProductAIAssistant_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProductReviewService_SearchProductsAIAssistant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchProductsAIAssistantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProductReviewServiceServer).SearchProductsAIAssistant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProductReviewService_SearchProductsAIAssistant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProductReviewServiceServer).SearchProductsAIAssistant(ctx, req.(*SearchProductsAIAssistantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProductReviewService_ConfirmCartAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmCartActionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProductReviewServiceServer).ConfirmCartAction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProductReviewService_ConfirmCartAction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProductReviewServiceServer).ConfirmCartAction(ctx, req.(*ConfirmCartActionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProductReviewService_ServiceDesc is the grpc.ServiceDesc for ProductReviewService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -662,6 +730,14 @@ var ProductReviewService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AskProductAIAssistant",
 			Handler:    _ProductReviewService_AskProductAIAssistant_Handler,
+		},
+		{
+			MethodName: "SearchProductsAIAssistant",
+			Handler:    _ProductReviewService_SearchProductsAIAssistant_Handler,
+		},
+		{
+			MethodName: "ConfirmCartAction",
+			Handler:    _ProductReviewService_ConfirmCartAction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
