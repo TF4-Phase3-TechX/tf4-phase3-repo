@@ -40,3 +40,12 @@ components:
   valkey-cart: { enabled: false }
 
 bastionPortalAccess: { enabled: true }
+
+cloudflareAccess:
+  enabled: true
+  namespace: cloudflare-access
+  createNamespace: false
+  replicas: 2
+  tokenSecret:
+    name: cloudflare-tunnel-token
+    key: token
