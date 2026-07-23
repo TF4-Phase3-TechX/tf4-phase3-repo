@@ -22,6 +22,8 @@ FROM docker.io/library/php:8.4-cli-alpine3.22@sha256:191228671fb45eb35d0fa53d909
 
 COPY --from=installer /usr/bin/install-php-extensions /usr/local/bin/
 
+RUN apk upgrade --no-cache c-ares libcrypto3 libssl3
+
 RUN install-php-extensions opcache pcntl protobuf opentelemetry-1.2.0
 
 WORKDIR /var/www
