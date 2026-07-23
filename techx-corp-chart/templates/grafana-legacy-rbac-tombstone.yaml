@@ -1,0 +1,30 @@
+{{- if .Values.grafana.enabled }}
+---
+# SEC-22 migration tombstone: Argo CD runs with prune=false, so the ClusterRole
+# previously rendered by the Grafana subchart must be neutralized explicitly.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-clusterrole
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+    security.techx.io/migration-tombstone: "true"
+rules: []
+---
+# Keep the immutable roleRef but remove every subject. This grants no identity
+# access while allowing a later controlled prune to delete both legacy objects.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-clusterrolebinding
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+    security.techx.io/migration-tombstone: "true"
+subjects: []
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-clusterrole
+{{- end }}
