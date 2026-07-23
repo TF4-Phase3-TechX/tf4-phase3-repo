@@ -26,6 +26,8 @@ def test_confirmation_applies_server_stored_values_once(monkeypatch):
     cart = RecordingCartStub()
     monkeypatch.setattr(server, "session_store", store)
     monkeypatch.setattr(server, "cart_stub", cart)
+    audit_events = []
+    monkeypatch.setattr(server, "emit_ai_tool_audit", lambda _logger, **event: audit_events.append(event))
     token = store.create_cart_proposal("user-1", "session-1", "product-1", "Scope", 2)
 
     first = server.confirm_cart_action("user-1", "session-1", token)
@@ -40,6 +42,8 @@ def test_confirmation_applies_server_stored_values_once(monkeypatch):
     assert request.item.product_id == "product-1"
     assert request.item.quantity == 2
     assert timeout == 2.0
+    assert [event["confirmation_status"] for event in audit_events] == ["confirmed", "rejected"]
+    assert all(event["tool_name"] == "modify_cart" for event in audit_events)
 
 
 def test_cross_session_attempt_does_not_consume_valid_proposal(monkeypatch):
@@ -47,6 +51,8 @@ def test_cross_session_attempt_does_not_consume_valid_proposal(monkeypatch):
     cart = RecordingCartStub()
     monkeypatch.setattr(server, "session_store", store)
     monkeypatch.setattr(server, "cart_stub", cart)
+    audit_events = []
+    monkeypatch.setattr(server, "emit_ai_tool_audit", lambda _logger, **event: audit_events.append(event))
     token = store.create_cart_proposal("user-1", "session-1", "product-1", "Scope", 1)
 
     wrong_session = server.confirm_cart_action("user-1", "session-2", token)
@@ -55,3 +61,4 @@ def test_cross_session_attempt_does_not_consume_valid_proposal(monkeypatch):
     assert wrong_session.applied is False
     assert owner.applied is True
     assert len(cart.requests) == 1
+    assert [event["confirmation_status"] for event in audit_events] == ["rejected", "confirmed"]

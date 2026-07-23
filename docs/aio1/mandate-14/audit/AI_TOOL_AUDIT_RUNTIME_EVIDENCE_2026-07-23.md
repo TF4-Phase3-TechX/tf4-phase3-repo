@@ -12,9 +12,9 @@
 
 ## Kết luận
 
-Runtime hiện tại có structured logs, metrics và distributed traces cho AI call. Từ structured log có thể lấy `trace_id` và truy đúng Jaeger trace tương ứng.
+Runtime tại thời điểm lấy mẫu có structured logs, metrics và distributed traces cho AI call. Từ structured log có thể lấy `trace_id` và truy đúng Jaeger trace tương ứng.
 
-Tuy nhiên, runtime **chưa emit đầy đủ tám field canonical trong một audit event duy nhất**. Một số field đang có nhưng khác tên hoặc chỉ xuất hiện trong span; `tool_input_redacted` và `confirmation_status` chưa có trong AI-call log. Evidence này chứng minh telemetry wiring và correlation, **không phải bằng chứng đóng Mandate 14**.
+Snapshot live bên dưới được thu trước thay đổi canonical nên chưa có một event đủ tám field. PR này đã bổ sung code emit `ai_tool_audit` cho Bedrock Q&A, Copilot search và cart confirmation; deployment và live recapture vẫn còn pending. Evidence này chứng minh telemetry wiring và correlation, **không phải bằng chứng đóng Mandate 14**.
 
 ## 1. Structured log sample
 
@@ -104,18 +104,18 @@ provider span status:     ERROR
 
 ## 4. Coverage theo schema CDO-07 yêu cầu
 
-| Field canonical | Runtime hiện tại | Trạng thái | Việc cần làm |
-|---|---|---|---|
-| `log_type` | Event body là `ai_assistant_completed` hoặc `nl_search_provider_failure`. | Khác tên | Emit cố định `ai_tool_audit`. |
-| `trace_id` | Có tại `attributes.otelTraceID`, truy được đúng Jaeger trace. | Có | Normalize thành `trace_id`. |
-| `surface` | Có tại span `app.caller.feature`, chưa có trong completion log. | Một phần | Copy vào audit log. |
-| `model_id` | Có tại log `attributes.model_id` và span `gen_ai.request.model`. | Có | Giữ nguyên. |
-| `tool_name` | `Bedrock Runtime/Converse` có dưới dạng span operation, chưa có canonical log field. | Một phần | Emit `bedrock.converse` hoặc tên tool trong allowlist. |
-| `tool_input_redacted` | Raw input được loại bỏ đúng, nhưng chưa có marker chứng minh redaction. | Thiếu | Emit metadata redaction; không lưu content. |
-| `safety_decision` | Hiện tách thành `outcome`, `error_class`, guardrail version. | Một phần | Normalize `allow/block/refuse/provider_unavailable`. |
-| `confirmation_status` | Cart confirmation outcome chỉ có trên `confirm_cart_action` span. | Thiếu trong AI-call log | Emit `not_required/pending/confirmed/rejected/expired`. |
+| Field canonical | Live snapshot trước thay đổi | Implementation trong PR |
+|---|---|---|
+| `log_type` | Body là `ai_assistant_completed` hoặc `nl_search_provider_failure`. | Emit cố định `ai_tool_audit`. |
+| `trace_id` | Có tại `attributes.otelTraceID`, truy được đúng Jaeger trace. | Alias W3C trace hiện tại thành `trace_id`. |
+| `surface` | Có tại span `app.caller.feature`. | Emit trực tiếp `product_qa`, `copilot_search` hoặc `shopping_copilot`. |
+| `model_id` | Có tại log và `gen_ai.request.model`. | Emit model ID; business tool không dùng model ghi `not_applicable`. |
+| `tool_name` | Converse mới nằm ở span operation. | Emit `bedrock.converse` hoặc `modify_cart`. |
+| `tool_input_redacted` | Raw input được loại bỏ nhưng chưa có marker. | Emit `{"redacted": true, "content_logged": false}`; helper không nhận raw content. |
+| `safety_decision` | Tách thành outcome/error/guardrail. | Giới hạn `allow/block/refuse/provider_unavailable`. |
+| `confirmation_status` | Chỉ có cart outcome trên span. | Giới hạn `not_required/confirmed/rejected`. |
 
-## 5. Canonical event đề xuất
+## 5. Canonical event đã implement
 
 ```json
 {
@@ -133,15 +133,22 @@ provider span status:     ERROR
 }
 ```
 
-Đối với tool có business mutation, `confirmation_status` phải độc lập với model output. Model chỉ được đề xuất; application confirmation boundary mới được execute action.
+Đối với tool có business mutation, `confirmation_status` độc lập với model output. Model chỉ được đề xuất; application confirmation boundary mới được execute action. Nếu downstream cart write lỗi sau khi user đã confirm, audit vẫn ghi `confirmed`; operational log riêng giữ execution failure.
+
+Implementation:
+
+- `audit_logging.py` sở hữu schema, bounded vocabularies, trace alias và redaction marker.
+- Q&A và Copilot search chỉ emit `bedrock.converse` khi provider thực sự được attempt.
+- Cart confirmation emit `modify_cart` với `confirmed` hoặc `rejected`; không log confirmation token.
+- Unit/integration suite kiểm tra exact eight-field event, enum validation, safety mapping và cart transitions.
 
 ## 6. Boundary và next actions
 
 1. Sample này chứng minh provider-failure telemetry và log-to-trace correlation; chưa chứng minh successful model response hoặc successful tool execution.
-2. Lấy thêm một successful Bedrock sample khi provider ổn định để có token, cost, stop reason và safety decision đầy đủ.
-3. Emit một event `ai_tool_audit` canonical tại mọi AI/provider/tool boundary theo tám field phía trên.
-4. Lấy thêm cart proposal → user confirmation sample để chứng minh `confirmation_status` transition mà không log confirmation token.
-5. Chốt với CDO-07 về field semantics, nơi lưu, retention và access control trước khi đóng Mandate 14.
+2. Merge/deploy canonical logger, sau đó query OpenSearch để chứng minh đủ tám field trên event thật.
+3. Lấy thêm một successful Bedrock sample khi provider ổn định để có token, cost, stop reason và safety decision đầy đủ.
+4. Lấy thêm cart confirmation sample để chứng minh `confirmed/rejected` transition mà không log confirmation token.
+5. Chốt với CDO-07 về retention và access control trước khi đóng Mandate 14.
 
 ## 7. Runtime caveat tại thời điểm lấy mẫu
 
