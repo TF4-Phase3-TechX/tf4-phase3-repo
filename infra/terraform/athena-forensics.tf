@@ -84,8 +84,8 @@ resource "aws_athena_workgroup" "audit_forensics" {
       }
     }
 
-    # Giới hạn scan tối đa 1 GB mỗi query để tránh chi phí bất thường
-    bytes_scanned_cutoff_per_query = 1073741824 # 1 GB
+    # Giới hạn scan tối đa 10 GB mỗi query để đảm bảo đủ dung lượng truy vấn EKS logs mà vẫn kiểm soát chi phí bất thường
+    bytes_scanned_cutoff_per_query = 10737418240 # 10 GB
   }
 
   tags = var.tags
@@ -398,74 +398,63 @@ resource "aws_glue_catalog_table" "eks_audit_events" {
     }
 
     columns {
-      name = "kind"
+      name = "messagetype"
       type = "string"
     }
     columns {
-      name = "apiversion"
+      name = "owner"
       type = "string"
     }
     columns {
-      name = "level"
+      name = "loggroup"
       type = "string"
     }
     columns {
-      name = "auditid"
+      name = "logstream"
       type = "string"
     }
     columns {
-      name = "stage"
-      type = "string"
-    }
-    columns {
-      name = "requesturi"
-      type = "string"
-    }
-    columns {
-      name = "verb"
-      type = "string"
-    }
-    columns {
-      name = "user"
-      type = "struct<username:string,uid:string,groups:array<string>,extra:map<string,array<string>>>"
-    }
-    columns {
-      name = "sourceips"
+      name = "subscriptionfilters"
       type = "array<string>"
     }
     columns {
-      name = "useragent"
-      type = "string"
-    }
-    columns {
-      name = "objectref"
-      type = "struct<resource:string,namespace:string,name:string,uid:string,apigroup:string,apiversion:string,resourceversion:string>"
-    }
-    columns {
-      name = "responsestatus"
-      type = "struct<status:string,message:string,reason:string,details:struct<name:string,group:string,kind:string,uid:string>,code:int>"
-    }
-    columns {
-      name = "requestobject"
-      type = "map<string,string>"
-    }
-    columns {
-      name = "responseobject"
-      type = "map<string,string>"
-    }
-    columns {
-      name = "requestreceivedtimestamp"
-      type = "string"
-    }
-    columns {
-      name = "stagetimestamp"
-      type = "string"
-    }
-    columns {
-      name = "annotations"
-      type = "map<string,string>"
+      name = "logevents"
+      type = "array<struct<id:string,timestamp:bigint,message:string>>"
     }
   }
+}
+
+# ─────────────────────────────────────────────────────────────
+# 6b. Athena Named Query — Query mẫu tạo View 'eks_audit_events_parsed'
+# ─────────────────────────────────────────────────────────────
+resource "aws_athena_named_query" "create_eks_audit_parsed_view" {
+  name        = "create_eks_audit_parsed_view"
+  workgroup   = aws_athena_workgroup.audit_forensics.name
+  database    = aws_glue_catalog_database.audit_forensics.name
+  description = "Tự động unnest và parse CloudWatch Log Envelope cho EKS Audit Events"
+
+  query = <<EOF
+CREATE OR REPLACE VIEW eks_audit_events_parsed AS
+SELECT
+  year,
+  month,
+  day,
+  hour,
+  loggroup,
+  logstream,
+  from_unixtime(e.timestamp / 1000) AS event_time,
+  json_extract_scalar(e.message, '$.kind') AS kind,
+  json_extract_scalar(e.message, '$.level') AS level,
+  json_extract_scalar(e.message, '$.verb') AS verb,
+  json_extract_scalar(e.message, '$.requestURI') AS requesturi,
+  json_extract_scalar(e.message, '$.user.username') AS username,
+  json_extract_scalar(e.message, '$.objectRef.namespace') AS namespace,
+  json_extract_scalar(e.message, '$.objectRef.name') AS resource_name,
+  json_extract_scalar(e.message, '$.responseStatus.code') AS response_code,
+  e.message AS raw_message
+FROM eks_audit_events
+CROSS JOIN UNNEST(logevents) AS t(e);
+EOF
 }
 
 # ─────────────────────────────────────────────────────────────

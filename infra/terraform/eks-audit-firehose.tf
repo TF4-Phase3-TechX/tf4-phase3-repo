@@ -213,6 +213,9 @@ resource "aws_kinesis_firehose_delivery_stream" "eks_audit_logs" {
     buffering_interval = 60 # Seconds (60-900)
     compression_format = "GZIP"
 
+    prefix              = "!yyyy/!MM/!dd/!HH/"
+    error_output_prefix = "errors/!yyyy/!MM/!dd/!HH/!error-output-type/"
+
     cloudwatch_logging_options {
       enabled         = true
       log_group_name  = aws_cloudwatch_log_group.firehose_delivery_errors.name
