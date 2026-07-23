@@ -82,9 +82,7 @@ export const CopilotChatModal: React.FC = () => {
 
             const proposal = data.actionProposal || data.action_proposal || undefined;
             const results = data.results || [];
-            if (Array.isArray(results) && results.length > 0 && results[0]?.id) {
-                setLastProductId(results[0].id);
-            }
+
             let assistantText = data.response;
             const traceObj = data.trace || {};
             const rawIntent = traceObj.parsedIntent || traceObj.parsed_intent;
@@ -113,35 +111,34 @@ export const CopilotChatModal: React.FC = () => {
                 } else {
                     const cleanQ = userMsgText.trim().toLowerCase();
                     const isGreeting = ['hi', 'hí', 'hello', 'chào', 'chào bạn', 'xin chào'].includes(cleanQ);
-            const parsed = data.trace?.parsed_intent ? JSON.parse(data.trace.parsed_intent) : {};
-
-            let assistantText = data.results && data.results.length > 0
-                ? (parsed.response_message || `Tôi tìm thấy ${data.results.length} sản phẩm phù hợp với yêu cầu của bạn:`)
-                : (parsed.clarify_question || parsed.response_message || 'Rất tiếc, tôi chưa tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn thử tìm từ khóa khác xem sao nhé!');
-
-            if (data.action_proposal) {
-                assistantText = parsed.response_message || `Tôi có thể giúp bạn thêm sản phẩm vào giỏ hàng:`;
+                    if (isGreeting) {
+                        assistantText = `Xin chào! Tôi là Trợ lý Shopping Copilot. Tôi có thể giúp gì cho bạn hôm nay?`;
+                    } else {
+                        assistantText = `Rất tiếc, tôi chưa tìm thấy sản phẩm nào phù hợp với "${userMsgText}". Bạn thử tìm từ khóa khác xem sao nhé!`;
+                    }
+                }
             }
+
+            const shouldShowResults = parsedType !== 'reviews' && parsedType !== 'chitchat' && parsedType !== 'unclear' && parsedType !== 'clarify' && Array.isArray(results) && results.length > 0;
 
             const assistantMsg: ChatMessage = {
                 id: `msg_${Date.now() + 1}`,
                 sender: 'assistant',
                 text: assistantText,
-                timestamp: new Date(),
-                results: data.results || [],
-                proposal: data.action_proposal || undefined,
+                proposal,
+                results: shouldShowResults ? results : undefined,
             };
 
             setMessages((prev) => [...prev, assistantMsg]);
-        } catch (err) {
-            console.error('Failed to query Copilot AI:', err);
-            const errorMsg: ChatMessage = {
-                id: `msg_${Date.now() + 1}`,
-                sender: 'assistant',
-                text: 'Xin lỗi, hệ thống đang gặp sự cố tạm thời. Vui lòng thử lại sau giây lát!',
-                timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, errorMsg]);
+        } catch (error) {
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: `msg_${Date.now() + 1}`,
+                    sender: 'assistant',
+                    text: 'Trợ lý AI hiện đang bận. Vui lòng thử lại sau.',
+                },
+            ]);
         } finally {
             setLoading(false);
         }
