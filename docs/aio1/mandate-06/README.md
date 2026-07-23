@@ -2,6 +2,9 @@
 
 Status: **original production closure is complete; Standard-tier hardening has passing evaluation evidence and awaits CDO production promotion/signatures**.
 
+For a single mentor-facing overview matching the cross-team submission format,
+see [MANDATE-06 Mentor Brief](../../evidence/mandate-06-ai-trust-safety/MANDATE-06-Mentor-Brief-AI-Trust-Safety.md).
+
 ## Decision and implementation evidence
 
 - [ADR-006](ADR-006-bedrock-model-and-safety.md): Nova 2 Lite selection, safety boundary, alternatives and acceptance record.

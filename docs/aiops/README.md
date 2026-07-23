@@ -1,5 +1,9 @@
 # TF4 AI Ops Safe MVP
 
+For the consolidated Mandate 7a review package matching the cross-team mentor
+brief format, see
+[MANDATE-07a Mentor Brief](../evidence/mandate-07a-aiops-detection/MANDATE-07A-Mentor-Brief-AIOps-Detection.md).
+
 The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements three runtime signal families: per-service p95 latency, per-service error rate, and per-caller LLM/provider error rate attributed by the metric's `service_name` label.
 
 ## Runtime flow
