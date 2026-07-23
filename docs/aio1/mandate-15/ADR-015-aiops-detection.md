@@ -149,6 +149,7 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 - ✅ Incident summary artifact per detected event (service, severity, runbook, evidence; validated by `test_incident_summary_contains_service_severity_runbook`)
 - ✅ Hard floors: PII leakage = N/A (AIOps detector does not handle PII); unauthorized writes = blocked by `REMEDIATION_MODE=dry-run` default + approval gate
 - ⏳ Continuous detector deployment is configured by [GitOps PR #118](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/118), merged on 2026-07-23. Correlated Prometheus alert-firing, Alertmanager notification, Slack receipt and on-call acknowledgement timestamps remain pending in TF4AIO-80/77; this ADR does not claim live MTTD or delivery success yet.
+- ⚠️ [Partial runtime evidence from 2026-07-23](runtime-evidence-2026-07-23.md) records two ambient checkout incidents and the dry-run safety boundary. It also records liveness restarts and OpenTelemetry memory-pressure data loss; these observations are not a labeled live pass.
 
 ---
 
