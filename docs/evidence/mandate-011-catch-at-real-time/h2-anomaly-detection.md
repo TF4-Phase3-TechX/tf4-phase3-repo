@@ -50,7 +50,7 @@ Giám sát **tần suất** thay vì chỉ giám sát **identity**. ESO hợp l�
 
 ## 2. Kiến trúc Pipeline H2
 
-![H2 Anomaly Detection Pipeline](./images/h2-anomaly-detection.png)
+![H2 Anomaly Detection Pipeline](./images/h2-anomaly-detection-final.png)
 
 ### Lý do thiết kế
 
