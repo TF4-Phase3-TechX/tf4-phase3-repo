@@ -73,7 +73,7 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
                 gap: '8px'
             }}>
                 <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span>Yêu cầu đã hết hạn hoặc đã được sử dụng. Vui lòng thử lại!</span>
+                <span>Yêu cầu đã hết hạn hoặc đã được sử dụng. Vui lòng nhắn lại yêu cầu để tạo gợi ý mới!</span>
             </div>
         );
     }

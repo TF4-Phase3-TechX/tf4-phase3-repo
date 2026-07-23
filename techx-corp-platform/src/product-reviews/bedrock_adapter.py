@@ -171,11 +171,11 @@ def resolve_referenced_product(
 
     if is_expensive:
         candidates.sort(key=_get_price, reverse=True)
-        return candidates[0] if len(candidates) == 1 else None
+        return candidates[0] if candidates else None
 
     if is_cheapest:
         candidates.sort(key=_get_price)
-        return candidates[0] if len(candidates) == 1 else None
+        return candidates[0] if candidates else None
 
     # Bug #4 fix: Use passed user_id instead of hardcoded "guest"
     if session_id:

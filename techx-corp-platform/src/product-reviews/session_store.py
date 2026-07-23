@@ -147,6 +147,12 @@ class SessionStore:
             self._memory_cache[key] = (time.time(), products)
 
     def get_last_search_products(self, user_id: str, session_id: str) -> list[dict]:
+        """Fetch last search products for session.
+
+        Design Rationale (Suggestion #15): Last search products is an optional optimization hint
+        for multi-turn context resolution, so read errors fail-open (returning empty list).
+        In contrast, get_history() is a security boundary and fails-closed when store is required.
+        """
         if not session_id:
             return []
         key = self._history_key(user_id, session_id) + ":products"

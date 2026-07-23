@@ -164,6 +164,22 @@ def test_multilingual_followup_product_resolution():
     assert res3.name == "Eclipsmart Travel Refractor Telescope"
 
 
+def test_expensive_query_resolves_with_multiple_candidates():
+    """Verify that superlative queries (đắt nhất/rẻ nhất) resolve to top sorted product even with >= 2 candidates."""
+    products = [
+        DummyProduct("1", "Cheap Telescope", ["telescopes"], price=50),
+        DummyProduct("2", "Expensive Telescope", ["telescopes"], price=500),
+        DummyProduct("3", "Mid Telescope", ["telescopes"], price=200),
+    ]
+    res_exp = resolve_referenced_product([], products, query="tôi muốn mua kính thiên văn đắt nhất")
+    assert res_exp is not None
+    assert res_exp.name == "Expensive Telescope"
+
+    res_cheap = resolve_referenced_product([], products, query="tôi muốn mua kính thiên văn rẻ nhất")
+    assert res_cheap is not None
+    assert res_cheap.name == "Cheap Telescope"
+
+
 def test_fuzzy_match_name_error_prevented():
     """Verify that fuzzy matching does not raise NameError when exact/substring matching fails."""
     products = [
