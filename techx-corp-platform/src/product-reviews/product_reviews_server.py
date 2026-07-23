@@ -772,7 +772,7 @@ def main() -> None:
     health_server.add_insecure_port(f"[::]:{health_port}")
     health_server.start()
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))  # TC-03: raised from 10; matches DB pool maxconn=50
     service = ProductReviewService()
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
     port = must_map_env("PRODUCT_REVIEWS_PORT")

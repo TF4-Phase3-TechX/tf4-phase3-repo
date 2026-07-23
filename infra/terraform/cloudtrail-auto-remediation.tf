@@ -5,6 +5,8 @@ locals {
   cloudtrail_auto_remediation_document_name = "tf4-restore-cloudtrail-logging"
   cloudtrail_auto_remediation_rule_name     = "tf4-cloudtrail-stoplogging-auto-remediation"
   cloudtrail_automation_definition_arn      = "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:automation-definition/${local.cloudtrail_auto_remediation_document_name}"
+  cloudtrail_automation_document_arn        = "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/${local.cloudtrail_auto_remediation_document_name}"
+  cloudtrail_automation_execution_arn       = "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:automation-execution/*"
 }
 
 resource "aws_iam_role" "cloudtrail_auto_remediation_automation" {
@@ -115,6 +117,8 @@ resource "aws_iam_role_policy" "cloudtrail_auto_remediation_eventbridge" {
           "ssm:StartAutomationExecution"
         ]
         Resource = [
+          local.cloudtrail_automation_document_arn,
+          local.cloudtrail_automation_execution_arn,
           local.cloudtrail_automation_definition_arn,
           "${local.cloudtrail_automation_definition_arn}:*"
         ]

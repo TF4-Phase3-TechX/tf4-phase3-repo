@@ -148,7 +148,7 @@ func TestPrepOrderItemsPreservesOrderAndUsesOneBatch(t *testing.T) {
 	}
 }
 
-func TestPrepOrderItemsBoundsProductConcurrency(t *testing.T) {
+func TestPrepOrderItemsFetchesProductsSequentially(t *testing.T) {
 	var mu sync.Mutex
 	active, maxActive := 0, 0
 	cs := &checkout{
@@ -170,9 +170,6 @@ func TestPrepOrderItemsBoundsProductConcurrency(t *testing.T) {
 			return &pb.Product{Id: id, PriceUsd: usd(1, 0)}, nil
 		}},
 		currencySvcClient: currencyClient{
-			convert: func(_ context.Context, req *pb.CurrencyConversionRequest) (*pb.Money, error) {
-				return copyMoney(req.GetFrom()), nil
-			},
 			batch: func(_ context.Context, req *pb.BatchCurrencyConversionRequest) (*pb.BatchCurrencyConversionResponse, error) {
 				return &pb.BatchCurrencyConversionResponse{Converted: []*pb.Money{{CurrencyCode: "EUR", Units: 1}, {CurrencyCode: "EUR", Units: 1}, {CurrencyCode: "EUR", Units: 1}, {CurrencyCode: "EUR", Units: 1}}}, nil
 			},
@@ -181,8 +178,8 @@ func TestPrepOrderItemsBoundsProductConcurrency(t *testing.T) {
 	if _, err := cs.prepOrderItems(context.Background(), cartItems("a", "b", "c", "d"), "EUR"); err != nil {
 		t.Fatal(err)
 	}
-	if maxActive > maxConcurrentOrderItemPreparations {
-		t.Fatalf("max product calls = %d, want <= %d", maxActive, maxConcurrentOrderItemPreparations)
+	if maxActive != 1 {
+		t.Fatalf("max product calls = %d, want 1", maxActive)
 	}
 }
 
@@ -220,30 +217,6 @@ func TestPrepOrderItemsRejectsInvalidBatchOutput(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestGetProductsCancellationWaitsForWorkers(t *testing.T) {
-	started := make(chan struct{}, 2)
-	stopped := make(chan struct{}, 2)
-	cs := &checkout{
-		productCatalogSvcClient: productClient{get: func(ctx context.Context, _ string) (*pb.Product, error) {
-			started <- struct{}{}
-			<-ctx.Done()
-			stopped <- struct{}{}
-			return nil, ctx.Err()
-		}},
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	result := make(chan error, 1)
-	go func() { result <- cs.getProducts(ctx, cartItems("a", "b", "c"), make([]*pb.Product, 3)) }()
-	<-started
-	<-started
-	cancel()
-	if err := <-result; err == nil {
-		t.Fatal("expected cancellation error")
-	}
-	<-stopped
-	<-stopped
 }
 
 func TestPlaceOrderPreparationFailuresDoNotWrite(t *testing.T) {
