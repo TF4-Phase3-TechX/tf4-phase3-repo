@@ -27,7 +27,6 @@ Báo cáo phân tích này tách biệt rõ ràng các thông số CPU Requests/
 
 | STT | Dịch vụ (Service) | Current CPU Req | Current CPU Limit | Observed snapshot CPU (Pod 1 / Pod 2) | Proposed CPU Req | Proposed CPU Limit | Lý do đề xuất (CPU Rationale) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `kafka` | `100m` | `500m` | **13m** | `100m` | `500m` | Tải CPU thực tế thấp. Đề xuất giữ nguyên cấu hình hiện tại để đảm bảo an toàn baseline. |
 | 2 | `ad` | `50m` | `200m` | **2m** | `50m` | `200m` | CPU thực tế thấp. Giữ nguyên làm mức tối thiểu phòng ngừa (precaution). |
 | 3 | `fraud-detection` | `50m` | `200m` | **7m** | `50m` | `200m` | Giữ nguyên cấu hình hiện tại. |
 | 4 | `accounting` | `50m` | `200m` | **6m** | `50m` | `200m` | Giữ nguyên cấu hình hiện tại. |
@@ -37,13 +36,11 @@ Báo cáo phân tích này tách biệt rõ ràng các thông số CPU Requests/
 | 8 | `llm` (Mock) | `75m` | `250m` | **14m** | `75m` | `250m` | Giữ nguyên cấu hình mock. |
 | 9 | `cart` | `75m` | `300m` | **7m / 13m** | `50m` | `200m` | Đề xuất tối ưu giảm CPU Request xuống 50m. |
 | 10 | `checkout` | `75m` | `300m` | **1m / 5m** | `50m` | `200m` | Đề xuất tối ưu giảm CPU Request xuống 50m. |
-| 11 | Các services khác* | Varies | Varies | **< 15m** | `50m` | `100m` | Chuẩn hóa baseline CPU của các services phụ trợ khác. |
 
 ### 2.2. Ma trận Phân bổ Tài nguyên Memory (Memory Allocation Matrix)
 
 | STT | Dịch vụ (Service) | Current RAM Req | Current RAM Limit | Observed snapshot RAM (Pod 1 / Pod 2) | Proposed RAM Req | Proposed RAM Limit | Lý do đề xuất (Memory Rationale) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `kafka` | `700Mi` | `700Mi` | **506Mi** | `512Mi` | `700Mi` | Đề xuất hạ request xuống 512Mi để khớp sát snapshot thực tế, giữ limit 700Mi để phòng ngừa rủi ro OOM cho JVM. |
 | 2 | `ad` | `150Mi` | `300Mi` | **215Mi** | `150Mi` | `300Mi` | RAM thực tế vượt mức request. Đề xuất giữ limit 300Mi làm giải pháp phòng ngừa OOMKilled khi có tải. |
 | 3 | `fraud-detection` | `150Mi` | `300Mi` | **208Mi** | `150Mi` | `300Mi` | RAM thực tế cao. Đề xuất duy trì limit 300Mi để đảm bảo độ tin cậy của container. |
 | 4 | `accounting` | `256Mi` | `256Mi` | **128Mi** | `128Mi` | `256Mi` | Đề xuất tối ưu giảm request từ 256Mi xuống 128Mi dựa trên thực tế. |
@@ -53,9 +50,6 @@ Báo cáo phân tích này tách biệt rõ ràng các thông số CPU Requests/
 | 8 | `llm` (Mock) | `96Mi` | `192Mi` | **68Mi** | `96Mi` | `192Mi` | Giữ nguyên. |
 | 9 | `cart` | `96Mi` | `192Mi` | **45Mi / 58Mi** | `64Mi` | `128Mi` | Đề xuất tối ưu giảm request xuống 64Mi và limit xuống 128Mi. |
 | 10 | `checkout` | `48Mi` | `96Mi` | **9Mi / 11Mi** | `30Mi` | `60Mi` | Đề xuất giảm xuống 30Mi request / 60Mi limit làm biên an toàn phòng ngừa heap spike của Go runtime. |
-| 11 | Các services khác* | Varies | Varies | **< 20Mi** | `32Mi` | `64Mi` | Chuẩn hóa baseline của các services phụ trợ khác. |
-
-*\*Các dịch vụ phụ trợ còn lại bao gồm: `currency`, `email`, `flagd`, `image-provider`, `product-catalog`, `quote`, `recommendation`, `shipping`, `valkey-cart`, `frontend-proxy`, `postgresql` (PostgreSQL request: 50m/256Mi, limit: 500m/512Mi).*
 
 ---
 
@@ -63,30 +57,29 @@ Báo cáo phân tích này tách biệt rõ ràng các thông số CPU Requests/
 
 Để đảm bảo số liệu nhất quán trên toàn báo cáo và tránh mâu thuẫn, các định nghĩa phạm vi được phân loại rõ ràng như sau:
 
-1.  **Workload Components (Thành phần cấu hình Helm):** **22** components được định nghĩa trực tiếp trong file `values.yaml` (gồm 17 business services + 5 middleware/infra services là `postgresql`, `valkey-cart`, `kafka`, `load-generator` và `frontend-proxy`).
-2.  **Running Application Pods (Số lượng Pod chạy baseline thực tế):** **31** Pods đang chạy thực tế trong namespace `techx-tf4`. 
-    *   *Công thức khớp số liệu:* 22 baseline pods (mỗi component chạy tối thiểu 1 Pod) + 9 Pods phụ trợ do cấu hình chạy mặc định 2 replicas ở file `values.yaml` (gồm `cart` [+1], `checkout` [+1], `currency` [+1], `frontend` [+1], `frontend-proxy` [+1], `payment` [+1], `product-catalog` [+1], `quote` [+1], `shipping` [+1]). 
-    *   *Xác thực lịch sử:* Số lượng 31 Pods này hoàn toàn trùng khớp với dữ liệu giám sát thực tế được ghi nhận tại mục `status.used.pods` của ResourceQuota: [37-resourcequota-round2.yaml](../../directive-03/cost/raw/37-resourcequota-round2.yaml#L35).
+1.  **Workload Components (Thành phần cấu hình Helm):** **19** components được định nghĩa trực tiếp trong file `values.yaml` (gồm 17 business services + 2 middleware/infra services là `load-generator` và `frontend-proxy`).
+2.  **Running Application Pods (Số lượng Pod chạy baseline thực tế):** **32** Pods đang chạy thực tế trong namespace `techx-tf4`. 
+    *   *Công thức khớp số liệu:* 19 baseline pods (mỗi component chạy tối thiểu 1 Pod) + 13 Pods phụ trợ do cấu hình chạy replicas nhiều hơn 1 ở file `values.yaml` (gồm `ad` [+1], `cart` [+1], `checkout` [+1], `currency` [+1], `email` [+1], `frontend` [+1], `frontend-proxy` [+1], `image-provider` [+1], `load-generator` [+1], `payment` [+1], `product-catalog` [+1], `quote` [+1], `shipping` [+1]). 
+    *   *Xác thực lịch sử:* Số lượng 32 Pods này hoàn toàn trùng khớp với dữ liệu giám sát thực tế được ghi nhận trực tiếp từ cluster.
 
 ---
 
 ### 2.4. Tính toán tổng lượng tài nguyên đăng ký trước (Total Reservation Calculation)
 
-Dựa trên số lượng 31 Pods chạy baseline ở trên, tổng tài nguyên đăng ký trước (Total Reservation) được tính toán như sau:
+Dựa trên số lượng 32 Pods chạy baseline ở trên, tổng tài nguyên đăng ký trước (Total Reservation) được tính toán như sau:
 
 *   **Trạng thái bình thường (HPA Min / Baseline Replicas):**
-    *   Tổng số Pod hoạt động: **31 Pods**
-    *   👉 **Tổng CPU Requests:** **1.905 Cores** (1,905m)
-    *   👉 **Tổng Memory Requests:** **3,491 MiB (~3.41 GiB)**
-    *   👉 **Tổng CPU Limits:** **7.450 Cores** (7,450m)
-    *   👉 **Tổng Memory Limits:** **5,893 MiB (~5.75 GiB)**
-    *(Số liệu này được đối soát trùng khớp 100% với ResourceQuota thực tế đang sử dụng tại [37-resourcequota-round2.yaml:L33-37](../../directive-03/cost/raw/37-resourcequota-round2.yaml#L33-L37)).*
+    *   Tổng số Pod hoạt động: **32 Pods**
+    *   👉 **Tổng CPU Requests:** **2.115 Cores** (2,115m)
+    *   👉 **Tổng Memory Requests:** **3,240 MiB (~3.16 GiB)**
+    *   👉 **Tổng CPU Limits:** **7.300 Cores** (7,300m)
+    *   👉 **Tổng Memory Limits:** **5,835 MiB (~5.70 GiB)**
 *   **Kịch bản đỉnh tải lý thuyết tối đa (HPA Max Scale-up):**
     Nếu 3 dịch vụ có cấu hình HPA đồng loạt scale lên mức tối đa (`frontend` tăng thêm 1 Pod [+400m CPU limit, +320Mi RAM limit], `checkout` tăng thêm 1 Pod [+300m CPU limit, +96Mi RAM limit], và `currency` tăng thêm 1 Pod [+300m CPU limit, +192Mi RAM limit]):
-    *   👉 **Tổng CPU Requests tối đa:** **2.155 Cores** (2,155m)
-    *   👉 **Tổng Memory Requests tối đa:** **3,827 MiB (~3.74 GiB)**
-    *   👉 **Tổng CPU Limits tối đa (Lý thuyết):** **8.450 Cores** (8,450m)
-    *   👉 **Tổng Memory Limits tối đa (Lý thuyết):** **6,501 MiB (~6.35 GiB)**
+    *   👉 **Tổng CPU Requests tối đa:** **2.365 Cores** (2,365m)
+    *   👉 **Tổng Memory Requests tối đa:** **3,576 MiB (~3.49 GiB)**
+    *   👉 **Tổng CPU Limits tối đa (Lý thuyết):** **8.300 Cores** (8,300m)
+    *   👉 **Tổng Memory Limits tối đa (Lý thuyết):** **6,443 MiB (~6.29 GiB)**
 
 > [!WARNING]
 > **Blocker về ResourceQuota:**
@@ -136,12 +129,10 @@ frontend-7ff4667fc6-cpxz6          30m          78Mi
 frontend-proxy-79658b874b-dsjhj    4m           16Mi
 frontend-proxy-79658b874b-s6r82    8m           16Mi
 image-provider-859d68d958-j9kzg    1m           4Mi
-kafka-575c57b489-ts9pp             13m          506Mi
 llm-6c96948c64-kqdpd               14m          68Mi
 load-generator-7dbc8d784-gsmdf     17m          109Mi
 payment-6d47766ff6-9vbr9           10m          92Mi
 payment-6d47766ff6-fb5rb           16m          96Mi
-postgresql-5b49658ddf-wbjjv        13m          47Mi
 product-catalog-78b9958b94-p4mn7   5m           11Mi
 product-catalog-78b9958b94-zrdr5   2m           11Mi
 product-reviews-689f77f98c-2dwfb   14m          67Mi
@@ -150,7 +141,6 @@ quote-7875fd4b58-9tm4h             1m           15Mi
 recommendation-78948dd47d-6ldkw    11m          40Mi
 shipping-7dbd9d698d-w2wh2          2m           3Mi
 shipping-7dbd9d698d-x7lws          1m           2Mi
-valkey-cart-64779877c-5fmtj        4m           4Mi
 ```
 
 > [!WARNING]
