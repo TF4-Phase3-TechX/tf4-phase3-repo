@@ -57,6 +57,7 @@ spec:
             capabilities:
               drop:
                 - ALL
+            runAsNonRoot: true
           args:
             - tunnel
             - --no-autoupdate

@@ -50,3 +50,23 @@ output "alert_email_endpoint" {
   description = "Email address subscribed to receive human-readable security alerts"
   value       = var.alert_email_endpoint
 }
+
+output "anomaly_sns_topic_arn" {
+  description = "ARN of the SNS topic for Mandate-11 H2 anomaly detection alarms"
+  value       = aws_sns_topic.anomaly_alerts.arn
+}
+
+output "anomaly_alarm_eso_read_arn" {
+  description = "ARN of the CloudWatch Anomaly Detection Alarm for ESO GetSecretValue frequency"
+  value       = aws_cloudwatch_metric_alarm.eso_read_anomaly.arn
+}
+
+output "anomaly_alarm_pipeline_silence_arn" {
+  description = "ARN of the dead-man's-switch CloudWatch Alarm for pipeline silence detection"
+  value       = aws_cloudwatch_metric_alarm.pipeline_silence.arn
+}
+
+output "metric_filter_expected_read_name" {
+  description = "Name of the CloudWatch Metric Filter counting MANDATE11_EXPECTED_READ log events"
+  value       = aws_cloudwatch_log_metric_filter.expected_read_count.name
+}
