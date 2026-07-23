@@ -66,6 +66,11 @@ Hệ thống EKS Audit Logging vận hành theo mô hình phân tầng:
 
 ### 3.1 Phân bổ chi phí chính xác theo hạ tầng AWS
 
+0. **Phí CloudWatch Logs Ingestion ($0.50 / GB) - Tác động lớn nhất từ nguồn**:
+   - *Trước tối ưu*: Log type `api` ghi lại toàn bộ request/response verbose của EKS API server, tạo ra hàng chục GB log đệm/tháng.
+   - *Sau tối ưu*: Tắt log type `api` ở `infra/terraform/eks.tf` (`cluster_enabled_log_types = ["audit", "authenticator"]`).
+   - **Tác dụng**: Cắt giảm 100% chi phí CloudWatch Ingestion đối với luồng log `api` rác (tiết kiệm trực tiếp $0.50/GB nạp vào CloudWatch).
+
 1. **Phí Kinesis Data Firehose Processing & Ingestion ($0.029 / GB)**:
    - *Trước tối ưu*: Firehose xử lý toàn bộ 150 GB/tháng log thô.
    - *Sau tối ưu*: Bộ lọc Subscription Filter loại bỏ 80% rác, Firehose chỉ xử lý 30 GB/tháng log tinh chế.
@@ -90,7 +95,7 @@ Hệ thống EKS Audit Logging vận hành theo mô hình phân tầng:
 ## 4. Đánh giá rủi ro & Phương án khôi phục (Risk & Rollback)
 
 - **Đánh giá rủi ro**: **Rất thấp**.
+  - Tắt `api` log chỉ loại bỏ verbose request/response log của API server; toàn bộ vết thao tác người dùng (`kubectl`, IAM identity) vẫn được lưu trữ 100% trong `audit` và `authenticator`.
   - Bộ lọc `filter_pattern` chỉ loại bỏ các URI kiểm tra sức khỏe tĩnh (`/healthz`, `/livez`) và các event heartbeat của node `system:node:*`.
-  - Mọi thao tác người dùng (Create, Update, Delete, List, Exec, Auth...) đều được bảo toàn 100%.
 - **Phương án khôi phục (Rollback)**:
-  - Nếu cần lấy lại log `/healthz` vì mục đích debug hệ thống, chỉ cần revert commit liên quan tới [eks-audit-firehose.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/eks-audit-firehose.tf) trên branch `cdo07/feat/ethena`.
+  - Nếu cần lấy lại log `api` hoặc log `/healthz` vì mục đích debug chuyên sâu kịch bản API server, chỉ cần thêm `"api"` vào `cluster_enabled_log_types` trong [eks.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/eks.tf) hoặc revert filter pattern trong [eks-audit-firehose.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/eks-audit-firehose.tf).
