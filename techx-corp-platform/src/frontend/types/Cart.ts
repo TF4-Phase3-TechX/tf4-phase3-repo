@@ -3,6 +3,8 @@
 
 import {Address, Cart, OrderItem, OrderResult, Product} from '../protos/demo';
 
+export type ProductDisplay = Pick<Product, 'name' | 'picture' | 'categories'>;
+
 export interface IProductCartItem {
   productId: string;
   quantity: number;
@@ -10,7 +12,7 @@ export interface IProductCartItem {
 }
 
 export interface IProductCheckoutItem extends OrderItem {
-  item: IProductCartItem;
+  item: Omit<IProductCartItem, 'product'> & { product: ProductDisplay };
 }
 
 export interface IProductCheckout extends OrderResult {
