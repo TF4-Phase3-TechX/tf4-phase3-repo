@@ -52,6 +52,11 @@ spec:
         - name: cloudflared
           image: "{{ .Values.cloudflareAccess.image.repository }}:{{ .Values.cloudflareAccess.image.tag }}"
           imagePullPolicy: {{ .Values.cloudflareAccess.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           args:
             - tunnel
             - --no-autoupdate
