@@ -1,0 +1,2 @@
+NAME           AGE   REQUESTS                                                    LIMITS
+techx-quota    14d   requests.cpu: 3250m/4, requests.memory: 6144Mi/8Gi          limits.cpu: 6500m/8, limits.memory: 10240Mi/12Gi

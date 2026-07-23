@@ -1,0 +1,44 @@
+[
+  {
+    "InstanceId": "i-01b00d955a0af0fac",
+    "InstanceType": "t3.large",
+    "PrivateDnsName": "ip-10-0-10-231.ec2.internal",
+    "Placement": {
+      "AvailabilityZone": "us-east-1a"
+    },
+    "State": {
+      "Name": "running"
+    },
+    "Tags": [
+      {
+        "Key": "aws:autoscaling:groupName",
+        "Value": "eks-techx-general-ng-20260707091432750200000017-cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15"
+      },
+      {
+        "Key": "Name",
+        "Value": "techx-general-ng"
+      }
+    ]
+  },
+  {
+    "InstanceId": "i-0825abf366929a005",
+    "InstanceType": "t3.large",
+    "PrivateDnsName": "ip-10-0-11-40.ec2.internal",
+    "Placement": {
+      "AvailabilityZone": "us-east-1b"
+    },
+    "State": {
+      "Name": "running"
+    },
+    "Tags": [
+      {
+        "Key": "aws:autoscaling:groupName",
+        "Value": "eks-techx-general-ng-20260707091432750200000017-cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15"
+      },
+      {
+        "Key": "Name",
+        "Value": "techx-general-ng"
+      }
+    ]
+  }
+]
