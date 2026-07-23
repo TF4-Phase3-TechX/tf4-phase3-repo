@@ -16,10 +16,14 @@ from bedrock_adapter import (
     IntentLabel,
     TOOL_ALLOW_LIST,
     ToolNotAllowedError,
+    ProviderFailure,
     call_tool,
     _map_search_type_to_intent,
     _is_fastpath_chitchat,
     resolve_referenced_product,
+    _fuzzy_match_token,
+    _fuzzy_match_product_by_name,
+    STOP_WORDS,
 )
 from safety import MAX_QUESTION_CHARS, contains_pii, is_attack, normalize_text
 from session_store import session_store
@@ -28,11 +32,6 @@ logger = logging.getLogger(__name__)
 
 INTENT_CONFIDENCE_THRESHOLD = float(os.environ.get("INTENT_CONFIDENCE_THRESHOLD", "0.6"))
 HISTORY_WINDOW_N = int(os.environ.get("HISTORY_WINDOW_N", "5"))
-
-STOP_WORDS = {
-    "có", "những", "loại", "nào", "gì", "cho", "tôi", "em", "bạn", "nhé", "không", "muốn", "tìm", "xem", "các", "mẫu",
-    "show", "me", "all", "the", "what", "are", "is", "a", "an", "of", "for", "with", "in", "on", "can", "you", "please", "tell"
-}
 
 
 def _calculate_search_cost(input_tokens: int, output_tokens: int) -> float:
@@ -63,23 +62,6 @@ def _refused_search_response(parsed_intent="", filter_applied="", before=0, afte
     )
 
 
-def _fuzzy_match_token(keyword_token: str, product_text: str) -> bool:
-    clean_text = "".join(c if c.isalnum() or c.isspace() else " " for c in product_text.lower())
-    product_tokens = clean_text.split()
-    kw_len = len(keyword_token)
-    if kw_len <= 3:
-        threshold = 1.0
-    elif 4 <= kw_len <= 6:
-        threshold = 0.60
-    else:
-        threshold = 0.75
-    for p_token in product_tokens:
-        ratio = difflib.SequenceMatcher(None, keyword_token, p_token).ratio()
-        if ratio >= threshold or keyword_token in p_token:
-            return True
-    return False
-
-
 def _fuzzy_match_keywords(keywords_query: str, name: str, description: str) -> bool:
     raw_tokens = [tok for tok in keywords_query.lower().split() if tok not in STOP_WORDS]
     if not raw_tokens:
@@ -88,22 +70,6 @@ def _fuzzy_match_keywords(keywords_query: str, name: str, description: str) -> b
         if not (_fuzzy_match_token(kw_tok, name) or _fuzzy_match_token(kw_tok, description)):
             return False
     return True
-
-
-def _fuzzy_match_product_by_name(query_name: str, products: list) -> list:
-    if not query_name or not query_name.strip():
-        return []
-    target_tokens = [t.lower() for t in query_name.strip().split() if len(t) > 1 and t.lower() not in STOP_WORDS]
-    if not target_tokens:
-        return []
-    scored_products = []
-    for p in products:
-        p_name_lower = p.name.lower()
-        match_count = sum(1 for t_tok in target_tokens if _fuzzy_match_token(t_tok, p_name_lower))
-        if match_count > 0:
-            scored_products.append((match_count, p))
-    scored_products.sort(key=lambda x: x[0], reverse=True)
-    return [p for _, p in scored_products]
 
 
 def route_search_products_ai(
@@ -123,8 +89,6 @@ def route_search_products_ai(
             span.set_attribute("app.search.outcome", "empty_query")
             return _refused_search_response()
 
-        # Normalize and bound input before safety check and provider call to prevent
-        # long-prefix attacks that push attack markers outside the scanned window.
         query = normalize_text(query, MAX_QUESTION_CHARS)
 
         # --- 2. Guardrail Check (TF4AIO-26) runs FIRST ---
@@ -140,7 +104,7 @@ def route_search_products_ai(
                 r = turn.get("role", "user")
                 c = turn.get("content", "")
                 if is_attack(c) or contains_pii(c):
-                    continue  # sanitize history context
+                    continue
                 sanitized_history.append({"role": r, "content": c})
 
             # --- 4. Fast-path chitchat check vs. LLM per-turn intent classification ---
@@ -173,12 +137,10 @@ def route_search_products_ai(
             span.set_attribute("app.search.intent_label", intent_label.value)
             span.set_attribute("app.search.confidence_score", confidence_score)
 
-            # Audit Logging for AI Mandate #6 compliance
+            # Bug #14 fix: Remove query and session_id from extra to prevent PII logging
             logger.info(
                 "intent_classified",
                 extra={
-                    "session_id": session_id,
-                    "query": query,
                     "search_type": raw_search_type,
                     "intent_label": intent_label.value,
                     "confidence_score": confidence_score,
@@ -186,7 +148,7 @@ def route_search_products_ai(
                 },
             )
 
-            # Record telemetry metrics
+            # Record Stage-1 intent classification telemetry metrics
             if record_metrics_fn:
                 record_metrics_fn(
                     model_id=assistant.provider.model_id,
@@ -247,7 +209,7 @@ def route_search_products_ai(
             if intent_label == IntentLabel.PURCHASE:
                 span.set_attribute("app.search.outcome", "cart_action")
                 target_kw = intent.get("keywords") or intent.get("category") or query
-                target = resolve_referenced_product(sanitized_history, all_products, target_kw, query=query, session_id=session_id)
+                target = resolve_referenced_product(sanitized_history, all_products, target_kw, query=query, session_id=session_id, user_id=user_id)
                 try:
                     raw_qty = intent.get("quantity", 1)
                     qty = max(1, min(int(raw_qty), 10))
@@ -291,34 +253,60 @@ def route_search_products_ai(
                         action_proposal=proposal,
                     )
                 else:
-                    return _refused_search_response(
-                        parsed_intent=parsed_intent_json,
-                        filter_applied="no_cart_match",
-                        before=candidate_count_before,
-                        after=0,
-                        input_tokens=_in_tok,
-                        output_tokens=_out_tok,
+                    # Bug #20 fix: Include clarify_question for PURCHASE miss
+                    clarify_q = "Tôi chưa tìm thấy sản phẩm bạn muốn thêm vào giỏ hàng. Bạn có thể cho biết tên sản phẩm cụ thể không?"
+                    intent["search_type"] = "unclear"
+                    intent["clarify_question"] = clarify_q
+                    intent["response_message"] = clarify_q
+                    parsed_intent_json = json.dumps(intent, ensure_ascii=False)
+                    if session_id:
+                        session_store.append_turn(user_id, session_id, "user", query)
+                        session_store.append_turn(user_id, session_id, "assistant", clarify_q)
+                    return demo_pb2.SearchProductsAIAssistantResponse(
+                        results=[],
+                        trace=demo_pb2.SearchEvidenceTrace(
+                            parsed_intent=parsed_intent_json,
+                            filter_applied=json.dumps({"clarify_question": clarify_q}, ensure_ascii=False),
+                            candidate_count_before=candidate_count_before,
+                            candidate_count_after=0,
+                            refused=True,
+                            input_tokens=_in_tok,
+                            output_tokens=_out_tok,
+                            estimated_cost_usd=_calculate_search_cost(_in_tok, _out_tok),
+                        ),
                     )
 
             # D. REVIEW_QA Intent -> Allowed tools: "get_product_reviews", "bedrock_converse"
             if intent_label == IntentLabel.REVIEW_QA:
                 span.set_attribute("app.search.outcome", "reviews_qa")
                 target_kw = intent.get("keywords") or ""
-                target_product = resolve_referenced_product(sanitized_history, all_products, target_kw, query=query, session_id=session_id)
+                target_product = resolve_referenced_product(sanitized_history, all_products, target_kw, query=query, session_id=session_id, user_id=user_id)
 
                 if target_product:
+                    # Bug #7 fix: Pass user_id explicitly to assistant.answer
                     review_outcome = call_tool(
                         IntentLabel.REVIEW_QA,
                         "bedrock_converse",
-                        lambda: assistant.answer(target_product.id, query, session_id),
+                        lambda: assistant.answer(target_product.id, query, session_id, user_id=user_id),
                     )
+
+                    # Bug #22 fix: Record Stage-2 assistant.answer metrics separately
+                    if record_metrics_fn:
+                        record_metrics_fn(
+                            model_id=assistant.provider.model_id,
+                            guardrail_version=assistant.provider.guardrail_version,
+                            outcome=review_outcome.outcome,
+                            error_class=None,
+                            latency_ms=review_outcome.latency_ms,
+                            input_tokens=review_outcome.input_tokens,
+                            output_tokens=review_outcome.output_tokens,
+                        )
+
                     answer_text = review_outcome.response
                     intent["response_message"] = answer_text
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
 
-                    if session_id:
-                        session_store.append_turn(user_id, session_id, "user", query)
-                        session_store.append_turn(user_id, session_id, "assistant", answer_text)
+                    # Bug #7 fix: Remove duplicate session_store.append_turn here as assistant.answer already appends turn
 
                     return demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target_product],
@@ -448,9 +436,11 @@ def route_search_products_ai(
             filter_applied_json = json.dumps(filters_applied, ensure_ascii=False)
             candidate_count_after = len(filtered)
 
+            # Bug #21 fix: Record actual route outcome
+            route_outcome = "success" if candidate_count_after > 0 else "refused"
             span.set_attribute("app.search.candidate_count_before", candidate_count_before)
             span.set_attribute("app.search.candidate_count_after", candidate_count_after)
-            span.set_attribute("app.search.outcome", "success")
+            span.set_attribute("app.search.outcome", route_outcome)
 
             cost = _calculate_search_cost(_in_tok, _out_tok)
             trace_msg = demo_pb2.SearchEvidenceTrace(
@@ -458,7 +448,7 @@ def route_search_products_ai(
                 filter_applied=filter_applied_json,
                 candidate_count_before=candidate_count_before,
                 candidate_count_after=candidate_count_after,
-                refused=False,
+                refused=(candidate_count_after == 0),
                 input_tokens=_in_tok,
                 output_tokens=_out_tok,
                 estimated_cost_usd=cost,
@@ -486,6 +476,25 @@ def route_search_products_ai(
             return demo_pb2.SearchProductsAIAssistantResponse(
                 results=filtered,
                 trace=trace_msg,
+            )
+        # Bug #22 fix: Restore explicit ProviderFailure exception handler
+        except ProviderFailure as exc:
+            span.set_attribute("app.search.outcome", "provider_failure")
+            span.set_attribute("error.class", exc.error_class)
+            logger.warning("parse_search_intent_provider_failure: %s", exc)
+            if record_metrics_fn:
+                record_metrics_fn(
+                    model_id=getattr(assistant.provider, "model_id", "unknown"),
+                    guardrail_version=getattr(assistant.provider, "guardrail_version", "disabled"),
+                    outcome="fallback" if exc.error_class == "guardrail_intervened" else "error",
+                    error_class=exc.error_class,
+                    latency_ms=getattr(exc, "latency_ms", 0.0),
+                    input_tokens=getattr(exc, "input_tokens", 0),
+                    output_tokens=getattr(exc, "output_tokens", 0),
+                )
+            return _refused_search_response(
+                input_tokens=getattr(exc, "input_tokens", 0),
+                output_tokens=getattr(exc, "output_tokens", 0),
             )
         except Exception as exc:
             span.set_attribute("app.search.outcome", "error")

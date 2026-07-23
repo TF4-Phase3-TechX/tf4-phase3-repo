@@ -26,9 +26,10 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [isCancelled, setIsCancelled] = useState(false);
+    const [hasError, setHasError] = useState(false);
 
     const handleConfirm = async () => {
-        if (isSubmitting || isConfirmed || isCancelled) return;
+        if (isSubmitting || isConfirmed || isCancelled || hasError) return;
         setIsSubmitting(true);
         try {
             const response = await fetch('/api/copilot-cart-confirm', {
@@ -46,6 +47,7 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
             if (onConfirmed) onConfirmed();
         } catch (error) {
             console.error('Failed to add item to cart via Copilot proposal:', error);
+            setHasError(true);
         } finally {
             setIsSubmitting(false);
         }
@@ -55,6 +57,26 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
         setIsCancelled(true);
         if (onCancelled) onCancelled();
     };
+
+    if (hasError) {
+        return (
+            <div style={{
+                padding: '12px 16px',
+                margin: '8px 0',
+                fontSize: '13px',
+                color: '#b91c1c',
+                backgroundColor: '#fef2f2',
+                borderRadius: '10px',
+                border: '1px solid #fca5a5',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+            }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span>Yêu cầu đã hết hạn hoặc đã được sử dụng. Vui lòng thử lại!</span>
+            </div>
+        );
+    }
 
     if (isCancelled) {
         return (

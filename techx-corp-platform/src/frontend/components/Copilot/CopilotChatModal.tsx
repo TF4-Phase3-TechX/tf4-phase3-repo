@@ -20,6 +20,13 @@ const WELCOME_MESSAGE: ChatMessage = {
     text: '👋 Xin chào! Tôi là trợ lý mua sắm thông minh của bạn.\n\nBạn có thể nói với tôi những gì bạn cần, ví dụ:\n• "Tìm kính thiên văn giá rẻ"\n• "Đánh giá sản phẩm Eclipsmart thế nào?"\n• "Thêm sách The Comet Book vào giỏ hàng"\n\nChỉ cần chat với tôi tự nhiên, tôi sẽ hiểu ý bạn!',
 };
 
+const generateSessionId = (): string => {
+    if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    return `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+};
+
 export const CopilotChatModal: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
@@ -28,16 +35,9 @@ export const CopilotChatModal: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [fabHovered, setFabHovered] = useState(false);
-    const [lastProductId, setLastProductId] = useState<string>('');
+    const [sessionId, setSessionId] = useState<string>(generateSessionId);
 
     const userId = useMemo(() => SessionGateway.getSession().userId, []);
-
-    const sessionId = useMemo(() => {
-        if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
-            return window.crypto.randomUUID();
-        }
-        return `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    }, []);
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
@@ -113,34 +113,35 @@ export const CopilotChatModal: React.FC = () => {
                 } else {
                     const cleanQ = userMsgText.trim().toLowerCase();
                     const isGreeting = ['hi', 'hí', 'hello', 'chào', 'chào bạn', 'xin chào'].includes(cleanQ);
-                    if (isGreeting) {
-                        assistantText = `Xin chào! Tôi là Trợ lý Shopping Copilot. Tôi có thể giúp gì cho bạn hôm nay?`;
-                    } else {
-                        assistantText = `Rất tiếc, tôi chưa tìm thấy sản phẩm nào phù hợp với "${userMsgText}". Cửa hàng hiện có các sản phẩm như kính thiên văn, đèn pin, ống nhòm và sách thiên văn. Bạn thử tìm từ khóa khác xem sao nhé!`;
-                    }
-                }
-            }
+            const parsed = data.trace?.parsed_intent ? JSON.parse(data.trace.parsed_intent) : {};
 
-            const shouldShowResults = parsedType !== 'reviews' && parsedType !== 'chitchat' && parsedType !== 'unclear' && parsedType !== 'clarify' && Array.isArray(results) && results.length > 0;
+            let assistantText = data.results && data.results.length > 0
+                ? (parsed.response_message || `Tôi tìm thấy ${data.results.length} sản phẩm phù hợp với yêu cầu của bạn:`)
+                : (parsed.clarify_question || parsed.response_message || 'Rất tiếc, tôi chưa tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn thử tìm từ khóa khác xem sao nhé!');
+
+            if (data.action_proposal) {
+                assistantText = parsed.response_message || `Tôi có thể giúp bạn thêm sản phẩm vào giỏ hàng:`;
+            }
 
             const assistantMsg: ChatMessage = {
                 id: `msg_${Date.now() + 1}`,
                 sender: 'assistant',
                 text: assistantText,
-                proposal,
-                results: shouldShowResults ? results : undefined,
+                timestamp: new Date(),
+                results: data.results || [],
+                proposal: data.action_proposal || undefined,
             };
 
             setMessages((prev) => [...prev, assistantMsg]);
-        } catch (error) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `msg_${Date.now() + 1}`,
-                    sender: 'assistant',
-                    text: 'Trợ lý AI hiện đang bận. Vui lòng thử lại sau.',
-                },
-            ]);
+        } catch (err) {
+            console.error('Failed to query Copilot AI:', err);
+            const errorMsg: ChatMessage = {
+                id: `msg_${Date.now() + 1}`,
+                sender: 'assistant',
+                text: 'Xin lỗi, hệ thống đang gặp sự cố tạm thời. Vui lòng thử lại sau giây lát!',
+                timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMsg]);
         } finally {
             setLoading(false);
         }
@@ -153,10 +154,20 @@ export const CopilotChatModal: React.FC = () => {
         }
     };
 
+    const escapeHtml = (unsafe: string): string => {
+        return unsafe
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
     const renderMarkdown = (text: string) => {
         const parts = text.split('\n');
         return parts.map((line, i) => {
-            let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            let safeLine = escapeHtml(line);
+            let processed = safeLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             const isBullet = /^[•\-]\s/.test(line);
             if (isBullet) {
                 processed = processed.replace(/^[•\-]\s/, '');
@@ -178,6 +189,7 @@ export const CopilotChatModal: React.FC = () => {
     const handleNewChat = () => {
         setMessages([WELCOME_MESSAGE]);
         setInput('');
+        setSessionId(generateSessionId());
     };
 
     // ─── FAB (closed) ─────────────────────────────────────────────

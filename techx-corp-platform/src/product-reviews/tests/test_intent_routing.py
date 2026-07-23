@@ -18,6 +18,7 @@ from bedrock_adapter import (
     _is_fastpath_chitchat,
     resolve_referenced_product,
 )
+from session_store import session_store
 from safety import is_attack, contains_pii, normalize_text, MAX_QUESTION_CHARS
 
 INTENT_CONFIDENCE_THRESHOLD = 0.6
@@ -162,3 +163,110 @@ def test_multilingual_followup_product_resolution():
     assert res3 is not None
     assert res3.name == "Eclipsmart Travel Refractor Telescope"
 
+
+def test_fuzzy_match_name_error_prevented():
+    """Verify that fuzzy matching does not raise NameError when exact/substring matching fails."""
+    products = [
+        DummyProduct("1", "Starsense Explorer Refractor Telescope", ["telescopes"]),
+        DummyProduct("2", "National Park Foundation Explorascope", ["telescopes"]),
+    ]
+    # "starsense explrer" has typos -> requires fuzzy matching
+    matched = resolve_referenced_product([], products, keywords="starsense explrer")
+    assert matched is not None
+    assert matched.name == "Starsense Explorer Refractor Telescope"
+
+
+def test_multi_match_returns_none_for_clarify():
+    """Verify ADR-007 rule: >= 2 matches MUST return None to prompt for clarification instead of auto-selecting."""
+    products = [
+        DummyProduct("1", "Explorascope 60AZ", ["telescopes"]),
+        DummyProduct("2", "Explorascope 70AZ", ["telescopes"]),
+    ]
+    # "Explorascope" matches both products -> must return None for clarify
+    res = resolve_referenced_product([], products, keywords="Explorascope")
+    assert res is None
+
+
+def test_adr007_zero_match_refuses():
+    """Verify ADR-007 rule: 0 matches MUST return None instead of fallback to all_products[0]."""
+    products = [
+        DummyProduct("1", "Product Alpha", ["books"]),
+        DummyProduct("2", "Product Beta", ["books"]),
+    ]
+    history = [{"role": "user", "content": "hello"}]
+    res = resolve_referenced_product(history, products, keywords="nonexistent_product")
+    assert res is None
+
+
+def test_review_qa_user_identity_isolation():
+    """Verify user identity isolation: different user_id values under same session_id do not share last-search products."""
+    products = [
+        DummyProduct("101", "User A Telescope", ["telescopes"]),
+        DummyProduct("102", "User B Telescope", ["telescopes"]),
+    ]
+    session_id = "shared_session_123"
+
+    session_store.set_last_search_products("user_a", session_id, [{"id": "101"}])
+    session_store.set_last_search_products("user_b", session_id, [{"id": "102"}])
+
+    res_a = resolve_referenced_product([], products, session_id=session_id, user_id="user_a")
+    res_b = resolve_referenced_product([], products, session_id=session_id, user_id="user_b")
+
+    assert res_a is not None and res_a.id == "101"
+    assert res_b is not None and res_b.id == "102"
+
+
+def test_heuristic_not_polluted_by_prior_turn():
+    """Verify category/price heuristic is scoped to current query and not polluted by prior turn history text."""
+    products = [
+        DummyProduct("1", "Explorascope 60AZ", ["telescopes"], price=50),
+        DummyProduct("2", "The Comet Book", ["books"], price=20),
+    ]
+    history = [
+        {"role": "user", "content": "tôi muốn mua kính thiên văn đắt nhất"},
+        {"role": "assistant", "content": "Đây là Explorascope 60AZ"},
+    ]
+    # Turn 2 asks for description without mentioning expensive/cheap or telescope
+    res = resolve_referenced_product(history, products, query="mô tả sản phẩm như nào")
+    assert res is not None
+    assert res.name == "Explorascope 60AZ"
+
+
+def test_pii_not_in_log_extra(monkeypatch):
+    """Verify that intent_classified logger extra does not include raw query or session_id."""
+    logged_extras = []
+
+    class DummyLogger:
+        def info(self, msg, extra=None):
+            if msg == "intent_classified":
+                logged_extras.append(extra)
+        def error(self, msg, exc_info=None):
+            pass
+
+    import router
+    monkeypatch.setattr(router, "logger", DummyLogger())
+
+    class DummyProvider:
+        model_id = "test-model"
+        guardrail_version = "v1"
+        def parse_search_intent(self, query, history=None):
+            return {"search_type": "chitchat", "confidence_score": 1.0, "response_message": "Hello"}
+
+    class DummyAssistant:
+        provider = DummyProvider()
+
+    class DummyTracer:
+        class DummySpan:
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def set_attribute(self, k, v): pass
+        def start_as_current_span(self, name): return self.DummySpan()
+
+    router.route_search_products_ai("cho tôi xem danh sách kính thiên văn", "sess_123", DummyAssistant(), None, DummyTracer(), None)
+
+    assert len(logged_extras) > 0
+    extra = logged_extras[0]
+    assert "query" not in extra
+    assert "session_id" not in extra
+    assert "search_type" in extra
+    assert "intent_label" in extra
