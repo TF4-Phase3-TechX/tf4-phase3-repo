@@ -189,6 +189,27 @@ output "msk_orders_client_port" {
   value       = 9096
 }
 
+# REL-22 - MSK orders S3 archive outputs
+output "msk_orders_archive_bucket_name" {
+  description = "S3 bucket used for REL-22 MSK orders archive"
+  value       = aws_s3_bucket.msk_orders_archive.id
+}
+
+output "msk_orders_archive_bucket_arn" {
+  description = "ARN of the S3 bucket used for REL-22 MSK orders archive"
+  value       = aws_s3_bucket.msk_orders_archive.arn
+}
+
+output "msk_orders_archive_prefix" {
+  description = "Prefix reserved for MSK orders archived records"
+  value       = local.msk_orders_archive_prefix
+}
+
+output "msk_orders_archive_partition_convention" {
+  description = "Expected S3 partition convention for MSK Connect orders archive"
+  value       = local.msk_orders_archive_partition_convention
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
