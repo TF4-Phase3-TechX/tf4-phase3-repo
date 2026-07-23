@@ -336,6 +336,27 @@ output "rds_postgresql_credential_handoff_note" {
   value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
 }
 
+# REL-22 - RDS PostgreSQL AWS Backup retention outputs
+output "rds_postgresql_backup_vault_name" {
+  description = "AWS Backup vault name for REL-22 RDS PostgreSQL 35-day recovery points"
+  value       = aws_backup_vault.rds_postgresql.name
+}
+
+output "rds_postgresql_backup_vault_arn" {
+  description = "AWS Backup vault ARN for REL-22 RDS PostgreSQL recovery points"
+  value       = aws_backup_vault.rds_postgresql.arn
+}
+
+output "rds_postgresql_backup_plan_id" {
+  description = "AWS Backup plan ID for REL-22 RDS PostgreSQL 35-day retention"
+  value       = aws_backup_plan.rds_postgresql.id
+}
+
+output "rds_postgresql_backup_role_arn" {
+  description = "AWS Backup service role ARN used for REL-22 RDS PostgreSQL backup and restore readiness"
+  value       = aws_iam_role.rds_backup.arn
+}
+
 output "cloudflare_tunnel_token_secret_path" {
   description = "AWS Secrets Manager path for the CDO08 SEC-05 Cloudflare Tunnel token placeholder"
   value       = aws_secretsmanager_secret.cloudflare_tunnel_token.name
