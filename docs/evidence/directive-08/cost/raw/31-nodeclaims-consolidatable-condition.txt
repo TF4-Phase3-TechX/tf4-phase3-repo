@@ -1,0 +1,77 @@
+=== 31-nodeclaims-consolidatable-condition ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T08:08:18Z
+Ghi chú: phát hiện khi review lại raw/20 và raw/25 - cả 2 NodeClaim đã có status.conditions type=Consolidatable, status=True từ trước Pass 1, nhưng chưa bị terminate tính đến Pass 2
+
+--- techx-general-djg4k Consolidatable condition (từ raw/20, Pass 1) ---
+    - lastTransitionTime: "2026-07-22T04:16:16Z"
+      message: ""
+      observedGeneration: 1
+      reason: Consolidatable
+      status: "True"
+      type: Consolidatable
+--
+    - lastTransitionTime: "2026-07-22T05:41:28Z"
+      message: ""
+      observedGeneration: 1
+      reason: Consolidatable
+      status: "True"
+      type: Consolidatable
+
+--- PodDisruptionBudget trong namespace techx-tf4 ---
+NAME              MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+cart              1               N/A               1                     7d
+checkout          1               N/A               1                     7d
+currency          1               N/A               1                     6d23h
+frontend          1               N/A               1                     7d
+frontend-proxy    1               N/A               1                     7d
+payment           1               N/A               1                     7d
+product-catalog   1               N/A               1                     7d
+quote             1               N/A               1                     6d16h
+shipping          1               N/A               1                     7d
+
+--- Pod thật đang chạy trên ip-10-0-11-217.ec2.internal (NodeClaim djg4k) ---
+NAMESPACE             NAME                                       READY   STATUS    RESTARTS   AGE     IP            NODE                          NOMINATED NODE   READINESS GATES
+argocd                argocd-redis-6f79d66f58-lm7l8              1/1     Running   0          4d2h    10.0.11.41    ip-10-0-11-217.ec2.internal   <none>           <none>
+external-secrets      external-secrets-787ccb7557-htc92          1/1     Running   0          4d2h    10.0.11.79    ip-10-0-11-217.ec2.internal   <none>           <none>
+external-secrets      external-secrets-webhook-bdfb986cb-jtv8g   1/1     Running   0          4d2h    10.0.11.38    ip-10-0-11-217.ec2.internal   <none>           <none>
+kube-system           aws-node-4hng7                             2/2     Running   0          22h     10.0.11.217   ip-10-0-11-217.ec2.internal   <none>           <none>
+kube-system           ebs-csi-controller-7468fcfb5-zgbc9         6/6     Running   0          3d12h   10.0.11.11    ip-10-0-11-217.ec2.internal   <none>           <none>
+kube-system           ebs-csi-node-4b6fd                         3/3     Running   0          6d4h    10.0.11.162   ip-10-0-11-217.ec2.internal   <none>           <none>
+kube-system           eks-pod-identity-agent-qgd6b               1/1     Running   0          6d4h    10.0.11.217   ip-10-0-11-217.ec2.internal   <none>           <none>
+kube-system           kube-proxy-nnq6z                           1/1     Running   0          6d4h    10.0.11.217   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-observability   jaeger-6b4ff48cf6-gf5tw                    1/1     Running   0          4d22h   10.0.11.164   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-observability   opensearch-0                               1/1     Running   0          4d19h   10.0.11.131   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-observability   otel-collector-agent-g2ng7                 1/1     Running   0          5d15h   10.0.11.110   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-observability   techx-observability-alertmanager-0         1/1     Running   0          5d15h   10.0.11.106   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-tf4             cart-6c7785fd7-x6j94                       1/1     Running   0          5h42m   10.0.11.34    ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-tf4             checkout-7f7657c47f-wwfbb                  1/1     Running   0          114m    10.0.11.233   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-tf4             product-catalog-847fdb4b-8rbgq             1/1     Running   0          3h58m   10.0.11.105   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-tf4             quote-646856b67c-hwhlw                     1/1     Running   0          3h58m   10.0.11.213   ip-10-0-11-217.ec2.internal   <none>           <none>
+techx-tf4             shipping-54748877bc-dffpc                  1/1     Running   0          3h58m   10.0.11.224   ip-10-0-11-217.ec2.internal   <none>           <none>
+
+--- Pod thật đang chạy trên ip-10-0-10-19.ec2.internal (NodeClaim jchb5) ---
+NAMESPACE             NAME                                            READY   STATUS             RESTARTS          AGE     IP            NODE                         NOMINATED NODE   READINESS GATES
+argo-rollouts         argo-rollouts-f56cbb5cc-gkx6c                   1/1     Running            0                 44h     10.0.10.189   ip-10-0-10-19.ec2.internal   <none>           <none>
+kafka-operator        strimzi-cluster-operator-7c5b9d684b-d9g6b       1/1     Running            0                 42h     10.0.10.95    ip-10-0-10-19.ec2.internal   <none>           <none>
+kube-system           aws-load-balancer-controller-5b8d4765db-59lln   0/1     CrashLoopBackOff   975 (3m36s ago)   3d12h   10.0.10.122   ip-10-0-10-19.ec2.internal   <none>           <none>
+kube-system           aws-node-9b9k6                                  2/2     Running            0                 22h     10.0.10.19    ip-10-0-10-19.ec2.internal   <none>           <none>
+kube-system           coredns-6976d5bf49-kjx8r                        1/1     Running            0                 3d12h   10.0.10.121   ip-10-0-10-19.ec2.internal   <none>           <none>
+kube-system           ebs-csi-node-zcjfw                              3/3     Running            0                 3d12h   10.0.10.112   ip-10-0-10-19.ec2.internal   <none>           <none>
+kube-system           eks-pod-identity-agent-m2j9g                    1/1     Running            0                 3d12h   10.0.10.19    ip-10-0-10-19.ec2.internal   <none>           <none>
+kube-system           kube-proxy-88zm6                                1/1     Running            0                 3d12h   10.0.10.19    ip-10-0-10-19.ec2.internal   <none>           <none>
+kyverno               kyverno-admission-controller-67f6cb69cb-bb8bw   1/1     Running            17 (2d12h ago)    2d13h   10.0.10.221   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-observability   grafana-5bfd99cc46-8bksw                        4/4     Running            0                 3d12h   10.0.10.200   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-observability   jaeger-es-index-cleaner-29741735-kb64k          0/1     Completed          0                 2d8h    10.0.10.189   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-observability   jaeger-es-index-cleaner-29743175-wqhr9          0/1     Completed          0                 32h     10.0.10.74    ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-observability   jaeger-es-index-cleaner-29744615-h9xcc          0/1     Completed          0                 8h      10.0.10.130   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-observability   otel-collector-agent-6lckt                      1/1     Running            0                 3d12h   10.0.10.182   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             accounting-7764bd96d6-cpx9d                     1/1     Running            0                 7h2m    10.0.10.9     ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             checkout-7f7657c47f-szsnt                       1/1     Running            0                 114m    10.0.10.10    ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             currency-858bcdfbc6-t2425                       1/1     Running            0                 24h     10.0.10.11    ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             fraud-detection-6dd8d7d6d5-nx97c                1/1     Running            0                 7h2m    10.0.10.130   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             frontend-proxy-848894684d-25rg9                 1/1     Running            0                 3h58m   10.0.10.198   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             payment-57f49d447-2fwwk                         1/1     Running            0                 3h57m   10.0.10.114   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             quote-646856b67c-k7mwj                          1/1     Running            0                 3h58m   10.0.10.246   ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             recommendation-594bb85854-b5ql4                 1/1     Running            0                 3h58m   10.0.10.74    ip-10-0-10-19.ec2.internal   <none>           <none>
+techx-tf4             shipping-54748877bc-fzftz                       1/1     Running            0                 3h58m   10.0.10.184   ip-10-0-10-19.ec2.internal   <none>           <none>

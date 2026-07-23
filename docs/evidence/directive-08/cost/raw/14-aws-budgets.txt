@@ -1,0 +1,50 @@
+=== 14-aws-budgets ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T04:52:10Z
+
+{
+    "Budgets": [
+        {
+            "BudgetName": "techx-tf4-monthly-cost-budget",
+            "BudgetLimit": {
+                "Amount": "300.0",
+                "Unit": "USD"
+            },
+            "CostFilters": {},
+            "CostTypes": {
+                "IncludeTax": true,
+                "IncludeSubscription": true,
+                "UseBlended": false,
+                "IncludeRefund": true,
+                "IncludeCredit": true,
+                "IncludeUpfront": true,
+                "IncludeRecurring": true,
+                "IncludeOtherSubscription": true,
+                "IncludeSupport": true,
+                "IncludeDiscount": true,
+                "UseAmortized": false
+            },
+            "TimeUnit": "MONTHLY",
+            "TimePeriod": {
+                "Start": "2026-07-01T07:00:00+07:00",
+                "End": "2087-06-15T07:00:00+07:00"
+            },
+            "CalculatedSpend": {
+                "ActualSpend": {
+                    "Amount": "0.0",
+                    "Unit": "USD"
+                },
+                "ForecastedSpend": {
+                    "Amount": "267.841",
+                    "Unit": "USD"
+                }
+            },
+            "BudgetType": "COST",
+            "LastUpdatedTime": "2026-07-22T08:19:37.382000+07:00",
+            "HealthStatus": {
+                "Status": "HEALTHY",
+                "LastUpdatedTime": "2026-07-22T08:19:34.933000+07:00"
+            }
+        }
+    ]
+}

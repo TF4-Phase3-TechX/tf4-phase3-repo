@@ -1,0 +1,7 @@
+=== 27-hpa-wide-pass2 ===
+Collected: 2026-07-22T07:48:58Z
+
+NAMESPACE   NAME       REFERENCE             TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+techx-tf4   checkout   Rollout/checkout      cpu: 40%/70%    2         3         2          8d
+techx-tf4   currency   Deployment/currency   cpu: 10%/70%    2         3         2          6d23h
+techx-tf4   frontend   Deployment/frontend   cpu: 173%/70%   2         3         3          8d

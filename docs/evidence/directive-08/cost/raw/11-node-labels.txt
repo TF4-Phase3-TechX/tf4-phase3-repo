@@ -1,0 +1,6 @@
+=== node labels (karpenter vs managed nodegroup) ===
+NAME                          NODEGROUP                                     KARPENTER_NODEPOOL   CAPACITY_TYPE   INSTANCE_TYPE
+ip-10-0-10-19.ec2.internal    <none>                                        techx-general        on-demand       t3a.large
+ip-10-0-10-231.ec2.internal   techx-general-ng-20260707091432750200000017   <none>               <none>          t3.large
+ip-10-0-11-217.ec2.internal   <none>                                        techx-general        on-demand       t3a.large
+ip-10-0-11-40.ec2.internal    techx-general-ng-20260707091432750200000017   <none>               <none>          t3.large
