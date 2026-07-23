@@ -4,22 +4,22 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import ApiGateway from '../gateways/Api.gateway';
-import { CartItem, OrderResult, PlaceOrderRequest } from '../protos/demo';
-import { IProductCart } from '../types/Cart';
+import { CartItem, PlaceOrderRequest } from '../protos/demo';
+import { IProductCart, IProductCheckout } from '../types/Cart';
 import { useCurrency } from './Currency.provider';
 
 interface IContext {
   cart: IProductCart;
   addItem(item: CartItem): void;
   emptyCart(): void;
-  placeOrder(order: PlaceOrderRequest): Promise<OrderResult>;
+  placeOrder(order: PlaceOrderRequest): Promise<IProductCheckout>;
 }
 
 export const Context = createContext<IContext>({
   cart: { userId: '', items: [] },
   addItem: () => {},
   emptyCart: () => {},
-  placeOrder: () => Promise.resolve({} as OrderResult),
+  placeOrder: () => Promise.resolve({} as IProductCheckout),
 });
 
 interface IProps {
