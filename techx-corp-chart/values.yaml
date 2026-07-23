@@ -2376,10 +2376,13 @@ managedData:
     enabled: false
     secretName: rds-postgres-secret
 
-  # Wire cart to ElastiCache via elasticache-valkey-secret
+  # Wire cart and product-reviews Copilot state to ElastiCache via
+  # elasticache-valkey-secret. `services` keeps the consumers explicit so a new
+  # VALKEY_ADDR user cannot silently retain the in-cluster fallback in production.
   valkey:
     enabled: false
     secretName: elasticache-valkey-secret
+    services: [cart, product-reviews]
 
   # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret.
   # `services` controls which of the 3 get the MSK/SCRAM env when enabled=true —
