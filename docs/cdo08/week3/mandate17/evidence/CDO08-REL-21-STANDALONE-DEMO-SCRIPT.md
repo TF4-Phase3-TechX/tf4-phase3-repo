@@ -17,7 +17,7 @@
    - `Rollback`: Mở lại AZ `us-east-1a`, kích hoạt rollout restart trả Pods về phân bổ 50/50, tự động cleanup.
    - `Final Health`: Kiểm tra 100% dịch vụ đạt trạng thái `Healthy` và `Ready`.
 
-2. **Command & Expected Result**: Ghi chi tiết câu lệnh PowerShell/CLI chính xác cùng kết quả mong đợi tương ứng.
+2. **Command & Output**: Ghi chi tiết câu lệnh CLI thuần túy, kết quả thực tế chạy ra và kết luận tương ứng.
 3. **Dashboard & PromQL**: Xác định cụ thể Grafana Dashboard và các câu lệnh PromQL cần mở trên màn hình.
 4. **Hard-Stop Conditions**: Quy định rõ ràng các điều kiện dừng khẩn cấp để đảm bảo an toàn hệ thống.
 
@@ -71,26 +71,35 @@
 
 #### Command 1.1: Đăng nhập AWS SSO & Cập nhật Kubeconfig
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> aws sso login --sso-session tf4-sso
-PS D:\xbrain\tf4-phase3-repo> aws eks update-kubeconfig --name techx-tf4-cluster --region us-east-1 --profile TF4-SecurityIAMSSOManager-511825856493
+aws sso login --sso-session tf4-sso
+aws eks update-kubeconfig --name techx-tf4-cluster --region us-east-1 --profile TF4-SecurityIAMSSOManager-511825856493
+```
+- **Kết quả thực tế (Output)**:
+```text
 Updated context arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster in C:\Users\PC\.kube\config
 ```
-- **Kết quả thu được**: Cập nhật thành công context Kubeconfig cho tài khoản Admin/Manager.
+- **Kết luận**: Cập nhật thành công context Kubeconfig cho tài khoản Admin/Manager.
 
 #### Command 1.2: Kiểm tra danh sách Nodes và phân bổ Availability Zones
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get nodes -L topology.kubernetes.io/zone
+kubectl get nodes -L topology.kubernetes.io/zone
+```
+- **Kết quả thực tế (Output)**:
+```text
 NAME                          STATUS   ROLES    AGE   VERSION               ZONE
 ip-10-0-10-231.ec2.internal   Ready    <none>   14d   v1.34.9-eks-7d6f6ec   us-east-1a
 ip-10-0-10-8.ec2.internal     Ready    <none>   20h   v1.34.9-eks-8f14419   us-east-1a
 ip-10-0-11-37.ec2.internal    Ready    <none>   20h   v1.34.9-eks-8f14419   us-east-1b
 ip-10-0-11-40.ec2.internal    Ready    <none>   14d   v1.34.9-eks-7d6f6ec   us-east-1b
 ```
-- **Kết quả thu được**: Cụm EKS có 4 Worker Nodes sẵn sàng ở trạng thái `Ready` rải đều 2 AZs (`us-east-1a` và `us-east-1b`).
+- **Kết luận**: Cụm EKS có 4 Worker Nodes sẵn sàng ở trạng thái `Ready` rải đều 2 AZs (`us-east-1a` và `us-east-1b`).
 
 #### Command 1.3: Kiểm tra vị trí phân bổ Pods ban đầu của Revenue Path
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase"
+kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase"
+```
+- **Kết quả thực tế (Output)**:
+```text
 SERVICE           POD                                NODE                          STATUS
 cart              cart-54885469b4-k5tkz              ip-10-0-10-8.ec2.internal     Running
 cart              cart-54885469b4-tvvhh              ip-10-0-10-8.ec2.internal     Running
@@ -112,7 +121,7 @@ product-catalog   product-catalog-8575867dcd-h46bh   ip-10-0-11-40.ec2.internal 
 shipping          shipping-b768bf86-d4glt            ip-10-0-11-37.ec2.internal    Running
 shipping          shipping-b768bf86-qcv6w            ip-10-0-10-231.ec2.internal   Running
 ```
-- **Kết quả thu được**: Các microservices có 2 Replicas đều được phân bổ đều 50/50 giữa các Nodes thuộc `us-east-1a` và `us-east-1b`.
+- **Kết luận**: Các microservices có 2 Replicas đều được phân bổ đều 50/50 giữa các Nodes thuộc `us-east-1a` và `us-east-1b`.
 
 ---
 
@@ -122,27 +131,26 @@ shipping          shipping-b768bf86-qcv6w            ip-10-0-10-231.ec2.internal
 
 #### Command 2.1: Cordon toàn bộ Nodes thuộc AZ `us-east-1a`
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl cordon -l topology.kubernetes.io/zone=us-east-1a
+kubectl cordon -l topology.kubernetes.io/zone=us-east-1a
+```
+- **Kết quả thực tế (Output)**:
+```text
 node/ip-10-0-10-231.ec2.internal cordoned
 node/ip-10-0-10-8.ec2.internal cordoned
-
-PS D:\xbrain\tf4-phase3-repo> kubectl get nodes -L topology.kubernetes.io/zone
-NAME                          STATUS                     ROLES    AGE   VERSION               ZONE
-ip-10-0-10-231.ec2.internal   Ready,SchedulingDisabled   <none>   14d   v1.34.9-eks-7d6f6ec   us-east-1a
-ip-10-0-10-8.ec2.internal     Ready,SchedulingDisabled   <none>   20h   v1.34.9-eks-8f14419   us-east-1a
-ip-10-0-11-37.ec2.internal    Ready                      <none>   20h   v1.34.9-eks-8f14419   us-east-1b
-ip-10-0-11-40.ec2.internal    Ready                      <none>   14d   v1.34.9-eks-7d6f6ec   us-east-1b
 ```
-- **Kết quả thu được**: Tất cả các Nodes thuộc `us-east-1a` chuyển sang trạng thái `SchedulingDisabled`.
+- **Kết luận**: Tất cả các Nodes thuộc `us-east-1a` chuyển sang trạng thái `SchedulingDisabled`.
 
 #### Command 2.2: Trục xuất (Evict) các Pods thuộc Revenue Path nằm trên AZ `us-east-1a`
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> $AZ_NODES = (kubectl get nodes -l topology.kubernetes.io/zone=us-east-1a -o jsonpath='{.items[*].metadata.name}').Split(" ")
-PS D:\xbrain\tf4-phase3-repo> foreach ($node in $AZ_NODES) {
->>     if ($node) {
->>         kubectl delete pods -n techx-tf4 --field-selector spec.nodeName=$node -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" --wait=$false
->>     }
->> }
+$AZ_NODES = (kubectl get nodes -l topology.kubernetes.io/zone=us-east-1a -o jsonpath='{.items[*].metadata.name}').Split(" ")
+foreach ($node in $AZ_NODES) {
+    if ($node) {
+        kubectl delete pods -n techx-tf4 --field-selector spec.nodeName=$node -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" --wait=$false
+    }
+}
+```
+- **Kết quả thực tế (Output)**:
+```text
 pod "checkout-6978c798fb-vvqsx" deleted from techx-tf4 namespace
 pod "currency-64bc78b888-llchz" deleted from techx-tf4 namespace
 pod "payment-7c45f74c-xs2fc" deleted from techx-tf4 namespace
@@ -153,11 +161,15 @@ pod "checkout-6978c798fb-kv4zq" deleted from techx-tf4 namespace
 pod "currency-64bc78b888-btqsq" deleted from techx-tf4 namespace
 pod "frontend-65c6bd4cd6-rxs9j" deleted from techx-tf4 namespace
 ```
-- **Kết quả thu được**: Pods ở `us-east-1a` bị xóa và Kubernetes Scheduler lập tức khởi tạo Pods thay thế sang vùng sống sót `us-east-1b`.
+- **Kết luận**: Pods ở `us-east-1a` bị xóa và Kubernetes Scheduler lập tức khởi tạo Pods thay thế sang vùng sống sót `us-east-1b`.
 
 #### Command 2.3: Quan sát Failover Pods & Active Endpoints tại `us-east-1b`
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase"
+kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase"
+kubectl get endpoints -n techx-tf4 frontend-proxy frontend cart checkout payment shipping product-catalog currency
+```
+- **Kết quả thực tế (Output)**:
+```text
 SERVICE           POD                                NODE                         STATUS
 checkout          checkout-6978c798fb-8qjxd          ip-10-0-11-40.ec2.internal   Running
 checkout          checkout-6978c798fb-ssqrt          ip-10-0-11-40.ec2.internal   Running
@@ -177,7 +189,6 @@ product-catalog   product-catalog-8575867dcd-h46bh   ip-10-0-11-40.ec2.internal 
 shipping          shipping-b768bf86-d4glt            ip-10-0-11-37.ec2.internal   Running
 shipping          shipping-b768bf86-rsmrt            ip-10-0-11-40.ec2.internal   Running
 
-PS D:\xbrain\tf4-phase3-repo> kubectl get endpoints -n techx-tf4 frontend-proxy frontend cart checkout payment shipping product-catalog currency
 NAME              ENDPOINTS                                          AGE
 frontend-proxy    10.0.11.144:8080,10.0.11.230:8080                  15d
 frontend          10.0.11.249:8080,10.0.11.50:8080,10.0.11.55:8080   15d
@@ -187,7 +198,7 @@ shipping          10.0.11.123:8080,10.0.11.244:8080                  15d
 product-catalog   10.0.11.143:8080,10.0.11.81:8080                   15d
 currency          10.0.11.23:8080,10.0.11.242:8080                   15d
 ```
-- **Kết quả thu được**: 100% Service Endpoints giữ nguyên IP hoạt động tại subnet `10.0.11.x` (`us-east-1b`). PromQL Checkout Success Rate trên Grafana giữ vững ngưỡng `>= 99.5%`.
+- **Kết luận**: 100% Service Endpoints giữ nguyên IP hoạt động tại subnet `10.0.11.x` (`us-east-1b`). PromQL Checkout Success Rate trên Grafana giữ vững ngưỡng `>= 99.5%`.
 
 ---
 
@@ -197,34 +208,45 @@ currency          10.0.11.23:8080,10.0.11.242:8080                   15d
 
 #### Command 3.1: Kiểm tra tắt tự động mount K8s API token (`automountServiceAccountToken: false`)
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get deployment -n techx-tf4 frontend -o jsonpath='{.spec.template.spec.automountServiceAccountToken}'
+kubectl get deployment -n techx-tf4 frontend -o jsonpath='{.spec.template.spec.automountServiceAccountToken}'
+```
+- **Kết quả thực tế (Output)**:
+```text
 false
 ```
-- **Kết quả thu được**: Trả về `false` (không mount K8s API token vào Pod, loại bỏ rủi ro bị lấy cắp token).
+- **Kết luận**: Trả về `false` (xác nhận token K8s API không bị mount tự động vào Pod).
 
 #### Command 3.2: Kiểm tra ServiceAccount độc lập của service
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get deployment -n techx-tf4 frontend -o jsonpath='{.spec.template.spec.serviceAccountName}'
+kubectl get deployment -n techx-tf4 frontend -o jsonpath='{.spec.template.spec.serviceAccountName}'
+```
+- **Kết quả thực tế (Output)**:
+```text
 frontend
 ```
-- **Kết quả thu được**: Trả về `frontend` (không dùng chung ServiceAccount `default` hay `techx-corp`).
+- **Kết luận**: Trả về `frontend` (không dùng chung ServiceAccount `default` hay `techx-corp`).
 
 #### Command 3.3: Kiểm tra từ chối quyền K8s API qua `kubectl auth can-i` (`SEC-22`)
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl auth can-i get secrets --as=system:serviceaccount:techx-tf4:frontend -n techx-tf4
+kubectl auth can-i get secrets --as=system:serviceaccount:techx-tf4:frontend -n techx-tf4
+kubectl auth can-i delete pods --as=system:serviceaccount:techx-tf4:frontend --all-namespaces
+```
+- **Kết quả thực tế (Output)**:
+```text
 no
-
-PS D:\xbrain\tf4-phase3-repo> kubectl auth can-i delete pods --as=system:serviceaccount:techx-tf4:frontend --all-namespaces
 no
 ```
-- **Kết quả thu được**: Cả 2 lệnh đều trả về `no` (từ chối 100% quyền truy cập nhạy cảm).
+- **Kết luận**: Cả 2 lệnh đều trả về `no` (từ chối 100% quyền truy cập nhạy cảm).
 
 #### Command 3.4: Kiểm tra chặn di chuyển ngang qua NetworkPolicy (`SEC-21`)
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl exec -n techx-tf4 deployment/load-generator -- curl -s --connect-timeout 3 http://prometheus.techx-observability.svc.cluster.local:9090
+kubectl exec -n techx-tf4 deployment/load-generator -- curl -s --connect-timeout 3 http://prometheus.techx-observability.svc.cluster.local:9090
+```
+- **Kết quả thực tế (Output)**:
+```text
 command terminated with exit code 28 (Connection timed out)
 ```
-- **Kết quả thu được**: NetworkPolicy Egress/Ingress chặn thành công lưu lượng di chuyển ngang (`Connection timed out`).
+- **Kết luận**: NetworkPolicy Egress/Ingress chặn thành công lưu lượng di chuyển ngang (`Connection timed out`).
 
 ---
 
@@ -234,15 +256,21 @@ command terminated with exit code 28 (Connection timed out)
 
 #### Command 4.1: Mở lại (Uncordon) các Nodes ở `us-east-1a`
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl uncordon -l topology.kubernetes.io/zone=us-east-1a
+kubectl uncordon -l topology.kubernetes.io/zone=us-east-1a
+```
+- **Kết quả thực tế (Output)**:
+```text
 node/ip-10-0-10-231.ec2.internal uncordoned
 node/ip-10-0-10-8.ec2.internal uncordoned
 ```
-- **Kết quả thu được**: Các Nodes ở `us-east-1a` chuyển từ `SchedulingDisabled` trở lại trạng thái `Ready`.
+- **Kết luận**: Các Nodes ở `us-east-1a` chuyển từ `SchedulingDisabled` trở lại trạng thái `Ready`.
 
 #### Command 4.2: Kích hoạt Rebalance Pods trả về phân bổ cân bằng 50/50
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl rollout restart deployment -n techx-tf4 -l app.kubernetes.io/part-of=techx-corp
+kubectl rollout restart deployment -n techx-tf4 -l app.kubernetes.io/part-of=techx-corp
+```
+- **Kết quả thực tế (Output)**:
+```text
 deployment.apps/accounting restarted
 deployment.apps/ad restarted
 deployment.apps/currency restarted
@@ -252,7 +280,7 @@ deployment.apps/payment restarted
 deployment.apps/product-catalog restarted
 deployment.apps/shipping restarted
 ```
-- **Kết quả thu được**: Tất cả Deployments rollout hoàn tất thành công, Pods quay về rải đều 50/50 giữa `us-east-1a` và `us-east-1b`.
+- **Kết luận**: Tất cả Deployments rollout hoàn tất thành công, Pods quay về rải đều 50/50 giữa `us-east-1a` và `us-east-1b`.
 
 ---
 
@@ -262,7 +290,10 @@ deployment.apps/shipping restarted
 
 #### Command 5.1: Kiểm tra 100% Pods đạt trạng thái `Running` và `Ready`
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get pods -n techx-tf4
+kubectl get pods -n techx-tf4
+```
+- **Kết quả thực tế (Output)**:
+```text
 NAME                               READY   STATUS    RESTARTS   AGE
 checkout-6978c798fb-8qjxd          1/1     Running   0          5m
 currency-64bc78b888-nkvsb          1/1     Running   0          5m
@@ -273,10 +304,10 @@ payment-7595d8789-mhlwq            1/1     Running   0          1m
 product-catalog-8575867dcd-dt8f5   1/1     Running   0          4h
 shipping-b768bf86-rsmrt            1/1     Running   0          5m
 ```
-- **Kết quả thu được**: 100% Pods ở trạng thái `Running`, không có Pod nào bị `CrashLoopBackOff` hay `Pending`.
+- **Kết luận**: 100% Pods ở trạng thái `Running`, không có Pod nào bị `CrashLoopBackOff` hay `Pending`.
 
 #### Command 5.2: Thống kê lại phân bổ Pods qua 2 AZs
 ```powershell
-PS D:\xbrain\tf4-phase3-repo> kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName"
+kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName"
 ```
-- **Kết quả thu được**: Hoàn tất diễn tập, tất cả các microservices trở về trạng thái rải đều 50/50 qua 2 AZs (`us-east-1a` & `us-east-1b`), hệ thống khỏe mạnh 100%.
+- **Kết luận**: Hoàn tất diễn tập, tất cả các microservices trở về trạng thái rải đều 50/50 qua 2 AZs (`us-east-1a` & `us-east-1b`), hệ thống khỏe mạnh 100%.

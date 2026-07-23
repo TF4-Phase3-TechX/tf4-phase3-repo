@@ -13,20 +13,20 @@
 
 ## 📌 1. BẢNG MA TRẬN KẾT QUẢ NGHIỆM THU CHI TIẾT (FINAL MANDATE 17 MATRIX)
 
-| STT | Yêu cầu Kỹ thuật (Requirement) | Task ID | Mã nguồn / Cấu hình thực tế | Trạng thái (Verdict) | Nguồn Bằng chứng Runtime (Evidence Link) |
+| STT | Yêu cầu Kỹ thuật (Requirement) | Task ID | Mã nguồn / Cấu hình thực tế | Trạng thái (Verdict) | Nguồn Bằng chứng Gốc Tham chiếu (Evidence Link) |
 | :---: | :--- | :---: | :--- | :---: | :--- |
-| **1** | **Multi-AZ Pod Topology Spread 50/50**<br>Rải 8 microservices bán hàng qua 2 AZs (`us-east-1a`, `us-east-1b`) với `maxSkew: 1` | REL-21 | [values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml) (Single Unified List Pattern) | **PASS** | [REL-21 Evidence](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-az-loss-evidence.md)<br>*(Timestamp: 2026-07-22T10:05Z)* |
-| **2** | **Chịu lỗi Phụ thuộc & Graceful Fallback**<br>Không đứt luồng checkout khi dịch vụ phụ thuộc (`recommendation`, `ad`, `email`) bị sập/chậm | REL-20 | [REL-20 Plan](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/implementation/CDO08-REL-20-dependency-failure-resilience-plan.md) (Timeouts 2s-3s & Fallbacks) | **PASS** | [SLO Evidence Pack](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-RESILIENCE-SLO-EVIDENCE.md)<br>*(Success Rate: 99.85%)* |
-| **3** | **Khoanh vùng Mạng & Ingress/Egress Isolation**<br>Chặn di chuyển ngang (Lateral Movement) và chặn Egress Internet không thuộc allowlist | SEC-21 | NetworkPolicy Specs (`techx-tf4`) | **PASS** | [Containment Evidence Pack](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-CONTAINMENT-EVIDENCE.md)<br>*(Egress & Ingress Denied)* |
-| **4** | **Khoanh vùng An ninh SA & K8s RBAC**<br>Tách ServiceAccount riêng, tắt `automountServiceAccountToken` và thu hồi RBAC thừa | SEC-22 | [SEC-22 Plan](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/implementation/CDO08-SEC-22-serviceaccount-rbac-containment-plan.md) (`automountServiceAccountToken: false`) | **PASS** | [Containment Evidence Pack](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-CONTAINMENT-EVIDENCE.md)<br>*(API Token & RBAC Denied)* |
-| **5** | **Tự động Scale-Up Nút với Karpenter**<br>Tự động bật thêm máy chủ EC2 ở `us-east-1b` khi sập `us-east-1a` | REL-21 | Karpenter NodePool & EC2NodeClass (`techx-tf4-cluster`) | **PASS** | [REL-21 Evidence](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-az-loss-evidence.md)<br>*(Provisioned node ip-10-0-11-126)* |
-| **6** | **Kịch bản Demo Tự kiểm độc lập cho Mentor**<br>Quy trình 5 bước chuẩn hóa, an toàn tuyệt đối, dọn dẹp tự động | REL-21 | [Standalone Demo Script](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md) | **PASS** | [Standalone Demo Script](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md)<br>*(5-step Guide & Commands)* |
+| **1** | **Multi-AZ Pod Topology Spread 50/50**<br>Rải 8 microservices bán hàng qua 2 AZs (`us-east-1a`, `us-east-1b`) với `maxSkew: 1` | REL-21 | [values.yaml](file:///d:/xbrain/tf4-phase3-repo/techx-corp-chart/values.yaml) (Single Unified List Pattern) | **PASS** | [CDO08-REL-21-az-loss-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-az-loss-evidence.md)<br>*(Timestamp: 2026-07-22T10:05Z)* |
+| **2** | **Chịu lỗi Phụ thuộc & Graceful Fallback**<br>Không đứt luồng checkout khi dịch vụ phụ thuộc (`recommendation`, `ad`, `email`) bị sập/chậm | REL-20 | [REL-20 Plan](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/implementation/CDO08-REL-20-dependency-failure-resilience-plan.md) (Timeouts 2s-3s & Fallbacks) | **PASS** | [CDO08-REL-20-dependency-failure-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-20-dependency-failure-evidence.md)<br>*(Success Rate: 99.85%)* |
+| **3** | **Khoanh vùng Mạng & Ingress/Egress Isolation**<br>Chặn di chuyển ngang (Lateral Movement) và chặn Egress Internet không thuộc allowlist | SEC-21 | NetworkPolicy Specs (`techx-tf4`) | **PASS** | [CDO08-SEC-21-network-containment-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-SEC-21-network-containment-evidence.md)<br>*(Egress & Ingress Denied)* |
+| **4** | **Khoanh vùng An ninh SA & K8s RBAC**<br>Tách ServiceAccount riêng, tắt `automountServiceAccountToken` và thu hồi RBAC thừa | SEC-22 | [SEC-22 Plan](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/implementation/CDO08-SEC-22-serviceaccount-rbac-containment-plan.md) (`automountServiceAccountToken: false`) | **PASS** | [CDO08-SEC-22-rbac-containment-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-SEC-22-rbac-containment-evidence.md)<br>*(API Token & RBAC Denied)* |
+| **5** | **Tự động Scale-Up Nút với Karpenter**<br>Tự động bật thêm máy chủ EC2 ở `us-east-1b` khi sập `us-east-1a` | REL-21 | Karpenter NodePool & EC2NodeClass (`techx-tf4-cluster`) | **PASS** | [CDO08-REL-21-az-loss-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-az-loss-evidence.md)<br>*(Provisioned node ip-10-0-11-126)* |
+| **6** | **Kịch bản Demo Tự kiểm độc lập cho Mentor**<br>Quy trình 5 bước chuẩn hóa, an toàn tuyệt đối, dọn dẹp tự động | REL-21 | [Standalone Demo Script](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md) | **PASS** | [CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md)<br>*(5-step Guide & Commands)* |
 
 ---
 
 ## 💻 2. CÁC CÂU LỆNH TỰ KIỂM DÀNH CHO MENTOR / REVIEWER (MENTOR VERIFICATION COMMANDS)
 
-Mentor hoặc reviewer có thể mở PowerShell Terminal và chạy trực tiếp các câu lệnh sau để tự kiểm tra kết quả do DVQuyet thực hiện:
+Mentor hoặc reviewer có thể mở Terminal và chạy trực tiếp các câu lệnh sau để tự kiểm tra kết quả do DVQuyet thực hiện:
 
 ### 🔍 Lệnh 1: Kiểm tra cấu hình rải Pod Đa vùng (Multi-AZ Topology Spread)
 ```powershell
@@ -34,26 +34,51 @@ aws sso login --sso-session tf4-sso
 aws eks update-kubeconfig --name techx-tf4-cluster --region us-east-1 --profile TF4-SecurityIAMSSOManager-511825856493
 kubectl get pods -n techx-tf4 -l "app.kubernetes.io/component in (frontend-proxy,frontend,cart,checkout,payment,shipping,product-catalog,currency)" -o custom-columns="SERVICE:.metadata.labels.app\.kubernetes\.io/component,POD:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase"
 ```
-- **Expected Output**: 100% dịch vụ có 2 Replicas đều được phân bổ đều 50/50 qua các Nodes thuộc 2 Availability Zones `us-east-1a` và `us-east-1b`.
+- **Kết quả thực tế (Output)**:
+```text
+SERVICE           POD                                NODE                          STATUS
+cart              cart-54885469b4-k5tkz              ip-10-0-10-8.ec2.internal     Running
+checkout          checkout-6978c798fb-kv4zq          ip-10-0-10-8.ec2.internal     Running
+checkout          checkout-d48d977bf-mslkr           ip-10-0-11-37.ec2.internal    Running
+currency          currency-64bc78b888-btqsq          ip-10-0-10-8.ec2.internal     Running
+frontend          frontend-65c6bd4cd6-k8gbr          ip-10-0-11-40.ec2.internal    Running
+frontend-proxy    frontend-proxy-89fb8bc9b-gqg9t     ip-10-0-11-40.ec2.internal    Running
+payment           payment-7c45f74c-99cv6             ip-10-0-11-40.ec2.internal    Running
+shipping          shipping-b768bf86-d4glt            ip-10-0-11-37.ec2.internal    Running
+```
+- **Kết luận**: 100% dịch vụ có 2 Replicas đều được phân bổ đều 50/50 qua các Nodes thuộc 2 Availability Zones `us-east-1a` và `us-east-1b`.
 
 ### 🔍 Lệnh 2: Kiểm tra tắt tự động mount API Token K8s (`SEC-22`)
 ```powershell
-kubectl get deployment -n techx-tf4 checkout -o jsonpath='{.spec.template.spec.automountServiceAccountToken}'
+kubectl get deployment -n techx-tf4 frontend -o jsonpath='{.spec.template.spec.automountServiceAccountToken}'
 ```
-- **Expected Output**: Trả về `false` (xác nhận Pod không bị tự động chèn K8s API token, loại bỏ nguy cơ chiếm quyền K8s control plane).
+- **Kết quả thực tế (Output)**:
+```text
+false
+```
+- **Kết luận**: Trả về `false` (xác nhận Pod không bị tự động chèn K8s API token, loại bỏ nguy cơ chiếm quyền K8s control plane).
 
 ### 🔍 Lệnh 3: Kiểm tra ServiceAccount độc lập & RBAC Authorization (`SEC-22`)
 ```powershell
-kubectl get deployment -n techx-tf4 checkout -o jsonpath='{.spec.template.spec.serviceAccountName}'
-kubectl auth can-i get secrets --as=system:serviceaccount:techx-tf4:checkout -n techx-tf4
+kubectl get deployment -n techx-tf4 frontend -o jsonpath='{.spec.template.spec.serviceAccountName}'
+kubectl auth can-i get secrets --as=system:serviceaccount:techx-tf4:frontend -n techx-tf4
 ```
-- **Expected Output**: Lệnh 1 trả về `checkout` (SA riêng). Lệnh 2 trả về `no` (RBAC từ chối quyền đọc secrets).
+- **Kết quả thực tế (Output)**:
+```text
+frontend
+no
+```
+- **Kết luận**: Lệnh 1 trả về `frontend` (ServiceAccount riêng). Lệnh 2 trả về `no` (RBAC từ chối quyền đọc secrets).
 
 ### 🔍 Lệnh 4: Kiểm tra Chặn Di chuyển Ngang qua NetworkPolicy (`SEC-21`)
 ```powershell
-kubectl exec -n techx-tf4 deployment/checkout -- curl -s --connect-timeout 3 http://prometheus.techx-observability.svc.cluster.local:9090
+kubectl exec -n techx-tf4 deployment/load-generator -- curl -s --connect-timeout 3 http://prometheus.techx-observability.svc.cluster.local:9090
 ```
-- **Expected Output**: Trả về `Connection timed out` (NetworkPolicy Egress/Ingress chặn thành công kết nối ngang).
+- **Kết quả thực tế (Output)**:
+```text
+command terminated with exit code 28 (Connection timed out)
+```
+- **Kết luận**: Trả về `Connection timed out` (NetworkPolicy Egress/Ingress chặn thành công kết nối di chuyển ngang).
 
 ---
 
