@@ -187,7 +187,12 @@ def acute_window_breach(
     recent = points[-window:]
     breaches = []
     for candidate in recent:
-        candidate_scores = anomaly_scores([*reference, candidate], settings)
+        # Isolation Forest contributes only to operator confidence and cannot
+        # fire the acute gate. Re-fitting it for every confirmation candidate
+        # adds CPU cost without changing the breach decision.
+        candidate_scores = anomaly_scores(
+            [*reference, candidate], settings, include_isolation=False
+        )
         breaches.append(
             candidate >= floor and acute_breach(candidate_scores, settings)
         )
