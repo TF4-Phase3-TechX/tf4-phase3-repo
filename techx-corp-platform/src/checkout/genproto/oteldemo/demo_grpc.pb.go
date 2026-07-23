@@ -811,7 +811,6 @@ var ShippingService_ServiceDesc = grpc.ServiceDesc{
 const (
 	CurrencyService_GetSupportedCurrencies_FullMethodName = "/oteldemo.CurrencyService/GetSupportedCurrencies"
 	CurrencyService_Convert_FullMethodName                = "/oteldemo.CurrencyService/Convert"
-	CurrencyService_BatchConvert_FullMethodName           = "/oteldemo.CurrencyService/BatchConvert"
 )
 
 // CurrencyServiceClient is the client API for CurrencyService service.
@@ -820,7 +819,6 @@ const (
 type CurrencyServiceClient interface {
 	GetSupportedCurrencies(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*GetSupportedCurrenciesResponse, error)
 	Convert(ctx context.Context, in *CurrencyConversionRequest, opts ...grpc.CallOption) (*Money, error)
-	BatchConvert(ctx context.Context, in *BatchCurrencyConversionRequest, opts ...grpc.CallOption) (*BatchCurrencyConversionResponse, error)
 }
 
 type currencyServiceClient struct {
@@ -851,23 +849,12 @@ func (c *currencyServiceClient) Convert(ctx context.Context, in *CurrencyConvers
 	return out, nil
 }
 
-func (c *currencyServiceClient) BatchConvert(ctx context.Context, in *BatchCurrencyConversionRequest, opts ...grpc.CallOption) (*BatchCurrencyConversionResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(BatchCurrencyConversionResponse)
-	err := c.cc.Invoke(ctx, CurrencyService_BatchConvert_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // CurrencyServiceServer is the server API for CurrencyService service.
 // All implementations must embed UnimplementedCurrencyServiceServer
 // for forward compatibility.
 type CurrencyServiceServer interface {
 	GetSupportedCurrencies(context.Context, *Empty) (*GetSupportedCurrenciesResponse, error)
 	Convert(context.Context, *CurrencyConversionRequest) (*Money, error)
-	BatchConvert(context.Context, *BatchCurrencyConversionRequest) (*BatchCurrencyConversionResponse, error)
 	mustEmbedUnimplementedCurrencyServiceServer()
 }
 
@@ -883,9 +870,6 @@ func (UnimplementedCurrencyServiceServer) GetSupportedCurrencies(context.Context
 }
 func (UnimplementedCurrencyServiceServer) Convert(context.Context, *CurrencyConversionRequest) (*Money, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Convert not implemented")
-}
-func (UnimplementedCurrencyServiceServer) BatchConvert(context.Context, *BatchCurrencyConversionRequest) (*BatchCurrencyConversionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BatchConvert not implemented")
 }
 func (UnimplementedCurrencyServiceServer) mustEmbedUnimplementedCurrencyServiceServer() {}
 func (UnimplementedCurrencyServiceServer) testEmbeddedByValue()                         {}
@@ -944,24 +928,6 @@ func _CurrencyService_Convert_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CurrencyService_BatchConvert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BatchCurrencyConversionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CurrencyServiceServer).BatchConvert(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CurrencyService_BatchConvert_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CurrencyServiceServer).BatchConvert(ctx, req.(*BatchCurrencyConversionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // CurrencyService_ServiceDesc is the grpc.ServiceDesc for CurrencyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -976,10 +942,6 @@ var CurrencyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Convert",
 			Handler:    _CurrencyService_Convert_Handler,
-		},
-		{
-			MethodName: "BatchConvert",
-			Handler:    _CurrencyService_BatchConvert_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
