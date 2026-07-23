@@ -37,20 +37,6 @@ data "aws_iam_policy_document" "plan_role_security_alerting_read" {
       "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
     ]
   }
-
-  statement {
-    sid    = "ReadSecurityAlertingCloudWatchState"
-    effect = "Allow"
-
-    actions = [
-      "cloudwatch:ListTagsForResource",
-      "cloudwatch:DescribeAlarms",
-    ]
-
-    resources = [
-      "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:*",
-    ]
-  }
 }
 
 resource "aws_iam_role_policy" "plan_role_security_alerting_read" {
