@@ -16,23 +16,16 @@ const ProductCatalogService = () => ({
   async listProducts(currencyCode = 'USD') {
     const { products: productList } = await ProductCatalogGateway.listProducts();
 
-    if (!currencyCode || currencyCode === defaultCurrencyCode || productList.length === 0) {
-      return productList;
-    }
+    return Promise.all(
+      productList.map(async product => {
+        const priceUsd = await this.getProductPrice(product.priceUsd!, currencyCode);
 
-    const convertedPrices = await CurrencyGateway.batchConvert(
-      productList.map(product => product.priceUsd!),
-      currencyCode
+        return {
+          ...product,
+          priceUsd,
+        };
+      })
     );
-
-    if (convertedPrices.length !== productList.length) {
-      throw new Error('Currency conversion response does not match product count');
-    }
-
-    return productList.map((product, index) => ({
-      ...product,
-      priceUsd: convertedPrices[index],
-    }));
   },
   async getProduct(id: string, currencyCode = 'USD') {
     const product = await ProductCatalogGateway.getProduct(id);
