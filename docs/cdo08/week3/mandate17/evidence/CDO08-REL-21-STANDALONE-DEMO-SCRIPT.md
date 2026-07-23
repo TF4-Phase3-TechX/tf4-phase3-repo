@@ -2,7 +2,7 @@
 ## Mandate 17: Multi-AZ Resilience & Workload Containment Verification
 
 - **Mục tiêu**: Chuẩn hóa kịch bản quay màn hình/demo để mentor có thể tự kiểm tra độc lập.
-- **Tài liệu tham chiếu**: [CDO08-REL-21-az-loss-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week2/mandate17/evidence/CDO08-REL-21-az-loss-evidence.md)
+- **Tài liệu tham chiếu**: [CDO08-REL-21-az-loss-evidence.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate17/evidence/CDO08-REL-21-az-loss-evidence.md)
 - **Tài khoản AWS & Cluster**: Account `511825856493` (`us-east-1`), EKS Cluster `techx-tf4-cluster`, Namespace `techx-tf4`
 - **Target Microservices**: 8 Revenue Path Services (`frontend-proxy`, `frontend`, `cart`, `checkout`, `payment`, `shipping`, `product-catalog`, `currency`)
 
