@@ -151,6 +151,7 @@ Cleanup checklist:
 ## Example Command
 
 ```bash
+AWS_PROFILE=your-sso-profile \
 RESTORE_DRILL_ID=rel25-20260723 \
 RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-20260723-postgresql-restore \
 RESTORE_TARGET_ENDPOINT=techx-tf4-drill-rel25-20260723-postgresql-restore.xxxxxx.us-east-1.rds.amazonaws.com \
@@ -161,11 +162,9 @@ bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-prefligh
 
 ## Verification
 
-The preflight script passed ShellCheck and seven isolated guardrail checks on
-2026-07-23. The checks covered missing input, production identifier,
-production endpoint, production DNS, public restore target, missing validation
-client, and a valid isolated target. The checks used local AWS and kubectl
-mocks and did not connect to production.
+The preflight script passed `bash -n` and ShellCheck on 2026-07-23. Manual
+negative checks also confirmed that a production identifier and a DNS name
+containing `prod` both return a non-zero exit code without calling AWS.
 
 ```bash
 docker run --rm -v "$PWD:/repo:ro" koalaman/shellcheck:stable \
@@ -241,7 +240,7 @@ Authenticate and verify that AWS and Kubernetes point to the intended TF4
 account and cluster:
 
 ```powershell
-$env:AWS_PROFILE="<your-sso-profile>"
+$env:AWS_PROFILE="your-sso-profile"
 aws sso login --profile $env:AWS_PROFILE
 aws sts get-caller-identity --profile $env:AWS_PROFILE
 kubectl config current-context
@@ -259,11 +258,11 @@ Run the preflight from Bash after the isolated restore target and validation
 client exist:
 
 ```bash
-export AWS_PROFILE=<your-sso-profile>
+export AWS_PROFILE=your-sso-profile
 export AWS_REGION=us-east-1
 export RESTORE_DRILL_ID=rel25-YYYYMMDD
 export RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-YYYYMMDD-postgresql-restore
-export RESTORE_TARGET_ENDPOINT=<endpoint-cua-restore-target>
+export RESTORE_TARGET_ENDPOINT=endpoint-cua-restore-target
 export RESTORE_TARGET_DNS_NAME=rel25-YYYYMMDD-postgresql-restore.internal
 export NAMESPACE=techx-tf4
 export VALIDATION_CLIENT_SELECTOR=restore-validation-client=true
@@ -279,6 +278,6 @@ The script intentionally has no default AWS profile. Another operator can run
 the same script by setting `AWS_PROFILE` to their own authenticated profile:
 
 ```bash
-export AWS_PROFILE=<your-sso-profile>
+export AWS_PROFILE=your-sso-profile
 aws sso login --profile "$AWS_PROFILE"
 ```
