@@ -215,7 +215,7 @@ resource "aws_cloudwatch_metric_alarm" "get_secret_value_anomaly" {
 
   metric_query {
     id          = "m1"
-    return_data = true
+    return_data = false # raw metric — input only, must NOT be the return_data query
 
     metric {
       metric_name = "GetSecretValueTotalCount"
@@ -229,7 +229,7 @@ resource "aws_cloudwatch_metric_alarm" "get_secret_value_anomaly" {
     id          = "ad1"
     expression  = "ANOMALY_DETECTION_BAND(m1, 2)"
     label       = "GetSecretValueTotalCount (predicted band)"
-    return_data = true
+    return_data = true # anomaly band — exactly ONE query must have return_data=true
   }
 
   tags = var.tags
