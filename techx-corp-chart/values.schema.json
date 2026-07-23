@@ -201,7 +201,11 @@
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
-            "secretName": { "type": "string" }
+            "secretName": { "type": "string" },
+            "services": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["cart", "product-reviews"] }
+            }
           }
         },
         "kafka": {
