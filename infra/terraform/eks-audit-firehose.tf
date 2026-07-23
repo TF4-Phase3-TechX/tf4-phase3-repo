@@ -1,5 +1,5 @@
 # Owner: Nhóm CDO07 (Audit)
-# Mục đích: Stream EKS Control Plane logs (api, audit, authenticator) từ CloudWatch Logs 
+# Mục đích: Stream EKS Control Plane logs (audit, authenticator) từ CloudWatch Logs 
 # sang S3 bucket bảo vệ bởi S3 Object Lock COMPLIANCE 90 ngày (WORM),
 # đảm bảo logs không thể bị sửa/xóa kể cả bởi root account.
 
@@ -265,7 +265,7 @@ resource "aws_iam_role_policy" "cwl_to_firehose_policy" {
 resource "aws_cloudwatch_log_subscription_filter" "eks_audit_logs" {
   name            = "tf4-eks-audit-logs-subscription"
   log_group_name  = "/aws/eks/${var.cluster_name}/cluster"
-  filter_pattern  = "" # Stream toàn bộ logs (api, audit, authenticator)
+  filter_pattern  = "{ ($.requestURI != \"/healthz*\") && ($.requestURI != \"/livez*\") && ($.user.username != \"system:node:*\") }" # Lọc bỏ healthcheck & node heartbeat, giữ 100% vết thao tác người dùng
   destination_arn = aws_kinesis_firehose_delivery_stream.eks_audit_logs.arn
   role_arn        = aws_iam_role.cwl_to_firehose.arn
 
