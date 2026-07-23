@@ -26,3 +26,4 @@ COPY --from=builder /usr/src/app/build/libs/fraud-detection-1.0-all.jar fraud-de
 
 ENTRYPOINT [ "java", "-jar", "fraud-detection-1.0-all.jar" ]
 
+
