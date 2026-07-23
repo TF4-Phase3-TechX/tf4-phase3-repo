@@ -14,8 +14,6 @@ interface ChatMessage {
     isQuickAction?: boolean;
 }
 
-// Removed CopilotMode - chatbot now understands intent naturally
-
 const WELCOME_MESSAGE: ChatMessage = {
     id: 'welcome',
     sender: 'assistant',
@@ -27,11 +25,11 @@ export const CopilotChatModal: React.FC = () => {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
-    // Removed activeMode and showQuickActions - chatbot understands intent naturally
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [fabHovered, setFabHovered] = useState(false);
     const [lastProductId, setLastProductId] = useState<string>('');
+
     const userId = useMemo(() => SessionGateway.getSession().userId, []);
 
     const sessionId = useMemo(() => {
@@ -58,8 +56,6 @@ export const CopilotChatModal: React.FC = () => {
             textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px';
         }
     }, [input]);
-
-    // Remove quick action handler - chatbot now handles all intents naturally
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -142,7 +138,7 @@ export const CopilotChatModal: React.FC = () => {
                     if (isGreeting) {
                         assistantText = `Xin chào! Tôi là Trợ lý Shopping Copilot. Tôi có thể giúp gì cho bạn hôm nay?`;
                     } else {
-                        assistantText = `Rất tiếc, tôi chưa tìm thấy thông tin phù hợp với "${userMsgText}". Cửa hàng hiện có các sản phẩm như kính thiên văn, đèn pin, ống nhòm và sách thiên văn. Bạn thử tìm từ khóa khác xem sao nhé!`;
+                        assistantText = `Rất tiếc, tôi chưa tìm thấy sản phẩm nào phù hợp với "${userMsgText}". Cửa hàng hiện có các sản phẩm như kính thiên văn, đèn pin, ống nhòm và sách thiên văn. Bạn thử tìm từ khóa khác xem sao nhé!`;
                     }
                 }
             }
@@ -180,7 +176,6 @@ export const CopilotChatModal: React.FC = () => {
     };
 
     const renderMarkdown = (text: string) => {
-        // Simple markdown: **bold**, bullet points, line breaks
         const parts = text.split('\n');
         return parts.map((line, i) => {
             let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');

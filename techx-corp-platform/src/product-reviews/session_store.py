@@ -154,7 +154,7 @@ class SessionStore:
             try:
                 raw_data = self._valkey_client.get(key)
                 if raw_data:
-                    return json.loads(raw_data.decode("utf-8"))
+                    return json.loads(raw_data.decode("utf-8") if isinstance(raw_data, bytes) else raw_data)
             except Exception as exc:
                 logger.warning("Valkey read error for key %s: %s", key, exc)
         with self._lock:
@@ -164,7 +164,6 @@ class SessionStore:
                 if now - timestamp <= SESSION_TTL_SECONDS:
                     return list(prods)
         return []
-
     def create_cart_proposal(
         self,
         user_id: str,

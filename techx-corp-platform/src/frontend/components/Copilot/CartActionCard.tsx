@@ -71,7 +71,7 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
                 gap: '8px'
             }}>
                 <span style={{ fontSize: '16px' }}>🚫</span>
-                <span>Đã hủy thao tác</span>
+                <span>Đã hủy gợi ý thêm vào giỏ hàng.</span>
             </div>
         );
     }
@@ -92,7 +92,7 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
             }}>
                 <span style={{ fontSize: '16px' }}>✅</span>
                 <span>
-                    Đã thêm <strong>{proposal.quantity || 1} x {proposal.productName}</strong> vào giỏ hàng!
+                    Đã thêm <strong>{proposal.quantity || 1} x {proposal.productName}</strong> vào giỏ hàng thành công!
                 </span>
             </div>
         );

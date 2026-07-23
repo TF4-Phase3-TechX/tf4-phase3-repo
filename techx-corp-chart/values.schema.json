@@ -56,6 +56,88 @@
         "allowVolumeExpansion"
       ]
     },
+    "cloudflareAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "createNamespace": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "repository",
+            "tag",
+            "pullPolicy"
+          ]
+        },
+        "tokenSecret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "key"
+          ]
+        },
+        "resources": {
+          "type": "object"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "port"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "namespace",
+        "createNamespace",
+        "replicas",
+        "image",
+        "tokenSecret",
+        "resources",
+        "metrics"
+      ]
+    },
     "components": {
       "$ref": "#/definitions/Components"
     },
@@ -119,7 +201,11 @@
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
-            "secretName": { "type": "string" }
+            "secretName": { "type": "string" },
+            "services": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["cart", "product-reviews"] }
+            }
           }
         },
         "kafka": {
@@ -395,6 +481,10 @@
         "serviceAccountName": {
           "type": "string"
         },
+        "automountServiceAccountToken": {
+          "type": "boolean",
+          "default": false
+        },
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"
         },
@@ -430,9 +520,6 @@
           "items": {
             "$ref": "#/definitions/Env"
           }
-        },
-        "serviceAccountName": {
-          "type": "string"
         },
         "command": {
           "type": "array",

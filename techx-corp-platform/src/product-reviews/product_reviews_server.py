@@ -212,7 +212,6 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
     )
 
 
-
 def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
     """Atomically consume a proposal, then perform the only Copilot cart write."""
     with tracer.start_as_current_span("confirm_cart_action") as span:
@@ -330,14 +329,22 @@ def main() -> None:
         system_canary=system_canary,
     )
 
+    # Health runs on its own server/pool so a slow, blocking Bedrock call can't
+    # starve the readiness probe out of a worker thread (see incident 2026-07-22).
+    health_service = ProductReviewService()
+    health_server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+    health_pb2_grpc.add_HealthServicer_to_server(health_service, health_server)
+    health_port = os.environ.get("PRODUCT_REVIEWS_HEALTH_PORT", "3552")
+    health_server.add_insecure_port(f"[::]:{health_port}")
+    health_server.start()
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     service = ProductReviewService()
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
-    health_pb2_grpc.add_HealthServicer_to_server(service, server)
     port = must_map_env("PRODUCT_REVIEWS_PORT")
     server.add_insecure_port(f"[::]:{port}")
     server.start()
-    logger.info("product_reviews_service_started", extra={"port": port})
+    logger.info("product_reviews_service_started", extra={"port": port, "health_port": health_port})
     server.wait_for_termination()
 
 

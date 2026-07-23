@@ -1,0 +1,688 @@
+#!/usr/bin/env python3
+"""Mandate-15 external-scenario replay entry point.
+
+Accepts a labeled incident scenario file and runs the detector's scoring
+logic offline against each scenario's injected metric series. Replays poll by
+poll sequentially, evaluating `decision.anomalous` and enforcing that real incidents
+fire within 1 detector cycle (lead_time_steps <= 1).
+
+Usage (one-command repro from techx-corp-platform/src/aiops):
+    cd techx-corp-platform/src/aiops
+    .venv/bin/python -m benchmark.replay \\
+      ../../../docs/aio1/mandate-15/labeled-scenarios-v1.jsonl \\
+      --output /tmp/m15-replay-report.json
+
+On grading day, the BTC supplies a hidden scenario file:
+    .venv/bin/python -m benchmark.replay <hidden-scenarios.jsonl> \\
+      --output /tmp/m15-grading.json
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from statistics import mean
+from typing import Any
+
+try:
+    from app.config import Settings
+    from app.detection import Detector
+    from app.models import Evidence, Incident
+    from app.summary import IncidentSummaryGenerator
+except ImportError:
+    _src = Path(__file__).resolve().parents[1]
+    if str(_src) not in sys.path:
+        sys.path.insert(0, str(_src))
+    from app.config import Settings
+    from app.detection import Detector
+    from app.models import Evidence, Incident
+    from app.summary import IncidentSummaryGenerator
+
+
+SCHEMA_VERSION = 1
+ALLOWED_SIGNALS = {"latency", "error_rate", "llm_error"}
+ALLOWED_KINDS = {"real_incident", "masking", "healthy_busy"}
+ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _load_scenarios(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        raise ValueError(f"Scenarios file not found: {path}")
+    content = path.read_text(encoding="utf-8").strip()
+    if not content:
+        raise ValueError(f"Scenarios file is empty: {path}")
+    scenarios = []
+    for line_no, line in enumerate(content.splitlines(), 1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            scenarios.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"JSON parse error at line {line_no}: {exc}") from exc
+    if not scenarios:
+        raise ValueError(f"No valid scenarios found in file: {path}")
+    return scenarios
+
+
+def _validate_numeric_series(series: Any, name: str, index: int, sc_id: str) -> list[float]:
+    if not isinstance(series, list) or not series:
+        raise ValueError(f"Scenario #{index} (id={sc_id!r}): {name} must be a non-empty list of numbers")
+    floats = []
+    for i, v in enumerate(series):
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or math.isnan(v) or math.isinf(v):
+            raise ValueError(
+                f"Scenario #{index} (id={sc_id!r}): {name}[{i}] must be a finite number, got {v!r}"
+            )
+        floats.append(float(v))
+    return floats
+
+
+def _validate_signal_range(
+    signal: str,
+    values: list[float],
+    name: str,
+    index: int,
+    sc_id: str,
+) -> None:
+    if signal == "latency" and any(value < 0 for value in values):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): {name} latency values must be >= 0"
+        )
+    if signal in {"error_rate", "llm_error"} and any(
+        value < 0 or value > 1 for value in values
+    ):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): {name} {signal} values must be between 0 and 1"
+        )
+
+
+def _validate_scenario(scenario: dict[str, Any], index: int, seen_ids: set[str]) -> None:
+    sc_id = scenario.get("id")
+    if not sc_id or not isinstance(sc_id, str):
+        raise ValueError(f"Scenario #{index}: 'id' must be a non-empty string")
+    if sc_id in seen_ids:
+        raise ValueError(f"Scenario #{index}: duplicate scenario id {sc_id!r}")
+    seen_ids.add(sc_id)
+
+    version = scenario.get("schema_version")
+    if version != SCHEMA_VERSION:
+        raise ValueError(f"Scenario #{index} (id={sc_id!r}): schema_version must be 1, got {version!r}")
+
+    required = {
+        "id",
+        "schema_version",
+        "scenario_kind",
+        "description",
+        "expected_detected",
+        "expected_severity",
+        "service",
+        "signal",
+        "sample_interval_seconds",
+        "baseline_series",
+        "incident_series",
+    }
+    missing = required - set(scenario)
+    if missing:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}) missing required fields: {sorted(missing)}"
+        )
+
+    if not isinstance(scenario["expected_detected"], bool):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): 'expected_detected' must be a boolean (true/false), got {scenario['expected_detected']!r}"
+        )
+
+    exp_sev = scenario.get("expected_severity")
+    if exp_sev is not None and exp_sev not in ALLOWED_SEVERITIES:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): unknown expected_severity {exp_sev!r}; must be one of {sorted(ALLOWED_SEVERITIES)}"
+        )
+
+    kind = scenario["scenario_kind"]
+    if kind not in ALLOWED_KINDS:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): unknown scenario_kind {kind!r}; "
+            f"must be one of {sorted(ALLOWED_KINDS)}"
+        )
+    signal = scenario["signal"]
+    if signal not in ALLOWED_SIGNALS:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): unsupported signal {signal!r}; "
+            f"must be one of {sorted(ALLOWED_SIGNALS)}"
+        )
+
+    sample_interval = scenario["sample_interval_seconds"]
+    if (
+        not isinstance(sample_interval, (int, float))
+        or isinstance(sample_interval, bool)
+        or not math.isfinite(sample_interval)
+        or sample_interval <= 0
+    ):
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): sample_interval_seconds must be a positive finite number"
+        )
+    if not isinstance(scenario["service"], str) or not scenario["service"].strip():
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): service must be a non-empty string"
+        )
+    if scenario["expected_detected"] and exp_sev is None:
+        raise ValueError(
+            f"Scenario #{index} (id={sc_id!r}): expected_severity is required when expected_detected=true"
+        )
+
+    baseline = _validate_numeric_series(
+        scenario["baseline_series"], "baseline_series", index, sc_id
+    )
+    incident = _validate_numeric_series(
+        scenario["incident_series"], "incident_series", index, sc_id
+    )
+    _validate_signal_range(signal, baseline, "baseline_series", index, sc_id)
+    _validate_signal_range(signal, incident, "incident_series", index, sc_id)
+
+    if kind == "masking":
+        hidden_req = {
+            "hidden_incident_service",
+            "hidden_incident_signal",
+            "hidden_expected_detected",
+            "hidden_expected_severity",
+            "hidden_baseline_series",
+            "hidden_incident_series",
+        }
+        hidden_missing = hidden_req - set(scenario)
+        if hidden_missing:
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}) "
+                f"missing required hidden fields: {sorted(hidden_missing)}"
+            )
+        if not isinstance(scenario["hidden_expected_detected"], bool):
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): 'hidden_expected_detected' must be a boolean"
+            )
+        h_sev = scenario.get("hidden_expected_severity")
+        if h_sev is not None and h_sev not in ALLOWED_SEVERITIES:
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): unknown hidden_expected_severity {h_sev!r}"
+            )
+        if scenario["hidden_expected_detected"] and h_sev is None:
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): hidden_expected_severity is required when hidden_expected_detected=true"
+            )
+        if (
+            not isinstance(scenario["hidden_incident_service"], str)
+            or not scenario["hidden_incident_service"].strip()
+        ):
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): hidden_incident_service must be a non-empty string"
+            )
+        h_signal = scenario["hidden_incident_signal"]
+        if h_signal not in ALLOWED_SIGNALS:
+            raise ValueError(
+                f"Masking scenario #{index} (id={sc_id!r}): unsupported hidden signal {h_signal!r}"
+            )
+        hidden_baseline = _validate_numeric_series(
+            scenario["hidden_baseline_series"], "hidden_baseline_series", index, sc_id
+        )
+        hidden_incident = _validate_numeric_series(
+            scenario["hidden_incident_series"], "hidden_incident_series", index, sc_id
+        )
+        _validate_signal_range(
+            h_signal, hidden_baseline, "hidden_baseline_series", index, sc_id
+        )
+        _validate_signal_range(
+            h_signal, hidden_incident, "hidden_incident_series", index, sc_id
+        )
+
+
+def _make_fake_series(points: list[float]) -> list[dict[str, Any]]:
+    """Wrap a list of float values in the Prometheus range-query format."""
+    return [{"metric": {}, "values": [[i, str(v)] for i, v in enumerate(points)]}]
+
+
+def _build_incident_summary(
+    sc_id: str,
+    service: str,
+    signal: str,
+    severity: str,
+    confidence: float,
+    evidence_val: float,
+    query: str,
+    runbook_id: str,
+    recommended_action: str,
+    settings: Settings,
+) -> str:
+    """Render markdown incident summary using runtime IncidentSummaryGenerator."""
+    inc = Incident(
+        incident_id=f"inc-replay-{sc_id}-{service}",
+        incident_type=f"service_{signal}_spike",
+        affected_service=service,
+        severity=severity,
+        confidence=confidence,
+        suspected_root_cause=f"Sustained {signal} degradation on {service}",
+        evidence=[
+            Evidence(
+                source="prometheus",
+                query=query,
+                window="30m",
+                value=round(evidence_val, 2),
+            )
+        ],
+        rca_candidates=[
+            {
+                "service": service,
+                "score": round(confidence, 3),
+                "signals": {"ratio": 2.0, "zscore": 4.0},
+            }
+        ],
+        runbook_id=runbook_id,
+        recommended_action=recommended_action,
+    )
+    grafana_url = getattr(settings, "grafana_url", "http://grafana:3000")
+    datasource_uid = getattr(settings, "opensearch_datasource_uid", "webstore-logs")
+    generator = IncidentSummaryGenerator(grafana_url, datasource_uid)
+    return generator.generate(inc)
+
+
+def _simulate_event_polls(
+    sc_id: str,
+    service: str,
+    signal: str,
+    baseline_series: list[float],
+    incident_series: list[float],
+    expected_detected: bool,
+    expected_severity: str | None,
+    sample_interval_seconds: float,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Replay poll by poll sequentially using a fresh Detector instance.
+
+    Checks decision.anomalous at each step and enforces hard bar that real incidents
+    must fire within 1 detector cycle (lead_time_steps <= 1).
+    """
+    detector = Detector(settings)
+    query = f"replay:{signal}:{service}"
+
+    detected = False
+    first_anomalous_step: int | None = None
+    detected_severity: str | None = None
+    detected_confidence: float = 0.0
+    detected_val: float = 0.0
+    runbook_id: str = "observe-and-escalate"
+    recommended_action: str = "Collect more evidence"
+
+    samples_per_poll_exact = settings.poll_seconds / sample_interval_seconds
+    if samples_per_poll_exact < 1 or not samples_per_poll_exact.is_integer():
+        raise ValueError(
+            "sample_interval_seconds must divide poll_seconds exactly and cannot exceed it"
+        )
+    samples_per_poll = int(samples_per_poll_exact)
+    for step, end in enumerate(
+        range(
+            samples_per_poll,
+            len(incident_series) + samples_per_poll,
+            samples_per_poll,
+        ),
+        1,
+    ):
+        current_points = baseline_series + incident_series[
+            : min(end, len(incident_series))
+        ]
+        fake_series = _make_fake_series(current_points)
+        if signal == "latency":
+            decision = detector.latency(service, fake_series, query)
+        elif signal == "error_rate":
+            decision = detector.error_rate(service, fake_series, query)
+        elif signal == "llm_error":
+            decision = detector.llm_error(service, fake_series, query)
+        else:
+            raise ValueError(f"Unsupported signal '{signal}'")
+
+        if decision.anomalous:
+            if not detected:
+                detected = True
+                first_anomalous_step = step
+                detected_severity = decision.severity
+                detected_confidence = decision.confidence
+                detected_val = current_points[-1]
+                runbook_id = decision.runbook_id
+                recommended_action = decision.recommended_action
+
+    severity_match = (
+        (detected_severity == expected_severity)
+        if (detected and expected_detected and expected_severity)
+        else True
+    )
+
+    # MANDATE-15 Hard Bar: Real/Hidden incidents MUST fire within 1 detector cycle (lead_time_steps <= 1)
+    one_cycle_pass = (
+        (first_anomalous_step <= 1) if (expected_detected and detected) else True
+    )
+
+    passed = (detected == expected_detected) and severity_match and one_cycle_pass
+    lead_time_seconds = (
+        first_anomalous_step * settings.poll_seconds
+        if first_anomalous_step is not None
+        else None
+    )
+
+    # Event outcome classification for precision/recall confusion matrix
+    if expected_detected and detected:
+        classification = "TP"
+    elif not expected_detected and detected:
+        classification = "FP"
+    elif expected_detected and not detected:
+        classification = "FN"
+    else:
+        classification = "TN"
+
+    incident_summary: str | None = None
+    if detected:
+        incident_summary = _build_incident_summary(
+            sc_id=sc_id,
+            service=service,
+            signal=signal,
+            severity=detected_severity or "medium",
+            confidence=detected_confidence,
+            evidence_val=detected_val,
+            query=query,
+            runbook_id=runbook_id,
+            recommended_action=recommended_action,
+            settings=settings,
+        )
+
+    return {
+        "service": service,
+        "signal": signal,
+        "expected_detected": expected_detected,
+        "actual_detected": detected,
+        "expected_severity": expected_severity,
+        "actual_severity": detected_severity,
+        "severity_match": severity_match,
+        "confidence": round(detected_confidence, 3),
+        "lead_time_steps": first_anomalous_step,
+        "lead_time_seconds": lead_time_seconds,
+        "sample_interval_seconds": sample_interval_seconds,
+        "samples_per_poll": samples_per_poll,
+        "one_cycle_pass": one_cycle_pass,
+        "passed": passed,
+        "classification": classification,
+        "runbook_id": runbook_id,
+        "recommended_action": recommended_action,
+        "incident_summary": incident_summary,
+    }
+
+
+def _evaluate_scenario(
+    scenario: dict[str, Any],
+    settings: Settings,
+) -> dict[str, Any]:
+    """Run detector simulation on one scenario, evaluating main and optional hidden events."""
+    sc_id = scenario["id"]
+    service = scenario["service"]
+    signal = scenario["signal"]
+    kind = scenario["scenario_kind"]
+    baseline_points = list(map(float, scenario["baseline_series"]))
+    incident_points = list(map(float, scenario["incident_series"]))
+    expected_detected = bool(scenario["expected_detected"])
+    expected_severity = scenario.get("expected_severity")
+    sample_interval_seconds = float(scenario["sample_interval_seconds"])
+
+    primary_res = _simulate_event_polls(
+        sc_id=sc_id,
+        service=service,
+        signal=signal,
+        baseline_series=baseline_points,
+        incident_series=incident_points,
+        expected_detected=expected_detected,
+        expected_severity=expected_severity,
+        sample_interval_seconds=sample_interval_seconds,
+        settings=settings,
+    )
+
+    hidden_res: dict[str, Any] | None = None
+    if kind == "masking":
+        hidden_service = scenario["hidden_incident_service"]
+        hidden_signal = scenario["hidden_incident_signal"]
+        hidden_baseline = list(map(float, scenario["hidden_baseline_series"]))
+        hidden_incident = list(map(float, scenario["hidden_incident_series"]))
+        hidden_expected_detected = bool(scenario["hidden_expected_detected"])
+        hidden_expected_severity = scenario.get("hidden_expected_severity")
+
+        hidden_res = _simulate_event_polls(
+            sc_id=f"{sc_id}-hidden",
+            service=hidden_service,
+            signal=hidden_signal,
+            baseline_series=hidden_baseline,
+            incident_series=hidden_incident,
+            expected_detected=hidden_expected_detected,
+            expected_severity=hidden_expected_severity,
+            sample_interval_seconds=sample_interval_seconds,
+            settings=settings,
+        )
+
+    passed = primary_res["passed"] and (hidden_res["passed"] if hidden_res else True)
+
+    events = [primary_res]
+    if hidden_res:
+        events.append(hidden_res)
+
+    return {
+        "scenario_id": sc_id,
+        "scenario_kind": kind,
+        "service": service,
+        "signal": signal,
+        "description": scenario.get("description", ""),
+        "expected_detected": expected_detected,
+        "actual_detected": primary_res["actual_detected"],
+        "expected_severity": expected_severity,
+        "actual_severity": primary_res["actual_severity"],
+        "severity_match": primary_res["severity_match"],
+        "confidence": primary_res["confidence"],
+        "lead_time_steps": primary_res["lead_time_steps"],
+        "lead_time_seconds": primary_res["lead_time_seconds"],
+        "incident_summary": primary_res["incident_summary"],
+        "hidden_event": hidden_res,
+        "events": events,
+        "passed": passed,
+        "runbook_id": primary_res["runbook_id"],
+        "recommended_action": primary_res["recommended_action"],
+    }
+
+
+def _aggregate(
+    cases: list[dict[str, Any]], errors: list[dict[str, Any]]
+) -> dict[str, Any]:
+    total_cases = len(cases)
+    passed_cases = sum(1 for c in cases if c.get("passed", False))
+    has_errors = len(errors) > 0
+    all_passed = (total_cases > 0) and (passed_cases == total_cases) and (not has_errors)
+
+    all_events = []
+    for c in cases:
+        all_events.extend(c.get("events", []))
+
+    tp = sum(1 for e in all_events if e["classification"] == "TP")
+    fp = sum(1 for e in all_events if e["classification"] == "FP")
+    fn = sum(1 for e in all_events if e["classification"] == "FN")
+    tn = sum(1 for e in all_events if e["classification"] == "TN")
+
+    precision = round(tp / (tp + fp), 4) if (tp + fp) > 0 else None
+    recall = round(tp / (tp + fn), 4) if (tp + fn) > 0 else None
+
+    # Compute MTTD ONLY over True Positives (TPs)
+    tp_lead_times = [
+        e["lead_time_seconds"]
+        for e in all_events
+        if e["classification"] == "TP" and e.get("lead_time_seconds") is not None
+    ]
+    avg_lead_time_s = round(mean(tp_lead_times), 1) if tp_lead_times else None
+
+    by_kind: dict[str, dict[str, Any]] = {}
+    for kind in ("real_incident", "masking", "healthy_busy"):
+        subset = [c for c in cases if c["scenario_kind"] == kind]
+        by_kind[kind] = {
+            "count": len(subset),
+            "passed": sum(1 for c in subset if c["passed"]),
+        }
+
+    return {
+        "total_cases": total_cases,
+        "passed_cases": passed_cases,
+        "all_passed": all_passed,
+        "events_evaluated": len(all_events),
+        "confusion_matrix": {"TP": tp, "FP": fp, "FN": fn, "TN": tn},
+        "precision": precision,
+        "recall": recall,
+        "avg_lead_time_seconds": avg_lead_time_s,
+        "by_kind": by_kind,
+    }
+
+
+def replay(
+    scenarios_path: Path,
+    *,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    """Run all scenarios and return the full report dict."""
+    settings = settings or Settings()
+
+    results: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    try:
+        raw = _load_scenarios(scenarios_path)
+    except Exception as exc:
+        errors.append({"scenario_id": "load_error", "error": f"{type(exc).__name__}: {exc}"})
+        raw = []
+
+    for i, scenario in enumerate(raw, 1):
+        if not isinstance(scenario, dict):
+            errors.append(
+                {
+                    "scenario_id": f"#{i}",
+                    "error": f"ValueError: Scenario #{i} must be a JSON object",
+                }
+            )
+            print(
+                f"[{i}/{len(raw)}] #{i}: ERROR scenario must be a JSON object",
+                flush=True,
+            )
+            continue
+        sc_id = scenario.get("id", f"#{i}")
+        try:
+            _validate_scenario(scenario, i, seen_ids)
+            result = _evaluate_scenario(scenario, settings)
+            results.append(result)
+            status = "PASS" if result["passed"] else "FAIL"
+            print(
+                f"[{i}/{len(raw)}] {sc_id} ({scenario['scenario_kind']}): "
+                f"{status}  actual_detected={result['actual_detected']}  "
+                f"lead_time={result['lead_time_seconds']}s",
+                flush=True,
+            )
+        except Exception as exc:
+            errors.append({
+                "scenario_id": sc_id,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            print(f"[{i}/{len(raw)}] {sc_id}: ERROR {exc}", flush=True)
+
+    aggregate = _aggregate(results, errors)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "generated_at": utc_now(),
+        "scenarios_file": scenarios_path.as_posix(),
+        "detector_config": {
+            "poll_seconds": settings.poll_seconds,
+            "sustained_polls": settings.sustained_polls,
+            "acute_confirmation_window": settings.acute_confirmation_window,
+            "acute_min_breach_points": settings.acute_min_breach_points,
+            "latency_threshold_ms": settings.latency_threshold_ms,
+            "error_rate_threshold": settings.error_rate_threshold,
+            "zscore_threshold": settings.zscore_threshold,
+            "ratio_threshold": settings.ratio_threshold,
+            "ewma_threshold": settings.ewma_threshold,
+            "trend_min_relative_change": settings.trend_min_relative_change,
+        },
+        "aggregate": aggregate,
+        "cases": results,
+        "errors": errors,
+        "limitations": [
+            "This replay uses synthetic metric series, not live Prometheus data.",
+            "Each scenario declares sample_interval_seconds; samples are grouped into detector polls using the configured poll_seconds.",
+            "Lead-time is measured at the end of the first poll where decision.anomalous became True.",
+            "Precision and recall are computed across all evaluated primary and hidden events.",
+            "Each target signal evaluation uses a fresh Detector instance to isolate streak state.",
+        ],
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Mandate-15 external-scenario replay — "
+            "deterministic offline detector evaluation"
+        )
+    )
+    parser.add_argument(
+        "scenarios",
+        type=Path,
+        help="Path to a JSONL file with labeled scenarios (one JSON object per line)",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Write the full JSON report to this path",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing output file",
+    )
+    args = parser.parse_args()
+
+    if not args.scenarios.exists():
+        parser.error(f"Scenarios file not found: {args.scenarios}")
+
+    if args.output and args.output.exists() and not args.force:
+        parser.error(
+            f"Output file already exists: {args.output}. Pass --force to overwrite."
+        )
+
+    report = replay(args.scenarios)
+    agg = report["aggregate"]
+
+    print(
+        f"\n{'='*60}\n"
+        f"MANDATE-15 REPLAY RESULT\n"
+        f"  Total cases : {agg['total_cases']}\n"
+        f"  Passed      : {agg['passed_cases']} / {agg['total_cases']}\n"
+        f"  All passed  : {agg['all_passed']}\n"
+        f"  Events eval : {agg['events_evaluated']}\n"
+        f"  Matrix (TP/FP/FN/TN): {agg['confusion_matrix']}\n"
+        f"  Precision   : {agg['precision']}\n"
+        f"  Recall      : {agg['recall']}\n"
+        f"  Avg MTTD    : {agg['avg_lead_time_seconds']}s\n"
+        f"  Errors      : {len(report['errors'])}\n"
+        f"{'='*60}"
+    )
+
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(f"Report written to: {args.output}")
+
+    return 0 if (agg["all_passed"] and len(report["errors"]) == 0) else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
