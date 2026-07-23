@@ -13,7 +13,7 @@ Hệ thống EKS Audit Logging vận hành theo mô hình phân tầng:
 
 ```
 [EKS Control Plane] 
-       │ (100% Logs: API, Audit, Authenticator)
+       │ (Core Logs: Audit, Authenticator - Đã tắt API log)
        ▼ 
 [CloudWatch Log Group: /aws/eks/.../cluster] ──(Retention = 7 ngày)──► [CloudWatch Insights UI]
        │ 
@@ -23,7 +23,7 @@ Hệ thống EKS Audit Logging vận hành theo mô hình phân tầng:
 ```
 
 ### Điểm làm rõ về mặt chi phí AWS:
-- **CloudWatch Logs Ingestion Fee ($0.50/GB)**: Phát sinh khi EKS Control Plane đẩy log vào Log Group.
+- **CloudWatch Logs Ingestion Fee ($0.50/GB)**: Phát sinh khi EKS Control Plane đẩy log vào Log Group. Việc **tắt `api` log type** ở EKS cluster cắt giảm mạnh nhất chi phí Ingestion ngay từ nguồn.
 - **Subscription Filter Pattern**: Nằm ở đầu ra của Log Group. Do đó, Subscription Filter **lọc 80% log rác trước khi nạp vào Kinesis Data Firehose**, giúp cắt giảm trực tiếp chi phí **Firehose Ingestion ($0.029/GB)**, **S3 Storage ($0.023/GB)**, **Phí S3 Request** và **Athena Query Scan Data ($5.00/TB)**.
 - **Retention = 7 ngày**: Trực tiếp cắt giảm **Phí CloudWatch Logs Storage ($0.03/GB/tháng)** bằng cách không cho dữ liệu tích tụ dư thừa 90 ngày trên CloudWatch.
 
@@ -52,13 +52,13 @@ Hệ thống EKS Audit Logging vận hành theo mô hình phân tầng:
   - `infra/terraform/cloudtrail.tf`: Đặt `retention_in_days = 7` cho CloudWatch log group `/aws/cloudtrail/tf4-general-cloudtrail`.
 - **Tác dụng**: Giới hạn retention trên CloudWatch xuống còn **7 ngày** (dùng làm tầng query nhanh ngắn hạn trên CloudWatch Logs Insights UI). Dữ liệu lịch sử 90 ngày phục vụ điều tra forensic chuyên sâu đã được lưu trữ an toàn tuyệt đối tại S3 WORM.
 
-### 2.3 Bảo toàn tiêu chuẩn Kiểm toán EKS Control Plane
+### 2.3 Cắt giảm chi phí Ingestion & Bảo toàn tiêu chuẩn Kiểm toán EKS Control Plane
 - **File tác động**: [eks.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/eks.tf)
 - **Cấu hình**:
   ```hcl
-  cluster_enabled_log_types = ["api", "audit", "authenticator"]
+  cluster_enabled_log_types = ["audit", "authenticator"]
   ```
-- **Tác dụng**: Tuân thủ tuyệt đối quy định kiểm toán của **ADR-005** và **AUDIT-001**, không tắt bất kỳ loại log quan trọng nào ở cấp độ EKS Cluster.
+- **Tác dụng**: Tắt hẳn log type `api` ở cấp độ EKS Cluster để loại bỏ lượng lớn log request/response rác của API server, giúp giảm tối đa chi phí CloudWatch Ingestion. Các luồng log cốt lõi `audit` và `authenticator` vẫn được giữ 100% để đảm bảo tuân thủ tiêu chuẩn kiểm toán **ADR-005** và **AUDIT-001**.
 
 ---
 
