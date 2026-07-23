@@ -214,12 +214,8 @@ You must call the tool emit_grounded_answer with valid parameters matching the s
 SEARCH_INTENT_SCHEMA = {
     "type": "object",
     "properties": {
-<<<<<<< HEAD
         "search_type": {"type": "string", "enum": ["search", "compare", "out_of_scope", "chitchat", "cart_action", "clarify", "unclear", "reviews"]},
         "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-=======
-        "search_type": {"type": "string", "enum": ["search", "compare", "out_of_scope", "cart_action", "clarify", "reviews"]},
->>>>>>> origin/main
         "category": {"type": "string"},
         "price_min": {"type": "number"},
         "price_max": {"type": "number"},
@@ -674,7 +670,6 @@ class BedrockAdapter:
         try:
             messages = []
             if history:
-<<<<<<< HEAD
                 prev_role = None
                 for turn in history:
                     r = "user" if turn.get("role") == "user" else "assistant"
@@ -713,21 +708,6 @@ class BedrockAdapter:
                         ],
                     }
                 )
-=======
-                for turn in history:
-                    r = "user" if turn.get("role") == "user" else "assistant"
-                    t = turn.get("content", "")
-                    if r == "assistant":
-                        messages.append({"role": "assistant", "content": [{"text": t}]})
-                    else:
-                        if self.guardrail_id != "disabled":
-                            messages.append({"role": "user", "content": [{"guardContent": {"text": {"text": t, "qualifiers": ["query"]}}}]})
-                        else:
-                            messages.append({"role": "user", "content": [{"text": t}]})
-
-            if self.guardrail_id != "disabled":
-                messages.append({"role": "user", "content": [{"guardContent": {"text": {"text": query, "qualifiers": ["query"]}}}]})
->>>>>>> origin/main
             else:
                 messages.append({"role": "user", "content": [{"text": query}]})
 
@@ -754,7 +734,6 @@ class BedrockAdapter:
                     "trace": "disabled",
                 }
 
-<<<<<<< HEAD
             response = None
             for attempt in range(3):
                 try:
@@ -766,9 +745,6 @@ class BedrockAdapter:
                         error_name = type(exc).__name__.lower()
                         raise ProviderFailure(error_name[:64]) from exc
                     time.sleep(1.0 * (attempt + 1))
-=======
-            response = self.client.converse(**request)
->>>>>>> origin/main
             elapsed = self.clock() - started
 
             # Extract usage before any early-exit so telemetry is always accurate.
@@ -859,11 +835,7 @@ class BedrockAdapter:
             raise ProviderFailure(error_name[:64]) from exc
 
 
-<<<<<<< HEAD
 _VALID_SEARCH_TYPES = frozenset({"search", "compare", "out_of_scope", "chitchat", "cart_action", "clarify", "unclear", "reviews"})
-=======
-_VALID_SEARCH_TYPES = frozenset({"search", "compare", "out_of_scope", "cart_action", "clarify", "reviews"})
->>>>>>> origin/main
 _VALID_CATEGORIES = frozenset({
     "telescopes", "accessories", "binoculars", "flashlights",
     "assembly", "books", "travel",
@@ -906,11 +878,7 @@ def _validate_search_intent(
 
     # 1. Reject unknown fields at application boundary — never trust provider schema.
     _ALLOWED_KEYS = frozenset({
-<<<<<<< HEAD
         "search_type", "confidence_score", "category", "keywords", "price_min", "price_max", "comparison_targets", "quantity", "sort_by", "clarify_question", "response_message"
-=======
-        "search_type", "category", "keywords", "price_min", "price_max", "comparison_targets", "quantity", "sort_by", "clarify_question", "response_message"
->>>>>>> origin/main
     })
     unknown_keys = set(payload.keys()) - _ALLOWED_KEYS
     if unknown_keys:
