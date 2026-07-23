@@ -481,6 +481,16 @@ resource "aws_iam_policy" "athena_audit_analyst" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowAthenaConsoleNavigation"
+        Effect = "Allow"
+        Action = [
+          "athena:ListWorkGroups",
+          "athena:ListDataCatalogs",
+          "athena:GetDataCatalog"
+        ]
+        Resource = "*"
+      },
+      {
         Sid    = "AllowAthenaQueryExecution"
         Effect = "Allow"
         Action = [
@@ -488,6 +498,7 @@ resource "aws_iam_policy" "athena_audit_analyst" {
           "athena:StopQueryExecution",
           "athena:GetQueryExecution",
           "athena:GetQueryResults",
+          "athena:GetQueryResultsStream",
           "athena:GetWorkGroup",
           "athena:ListQueryExecutions"
         ]
@@ -498,6 +509,7 @@ resource "aws_iam_policy" "athena_audit_analyst" {
         Effect = "Allow"
         Action = [
           "glue:GetDatabase",
+          "glue:GetDatabases",
           "glue:GetTable",
           "glue:GetTables",
           "glue:GetPartition",
@@ -507,6 +519,7 @@ resource "aws_iam_policy" "athena_audit_analyst" {
         Resource = [
           "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog",
           "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/${aws_glue_catalog_database.audit_forensics.name}",
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/*",
           "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${aws_glue_catalog_database.audit_forensics.name}/*"
         ]
       },
@@ -571,6 +584,14 @@ resource "aws_iam_policy" "cloudwatch_insights_forensics" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowCloudWatchLogsConsoleList"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups"
+        ]
+        Resource = "*"
+      },
+      {
         Sid    = "AllowCloudWatchLogsInsightsQuery"
         Effect = "Allow"
         Action = [
@@ -579,7 +600,6 @@ resource "aws_iam_policy" "cloudwatch_insights_forensics" {
           "logs:GetQueryResults",
           "logs:GetLogEvents",
           "logs:FilterLogEvents",
-          "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ]
         Resource = [
