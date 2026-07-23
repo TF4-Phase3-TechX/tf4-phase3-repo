@@ -354,6 +354,56 @@ jobs:
             -f deploy/values-aio-llm.yaml \
             > rendered/techx-corp-app.yaml
 
+      - name: Assert managed Valkey secret wiring
+        run: |
+          helm template techx-corp ./techx-corp-chart \
+            --namespace techx-tf4 \
+            --set default.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY} \
+            --set default.image.tag=preview \
+            -f deploy/values-app-stamp.yaml \
+            -f deploy/values-flagd-sync.yaml \
+            -f deploy/values-aio-llm.yaml \
+            --set managedData.enabled=true \
+            --set managedData.valkey.enabled=true \
+            > rendered/techx-corp-managed-valkey.yaml
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          resources = [
+              resource
+              for resource in yaml.safe_load_all(
+                  Path("rendered/techx-corp-managed-valkey.yaml").read_text()
+              )
+              if resource
+          ]
+          workloads = {
+              resource["metadata"]["name"]: resource
+              for resource in resources
+              if resource.get("kind") in {"Deployment", "Rollout"}
+          }
+
+          for service in ("cart", "product-reviews"):
+              workload = workloads[service]
+              container = next(
+                  item
+                  for item in workload["spec"]["template"]["spec"]["containers"]
+                  if item["name"] == service
+              )
+              env = {item["name"]: item for item in container.get("env", [])}
+              expected = {
+                  "VALKEY_ADDR": "valkey-address",
+                  "VALKEY_TLS": "tls_enabled",
+                  "VALKEY_PASSWORD": "password",
+              }
+              for env_name, secret_key in expected.items():
+                  ref = env[env_name]["valueFrom"]["secretKeyRef"]
+                  assert ref == {
+                      "name": "elasticache-valkey-secret",
+                      "key": secret_key,
+                  }, (service, env_name, ref)
+          PY
+
       - name: Assert application resource and HPA defaults
         run: |
           python - <<'PY'
