@@ -33,3 +33,13 @@ output "github_actions_terraform_apply_role_arn" {
   description = "ARN of GitHub Actions role for Terraform apply on main"
   value       = aws_iam_role.github_actions_terraform_apply.arn
 }
+
+output "rel24_ci_recovery_asset_guardrail_policy_arn" {
+  description = "CDO08-REL-24 permissions boundary policy ARN protecting recovery assets from CI deletion"
+  value       = aws_iam_policy.rel24_recovery_asset_guardrail.arn
+}
+
+output "rel24_ci_recovery_asset_explicit_deny_policy_arn" {
+  description = "CDO08-REL-24 explicit deny policy ARN attached to the Terraform apply role"
+  value       = aws_iam_policy.rel24_ci_protected_recovery_assets_deny.arn
+}
