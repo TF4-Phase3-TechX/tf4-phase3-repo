@@ -1,14 +1,25 @@
-FROM python:3.12-slim-trixie@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de AS runtime
+FROM cgr.dev/chainguard/python@sha256:967409cf4148210d7c1bb872ffdda42a8b73cfc738f95eae7413045d0d6c30ee AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY src/aiops/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m venv /home/nonroot/venv \
+    && /home/nonroot/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+FROM cgr.dev/chainguard/python@sha256:2c6a2e8bdeb1336cd8545d3586d1c1e5b4f7564ef00924b0447ebfbe57a549ee AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/home/nonroot/venv/bin:${PATH}"
+
+WORKDIR /app
+
+COPY --from=builder /home/nonroot/venv /home/nonroot/venv
 COPY src/aiops/app ./app
 COPY src/aiops/runbooks.yaml ./runbooks.yaml
 
-RUN useradd --system --uid 10001 aiops
-USER 10001
+USER 65532:65532
 EXPOSE 8080
-CMD ["python", "-m", "app.main"]
+ENTRYPOINT ["/home/nonroot/venv/bin/python"]
+CMD ["-m", "app.main"]
