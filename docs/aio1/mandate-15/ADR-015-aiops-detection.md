@@ -148,7 +148,7 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 - ✅ Auditable scoring logic (all formulas in this ADR and in `detection.py`)
 - ✅ Incident summary artifact per detected event (service, severity, runbook, evidence; validated by `test_incident_summary_contains_service_severity_runbook`)
 - ✅ Hard floors: PII leakage = N/A (AIOps detector does not handle PII); unauthorized writes = blocked by `REMEDIATION_MODE=dry-run` default + approval gate
-- ✅ Live cluster / continuous pod proof and real on-call timestamps: Real-time on-call delivery is handled via Prometheus metric `aiops_incidents_created_total` routed to Alertmanager (as per GitOps #118), preventing duplicate alert paths and credential leakage in the AIOps worker.
+- ⏳ Live cluster / continuous pod proof and real on-call timestamps: GitOps routing proposed in #118; deployment and correlated Alertmanager/Slack timestamps pending.
 
 ---
 
