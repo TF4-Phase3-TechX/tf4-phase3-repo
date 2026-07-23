@@ -26,8 +26,8 @@ module "eks" {
     "karpenter.sh/node-security-group" = var.cluster_name
   }
 
-  # Bật Control Plane Logging (Tối ưu chi phí: Chỉ giữ "audit" log cho kiểm toán Mandate-04)
-  cluster_enabled_log_types = ["audit"]
+  # Bật Control Plane Logging theo tuân thủ ADR-005 / AUDIT-001
+  cluster_enabled_log_types = ["api", "audit", "authenticator"]
 
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true
