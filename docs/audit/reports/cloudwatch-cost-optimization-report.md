@@ -1,30 +1,35 @@
-# Báo Cáo Tối Ưu Chi Phí CloudWatch & Cấu Hình Filter EKS Audit Logs
+# Báo Cáo Tối Ưu Chi Phí Log & Cấu Hình Filter EKS Audit Logs
 
 **Tên tài liệu**: `docs/audit/reports/cloudwatch-cost-optimization-report.md`  
 **Ngày thực hiện**: 2026-07-23  
 **Nhóm thực hiện**: CDO07 (Audit) & CDO04 (Observability/Platform)  
-**Mục tiêu**: Tối ưu chi phí dịch vụ AWS CloudWatch Logs (giảm ~83% chi phí log) mà vẫn đảm bảo 100% tuân thủ tiêu chuẩn kiểm toán ADR-005 và Mandate #4 / AUDIT-001.
+**Mục tiêu**: Tối ưu chi phí hạ tầng lưu trữ và stream log (Kinesis Firehose, S3 Storage, Athena Query & CloudWatch Storage) mà vẫn đảm bảo 100% tuân thủ tiêu chuẩn kiểm toán ADR-005 và Mandate #4 / AUDIT-001.
 
 ---
 
-## 1. Bối cảnh & Lý do thực hiện (Why)
+## 1. Phân Phích Kỹ Thuật Luồng Dữ Liệu Log (Log Data Flow Architecture)
 
-### 1.1 Vấn đề chi phí trước khi tối ưu
-Trước khi điều chỉnh, hệ thống EKS Control Plane Audit Logs và CloudTrail Logs phát sinh chi phí lớn trên AWS CloudWatch Logs do 2 nguyên nhân chính:
+Hệ thống EKS Audit Logging vận hành theo mô hình phân tầng:
 
-1. **Nạp quá nhiều Log rác định kỳ (High Ingestion Rate)**:
-   - Các pod trong Kubernetes và Kubelet gọi liên tục các lệnh kiểm tra sức khỏe (`/healthz`, `/livez`) với tần suất 5-10 giây/lần.
-   - Nhịp đập tim của worker nodes (`system:node:*`) liên tục ghi log `heartbeat`.
-   - Các log máy móc tự động này chiếm tới **80% tổng dung lượng log** nạp vào CloudWatch, phát sinh chi phí Ingestion khoảng **$75.00 USD/tháng**.
+```
+[EKS Control Plane] 
+       │ (100% Logs: API, Audit, Authenticator)
+       ▼ 
+[CloudWatch Log Group: /aws/eks/.../cluster] ──(Retention = 7 ngày)──► [CloudWatch Insights UI]
+       │ 
+       │ (Subscription Filter Pattern: loại bỏ 80% log /healthz, /livez, system:node:*)
+       ▼ (Chỉ 20% log quan trọng)
+[Kinesis Data Firehose] ──(GZIP & Batch 5MB/60s)──► [S3 WORM Bucket (90 ngày)] ──► [Athena Forensic Queries]
+```
 
-2. **Lưu trữ dư thừa dài hạn trên CloudWatch (Redundant Storage)**:
-   - Log Group mặc định không đặt Retention (hoặc giữ 90 ngày) trên CloudWatch Logs với đơn giá **$0.03 / GB / tháng**.
-   - Trong khi đó, toàn bộ dữ liệu log gốc 90 ngày đã được stream đồng thời về **S3 Bucket COMPLIANCE Object Lock (WORM)** theo chuẩn WORM 90 ngày của Mandate #4 với đơn giá lưu trữ S3 rẻ hơn nhiều ($0.023 / GB / tháng).
-   - Việc giữ log 90 ngày trùng lặp ở cả CloudWatch và S3 gây lãng phí ngân sách lớn.
+### Điểm làm rõ về mặt chi phí AWS:
+- **CloudWatch Logs Ingestion Fee ($0.50/GB)**: Phát sinh khi EKS Control Plane đẩy log vào Log Group.
+- **Subscription Filter Pattern**: Nằm ở đầu ra của Log Group. Do đó, Subscription Filter **lọc 80% log rác trước khi nạp vào Kinesis Data Firehose**, giúp cắt giảm trực tiếp chi phí **Firehose Ingestion ($0.029/GB)**, **S3 Storage ($0.023/GB)**, **Phí S3 Request** và **Athena Query Scan Data ($5.00/TB)**.
+- **Retention = 7 ngày**: Trực tiếp cắt giảm **Phí CloudWatch Logs Storage ($0.03/GB/tháng)** bằng cách không cho dữ liệu tích tụ dư thừa 90 ngày trên CloudWatch.
 
 ---
 
-## 2. Các thay đổi kỹ thuật đã thực hiện (Changes)
+## 2. Các Thay Đổi Kỹ Thuật Đã Thực Hiện (Changes)
 
 ### 2.1 Cấu hình Lọc Log thông minh (`filter_pattern`) cho EKS Audit Stream
 - **File tác động**: [eks-audit-firehose.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/eks-audit-firehose.tf)
@@ -38,7 +43,7 @@ Trước khi điều chỉnh, hệ thống EKS Control Plane Audit Logs và Clou
     role_arn        = aws_iam_role.cwl_to_firehose.arn
   }
   ```
-- **Tác dụng**: Lọc bỏ 80% log máy móc định kỳ (`/healthz`, `/livez`, `system:node:*`) trước khi đẩy qua Kinesis Data Firehose sang S3, giữ trọn vẹn **100% vết thao tác của người dùng và các API call quan trọng**.
+- **Tác dụng**: Lọc bỏ 80% log máy móc định kỳ (`/healthz`, `/livez`, `system:node:*`) tại đầu ra Log Group trước khi đẩy qua Kinesis Data Firehose sang S3, giữ trọn vẹn **100% vết thao tác của người dùng và các API call quan trọng**.
 
 ### 2.2 Rút ngắn thời gian lưu trữ CloudWatch Log Group (`retention_in_days`)
 - **File tác động**: [eks.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/eks.tf) & [cloudtrail.tf](file:///d:/AWS/Ethena/tf4-phase3-repo/infra/terraform/cloudtrail.tf)
@@ -57,50 +62,32 @@ Trước khi điều chỉnh, hệ thống EKS Control Plane Audit Logs và Clou
 
 ---
 
-## 3. Tác dụng & Hiệu quả đạt được (Benefits & Impact)
+## 3. Phân Tích Chi Tiết Ảnh Hưởng Chi Phí (Cost Impact Analysis)
 
-| Tiêu chí | Trước tối ưu | Sau tối ưu | Tác dụng đạt được |
-|---|---|---|---|
-| **Dung lượng nạp (Ingestion)** | ~150 GB / tháng | ~30 GB / tháng | Lọc bỏ 80% log rác healthcheck & heartbeat |
-| **Thời gian giữ log trên CloudWatch** | 90 ngày (hoặc vĩnh viễn) | 7 ngày | Không bị tích tụ chi phí dung lượng theo thời gian |
-| **Lưu trữ dài hạn (Archive WORM)** | S3 Object Lock 90 ngày | S3 Object Lock 90 ngày | Giữ nguyên 100% bằng chứng kiểm toán theo chuẩn Mandate #4 |
-| **Tốc độ truy vấn Athena / Insights** | Chậm (do dung lượng scan lớn) | Siêu nhanh | Dữ liệu cô đọng, giảm chi phí Athena Data Scanned |
+### 3.1 Phân bổ chi phí chính xác theo hạ tầng AWS
 
----
+1. **Phí Kinesis Data Firehose Processing & Ingestion ($0.029 / GB)**:
+   - *Trước tối ưu*: Firehose xử lý toàn bộ 150 GB/tháng log thô.
+   - *Sau tối ưu*: Bộ lọc Subscription Filter loại bỏ 80% rác, Firehose chỉ xử lý 30 GB/tháng log tinh chế.
+   - **Tác dụng**: Cắt giảm 80% chi phí xử lý luồng Firehose.
 
-## 4. Phân tích chi tiết Ảnh hưởng Chi phí (Cost Impact Analysis)
+2. **Phí S3 Storage & S3 PutObject Request ($0.023 / GB / tháng)**:
+   - *Trước tối ưu*: Lưu 150 GB/tháng tích lũy trong 90 ngày (~450 GB S3 WORM Storage).
+   - *Sau tối ưu*: Chỉ lưu 30 GB/tháng tinh chế trong 90 ngày (~90 GB S3 WORM Storage, nén GZIP còn ~25 GB).
+   - **Tác dụng**: Tiết kiệm ~80% dung lượng lưu trữ trên S3 WORM.
 
-### 4.1 Chi tiết tính toán chi phí trước và sau khi tối ưu
+3. **Phí CloudWatch Logs Storage ($0.03 / GB / tháng)**:
+   - *Trước tối ưu* (Không đặt retention hoặc lưu 90 ngày): Tích tụ ~450 GB log đọng trên CloudWatch Log Group ($13.50 USD/tháng).
+   - *Sau tối ưu* (Retention = 7 ngày): Chỉ đọng lại ~7 GB log của 7 ngày gần nhất ($0.21 USD/tháng).
+   - **Tiết kiệm**: **$13.29 USD / tháng** (Giảm ~98%).
 
-1. **Chi phí Ingestion (Phí nạp Log vào CloudWatch)**:
-   - *Đơn giá AWS*: $0.50 / GB nạp vào.
-   - *Trước tối ưu*: 150 GB/tháng × $0.50 = **$75.00 USD/tháng**.
-   - *Sau tối ưu*: 30 GB/tháng × $0.50 = **$15.00 USD/tháng**.
-   - **Tiết kiệm Ingestion**: **$60.00 USD / tháng** (Giảm 80%).
-
-2. **Chi phí Storage (Phí lưu trữ CloudWatch Log Group)**:
-   - *Đơn giá AWS*: $0.03 / GB / tháng.
-   - *Trước tối ưu* (Tích tụ log 90 ngày): ~450 GB × $0.03 = **$13.50 USD/tháng**.
-   - *Sau tối ưu* (Giữ 7 ngày): ~7 GB × $0.03 = **$0.21 USD/tháng**.
-   - **Tiết kiệm Storage**: **$13.29 USD / tháng** (Giảm ~98%).
-
-3. **Chi phí Kinesis Data Firehose & S3 PutObject Request**:
-   - Do log được nén GZIP và gom batch (5MB / 60s), số lượng request `PutObject` giảm từ hàng triệu xuống vài nghìn request, tiết kiệm thêm ~$5.00 USD/tháng.
-
-### 4.2 Tổng hợp hiệu quả tiết kiệm
-
-| Phân loại chi phí | Trước tối ưu | Sau tối ưu | Tiết kiệm hàng tháng |
-|---|---|---|---|
-| **CloudWatch Ingestion** | $75.00 USD/tháng | $15.00 USD/tháng | **-$60.00 USD** (-80%) |
-| **CloudWatch Storage** | $13.50 USD/tháng | $0.21 USD/tháng | **-$13.29 USD** (-98%) |
-| **Firehose & S3 Request** | $7.00 USD/tháng | $2.00 USD/tháng | **-$5.00 USD** (-71%) |
-| **TỔNG CHI PHÍ LOG** | **$95.50 USD/tháng** | **$17.21 USD/tháng** | **-$78.29 USD / tháng** |
-
-> **Kết luận chi phí**: Giảm **~82.0%** tổng chi phí log hàng tháng (Tiết kiệm khoảng **~$939.48 USD / năm**).
+4. **Phí Amazon Athena Data Scanned ($5.00 / TB)**:
+   - Khi team Audit thực hiện SQL query điều tra sự cố forensic (Mandate #4 / AUDIT-017), Athena chỉ scan 25 GB log nén thay vì 150 GB log thô.
+   - **Tác dụng**: Giảm 80% chi phí scan dữ liệu Athena trên từng câu truy vấn.
 
 ---
 
-## 5. Đánh giá rủi ro & Phương án khôi phục (Risk & Rollback)
+## 4. Đánh giá rủi ro & Phương án khôi phục (Risk & Rollback)
 
 - **Đánh giá rủi ro**: **Rất thấp**.
   - Bộ lọc `filter_pattern` chỉ loại bỏ các URI kiểm tra sức khỏe tĩnh (`/healthz`, `/livez`) và các event heartbeat của node `system:node:*`.
