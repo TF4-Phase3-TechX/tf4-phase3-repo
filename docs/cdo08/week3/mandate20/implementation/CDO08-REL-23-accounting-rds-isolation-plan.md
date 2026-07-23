@@ -8,10 +8,6 @@
 **Owner:** CDO08 Reliability + Infra
 **Trạng thái:** DRAFT
 
-> **Ghi chú ID:** [gap register](../scan/CDO08-REL-20-gap-register.md) (GAP-06) cross-reference task xử lý
-> bằng ID `REL-32`; file task nguồn dùng ID `CDO08-REL-23`. Cùng 1 việc, 2 ID — người đọc từ gap register
-> tìm "REL-32" chính là tài liệu này.
-
 ---
 
 ## 1. Mục tiêu
@@ -51,10 +47,13 @@ nào khác ghi/đọc 3 bảng `accounting."order"`/`orderitem`/`shipping`), và
 | Rủi ro | Thời gian `accounting` down tỷ lệ thuận với lượng order dồn cần replay lúc bật lại (giám sát consumer lag) | Rủi ro vận hành DMS (đã từng có sự cố ghi nhận ở REL-15 evidence), cấu hình lại CDC cho 1 schema nhỏ là over-engineering |
 | Phù hợp khi | Service là writer/consumer duy nhất, có message queue làm buffer tự nhiên (đúng case `accounting`) | Cần giữ zero-downtime cho service có traffic ghi trực tiếp từ nhiều client, không có buffer replay |
 
-**Đề xuất: PA-A (`pg_dump`/`restore` + tạm dừng consumer).** Lý do: bản chất `accounting` khác với cutover
-RDS toàn hệ thống ở REL-15 (khi đó nhiều service ghi/đọc đồng thời, cần CDC để không mất giao dịch đang
-chạy). Ở đây `accounting` là consumer Kafka đơn lẻ — dừng nó không mất order thật vì Kafka đã đóng vai trò
-buffer bền vững. Dùng lại DMS cho 3 bảng nhỏ, 1 writer là chi phí/độ phức tạp không tương xứng với lợi ích.
+**Quyết định: PA-A (`pg_dump`/`restore` + tạm dừng consumer) — đã chốt.** Lý do: bản chất `accounting`
+khác với cutover RDS toàn hệ thống ở REL-15 (khi đó nhiều service ghi/đọc đồng thời, cần CDC để không mất
+giao dịch đang chạy). Ở đây `accounting` là consumer Kafka đơn lẻ — dừng nó không mất order thật vì Kafka
+đã đóng vai trò buffer bền vững. Dùng lại DMS cho 3 bảng nhỏ, 1 writer là chi phí/độ phức tạp không tương
+xứng với lợi ích — xem thêm chi phí thật tại
+[CDO08-REL-23-cost-estimate.md](../review-requests/CDO08-REL-23-cost-estimate.md) (PA-A không cần DMS/NLB
+tạm thời nên rẻ hơn đáng kể).
 
 ### 3.2 Cách tách connection string sang host mới (`REL23-D2`)
 
@@ -71,11 +70,13 @@ ngôn ngữ (`dotnet-conn-string`/`go-conn-string`/`python-conn-string`) — xem
 | Chi phí thay đổi | Cần 1 thay đổi chart (`_pod.tpl`) để hỗ trợ `secretName` theo từng service thay vì áp chung 1 secret cho cả `$pgKeyMap` | Không cần sửa chart — nhanh hơn để triển khai |
 | Rủi ro vận hành | Rotate/xoá secret của `catalog`/`reviews` không còn ảnh hưởng tới `accounting` và ngược lại | Rotate secret `techx/tf4/rds-postgres` (VD sau khi xử lý GAP-01) phải cẩn thận không làm hỏng 2 property khác đang trỏ instance khác |
 
-**Đề xuất: PA-A (secret riêng + sửa chart per-service).** Lý do: mục tiêu của cả REL-23 là tạo **recovery
-boundary độc lập** — nếu vẫn giữ chung 1 secret cho 2 instance khác nhau thì boundary chỉ độc lập ở tầng
-dữ liệu (RDS) nhưng không độc lập ở tầng vận hành/credential, làm giảm giá trị của việc tách. Chi phí thêm
-(1 thay đổi chart nhỏ, có tiền lệ pattern per-component đã dùng cho `strategy:`/`rollouts:`) là hợp lý so
-với lợi ích tách bạch lâu dài.
+**Quyết định: PA-A (secret riêng + sửa chart per-service) — đã chốt.** Lý do: mục tiêu của cả REL-23 là
+tạo **recovery boundary độc lập** — nếu vẫn giữ chung 1 secret cho 2 instance khác nhau thì boundary chỉ
+độc lập ở tầng dữ liệu (RDS) nhưng không độc lập ở tầng vận hành/credential, làm giảm giá trị của việc
+tách. Chi phí thêm (1 thay đổi chart nhỏ, có tiền lệ pattern per-component đã dùng cho
+`strategy:`/`rollouts:`, cộng thêm ~$0.40/tháng cho 1 secret mới — xem
+[cost estimate](../review-requests/CDO08-REL-23-cost-estimate.md)) là không đáng kể so với lợi ích tách
+bạch lâu dài.
 
 ## 4. Codebase footprint (mô tả, CHƯA tạo ở lượt này)
 
@@ -111,7 +112,7 @@ endpoint · có evidence `terraform plan`/`apply` lưu lại.
 
 ### Subtask 2 — Migrate accounting schema and data safely
 
-- [ ] Chọn migration method (theo §3.1 — đề xuất PA-A) và cutover window (khung giờ thấp tải).
+- [ ] Migration method đã chốt PA-A (§3.1) — chỉ cần chọn cutover window (khung giờ thấp tải).
 - [ ] Scale `accounting` Deployment về 0 (write-freeze tự nhiên).
   **Lệnh:** `kubectl scale deployment/accounting -n techx-tf4 --replicas=0`.
 - [ ] `pg_dump` schema `accounting` từ instance cũ → `pg_restore` vào instance mới.
@@ -189,12 +190,25 @@ cần bao gồm: kiểm tra log `accounting` trong cửa sổ bật lại consum
 | Field | Value |
 |---|---|
 | Task | `[CDO08-REL-23][P0][RDS] Isolate accounting into a dedicated RDS recovery boundary` |
-| Chi phí phát sinh | 1 RDS instance mới (`db.t4g.micro`, Multi-AZ) — cần PM xác nhận nằm trong ngân sách ~$300/tuần/TF theo ràng buộc Mandate 20 |
+| Chi phí phát sinh | ~$6.5-11.2/tuần, trong ngân sách $300/tuần đã xác nhận — chi tiết + nguồn tại [CDO08-REL-23-cost-estimate.md](../review-requests/CDO08-REL-23-cost-estimate.md) |
 | Trạng thái | **PENDING** |
 | Gate | Không chạy bất kỳ script/thao tác tạo tài nguyên/migrate nào cho tới khi PM (Hải) duyệt kế hoạch này |
 
-## 9. Chưa làm ở lượt này (out of scope)
+## 9. Pre-check trước khi thực thi (phát hiện ngoài phạm vi thiết kế, cần biết trước)
+
+`accounting` Deployment tại thời điểm viết tài liệu này đang **0/1 pod, không tạo được pod** — bị Kyverno
+policy `require-signed-techx-images` chặn vì image digest hiện tại trả về `MANIFEST_UNKNOWN` từ ECR (khả
+năng ECR lifecycle đã prune image trong khi targetRevision vẫn pin về digest đó). Đây là sự cố ngoài phạm
+vi thiết kế của REL-23, **không phải do kế hoạch này gây ra**, nhưng phải fix xong trước khi thực thi
+Subtask 2 (dựa trên write-freeze tự nhiên của accounting — không áp dụng được nếu accounting đã chết sẵn)
+và Subtask 4 (cần accounting sống để validate). Xem chi tiết + cách kiểm tra tại
+[CDO08-REL-23-demo-script.md §0](../implementation/CDO08-REL-23-demo-script.md).
+
+## 10. Chưa làm ở lượt này (out of scope)
 
 Tài liệu này chỉ là **kế hoạch**. Chưa: tạo RDS instance mới, tạo/sửa secret AWS, sửa Terraform/chart/GitOps,
 chạy bất kỳ script pg_dump/restore nào, produce test order, tạo PR. Việc thực thi thật sẽ theo đúng 4 subtask
-và 2 quyết định thiết kế (đã chọn PA-A cho cả 2, chờ PM duyệt ở §8) khi được yêu cầu ở lượt sau.
+và 2 quyết định thiết kế (đã chốt PA-A cho cả 2 ở §3, chờ PM duyệt ở §8) khi được yêu cầu ở lượt sau. Kịch
+bản lệnh cụ thể để thực thi (khi được duyệt) nằm ở
+[CDO08-REL-23-demo-script.md](../implementation/CDO08-REL-23-demo-script.md); phân tích chi phí đầy đủ nằm
+ở [CDO08-REL-23-cost-estimate.md](../review-requests/CDO08-REL-23-cost-estimate.md).
