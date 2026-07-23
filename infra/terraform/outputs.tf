@@ -437,3 +437,29 @@ output "postgresql_dms_reverse_task_note" {
   description = "Reverse CDC readiness note for rollback planning"
   value       = "Reverse RDS-to-EKS DMS task is not created in this PR because EKS target write-back credential is not ready. Create a separate reverse target credential/task before post-write cutover if rollback requires reverse CDC."
 }
+
+# CDO08-REL-24 - backup/archive separation-of-duties role outputs
+output "rel24_backup_admin_role_arn" {
+  description = "CDO08-REL-24 approved backup administration role ARN"
+  value       = aws_iam_role.rel24_backup_admin.arn
+}
+
+output "rel24_restore_operator_role_arn" {
+  description = "CDO08-REL-24 approved restore operator role ARN"
+  value       = aws_iam_role.rel24_restore_operator.arn
+}
+
+output "rel24_backup_delete_break_glass_role_arn" {
+  description = "CDO08-REL-24 break-glass role ARN for approved protected backup/archive deletion"
+  value       = aws_iam_role.rel24_backup_delete_break_glass.arn
+}
+
+output "rel24_msk_orders_archive_bucket_name" {
+  description = "Expected CDO08-REL-24 protected MSK orders archive bucket name from REL-22"
+  value       = local.rel24_msk_archive_bucket
+}
+
+output "rel24_normal_operator_role_arns" {
+  description = "Normal CI/operator roles denied from protected backup/archive deletion by CDO08-REL-24 controls"
+  value       = local.rel24_normal_operator_role_arns
+}
