@@ -178,14 +178,19 @@ def resolve_referenced_product(
         return candidates[0] if candidates else None
 
     # Bug #4 fix: Use passed user_id instead of hardcoded "guest"
+    # ADR-007: Only auto-resolve from session if there is exactly 1 product. If session has >= 2 products,
+    # user must clarify which one they mean (same rule as keyword multi-match).
     if session_id:
         stored_prods = session_store.get_last_search_products(user_id, session_id)
-        if stored_prods:
+        if len(stored_prods) == 1:
             target_id = stored_prods[0].get("id") if isinstance(stored_prods[0], dict) else getattr(stored_prods[0], "id", None)
             if target_id:
                 for p in all_products:
                     if getattr(p, "id", None) == target_id:
                         return p
+        elif len(stored_prods) > 1:
+            # Multiple products in last search and no keyword to disambiguate -> clarify
+            return None
 
     if keywords and keywords.strip():
         kw_clean = keywords.strip().lower()
