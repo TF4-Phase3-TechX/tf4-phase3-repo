@@ -215,7 +215,7 @@ resource "aws_cloudwatch_metric_alarm" "get_secret_value_anomaly" {
 
   metric_query {
     id          = "m1"
-    return_data = false # raw metric — input only, must NOT be the return_data query
+    return_data = true
 
     metric {
       metric_name = "GetSecretValueTotalCount"
