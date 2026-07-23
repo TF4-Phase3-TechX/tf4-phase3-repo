@@ -9,6 +9,39 @@
 
 Ngăn restore nhầm hoặc ghi đè production khi chạy Mandate 20 restore drill. Restore phải đi vào môi trường tách biệt, không dùng production identifier, production endpoint, production DNS, hoặc production app access path.
 
+## Giải thích ngắn gọn
+
+Subtask này tạo lớp kiểm tra an toàn trước khi validation một bản restore.
+Nó không tự tạo RDS, subnet hoặc security group.
+
+Luồng sử dụng:
+
+```text
+tạo restore target tách biệt
+-> tạo security group chỉ cho validation client
+-> tạo secret tạm
+-> chạy preflight
+-> kiểm tra dữ liệu
+-> thu evidence
+-> cleanup
+```
+
+Mỗi guardrail giải quyết một rủi ro cụ thể:
+
+| Guardrail | Rủi ro được ngăn |
+| --- | --- |
+| Tên chứa `drill` và `restore` | Nhìn nhầm tài nguyên drill thành production hoặc xóa nhầm tài nguyên. |
+| Identifier/endpoint khác production | Restore hoặc validation nhầm trực tiếp trên production. |
+| Private subnet và restore-only SG | Internet hoặc production application kết nối vào database restore. |
+| Chỉ validation client được kết nối | Client không thuộc drill đọc hoặc ghi dữ liệu restore. |
+| Temporary secret | Credential production bị dùng hoặc phát tán trong drill. |
+| Không dùng production DNS | Application thật bị điều hướng nhầm sang database restore. |
+| TTL và cleanup tags | Tài nguyên drill bị để quên và tiếp tục phát sinh chi phí. |
+| Preflight fail-fast | Dừng thao tác trước khi validation nếu phát hiện target không an toàn. |
+
+Preflight chỉ là lớp xác minh. Việc security group thực sự chỉ cho validation
+client kết nối phải được triển khai và lưu evidence trong restore drill.
+
 ## Naming Contract
 
 Restore target phải có prefix/suffix rõ:
@@ -137,6 +170,58 @@ mocks and did not connect to production.
 ```bash
 docker run --rm -v "$PWD:/repo:ro" koalaman/shellcheck:stable \
   /repo/docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
+```
+
+### Cách tự kiểm tra preflight
+
+Chạy các lệnh dưới đây trong Git Bash tại thư mục gốc của repo.
+
+Kiểm tra cú pháp và ShellCheck, không kết nối AWS:
+
+```bash
+bash -n ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
+
+docker run --rm -v "$PWD:/repo:ro" koalaman/shellcheck:stable \
+  /repo/docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
+```
+
+Kiểm tra production identifier bị chặn, không gọi AWS:
+
+```bash
+AWS_PROFILE=dummy \
+RESTORE_DRILL_ID=rel25-20260723 \
+RESTORE_TARGET_IDENTIFIER=techx-tf4-postgresql \
+RESTORE_TARGET_ENDPOINT=fake-restore-endpoint \
+bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
+
+test $? -ne 0 && echo "PASS: production identifier was blocked"
+```
+
+Kết quả mong đợi:
+
+```text
+[ERROR] Restore target identifier matches production identifier: techx-tf4-postgresql
+PASS: production identifier was blocked
+```
+
+Kiểm tra production DNS bị chặn, không gọi AWS:
+
+```bash
+AWS_PROFILE=dummy \
+RESTORE_DRILL_ID=rel25-20260723 \
+RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-20260723-postgresql-restore \
+RESTORE_TARGET_ENDPOINT=fake-restore-endpoint \
+RESTORE_TARGET_DNS_NAME=postgres.prod.internal \
+bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
+
+test $? -ne 0 && echo "PASS: production DNS was blocked"
+```
+
+Kết quả mong đợi:
+
+```text
+[ERROR] Restore DNS name must not contain prod/production.
+PASS: production DNS was blocked
 ```
 
 ### Commands to run before a drill

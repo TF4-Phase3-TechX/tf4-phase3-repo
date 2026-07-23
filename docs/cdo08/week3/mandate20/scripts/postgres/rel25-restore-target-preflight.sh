@@ -27,9 +27,6 @@ require_non_empty() {
   [[ -n "${!1:-}" ]] || fail "Set $1 before running restore target preflight."
 }
 
-require_cmd aws
-require_cmd kubectl
-
 require_non_empty AWS_PROFILE
 require_non_empty RESTORE_DRILL_ID
 require_non_empty RESTORE_TARGET_IDENTIFIER
@@ -51,6 +48,9 @@ if [[ -n "$RESTORE_TARGET_DNS_NAME" ]]; then
   [[ "$RESTORE_TARGET_DNS_NAME" != *"prod"* && "$RESTORE_TARGET_DNS_NAME" != *"production"* ]] || \
     fail "Restore DNS name must not contain prod/production."
 fi
+
+require_cmd aws
+require_cmd kubectl
 
 echo "[INFO] Resolving production endpoint from AWS RDS..."
 production_endpoint="$(aws rds describe-db-instances \
