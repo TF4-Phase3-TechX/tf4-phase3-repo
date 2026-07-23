@@ -40,6 +40,8 @@ OpenSearch subchart tạo một Role namespace chỉ có quyền `use` một Pod
 
 Grafana dùng Role namespace do chart cha quản lý. RBAC mặc định của subchart đã tắt vì nó cho phép đọc cả Secret và dùng ClusterRole.
 
+Do Argo CD đang đặt `prune: false`, hai resource cũ `grafana-clusterrole` và `grafana-clusterrolebinding` không tự bị xóa khi chúng biến mất khỏi manifest của subchart. Chart vì vậy render tombstone cùng tên với `rules: []` và `subjects: []` để vô hiệu hóa quyền cũ mà không cần xóa trực tiếp trên production. Tombstone không cấp bất kỳ quyền nào; có thể xóa trong một đợt cleanup được duyệt sau khi bật prune có kiểm soát.
+
 Không Role nào của SEC-22 dùng wildcard verb/resource. Không ServiceAccount nào được cấp `cluster-admin`.
 
 ## 4. Kiểm tra manifest trước deploy
@@ -55,7 +57,7 @@ helm template techx-observability .\techx-corp-chart `
   -f ..\tf4-phase3-gitops-manifests\environments\production\alertmanager-routing-values.yaml
 ```
 
-Kết quả tại thời điểm viết tài liệu: Helm lint và render thành công. Grafana chỉ render Role `grafana-sidecar-configmaps` với resource `configmaps` và verb `get/list/watch`; không render Grafana ClusterRole.
+Kết quả tại thời điểm viết tài liệu: Helm lint và render thành công. Quyền có hiệu lực của Grafana nằm ở Role `grafana-sidecar-configmaps`, với resource `configmaps` và verb `get/list/watch`. Hai object cluster-scope cũ được render dưới dạng tombstone rỗng để xử lý an toàn môi trường `prune: false`.
 
 ## 5. Điều kiện trước khi lấy bằng chứng runtime
 
@@ -121,14 +123,49 @@ kubectl logs -n techx-tf4 deploy/product-reviews --since=10m | `
 
 ## 8. Trạng thái runtime hiện tại
 
-Kiểm tra trước GitOps promotion cho thấy cluster vẫn dùng chart cũ: application workload còn dùng shared ServiceAccount `techx-corp`; OpenSearch còn dùng `default`; policy token cũ vẫn còn. Kết quả này là bằng chứng pre-deploy, không phải kết quả pass.
+Lần kiểm tra ngày 23/07/2026 dùng context
+`arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster` cho kết quả:
 
-Tài khoản SSO audit hiện tại không có quyền impersonate ServiceAccount nên `kubectl auth can-i --as=...` trả về `Forbidden`. Reviewer hoặc operator có quyền phù hợp phải chạy lại mục 5-7 sau khi GitOps promotion được merge/sync và lưu output vào PR/Jira.
+| Hạng mục | Kết quả live | Verdict |
+|---|---|---|
+| Application identity | 17 Deployment đang chạy dùng ServiceAccount riêng; không workload nào dùng `techx-corp`, `techx-app` hoặc `default` | PASS |
+| Application token | Cả 17 Deployment có `automountServiceAccountToken: false` | PASS |
+| Product Reviews identity | Deployment Ready `1/1`, dùng `product-reviews-bedrock`, automount `false` | PASS |
+| Product Reviews log check | Log 30 phút gần nhất không khớp `AccessDenied`, `credential`, `Bedrock` hoặc `ERROR` | PASS cho readiness/log; chưa thay thế functional request |
+| Grafana ConfigMap discovery | `kubectl auth can-i list configmaps --as=system:serviceaccount:techx-observability:grafana` trả `yes` | PASS |
+| Grafana Secret negative test | `kubectl auth can-i list secrets --as=system:serviceaccount:techx-observability:grafana` trả `yes` | **FAIL** |
+| Argo CD | `techx-corp` và `techx-observability` đều `OutOfSync`; operation gần nhất báo `Succeeded` | BLOCKED |
+
+### 8.1. Root cause của negative test Grafana
+
+Live `grafana-clusterrole` vẫn có `get/list/watch` trên cả `configmaps` và
+`secrets`; live `grafana-clusterrolebinding` vẫn có subject ServiceAccount
+`grafana`. Argo CD đánh dấu hai object này là orphaned, `requiresPruning: true`.
+Vì môi trường chạy `prune: false`, việc bỏ resource khỏi subchart không thu hồi
+quyền đã tồn tại.
+
+Commit tombstone `693354f` đặt `rules: []` và `subjects: []` nhưng tại thời điểm
+kiểm tra chỉ có trên branch `cdo08/sec-22-runtime-evidence`, chưa có trong
+`origin/main`. Hai Argo application đang pin chart source tại commit
+`918a8eb2ad39959c3a8071cc27a4519798977a0c`; commit này không chứa template
+`grafana-legacy-rbac-tombstone.yaml`. Vì vậy không được ghi nhận tombstone là đã
+deploy và không được chuyển Task 3 sang Done.
+
+### 8.2. Sửa verification script
+
+`kubectl auth can-i` dùng exit code `1` cho câu trả lời hợp lệ `no`. Script cũ
+đổi các kết quả này thành `ERROR: no`, tạo fail giả. Script đã được sửa để chấp
+nhận hai kết quả chuẩn `yes`/`no`, và chỉ ghi `ERROR` cho lỗi CLI, authentication,
+transport hoặc impersonation thực sự.
+
+Sau khi tombstone thực sự được merge vào `main`, pipeline cập nhật GitOps
+`targetRevision` và Argo sync, chạy lại mục 5-7. Không xóa trực tiếp hai resource
+production để né quy trình GitOps.
 
 ## 9. Tiêu chí hoàn thành
 
 - [ ] GitOps promotion đã merge, Argo CD `Synced/Healthy`.
-- [ ] Live workload dùng đúng per-service ServiceAccount và token policy.
+- [x] Live workload dùng đúng per-service ServiceAccount và token policy.
 - [ ] Script `verify-sec22-rbac.ps1` trả về PASS.
 - [ ] Application SAs không list Secret/Pod, không create Pod và không exec.
 - [ ] Observability exceptions chỉ có quyền đã duyệt.

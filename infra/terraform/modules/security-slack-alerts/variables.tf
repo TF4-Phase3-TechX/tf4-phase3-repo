@@ -82,3 +82,9 @@ variable "alert_email_endpoint" {
     error_message = "alert_email_endpoint must be a valid email address."
   }
 }
+
+variable "anomaly_sns_topic_name" {
+  type        = string
+  description = "Name of the SNS topic for Mandate-11 H2 anomaly detection alarms (separate from main alert topic)"
+  default     = "audit-security-alerts-anomaly"
+}

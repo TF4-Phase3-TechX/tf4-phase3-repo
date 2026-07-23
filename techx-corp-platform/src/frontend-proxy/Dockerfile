@@ -4,6 +4,7 @@
 FROM envoyproxy/envoy:v1.34.14@sha256:cfc0678bc03cca19cbb031688acb31d510bff501ff97e163026a375fe0515d69
 
 RUN apt-get update && \
+    apt-get upgrade -y openssl libssl3 && \
     apt-get install -y gettext-base && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
