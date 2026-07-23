@@ -35,3 +35,4 @@ ENV OTEL_DOTNET_AUTO_TRACES_ADDITIONAL_SOURCES=Accounting.Consumer
 
 ENTRYPOINT ["./instrument.sh", "dotnet", "Accounting.dll"]
 
+
