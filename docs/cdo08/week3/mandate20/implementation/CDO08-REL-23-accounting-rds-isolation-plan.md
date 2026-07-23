@@ -10,11 +10,6 @@
 **Owner:** CDO08 Reliability + Infra
 **Trạng thái:** DRAFT
 
-> **Ghi chú lệch ID:** [gap register](../scan/CDO08-REL-20-gap-register.md) gắn gap này với task ID
-> `REL-32` ("thực hiện migrate `accounting` sang instance mới"). File task nguồn (`REL-23.csv`) dùng ID
-> `CDO08-REL-23`. Tài liệu này dùng `CDO08-REL-23` (theo file task chính thức được giao) — người đọc cần
-> đối chiếu 2 ID này trỏ về cùng 1 việc, không phải 2 việc khác nhau. Không tự sửa gap register.
-
 ---
 
 ## 1. Mục tiêu
