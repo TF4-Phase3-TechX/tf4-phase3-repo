@@ -3,7 +3,7 @@
 
 - **Mục tiêu**: Gom bằng chứng chứng minh một Pod bị kẻ tấn công chiếm quyền điều khiển (Attacker Pod) sẽ bị khoanh vùng triệt để cả về mặt Mạng (Network) và Kubernetes API (RBAC).
 - **Tài khoản AWS & Cluster**: Account `511825856493` (`us-east-1`), EKS Cluster `techx-tf4-cluster`, Namespace `techx-tf4`
-- **Owner / Reporter**: **DVQuyet** (Lead Security & Reliability Engineer - Team CDO-08)
+- **Người thực hiện & Báo cáo (Executor & Owner)**: **DVQuyet** (Lead Security & Reliability Engineer - Team CDO-08)
 - **Cửa sổ xác minh Runtime (Verified Window)**: `2026-07-22T10:05:00Z` – `2026-07-22T10:25:00Z`
 - **Trạng thái nghiệm thu**: **PASS — VERIFIED WITH NETWORKPOLICY & RBAC CAN-I DRILLS**
 
@@ -11,7 +11,7 @@
 
 ## 🎯 1. THÔNG TIN CHI TIẾT ATTACKER POD THỬ NGHIỆM (ATTACKER POD METADATA)
 
-Để kiểm chứng khả năng khoanh vùng thiệt hại (Blast-Radius Containment), chúng ta giả lập tình huống một Pod ứng dụng `checkout` trong namespace `techx-tf4` bị hacker khai thác lỗ hổng và lấy được quyền truy cập vỏ Pod (Container Shell Access):
+Để kiểm chứng khả năng khoanh vùng thiệt hại (Blast-Radius Containment), **DVQuyet** đã diễn tập giả lập tình huống một Pod ứng dụng `checkout` trong namespace `techx-tf4` bị hacker khai thác lỗ hổng và lấy được quyền truy cập vỏ Pod (Container Shell Access):
 
 - **Target Namespace**: `techx-tf4`
 - **Simulated Attacker Pod**: `checkout-5f8cd5b455-dlbgh` (hoặc test pod `attacker-pod-simulation`)

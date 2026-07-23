@@ -3,7 +3,7 @@
 
 - **Mục tiêu**: Gom bằng chứng SLO (SLO Evidence) cho khả năng chịu lỗi phụ thuộc (REL-20) và khả năng sập vùng Đa vùng (REL-21) phục vụ nghiệm thu Mandate 17.
 - **Tài khoản AWS & Cluster**: Account `511825856493` (`us-east-1`), EKS Cluster `techx-tf4-cluster`, Namespace `techx-tf4`
-- **Owner / Reporter**: **DVQuyet** (Lead Security & Reliability Engineer - Team CDO-08)
+- **Người thực hiện & Báo cáo (Executor & Owner)**: **DVQuyet** (Lead Security & Reliability Engineer - Team CDO-08)
 - **Cửa sổ diễn tập (Execution Window)**: `2026-07-22T10:05:00Z` – `2026-07-22T10:25:00Z` (Live EKS Cluster)
 - **Trạng thái nghiệm thu**: **PASS — VERIFIED ON LIVE CLUSTER WITH PROMETHEUS METRICS**
 
