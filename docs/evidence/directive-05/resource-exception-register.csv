@@ -1,0 +1,2 @@
+workload,wave,missing_evidence_or_control,risk,owner,security_disposition,expiry,approver,status
+EXAMPLE,remaining-exceptions,Replace with measured D5-02 values,Admission enforcement cannot cover this workload,UNASSIGNED,audit-only,YYYY-MM-DD,UNASSIGNED,OPEN
