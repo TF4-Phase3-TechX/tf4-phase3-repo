@@ -39,8 +39,8 @@ Hệ thống Athena Forensic Security Analytics được định nghĩa hoàn to
    - Partition Projection 4 cấp `year/month/day/hour` tương thích 100% với định dạng xuất mặc định của Kinesis Data Firehose (`YYYY/MM/DD/HH`).
 
 ### 1.5 IAM Policies (Phân quyền Least Privilege)
-1. **`aws_iam_policy.athena_audit_analyst`**: Cấp quyền chạy truy vấn Athena, đọc Glue Catalog, đọc dữ liệu nguồn tại 3 S3 WORM log buckets và ghi kết quả truy vấn tại S3 results bucket.
-2. **`aws_iam_policy.cloudwatch_insights_forensics`**: Cấp quyền chạy truy vấn CloudWatch Logs Insights real-time.
+1. **`aws_iam_policy.athena_audit_analyst`**: Cấp quyền chạy truy vấn Athena, điều hướng Console UI (Workgroup & Catalog listing), đọc Glue Catalog (`glue:GetDatabases`, `glue:GetTables`...), đọc dữ liệu nguồn tại 3 S3 WORM log buckets và ghi kết quả truy vấn tại S3 results bucket.
+2. **`aws_iam_policy.cloudwatch_insights_forensics`**: Cấp quyền hiển thị danh sách Log Groups trên Console và chạy truy vấn CloudWatch Logs Insights real-time.
 
 ---
 
