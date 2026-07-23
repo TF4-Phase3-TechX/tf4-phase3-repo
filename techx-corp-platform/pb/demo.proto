@@ -227,6 +227,7 @@ message Address {
 service CurrencyService {
     rpc GetSupportedCurrencies(Empty) returns (GetSupportedCurrenciesResponse) {}
     rpc Convert(CurrencyConversionRequest) returns (Money) {}
+    rpc BatchConvert(BatchCurrencyConversionRequest) returns (BatchCurrencyConversionResponse) {}
 }
 
 // Represents an amount of money with its currency type.
@@ -259,6 +260,15 @@ message CurrencyConversionRequest {
     string to_code = 2;
 }
 
+message BatchCurrencyConversionRequest {
+    repeated Money from = 1;
+    string to_code = 2;
+}
+
+message BatchCurrencyConversionResponse {
+    repeated Money converted = 1;
+}
+
 // -------------Payment service-----------------
 
 service PaymentService {
@@ -287,9 +297,16 @@ service EmailService {
     rpc SendOrderConfirmation(SendOrderConfirmationRequest) returns (Empty) {}
 }
 
+message ProductDisplay {
+    string name = 1;
+    string picture = 2;
+    repeated string categories = 3;
+}
+
 message OrderItem {
     CartItem item = 1;
     Money cost = 2;
+    ProductDisplay product_display = 3;
 }
 
 message OrderResult {
