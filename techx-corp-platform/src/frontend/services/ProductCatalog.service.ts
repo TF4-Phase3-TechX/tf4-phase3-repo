@@ -42,11 +42,6 @@ const ProductCatalogService = () => ({
       priceUsd: await this.getProductPrice(product.priceUsd!, currencyCode),
     };
   },
-  async getProductForDisplay(id: string) {
-    const { name, picture, categories } = await ProductCatalogGateway.getProduct(id);
-
-    return { name, picture, categories };
-  },
 });
 
 export default ProductCatalogService();
