@@ -32,7 +32,7 @@ tests:
         alertname: LoadGeneratorTrafficOutsideTestWindow
         exp_alerts: []
 
-  - name: Storefront P95 > 1s fires
+  - name: Browse/search P95 > 1s fires
     interval: 1m
     input_series:
       - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="GET /",le="1000"}
@@ -43,16 +43,38 @@ tests:
         values: 0+100x20
     alert_rule_test:
       - eval_time: 15m
-        alertname: StorefrontP95High
+        alertname: BrowseSearchLatencyP95High
         exp_alerts:
           - exp_labels:
               severity: critical
               owner: tf4-webstore
-              component: storefront
+              component: browse-search
             exp_annotations:
-              summary: Storefront p95 latency is above the one-second SLO
-              description: Customer-facing browse routes remained above 1000 ms p95 for five minutes.
-              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#storefrontp95high
+              summary: Browse/search p95 latency is above the one-second SLO
+              description: Customer-facing browse and product-search routes remained above 1000 ms p95 for five minutes.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#browsesearchlatencyp95high
+
+  - name: Checkout P95 > 1s fires
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",le="1000"}
+        values: 0+10x20
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",le="2000"}
+        values: 0+96x20
+      - series: traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",le="+Inf"}
+        values: 0+100x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: CheckoutLatencyP95High
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: tf4-webstore
+              component: checkout
+            exp_annotations:
+              summary: Checkout p95 latency is above the one-second SLO
+              description: End-to-end checkout p95 latency remained above 1000 ms for five minutes.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#checkoutlatencyp95high
 
   - name: Availability alert does not false-fire with valid metric
     interval: 1m
@@ -84,7 +106,7 @@ tests:
               description: Node node1 has not reported Ready for two minutes.
               runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#nodenotready
 
-  - name: CheckoutSuccessRateLow needs traffic > 20 to fire
+  - name: CheckoutErrorRateHigh needs traffic >= 20 to fire
     interval: 1m
     input_series:
       - series: traces_span_metrics_calls_total{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",status_code="STATUS_CODE_OK"}
@@ -93,8 +115,28 @@ tests:
         values: 0+1x20
     alert_rule_test:
       - eval_time: 10m
-        alertname: CheckoutSuccessRateLow
+        alertname: CheckoutErrorRateHigh
         exp_alerts: []
+
+  - name: CheckoutErrorRateHigh fires above one percent with enough traffic
+    interval: 1m
+    input_series:
+      - series: traces_span_metrics_calls_total{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",status_code="STATUS_CODE_OK"}
+        values: 0+99x20
+      - series: traces_span_metrics_calls_total{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout",status_code="STATUS_CODE_ERROR"}
+        values: 0+2x20
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: CheckoutErrorRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: tf4-webstore
+              component: checkout
+            exp_annotations:
+              summary: Checkout error rate is above one percent
+              description: End-to-end checkout errors exceeded one percent for five minutes with at least 20 requests in the evaluation window.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/audit/runbooks/flash-sale-alerts.md#checkouterrorratehigh
 
   - name: PodRestartBurst fires when restarts exceed threshold
     interval: 1m

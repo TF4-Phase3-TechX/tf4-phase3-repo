@@ -26,11 +26,11 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 
 ---
 
-## Storefront
+## Browse/search latency
 
-### P95High
+### BrowseSearchLatencyP95High
 
-**Threshold:** storefront p95 greater than 1000 ms for 5m.
+**Threshold:** browse/search p95 greater than 1000 ms for 5m.
 **Owner/severity:** `tf4-webstore` / critical.
 
 - Verify the same PromQL in Grafana Explore and split latency by frontend span name.
@@ -42,9 +42,9 @@ The current TF4 on-call is the first responder for every critical alert. Escalat
 
 ## Checkout
 
-### CheckoutSuccessRateLow
+### CheckoutErrorRateHigh
 
-**Threshold:** success rate below 99% for 5m, with at least 20 checkout requests in the window.
+**Threshold:** error rate above 1% for 5m, with at least 20 checkout requests in the window.
 **Owner/severity:** `tf4-webstore` / critical.
 
 - Inspect `POST /api/checkout` errors and the checkout `PlaceOrder` trace.
