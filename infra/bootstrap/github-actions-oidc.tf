@@ -106,6 +106,7 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "budgets:ViewBudget",
       "budgets:ListTagsForResource",
       "cloudwatch:DescribeAlarms",
+      "cloudwatch:ListTagsForResource",
       "dms:Describe*",
       "dms:List*",
       "access-analyzer:GetAnalyzer",

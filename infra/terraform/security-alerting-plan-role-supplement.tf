@@ -1,5 +1,6 @@
 # Supplement permissions for tf4-github-actions-plan so Terraform plan can
-# refresh state for the security-alerting module resources (SQS DLQ, SNS topics).
+# refresh state for the security-alerting module resources (SQS DLQ, SNS topics,
+# CloudWatch Alarms, CloudWatch Metric Filters).
 #
 # The plan role's base policy lives in infra/bootstrap/github-actions-oidc.tf.
 # Adding read-only permissions here avoids a bootstrap apply dependency while
@@ -35,7 +36,23 @@ data "aws_iam_policy_document" "plan_role_security_alerting_read" {
     resources = [
       "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts",
       "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
+      # H2 anomaly detection topic (Mandate-11)
+      "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-anomaly",
     ]
+  }
+
+  # H2: plan role needs to read CloudWatch Alarm tags and Metric Filter state
+  statement {
+    sid    = "ReadSecurityAlertingCloudWatchState"
+    effect = "Allow"
+
+    actions = [
+      "cloudwatch:ListTagsForResource",
+      "cloudwatch:DescribeAnomalyDetectors",
+      "logs:DescribeMetricFilters",
+    ]
+
+    resources = ["*"]
   }
 }
 
