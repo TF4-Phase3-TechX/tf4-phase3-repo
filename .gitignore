@@ -70,7 +70,6 @@ charts/*.tgz
 # ── Environment / Secrets ──
 .env
 .env.*
-!.env.override
 *.pem
 *.key
 credentials.*

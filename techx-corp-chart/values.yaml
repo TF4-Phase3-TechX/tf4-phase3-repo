@@ -54,6 +54,28 @@ prometheusRetainStorageClass:
   provisioner: kubernetes.io/aws-ebs
   allowVolumeExpansion: false
 
+cloudflareAccess:
+  enabled: false
+  namespace: cloudflare-access
+  createNamespace: true
+  replicas: 2
+  image:
+    repository: cloudflare/cloudflared
+    tag: "2025.7.0"
+    pullPolicy: IfNotPresent
+  tokenSecret:
+    name: cloudflare-tunnel-token
+    key: token
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  metrics:
+    port: 2000
+
 components:
   ## Demo Components are named objects (services) with several properties
   # demoService:
@@ -216,6 +238,10 @@ components:
       - name: AIOPS_LOOKBACK_MINUTES
         value: "30"
       - name: AIOPS_SUSTAINED_POLLS
+        value: "1"
+      - name: AIOPS_ACUTE_CONFIRMATION_WINDOW
+        value: "3"
+      - name: AIOPS_ACUTE_MIN_BREACH_POINTS
         value: "2"
       - name: AIOPS_MINIMUM_REQUEST_COUNT
         value: "20"
@@ -592,7 +618,7 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 16MiB
+        value: 75MiB
     resources:
       requests: { cpu: 75m, memory: 48Mi }
       limits: { cpu: 300m, memory: 96Mi }
@@ -1243,9 +1269,14 @@ components:
       env: true
     service:
       port: 3551
+    ports:
+      - name: health
+        value: 3552
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
+      - name: PRODUCT_REVIEWS_HEALTH_PORT
+        value: "3552"
       - name: AWS_REGION
         value: us-east-1
       - name: BEDROCK_MODEL_ID
@@ -1266,6 +1297,12 @@ components:
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
         value: product-catalog:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: APP_ENV
+        value: production
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
@@ -1865,13 +1902,27 @@ opentelemetry-collector:
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       otlphttp/prometheus:
         endpoint: http://prometheus:9090/api/v1/otlp
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       opensearch:
         logs_index: otel-logs
         logs_index_time_format: "yyyy-MM-dd"
@@ -1879,6 +1930,15 @@ opentelemetry-collector:
           endpoint: http://opensearch:9200
           tls:
             insecure: true
+        sending_queue:
+          num_consumers: 10
+          queue_size: 1000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
 
     processors:
       memory_limiter:
@@ -1922,14 +1982,14 @@ opentelemetry-collector:
       pipelines:
         traces:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [otlp/jaeger, debug, spanmetrics]
+          exporters: [otlp/jaeger, spanmetrics]
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [otlphttp/prometheus, debug]
+          exporters: [otlphttp/prometheus]
         logs:
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [opensearch, debug]
+          exporters: [opensearch]
       telemetry:
         metrics:
           level: detailed
@@ -2249,6 +2309,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  rbac:
+    # The upstream role always includes Secrets. SEC-22 supplies a ConfigMap-only Role.
+    create: false
   testFramework:
     enabled: false
   grafana.ini:
@@ -2267,10 +2330,13 @@ grafana:
   sidecar:
     alerts:
       enabled: true
+      resource: configmap
     dashboards:
       enabled: true
+      resource: configmap
     datasources:
       enabled: true
+      resource: configmap
     resources:
       requests:
         cpu: 20m
@@ -2327,6 +2393,21 @@ opensearch:
       cpu: 1000m
       memory: 2Gi
 
+  otelLogsLifecycle:
+    enabled: false
+    image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+    schedule: "45 23 * * *"
+    endpoint: http://opensearch:9200
+    policyId: otel-logs-retention
+    retention: 3d
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
 bastionPortalAccess:
   enabled: false
   groupName: portal-bastion-group
@@ -2348,10 +2429,13 @@ managedData:
     enabled: false
     secretName: rds-postgres-secret
 
-  # Wire cart to ElastiCache via elasticache-valkey-secret
+  # Wire cart and product-reviews Copilot state to ElastiCache via
+  # elasticache-valkey-secret. `services` keeps the consumers explicit so a new
+  # VALKEY_ADDR user cannot silently retain the in-cluster fallback in production.
   valkey:
     enabled: false
     secretName: elasticache-valkey-secret
+    services: [cart, product-reviews]
 
   # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret.
   # `services` controls which of the 3 get the MSK/SCRAM env when enabled=true —

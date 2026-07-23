@@ -3,7 +3,10 @@ opentelemetry-collector: { enabled: true }
 jaeger: { enabled: true }
 prometheus: { enabled: true }
 grafana: { enabled: true }
-opensearch: { enabled: true }
+opensearch:
+  enabled: true
+  otelLogsLifecycle:
+    enabled: true
 metrics-server:
   enabled: true
   fullnameOverride: metrics-server
@@ -37,3 +40,12 @@ components:
   valkey-cart: { enabled: false }
 
 bastionPortalAccess: { enabled: true }
+
+cloudflareAccess:
+  enabled: true
+  namespace: cloudflare-access
+  createNamespace: false
+  replicas: 2
+  tokenSecret:
+    name: cloudflare-tunnel-token
+    key: token
