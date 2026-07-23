@@ -229,7 +229,12 @@ class AIOpsWorker:
                     incident.affected_service,
                     notification_severity,
                 ).inc()
-                self.remediation.request_approval(stored)
+                handler = getattr(self.remediation, "handle_incident", None)
+                if handler:
+                    await handler(stored)
+                else:
+                    # Backward-compatible seam for test doubles and manual-mode adapters.
+                    self.remediation.request_approval(stored)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
         if prometheus_ok:
             last_poll_success.set(time.time())
