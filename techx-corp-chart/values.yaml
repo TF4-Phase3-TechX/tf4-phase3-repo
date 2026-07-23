@@ -396,6 +396,8 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: DB_CONNECTION_STRING
         value: Host=postgresql;Username=otelu;Password=otelp;Database=otel
+      - name: PGAPPNAME
+        value: accounting
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
@@ -1244,6 +1246,8 @@ components:
         value: 16MiB
       - name: DB_CONNECTION_STRING
         value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+      - name: PGAPPNAME
+        value: product-catalog
       - name: OTEL_SEMCONV_STABILITY_OPT_IN
         value: database
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -1325,6 +1329,8 @@ components:
         value: "8013"
       - name: DB_CONNECTION_STRING
         value: host=postgresql user=otelu password=otelp dbname=otel
+      - name: PGAPPNAME
+        value: product-reviews
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: OTEL_PYTHON_LOG_CORRELATION
