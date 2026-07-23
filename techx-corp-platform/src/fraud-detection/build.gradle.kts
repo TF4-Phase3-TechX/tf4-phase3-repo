@@ -58,15 +58,16 @@ dependencies {
 // CVE fixes for transitive deps pulled in via io.grpc:grpc-netty (netty 4.1.x branch)
 // and dev.openfeature.contrib.providers:flagd (netty-transport-native-epoll 4.2.x branch).
 // jackson-databind fix handled above via jackson-bom platform override.
+// 4.1.135.Final -> 4.1.136.Final: CVE-2026-59901, CVE-2026-55831, CVE-2026-55833, CVE-2026-56745.
 configurations.all {
     resolutionStrategy {
         force(
-            "io.netty:netty-codec:4.1.135.Final",
-            "io.netty:netty-codec-http:4.1.135.Final",
-            "io.netty:netty-codec-http2:4.1.135.Final",
-            "io.netty:netty-codec-socks:4.1.135.Final",
-            "io.netty:netty-handler:4.1.135.Final",
-            "io.netty:netty-handler-proxy:4.1.135.Final",
+            "io.netty:netty-codec:4.1.136.Final",
+            "io.netty:netty-codec-http:4.1.136.Final",
+            "io.netty:netty-codec-http2:4.1.136.Final",
+            "io.netty:netty-codec-socks:4.1.136.Final",
+            "io.netty:netty-handler:4.1.136.Final",
+            "io.netty:netty-handler-proxy:4.1.136.Final",
             "io.netty:netty-transport-native-epoll:4.2.13.Final",
         )
     }
