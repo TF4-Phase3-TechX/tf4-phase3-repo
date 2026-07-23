@@ -29,15 +29,13 @@ resource "aws_cloudwatch_log_metric_filter" "expected_read_count" {
   pattern = "{ $.marker = \"MANDATE11_EXPECTED_READ\" }"
 
   metric_transformation {
-    namespace     = "Mandate11/AllowlistActivity"
-    name          = "ExpectedReadCount"
-    value         = "1"
-    default_value = "0"
-    unit          = "Count"
-    # Dimensions cho phép Anomaly Alarm lọc theo từng actor/eventName
-    dimensions = {
-      EventName = "$.eventName"
-    }
+    namespace = "Mandate11/AllowlistActivity"
+    name      = "ExpectedReadCount"
+    value     = "1"
+    unit      = "Count"
+    # NOTE: default_value and dimensions cannot be used together (AWS API limitation).
+    # default_value also conflicts with dimensions in AWS CloudWatch Metric Filter.
+    # Alarm uses treat_missing_data = "notBreaching" to handle zero-data periods instead.
   }
 }
 
@@ -121,10 +119,6 @@ resource "aws_cloudwatch_metric_alarm" "eso_read_anomaly" {
       namespace   = "Mandate11/AllowlistActivity"
       period      = 300 # 5 phút — khớp với chu kỳ ESO sync secrets
       stat        = "Sum"
-
-      dimensions = {
-        EventName = "GetSecretValue"
-      }
     }
   }
 
