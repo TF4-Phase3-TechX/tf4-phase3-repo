@@ -205,6 +205,9 @@ components:
     useDefault:
       env: true
     serviceAccountName: aiops
+    # Required for the read-only Kubernetes availability adapter. Mutation
+    # remains independently gated by aiopsRemediation.liveEnabled and RBAC.
+    automountServiceAccountToken: true
     service:
       port: 8080
     podAnnotations:
@@ -265,6 +268,18 @@ components:
         value: "5"
       - name: AIOPS_RECOVERY_POLLS
         value: "2"
+      # Confirm workload availability separately so a transient rollout does
+      # not page as a dead service.
+      - name: AIOPS_AVAILABILITY_SUSTAINED_POLLS
+        value: "2"
+      # Operator-facing busy-state seed only; it does not fire an incident and
+      # must be recalibrated from labelled production traffic.
+      - name: AIOPS_BUSY_REQUEST_RATE_THRESHOLD
+        value: "5"
+      - name: AIOPS_AVAILABILITY_DOWN_CONFIDENCE
+        value: "0.95"
+      - name: AIOPS_AVAILABILITY_DEGRADED_CONFIDENCE
+        value: "0.80"
       - name: AIOPS_LATENCY_THRESHOLD_MS
         value: "1000"
       - name: AIOPS_ERROR_RATE_THRESHOLD

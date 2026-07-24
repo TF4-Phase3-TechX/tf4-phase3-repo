@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from .availability import KubernetesAvailabilityClient
 from .config import Settings
 from .detection import Detector, latency_query, values
 from .remediation import PolicyDenied, RemediationController
@@ -54,7 +55,14 @@ async def verify_service_slo(service: str) -> dict[str, object]:
 
 
 remediation = RemediationController(settings, verifier=verify_service_slo)
-worker = AIOpsWorker(settings, telemetry, Detector(settings), store, remediation)
+worker = AIOpsWorker(
+    settings,
+    telemetry,
+    Detector(settings),
+    store,
+    remediation,
+    availability=KubernetesAvailabilityClient(settings.namespace),
+)
 summary_generator = IncidentSummaryGenerator(
     settings.grafana_url,
     settings.opensearch_datasource_uid,
