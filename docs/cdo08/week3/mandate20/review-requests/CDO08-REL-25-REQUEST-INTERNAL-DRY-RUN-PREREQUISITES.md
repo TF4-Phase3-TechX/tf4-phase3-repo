@@ -200,3 +200,38 @@ Sau khi được cấp đủ điều kiện, CDO08 sẽ cung cấp:
 
 Subtask chỉ hoàn thành khi lệnh internal dry run trả exit code `0` và toàn bộ
 evidence trên được review.
+
+---
+
+## PM Approval
+
+**Người phê duyệt:** Hải (PM)  
+**Ngày:** 2026-07-24  
+**Trạng thái:** ✅ APPROVED
+
+### Nội dung phê duyệt
+
+Tôi xác nhận đã đọc toàn bộ request này và phê duyệt các điều kiện sau:
+
+- Cho phép tạo **một** private, single-AZ RDS PITR instance trong môi trường
+  isolated để chạy internal dry run. Instance phải được cleanup sau khi lưu
+  evidence, không để lại resource mồ côi.
+- TTL tối đa **24 giờ** kể từ khi RDS PITR target được tạo.
+- Restore timestamp phải nằm trong PITR window hiện có của source RDS; không
+  yêu cầu backup bổ sung.
+- Yêu cầu Platform/Cloud Security tạo sẵn hoặc cấp quyền scope cho CDO08 để
+  tạo hai security group theo spec trong request (ingress chỉ TCP/5432 từ
+  validation-client SG, không CIDR public, đúng tags `Environment=RestoreDrill`
+  và `Production=false`).
+- Yêu cầu Platform/Database owner cung cấp accounting drill target endpoint và
+  temporary credentials qua kênh bảo mật ngoài Git/ticket.
+- CDO08 **không được** dùng production SG, production endpoint, production DNS
+  hoặc production application pod để thay thế bất kỳ prerequisite nào.
+- Cleanup phải được thực hiện sau khi lưu đủ evidence; PM sẽ review evidence
+  trước khi đóng subtask REL25-2.
+
+### Ghi chú
+
+Request được đánh giá hợp lý, tối thiểu quyền và không tạo rủi ro cho
+production. Các guardrail trong script `rel25-restore-accounting-pitr.sh` đã
+được review và đủ để ngăn restore nhầm production.
