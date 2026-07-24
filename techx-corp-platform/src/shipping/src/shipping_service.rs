@@ -16,10 +16,13 @@ pub use shipping_types::*;
 const NANOS_MULTIPLE: u32 = 10000000u32;
 
 #[post("/get-quote")]
-pub async fn get_quote(req: web::Json<GetQuoteRequest>) -> impl Responder {
-    let itemct: u32 = req.items.iter().map(|item| item.quantity as u32).sum();
+pub async fn get_quote(
+    client: web::Data<awc::Client>,
+    req: web::Json<GetQuoteRequest>,
+) -> impl Responder {
+    let itemct: u32 = req.items.iter().map(|item| item.quantity).sum();
 
-    let quote = match create_quote_from_count(itemct).await {
+    let quote = match create_quote_from_count(client.get_ref(), itemct).await {
         Ok(q) => q,
         Err(e) => {
             return HttpResponse::InternalServerError().body(format!("Failed to get quote: {}", e));
@@ -67,7 +70,10 @@ mod tests {
         let req = test::TestRequest::post()
             .uri("/ship-order")
             .insert_header(ContentType::json())
-            .set_json(&ShipOrderRequest {})
+            .set_json(&ShipOrderRequest {
+                address: None,
+                items: vec![],
+            })
             .to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
