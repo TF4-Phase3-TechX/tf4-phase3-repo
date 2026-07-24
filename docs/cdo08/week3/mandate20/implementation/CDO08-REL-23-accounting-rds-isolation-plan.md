@@ -49,7 +49,30 @@ Việc cần làm:
 .\01-restore-pitr-isolated.ps1 -RestoreTime 2026-07-20T10:00:00Z
 ```
 
-Kỳ vọng: instance `available`, production không bị đụng, timestamp provisioning được ghi lại.
+Output mẫu:
+
+```text
+[INFO] t_restore_request=2026-07-25T08:00:00.000Z
+[INFO] Waiting for techx-tf4-postgresql-restore-<run-id> available...
+[INFO] t_instance_available=2026-07-25T08:22:14.000Z
+[INFO] Waiting for password change to apply...
+[OK] Isolated PITR instance ready: techx-tf4-postgresql-restore-<run-id>
+     Endpoint : techx-tf4-postgresql-restore-<run-id>.xxxxx.us-east-1.rds.amazonaws.com
+     TmpSgId  : sg-xxxxxxxxxxxxxxxxx
+[NOTE] KHONG cap nhat production endpoint o buoc nay.
+[NOTE] Cleanup: .\02-cleanup-pitr-isolated.ps1 -TargetId techx-tf4-postgresql-restore-<run-id> -TmpSgId sg-xxxxxxxxxxxxxxxxx
+[WARN] .\rel23-pitr-<run-id>.json CHUA MAT KHAU THAT (MasterPassword) - dung cho 03/06, xoa file nay sau khi xong Subtask 2-3.
+```
+
+Cleanup (`02-cleanup-pitr-isolated.ps1 -TargetId <id> -TmpSgId <sg-id>`):
+
+```text
+[INFO] Deleting isolated instance techx-tf4-postgresql-restore-<run-id>...
+[OK] Instance techx-tf4-postgresql-restore-<run-id> deleted.
+[INFO] Deleting temp SG sg-xxxxxxxxxxxxxxxxx...
+[OK] SG sg-xxxxxxxxxxxxxxxxx deleted.
+[OK] Cleanup Subtask 2 hoan tat - khong con hạ tang nao con lai tu buoc PITR isolated.
+```
 
 ## 6. Subtask 3 - Export/Restore Vào Database Drill
 
@@ -60,6 +83,23 @@ Drill (`otel_drill`) nằm ngay trên instance tạm — không cần hạ tần
 ```powershell
 .\03-export-accounting.ps1 -PitrInfoPath .\rel23-pitr-<run-id>.json
 .\04-restore-accounting-drill.ps1 -PitrInfoPath .\rel23-pitr-<run-id>.json -DumpPath .\accounting-<run-id>.dump
+```
+
+Output mẫu (`03-export-accounting.ps1`):
+
+```text
+[INFO] t_export_start=2026-07-25T08:25:00.000Z
+[OK] Dump written: .\accounting-<run-id>.dump (2481392 bytes)
+[INFO] t_export_done=2026-07-25T08:25:18.000Z
+[NOTE] --schema=accounting tu gioi han pham vi - khong the lan catalog/reviews vao dump nay.
+[INFO] Dump path (dung cho 04-restore-accounting-drill.ps1 va sau khi validate, cho 06-import-production.ps1): .\accounting-<run-id>.dump
+```
+
+Output mẫu (`04-restore-accounting-drill.ps1`):
+
+```text
+[OK] Restored into otel_drill for validation.
+[NOTE] Chay tiep 07-validate-production.ps1 -Database otel_drill de doi chieu voi checklist truoc khi cutover production.
 ```
 
 ## 7. Subtask 4 - Validate + Production-Safe Cutover Runbook
@@ -80,6 +120,46 @@ Runbook cutover, chạy khi có sự cố thật, sau khi validate drill PASS:
 | R.6 | `09-cleanup-old-schema.ps1 -Confirm` — xoá `accounting_old` sau khi ổn định |
 
 Xác nhận `catalog`/`reviews` không đổi row count trước R.1 và sau R.6.
+
+Output mẫu từng bước:
+
+```text
+# 05-write-freeze.ps1 (R.1)
+[INFO] t_R1_freeze_start=2026-07-25T09:00:00.000Z
+[INFO] R.1 - Scaling deployment/accounting to 0 in techx-tf4...
+[INFO] Gate: cho 0 active connection cua role techx_app (tru chinh session gate nay)...
+[OK] R.1 hoan tat - 0 active connection techx_app. Write-freeze confirmed.
+
+# 06-import-production.ps1 (R.0 + R.1b + R.2)
+[INFO] R.0 - Backup schema accounting production truoc khi dung gi...
+[OK] R.0 backup luu tai .\accounting-production-backup-<run-id>.dump - GIU LAI, day la rollback checkpoint duy nhat truoc R.2.
+[INFO] R.1b - Reset offset consumer group 'accounting' ve RestoreTime=2026-07-20T10:00:00Z...
+[OK] R.1b hoan tat - offset group 'accounting' da reset ve 2026-07-20T10:00:00Z.
+[INFO] R.2 - Rename accounting -> accounting_old, import ban da validate...
+[OK] R.2 hoan tat.
+
+# 07-validate-production.ps1 (R.3)
+[RESULT] order_count      = 205891
+[RESULT] orderitem_count  = 377846
+[RESULT] shipping_count   = 205891
+[RESULT] orphan orderitem = 0
+[RESULT] orphan shipping  = 0
+[OK] Validation PASS.
+
+# 08-reopen-traffic.ps1 (R.5)
+[INFO] R.5 - Scaling deployment/accounting to 1 in techx-tf4...
+[INFO] Theo doi consumer lag group 'accounting' toi khi ve 0 (timeout 3600s)...
+[OK] Consumer lag = 0.
+[INFO] t_R5_traffic_reopened=2026-07-25T09:18:00.000Z
+
+# 09-cleanup-old-schema.ps1 -Confirm (R.6)
+[INFO] R.6 - Xoa schema accounting_old...
+[OK] R.6 hoan tat - da don dep rollback checkpoint accounting_old.
+
+# rollback-01-restore-old-schema.ps1 (chi khi R.3 fail, R.4)
+[WARN] R.4 - Rollback: xoa ban import loi, khoi phuc accounting_old...
+[OK] Rollback hoan tat - schema accounting da khoi phuc ve dung trang thai truoc R.2.
+```
 
 ## 8. Kafka Rollback-Window
 
