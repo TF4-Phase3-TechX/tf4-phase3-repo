@@ -1182,8 +1182,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      requests: { cpu: 300m, memory: 256Mi }
-      limits: { cpu: 600m, memory: 512Mi }
+      requests: { cpu: 150m, memory: 160Mi }
+      limits: { cpu: 600m, memory: 256Mi }
     securityContext:
       runAsUser: 10001
       runAsGroup: 10001
