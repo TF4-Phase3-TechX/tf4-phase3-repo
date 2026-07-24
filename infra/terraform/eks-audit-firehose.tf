@@ -1,5 +1,5 @@
 # Owner: Nhóm CDO07 (Audit)
-# Mục đích: Stream EKS Control Plane logs (audit, authenticator) từ CloudWatch Logs 
+# Mục đích: Stream EKS Control Plane logs (audit, authenticator) từ CloudWatch Logs
 # sang S3 bucket bảo vệ bởi S3 Object Lock COMPLIANCE 90 ngày (WORM),
 # đảm bảo logs không thể bị sửa/xóa kể cả bởi root account.
 

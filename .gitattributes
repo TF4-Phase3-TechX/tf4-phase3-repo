@@ -1,2 +1,1 @@
-*.png binary
-*.sh text eol=lf
+*.tf text eol=lf
