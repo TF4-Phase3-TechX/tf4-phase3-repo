@@ -332,8 +332,8 @@ resource "aws_kinesis_firehose_delivery_stream" "eks_audit_logs" {
     role_arn   = aws_iam_role.firehose_to_s3.arn
     bucket_arn = aws_s3_bucket.eks_audit_logs.arn
 
-    buffering_size      = 5  # MB (1-128)
-    buffering_interval  = 60 # Seconds (60-900)
+    buffering_size      = 5              # MB (1-128)
+    buffering_interval  = 60             # Seconds (60-900)
     compression_format  = "UNCOMPRESSED" # Evades double-gzip
     prefix              = "!yyyy/!MM/!dd/!HH/"
     error_output_prefix = "errors/!yyyy/!MM/!dd/!HH/!error-output-type/"
