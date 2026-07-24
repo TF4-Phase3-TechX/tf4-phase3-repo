@@ -333,7 +333,7 @@ resource "aws_mskconnect_connector" "orders_s3_sink" {
   }
 
   kafka_cluster_client_authentication {
-    authentication_type = "SASL_SCRAM"
+    authentication_type = "NONE"
   }
 
   kafka_cluster_encryption_in_transit {
