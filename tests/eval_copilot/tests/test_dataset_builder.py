@@ -43,6 +43,13 @@ def test_unresolved_comparison_requires_clarification():
     assert unresolved["expected_behavior"] == "ambiguous_clarification"
 
 
+def test_multiturn_cheapest_referent_is_derived_from_telescope_tags():
+    cases = build_test_cases(load_products_from_sql(str(INIT_SQL)))
+
+    journey = _case(cases, "TC-51")
+    assert journey["expected_product_ids"] == ["6E92ZMYYFZ"]
+
+
 def test_source_path_is_repo_relative_for_reproducible_metadata():
     assert stable_source_path(str(INIT_SQL)) == (
         "techx-corp-platform/src/postgresql/init.sql"

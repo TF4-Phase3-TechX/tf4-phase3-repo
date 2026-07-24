@@ -332,6 +332,9 @@ def build_test_cases(products: list[dict]) -> list[dict]:
     # -------------------------------------------------------------- #
     # GROUP — Multi-turn Realistic Shopping Journeys                 #
     # -------------------------------------------------------------- #
+    cheapest_telescope_id = min(
+        cat_index["telescopes"], key=lambda product_id: price_map[product_id]
+    )
     cases.append(
         {
             "test_id": _next_id(),
@@ -342,7 +345,7 @@ def build_test_cases(products: list[dict]) -> list[dict]:
                 "Đánh giá của người dùng về sản phẩm này thế nào?"
             ],
             "query": "Thêm sản phẩm này vào giỏ hàng giúp tôi",
-            "expected_product_ids": ["1YMWWN1N4O"],
+            "expected_product_ids": [cheapest_telescope_id],
             "expected_behavior": "cart_action_proposal",
             "description": "Realistic 4-turn shopping journey: Greeting/Search -> Price filter -> Review Q&A -> Cart Action Proposal",
         }
