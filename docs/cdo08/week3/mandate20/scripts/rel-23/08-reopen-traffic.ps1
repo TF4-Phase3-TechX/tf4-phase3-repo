@@ -36,8 +36,7 @@ try {
         Assert-LastExitCode 'kafka-consumer-groups.sh --describe'
         Write-Host $describe
 
-        # Cot LAG la cot cuoi cung trong output cua --describe; cong don qua cac partition.
-        $lagLines = $describe -split "`n" | Where-Object { $_ -match '^\s*accounting\s' -or $_ -match '^\S+\s+\d+\s' }
+        # Cot LAG la cot thu 6 (index 5) trong output cua --describe; cong don qua cac partition.
         $totalLag = 0
         $sawNumber = $false
         foreach ($line in ($describe -split "`n")) {
