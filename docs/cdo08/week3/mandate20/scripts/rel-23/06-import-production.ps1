@@ -3,11 +3,15 @@
 # Chi chay sau khi 05-write-freeze.ps1 xac nhan 0 connection techx_app, va ValidatedDumpPath
 # da qua 04-restore-accounting-drill.ps1 + validate PASS.
 #
+# RestoreTime doc lai tu -PitrInfoPath (file JSON cua 01-restore-pitr-isolated.ps1) neu co - khong
+# can go tay lai gia tri da nhap o Buoc 1. Van co the truyen -RestoreTime truc tiep de ghi de.
+#
 # Vi du:
-#   .\06-import-production.ps1 -RestoreTime 2026-07-20T10:00:00Z -ValidatedDumpPath .\accounting-....dump
+#   .\06-import-production.ps1 -PitrInfoPath .\rel23-pitr-<run-id>.json -ValidatedDumpPath .\accounting-....dump
 
 param(
-    [Parameter(Mandatory)][string]$RestoreTime,
+    [string]$PitrInfoPath,
+    [string]$RestoreTime,
     [Parameter(Mandatory)][string]$ValidatedDumpPath,
     [string]$Namespace = 'techx-tf4',
     [string]$OpsNamespace = 'rel23-ops',
@@ -19,6 +23,13 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\00-common.ps1"
 
 if (-not (Test-Path $ValidatedDumpPath)) { throw "ValidatedDumpPath khong ton tai: $ValidatedDumpPath" }
+
+if ($PitrInfoPath) {
+    if (-not (Test-Path $PitrInfoPath)) { throw "PitrInfoPath khong ton tai: $PitrInfoPath" }
+    $pitrInfo = Get-Content $PitrInfoPath -Raw | ConvertFrom-Json
+    if (-not $RestoreTime) { $RestoreTime = $pitrInfo.RestoreTime }
+}
+if (-not $RestoreTime) { throw 'Can truyen -PitrInfoPath, hoac -RestoreTime truc tiep.' }
 
 $runId = New-RunId
 if (-not $BackupPath) { $BackupPath = ".\accounting-production-backup-$runId.dump" }

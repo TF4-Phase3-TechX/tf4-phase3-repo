@@ -37,3 +37,4 @@ ALTER SCHEMA accounting_old RENAME TO accounting;
 finally {
     Remove-PgClientPod -Namespace $pod.Namespace -PodName $pod.PodName
 }
+

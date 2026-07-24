@@ -39,14 +39,15 @@ Script: `scripts/rel-23/01-restore-pitr-isolated.ps1` (cleanup: `02-cleanup-pitr
 
 Việc cần làm:
 
+- `RestoreTime` **bắt buộc truyền tường minh** — đây là input thủ công duy nhất trong toàn bộ luồng, không tự suy đoán.
 - Guard `RestoreTime` nằm trong cửa sổ restore-được của nguồn.
 - SG tạm, ingress 5432 lấy từ rule 5432 sẵn có trên SG nguồn (không đoán qua tag).
 - Restore-to-point-in-time, tên instance `techx-tf4-postgresql-restore-<run-id>`, mirror parameter group nguồn.
 - Sau khi available: tự đặt master password biết trước qua `ModifyDBInstance` (không dùng managed secret — IAM không cho đọc).
-- Ghi `Endpoint`/`MasterPassword` ra file JSON cục bộ, xoá sau khi dùng xong Subtask 2-3.
+- Ghi `Endpoint`/`MasterPassword` ra file JSON cục bộ (`rel23-pitr-<run-id>.json`), xoá sau khi dùng xong Subtask 2-3.
 
 ```powershell
-.\01-restore-pitr-isolated.ps1 -RestoreTime 2026-07-20T10:00:00Z
+.\01-restore-pitr-isolated.ps1 -RestoreTime 2026-07-25T09:05:00Z
 ```
 
 Output mẫu:
@@ -60,17 +61,20 @@ Output mẫu:
      Endpoint : techx-tf4-postgresql-restore-<run-id>.xxxxx.us-east-1.rds.amazonaws.com
      TmpSgId  : sg-xxxxxxxxxxxxxxxxx
 [NOTE] KHONG cap nhat production endpoint o buoc nay.
-[NOTE] Cleanup: .\02-cleanup-pitr-isolated.ps1 -TargetId techx-tf4-postgresql-restore-<run-id> -TmpSgId sg-xxxxxxxxxxxxxxxxx
-[WARN] .\rel23-pitr-<run-id>.json CHUA MAT KHAU THAT (MasterPassword) - dung cho 03/06, xoa file nay sau khi xong Subtask 2-3.
+[WARN] .\rel23-pitr-<run-id>.json CHUA MAT KHAU THAT (MasterPassword) - dung cho 03/04/06/07, xoa sau khi xong Subtask 2-3.
+[NOTE] Cleanup: .\02-cleanup-pitr-isolated.ps1 -PitrInfoPath .\rel23-pitr-<run-id>.json
 ```
 
-Cleanup (`02-cleanup-pitr-isolated.ps1 -TargetId <id> -TmpSgId <sg-id>`):
+Các bước sau (03/04/06/07) đều đọc `Endpoint`/`MasterPassword`/`RestoreTime` trực tiếp từ file JSON này qua `-PitrInfoPath` — không cần gõ tay lại giá trị nào.
+
+Cleanup (`02-cleanup-pitr-isolated.ps1 -PitrInfoPath .\rel23-pitr-<run-id>.json`):
 
 ```text
 [INFO] Deleting isolated instance techx-tf4-postgresql-restore-<run-id>...
 [OK] Instance techx-tf4-postgresql-restore-<run-id> deleted.
 [INFO] Deleting temp SG sg-xxxxxxxxxxxxxxxxx...
 [OK] SG sg-xxxxxxxxxxxxxxxxx deleted.
+[INFO] Da xoa .\rel23-pitr-<run-id>.json (chua master password cua instance vua xoa).
 [OK] Cleanup Subtask 2 hoan tat - khong con hạ tang nao con lai tu buoc PITR isolated.
 ```
 
@@ -133,8 +137,8 @@ Output mẫu từng bước:
 # 06-import-production.ps1 (R.0 + R.1b + R.2)
 [INFO] R.0 - Backup schema accounting production truoc khi dung gi...
 [OK] R.0 backup luu tai .\accounting-production-backup-<run-id>.dump - GIU LAI, day la rollback checkpoint duy nhat truoc R.2.
-[INFO] R.1b - Reset offset consumer group 'accounting' ve RestoreTime=2026-07-20T10:00:00Z...
-[OK] R.1b hoan tat - offset group 'accounting' da reset ve 2026-07-20T10:00:00Z.
+[INFO] R.1b - Reset offset consumer group 'accounting' ve RestoreTime=2026-07-25T09:05:00Z...
+[OK] R.1b hoan tat - offset group 'accounting' da reset ve 2026-07-25T09:05:00Z.
 [INFO] R.2 - Rename accounting -> accounting_old, import ban da validate...
 [OK] R.2 hoan tat.
 

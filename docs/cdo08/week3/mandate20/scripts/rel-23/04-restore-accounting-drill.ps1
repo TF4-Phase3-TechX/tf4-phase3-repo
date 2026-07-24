@@ -44,3 +44,4 @@ CREATE DATABASE otel_drill;
 finally {
     Remove-PgClientPod -Namespace $pod.Namespace -PodName $pod.PodName
 }
+
