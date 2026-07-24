@@ -432,6 +432,15 @@ jobs:
 
       - name: Assert AIOps read-only Kubernetes API wiring
         run: |
+          helm template techx-corp ./techx-corp-chart \
+            --namespace techx-tf4 \
+            --set default.image.repository=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY} \
+            --set default.image.tag=preview \
+            --set components.aiops.enabled=true \
+            -f deploy/values-app-stamp.yaml \
+            -f deploy/values-flagd-sync.yaml \
+            -f deploy/values-aio-llm.yaml \
+            > rendered/techx-corp-aiops.yaml
           python - <<'PY'
           from pathlib import Path
           import yaml
@@ -439,7 +448,7 @@ jobs:
           resources = [
               resource
               for resource in yaml.safe_load_all(
-                  Path("rendered/techx-corp-app.yaml").read_text()
+                  Path("rendered/techx-corp-aiops.yaml").read_text()
               )
               if resource
           ]
