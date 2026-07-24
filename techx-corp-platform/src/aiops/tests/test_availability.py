@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 from app.availability import (
     AvailabilitySnapshot,
     KubernetesAvailabilityClient,
@@ -21,8 +23,12 @@ class FakeAppsApi:
         self.ready = ready
         self.updated = updated
         self.error = error
+        self.request_timeout = None
 
-    def read_namespaced_deployment(self, service, namespace):
+    def read_namespaced_deployment(
+        self, service, namespace, *, _request_timeout=None
+    ):
+        self.request_timeout = _request_timeout
         if self.error:
             raise self.error
         return SimpleNamespace(
@@ -55,6 +61,29 @@ def test_availability_adapter_fails_unknown_not_down():
     assert result.state == "unknown"
     assert result.desired_replicas is None
     assert result.reason == "kubernetes_api_unavailable:RuntimeError"
+
+
+def test_availability_adapter_bounds_connect_and_read_time():
+    api = FakeAppsApi()
+    client = KubernetesAvailabilityClient(
+        "techx-tf4",
+        apps_api=api,
+        request_timeout_seconds=2.5,
+    )
+
+    assert client.snapshot("checkout").state == "healthy"
+    assert api.request_timeout == (2.5, 2.5)
+
+
+def test_availability_adapter_rejects_non_positive_timeout():
+    with pytest.raises(
+        ValueError, match="request_timeout_seconds must be positive"
+    ):
+        KubernetesAvailabilityClient(
+            "techx-tf4",
+            apps_api=FakeAppsApi(),
+            request_timeout_seconds=0,
+        )
 
 
 def test_snapshot_fields_are_auditable():
