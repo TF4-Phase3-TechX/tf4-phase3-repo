@@ -1,0 +1,4 @@
+NAMESPACE   NAME       REFERENCE             TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+techx-tf4   checkout   Rollout/checkout      cpu: 25%/70%    2         3         2          8d
+techx-tf4   currency   Deployment/currency   cpu: 7%/70%     2         3         2          7d4h
+techx-tf4   frontend   Deployment/frontend   cpu: 172%/70%   2         3         3          8d
