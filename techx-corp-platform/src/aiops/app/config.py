@@ -47,6 +47,18 @@ class Settings:
         os.getenv("AIOPS_ACUTE_MIN_BREACH_POINTS", "2")
     )
     recovery_polls: int = int(os.getenv("AIOPS_RECOVERY_POLLS", "2"))
+    availability_sustained_polls: int = int(
+        os.getenv("AIOPS_AVAILABILITY_SUSTAINED_POLLS", "2")
+    )
+    busy_request_rate_threshold: float = float(
+        os.getenv("AIOPS_BUSY_REQUEST_RATE_THRESHOLD", "5")
+    )
+    availability_down_confidence: float = float(
+        os.getenv("AIOPS_AVAILABILITY_DOWN_CONFIDENCE", "0.95")
+    )
+    availability_degraded_confidence: float = float(
+        os.getenv("AIOPS_AVAILABILITY_DEGRADED_CONFIDENCE", "0.80")
+    )
     cooldown_seconds: int = int(os.getenv("AIOPS_COOLDOWN_SECONDS", "600"))
     minimum_request_count: int = int(os.getenv("AIOPS_MINIMUM_REQUEST_COUNT", "20"))
     llm_minimum_call_count: int = int(os.getenv("AIOPS_LLM_MINIMUM_CALL_COUNT", "5"))
