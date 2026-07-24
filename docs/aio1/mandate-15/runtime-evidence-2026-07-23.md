@@ -116,21 +116,21 @@ sha256:c032171352869b91e2683826aefed9124ea2e35e78cd5095d51ca278b64d30c1
 
 Argo reconciled Deployment generation 4 and created pod
 `aiops-7d87f8b68b-r5tgr` at `2026-07-24T01:12:47Z`. In the first observation
-window of more than four minutes, covering approximately five 45-second worker
-polls, the pod remained Ready with:
+window of more than seven minutes, covering approximately eight 45-second
+worker polls, the pod remained Ready with:
 
 | Observation | Result |
 |---|---:|
 | Container restarts | `0` |
-| Prometheus HTTP 200 responses | `45` |
-| OpenSearch HTTP 200 responses | `5` |
+| Prometheus HTTP 200 responses | `72` |
+| OpenSearch HTTP 200 responses | `8` |
 | Unexpected polling failures | `0` |
 | `telemetry_degraded` events | `0` |
 
 The only probe warnings were `connection refused` during initial container
 startup before Uvicorn listened; they did not terminate the container. This is
 short-window runtime evidence that the probe-starvation failure did not recur
-across several polls. It is not a long-duration availability or reliability
+across eight polls. It is not a long-duration availability or reliability
 claim.
 
 ## Coverage and observability limitations
@@ -196,7 +196,7 @@ kubectl -n techx-observability logs daemonset/otel-collector-agent `
 ## Required closure run
 
 1. Continue the probe/event-loop observation over the agreed reliability
-   window. The first five post-fix polls completed with zero restarts, but the
+   window. The first eight post-fix polls completed with zero restarts, but the
    long-duration window remains open.
 2. Remove or correct the stale `kafka:9092` receiver and size/shape the
    collector so it does not refuse telemetry during the labeled window.
