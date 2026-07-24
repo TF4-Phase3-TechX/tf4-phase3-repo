@@ -134,11 +134,11 @@ Tạo resource bằng Terraform, không tạo tay:
 - S3 bucket `tf4-ai-audit-logs-<account-id>`:
   - Versioning enabled;
   - Object Lock `COMPLIANCE` 90 ngày;
-  - total retention 365 ngày;
+  - tổng thời gian lưu 90 ngày;
   - Public Access Block;
   - TLS-only bucket policy;
   - encryption bằng SSE-S3 (`AES256`), không tạo KMS CMK riêng;
-  - lifecycle giữ Standard-only và expire ngày 365;
+  - lifecycle giữ object ở S3 Standard và tự expire sau 90 ngày;
   - `force_destroy=false`.
 - CloudWatch subscription filter từ dedicated Log Group sang Firehose.
 - Firehose bật CloudWatch Logs decompression + message extraction, GZIP output
@@ -235,7 +235,7 @@ response hoặc tool payload.
 |---|---|---|
 | OpenSearch `ai-tool-audit-*` | 7 ngày | Hot searchable copy |
 | CloudWatch `/tf4/mandate-14/ai-tool-audit` | 7 ngày | Operational query/alert + Firehose source |
-| S3 AI audit bucket | 365 ngày tổng; WORM COMPLIANCE tối thiểu 90 ngày | Evidence authority |
+| S3 AI audit bucket | 90 ngày tổng; WORM COMPLIANCE 90 ngày | Evidence authority |
 | Firehose errors | 7 ngày | Delivery troubleshooting |
 | Safe validation errors | 7 ngày | Schema/privacy monitoring |
 
@@ -348,7 +348,7 @@ Chỉ dùng synthetic IDs/content.
       không `Never Expire`.
 - [ ] S3 Versioning = `Enabled`.
 - [ ] S3 Object Lock = `COMPLIANCE`, default 90 ngày.
-- [ ] S3 total lifecycle retention = 365 ngày.
+- [ ] S3 total lifecycle retention = 90 ngày.
 - [ ] Encryption và Public Access Block được bật.
 - [ ] Synthetic object `head-object` có retain-until date đúng.
 - [ ] Delete object version bằng non-authorized role trả `AccessDenied`.
