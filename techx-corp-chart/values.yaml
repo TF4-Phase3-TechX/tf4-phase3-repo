@@ -2367,7 +2367,11 @@ prometheus:
         memory: 1Gi
       limits:
         cpu: 500m
-        memory: 1Gi
+        # Runtime preflight on 2026-07-24 observed a 966,004,736-byte
+        # 30-minute working-set peak and repeated OOMKills at the old 1Gi
+        # ceiling. Keep the scheduler request and 7d retention unchanged;
+        # this limit is headroom, not a claim that ingestion is tuned.
+        memory: 2Gi
     containerSecurityContext:
       runAsUser: 65534
       runAsGroup: 65534
