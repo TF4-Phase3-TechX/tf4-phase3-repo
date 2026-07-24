@@ -34,14 +34,15 @@ if ($restoreDt -lt $earliestDt -or $restoreDt -gt $latestDt) {
     throw "RestoreTime=$RestoreTime ngoai cua so kha dung [$($window.Earliest), $($window.Latest)]"
 }
 
-# 1) SG tam, ingress 5432 tu EKS node SG (loc theo tag cluster, khong dua theo ten wildcard mong manh)
+# 1) SG tam, ingress 5432 tu dung node SG ma production dang tin cay - doc THANG tu rule 5432 dang co
+#    tren SG nguon (khong doan qua tag EKS, vi tag cluster-name/cluster-resource-controller da xac
+#    nhan KHONG khop SG nao trong account nay - xem plan doc §9).
 $vpcId = aws ec2 describe-security-groups --region $Region --group-ids $SourceSgId --query 'SecurityGroups[0].VpcId' --output text
 Assert-LastExitCode 'aws ec2 describe-security-groups (source SG)'
 
-$nodeSgId = aws ec2 describe-security-groups --region $Region `
-    --filters "Name=vpc-id,Values=$vpcId" "Name=tag:aws:eks:cluster-name,Values=techx-tf4-cluster" "Name=tag:aws:eks:cluster-resource-controller,Values=owned" `
-    --query 'SecurityGroups[0].GroupId' --output text
-Assert-LastExitCode 'aws ec2 describe-security-groups (node SG lookup)'
+$nodeSgId = aws ec2 describe-security-groups --region $Region --group-ids $SourceSgId `
+    --query 'SecurityGroups[0].IpPermissions[?FromPort==`5432`].UserIdGroupPairs[0].GroupId | [0]' --output text
+Assert-LastExitCode 'aws ec2 describe-security-groups (node SG tu rule 5432 cua nguon)'
 if ([string]::IsNullOrWhiteSpace($nodeSgId) -or $nodeSgId -eq 'None') {
     throw 'Khong tim thay dung 1 node SG qua tag filter - kiem tra lai thu cong (aws eks describe-cluster / describe-nodegroup).'
 }

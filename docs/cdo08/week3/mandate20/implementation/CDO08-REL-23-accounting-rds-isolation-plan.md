@@ -198,7 +198,7 @@ Ghi từng mốc thời gian thật khi rehearsal. `T_total` ≤ 2 giờ → PAS
 
 - **MSK `orders` retention chưa pin cứng** — đang dựa vào default broker (168h), khuyến nghị pin tường minh `log.retention.hours=168` trong `infra/terraform/msk.tf` (`aws_msk_configuration.orders`) để khoá cứng ràng buộc "Kafka retention ≥ RDS PITR window" dùng ở §7.3. Chưa sửa trong lượt này vì đụng infra đang chạy thật, cần quyết định riêng.
 - **Image `apache/kafka:3.9.0` cho pod client Kafka chưa được smoke-test thật** — chọn image chính thức của Apache Kafka project (khớp `kafka_versions=3.9.x` trong `msk.tf`) để đảm bảo `bin/kafka-consumer-groups.sh` tồn tại đúng path, nhưng chưa xác minh được bằng cách chạy thật (không có kết nối để tra manifest image tại thời điểm viết). Cần smoke-test 1 lần trước rehearsal đầu tiên.
-- **Node SG lookup dựa vào tag `aws:eks:cluster-name`/`aws:eks:cluster-resource-controller`** — cần xác nhận đúng 1 SG khớp filter trên cluster thật trước khi chạy `01-restore-pitr-isolated.ps1` lần đầu.
+- ~~Node SG lookup dựa vào tag `aws:eks:cluster-name`~~ — **đã phát hiện và sửa (2026-07-25):** filter theo tag không khớp SG nào thật trong account. Đổi sang đọc thẳng `GroupId` từ rule ingress 5432 đang có sẵn trên SG nguồn (`sg-097d1ea5852b31f41`, đã verify sống) — đáng tin cậy hơn vì luôn khớp đúng SG production đang thực sự tin cậy, không phụ thuộc quy ước đặt tag.
 - **GAP-06 (gap register), RTO/RPO matrix (`accounting`: 2 giờ), cost estimate cho phương án procedure-only** — 3 tài liệu này cần cập nhật khớp hướng đã chốt ở đây, chưa làm trong lượt này.
 - **Chưa có PM sign-off** — không chạy Subtask 2-4 thật (tạo instance tạm, export/restore, cutover production) cho tới khi kế hoạch này được duyệt.
 
