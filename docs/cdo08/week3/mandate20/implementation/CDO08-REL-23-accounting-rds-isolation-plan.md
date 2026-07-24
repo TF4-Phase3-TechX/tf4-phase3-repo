@@ -1,218 +1,207 @@
-> **TRẠNG THÁI: DRAFT — CHƯA THỰC THI.** 
+# CDO08-REL-23 - Accounting Schema-Level Recovery Implementation Plan
 
-# CDO08-REL-23 — Kế hoạch tách schema `accounting` sang RDS instance riêng
-
-**Mandate:** [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) - Directive #20, yêu cầu #3-4
-**Subtask:** Hiện thực hoá [GAP-06](../scan/CDO08-REL-20-gap-register.md) — xem thêm quyết định RPO/RTO tại [CDO08-REL-21-rpo-rto-matrix.md](../adr/CDO08-REL-21-rpo-rto-matrix.md)
-**Nguồn task:** `D:\REL-23.csv` — `[CDO08-REL-23][P0][RDS] Isolate accounting into a dedicated RDS recovery boundary`
 **Owner:** CDO08 Reliability + Infra
-**Trạng thái:** DRAFT
+**Team:** CDO08
+**Task:** CDO08-REL-23
+**Subtask:** Object inventory · Isolated shared-RDS PITR procedure · Automate export/restore · Validate & production-safe cutover runbook
+**Ngày ghi nhận:** 2026-07-24
 
-> **Ghi chú ID:** [gap register](../scan/CDO08-REL-20-gap-register.md) (GAP-06) cross-reference task xử lý
-> bằng ID `REL-32`; file task nguồn dùng ID `CDO08-REL-23`. Cùng 1 việc, 2 ID — người đọc từ gap register
-> tìm "REL-32" chính là tài liệu này.
+## 1. Mục Tiêu
 
----
+RDS PITR hoạt động ở cấp instance. Ba schema `catalog`/`accounting`/`reviews` hiện sống chung 1 instance `techx-tf4-postgresql` (database `otel`). Nếu cần khôi phục `accounting` (sổ cái order — `Critical`, không tái tạo được) về một mốc thời gian trước sự cố, restore-in-place cả instance sẽ kéo theo `catalog`/`reviews` về cùng mốc đó, làm mất dữ liệu mới ghi không liên quan gì tới sự cố của `accounting`.
 
-## 1. Mục tiêu
+Subtask này xây một quy trình recovery không bao giờ restore-in-place cả instance: PITR toàn instance ra 1 bản sao tạm, cách ly → export riêng schema `accounting` từ bản đó → validate trên database drill → đưa vào production qua cutover có kiểm soát. `accounting` vẫn ở chung instance vật lý với `catalog`/`reviews` như hiện tại — không tách sang instance riêng thường trực, tránh chi phí/độ phức tạp nuôi 2 instance song song vĩnh viễn.
 
-Tách schema `accounting` (sổ cái order — dữ liệu ra tiền, `Critical` theo
-[RPO/RTO matrix](../adr/CDO08-REL-21-rpo-rto-matrix.md): RPO đề xuất 15 phút, RTO đề xuất 1 giờ) ra khỏi
-RDS instance đang dùng chung với `catalog`/`reviews`, sang một **recovery boundary độc lập** — một RDS
-instance riêng chỉ chứa `accounting`.
+Quy trình gồm 4 subtask, chạy tuần tự:
 
-## 2. Vì sao cần tách
-
-Theo [stateful-store-inventory](../scan/CDO08-REL-20-stateful-store-inventory.md) và
-[gap register](../scan/CDO08-REL-20-gap-register.md) (GAP-06): PostgreSQL PITR hoạt động ở **cấp instance**,
-không phải cấp schema. Cả 3 schema `catalog`/`accounting`/`reviews` hiện sống chung 1 instance
-`techx-tf4-postgresql` (`techx-corp-chart/postgresql/init.sql`). Nếu cần restore `accounting` về một mốc
-thời gian trước sự cố (VD: một bug ghi đè order), thao tác PITR sẽ đưa **toàn bộ instance** — bao gồm
-`catalog` và `reviews` — về cùng timestamp đó, có nguy cơ làm mất dữ liệu review/catalog vừa ghi thật
-trong khoảng thời gian đó mà không liên quan gì tới sự cố của `accounting`. Đây là gap trực tiếp vi phạm
-yêu cầu #3 của Mandate 20 ("point-in-time restore chứng minh được" — restore phải ra môi trường tách biệt,
-không kéo theo dữ liệu không liên quan).
-
-## 3. Quyết định thiết kế — phương án, tradeoff, đề xuất
-
-### 3.1 Phương pháp migrate dữ liệu (`REL23-D1`)
-
-`accounting` là **writer duy nhất** ghi vào schema `accounting` (theo
-[revenue-path-dependency-trace](../scan/CDO08-REL-20-revenue-path-dependency-trace.md) — không service
-nào khác ghi/đọc 3 bảng `accounting."order"`/`orderitem`/`shipping`), và nó tiêu thụ dữ liệu order từ
-**MSK Kafka topic `orders`** — nghĩa là dừng consumer không làm mất order: message vẫn nằm trong Kafka
-(replication factor 2, retention còn hiệu lực), chỉ chờ được consume lại.
-
-| | **PA-A: `pg_dump`/`restore` + tạm dừng consumer** | **PA-B: AWS DMS full-load + CDC** |
+| # | Subtask | Trạng thái |
 |---|---|---|
-| Cơ chế | Scale `accounting` Deployment về 0 replica (= write-freeze tự nhiên vì nó là writer duy nhất) → `pg_dump` schema `accounting` từ instance cũ → `pg_restore` vào instance mới → cutover connection string → scale lại `accounting` → consumer tự động replay các message `orders` tích luỹ trong lúc dừng | Dựng lại toàn bộ hạ tầng DMS (giống REL-14/15): DMS replication instance, migration bridge NLB, DMS task `full-load-and-cdc`, rồi writer-freeze ngắn + parity gate trước cutover |
-| Downtime ghi | Có, nhưng **không đồng nghĩa mất dữ liệu** — Kafka giữ order trong lúc `accounting` down, consume bù ngay khi bật lại | Gần như zero-downtime (CDC bắt kịp trước khi cutover) |
-| Độ phức tạp | Thấp — chỉ 1 lần pg_dump/restore, không cần dựng lại DMS instance/bridge/task | Cao — phải tái tạo toàn bộ pipeline DMS đã dùng 1 lần cho REL-15 rồi bỏ, tốn thêm chi phí DMS instance + thời gian setup/parity gate |
-| Rủi ro | Thời gian `accounting` down tỷ lệ thuận với lượng order dồn cần replay lúc bật lại (giám sát consumer lag) | Rủi ro vận hành DMS (đã từng có sự cố ghi nhận ở REL-15 evidence), cấu hình lại CDC cho 1 schema nhỏ là over-engineering |
-| Phù hợp khi | Service là writer/consumer duy nhất, có message queue làm buffer tự nhiên (đúng case `accounting`) | Cần giữ zero-downtime cho service có traffic ghi trực tiếp từ nhiều client, không có buffer replay |
+| 1 | Schema object inventory | Đã hoàn thành — §4 |
+| 2 | Restore-to-point-in-time ra instance cách ly | Kế hoạch — §5 |
+| 3 | Tự động hoá export/restore vào database drill | Kế hoạch — §6 |
+| 4 | Validate + production-safe cutover runbook | Kế hoạch — §7 |
 
-**Quyết định: PA-A (`pg_dump`/`restore` + tạm dừng consumer) — đã chốt.** Lý do: bản chất `accounting`
-khác với cutover RDS toàn hệ thống ở REL-15 (khi đó nhiều service ghi/đọc đồng thời, cần CDC để không mất
-giao dịch đang chạy). Ở đây `accounting` là consumer Kafka đơn lẻ — dừng nó không mất order thật vì Kafka
-đã đóng vai trò buffer bền vững. Dùng lại DMS cho 3 bảng nhỏ, 1 writer là chi phí/độ phức tạp không tương
-xứng với lợi ích — xem thêm so sánh chi phí thật giữa 2 phương án tại
-[CDO08-REL-23-cost-estimate.md](../review-requests/CDO08-REL-23-cost-estimate.md) (PA-A không cần DMS/NLB
-tạm thời nên rẻ hơn đáng kể). Toàn bộ §5-7 bên dưới viết theo PA-A.
+## 2. Facts Hạ Tầng Đã Xác Minh
 
-### 3.2 Cách tách connection string sang host mới (`REL23-D2`)
-
-Hiện tại cả 3 service `accounting`/`product-catalog`/`product-reviews` dùng **chung 1 K8s Secret**
-`rds-postgres-secret` (nguồn AWS Secrets Manager `techx/tf4/rds-postgres`), chỉ khác nhau ở **key** theo
-ngôn ngữ (`dotnet-conn-string`/`go-conn-string`/`python-conn-string`) — xem
-[sec-13-managed-data-secret-contract.md](../../../sec-13-managed-data-secret-contract.md). Chart
-(`techx-corp-chart/templates/_pod.tpl`, biến `$pgKeyMap`) áp **1 `secretName` chung** cho cả 3 service.
-
-| | **PA-A: Secret riêng + sửa chart per-service** | **PA-B: Đổi giá trị trong secret chung** |
-|---|---|---|
-| Cơ chế | Tạo secret AWS Secrets Manager mới `techx/tf4/rds-accounting` (nằm trong prefix `techx/tf4/*` đã được IAM ESO cấp quyền đọc sẵn — không cần đổi IAM) → ExternalSecret mới `rds-accounting-secret` (namespace `techx-tf4`) → sửa `_pod.tpl`/`values.yaml` để `accounting` đọc `secretName` riêng thay vì dùng chung `$pgKeyMap` | Chỉ sửa property `connection_string_dotnet` bên trong secret `techx/tf4/rds-postgres` hiện có, trỏ sang host RDS mới; `connection_string_go`/`connection_string_python` giữ nguyên host cũ |
-| Tách bạch | Rõ ràng — mỗi instance có secret riêng, đúng tinh thần "recovery boundary độc lập" của cả task này | Kém — 2 RDS instance khác nhau nhưng thông tin kết nối nằm chung 1 secret, dễ nhầm khi audit/rotate credential, vi phạm tinh thần tách boundary mà chính task này đang làm |
-| Chi phí thay đổi | Cần 1 thay đổi chart (`_pod.tpl`) để hỗ trợ `secretName` theo từng service thay vì áp chung 1 secret cho cả `$pgKeyMap` | Không cần sửa chart — nhanh hơn để triển khai |
-| Rủi ro vận hành | Rotate/xoá secret của `catalog`/`reviews` không còn ảnh hưởng tới `accounting` và ngược lại | Rotate secret `techx/tf4/rds-postgres` (VD sau khi xử lý GAP-01) phải cẩn thận không làm hỏng 2 property khác đang trỏ instance khác |
-
-**Quyết định: PA-A (secret riêng + sửa chart per-service) — đã chốt.** Lý do: mục tiêu của cả REL-23 là
-tạo **recovery boundary độc lập** — nếu vẫn giữ chung 1 secret cho 2 instance khác nhau thì boundary chỉ
-độc lập ở tầng dữ liệu (RDS) nhưng không độc lập ở tầng vận hành/credential, làm giảm giá trị của việc
-tách. Chi phí thêm (1 thay đổi chart nhỏ, có tiền lệ pattern per-component đã dùng cho
-`strategy:`/`rollouts:`, cộng thêm ~$0.40/tháng cho 1 secret mới — xem
-[cost estimate](../review-requests/CDO08-REL-23-cost-estimate.md)) là không đáng kể so với lợi ích tách
-bạch lâu dài.
-
-## 4. Codebase footprint (mô tả, CHƯA tạo ở lượt này)
-
-- **(A) Terraform** (`infra/terraform/`): clone khối resource trong `rds.tf` (SG + subnet group + parameter
-  group + `aws_db_instance`) thành instance mới, ví dụ `techx-tf4-accounting-postgresql` — mirror mọi
-  thuộc tính của instance hiện tại: `postgres 17.9`, `db.t4g.micro`, `multi_az=true`,
-  `storage_encrypted=true`, `backup_retention_period=7`, `deletion_protection=true`,
-  `manage_master_user_password=true`, final snapshot, `monitoring_interval=0`. Có thể clone thêm
-  `postgresql-migration-backup.tf` (đổi prefix `rel15/` → `rel23/`) nếu cần một bản S3 dump pre-cutover
-  riêng cho migration này.
-- **(B) Kubernetes/GitOps**: ExternalSecret mới (theo PA-A §3.2) trong
-  `[gitops] platform/secrets/managed-data-secrets.yaml`; sửa `techx-corp-chart/templates/_pod.tpl`
-  (`$pgKeyMap`) + `techx-corp-chart/values.yaml` để `accounting` trỏ `secretName` riêng;
-  `[gitops] environments/production/app-values.yaml` (`managedData.postgresql` block) cập nhật tương ứng.
-- **(C) Scripts** (`docs/cdo08/week3/mandate20/scripts/postgres/` — mới, theo PA-A §3.1): script scale
-  `accounting` về 0, `pg_dump`/`pg_restore` schema `accounting`, script cutover secret, script parity-check
-  (row count 3 bảng), script rollback. Đặt số thứ tự khi thực thi thật, chưa tạo ở lượt này.
-
-## 5. Quy trình theo 4 subtask (từ `REL-23.csv`)
-
-### Subtask 1 — Provision dedicated accounting RDS instance
-
-- [ ] Private subnet/security group riêng (mirror `techx-tf4-rds-postgresql` SG, ingress từ EKS node SG).
-  **Lệnh:** `terraform plan -target=aws_db_instance.accounting_postgresql` (tên resource dự kiến).
-  **Expected:** plan chỉ thêm mới, không đổi resource hiện có.
-- [ ] Encryption (`storage_encrypted=true`), TLS bắt buộc, `deletion_protection=true`.
-- [ ] Automated backup + PITR, `backup_retention_period=7`.
-- [ ] Parameter group/monitoring baseline phù hợp (mirror parameter group hiện tại nếu không cần
-  `rds.logical_replication` — chỉ cần nếu chọn PA-B ở §3.1).
-
-**Acceptance Criteria (từ CSV):** instance private và healthy · PITR enabled · không expose public
-endpoint · có evidence `terraform plan`/`apply` lưu lại.
-
-### Subtask 2 — Migrate accounting schema and data safely
-
-- [ ] Migration method đã chốt PA-A (§3.1) — chỉ cần chọn cutover window (khung giờ thấp tải).
-- [ ] Scale `accounting` Deployment về 0 (write-freeze tự nhiên).
-  **Lệnh:** `kubectl scale deployment/accounting -n techx-tf4 --replicas=0`.
-- [ ] `pg_dump` schema `accounting` từ instance cũ → `pg_restore` vào instance mới.
-- [ ] Đối chiếu row count 3 bảng (`accounting."order"`, `accounting.orderitem`, `accounting.shipping`) +
-  order ID + tổng số tiền giữa 2 instance — xem [§7 Data parity checklist](#7-data-parity-checklist).
-- [ ] Ghi lại rollback checkpoint (thời điểm dump, snapshot instance cũ) trước cutover.
-
-**Acceptance Criteria (từ CSV):** schema và data integrity pass · row/order reconciliation không thiếu ·
-có rollback checkpoint trước cutover.
-
-### Subtask 3 — Update accounting secret and application connection
-
-- [ ] Theo PA-A §3.2: tạo AWS Secrets Manager secret mới + ExternalSecret mới cho `accounting`.
-- [ ] Xác nhận ExternalSecret sync `Ready=True`, K8s Secret mới xuất hiện trong `techx-tf4`.
-  **Lệnh:** `kubectl get externalsecret rds-accounting-secret -n techx-tf4`.
-- [ ] Rollout `accounting` có kiểm soát (Deployment `strategy: Recreate` — pod cũ dừng hẳn trước khi pod
-  mới start, khớp cơ chế write-freeze ở Subtask 2).
-- [ ] Không ghi connection string thật vào Git/log — mọi evidence phải mask (`Password=***`).
-
-**Acceptance Criteria (từ CSV):** accounting kết nối instance mới · secret sync Healthy · không có
-plaintext credential trong Git/evidence · rollout không làm mất Kafka consumption kéo dài (consumer group
-`accounting` phải resume đúng offset, không reset).
-
-### Subtask 4 — Validate order processing and stabilize cutover
-
-- [ ] Produce test order qua luồng checkout thật (môi trường tách biệt/staging nếu có, tránh production
-  thật nếu chưa đủ tự tin).
-- [ ] Verify `accounting` consume và persist đúng vào instance mới.
-- [ ] Theo dõi consumer lag / error rate / DB connection count trong giai đoạn stabilization.
-- [ ] Giữ nguyên schema cũ trên instance cũ trong suốt thời gian stabilization — **không xoá ngay**.
-
-**Acceptance Criteria (từ CSV):** test order xuất hiện đúng trên instance mới · không duplicate/missing
-order · không còn write mới vào schema `accounting` cũ · chỉ cleanup schema cũ sau khi có approval.
-
-## 6. Rollback playbook
-
-- **Bước R.1** — Nếu phát hiện lỗi sau cutover secret (Subtask 3) nhưng **trước khi** có ghi mới vào
-  instance mới: repoint ExternalSecret/ `accounting` về secret cũ (instance cũ vẫn còn nguyên schema —
-  chưa xoá theo Subtask 4), scale lại `accounting`, consumer tự resume từ offset cũ. Không mất dữ liệu vì
-  chưa có ghi nào tách rời trên instance mới.
-- **Bước R.2** — Nếu phát hiện lỗi **sau khi** đã có order mới ghi vào instance mới (giai đoạn Subtask 4):
-  không rollback bằng cách xoá dữ liệu instance mới. Vì schema `accounting` không có cột timestamp (PK là
-  `order_id TEXT`, xem `init.sql`), không thể lọc "order mới" theo thời gian — thay vào đó dùng **diff theo
-  `order_id`**: so tập `order_id` hiện có trên instance mới với tập `order_id` đã ghi nhận ở checkpoint P-1
-  (baseline trước dump, §7); phần chênh lệch (`order_id` có ở instance mới nhưng không có ở baseline) chính
-  là order phát sinh sau cutover — `pg_dump --table` lọc đúng các row đó (kèm `orderitem`/`shipping` khớp
-  `order_id`) rồi `pg_restore`/`INSERT` bổ sung vào instance cũ trước khi repoint secret về lại instance cũ.
-  Đây là bản rút gọn của tinh thần "reverse-CDC"/riot-redis backfill đã dùng cho REL-16, phù hợp quy mô nhỏ
-  của schema `accounting` (3 bảng, không cần tooling CDC riêng).
-- **Bước R.3** — Trong mọi trường hợp, không xoá schema `accounting` trên instance cũ cho tới khi Subtask
-  4 xác nhận ổn định và có approval — đây chính là điều kiện "giữ schema cũ trong stabilization" của CSV.
-
-## 7. Data parity checklist
-
-Mọi query dưới đây chạy trên cả 2 instance để đối chiếu, không có credential thật trong evidence.
-
-| ID | Giai đoạn | Query đối chiếu | Tiêu chuẩn đạt |
-|---|---|---|---|
-| P-1 | Trước cutover (baseline) | `SELECT count(*) FROM accounting."order";` | Ghi lại baseline count trên instance cũ trước khi dump |
-| P-2 | Trước cutover (baseline) | `SELECT count(*) FROM accounting.orderitem;` và `SELECT count(*) FROM accounting.shipping;` | Ghi lại baseline count |
-| P-3 | Trước cutover (baseline) | `SELECT max(order_id) FROM accounting."order";` (hoặc tổng hợp theo thời gian ghi nhận nếu có cột timestamp) | Xác định mốc order cuối cùng trước freeze |
-| A-1 | Sau restore, trước cutover connection | `SELECT count(*) FROM accounting."order";` trên instance mới | Bằng đúng P-1 (0 lệch) |
-| A-2 | Sau restore, trước cutover connection | So `orderitem`/`shipping` count trên instance mới với P-2 | Bằng đúng P-2 (0 lệch), FK giữa 3 bảng còn nguyên (không orphan `orderitem`/`shipping` thiếu `order_id` cha) |
-| A-3 | Sau khi bật lại consumer (Subtask 4) | So sánh số order mới consume được với số order thật đã checkout trong khoảng thời gian `accounting` bị scale 0 | Không thiếu, không trùng đơn nào — đối chiếu qua log/metric checkout thật |
-
-**Rủi ro redeliver khi bật lại consumer:** nếu offset Kafka đã commit trễ hơn thời điểm ghi DB thật (VD pod
-bị kill giữa lúc xử lý thay vì drain sạch), consumer có thể nhận lại 1 message đã từng ghi. Vì
-`accounting."order".order_id` là `PRIMARY KEY` và code ghi bằng `INSERT` thẳng (`Consumer.cs`), message
-redeliver sẽ gây **lỗi PK violation hiển thị rõ trong log `accounting`**, không âm thầm tạo dòng trùng. A-3
-cần bao gồm: kiểm tra log `accounting` trong cửa sổ bật lại consumer, nếu có lỗi PK violation thì đối chiếu
-`order_id` đó đã tồn tại đúng 1 lần (không phải ghi thiếu) trước khi coi là an toàn.
-
-## 8. PM Approval Gate
+Scan trực tiếp trên AWS/RDS, thời điểm 2026-07-24:
 
 | Field | Value |
 |---|---|
-| Task | `[CDO08-REL-23][P0][RDS] Isolate accounting into a dedicated RDS recovery boundary` |
-| Chi phí phát sinh | Xem phân tích chi tiết, có nguồn, tại [CDO08-REL-23-cost-estimate.md](../review-requests/CDO08-REL-23-cost-estimate.md) — cần PM xác nhận nằm trong ngân sách theo ràng buộc Mandate 20 |
-| Trạng thái | **PENDING** |
-| Gate | Không chạy bất kỳ script/thao tác tạo tài nguyên/migrate nào cho tới khi PM (Hải) duyệt kế hoạch này |
+| Instance nguồn | `techx-tf4-postgresql` |
+| Database | `otel` |
+| Engine | postgres 17.9, `db.t4g.micro`, Multi-AZ |
+| Storage | 20 GiB gp3 |
+| Publicly accessible | false |
+| Security Group | `sg-0fbc6edd9ae2742d1` (Node-to-SG) |
+| DB Subnet Group | `techx-tf4-postgresql-private` |
+| Backup retention | 7 ngày |
+| Latest restorable time | 2026-07-24T05:42:34Z (~real-time, continuous log backup) |
+| Instance create time | 2026-07-19T14:12:01Z |
+| Master password | `manage_master_user_password=true` — Secrets Manager tự sinh secret mới cho mỗi instance identifier mới |
 
-## 9. Pre-check trước khi thực thi (phát hiện ngoài phạm vi thiết kế, cần biết trước)
+## 3. Ràng Buộc Nền Tảng
 
-`accounting` Deployment tại thời điểm viết tài liệu này đang **0/1 pod, không tạo được pod** — bị Kyverno
-policy `require-signed-techx-images` chặn vì image digest hiện tại trả về `MANIFEST_UNKNOWN` từ ECR (khả
-năng ECR lifecycle đã prune image trong khi targetRevision vẫn pin về digest đó). Đây là sự cố ngoài phạm
-vi thiết kế của REL-23, **không phải do kế hoạch này gây ra**, nhưng phải fix xong trước khi thực thi
-Subtask 2 (dựa trên write-freeze tự nhiên của accounting — không áp dụng được nếu accounting đã chết sẵn)
-và Subtask 4 (cần accounting sống để validate). Xem chi tiết + cách kiểm tra tại
-[CDO08-REL-23-demo-script.md §0](../implementation/CDO08-REL-23-demo-script.md).
+- Schema `accounting` không có cột timestamp (`order`/`orderitem`/`shipping`) — không lọc được "dữ liệu phát sinh sau mốc X" bằng giá trị cột, mọi so sánh trước/sau phải dùng diff tập `order_id`.
+- Role ứng dụng thật là `techx_app` (không phải `otelu` như `init.sql` gốc — file đó predate migration RDS).
+- 0 cross-schema dependency — đã xác minh bằng query live, không FK nào nối `accounting` với `catalog`/`reviews`.
+- Owner của cả 3 bảng là `postgres` (master), không phải `techx_app` — mọi thao tác restore/DDL trong plan này dùng credential master, không dùng `techx_app`.
 
-## 10. Chưa làm ở lượt này (out of scope)
+## 4. Subtask 1 - Schema Object Inventory (Đã Hoàn Thành)
 
-Tài liệu này chỉ là **kế hoạch**. Chưa: tạo RDS instance mới, tạo/sửa secret AWS, sửa Terraform/chart/GitOps,
-chạy bất kỳ script pg_dump/restore nào, produce test order, tạo PR. Việc thực thi thật sẽ theo đúng 4 subtask
-và 2 quyết định thiết kế (đã chốt PA-A cho cả 2 ở §3, chờ PM duyệt ở §8) khi được yêu cầu ở lượt sau. Kịch
-bản lệnh cụ thể để thực thi (khi được duyệt) nằm ở
-[CDO08-REL-23-demo-script.md](../implementation/CDO08-REL-23-demo-script.md); phân tích chi phí đầy đủ nằm
-ở [CDO08-REL-23-cost-estimate.md](../review-requests/CDO08-REL-23-cost-estimate.md).
+Evidence lấy sống 2026-07-24 qua pod tạm (`pg-inspect`, đã xoá sau khi dùng), kết nối bằng secret production.
+
+**Object inventory:**
+
+| Object | Kết quả |
+|---|---|
+| Tables | `order` (PK `order_id` text), `orderitem` (PK ghép `order_id`+`product_id`), `shipping` (PK `shipping_tracking_id` text) |
+| Sequences | 0 |
+| Indexes | 3 unique index tự sinh từ PK, không index phụ |
+| Constraints | 3 PRIMARY KEY + 2 FOREIGN KEY, cả 2 FK đều `ON DELETE CASCADE` → `"order"` |
+| Functions | 0 |
+| Extensions (toàn DB `otel`) | Chỉ `plpgsql` (mặc định hệ thống) |
+| Schema/table owner | `postgres` |
+
+**Roles/privileges:** `techx_app` có SELECT/INSERT/UPDATE/DELETE/TRUNCATE trên cả 3 bảng.
+
+**Baseline (2026-07-24):** `order` = 205,891 · `orderitem` = 377,846 · `shipping` = 205,891. Orphan check 2 chiều: 0 dòng.
+
+**Validation checklist dùng cho mọi lần restore sau này:**
+
+| # | Kiểm tra | Điều kiện đạt |
+|---|---|---|
+| 1 | `order_count` | = baseline tại đúng mốc restore đang xét |
+| 2 | `shipping_count` = `order_count` | Quan hệ 1:1 |
+| 3 | `orderitem_count` ≥ `order_count` | ~1.83 item/order tại baseline hiện tại |
+| 4 | Orphan `orderitem`→`order` | 0 dòng |
+| 5 | Orphan `shipping`→`order` | 0 dòng |
+| 6 | Privilege `techx_app` sau restore | Đủ 5 quyền trên cả 3 bảng, owner vẫn `postgres` |
+
+Kỳ vọng đã đạt: có schema object inventory · không còn dependency chưa rõ · có validation checklist và expected row relationships.
+
+## 5. Subtask 2 - Restore-To-Point-In-Time Ra Instance Cách Ly
+
+**Quyết định thiết kế:**
+
+| Vấn đề | Quyết định | Lý do |
+|---|---|---|
+| Terraform hoá instance tạm? | Không — thuần AWS CLI/script | Instance sinh-diệt mỗi lần recovery, không nên buộc Terraform state quản lý resource ephemeral |
+| Security Group | Tạo SG riêng mỗi lần chạy, ingress 5432 từ EKS node SG | Xoá SG độc lập cùng lúc dọn instance, không đụng SG production |
+| Sizing | Mirror nguồn: `db.t4g.micro`, gp3, 20 GiB | An toàn, instance sống rất ngắn nên không cần tối ưu nhỏ hơn |
+| Credential | Giữ `--manage-master-user-password` → Secrets Manager tự sinh secret mới | Đây chính là "temporary validation credential", không cần dựng cơ chế cấp phát riêng |
+
+**Script:** `docs/cdo08/week3/mandate20/scripts/rel-23/01-restore-pitr-isolated.ps1`. Guard sẵn: `RestoreTime` phải nằm trong `[EarliestRestorableTime, LatestRestorableTime]` của nguồn, tự tra node SG qua tag cluster (không dùng tên wildcard mong manh), mirror `--db-parameter-group-name` của nguồn (restore mặc định không kế thừa).
+
+```powershell
+.\01-restore-pitr-isolated.ps1 -RestoreTime 2026-07-20T10:00:00Z
+```
+
+Kỳ vọng sau khi chạy:
+
+```text
+Instance:  rel23-accounting-pitr-<run-id>  (available)
+Endpoint:  <ghi ra file rel23-pitr-<run-id>.json>
+SecretArn: <MasterUserSecret cua instance moi>
+Production techx-tf4-postgresql: khong bi dung toi (khong ModifyDBInstance nao)
+```
+
+Cleanup: `docs/cdo08/week3/mandate20/scripts/rel-23/02-cleanup-pitr-isolated.ps1 -TargetId <id> -TmpSgId <sg-id>` — xoá instance (`--skip-final-snapshot`, không cần vì nguồn còn nguyên) và SG tạm.
+
+## 6. Subtask 3 - Tự Động Hoá Export/Restore Vào Database Drill
+
+Drill database nằm ngay trên chính instance tạm ở Subtask 2 — tạo 1 database mới `otel_drill`, restore schema `accounting` vào đó, không đụng bản dữ liệu gốc `otel` đã PITR. Vì cùng instance/cùng role namespace, không phát sinh vấn đề role mapping.
+
+**Scripts:**
+
+```powershell
+.\03-export-accounting.ps1 -IsolatedInstanceId rel23-accounting-pitr-<run-id>
+.\04-restore-accounting-drill.ps1 -IsolatedInstanceId rel23-accounting-pitr-<run-id> -DumpPath .\accounting-<run-id>.dump
+```
+
+Ghi chú kỹ thuật:
+
+- `pg_dump --schema=accounting` tự giới hạn phạm vi — không có cách nào lấy lẫn `catalog`/`reviews` vào dump.
+- Restore drill dùng `--no-owner --no-privileges` và **không** dùng `--role=techx_app` — master mới của instance tạm không phải thành viên role đó (`SET ROLE` sẽ fail `permission denied to set role`); quan hệ membership này chưa từng tồn tại kể cả trên instance nguồn.
+- Idempotent: `DROP DATABASE IF EXISTS otel_drill` + `CREATE DATABASE` mỗi lần chạy.
+- Sequence: hiện schema không có sequence nào (§4) — script không hardcode giả định này, nếu sau này có thì `pg_dump`/`pg_restore` tự xử lý đúng.
+- Không bao giờ echo `PGPASSWORD` ra log; credential lấy qua Secrets Manager (`Get-RdsMasterCreds`), giữ trong biến môi trường của pod tạm.
+
+Kỳ vọng: dump chỉ chứa `accounting` objects, restore hoàn thành vào `otel_drill`, script chạy lại từ đầu không cần chỉnh tay.
+
+## 7. Subtask 4 - Validate Và Production-Safe Cutover Runbook
+
+### 7.1. Validate trên drill
+
+Chạy `07-validate-production.ps1 -DbInstanceIdentifier rel23-accounting-pitr-<run-id> -Database otel_drill` — so `otel.accounting` (bản PITR gốc) với `otel_drill.accounting` (vừa restore), kỳ vọng khớp tuyệt đối 1:1 (row count, order_id diff theo file, tổng `item_cost_units`/`item_cost_nanos`, orphan check).
+
+Giới hạn quan trọng: các kiểm tra này chỉ chứng minh **drill khớp bản PITR** và **cấu trúc không hỏng** — không chứng minh bản PITR **đầy đủ**, vì schema không có cột timestamp. Nguồn chân lý duy nhất cho tính đầy đủ là Kafka topic `orders` (§7.3).
+
+### 7.2. Runbook cutover production
+
+Chạy khi có sự cố thật, sau khi §7.1 PASS:
+
+| Bước | Hành động | Ghi chú an toàn |
+|---|---|---|
+| R.0 | Backup schema `accounting` production hiện tại ra file, trước khi đụng gì | Rollback checkpoint bắt buộc |
+| R.1 | `05-write-freeze.ps1`: scale `accounting` về 0 + gate xác nhận 0 connection `techx_app` trong `pg_stat_activity` | `accounting` là 1 role, không phải 1 process — gate loại trừ job/cron/psql thủ công khác đang dùng chung role |
+| R.1b | Reset offset consumer group `accounting` về `RestoreTime` (xem §7.3) | Chỉ thực hiện được khi group không còn active member — đúng khớp cửa sổ ngay sau R.1 |
+| R.2 | `06-import-production.ps1`: `ALTER SCHEMA accounting RENAME TO accounting_old`, import bản đã validate dưới tên `accounting` bằng credential master | Rename trước khi import, không `DROP SCHEMA` trực tiếp — cho phép rollback tức thời |
+| R.3 | `07-validate-production.ps1` trên `accounting` production | Phải PASS hết mới sang bước tiếp; nếu fail vì thiếu order trong rollback window, xem nhánh remediation §7.3 trước khi coi là fail chặn cứng |
+| R.4 | `rollback-01-restore-old-schema.ps1` nếu R.3 fail | `DROP SCHEMA accounting CASCADE` → `ALTER SCHEMA accounting_old RENAME TO accounting` — luôn có đường lùi tới R.6 |
+| R.5 | `08-reopen-traffic.ps1`: scale `accounting` về 1, theo dõi consumer lag về 0 | Bao gồm cả phần replay rollback-window nếu đã chạy R.1b |
+| R.6 | `09-cleanup-old-schema.ps1 -Confirm` | Không xoá `accounting_old` ngay sau R.5 — giữ như rollback checkpoint cho tới khi xác nhận ổn định |
+
+Xác nhận `catalog`/`reviews` không đổi: đếm row 2 schema đó trước R.1 và sau R.6, phải bằng nhau tuyệt đối.
+
+### 7.3. Kafka rollback-window — điểm quan trọng nhất
+
+Restore về `RestoreTime` (trước sự cố) làm mất mọi order **hợp lệ** phát sinh trong khoảng `RestoreTime → R.1` — khác với khoảng `R.1 → R.5` (order còn kẹt trong Kafka chưa consume, tự động có lại khi resume).
+
+| Khoảng | Tên | Cơ chế phục hồi |
+|---|---|---|
+| `RestoreTime → R.1` | Rollback window | Offset **đã commit từ trước** — KHÔNG tự phục hồi, phải reset offset thủ công |
+| `R.1 → R.5` | Freeze window | Order còn trong Kafka chưa consume — tự động replay khi resume |
+
+Cơ chế commit offset thật (`Consumer.cs`): `EnableAutoCommit = true`, hoàn toàn độc lập với `SaveChanges()` — không transactional với DB write. Vì `ProcessMessage` bọc toàn bộ xử lý trong 1 `try/catch` ngoài cùng, message bị redeliver gây PK violation trên `order_id` (insert thẳng, không upsert) → EF Core rollback nguyên transaction → log "Order parsing failed", không tạo dòng trùng, không tạo orphan, pod không crash. Kết luận: **replay chồng lấn lên vùng đã restore là an toàn về dữ liệu** — chỉ không phân biệt được trong log "duplicate mong đợi" với "lỗi thật".
+
+Retention check bắt buộc trước cutover: topic `orders` không có `log.retention.hours`/`retention.ms` tường minh trong `aws_msk_configuration.orders` — đang chạy theo default broker (168h = 7 ngày), trùng hợp khớp `backup_retention_period` của RDS nhưng chưa được pin cứng (xem §9).
+
+Thủ tục reset offset (chạy trong R.1b, sau khi R.1 xác nhận 0 connection ghi):
+
+```powershell
+# Ben trong 06-import-production.ps1 (goi kafka-consumer-groups.sh qua pod tam)
+kafka-consumer-groups.sh --bootstrap-server $KAFKA_ADDR --command-config client.properties `
+  --group accounting --topic orders --reset-offsets --to-datetime <RestoreTime> --execute
+```
+
+Nhánh remediation khi R.3 fail vì thiếu order trong rollback window: không coi là fail chặn cứng ngay — xác nhận đã chạy R.1b, đợi consumer lag về 0 sau R.5, rồi validate lại. Theo dõi số dòng log "Order parsing failed" của pod `accounting` trong lúc replay — nên xấp xỉ đúng số order đã tồn tại sẵn do overlap; nếu cao bất thường thì dừng lại điều tra.
+
+### 7.4. Đo tổng recovery time
+
+```text
+T_total = (Subtask 2: t_restore_request -> t_instance_available)
+        + (Subtask 3: t_export_start -> t_restore_drill_done)
+        + (Subtask 4: t_R1_freeze_start -> t_R5_traffic_reopened)
+```
+
+Ghi từng mốc thời gian thật khi rehearsal. `T_total` ≤ 2 giờ → PASS; nếu vượt, ghi rõ FAIL + remediation (dự kiến Subtask 2 provisioning instance chiếm nhiều thời gian nhất — RDS restore-to-point-in-time cho `db.t4g.micro`/20GB thường mất 10-30 phút).
+
+## 8. Rollback Và Safety
+
+- Trước R.2 (chưa import): rollback = không làm gì, `accounting` production chưa hề bị đụng, chỉ cần xoá instance tạm (Subtask 2 cleanup) và không cần chạy tiếp.
+- Sau R.2, trước R.3 PASS: `rollback-01-restore-old-schema.ps1` — vì R.2 chỉ rename (không drop), `accounting_old` luôn còn nguyên để khôi phục tức thời.
+- Sau R.5 (đã reopen traffic) nhưng phát hiện lỗi muộn: dùng bản backup `R.0` (file `.dump` riêng, lưu ngoài schema) làm nguồn khôi phục thủ công — không còn `accounting_old` sau R.6 nếu đã cleanup.
+- Nếu đã chạy R.1b (reset offset Kafka) rồi phải rollback: đánh giá lại tính nhất quán Kafka/DB trước khi mở lại traffic — offset đã bị kéo lùi nhưng DB có thể đã quay về trạng thái trước đó (xem cảnh báo trong `rollback-01-restore-old-schema.ps1`).
+- Không script nào trong bộ này xoá dữ liệu production ngoài `accounting_old` (chỉ ở R.6, yêu cầu `-Confirm` tường minh) và chỉ sau khi đã xác nhận ổn định.
+
+## 9. Rủi Ro Cần Xác Nhận
+
+- **MSK `orders` retention chưa pin cứng** — đang dựa vào default broker (168h), khuyến nghị pin tường minh `log.retention.hours=168` trong `infra/terraform/msk.tf` (`aws_msk_configuration.orders`) để khoá cứng ràng buộc "Kafka retention ≥ RDS PITR window" dùng ở §7.3. Chưa sửa trong lượt này vì đụng infra đang chạy thật, cần quyết định riêng.
+- **Image `apache/kafka:3.9.0` cho pod client Kafka chưa được smoke-test thật** — chọn image chính thức của Apache Kafka project (khớp `kafka_versions=3.9.x` trong `msk.tf`) để đảm bảo `bin/kafka-consumer-groups.sh` tồn tại đúng path, nhưng chưa xác minh được bằng cách chạy thật (không có kết nối để tra manifest image tại thời điểm viết). Cần smoke-test 1 lần trước rehearsal đầu tiên.
+- **Node SG lookup dựa vào tag `aws:eks:cluster-name`/`aws:eks:cluster-resource-controller`** — cần xác nhận đúng 1 SG khớp filter trên cluster thật trước khi chạy `01-restore-pitr-isolated.ps1` lần đầu.
+- **GAP-06 (gap register), RTO/RPO matrix (`accounting`: 2 giờ), cost estimate cho phương án procedure-only** — 3 tài liệu này cần cập nhật khớp hướng đã chốt ở đây, chưa làm trong lượt này.
+- **Chưa có PM sign-off** — không chạy Subtask 2-4 thật (tạo instance tạm, export/restore, cutover production) cho tới khi kế hoạch này được duyệt.
+
+## 10. Ngoài Phạm Vi
+
+Subtask 1 đã thực thi thật (evidence §4). Bộ script PowerShell cho Subtask 2-4 (`docs/cdo08/week3/mandate20/scripts/rel-23/*.ps1`) đã viết và qua kiểm tra parse cú pháp, nhưng **chưa chạy thật lần nào** — chưa tạo instance tạm, chưa export/restore thật, chưa chạy cutover runbook trên production. Không có thay đổi Terraform/chart/GitOps ở subtask này — `accounting` vẫn ở nguyên chỗ, không đổi connection string, không đổi secret, không đổi instance.
