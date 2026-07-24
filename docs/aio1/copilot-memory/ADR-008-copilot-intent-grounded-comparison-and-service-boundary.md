@@ -698,11 +698,11 @@ Local verification on 2026-07-24:
 | Check | Result |
 |---|---|
 | Python compilation for `src/product-reviews/*.py` | Passed |
-| Full product-reviews unit suite using service virtualenv | **91 passed** |
-| Focused intent/comparison/safety/session suite | **87 passed** after final contract update |
-| `git diff --check` | Passed |
+| Full product-reviews unit suite using service virtualenv | **126 passed** |
+| Focused intent/adapter/cart-confirmation suite | **78 passed** after strict-review contract update |
+| `git diff --check` | Passed after strict-review hygiene update |
 | Generated Python protobuf/grpc imports | Generated with repository service virtualenv |
-| Frontend type check | Not run locally because `src/frontend/node_modules` is absent |
+| Frontend type check | Passed with `npm run typecheck` in the repository-pinned Node 22 image |
 | Real Bedrock comparison evaluation | Pending |
 | Staging canary | Pending |
 | Physical service extraction | Pending by decision |
@@ -725,7 +725,8 @@ Covered tests include:
 | Item | Status | Exit criterion |
 |---|---|---|
 | Local implementation and unit tests | Complete | Full service unit suite passes |
-| Frontend type check/build | Pending | `npm run typecheck` and production build pass in dependency-provisioned environment |
+| Frontend type check | Complete | `npm run typecheck` passes in the repository-pinned Node 22 image |
+| Frontend production build | Pending | Production build passes in a dependency-provisioned environment |
 | Offline real-model comparison bake-off | Pending | All hard gates in this ADR pass |
 | Staging runtime canary | Pending | Quality, p95, cost, Guardrail, and failure drills pass |
 | Dashboard separation by stage/model | Pending | Intent and comparison are independently visible |

@@ -1,9 +1,9 @@
 # Evaluation Run Evidence — `2026-07-24-15-34-24-0326`
 
-> **Timestamp (UTC)**: `2026-07-24T08:34:24.032574+00:00`  
-> **Git SHA**: `81ee1437a4469e5a229c5fd5de726a26fe8004f2`  
-> **Model ID**: `us.amazon.nova-2-lite-v1:0`  
-> **Environment**: `local`  
+> **Timestamp (UTC)**: `2026-07-24T08:34:24.032574+00:00`
+> **Git SHA**: `81ee1437a4469e5a229c5fd5de726a26fe8004f2`
+> **Model ID**: `us.amazon.nova-2-lite-v1:0`
+> **Environment**: `local`
 > **Config Source**: `env_override`
 
 ## 1. System Snapshots & Hashes

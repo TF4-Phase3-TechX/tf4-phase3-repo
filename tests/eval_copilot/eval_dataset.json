@@ -117,11 +117,13 @@
     },
     {
       "test_id": "TC-11",
-      "group": "valid_empty_result",
+      "group": "attribute_filter",
       "query": "accessories over $1000",
-      "expected_product_ids": [],
+      "expected_product_ids": [
+        "9SIQT8TOJO"
+      ],
       "expected_behavior": "return_products",
-      "description": "Valid category+price query with 0 matching catalog products"
+      "description": "Valid category+price query with 1 matching catalog products"
     },
     {
       "test_id": "TC-12",
@@ -577,14 +579,14 @@
       "group": "compare_edge_case",
       "query": "Compare FakeTelescope3000 and NonExistentBinoculars",
       "expected_product_ids": [],
-      "expected_behavior": "return_products",
-      "description": "Comparison query with non-existent catalog products returns 0 matches"
+      "expected_behavior": "ambiguous_clarification",
+      "description": "Comparison query with non-existent products requests valid catalog names"
     }
   ],
   "_meta": {
-    "generated_at": "2026-07-23T07:39:49.165893+00:00",
-    "source_file": "/home/huyvu/Desktop/Workspace/tf4-phase3/techx-corp-platform/src/postgresql/init.sql",
+    "generated_at": "2026-07-24T15:01:41.972703+00:00",
+    "source_file": "techx-corp-platform/src/postgresql/init.sql",
     "product_count": 10,
-    "dataset_sha256": "0d7bb34335a2361b687dfa85cdf417f8ee7425ae0f11a9b697178f0e22564e81"
+    "dataset_sha256": "16b9384e6f236441523b65522c81e2bcb3628a76bde76e37c93d15c09aaeccc0"
   }
 }
