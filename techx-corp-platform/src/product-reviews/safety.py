@@ -102,6 +102,22 @@ def is_attack_or_action(text: str) -> bool:
     return is_attack(text) or is_action_intent(text)
 
 
+def canonicalize_benign_exclusions(text: str) -> str:
+    """Keep benign preference exclusions away from broad provider attack rules.
+
+    This runs only after the application-owned attack detector has accepted the
+    question. It handles ordinary shopping phrasing such as "ignore the price"
+    without weakening matches involving prior/system/developer instructions.
+    """
+    return re.sub(
+        r"\b(?:ignore|disregard)\s+(?:the\s+)?"
+        r"(price|cost|colour|color|brand)\b",
+        r"exclude \1",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
 def contains_pii(text: str) -> bool:
     return any(pattern.search(text or "") for pattern in _PII_PATTERNS)
 
@@ -157,7 +173,10 @@ def prepare_context(
         context_chars += candidate_size
 
     return PreparedContext(
-        question=redact_pii(normalized_question, MAX_QUESTION_CHARS),
+        question=redact_pii(
+            canonicalize_benign_exclusions(normalized_question),
+            MAX_QUESTION_CHARS,
+        ),
         product=_sanitize_product(product),
         reviews=safe_reviews,
         quarantined_review_count=quarantined,

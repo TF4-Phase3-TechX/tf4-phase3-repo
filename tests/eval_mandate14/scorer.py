@@ -23,6 +23,7 @@ SOURCE_TYPES_BY_CLAIM = {
     "opinion": {"review"},
     "fact": {"product_description", "catalog"},
     "spec": {"product_description", "catalog"},
+    "mixed": {"review", "product_description", "catalog"},
 }
 ABSTENTION_MARKERS = (
     "do not have enough information",

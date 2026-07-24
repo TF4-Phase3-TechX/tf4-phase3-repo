@@ -30,13 +30,16 @@ def _estimated_cost(input_tokens: int, output_tokens: int) -> float:
 
 def _claims(response: str, citations: tuple[dict[str, Any], ...]) -> list[dict[str, Any]]:
     """Bind each user-visible sentence to the validator-approved review sources."""
-    source_ids = sorted({f"review:{int(item['review_id'])}" for item in citations})
-    if not source_ids:
+    if not citations:
         return []
+    source_ids = [
+        "product-description",
+        *sorted({f"review:{int(item['review_id'])}" for item in citations}),
+    ]
     return [
         {
             "text": sentence.strip(),
-            "claim_type": "opinion",
+            "claim_type": "mixed",
             "source_ids": source_ids,
         }
         for sentence in SENTENCE_RE.split(response)
@@ -59,6 +62,9 @@ class ReviewSummaryAdapter:
             guardrail_id=os.environ["BEDROCK_GUARDRAIL_ID"],
             guardrail_version=os.environ["BEDROCK_GUARDRAIL_VERSION"],
             output_mode=os.environ.get("BEDROCK_OUTPUT_MODE", "tool"),
+            deadline_seconds=float(
+                os.environ.get("BEDROCK_DEADLINE_SECONDS", "4.5")
+            ),
             client=client,
             system_canary=os.environ.get("BEDROCK_SYSTEM_CANARY", ""),
         )

@@ -53,7 +53,21 @@ def load_runtime_cases(raw: bytes, schema_path: Path = DEFAULT_SCHEMA) -> list[d
 
 
 def _review_sources(case: dict[str, Any]) -> list[dict[str, Any]]:
-    sources = []
+    product = case["input"]["product"]
+    product_text = " ".join(
+        value
+        for value in (
+            str(product.get("name", "")),
+            str(product.get("description", "")),
+            ", ".join(str(item) for item in product.get("categories", [])),
+        )
+        if value
+    )
+    sources = [{
+        "source_id": "product-description",
+        "source_type": "product_description",
+        "text": product_text,
+    }]
     for review in case["input"].get("reviews", []):
         source = {
             "source_id": f"review:{int(review['review_id'])}",

@@ -49,6 +49,33 @@ def test_grounded_answer_passes_with_typed_source():
     assert result["grounding"]["claim_contract_present"]
 
 
+def test_mixed_review_and_product_claim_accepts_typed_sources():
+    value = case(
+        sources=[
+            {
+                "source_id": "product-description",
+                "source_type": "product_description",
+                "text": "Synthetic Portable Scope is a portable refractor.",
+            },
+            {
+                "source_id": "review-1",
+                "source_type": "review",
+                "text": "It is lightweight and easy to carry on trips.",
+            },
+        ],
+    )
+    value["expected"]["facts"] = ["lightweight and easy to carry"]
+    value["observed"]["response_text"] = (
+        "Synthetic Portable Scope is lightweight and easy to carry on trips."
+    )
+    value["observed"]["claims"] = [{
+        "text": value["observed"]["response_text"],
+        "claim_type": "mixed",
+        "source_ids": ["product-description", "review-1"],
+    }]
+    assert score_case(value)["scorer_pass"]
+
+
 def test_answer_with_empty_claims_is_not_perfect_grounding():
     value = case()
     value["observed"]["response_text"] = ""

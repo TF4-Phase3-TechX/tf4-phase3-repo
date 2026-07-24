@@ -135,8 +135,8 @@ def test_review_adapter_emits_validator_approved_claims():
     assert observed["claims"] == [
         {
             "text": "Reviewers report clear views of the moon.",
-            "claim_type": "opinion",
-            "source_ids": ["review:1"],
+            "claim_type": "mixed",
+            "source_ids": ["product-description", "review:1"],
         }
     ]
     assert observed["output_fields"]["citations"][0]["source_id"] == "review:1"
@@ -163,7 +163,10 @@ def test_collect_emits_scorer_contract_for_both_surfaces():
         "mandate14-case-v2",
         "mandate14-case-v2",
     ]
-    assert observations[0]["sources"][0]["source_id"] == "review:1"
+    assert [source["source_id"] for source in observations[0]["sources"]] == [
+        "product-description",
+        "review:1",
+    ]
     assert observations[1]["observed"]["state_before_sha256"]
 
 

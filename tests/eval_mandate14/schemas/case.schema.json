@@ -176,7 +176,7 @@
           "minLength": 1
         },
         "claim_type": {
-          "enum": ["opinion", "fact", "spec"]
+          "enum": ["opinion", "fact", "spec", "mixed"]
         },
         "source_ids": {
           "type": "array",
