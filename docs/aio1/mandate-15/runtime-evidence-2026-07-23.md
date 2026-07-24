@@ -89,6 +89,50 @@ Both incidents stopped at `awaiting_approval`. Their audit trail contained
 observed. This is evidence of the current production safety boundary, not
 closed-loop remediation.
 
+## Probe-stability follow-up — 2026-07-24
+
+The original AIOps pod reached 12 restarts while running image
+`66ed32b-aiops`. Kubelet events correlated the failures with one-second
+liveness/readiness timeouts while synchronous Isolation Forest evaluation ran
+on the FastAPI event loop.
+
+Application PR
+[`#587`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/587)
+kept detector evaluations sequential but moved their CPU-bound work to worker
+threads. It also stopped re-fitting Isolation Forest for acute-window
+confirmation candidates because that score enriches confidence but cannot
+change the acute gate. Offline verification reached 71 passing AIOps tests;
+the representative nine-call detector path fell from approximately `3.93s` to
+`1.23s`.
+
+GitOps PR
+[`#151`](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/151)
+promoted the exact release:
+
+```text
+d9b18fa-aiops
+sha256:c032171352869b91e2683826aefed9124ea2e35e78cd5095d51ca278b64d30c1
+```
+
+Argo reconciled Deployment generation 4 and created pod
+`aiops-7d87f8b68b-r5tgr` at `2026-07-24T01:12:47Z`. In the first observation
+window of more than four minutes, covering approximately five 45-second worker
+polls, the pod remained Ready with:
+
+| Observation | Result |
+|---|---:|
+| Container restarts | `0` |
+| Prometheus HTTP 200 responses | `45` |
+| OpenSearch HTTP 200 responses | `5` |
+| Unexpected polling failures | `0` |
+| `telemetry_degraded` events | `0` |
+
+The only probe warnings were `connection refused` during initial container
+startup before Uvicorn listened; they did not terminate the container. This is
+short-window runtime evidence that the probe-starvation failure did not recur
+across several polls. It is not a long-duration availability or reliability
+claim.
+
 ## Coverage and observability limitations
 
 The same worker window repeatedly emitted unavailable coverage for:
@@ -151,8 +195,9 @@ kubectl -n techx-observability logs daemonset/otel-collector-agent `
 
 ## Required closure run
 
-1. Stabilize the AIOps health probes/event loop and observe zero liveness
-   restarts for an agreed window.
+1. Continue the probe/event-loop observation over the agreed reliability
+   window. The first five post-fix polls completed with zero restarts, but the
+   long-duration window remains open.
 2. Remove or correct the stale `kafka:9092` receiver and size/shape the
    collector so it does not refuse telemetry during the labeled window.
 3. Record a controlled scenario start timestamp without touching/disabling
@@ -162,4 +207,3 @@ kubectl -n techx-observability logs daemonset/otel-collector-agent `
 5. Calculate live lead time and MTTD; retain the per-case label and output.
 6. Attach the hidden-set outputs on grading day and obtain the Tech Lead ADR
    signature.
-
