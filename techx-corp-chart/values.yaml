@@ -272,6 +272,10 @@ components:
       # not page as a dead service.
       - name: AIOPS_AVAILABILITY_SUSTAINED_POLLS
         value: "2"
+      # Bound Kubernetes API calls so loss of API egress cannot stall the
+      # detector loop. Timeout is reported as unknown coverage, never down.
+      - name: AIOPS_AVAILABILITY_API_TIMEOUT_SECONDS
+        value: "3"
       # Operator-facing busy-state seed only; it does not fire an incident and
       # must be recalibrated from labelled production traffic.
       - name: AIOPS_BUSY_REQUEST_RATE_THRESHOLD

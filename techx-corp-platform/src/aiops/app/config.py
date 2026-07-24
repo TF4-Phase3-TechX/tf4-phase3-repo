@@ -50,6 +50,11 @@ class Settings:
     availability_sustained_polls: int = int(
         os.getenv("AIOPS_AVAILABILITY_SUSTAINED_POLLS", "2")
     )
+    # Bound both connect and read time for each Kubernetes Deployment lookup.
+    # Availability is fail-safe unknown on timeout, never inferred as down.
+    availability_api_timeout_seconds: float = float(
+        os.getenv("AIOPS_AVAILABILITY_API_TIMEOUT_SECONDS", "3")
+    )
     busy_request_rate_threshold: float = float(
         os.getenv("AIOPS_BUSY_REQUEST_RATE_THRESHOLD", "5")
     )

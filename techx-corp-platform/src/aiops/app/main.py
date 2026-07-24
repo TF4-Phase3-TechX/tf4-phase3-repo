@@ -61,7 +61,10 @@ worker = AIOpsWorker(
     Detector(settings),
     store,
     remediation,
-    availability=KubernetesAvailabilityClient(settings.namespace),
+    availability=KubernetesAvailabilityClient(
+        settings.namespace,
+        request_timeout_seconds=settings.availability_api_timeout_seconds,
+    ),
 )
 summary_generator = IncidentSummaryGenerator(
     settings.grafana_url,

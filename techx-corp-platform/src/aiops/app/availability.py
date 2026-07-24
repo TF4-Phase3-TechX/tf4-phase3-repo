@@ -31,9 +31,13 @@ class KubernetesAvailabilityClient:
         namespace: str,
         *,
         apps_api: Any | None = None,
+        request_timeout_seconds: float = 3.0,
     ):
+        if request_timeout_seconds <= 0:
+            raise ValueError("request_timeout_seconds must be positive")
         self.namespace = namespace
         self._api = apps_api
+        self.request_timeout_seconds = request_timeout_seconds
 
     def _api_client(self) -> Any:
         if self._api is not None:
@@ -54,7 +58,12 @@ class KubernetesAvailabilityClient:
             # subresource so the existing read-only `deployments` RBAC rule is
             # sufficient; no additional permission is required.
             deployment = self._api_client().read_namespaced_deployment(
-                service, self.namespace
+                service,
+                self.namespace,
+                _request_timeout=(
+                    self.request_timeout_seconds,
+                    self.request_timeout_seconds,
+                ),
             )
             desired = (
                 int(deployment.spec.replicas)
