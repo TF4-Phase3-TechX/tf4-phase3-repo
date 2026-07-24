@@ -1029,8 +1029,12 @@ components:
       # Preserve 200-user traffic; shed AI and Browse only above measured demand.
       - name: ENVOY_LOCAL_RL_AI_RPS
         value: "3"
+      - name: ENVOY_LOCAL_RL_AI_BURST
+        value: "6"
       - name: ENVOY_LOCAL_RL_BROWSE_RPS
         value: "20"
+      - name: ENVOY_LOCAL_RL_BROWSE_BURST
+        value: "40"
       - name: ENVOY_LOCAL_RL_CART_RPS
         value: "10000"
       - name: ENVOY_LOCAL_RL_CHECKOUT_RPS
