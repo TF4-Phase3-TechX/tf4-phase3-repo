@@ -52,8 +52,8 @@
 ## 📸 PHỤ LỤC BẰNG CHỨNG (EVIDENCE APPENDIX)
 
 * **Tệp dữ liệu thô (Locust CSVs & HTML Reports):**
-  * [Thư mục bằng chứng mức tải 275 Users](file:///C:/Users/hh038/.gemini/antigravity-ide/brain/b3c222f5-6c14-46b7-95b6-87db1651d28a/evidence/post-tuning/275/)
-  * [Thư mục bằng chứng mức tải 350 Users](file:///C:/Users/hh038/.gemini/antigravity-ide/brain/b3c222f5-6c14-46b7-95b6-87db1651d28a/evidence/post-tuning/350/)
+  * [Thư mục bằng chứng mức tải 275 Users](./log/aftunning/275/)
+  * [Thư mục bằng chứng mức tải 350 Users](./log/aftunning/350/)
 
 ---
 

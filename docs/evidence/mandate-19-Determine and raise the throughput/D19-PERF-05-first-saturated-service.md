@@ -9,7 +9,7 @@ Xác định chính xác dịch vụ hoặc dependency đầu tiên cạn kiệt
 
 ## 2. Khảo sát các Chiều bão hòa (Saturation Dimensions)
 
-Dựa trên dữ liệu giám sát thu thập từ [telemetry-bottleneck-raw.json](file:///d:/tf4-phase3-repo/docs/evidence/mandate-19-Determine%20and%20raise%20the%20throughput/telemetry-bottleneck-raw.json) trong khung giờ chạy test tải (`2026-07-22T23:33:00Z` đến `2026-07-23T00:16:00Z`):
+Dựa trên dữ liệu giám sát thu thập từ [telemetry-bottleneck-raw.json](./telemetry-bottleneck-raw.json) trong khung giờ chạy test tải (`2026-07-22T23:33:00Z` đến `2026-07-23T00:16:00Z`):
 
 ### 2.1. CPU Saturation
 *   **RDS PostgreSQL Cluster CPU:**
