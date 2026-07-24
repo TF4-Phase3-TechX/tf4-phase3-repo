@@ -1,6 +1,9 @@
 # CDO08-REL-24 Backup Deletion Separation of Duties
 
-Status: Proposed for PM/Tech Lead approval
+Status: Approved
+
+**Người phê duyệt:** Hải (PM) — 2026-07-24 ✅ APPROVED  
+Nội dung được đánh giá hợp lý, tối thiểu quyền, không ảnh hưởng CI pipeline hiện tại. Guardrail tamper-proof và break-glass yêu cầu approval tag bắt buộc là đủ để kiểm soát deletion.
 
 ## Decision
 
