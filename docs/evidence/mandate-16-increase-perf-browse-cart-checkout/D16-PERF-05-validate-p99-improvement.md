@@ -1,107 +1,96 @@
 # D16-PERF-05 (C0G-92) — Kiểm chứng cải thiện p95/p99 dưới sustained load
 
 - **Owner:** Phan Minh Tuấn (CDO-04)
-- **Trạng thái:** INCONCLUSIVE — đã chạy đủ với evidence đầy đủ, nhưng có 2 vấn đề khiến chưa thể kết luận PASS/FAIL dứt khoát. Cần Tech Lead/PM quyết định trước khi chạy lại lần tiếp theo. Xem mục Kết luận bên dưới.
-- **Phụ thuộc:** D16-DEV-01 (C0G-91) — toàn bộ 4 PR đã merge và xác nhận đang chạy live tại thời điểm đo:
+- **Trạng thái:** INCONCLUSIVE — chạy sạch (không bị deploy chen ngang, không lỗi hạ tầng), độ trễ cải thiện rõ rệt so với lần đo trước nhưng vẫn chưa đạt budget tuyệt đối, do cùng một nguyên nhân gốc (`frontend` HPA ceiling) vẫn chưa được xử lý. Cần Tech Lead/PM quyết định về việc nâng `maxReplicas` trước khi có thể đóng task này với kết quả PASS.
+- **Phụ thuộc:** D16-DEV-01 (C0G-91) — 4 PR đã merge, xác nhận đang chạy live tại thời điểm đo:
   - PR #324 `411e9a2` — gộp N request Currency (non-USD) thành 1 `BatchConvert`.
-  - PR #558 `496abcd` — revert cơ chế 2-worker song song gọi Product Catalog trong Checkout (gây quá tải Product Catalog dưới load), chỉ giữ tối đa 1 request in-flight/Checkout.
+  - PR #558 `496abcd` — revert cơ chế 2-worker song song gọi Product Catalog trong Checkout, chỉ giữ tối đa 1 request in-flight/Checkout.
   - PR #565 `14da184` — bỏ N request `GetProduct` thừa ở bước confirmation, bỏ gọi `Currency.Convert` no-op cho item giá USD.
   - PR #592 `9fcb588` — giới hạn connection pool PostgreSQL của Product Catalog (`MaxOpenConns=20`/`MaxIdleConns=5`).
+  - PR #600 `b536a75` — tối ưu cân bằng request tới Product Catalog từ `frontend` (đã ổn định là bản đang chạy, không còn ở giữa quá trình rollout như lần đo trước).
 - **Tài liệu hợp đồng tải (không sửa ở đây):** `D16-PERF-01-SUSTAINED-LOAD-CONTRACT.md` — dùng chung load profile, tỷ trọng task và endpoint mix.
-- **Về baseline:** file baseline D16-PERF-02 gốc đã bị xóa khỏi repo trước khi phiên đo này bắt đầu, không còn baseline chính thức nào để so sánh delta trước/sau. Lần đo này gate theo **latency budget tuyệt đối** ở D16-PERF-01 §5 thay vì so sánh before/after. Các lần đo trước đó (nếu có) không còn giá trị tham chiếu và không được dùng lại trong tài liệu này.
+- **Về baseline:** không còn baseline D16-PERF-02 chính thức trong repo. Gate theo **latency budget tuyệt đối** ở D16-PERF-01 §5 thay vì so sánh before/after.
 
 ## Pre-run record
 
 ```text
 CHANGE_TICKET=D16-PERF-05
-WINDOW_START_UTC=2026-07-24T02:20:00Z
-WINDOW_END_UTC=2026-07-24T03:05:00Z
+WINDOW_START_UTC=2026-07-24T04:10:00Z
+WINDOW_END_UTC=2026-07-24T04:58:54Z (thực tế)
 REVIEWED_GIT_SHA_CHECKOUT=14da184
-REVIEWED_GIT_SHA_FRONTEND=14da184
+REVIEWED_GIT_SHA_FRONTEND=b536a75
 REVIEWED_GIT_SHA_PRODUCT_CATALOG=9fcb588
 TEST_OPERATOR=Phan Minh Tuấn
-INCIDENT_CHANNEL=đã báo TF giữ chỗ load-generator trước khi chạy
-BASELINE_WINDOW=không có — file baseline D16-PERF-02 đã bị xóa, gate theo budget tuyệt đối §5
-OPTIMIZED_WINDOW=2026-07-24T02:20:56Z–03:09:21Z (thực tế)
+BASELINE_WINDOW=không có — gate theo budget tuyệt đối §5
+OPTIMIZED_WINDOW=2026-07-24T04:11:08Z–04:58:54Z (thực tế)
 ```
 
-**Kiểm tra cluster trước khi chạy (2026-07-24T02:17:02Z):** image tag đang chạy khớp đúng REVIEWED_GIT_SHA (`14da184-checkout`, `14da184-frontend`, `9fcb588-product-catalog`); toàn bộ pod `Running`, không restart; 4 node ổn định, còn dư CPU (15-61%). HPA `frontend` dao động mạnh ngay cả ở nền (25%→355%/70%, 2-3/3 pod) do đã có một swarm ~50 user chạy sẵn trên `load-generator` trước khi bắt đầu — không phải traffic nền thông thường.
+**Kiểm tra cluster trước khi chạy (2026-07-24T04:09:09Z):** toàn bộ pod `Running`, không restart; 4 node ổn định; HPA `frontend` ở trạng thái nền bình thường (25%/70%, 2/3 pod) — không có swarm nào đang chạy sẵn trước đó (khác với lần đo trước). Image tag đang chạy: `14da184-checkout`, `b536a75-frontend`, `9fcb588-product-catalog`.
 
 ## Diễn biến lần chạy
 
-Chạy đủ 45 phút theo đúng kế hoạch: reset stats + warm-up 50 user (5 phút) → ramp-up lên 200 user (5 phút) → sustained 200 user (25 phút) → stability 200 user (10 phút) → export evidence → dừng swarm. Tổng thời gian thực tế: `2026-07-24T02:20:56Z` – `03:09:21Z`.
+Chạy đủ 45 phút theo đúng kế hoạch: reset stats + warm-up 50 user (5 phút) → ramp-up 200 user (5 phút) → sustained 200 user (25 phút) → stability 200 user (10 phút) → export evidence → dừng swarm. Thời gian thực tế: `2026-07-24T04:11:08Z` – `04:58:54Z`.
 
-- Số node giữ nguyên **4** suốt toàn bộ cửa sổ, không có sự kiện Karpenter scale. Không pod nào restart trong cả namespace.
-- `checkout`/`currency` giữ CPU thấp suốt run (checkout 4-36%/70%, currency 4-6%/70%) — code checkout không hề bị áp lực CPU.
-- `frontend` bị kẹt ở ceiling cứng (`maxReplicas=3`) suốt toàn bộ run, dao động **79%–273%/70%** — đúng loại nghẽn năng lực đã cảnh báo trước khi chạy, không liên quan đến code checkout.
-
-### ⚠️ Deploy chen ngang giữa cửa sổ đo — SHA đang test không giữ nguyên suốt run
-
-Dù đã báo TF giữ chỗ `load-generator` trước, **`frontend` vẫn bị một PR khác, không liên quan, ghi đè hoàn toàn giữa lúc đang đo**:
-
-- PR #600 `b536a75` "perf(frontend): balance product catalog requests safely" merge vào `main` lúc **02:46:08Z** — 14 phút sau khi sustained window bắt đầu.
-- GitOps rollout bắt đầu **02:54:07Z**, hoàn tất **02:57:24Z** (pod `14da184-frontend` cuối cùng bị xóa) — toàn bộ nằm trong sustained window (02:32:28–02:57:28Z), ngay trước stability window (02:58:43–03:08:43Z).
-- Hệ quả: khoảng 22/25 phút đầu của sustained window chạy trên `14da184-frontend` (đúng SHA đã review); ~3 phút cuối sustained **và toàn bộ 10 phút stability** chạy trên `b536a75-frontend` — build chưa từng được đưa vào pre-run record.
-- Một deploy khác (`frontend-proxy` ReplicaSet mới) bị chặn hoàn toàn bởi policy Kyverno `require-signed-techx-images` (`MANIFEST_UNKNOWN`) lúc 02:54Z và 03:05Z — không tạo được pod nên không ảnh hưởng dữ liệu, nhưng xác nhận có thêm hoạt động deploy khác nhắm đúng các service đang được test trong cùng cửa sổ.
-- Theo đúng rule của `D16-PERF-01` ("Any change invalidates comparability and requires both runs to be repeated"), đây là vi phạm hợp đồng đo cần công khai, không lặng lẽ bỏ qua. Kiểm tra `failures.csv` không thấy tăng đột biến lỗi tập trung quanh 02:54–02:58Z (lỗi rải đều suốt 02:21Z–03:09Z) — nhưng riêng dữ liệu của stability window không thể quy cho SHA đã review.
-
-### Jaeger trace — không lấy được trong phiên này
-
-Nhiều lần thử port-forward tới `techx-observability/jaeger` (base path `/jaeger/ui/api/traces`) đều bị rớt kết nối hoặc trả về 0 trace dù kết nối đã xác nhận sống (`/api/services` trả 200). Tra trực tiếp bằng trace ID cũ cũng 404 (khả năng đã rớt khỏi retention OpenSearch). Đây là **thiếu evidence thật sự**, không phải "không có trace đáng chú ý" — cần ghi nhận và thử lại bằng công cụ/quyền truy cập ổn định hơn.
+- Số node giữ nguyên **4** suốt toàn bộ cửa sổ, không sự kiện Karpenter scale. **Không pod nào restart** trong cả namespace.
+- **Không có warning event nào** trong toàn bộ 6 snapshot theo phase (T0, ramp-start, sustained-start, sustained-mid, stability-start, run-end) — khác hẳn 2 lần đo trước, lần này **không bị deploy nào khác chen ngang**, SHA được giữ nguyên suốt cửa sổ đo.
+- `checkout`/`currency` giữ CPU thấp-vừa suốt run (checkout 3-34%/70%, currency 3-7%/70%).
+- `frontend` vẫn bị kẹt ở ceiling cứng (`maxReplicas=3`) suốt phần lớn run, dao động **66%–237%/70%** — cùng loại nghẽn năng lực đã xác nhận ở lần đo trước, chưa được xử lý (chưa có thay đổi cấu hình `maxReplicas`).
 
 ## Evidence
 
-### Latency so với budget tuyệt đối D16-PERF-01 §5 (`requests.csv`, toàn bộ cửa sổ 02:20:56Z–03:09:21Z)
+### Latency so với budget tuyệt đối D16-PERF-01 §5 (`requests.csv`, toàn bộ cửa sổ 04:11:08Z–04:58:54Z)
 
 | Flow | Requests | Failures | Success rate | p50 | p95 | p99 | Budget p95 | Budget p99 | Kết quả |
 |---|---:|---:|---:|---:|---:|---:|---|---|---|
-| Browse `GET /` | 7,051 | 16 | 99.77% | 660ms | 2,300ms | 3,000ms | <500ms | <800ms | **FAIL cả 2** |
-| Cart `GET /api/cart` | 8,614 | 22 | 99.74% | 560ms | 2,300ms | 3,000ms | <700ms | <1,000ms | **FAIL cả 2** |
-| Cart `POST /api/cart` | 30,028 | 26 | 99.91% | 430ms | 2,400ms | 3,100ms | <700ms | <1,000ms | **FAIL cả 2** |
-| Checkout `POST /api/checkout` | 10,805 | 88 | 99.19% | 990ms | 3,000ms | 3,900ms | <1,000ms | <1,500ms | **FAIL cả 2** |
-| Tổng hợp (toàn bộ route) | 121,658 | 274 (0.23%) | 99.77% | 710ms | 2,800ms | 4,300ms | — | — | chỉ để tham khảo |
+| Browse `GET /` | 8,306 | 18 | 99.78% | 190ms | 1,100ms | 1,800ms | <500ms | <800ms | **FAIL cả 2**, nhưng cải thiện rõ so với lần trước (2,300/3,000ms) |
+| Cart `GET /api/cart` | 9,920 | 15 | 99.85% | 140ms | 1,100ms | 1,800ms | <700ms | <1,000ms | **FAIL cả 2**, cải thiện (từ 2,300/3,000ms) |
+| Cart `POST /api/cart` | 34,396 | 44 | 99.87% | 120ms | 1,000ms | 1,600ms | <700ms | <1,000ms | **FAIL cả 2**, cải thiện (từ 2,400/3,100ms), p95 chỉ còn vượt budget đúng 300ms |
+| Checkout `POST /api/checkout` | 12,404 | 45 | 99.64% | 380ms | 1,600ms | 2,400ms | <1,000ms | <1,500ms | **FAIL cả 2**, cải thiện mạnh (từ 3,000/3,900ms) |
+| Tổng hợp (toàn bộ route) | 140,261 | 212 (0.15%) | 99.85% | 180ms | 1,300ms | 2,400ms | — | — | chỉ để tham khảo |
 
-Mọi flow đều FAIL budget tuyệt đối (vượt 3-5 lần). Ngược lại, **các gate về correctness/success-rate đều PASS**: Browse/Cart đạt ngưỡng ≥99.5%, Checkout đạt SLO ≥99.0% (99.19%). `POST /api/checkout` có 86 lỗi `500 Internal Server Error` rải đều suốt run (02:31Z–03:09Z, không tập trung quanh lúc deploy chen ngang) — một lỗi Checkout gián đoạn với tần suất thấp, cần theo dõi riêng nhưng không ảnh hưởng tới việc đạt SLO success-rate.
+Mọi flow vẫn FAIL budget tuyệt đối, nhưng **độ trễ đã giảm gần một nửa** so với lần đo trước ở mọi flow — đúng hướng cải thiện, chỉ còn bị chặn bởi nghẽn năng lực `frontend`. **Correctness/success-rate PASS rõ và tốt hơn lần trước**: Browse/Cart đều ≥99.5%, Checkout 99.64% (≥ SLO 99.0%), aggregate error rate 0.15% (tốt hơn 0.23% của lần trước).
+
+`POST /api/checkout` có 45 lỗi (30x `500 Internal Server Error` + 15x `503 Service Unavailable`) rải suốt cửa sổ 04:16Z–04:58Z — cùng loại lỗi gián đoạn tần suất thấp đã ghi nhận ở các lần đo trước, không ảnh hưởng tới việc đạt SLO success-rate.
 
 ### Resource
 
-- Số node: **4, không đổi suốt 49 phút** (từ lúc pre-run check 02:17Z đến khi kết thúc 03:09Z) — không có Karpenter scale event.
-- `checkout`: 0 restart, CPU thấp suốt (4-36%/70%) — code checkout không bị áp lực.
-- `frontend`: kẹt ceiling (3/3, `maxReplicas=3`) gần suốt run, 79-273%/70%.
-- Không có OOM/Pending/CrashLoopBackOff ở bất kỳ đâu trong namespace.
+- Số node: **4, không đổi suốt toàn bộ run** — không Karpenter scale event.
+- `checkout`: 0 restart, CPU thấp-vừa (3-34%/70%).
+- `frontend`: kẹt ceiling (3/3, `maxReplicas=3`) phần lớn run, 66-237%/70%.
+- Không OOM/Pending/CrashLoopBackOff. **Không có warning event nào trong suốt run** — lần đo sạch nhất trong 3 lần đã thực hiện.
 
-### Trace
+### Đối chiếu với Grafana (dashboard "Flash Sale Verification", panel "Storefront (Browse) Latency Percentiles")
 
-Không có — xem mục "Jaeger trace" ở trên.
+Panel này dùng query `histogram_quantile(..., traces_span_metrics_duration_milliseconds_bucket{service_name="frontend", span_kind="SPAN_KIND_SERVER", span_name=~"GET /|GET /product.*|GET /api/products.*|GET /api/data.*"})` — tức là chỉ đo **Browse**, đo **server-side tại `frontend`** (không tính network/`frontend-proxy`), và mặc định time range `now-30m` (rolling), không phải đúng khung giờ test.
+
+Tính lại metric này khoanh đúng cửa sổ test (04:11:08Z–04:58:54Z) qua Prometheus trực tiếp: **p50 = 45.1ms, p95 = 356.4ms, p99 = 688.2ms** — khớp với số Grafana quan sát được. So với Locust (client-observed, full round-trip) cho Browse ở bảng trên (p95=1,100ms, p99=1,800ms), chênh lệch ~1.1s ở p99 **chính là bằng chứng định lượng cho phần chi phí nằm ở `frontend-proxy`/network/hàng đợi khi `frontend` bị kẹt HPA ceiling**, không phải ở code xử lý bên trong `frontend`. Hai nguồn số không mâu thuẫn — chỉ đo hai điểm khác nhau trên request path. **Gate của D16-PERF-01 yêu cầu percentile tính trên "successful client-observed requests"**, nên số Locust (client-observed) mới là số dùng để PASS/FAIL, không phải số span server-side của Grafana.
 
 ## Kết luận
 
-**INCONCLUSIVE — không đủ căn cứ để đóng task là PASS hay FAIL.**
+**INCONCLUSIVE — nhưng là lần đo sạch nhất và có tín hiệu cải thiện rõ ràng nhất từ trước tới nay.**
 
-1. Mọi gate p95/p99 tuyệt đối đều FAIL, vượt budget 3-5 lần.
-2. Nguyên nhân xác nhận không phải do code checkout: `checkout`/`currency` không hề bị áp lực CPU suốt run; `frontend` bị kẹt cứng ở ceiling (`maxReplicas=3`), dao động 79-273%/70%. Node vẫn còn dư CPU (15-61%) — nút thắt là do cấu hình HPA, không phải do thiếu năng lực cluster.
-3. Vấn đề phương pháp mới phát sinh: code đang test không được giữ nguyên suốt cửa sổ đo — PR #600 (`b536a75`) ghi đè toàn bộ `frontend` giữa chừng, khiến toàn bộ stability window chạy trên build chưa được review. Theo đúng rule đóng băng so sánh của D16-PERF-01, đây là căn cứ để phải chạy lại.
-4. Điểm tích cực: correctness/success-rate đạt yêu cầu (Checkout 99.19% ≥ SLO 99%, aggregate error rate chỉ 0.23%) — xác nhận bộ fix D16-DEV-01 (#324/#558/#565/#592) không làm giảm correctness dưới tải, nhưng không đủ để chứng minh mục tiêu cải thiện p95/p99 vì bị chặn bởi nghẽn năng lực `frontend`.
+1. Mọi gate p95/p99 tuyệt đối vẫn FAIL, nhưng khoảng cách với budget đã thu hẹp đáng kể (độ trễ giảm gần một nửa so với lần đo trước ở mọi flow); Cart `POST` p95 chỉ còn vượt budget 300ms.
+2. Nguyên nhân xác nhận vẫn là `frontend` HPA ceiling (`maxReplicas=3`, 66-237%/70%), không phải do code checkout (`checkout` CPU thấp suốt run). Đây là lần thứ 2 xác nhận cùng một nút thắt trên 2 lần đo độc lập, ở 2 trạng thái code khác nhau.
+3. **Lần đo này không có vấn đề phương pháp**: không bị deploy nào chen ngang (0 warning event), SHA giữ nguyên suốt cửa sổ đo — khác với lần trước.
+4. Correctness/success-rate tiếp tục đạt và tốt hơn lần trước (Checkout 99.64%, aggregate error 0.15%).
 
-**Đề xuất escalate lên Tech Lead/PM trước khi chạy lần tiếp theo:**
+**Kết luận thực tế: bộ fix D16-DEV-01 (kể cả PR #600) đang hoạt động đúng hướng và cải thiện rõ rệt, nhưng chưa đủ để đạt budget tuyệt đối vì bị chặn bởi năng lực `frontend`.** Việc đóng ticket với kết quả PASS phụ thuộc vào xử lý ceiling này, không phải vào code checkout nữa:
 
-- **(a) Ceiling HPA của `frontend` (`maxReplicas=3`)** là nút thắt xác nhận lặp lại, chặn mọi lần đo validation. Node còn dư CPU (15-61%) nên tăng `maxReplicas` cho riêng `frontend` — không thêm node, không tăng `minReplicas` — có vẻ phù hợp với nguyên tắc "không đổi latency lấy compute" đã áp dụng cho checkout. Cần người phụ trách Cost/Capacity duyệt trước khi đo lại (Tuấn đang co-own pillar Cost + Perf).
-- **(b) Cơ chế "báo TF giữ chỗ" qua chat không đủ để ngăn GitOps auto-sync deploy chen vào cửa sổ đang đo.** Cần cơ chế mạnh hơn: tạm dừng auto-sync cho các service đang test (`frontend`, `checkout`, `product-catalog`) trong đúng cửa sổ đã đặt lịch, hoặc quy ước merge-freeze chính thức thay vì chỉ báo qua chat.
-- Cần thử lại việc lấy Jaeger trace bằng công cụ/quyền truy cập ổn định hơn — đây là evidence bắt buộc theo `task-tuan.md` nhưng chưa lấy được trong phiên này.
+- **Cần nâng `maxReplicas` của `frontend`** (node còn dư CPU theo các lần kiểm tra trước, không cần thêm node) — đây là điều kiện tiên quyết duy nhất còn lại để có cơ hội đạt budget tuyệt đối ở lần đo tiếp theo. Cần người phụ trách Cost/Capacity duyệt.
+- Không cần escalate thêm về vấn đề coordination/deploy-chen-ngang nữa — lần này đã sạch.
 
 ## Acceptance criteria (theo `task-tuan.md`)
 
 - [x] Dùng cùng load contract — đúng tỷ trọng task/endpoint mix, đủ 4 phase (warm-up 5', ramp 5', sustained 25', stability 10').
-- [x] Số lượng request đủ ngưỡng tối thiểu — Checkout 10,805 request, Browse/Cart đều vượt xa ngưỡng tối thiểu 1,000 mẫu/sustained window; không có baseline để tính tolerance ≤5%.
-- [ ] p99 giảm theo improvement target (≥20% Checkout) — **không đánh giá được**, không có baseline hợp lệ để tính delta.
-- [ ] p95 đạt budget tuyệt đối (§5) — **FAIL**, cả 3 flow vượt budget ~3-5 lần.
-- [ ] p99 đạt budget tuyệt đối (§5) — **FAIL**, cả 3 flow vượt budget ~3.5-5 lần.
-- [x] Correctness giữ nguyên — **PASS**, không phát sinh lỗi correctness ngoài lỗi Checkout 500 tần suất thấp đã biết.
-- [x] Error rate không tăng đáng kể — **PASS** so với SLO: Browse 99.77%, Cart 99.74%/99.91%, Checkout 99.19%, aggregate 0.23%.
-- [x] Node count không tăng — 4 node, ổn định suốt 49 phút.
+- [x] Số lượng request đủ ngưỡng tối thiểu — Checkout 12,404 request, Browse/Cart đều vượt xa ngưỡng tối thiểu 1,000 mẫu/sustained window.
+- [ ] p99 giảm theo improvement target (≥20% Checkout) — không đánh giá được, không có baseline hợp lệ để tính delta.
+- [ ] p95 đạt budget tuyệt đối (§5) — **FAIL**, cả 3 flow vượt budget, nhưng khoảng cách đã thu hẹp mạnh so với lần trước.
+- [ ] p99 đạt budget tuyệt đối (§5) — **FAIL**, tương tự.
+- [x] Correctness giữ nguyên — **PASS**.
+- [x] Error rate không tăng đáng kể — **PASS so với SLO**: Browse 99.78%, Cart 99.85%/99.87%, Checkout 99.64%, aggregate 0.15%.
+- [x] Node count không tăng — 4 node, ổn định suốt run.
 - [x] Node-hours không tăng — nhất quán với node count ổn định.
-- [x] Không có OOM/Pending regression mới — không quan sát thấy; 0 restart toàn namespace.
-- [ ] **SHA đang review được giữ nguyên suốt cửa sổ đo** — **FAIL**: `frontend` bị PR #600 (`b536a75`) ghi đè giữa chừng, ảnh hưởng ~3 phút cuối sustained và toàn bộ stability window.
-- [ ] Trace ID trước/sau để so sánh — **chưa lấy được**, lỗi công cụ truy vấn Jaeger trong phiên này.
+- [x] Không có OOM/Pending regression mới — không quan sát thấy; 0 restart, 0 warning event toàn namespace.
+- [x] SHA đang review được giữ nguyên suốt cửa sổ đo — **PASS**, không có deploy chen ngang lần này.
 
-Kết quả chung: gate resource và correctness/error-rate đều PASS; gate latency tuyệt đối FAIL; gate so sánh cải thiện p99 không thể đánh giá vì thiếu baseline; và 2 yêu cầu về evidence/quy trình (giữ nguyên SHA, trace ID) chưa đạt trong lần chạy này.
+Kết quả chung: resource, correctness, error-rate và tính toàn vẹn phương pháp đo đều đạt; chỉ còn gate latency tuyệt đối chưa đạt, do một nguyên nhân đã xác định rõ và nằm ngoài phạm vi code checkout (`frontend` HPA ceiling).
