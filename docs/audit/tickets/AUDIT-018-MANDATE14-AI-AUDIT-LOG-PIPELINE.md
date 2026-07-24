@@ -4,6 +4,7 @@
 |---|---|
 | Trạng thái | `TO DO` |
 | Source task | Task 68 — docs plan cấu hình pipeline gom log AI Audit |
+| Runtime implementation | Task 62 — PR [#631](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/631) |
 | Jira ID | Gán key khi tạo ticket trên Jira `AI MANDATE #14` |
 | Reporter / Verifier | CDO-07 (Auditability) |
 | Assignee | CDO-08 / Platform |
@@ -129,7 +130,7 @@ CloudWatch/S3 vẫn phải đạt.
 
 Tạo resource bằng Terraform, không tạo tay:
 
-- CloudWatch Log Group `/tf4/mandate-14/ai-tool-audit`, retention 7 ngày.
+- CloudWatch Log Group `/aws/eks/techx-tf4/ai-audit`, retention 7 ngày.
 - CloudWatch validation/error Log Group, retention 7 ngày.
 - Firehose delivery stream `tf4-ai-audit-logs`.
 - Firehose delivery error Log Group, retention 7 ngày.
@@ -187,25 +188,36 @@ Phần CDO-08 cần cấp hoặc attach cho role CDO-07 chỉ gồm permission d
    `s3:GetObjectRetention` trên AI audit object prefix và
    `s3:GetLifecycleConfiguration` trên AI audit bucket nếu policy hiện hữu chưa
    có resource scope tương ứng.
-2. OpenSearch data-plane read chưa yêu cầu trong ticket này vì security plugin
+2. **CDO-07 EKS read delta**: bổ sung `eks:ListPodIdentityAssociations` chỉ trên
+   cluster `techx-tf4-cluster` để Audit có thể xác minh association của service
+   account `techx-observability/otel-collector`. Preflight ngày 2026-07-25 xác
+   nhận role `TF4-AuditReadOnlyAndAnalyze` hiện trả `AccessDenied` cho action
+   này.
+3. OpenSearch data-plane read chưa yêu cầu trong ticket này vì security plugin
    hiện disabled; nếu chưa bật FGAC tại nghiệm thu thì OpenSearch là
    convenience copy và acceptance access control giữ trạng thái `BLOCKED`.
+
+CDO-07 không cần và không được cấp quyền tạo/apply hạ tầng cho Task 62. Preflight
+AWS ngày 2026-07-25 xác nhận role Audit không có `logs:CreateLogGroup`,
+`firehose:CreateDeliveryStream`, `s3:CreateBucket`, `iam:PassRole` hoặc
+`eks:CreatePodIdentityAssociation`; đây là separation of duties theo thiết kế,
+không phải lỗi access key.
 
 Các service role của pipeline do người triển khai tự tạo và cấu hình trong
 Terraform/Helm, không phải request CDO-08 cấp thêm vào role CDO-07:
 
 - **OTel Collector role qua Pod Identity/IRSA** trên đúng Log Group
-  `/tf4/mandate-14/ai-tool-audit`: `logs:CreateLogStream`,
+  `/aws/eks/techx-tf4/ai-audit`: `logs:CreateLogStream`,
   `logs:DescribeLogStreams`, `logs:PutLogEvents`. Không cấp
   `logs:CreateLogGroup`, quyền đọc/query log, S3, Firehose hoặc KMS.
 - **`tf4-ai-audit-cwl-to-firehose-role`** với `firehose:PutRecord` và
   `firehose:PutRecordBatch` trên đúng stream `tf4-ai-audit-logs`; trust policy
   phải có `aws:SourceArn` và `aws:SourceAccount` phù hợp.
-- **`tf4-ai-audit-firehose-to-s3-role`** với `s3:PutObject`,
+- **`tf4-ai-audit-firehose-to-s3-role`** với `s3:PutObject`, `s3:GetObject`,
   `s3:AbortMultipartUpload`, `s3:GetBucketLocation`,
   `s3:ListBucketMultipartUploads` và các multipart action tối thiểu trên đúng
   bucket/prefix; thêm `logs:PutLogEvents` chỉ trên Firehose error Log Group.
-  Không có read object, delete, retention change hoặc KMS permission.
+  Không có delete, retention change hoặc KMS permission.
 
 Không cấp `s3:*`, `logs:*`, `es:*` hoặc `kms:*`; không cấp write/delete cho
 CDO-07; không cấp `s3:BypassGovernanceRetention`, `s3:PutObjectRetention` hoặc
@@ -238,7 +250,7 @@ response hoặc tool payload.
 | Store | Retention | Vai trò |
 |---|---|---|
 | OpenSearch `ai-tool-audit-*` | 7 ngày | Hot searchable copy |
-| CloudWatch `/tf4/mandate-14/ai-tool-audit` | 7 ngày | Operational query/alert + Firehose source |
+| CloudWatch `/aws/eks/techx-tf4/ai-audit` | 7 ngày | Operational query/alert + Firehose source |
 | S3 AI audit bucket | 90 ngày tổng; WORM COMPLIANCE 90 ngày | Evidence authority |
 | Firehose errors | 7 ngày | Delivery troubleshooting |
 | Safe validation errors | 7 ngày | Schema/privacy monitoring |
@@ -440,9 +452,10 @@ cluster/namespace, identity đã dùng và command/query có thể tái tạo.
 | Dependency | Trạng thái đầu vào | Owner |
 |---|---|---|
 | Canonical logger đã merge/package | Done ở code; cần deploy/recapture | AIO |
-| OTel component compatibility / CloudWatch exporter alpha | Chưa xác nhận version/digest và recovery behavior | CDO-08 |
+| OTel component compatibility / CloudWatch exporter alpha | PR #631 đã pin collector `0.151.0` theo digest và validate config; runtime deployment còn pending | CDO-08 |
 | OpenSearch FGAC/security | Baseline đang disabled | CDO-08 |
 | IAM/SSO attachment | CDO-08 chỉ attach resource-scoped read/query delta cho CDO-07; ba service role do người triển khai tự cấu hình bằng IaC | CDO-08 + Người triển khai |
+| Shared Terraform plan role | `tf4-github-actions-plan` thiếu read-only `dlm:GetLifecyclePolicy` trên `arn:aws:dlm:us-east-1:511825856493:policy/*`, làm CI plan của PR #631 fail khi refresh DLM resource đã có trên `main`; không liên quan quyền CDO-07 | CDO-04 |
 | Cost estimate theo AI event volume | Chưa có | CDO-04 |
 | Live canonical sample | Pending deployment | AIO + CDO-08 |
 
