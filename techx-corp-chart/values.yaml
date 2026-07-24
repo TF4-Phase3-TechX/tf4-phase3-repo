@@ -1010,17 +1010,17 @@ components:
         value: "0.0.0.0"
       - name: ENVOY_ADMIN_PORT
         value: "10000"
-      # ponytail: keep inert until GitOps supplies measured per-proxy budgets.
+      # measured at 200 users; keep shadow-only until runtime counters are verified.
       - name: ENVOY_LOCAL_RL_AI_RPS
-        value: "10000"
+        value: "1"
       - name: ENVOY_LOCAL_RL_BROWSE_RPS
-        value: "10000"
+        value: "15"
       - name: ENVOY_LOCAL_RL_CART_RPS
-        value: "10000"
+        value: "9"
       - name: ENVOY_LOCAL_RL_CHECKOUT_RPS
-        value: "10000"
+        value: "3"
       - name: ENVOY_LOCAL_RL_ENABLED_PERCENT
-        value: "0"
+        value: "100"
       - name: ENVOY_LOCAL_RL_ENFORCED_PERCENT
         value: "0"
       - name: FLAGD_HOST
