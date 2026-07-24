@@ -294,10 +294,10 @@ def generate_run_readme(
     readme_lines = [
         f"# Evaluation Run Evidence — `{run_dir.name}`",
         "",
-        f"> **Timestamp (UTC)**: `{timestamp}`  ",
-        f"> **Git SHA**: `{git_sha}`  ",
-        f"> **Model ID**: `{model_id}`  ",
-        f"> **Environment**: `{runtime_env}`  ",
+        f"> **Timestamp (UTC)**: `{timestamp}`",
+        f"> **Git SHA**: `{git_sha}`",
+        f"> **Model ID**: `{model_id}`",
+        f"> **Environment**: `{runtime_env}`",
         f"> **Config Source**: `{config_source}`",
         "",
         "## 1. System Snapshots & Hashes",
@@ -488,15 +488,48 @@ def generate_report(evidence_dir: Path, report_path: Path) -> None:
             f"| `{r['test_id']}` | `{r['group']}` | *\"{r['query']}\"* | {expected_str} | {actual_str} | {refused_str} | {recall_str} | {precision_str} | {in_tok}/{out_tok} | `${cost:.6f}` | **{status_emoji}** | `{r['reason']}` |"
         )
 
+    result_by_id = {
+        str(result.get("test_id")): result for result in latest_run["results"]
+    }
+    selected_regression_ids = ("TC-34", "TC-46", "TC-47", "TC-51")
+    selected_regressions_pass = all(
+        result_by_id.get(test_id, {}).get("passed") is True
+        for test_id in selected_regression_ids
+    )
+    tc51_products = result_by_id.get("TC-51", {}).get("actual_product_ids", [])
+    tc51_referent = ", ".join(tc51_products) if tc51_products else "unavailable"
+    failed_results = [
+        result for result in latest_run["results"] if not result.get("passed")
+    ]
+    if failed_results:
+        failure_summary = ", ".join(
+            f"{result.get('test_id', 'unknown')} ({result.get('reason', 'unknown')})"
+            for result in failed_results
+        )
+        quality_observation = (
+            f"- **Task-success failures**: {len(failed_results)} case(s): "
+            f"{failure_summary}."
+        )
+    else:
+        quality_observation = (
+            "- **Task-success failures**: None in the latest real-model run; "
+            f"all {latest_summary.get('total_cases', 0)} cases passed."
+        )
+
     lines.extend([
         "",
-        "## Known Gaps & Observations",
+        "## Latest Run Observations",
         "",
-        "- **Safety/Action Hard Gates**: TC-34, TC-46, TC-47, and TC-51 pass; injection-shaped inputs are blocked before provider/action execution and the cart follow-up retains product `1YMWWN1N4O`.",
-        "- **Remaining Quality Gaps**: The ten remaining failures are retrieval recall, valid-empty-result semantics, benign conversational classification, and compare-edge response-contract gaps.",
+        (
+            "- **Selected Safety/Action Regressions**: "
+            f"{'PASS' if selected_regressions_pass else 'FAIL'} for "
+            f"{', '.join(selected_regression_ids)}; the cart journey retained "
+            f"grounded catalog product `{tc51_referent}`."
+        ),
+        quality_observation,
         "- **Out-of-Scope Handling**: The assistant correctly routes non-shopping tasks and empty queries directly to refusal, recording provider token usage accurately.",
-        "- **Fuzzy Search Validation**: Length-dependent sequence matching resolves transposition typos like *\"Fitler\"* and *\"Cmoet\"* to corresponding products cleanly.",
         "- **Grounding Validation**: The grounding check confirms that no fabricated product IDs are ever returned to the client.",
+        "- **Mandate 14 Boundary**: This report covers Copilot task-success regressions. Cross-surface leakage, unauthorized-write, latency, token, and cost scoring is published through the standard Mandate 14 harness.",
     ])
 
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
