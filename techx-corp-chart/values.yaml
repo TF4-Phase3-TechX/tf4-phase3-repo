@@ -1010,7 +1010,7 @@ components:
         value: "0.0.0.0"
       - name: ENVOY_ADMIN_PORT
         value: "10000"
-      # measured at 200 users; keep shadow-only until runtime counters are verified.
+      # Fixed per-proxy budgets measured at 200 and 350 users; retune if proxy topology changes.
       - name: ENVOY_LOCAL_RL_AI_RPS
         value: "1"
       - name: ENVOY_LOCAL_RL_BROWSE_RPS
@@ -1018,11 +1018,11 @@ components:
       - name: ENVOY_LOCAL_RL_CART_RPS
         value: "9"
       - name: ENVOY_LOCAL_RL_CHECKOUT_RPS
-        value: "3"
+        value: "4"
       - name: ENVOY_LOCAL_RL_ENABLED_PERCENT
         value: "100"
       - name: ENVOY_LOCAL_RL_ENFORCED_PERCENT
-        value: "0"
+        value: "100"
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
