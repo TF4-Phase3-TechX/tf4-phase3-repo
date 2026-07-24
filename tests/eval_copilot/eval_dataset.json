@@ -1,0 +1,139 @@
+{
+  "test_cases": [
+    {
+      "test_id": "TC-01",
+      "group": "vietnamese_nlp",
+      "query": "có những loại kính thiên văn nào?",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese natural query for telescopes"
+    },
+    {
+      "test_id": "TC-02",
+      "group": "vietnamese_nlp",
+      "query": "đèn pin",
+      "expected_product_ids": [
+        "LS4PSXUNUM"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese keyword search for flashlights"
+    },
+    {
+      "test_id": "TC-03",
+      "group": "vietnamese_nlp",
+      "query": "có kính thiên văn nào rẻ rẻ không?",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese query for cheap telescopes"
+    },
+    {
+      "test_id": "TC-04",
+      "group": "vietnamese_nlp",
+      "query": "màn lọc kính thiên văn",
+      "expected_product_ids": [
+        "6E92ZMYYFZ"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese keyword search for solar filter"
+    },
+    {
+      "test_id": "TC-05",
+      "group": "vietnamese_nlp",
+      "query": "chòa bạn",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "description": "Vietnamese greeting chatter out of scope"
+    },
+    {
+      "test_id": "TC-06",
+      "group": "vietnamese_nlp",
+      "query": "tôi muốn mua kính thiên văn rẻ nhất",
+      "expected_product_ids": [
+        "OLJCESPC7Z",
+        "1YMWWN1N4O",
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese query for buying cheapest telescope"
+    },
+    {
+      "test_id": "TC-07",
+      "group": "vietnamese_nlp",
+      "query": "hi",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "description": "English greeting chatter out of scope"
+    },
+    {
+      "test_id": "TC-08",
+      "group": "vietnamese_nlp",
+      "query": "có truyện tranh không?",
+      "expected_product_ids": [
+        "HQTGWGPNH4"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese query for comic books"
+    },
+    {
+      "test_id": "TC-09",
+      "group": "vietnamese_nlp",
+      "query": "tôi muốn mua 1 bộ one piece",
+      "expected_product_ids": [],
+      "expected_behavior": "refuse_out_of_scope",
+      "description": "Vietnamese query for item not in catalog"
+    },
+    {
+      "test_id": "TC-10",
+      "group": "vietnamese_nlp_multiturn",
+      "history_queries": [
+        "tôi muốn mua kính thiên văn"
+      ],
+      "query": "thêm cái đắt nhất vào giỏ hàng",
+      "expected_product_ids": [
+        "66VCHSJNUP"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese multi-turn request to add most expensive telescope from history to cart"
+    },
+    {
+      "test_id": "TC-11",
+      "group": "vietnamese_nlp_multiturn",
+      "history_queries": [
+        "ống nhòm đắt nhất"
+      ],
+      "query": "đánh giá như thế nào?",
+      "expected_product_ids": [
+        "2ZYFJ3GM2N"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese multi-turn question asking for product reviews based on prior conversation turn"
+    },
+    {
+      "test_id": "TC-12",
+      "group": "vietnamese_nlp_multiturn",
+      "history_queries": [
+        "tôi muốn xem các loại kính thiên văn"
+      ],
+      "query": "cái nào rẻ nhất",
+      "expected_product_ids": [
+        "1YMWWN1N4O"
+      ],
+      "expected_behavior": "return_products",
+      "description": "Vietnamese multi-turn question identifying cheapest telescope based on prior conversation turn"
+    }
+  ],
+  "_meta": {
+    "generated_at": "2026-07-22T01:56:20.000000+00:00",
+    "source_file": "init.sql",
+    "product_count": 10,
+    "dataset_sha256": "a757e6a6034900643db6f80cb65d201e32062b5c1108a1a2498ef51980286365"
+  }
+}

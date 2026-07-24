@@ -34,7 +34,8 @@ data "aws_iam_policy_document" "lambda_ssm_kms" {
   statement {
     effect = "Allow"
     actions = [
-      "kms:Decrypt"
+      "kms:Decrypt",
+      "kms:GenerateDataKey*",
     ]
     resources = [
       var.kms_key_arn
@@ -52,6 +53,22 @@ data "aws_iam_policy_document" "lambda_ssm_kms" {
       variable = "cloudwatch:namespace"
       values   = [var.detection_metric_namespace]
     }
+  }
+
+  statement {
+    sid       = "AllowSendToDLQ"
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.lambda_dlq.arn]
+  }
+
+  statement {
+    sid     = "AllowPublishFormattedAlertEmail"
+    effect  = "Allow"
+    actions = ["sns:Publish"]
+    resources = [
+      aws_sns_topic.formatted_alerts.arn
+    ]
   }
 }
 

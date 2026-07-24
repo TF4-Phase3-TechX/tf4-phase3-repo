@@ -540,6 +540,9 @@ services:
       - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
       - DB_CONNECTION_STRING=host=${POSTGRES_HOST} user=otelu password=otelp dbname=${POSTGRES_DB}
       - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
       - BEDROCK_MODEL_ID=us.amazon.nova-2-lite-v1:0
       - BEDROCK_GUARDRAIL_ID
       - BEDROCK_GUARDRAIL_VERSION
@@ -751,6 +754,38 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    logging: *logging
+
+  # AIOps detector, RCA, and guarded remediation controller
+  aiops:
+    image: ${IMAGE_NAME}:${DEMO_VERSION}-aiops
+    container_name: aiops
+    build:
+      context: ./
+      dockerfile: src/aiops/Dockerfile
+      cache_from:
+        - ${IMAGE_NAME}:${IMAGE_VERSION}-aiops
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    restart: unless-stopped
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - OPENSEARCH_URL=http://opensearch:9200
+      - JAEGER_URL=http://jaeger:16686/jaeger/ui
+      - REMEDIATION_MODE=dry-run
+      - AIOPS_APPROVAL_TOKEN=${AIOPS_APPROVAL_TOKEN:-local-demo-token}
+      - AIOPS_RECOVERY_POLLS=2
+    ports:
+      - "8088:8080"
+    depends_on:
+      prometheus:
+        condition: service_started
+      opensearch:
+        condition: service_started
+      jaeger:
+        condition: service_started
     logging: *logging
 
   # LLM used by Product Review service

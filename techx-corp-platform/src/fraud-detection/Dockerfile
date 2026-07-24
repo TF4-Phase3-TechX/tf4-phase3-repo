@@ -14,7 +14,7 @@ RUN ./gradlew shadowJar
 
 # -----------------------------------------------------------------------------
 
-FROM gcr.io/distroless/java17-debian12:nonroot@sha256:06484c2a9dcc9070aeafbc0fe752cb9f73bc0cea5c311f6a516e9010061998ad
+FROM eclipse-temurin:17-jre-jammy@sha256:475d8e96b4b2bfe08999e5e854755c773af1581acdf959a4545d88f0696a2339
 
 ARG OTEL_JAVA_AGENT_VERSION
 WORKDIR /usr/src/app/
@@ -25,3 +25,4 @@ ENV JAVA_TOOL_OPTIONS=-javaagent:/usr/src/app/opentelemetry-javaagent.jar
 COPY --from=builder /usr/src/app/build/libs/fraud-detection-1.0-all.jar fraud-detection-1.0-all.jar
 
 ENTRYPOINT [ "java", "-jar", "fraud-detection-1.0-all.jar" ]
+

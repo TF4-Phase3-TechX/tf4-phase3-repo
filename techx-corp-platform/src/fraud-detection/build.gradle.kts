@@ -28,6 +28,8 @@ repositories {
 
 
 dependencies {
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.21.4"))
+
     implementation("com.google.protobuf:protobuf-java:${protobufVersion}")
     testImplementation(kotlin("test"))
     implementation(kotlin("script-runtime"))
@@ -50,6 +52,24 @@ dependencies {
         // Workaround for @javax.annotation.Generated
         // see: https://github.com/grpc/grpc-java/issues/3633
         implementation("javax.annotation:javax.annotation-api:1.3.2")
+    }
+}
+
+// CVE fixes for transitive deps pulled in via io.grpc:grpc-netty (netty 4.1.x branch)
+// and dev.openfeature.contrib.providers:flagd (netty-transport-native-epoll 4.2.x branch).
+// jackson-databind fix handled above via jackson-bom platform override.
+// 4.1.135.Final -> 4.1.136.Final: CVE-2026-59901, CVE-2026-55831, CVE-2026-55833, CVE-2026-56745.
+configurations.all {
+    resolutionStrategy {
+        force(
+            "io.netty:netty-codec:4.1.136.Final",
+            "io.netty:netty-codec-http:4.1.136.Final",
+            "io.netty:netty-codec-http2:4.1.136.Final",
+            "io.netty:netty-codec-socks:4.1.136.Final",
+            "io.netty:netty-handler:4.1.136.Final",
+            "io.netty:netty-handler-proxy:4.1.136.Final",
+            "io.netty:netty-transport-native-epoll:4.2.13.Final",
+        )
     }
 }
 

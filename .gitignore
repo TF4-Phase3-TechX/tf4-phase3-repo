@@ -70,7 +70,6 @@ charts/*.tgz
 # ── Environment / Secrets ──
 .env
 .env.*
-!.env.override
 *.pem
 *.key
 credentials.*
@@ -103,3 +102,7 @@ note/
 huong-dan-grafana.md
 docs/aio01/w1_tasks_summary.md
 docs/aio01/w2_tasks_summary.md
+
+# ── Generated Manifests ──
+techx-corp-app.yaml
+

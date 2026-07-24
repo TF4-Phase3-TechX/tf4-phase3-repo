@@ -199,6 +199,37 @@ data "aws_iam_policy_document" "github_actions_plan" {
   }
 
   statement {
+    sid    = "ReadSecurityAlertingSqsState"
+    effect = "Allow"
+
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ListQueueTags",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-dlq",
+    ]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingSnsState"
+    effect = "Allow"
+
+    actions = [
+      "sns:GetTopicAttributes",
+      "sns:ListTagsForResource",
+      "sns:ListSubscriptionsByTopic",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts",
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
+    ]
+  }
+
+  statement {
     sid       = "ReadSecureSlackWebhookParameter"
     effect    = "Allow"
     actions   = ["ssm:GetParameter"]

@@ -1,0 +1,140 @@
+{
+  "0e23c597ddca0288b672e845103e9abf": [
+    {
+      "spans": [
+        {
+          "duration_us": 8065457,
+          "operation": "oteldemo.ProductReviewService/SearchProductsAIAssistant",
+          "parentSpanID": "52ead6948b084505",
+          "service": "product-reviews",
+          "spanID": "fcd9fcc14d4182f8",
+          "start_utc": "2026-07-23T02:00:17.542781+00:00",
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 8064658,
+          "operation": "search_products_ai",
+          "parentSpanID": "fcd9fcc14d4182f8",
+          "service": "product-reviews",
+          "spanID": "5253af3911b9857c",
+          "start_utc": "2026-07-23T02:00:17.543545+00:00",
+          "tags": {
+            "app.caller.feature": "copilot_search",
+            "app.search.error_class": "timeout",
+            "app.search.outcome": "provider_failure"
+          }
+        },
+        {
+          "duration_us": 8049465,
+          "operation": "Bedrock Runtime/Converse",
+          "parentSpanID": "5253af3911b9857c",
+          "service": "product-reviews",
+          "spanID": "3aa136e9625006c3",
+          "start_utc": "2026-07-23T02:00:17.543904+00:00",
+          "tags": {
+            "gen_ai.operation.name": "chat",
+            "gen_ai.request.max_tokens": 300,
+            "gen_ai.request.model": "us.amazon.nova-2-lite-v1:0",
+            "gen_ai.request.temperature": 0,
+            "gen_ai.system": "aws.bedrock",
+            "otel.status_code": "ERROR"
+          }
+        }
+      ],
+      "traceID": "0e23c597ddca0288b672e845103e9abf"
+    }
+  ],
+  "ec1f8f0087cd980b7bdad98ba0daf39d": [
+    {
+      "spans": [
+        {
+          "duration_us": 8171684,
+          "operation": "oteldemo.ProductReviewService/AskProductAIAssistant",
+          "parentSpanID": "6712396f94828ff9",
+          "service": "product-reviews",
+          "spanID": "98b251f2f08e4733",
+          "start_utc": "2026-07-23T02:00:44.927906+00:00",
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 8171087,
+          "operation": "get_ai_assistant_response",
+          "parentSpanID": "98b251f2f08e4733",
+          "service": "product-reviews",
+          "spanID": "8d6499565a97ae92",
+          "start_utc": "2026-07-23T02:00:44.928459+00:00",
+          "tags": {
+            "app.ai.guardrail.version": "3",
+            "app.ai.outcome": "unavailable",
+            "app.caller.feature": "product_qa",
+            "app.product.id": "66VCHSJNUP",
+            "gen_ai.request.model": "us.amazon.nova-2-lite-v1:0"
+          }
+        },
+        {
+          "duration_us": 12635,
+          "operation": "oteldemo.ProductCatalogService/GetProduct",
+          "parentSpanID": "8d6499565a97ae92",
+          "service": "product-reviews",
+          "spanID": "434523e74d9747a1",
+          "start_utc": "2026-07-23T02:00:44.928910+00:00",
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 1625,
+          "operation": "oteldemo.ProductCatalogService/GetProduct",
+          "parentSpanID": "434523e74d9747a1",
+          "service": "product-catalog",
+          "spanID": "a1f8b65766192080",
+          "start_utc": "2026-07-23T02:00:44.938990+00:00",
+          "tags": {
+            "app.product.id": "66VCHSJNUP",
+            "app.product.name": "Starsense Explorer Refractor Telescope",
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 1415,
+          "operation": "postgresql",
+          "parentSpanID": "a1f8b65766192080",
+          "service": "product-catalog",
+          "spanID": "c018c4e6302709f4",
+          "start_utc": "2026-07-23T02:00:44.939077+00:00",
+          "tags": {}
+        },
+        {
+          "duration_us": 22243,
+          "operation": "otel",
+          "parentSpanID": "8d6499565a97ae92",
+          "service": "product-reviews",
+          "spanID": "5979c86d4282bf24",
+          "start_utc": "2026-07-23T02:00:45.003391+00:00",
+          "tags": {}
+        },
+        {
+          "duration_us": 8063253,
+          "operation": "Bedrock Runtime/Converse",
+          "parentSpanID": "8d6499565a97ae92",
+          "service": "product-reviews",
+          "spanID": "f7ed53d46ad19273",
+          "start_utc": "2026-07-23T02:00:45.034828+00:00",
+          "tags": {
+            "gen_ai.operation.name": "chat",
+            "gen_ai.request.max_tokens": 512,
+            "gen_ai.request.model": "us.amazon.nova-2-lite-v1:0",
+            "gen_ai.request.temperature": 0,
+            "gen_ai.system": "aws.bedrock",
+            "otel.status_code": "ERROR"
+          }
+        }
+      ],
+      "traceID": "ec1f8f0087cd980b7bdad98ba0daf39d"
+    }
+  ]
+}

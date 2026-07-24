@@ -44,11 +44,37 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# Patch permission remains absent until CDO approves a controlled live-remediation drill.
+aiopsRemediation:
+  liveEnabled: false
+
 prometheusRetainStorageClass:
   enabled: true
   name: gp2-retain
   provisioner: kubernetes.io/aws-ebs
   allowVolumeExpansion: false
+
+cloudflareAccess:
+  enabled: false
+  namespace: cloudflare-access
+  createNamespace: true
+  replicas: 2
+  image:
+    repository: cloudflare/cloudflared
+    tag: "2025.7.0"
+    pullPolicy: IfNotPresent
+  tokenSecret:
+    name: cloudflare-tunnel-token
+    key: token
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  metrics:
+    port: 2000
 
 components:
   ## Demo Components are named objects (services) with several properties
@@ -174,8 +200,203 @@ components:
   #      runAsNonRoot: true
   #      runAsUser: 65534
 
+  aiops:
+    enabled: false
+    useDefault:
+      env: true
+    serviceAccountName: aiops
+    service:
+      port: 8080
+    podAnnotations:
+      resource.opentelemetry.io/service.namespace: techx-corp
+      prometheus.io/scrape: "true"
+      prometheus.io/path: /metrics
+      prometheus.io/port: "8080"
+    env:
+      - name: PROMETHEUS_URL
+        value: http://prometheus.techx-observability.svc.cluster.local:9090
+      - name: OPENSEARCH_URL
+        value: http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200
+      - name: JAEGER_URL
+        value: http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui
+      - name: GRAFANA_URL
+        value: http://grafana.techx-observability.svc.cluster.local/grafana
+      - name: OPENSEARCH_DATASOURCE_UID
+        value: webstore-logs
+      - name: REMEDIATION_MODE
+        value: dry-run
+      # Both switches remain off until CDO signs the exact Mandate-22 policy,
+      # target and drill window. Live RBAC is separately gated below.
+      - name: AIOPS_AUTONOMOUS_REMEDIATION_ENABLED
+        value: "false"
+      - name: AIOPS_REMEDIATION_POLICY_VERSION
+        value: "m22-v1"
+      - name: AIOPS_AUTONOMOUS_RUNBOOKS
+        value: "deployment-latency-rollback"
+      - name: AIOPS_VERIFICATION_POLLS
+        value: "3"
+      - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
+        value: "3"
+      - name: AIOPS_VERIFICATION_INTERVAL_SECONDS
+        value: "20"
+      - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
+        value: "900"
+      - name: AIOPS_TARGET_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: AIOPS_LLM_SERVICES
+        value: product-reviews
+      - name: AIOPS_LLM_LOG_SERVICES
+        value: llm,product-reviews
+      - name: AIOPS_POLL_SECONDS
+        value: "45"
+      - name: AIOPS_LOOKBACK_MINUTES
+        value: "30"
+      - name: AIOPS_SUSTAINED_POLLS
+        value: "1"
+      - name: AIOPS_ACUTE_CONFIRMATION_WINDOW
+        value: "3"
+      - name: AIOPS_ACUTE_MIN_BREACH_POINTS
+        value: "2"
+      - name: AIOPS_MINIMUM_REQUEST_COUNT
+        value: "20"
+      - name: AIOPS_LLM_MINIMUM_CALL_COUNT
+        value: "5"
+      - name: AIOPS_RECOVERY_POLLS
+        value: "2"
+      # Confirm workload availability separately so a transient rollout does
+      # not page as a dead service.
+      - name: AIOPS_AVAILABILITY_SUSTAINED_POLLS
+        value: "2"
+      # Operator-facing busy-state seed only; it does not fire an incident and
+      # must be recalibrated from labelled production traffic.
+      - name: AIOPS_BUSY_REQUEST_RATE_THRESHOLD
+        value: "5"
+      - name: AIOPS_AVAILABILITY_DOWN_CONFIDENCE
+        value: "0.95"
+      - name: AIOPS_AVAILABILITY_DEGRADED_CONFIDENCE
+        value: "0.80"
+      - name: AIOPS_LATENCY_THRESHOLD_MS
+        value: "1000"
+      - name: AIOPS_ERROR_RATE_THRESHOLD
+        value: "0.05"
+      - name: AIOPS_LLM_ERROR_THRESHOLD
+        value: "0.05"
+      - name: AIOPS_BASELINE_MAD_MULTIPLIER
+        value: "6"
+      - name: AIOPS_BASELINE_RELATIVE_BAND
+        value: "0.5"
+      - name: AIOPS_RATIO_THRESHOLD
+        value: "1.5"
+      - name: AIOPS_ZSCORE_THRESHOLD
+        value: "3"
+      - name: AIOPS_ZSCORE_NOISE_FLOOR
+        value: "0.05"
+      - name: AIOPS_EWMA_ALPHA
+        value: "0.35"
+      - name: AIOPS_EWMA_SPREAD_MULTIPLIER
+        value: "3"
+      - name: AIOPS_EWMA_RELATIVE_FLOOR
+        value: "0.25"
+      - name: AIOPS_EWMA_THRESHOLD
+        value: "1"
+      - name: AIOPS_TREND_WINDOW
+        value: "6"
+      - name: AIOPS_TREND_MIN_RELATIVE_CHANGE
+        value: "0.25"
+      - name: AIOPS_TREND_MIN_CURRENT_RATIO
+        value: "1.2"
+      - name: AIOPS_TREND_MIN_CONSISTENCY
+        value: "0.75"
+      - name: AIOPS_TREND_MIN_FLOOR_RATIO
+        value: "0.7"
+      - name: AIOPS_ISOLATION_CONTAMINATION
+        value: "0.15"
+      - name: AIOPS_ISOLATION_CONFIDENCE_WEIGHT
+        value: "0.05"
+      - name: AIOPS_LATENCY_CONFIDENCE_BASE
+        value: "0.45"
+      - name: AIOPS_ERROR_CONFIDENCE_BASE
+        value: "0.50"
+      - name: AIOPS_LLM_CONFIDENCE_BASE
+        value: "0.45"
+      - name: AIOPS_TORAI_CONFIDENCE_WEIGHT
+        value: "0.40"
+      - name: AIOPS_ZSCORE_CONFIDENCE_WEIGHT
+        value: "0.10"
+      - name: AIOPS_EWMA_CONFIDENCE_WEIGHT
+        value: "0.15"
+      - name: AIOPS_TREND_CONFIDENCE_WEIGHT
+        value: "0.10"
+      - name: AIOPS_MAXIMUM_CONFIDENCE
+        value: "0.95"
+      - name: AIOPS_TORAI_METRIC_WEIGHT
+        value: "0.35"
+      - name: AIOPS_TORAI_TRACE_WEIGHT
+        value: "0.25"
+      - name: AIOPS_TORAI_LOG_WEIGHT
+        value: "0.20"
+      - name: AIOPS_TORAI_DEPLOY_WEIGHT
+        value: "0.10"
+      - name: AIOPS_TORAI_AI_WEIGHT
+        value: "0.10"
+      - name: AIOPS_TORAI_METRIC_RELATIVE_SPAN
+        value: "0.50"
+      - name: AIOPS_TORAI_LOG_COUNT_SATURATION
+        value: "3"
+      - name: AIOPS_LATENCY_HIGH_MULTIPLIER
+        value: "2"
+      - name: AIOPS_ERROR_HIGH_MULTIPLIER
+        value: "2"
+      - name: AIOPS_LLM_HIGH_ERROR_RATE
+        value: "0.25"
+      - name: AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD
+        value: "0.75"
+      - name: AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD
+        value: "0.01"
+      - name: AIOPS_APPROVAL_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: aiops-approval-token
+            key: token
+            optional: true
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 15
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 384Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: ["ALL"]
+
   accounting:
     enabled: true
+    # Ref: CDO08-REL-17 - accounting is a Kafka consumer (no inbound Service, so
+    # Blue-Green's activeService requirement doesn't apply, and a Rollout pausing
+    # both old+new replicas alive at once would double-process mirrored messages).
+    # Recreate: kill the old pod fully before starting the new one — a few
+    # seconds of no consumption is safe (Kafka retains messages), avoids ever
+    # having self-hosted-reading and MSK-reading pods alive simultaneously.
+    strategy:
+      type: Recreate
     useDefault:
       env: true
     podAnnotations:
@@ -187,6 +408,8 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: DB_CONNECTION_STRING
         value: Host=postgresql;Username=otelu;Password=otelp;Database=otel
+      - name: PGAPPNAME
+        value: accounting
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
@@ -274,11 +497,22 @@ components:
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: cart
+        - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: cart
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -344,7 +578,30 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   checkout:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: checkout
     enabled: true
+    # Ref: CDO08-REL-17 - Blue-Green cutover to MSK Kafka. Disabled by default;
+    # flip alongside the top-level rollouts.enabled only for the actual cutover
+    # window per KAFKA-CUTOVER-RETRY-RUNBOOK.md. Flip useRollout ON in its own
+    # PR first (no other change) so a Rollout-managed baseline ReplicaSet
+    # exists before the Kafka env change creates the paused Green ReplicaSet.
+    useRollout: false
+    rolloutStrategy:
+      blueGreen:
+        autoPromotionEnabled: false
     replicas: 2
     podDisruptionBudget:
       enabled: true
@@ -361,14 +618,6 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: checkout
     useDefault:
       env: true
     service:
@@ -399,7 +648,7 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 16MiB
+        value: 75MiB
     resources:
       requests: { cpu: 75m, memory: 48Mi }
       limits: { cpu: 300m, memory: 96Mi }
@@ -445,6 +694,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   currency:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: currency
     enabled: true
     replicas: 2
     autoscaling:
@@ -462,14 +725,6 @@ components:
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: currency
     useDefault:
       env: true
     service:
@@ -551,6 +806,14 @@ components:
 
   fraud-detection:
     enabled: true
+    # Ref: CDO08-REL-17 - fraud-detection is a Kafka consumer (no inbound Service, so
+    # Blue-Green's activeService requirement doesn't apply, and a Rollout pausing
+    # both old+new replicas alive at once would double-process mirrored messages).
+    # Recreate: kill the old pod fully before starting the new one — a few
+    # seconds of no consumption is safe (Kafka retains messages), avoids ever
+    # having self-hosted-reading and MSK-reading pods alive simultaneously.
+    strategy:
+      type: Recreate
     useDefault:
       env: true
     podAnnotations:
@@ -576,7 +839,7 @@ components:
         cpu: 200m
         memory: 300Mi
     securityContext:
-      runAsUser: 65532  # distroless nonroot
+      runAsUser: 65532
       runAsGroup: 65532
       runAsNonRoot: true
       allowPrivilegeEscalation: false
@@ -602,6 +865,20 @@ components:
           limits: { cpu: 25m, memory: 32Mi }
 
   frontend:
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend
     enabled: true
     replicas: 2
     podDisruptionBudget:
@@ -619,14 +896,6 @@ components:
         scaleDown:
           stabilizationWindowSeconds: 300
           policies: [{ type: Pods, value: 1, periodSeconds: 60 }]
-    schedulingRules:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: frontend
     useDefault:
       env: true
     service:
@@ -642,6 +911,8 @@ components:
         value: :8080
       - name: AD_ADDR
         value: ad:8080
+      - name: AD_TIMEOUT_MS
+        value: "750"
       - name: CART_ADDR
         value: cart:8080
       - name: CHECKOUT_ADDR
@@ -699,19 +970,25 @@ components:
         type: RuntimeDefault
 
   frontend-proxy:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: frontend-proxy
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: frontend-proxy
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -880,19 +1157,25 @@ components:
         type: RuntimeDefault
 
   payment:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: payment
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: payment
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -911,8 +1194,8 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      requests: { cpu: 50m, memory: 64Mi }
-      limits: { cpu: 200m, memory: 128Mi }
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 256Mi }
     livenessProbe:
       grpc:
         port: 8080
@@ -939,19 +1222,25 @@ components:
         type: RuntimeDefault
 
   product-catalog:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: product-catalog
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: product-catalog
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -969,6 +1258,8 @@ components:
         value: 16MiB
       - name: DB_CONNECTION_STRING
         value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+      - name: PGAPPNAME
+        value: product-catalog
       - name: OTEL_SEMCONV_STABILITY_OPT_IN
         value: database
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -1004,13 +1295,20 @@ components:
   product-reviews:
     enabled: true
     serviceAccountName: product-reviews-bedrock
+    # EKS Pod Identity provides AWS credentials; this service does not need the Kubernetes API token.
+    automountServiceAccountToken: false
     useDefault:
       env: true
     service:
       port: 3551
+    ports:
+      - name: health
+        value: 3552
     podAnnotations:
       resource.opentelemetry.io/service.namespace: techx-corp
     env:
+      - name: PRODUCT_REVIEWS_HEALTH_PORT
+        value: "3552"
       - name: AWS_REGION
         value: us-east-1
       - name: BEDROCK_MODEL_ID
@@ -1031,12 +1329,20 @@ components:
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
         value: product-catalog:8080
+      - name: CART_ADDR
+        value: cart:8080
+      - name: APP_ENV
+        value: production
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
         value: "8013"
       - name: DB_CONNECTION_STRING
         value: host=postgresql user=otelu password=otelp dbname=otel
+      - name: PGAPPNAME
+        value: product-reviews
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: OTEL_PYTHON_LOG_CORRELATION
@@ -1172,19 +1478,25 @@ components:
         type: RuntimeDefault
 
   shipping:
-    enabled: true
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
     schedulingRules:
       topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: shipping
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: shipping
+    enabled: true
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     useDefault:
       env: true
     service:
@@ -1624,13 +1936,27 @@ opentelemetry-collector:
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       otlphttp/prometheus:
         endpoint: http://prometheus:9090/api/v1/otlp
         tls:
           insecure: true
         sending_queue:
+          num_consumers: 10
+          queue_size: 1000
           batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
       opensearch:
         logs_index: otel-logs
         logs_index_time_format: "yyyy-MM-dd"
@@ -1638,6 +1964,15 @@ opentelemetry-collector:
           endpoint: http://opensearch:9200
           tls:
             insecure: true
+        sending_queue:
+          num_consumers: 10
+          queue_size: 1000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
 
     processors:
       memory_limiter:
@@ -1681,14 +2016,14 @@ opentelemetry-collector:
       pipelines:
         traces:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [otlp/jaeger, debug, spanmetrics]
+          exporters: [otlp/jaeger, spanmetrics]
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [otlphttp/prometheus, debug]
+          exporters: [otlphttp/prometheus]
         logs:
           processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [opensearch, debug]
+          exporters: [opensearch]
       telemetry:
         metrics:
           level: detailed
@@ -1706,6 +2041,8 @@ jaeger:
   enabled: true
   fullnameOverride: jaeger
   jaeger:
+    serviceAccount:
+      automountServiceAccountToken: false
     storage:
       type: elasticsearch
     securityContext:
@@ -1835,6 +2172,7 @@ prometheus:
   enabled: true
   alertmanager:
     enabled: true
+    automountServiceAccountToken: false
     securityContext:
       runAsUser: 65534
       runAsGroup: 65534
@@ -2005,6 +2343,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  rbac:
+    # The upstream role always includes Secrets. SEC-22 supplies a ConfigMap-only Role.
+    create: false
   testFramework:
     enabled: false
   grafana.ini:
@@ -2023,10 +2364,13 @@ grafana:
   sidecar:
     alerts:
       enabled: true
+      resource: configmap
     dashboards:
       enabled: true
+      resource: configmap
     datasources:
       enabled: true
+      resource: configmap
     resources:
       requests:
         cpu: 20m
@@ -2045,6 +2389,10 @@ grafana:
 opensearch:
   enabled: true
   fullnameOverride: opensearch
+  rbac:
+    create: true
+    serviceAccountName: opensearch
+    automountServiceAccountToken: false
   clusterName: demo-cluster
   nodeGroup: techx-corp
   singleNode: true
@@ -2079,6 +2427,21 @@ opensearch:
       cpu: 1000m
       memory: 2Gi
 
+  otelLogsLifecycle:
+    enabled: false
+    image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+    schedule: "45 23 * * *"
+    endpoint: http://opensearch:9200
+    policyId: otel-logs-retention
+    retention: 3d
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
 bastionPortalAccess:
   enabled: false
   groupName: portal-bastion-group
@@ -2100,15 +2463,22 @@ managedData:
     enabled: false
     secretName: rds-postgres-secret
 
-  # Wire cart to ElastiCache via elasticache-valkey-secret
+  # Wire cart and product-reviews Copilot state to ElastiCache via
+  # elasticache-valkey-secret. `services` keeps the consumers explicit so a new
+  # VALKEY_ADDR user cannot silently retain the in-cluster fallback in production.
   valkey:
     enabled: false
     secretName: elasticache-valkey-secret
+    services: [cart, product-reviews]
 
-  # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret
+  # Wire accounting, checkout, fraud-detection to MSK via msk-kafka-secret.
+  # `services` controls which of the 3 get the MSK/SCRAM env when enabled=true —
+  # lets a staged cutover flip the producer (checkout) first, verify MM2 catch-up,
+  # then add the consumers (accounting, fraud-detection) in a second GitOps commit.
   kafka:
     enabled: false
     secretName: msk-kafka-secret
+    services: [accounting, checkout, fraud-detection]
 
 postgresqlMigrationBridge:
   # REL-15: temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.

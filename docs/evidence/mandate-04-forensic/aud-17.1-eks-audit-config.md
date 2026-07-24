@@ -106,7 +106,7 @@ aws logs filter-log-events \
 **Result:** `10` audit events trong 1h gần nhất.
 
 **Overall result:** ✅ **PASS** — EKS audit logging enabled và active với recent events. 
-⚠️ **Note:** controllerManager và scheduler logs đã bị disable để giảm chi phí, nhưng core audit (api, audit, authenticator) đang hoạt động.
+⚠️ **Note:** api, controllerManager và scheduler logs đã bị disable để giảm chi phí CloudWatch Ingestion, nhưng core audit (audit, authenticator) đang hoạt động 100%.
 
 ---
 

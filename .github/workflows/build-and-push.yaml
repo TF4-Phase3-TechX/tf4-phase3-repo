@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          all=(accounting ad cart checkout currency email fraud-detection frontend frontend-proxy image-provider kafka llm load-generator payment product-catalog product-reviews quote recommendation shipping)
+          all=(accounting ad aiops cart checkout currency email fraud-detection frontend frontend-proxy image-provider kafka llm load-generator payment product-catalog product-reviews quote recommendation shipping)
           input='${{ inputs.services }}'
 
           chart_changed=false
@@ -534,8 +534,22 @@ jobs:
                   )
                   replacement = rf'\g<1>{tag}\g<2>' + f'\n      digest: "{digest}"'
                   text, count = re.subn(pattern, replacement, text)
-                  if count != 1:
-                      raise SystemExit(f"expected one image override for {service}, found {count}")
+                  if count == 0:
+                      entry_pattern = rf'(?m)^  {re.escape(service)}:\s*$'
+                      if re.search(entry_pattern, text):
+                          raise SystemExit(f"malformed image override for existing service {service}")
+                      header = "components:\n"
+                      if text.count(header) != 1:
+                          raise SystemExit("expected exactly one components mapping")
+                      block = (
+                          f'  {service}:\n'
+                          '    imageOverride:\n'
+                          f'      tag: "{tag}"\n'
+                          f'      digest: "{digest}"\n'
+                      )
+                      text = text.replace(header, header + block, 1)
+                  elif count != 1:
+                      raise SystemExit(f"expected at most one image override for {service}, found {count}")
               path.write_text(text)
 
           if os.environ["CHART_CHANGED"] == "true":
