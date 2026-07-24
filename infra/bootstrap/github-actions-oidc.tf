@@ -21,6 +21,46 @@ locals {
 
   ecr_repository_arn = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/techx-corp"
   eks_cluster_arn    = "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/techx-tf4-cluster"
+
+  terraform_apply_role_name       = "tf4-github-actions-terraform-apply"
+  terraform_apply_role_arn        = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${local.terraform_apply_role_name}"
+  rel24_guardrail_policy_name     = "tf4-rel24-protected-recovery-assets-guardrail"
+  rel24_guardrail_policy_arn      = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/${local.rel24_guardrail_policy_name}"
+  rel24_identity_deny_policy_name = "tf4-rel24-ci-protected-recovery-assets-deny"
+  rel24_identity_deny_policy_arn  = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/${local.rel24_identity_deny_policy_name}"
+  rel24_protected_delete_actions = [
+    "backup:DeleteBackupVault",
+    "backup:DeleteBackupVaultAccessPolicy",
+    "backup:DeleteBackupVaultLockConfiguration",
+    "backup:DeleteRecoveryPoint",
+    "elasticache:DeleteCacheCluster",
+    "elasticache:DeleteReplicationGroup",
+    "elasticache:DeleteSnapshot",
+    "kafka-cluster:DeleteTopic",
+    "kafka:DeleteCluster",
+    "kafka:DeleteClusterPolicy",
+    "kafka:DeleteConfiguration",
+    "kms:DisableKey",
+    "kms:DisableKeyRotation",
+    "kms:ScheduleKeyDeletion",
+    "rds:DeleteDBCluster",
+    "rds:DeleteDBClusterAutomatedBackup",
+    "rds:DeleteDBClusterSnapshot",
+    "rds:DeleteDBInstance",
+    "rds:DeleteDBInstanceAutomatedBackup",
+    "rds:DeleteDBSnapshot",
+    "s3:BypassGovernanceRetention",
+    "s3:DeleteBucket",
+    "s3:DeleteBucketPolicy",
+    "s3:DeleteObject",
+    "s3:DeleteObjectTagging",
+    "s3:DeleteObjectVersion",
+    "s3:PutBucketObjectLockConfiguration",
+    "s3:PutBucketVersioning",
+    "s3:PutLifecycleConfiguration",
+    "s3:PutObjectLegalHold",
+    "s3:PutObjectRetention"
+  ]
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -342,10 +382,88 @@ resource "aws_iam_role_policy_attachment" "github_actions_deploy" {
   policy_arn = aws_iam_policy.github_actions_deploy.arn
 }
 
+data "aws_iam_policy_document" "rel24_recovery_asset_guardrail" {
+  statement {
+    sid       = "AllowExistingApplyPermissions"
+    effect    = "Allow"
+    actions   = ["*"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "DenyProtectedRecoveryAssetDeletion"
+    effect    = "Deny"
+    actions   = local.rel24_protected_delete_actions
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "DenyGuardrailTamper"
+    effect = "Deny"
+    actions = [
+      "iam:DeleteRolePermissionsBoundary",
+      "iam:PutRolePermissionsBoundary"
+    ]
+    resources = [local.terraform_apply_role_arn]
+  }
+
+  statement {
+    sid    = "DenyGuardrailPolicyMutation"
+    effect = "Deny"
+    actions = [
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:SetDefaultPolicyVersion"
+    ]
+    resources = [
+      local.rel24_guardrail_policy_arn,
+      local.rel24_identity_deny_policy_arn
+    ]
+  }
+
+  statement {
+    sid       = "DenyDetachRel24IdentityDeny"
+    effect    = "Deny"
+    actions   = ["iam:DetachRolePolicy"]
+    resources = [local.terraform_apply_role_arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "iam:PolicyARN"
+      values   = [local.rel24_identity_deny_policy_arn]
+    }
+  }
+}
+
+resource "aws_iam_policy" "rel24_recovery_asset_guardrail" {
+  name        = local.rel24_guardrail_policy_name
+  description = "CDO08-REL-24 permissions boundary that blocks CI deletion of protected backup/archive assets."
+  policy      = data.aws_iam_policy_document.rel24_recovery_asset_guardrail.json
+  tags        = var.tags
+}
+
+data "aws_iam_policy_document" "rel24_ci_protected_recovery_assets_deny" {
+  statement {
+    sid       = "DenyProtectedRecoveryAssetDeletion"
+    effect    = "Deny"
+    actions   = local.rel24_protected_delete_actions
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "rel24_ci_protected_recovery_assets_deny" {
+  name        = local.rel24_identity_deny_policy_name
+  description = "CDO08-REL-24 explicit deny for CI attempts to delete protected recovery assets."
+  policy      = data.aws_iam_policy_document.rel24_ci_protected_recovery_assets_deny.json
+  tags        = var.tags
+}
+
 resource "aws_iam_role" "github_actions_terraform_apply" {
-  name               = "tf4-github-actions-terraform-apply"
-  assume_role_policy = data.aws_iam_policy_document.github_actions_main_trust.json
-  tags               = var.tags
+  name                 = local.terraform_apply_role_name
+  assume_role_policy   = data.aws_iam_policy_document.github_actions_main_trust.json
+  permissions_boundary = aws_iam_policy.rel24_recovery_asset_guardrail.arn
+  tags                 = var.tags
 }
 
 # Bootstrap role can mutate bootstrap state backend and GitHub OIDC IAM.
@@ -358,4 +476,9 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply_poweru
 resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply_iam" {
   role       = aws_iam_role.github_actions_terraform_apply.name
   policy_arn = "arn:aws:iam::aws:policy/IAMFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply_rel24_deny" {
+  role       = aws_iam_role.github_actions_terraform_apply.name
+  policy_arn = aws_iam_policy.rel24_ci_protected_recovery_assets_deny.arn
 }
