@@ -254,6 +254,8 @@ components:
         value: llm,product-reviews
       - name: AIOPS_MONITORED_SERVICES
         value: llm,product-reviews,frontend,cart,checkout
+      - name: AIOPS_GENERIC_SIGNAL_SERVICES
+        value: product-reviews,frontend,cart,checkout
       - name: AIOPS_POLL_SECONDS
         value: "45"
       - name: AIOPS_LOOKBACK_MINUTES

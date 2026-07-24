@@ -224,6 +224,16 @@ class Settings:
             "AIOPS_MONITORED_SERVICES", "llm,product-reviews,frontend,checkout"
         )
     )
+    # Only services that export the generic server-span metrics belong in this
+    # set. Availability monitoring still covers every monitored service, while
+    # service-specific signals (for example LLM call errors) use their own
+    # instrumentation and ownership discovery.
+    generic_signal_services: tuple[str, ...] = field(
+        default_factory=lambda: _csv(
+            "AIOPS_GENERIC_SIGNAL_SERVICES",
+            "product-reviews,frontend,cart,checkout",
+        )
+    )
     # Expected callers are used only to report unavailable coverage. Actual
     # incident ownership is discovered from the service_name metric label.
     llm_services: tuple[str, ...] = field(
