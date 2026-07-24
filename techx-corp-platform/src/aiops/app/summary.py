@@ -49,6 +49,11 @@ class IncidentSummaryGenerator:
             f"`{json.dumps(candidate.get('signals', {}), sort_keys=True, separators=(',', ':'))}`"
             for candidate in incident.rca_candidates
         ) or "- No ranked candidate is available."
+        impact = (
+            json.dumps(incident.impact, sort_keys=True, indent=2)
+            if incident.impact
+            else '{"level": "not_assessed"}'
+        )
 
         return f"""# AIOps Incident {incident.incident_id}
 
@@ -66,6 +71,16 @@ class IncidentSummaryGenerator:
 {incident.suspected_root_cause}
 
 Correlation is not proof of causality. Confirm the evidence before approving an action.
+
+## Customer/SLO impact
+
+```json
+{impact}
+```
+
+For error-rate incidents, `critical_budget_burn` requires both configured
+short and long windows to exceed the critical threshold. Missing telemetry is
+reported as unavailable, never as a healthy zero.
 
 ## Evidence
 

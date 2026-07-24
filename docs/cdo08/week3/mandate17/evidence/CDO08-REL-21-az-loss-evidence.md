@@ -218,3 +218,13 @@ Sau khi uncordon, Kubernetes Scheduler phân bổ Pods trở lại 50/50 qua 2 A
 | **Wording Alignment** | PASS | Ghi rõ `whenUnsatisfiable=ScheduleAnyway` là best-effort spread ("ưu tiên spread + verify placement trước demo"). |
 
 ### VERDICT: **PASS**
+
+---
+
+---
+
+## 8. Standalone Demo Script & Resilience SLO Evidence Links
+
+- 🎬 **Kịch bản Demo & Quay màn hình chuẩn hóa 5 bước**: [CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week2/mandate17/evidence/CDO08-REL-21-STANDALONE-DEMO-SCRIPT.md)
+- 📊 **Hồ sơ Bằng chứng SLO Chịu lỗi (REL-20 & REL-21)**: [CDO08-RESILIENCE-SLO-EVIDENCE.md](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week2/mandate17/evidence/CDO08-RESILIENCE-SLO-EVIDENCE.md)
+

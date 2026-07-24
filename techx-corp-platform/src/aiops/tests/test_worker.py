@@ -20,6 +20,9 @@ class EmptyTelemetry:
     async def query_range(self, query):
         return []
 
+    async def query(self, query):
+        return []
+
     async def find_traces(self, service):
         return []
 
@@ -33,7 +36,7 @@ class RecordingDetector:
         return Decision(anomalous=False, incident_type="service_latency_spike", service=service)
 
     @staticmethod
-    def error_rate(service, series, query):
+    def error_rate(service, series, query, **kwargs):
         return Decision(anomalous=False, incident_type="service_error_rate_spike", service=service)
 
     def llm_error(self, service, series, query, log_count):
@@ -181,7 +184,9 @@ class DegradedEnrichmentTelemetry(EmptyTelemetry):
 
 @pytest.mark.asyncio
 async def test_worker_counts_opensearch_and_jaeger_poll_failures():
-    labels = lambda source: {"source": source}
+    def labels(source):
+        return {"source": source}
+
     opensearch_before = REGISTRY.get_sample_value(
         "aiops_telemetry_poll_failures_total", labels("opensearch")
     ) or 0
@@ -250,6 +255,7 @@ async def test_confirmed_service_down_creates_pageable_incident():
         "incident_type": "service_availability",
         "service": "checkout",
         "severity": "critical",
+        "impact": "not_assessed",
     }
     created_before = REGISTRY.get_sample_value(
         "aiops_incidents_created_total", counter_labels

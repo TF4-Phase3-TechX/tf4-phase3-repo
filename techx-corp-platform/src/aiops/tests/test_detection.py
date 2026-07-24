@@ -5,6 +5,7 @@ from app.detection import (
     adaptive_breach,
     anomaly_scores,
     classify_service_state,
+    error_budget_burn_rate_query,
     error_rate_query,
     latency_query,
     llm_error_query,
@@ -84,6 +85,102 @@ def test_frontend_error_query_uses_canonical_all_server_span_boundary():
     query = error_rate_query("frontend")
     assert 'span_kind="SPAN_KIND_SERVER"' in query
     assert "span_name" not in query
+
+
+def test_burn_rate_query_is_request_weighted_and_scoped_to_exact_window():
+    query = error_budget_burn_rate_query(
+        "checkout", 0.99, 30, minimum_requests=40, namespace="techx-tf4"
+    )
+    assert "increase(" in query
+    assert "[30m]" in query
+    assert "/ 0.01" in query
+    assert ">= 40" in query
+    assert 'k8s_namespace_name="techx-tf4"' in query
+    assert 'span_name="oteldemo.CheckoutService/PlaceOrder"' in query
+
+
+def test_frontend_burn_rate_uses_the_approved_browse_route_boundary():
+    query = error_budget_burn_rate_query("frontend", 0.995, 5)
+    assert 'span_name=~"GET /|GET /product.*' in query
+    assert "POST /api/checkout" not in query
+
+
+def test_critical_error_impact_requires_both_burn_windows():
+    detector = Detector(
+        settings(
+            sustained_polls=1,
+            service_slo_targets={"checkout": 0.99},
+            burn_rate_warning_threshold=2,
+            burn_rate_critical_threshold=10,
+        )
+    )
+    series = [
+        {
+            "values": [
+                [i, str(v)]
+                for i, v in enumerate([0.005] * 7 + [0.11, 0.12])
+            ]
+        }
+    ]
+
+    short_spike = detector.error_rate(
+        "checkout", series, "q", burn_rates=(12.0, 1.5)
+    )
+    sustained = detector.error_rate(
+        "checkout", series, "q", burn_rates=(12.0, 11.0)
+    )
+
+    assert short_spike.impact["level"] == "budget_burn_below_warning"
+    assert short_spike.severity == "medium"
+    assert sustained.impact["level"] == "critical_budget_burn"
+    assert sustained.severity == "high"
+
+
+def test_sustained_budget_burn_cannot_be_hidden_by_an_adapted_baseline():
+    detector = Detector(
+        settings(
+            sustained_polls=1,
+            service_slo_targets={"checkout": 0.99},
+            burn_rate_warning_threshold=2,
+            burn_rate_critical_threshold=10,
+        )
+    )
+    stable_bad = [
+        {"values": [[i, "0.03"] for i in range(12)]}
+    ]
+
+    decision = detector.error_rate(
+        "checkout", stable_bad, "q", burn_rates=(3.0, 3.0)
+    )
+
+    assert decision.candidates[0]["signals"]["ratio"] < 1.5
+    assert decision.impact["level"] == "warning_budget_burn"
+    assert decision.breached is True
+    assert decision.anomalous is True
+
+
+def test_unapproved_service_slo_uses_explicit_fixed_threshold_fallback():
+    detector = Detector(
+        settings(
+            sustained_polls=1,
+            service_slo_targets={},
+            error_rate_threshold=0.05,
+            error_high_multiplier=2,
+        )
+    )
+    series = [
+        {
+            "values": [
+                [i, str(v)]
+                for i, v in enumerate([0.005] * 7 + [0.11, 0.12])
+            ]
+        }
+    ]
+    decision = detector.error_rate("product-reviews", series, "q")
+
+    assert decision.impact["level"] == "fixed_threshold_fallback"
+    assert decision.impact["basis"] == "no_approved_service_slo"
+    assert decision.severity == "high"
 
 
 def test_runtime_queries_can_be_scoped_to_the_application_namespace():
