@@ -24,6 +24,23 @@ async def test_active_incidents_are_deduplicated():
 
 
 @pytest.mark.asyncio
+async def test_active_incident_refreshes_impact_and_severity():
+    store = IncidentStore()
+    first, _ = await store.upsert(incident())
+    candidate = incident()
+    candidate.severity = "medium"
+    candidate.impact = {"level": "warning_budget_burn"}
+
+    refreshed, created = await store.upsert(candidate)
+
+    assert created is False
+    assert refreshed.incident_id == first.incident_id
+    assert refreshed.severity == "medium"
+    assert refreshed.impact["level"] == "warning_budget_burn"
+    assert refreshed.audit_events[-1].event == "incident_routing_changed"
+
+
+@pytest.mark.asyncio
 async def test_breach_recover_breach_creates_a_new_incident_after_cooldown():
     store = IncidentStore(cooldown_seconds=0)
     first, created = await store.upsert(incident())

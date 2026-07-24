@@ -210,6 +210,21 @@ output "msk_orders_archive_partition_convention" {
   value       = local.msk_orders_archive_partition_convention
 }
 
+output "msk_connect_plugin_bucket_name" {
+  description = "S3 bucket used to store REL-22 MSK Connect custom plugin artifacts"
+  value       = aws_s3_bucket.msk_connect_plugins.id
+}
+
+output "msk_connect_plugin_bucket_arn" {
+  description = "ARN of the S3 bucket used to store REL-22 MSK Connect custom plugin artifacts"
+  value       = aws_s3_bucket.msk_connect_plugins.arn
+}
+
+output "msk_connect_plugin_prefix" {
+  description = "Prefix reserved for MSK Connect custom plugin artifacts"
+  value       = local.msk_connect_plugin_prefix
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
