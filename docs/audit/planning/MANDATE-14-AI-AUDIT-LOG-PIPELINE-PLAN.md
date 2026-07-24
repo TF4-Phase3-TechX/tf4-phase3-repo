@@ -314,7 +314,7 @@ retention phải có ADR mới, Cost review, CDO-08 approval và CDO-07 sign-off
 |---|---|---|---|
 | OpenSearch | `ai-tool-audit-yyyy-MM-dd`, read alias `ai-tool-audit-read` | Hot search, dashboard, correlation | 7 ngày, ISM delete sau ngày 7 |
 | CloudWatch Logs | `/tf4/mandate-14/ai-tool-audit` | Logs Insights, metric filter, alarm, nguồn Firehose | 7 ngày |
-| S3 | `tf4-ai-audit-logs-<account-id>` / prefix `mandate-14/ai-tool-audit/` | Evidence authority | Tổng 365 ngày; Object Lock `COMPLIANCE` tối thiểu 90 ngày |
+| S3 | `tf4-ai-audit-logs-<account-id>` / prefix `mandate-14/ai-tool-audit/` | Evidence authority | Tổng 365 ngày; Object Lock `COMPLIANCE` 365 ngày |
 | Firehose error logs | `/aws/firehose/tf4-ai-audit-errors` | Điều tra lỗi delivery | 7 ngày |
 | Safe validation errors | `/tf4/mandate-14/ai-tool-audit-validation` | Schema/privacy alert, không chứa content | 7 ngày |
 
@@ -322,7 +322,8 @@ S3 controls:
 
 - Versioning bật.
 - Object Lock bật ngay khi tạo bucket.
-- Default retention `COMPLIANCE` 90 ngày.
+- Default retention `COMPLIANCE` 365 ngày, khớp với lifecycle expire 365 ngày;
+  không có khoảng trống evidence sau ngày 90.
 - Block Public Access bật đủ bốn control.
 - Default encryption bằng SSE-S3 (`AES256`), theo pattern EKS audit hiện hữu;
   không tạo KMS CMK riêng khi chưa có yêu cầu regulatory về key rotation hoặc
@@ -624,7 +625,7 @@ Trong staging:
 - [ ] Hai IAM service role AI audit có tên riêng, resource scope đúng và trust
       policy có `aws:SourceArn`/`aws:SourceAccount`.
 - [ ] S3 versioning, SSE-S3 `AES256`, Public Access Block và Object Lock
-      `COMPLIANCE` 90 ngày được chứng minh.
+      `COMPLIANCE` 365 ngày được chứng minh.
 - [ ] S3 lifecycle giữ Standard-only và expire ngày 365.
 - [ ] Memory queue `queue_size: 2000` và alarm 80% hoạt động; quyết định hoãn
       persistent queue có metric/test evidence.
@@ -646,7 +647,7 @@ Trong staging:
 | Collector có AWS identity lần đầu | Canary Pod Identity/IRSA và kiểm tra không regression toàn bộ telemetry | CDO-08 |
 | Memory queue mất dữ liệu khi collector restart | Queue 2000 + alarm 80%; chỉ chuyển persistent khi metric/test chứng minh cần | CDO-08 + CDO-07 |
 | OpenSearch 20Gi đầy hoặc collector OOMKill | Retention hot copy 7 ngày; theo dõi storage/memory trong shadow và sau cutover | CDO-04 + CDO-08 |
-| Retention 7/7/365 ngày (CloudWatch/OpenSearch/S3) | Dùng baseline trong tài liệu | CDO-07 + CDO-04 |
+| Retention 7/7/365 ngày (CloudWatch/OpenSearch/S3) và Object Lock 365 ngày | Dùng baseline trong tài liệu | CDO-07 + CDO-04 |
 | Chi phí/mode mã hóa | S3 SSE-S3 `AES256`, CloudWatch encryption mặc định; chỉ xem xét CMK khi có yêu cầu regulatory | CDO-04 + CDO-07 |
 | Duplicate at-least-once | Chấp nhận, document query/dedupe semantics | AIO + CDO-07 |
 | Legal hold owner | Break-glass compliance role, không phải daily Audit role | Lead + CDO-08 |
