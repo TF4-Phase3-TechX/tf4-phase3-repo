@@ -140,6 +140,8 @@ export interface SearchProductsAIAssistantResponse {
   results: Product[];
   trace: SearchEvidenceTrace | undefined;
   actionProposal: CartActionProposal | undefined;
+  response: string;
+  outcome: string;
 }
 
 export interface SearchEvidenceTrace {
@@ -151,6 +153,7 @@ export interface SearchEvidenceTrace {
   inputTokens: number;
   outputTokens: number;
   estimatedCostUsd: number;
+  refusalReason: string;
 }
 
 export interface ConfirmCartActionRequest {
@@ -2017,7 +2020,7 @@ export const SearchProductsAIAssistantRequest: MessageFns<SearchProductsAIAssist
 };
 
 function createBaseSearchProductsAIAssistantResponse(): SearchProductsAIAssistantResponse {
-  return { results: [], trace: undefined, actionProposal: undefined };
+  return { results: [], trace: undefined, actionProposal: undefined, response: "", outcome: "" };
 }
 
 export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssistantResponse> = {
@@ -2030,6 +2033,12 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
     }
     if (message.actionProposal !== undefined) {
       CartActionProposal.encode(message.actionProposal, writer.uint32(26).fork()).join();
+    }
+    if (message.response !== "") {
+      writer.uint32(34).string(message.response);
+    }
+    if (message.outcome !== "") {
+      writer.uint32(42).string(message.outcome);
     }
     return writer;
   },
@@ -2065,6 +2074,20 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
           message.actionProposal = CartActionProposal.decode(reader, reader.uint32());
           continue;
         }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+          message.response = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+          message.outcome = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2079,6 +2102,8 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
       results: globalThis.Array.isArray(object?.results) ? object.results.map((e: any) => Product.fromJSON(e)) : [],
       trace: isSet(object.trace) ? SearchEvidenceTrace.fromJSON(object.trace) : undefined,
       actionProposal: isSet(object.actionProposal) ? CartActionProposal.fromJSON(object.actionProposal) : undefined,
+      response: isSet(object.response) ? globalThis.String(object.response) : "",
+      outcome: isSet(object.outcome) ? globalThis.String(object.outcome) : "",
     };
   },
 
@@ -2092,6 +2117,12 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
     }
     if (message.actionProposal !== undefined) {
       obj.actionProposal = CartActionProposal.toJSON(message.actionProposal);
+    }
+    if (message.response !== "") {
+      obj.response = message.response;
+    }
+    if (message.outcome !== "") {
+      obj.outcome = message.outcome;
     }
     return obj;
   },
@@ -2112,6 +2143,8 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
     message.actionProposal = (object.actionProposal !== undefined && object.actionProposal !== null)
       ? CartActionProposal.fromPartial(object.actionProposal)
       : undefined;
+    message.response = object.response ?? "";
+    message.outcome = object.outcome ?? "";
     return message;
   },
 };
@@ -2126,6 +2159,7 @@ function createBaseSearchEvidenceTrace(): SearchEvidenceTrace {
     inputTokens: 0,
     outputTokens: 0,
     estimatedCostUsd: 0,
+    refusalReason: "",
   };
 }
 
@@ -2154,6 +2188,9 @@ export const SearchEvidenceTrace: MessageFns<SearchEvidenceTrace> = {
     }
     if (message.estimatedCostUsd !== 0) {
       writer.uint32(65).double(message.estimatedCostUsd);
+    }
+    if (message.refusalReason !== "") {
+      writer.uint32(74).string(message.refusalReason);
     }
     return writer;
   },
@@ -2229,6 +2266,13 @@ export const SearchEvidenceTrace: MessageFns<SearchEvidenceTrace> = {
           message.estimatedCostUsd = reader.double();
           continue;
         }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+          message.refusalReason = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2248,6 +2292,7 @@ export const SearchEvidenceTrace: MessageFns<SearchEvidenceTrace> = {
       inputTokens: isSet(object.inputTokens) ? globalThis.Number(object.inputTokens) : 0,
       outputTokens: isSet(object.outputTokens) ? globalThis.Number(object.outputTokens) : 0,
       estimatedCostUsd: isSet(object.estimatedCostUsd) ? globalThis.Number(object.estimatedCostUsd) : 0,
+      refusalReason: isSet(object.refusalReason) ? globalThis.String(object.refusalReason) : "",
     };
   },
 
@@ -2277,6 +2322,9 @@ export const SearchEvidenceTrace: MessageFns<SearchEvidenceTrace> = {
     if (message.estimatedCostUsd !== 0) {
       obj.estimatedCostUsd = message.estimatedCostUsd;
     }
+    if (message.refusalReason !== "") {
+      obj.refusalReason = message.refusalReason;
+    }
     return obj;
   },
 
@@ -2293,6 +2341,7 @@ export const SearchEvidenceTrace: MessageFns<SearchEvidenceTrace> = {
     message.inputTokens = object.inputTokens ?? 0;
     message.outputTokens = object.outputTokens ?? 0;
     message.estimatedCostUsd = object.estimatedCostUsd ?? 0;
+    message.refusalReason = object.refusalReason ?? "";
     return message;
   },
 };

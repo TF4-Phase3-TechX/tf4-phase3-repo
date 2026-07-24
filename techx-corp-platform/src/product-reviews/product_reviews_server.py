@@ -209,6 +209,7 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
         product_catalog_stub=product_catalog_stub,
         tracer=tracer,
         record_metrics_fn=_record_search_metrics,
+        fetch_reviews=fetch_product_reviews_from_db,
     )
 
 
@@ -251,6 +252,7 @@ def _record_search_metrics(
     *,
     model_id: str,
     guardrail_version: str,
+    operation: str = "parse_search_intent",
     outcome: str,
     error_class: str | None,
     latency_ms: float,
@@ -265,7 +267,7 @@ def _record_search_metrics(
     """
     attributes = {
         "llm.model": model_id,
-        "llm.call": "parse_search_intent",
+        "llm.call": operation,
         "llm.outcome": outcome,
         "guardrail.version": guardrail_version,
         "error.class": error_class or "none",

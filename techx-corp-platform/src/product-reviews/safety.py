@@ -41,6 +41,9 @@ _ATTACK_PATTERNS = tuple(
         r"\b(reveal|print|repeat|extract|show)\b.{0,50}\b(prompt|hidden|secret|canary|instructions?)\b",
         r"\b(jailbreak|prompt\s*injection|override\s+instructions?)\b",
         r"<\s*(system|assistant|developer)\s*>",
+        r"\[\s*(override|sys|system|admin)\s*\]",
+        r"\{\{\s*(override|sys|system|admin)\s*\}\}",
+        r"<<\s*(admin|sys|system|override)\s*>>",
     )
 )
 _ACTION_PATTERNS = tuple(
@@ -193,6 +196,10 @@ def validate_grounded_output(
 
     if not answer or not payload["citations"]:
         raise UnsafeModelOutput("answer_without_evidence")
+    # A schema-valid answer can still be a dangling lead-in (for example,
+    # "The highlights are:"). Do not publish incomplete model text.
+    if answer.endswith((":", ";", "-", "–", "—")):
+        raise UnsafeModelOutput("incomplete_answer")
     review_by_id = {review["review_id"]: review["description"] for review in supplied_reviews}
     validated_citations: list[dict[str, Any]] = []
     seen_ids: set[int] = set()
@@ -213,3 +220,39 @@ def validate_grounded_output(
             seen_ids.add(review_id)
 
     return {"decision": "answered", "answer": answer, "citations": validated_citations}
+
+
+def validate_grounded_comparison(
+    payload: Any,
+    sources: dict[str, str],
+    system_canary: str = "",
+) -> dict[str, Any]:
+    """Validate that every comparison citation quotes an application source."""
+    if not isinstance(payload, dict) or set(payload) != {"decision", "answer", "citations"}:
+        raise UnsafeModelOutput("comparison_schema")
+    if payload["decision"] not in {"answered", "insufficient"}:
+        raise UnsafeModelOutput("comparison_decision")
+    if not isinstance(payload["answer"], str) or not isinstance(payload["citations"], list):
+        raise UnsafeModelOutput("comparison_types")
+
+    if payload["decision"] == "insufficient":
+        return {"decision": "insufficient", "answer": INSUFFICIENT_RESPONSE, "citations": []}
+
+    answer = normalize_text(payload["answer"], 4_000)
+    if not answer or contains_pii(answer) or (system_canary and system_canary in answer):
+        raise UnsafeModelOutput("comparison_sensitive_output")
+    if not payload["citations"]:
+        raise UnsafeModelOutput("comparison_without_evidence")
+
+    validated = []
+    for citation in payload["citations"]:
+        if not isinstance(citation, dict) or set(citation) != {"source_id", "evidence_quote"}:
+            raise UnsafeModelOutput("comparison_citation_schema")
+        source_id = citation["source_id"]
+        quote = normalize_text(citation["evidence_quote"], MAX_REVIEW_CHARS)
+        source_text = sources.get(source_id)
+        if not isinstance(source_id, str) or not source_text or not quote or quote not in source_text:
+            raise UnsafeModelOutput("comparison_citation_not_grounded")
+        validated.append({"source_id": source_id, "evidence_quote": quote})
+
+    return {"decision": "answered", "answer": answer, "citations": validated}

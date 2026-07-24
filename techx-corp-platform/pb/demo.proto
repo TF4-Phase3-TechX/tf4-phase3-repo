@@ -165,6 +165,8 @@ message SearchProductsAIAssistantResponse {
     repeated Product results = 1;
     SearchEvidenceTrace trace = 2;
     CartActionProposal action_proposal = 3;
+    string response = 4;
+    string outcome = 5;
 }
 
 message SearchEvidenceTrace {
@@ -176,6 +178,7 @@ message SearchEvidenceTrace {
     int32 input_tokens = 6;
     int32 output_tokens = 7;
     double estimated_cost_usd = 8;
+    string refusal_reason = 9;
 }
 
 message ConfirmCartActionRequest {

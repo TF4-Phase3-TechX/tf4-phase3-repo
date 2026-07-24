@@ -24,6 +24,12 @@ class Provider:
             raise self.error
         return BedrockResult(self.payload, 12, 50, 10, False)
 
+    def compare_products(self, question, evidence):
+        self.calls.append((question, evidence))
+        if self.error:
+            raise self.error
+        return BedrockResult(self.payload, 20, 80, 30, False)
+
 
 def make_assistant(provider):
     return GroundedAssistant(
@@ -89,3 +95,50 @@ def test_provider_contract_failure_preserves_sanitized_usage_metadata():
     assert outcome.output_tokens == 21
     assert outcome.provider_stop_reason == "tool_use"
     assert outcome.response_contract_stage == "tool_stop_reason"
+
+
+class Price:
+    def __init__(self, units):
+        self.units = units
+        self.nanos = 0
+
+
+class Product:
+    def __init__(self, product_id, name, price):
+        self.id = product_id
+        self.name = name
+        self.description = f"{name} catalog description"
+        self.categories = ["telescopes"]
+        self.price_usd = Price(price)
+
+
+def test_comparison_is_synthesized_from_two_products_and_exact_sources():
+    provider = Provider({
+        "decision": "answered",
+        "answer": "Budget Scope is cheaper, while Premium Scope costs more.",
+        "citations": [
+            {"source_id": "product:p1:price", "evidence_quote": "$50.00"},
+            {"source_id": "product:p2:price", "evidence_quote": "$500.00"},
+        ],
+    })
+    assistant = make_assistant(provider)
+    outcome = assistant.compare_products(
+        [Product("p1", "Budget Scope", 50), Product("p2", "Premium Scope", 500)],
+        "Compare the cheapest and most expensive products",
+    )
+
+    assert outcome.outcome == "answered"
+    assert "cheaper" in outcome.response
+    assert outcome.input_tokens == 80
+
+
+def test_comparison_provider_failure_returns_grounded_price_fallback():
+    assistant = make_assistant(Provider(error=ProviderFailure("timeout")))
+    outcome = assistant.compare_products(
+        [Product("p1", "Budget Scope", 50), Product("p2", "Premium Scope", 500)],
+        "Compare the cheapest and most expensive products",
+    )
+
+    assert outcome.outcome == "degraded"
+    assert "$450.00" in outcome.response
+    assert "Budget Scope" in outcome.response

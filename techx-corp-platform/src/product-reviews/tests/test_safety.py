@@ -5,6 +5,7 @@ from safety import (
     UnsafeModelOutput,
     is_attack_or_action,
     prepare_context,
+    validate_grounded_comparison,
     validate_grounded_output,
 )
 
@@ -91,6 +92,46 @@ def test_accepts_only_exact_review_quote():
             },
             reviews,
             "CANARY-42",
+        )
+
+
+def test_rejects_dangling_model_answer_even_with_a_valid_citation():
+    reviews = [{"review_id": 7, "description": "The tripod is light and stable.", "score": "4.0"}]
+    with pytest.raises(UnsafeModelOutput, match="incomplete_answer"):
+        validate_grounded_output(
+            {
+                "decision": "answered",
+                "answer": "The review highlights are:",
+                "citations": [{"review_id": 7, "evidence_quote": "light and stable"}],
+            },
+            reviews,
+            "CANARY-42",
+        )
+
+
+def test_comparison_accepts_only_exact_application_sources():
+    sources = {
+        "product:p1:price": "$50.00",
+        "review:p2:7": "Clear views but the mount is heavy.",
+    }
+    result = validate_grounded_comparison(
+        {
+            "decision": "answered",
+            "answer": "The first product costs $50.00.",
+            "citations": [{"source_id": "product:p1:price", "evidence_quote": "$50.00"}],
+        },
+        sources,
+    )
+    assert result["decision"] == "answered"
+
+    with pytest.raises(UnsafeModelOutput, match="comparison_citation_not_grounded"):
+        validate_grounded_comparison(
+            {
+                "decision": "answered",
+                "answer": "The product is waterproof.",
+                "citations": [{"source_id": "review:p2:7", "evidence_quote": "waterproof"}],
+            },
+            sources,
         )
 
 
