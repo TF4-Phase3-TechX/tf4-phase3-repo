@@ -142,6 +142,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                     output_tokens=outcome.output_tokens,
                     error_class="injected_inaccurate_response_blocked",
                     quarantined_reviews=outcome.quarantined_reviews,
+                    provider_attempted=outcome.provider_attempted,
                 )
         attributes = llm_metric_identity(
             os.environ.get("OTEL_SERVICE_NAME", "product-reviews")
@@ -161,8 +162,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
         span.set_attribute("app.ai.outcome", outcome.outcome)
         span.set_attribute("app.ai.guardrail.version", assistant.provider.guardrail_version)
         product_review_svc_metrics["app_ai_assistant_counter"].add(1, attributes)
-        provider_attempted = outcome.outcome != "blocked" or bool(outcome.error_class)
-        if provider_attempted:
+        if outcome.provider_attempted:
             product_review_svc_metrics["app_llm_call_counter"].add(1, attributes)
             product_review_svc_metrics["app_llm_latency_histogram"].record(outcome.latency_ms / 1_000, attributes)
         product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(outcome.input_tokens, attributes)
@@ -211,6 +211,11 @@ from router import route_search_products_ai
 
 
 def search_products_ai(query: str, session_id: str = "", user_id: str = "guest"):
+    def audit_callback(**event) -> None:
+        # Keep ownership at the server integration boundary so tests and other
+        # transports can replace the emitter without patching router imports.
+        emit_ai_tool_audit(logger, **event)
+
     return route_search_products_ai(
         query=query,
         session_id=session_id,
@@ -220,6 +225,7 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
         tracer=tracer,
         record_metrics_fn=_record_search_metrics,
         fetch_reviews=fetch_product_reviews_from_db,
+        audit_callback=audit_callback,
     )
 
 

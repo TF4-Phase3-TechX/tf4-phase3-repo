@@ -236,10 +236,10 @@ export const CopilotChatModal: React.FC = () => {
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
             >
-                <span style={{ 
+                <span style={{
                     fontSize: '20px',
                     filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                }}>✨</span> 
+                }}>✨</span>
                 <span style={{
                     textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                 }}>Shopping Copilot</span>
@@ -313,7 +313,7 @@ export const CopilotChatModal: React.FC = () => {
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ 
+                    <span style={{
                         fontSize: '20px',
                         filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
                     }}>✨</span>

@@ -43,6 +43,7 @@ class SessionStore:
     def __init__(self, redis_client: Any | None = None) -> None:
         self._lock = threading.Lock()
         self._memory_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
+        self._memory_last_search_products: dict[str, tuple[float, list[dict[str, Any]]]] = {}
         self._memory_proposals: dict[str, tuple[float, dict[str, Any]]] = {}
         self._required = os.getenv("APP_ENV", "local").strip().lower() in {"staging", "production"}
         self._valkey_client: Any = redis_client
@@ -79,6 +80,9 @@ class SessionStore:
         user = _validated_id(user_id or "guest", "user_id", allow_guest=True)
         session = _validated_id(session_id, "session_id")
         return f"copilot:session:{user}:{session}"
+
+    def _last_search_key(self, user_id: str, session_id: str) -> str:
+        return f"{self._history_key(user_id, session_id)}:products"
 
     def _handle_runtime_error(self, operation: str, exc: Exception) -> None:
         logger.warning("Valkey %s error: %s", operation, exc)
@@ -131,6 +135,54 @@ class SessionStore:
             while history and sum(len(item["content"]) for item in history) > MAX_HISTORY_CHARS:
                 history.pop(0)
             self._memory_cache[key] = (time.time(), history)
+
+    def set_last_search_products(self, user_id: str, session_id: str, products: list[dict]) -> None:
+        if not session_id:
+            return
+        key = self._last_search_key(user_id, session_id)
+        # The JSON round trip validates the persisted shape and prevents callers
+        # from mutating process-local session state after the write.
+        safe_products = json.loads(json.dumps(products, ensure_ascii=False))
+        if not isinstance(safe_products, list) or not all(isinstance(item, dict) for item in safe_products):
+            raise ValueError("products must be a list of objects")
+        serialized = json.dumps(safe_products, ensure_ascii=False)
+        if self._valkey_client is not None:
+            try:
+                self._valkey_client.setex(key, SESSION_TTL_SECONDS, serialized)
+                return
+            except Exception as exc:
+                self._handle_runtime_error("last-search-write", exc)
+        with self._lock:
+            self._memory_last_search_products[key] = (
+                time.time() + SESSION_TTL_SECONDS,
+                safe_products,
+            )
+
+    def get_last_search_products(self, user_id: str, session_id: str) -> list[dict]:
+        """Fetch the unexpired, user-and-session-scoped product referent."""
+        if not session_id:
+            return []
+        key = self._last_search_key(user_id, session_id)
+        if self._valkey_client is not None:
+            try:
+                raw_data = self._valkey_client.get(key)
+                if not raw_data:
+                    return []
+                decoded = json.loads(
+                    raw_data.decode("utf-8") if isinstance(raw_data, bytes) else raw_data
+                )
+                if not isinstance(decoded, list) or not all(isinstance(item, dict) for item in decoded):
+                    raise ValueError("invalid last-search payload")
+                return json.loads(json.dumps(decoded, ensure_ascii=False))
+            except Exception as exc:
+                self._handle_runtime_error("last-search-read", exc)
+        with self._lock:
+            now = time.time()
+            cached = self._memory_last_search_products.get(key)
+            if cached and now <= cached[0]:
+                return json.loads(json.dumps(cached[1], ensure_ascii=False))
+            self._memory_last_search_products.pop(key, None)
+            return []
 
     def create_cart_proposal(
         self,

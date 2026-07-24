@@ -152,6 +152,7 @@ class GroundedAssistant:
                 quarantined_reviews=quarantined_reviews,
                 provider_stop_reason=result.stop_reason,
                 response_contract_stage=result.contract_stage,
+                provider_attempted=True,
             )
         except (ProviderFailure, UnsafeModelOutput) as exc:
             fallback = self._comparison_fallback(
@@ -166,6 +167,7 @@ class GroundedAssistant:
                 outcome="degraded",
                 error_class=getattr(exc, "error_class", type(exc).__name__.lower())[:64],
                 quarantined_reviews=quarantined_reviews,
+                provider_attempted=True,
             )
 
     def answer(self, product_id: str, question: str, session_id: str = "", user_id: str = "guest") -> AssistantOutcome:
