@@ -25,3 +25,7 @@ must sign ADR-022, select the exact target/known-good revision and
 review the drill window before enabling all three gates. Runtime closure then
 requires real detector input, readiness/SLO verification, OpenSearch audit
 records and the successful plus forced-wrong drill evidence on TF4AIO-83.
+
+The current runtime inventory, activation gates, proposed fault mechanism,
+stop conditions and evidence checklist are recorded in
+[`LIVE-DRILL-READINESS-2026-07-24.md`](LIVE-DRILL-READINESS-2026-07-24.md).
