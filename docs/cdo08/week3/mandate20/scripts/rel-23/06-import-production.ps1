@@ -11,8 +11,6 @@ param(
     [Parameter(Mandatory)][string]$ValidatedDumpPath,
     [string]$Namespace = 'techx-tf4',
     [string]$OpsNamespace = 'rel23-ops',
-    [string]$Region = 'us-east-1',
-    [string]$ProductionInstanceId = 'techx-tf4-postgresql',
     [string]$BackupPath,
     [switch]$SkipKafkaOffsetReset
 )
@@ -25,10 +23,13 @@ if (-not (Test-Path $ValidatedDumpPath)) { throw "ValidatedDumpPath khong ton ta
 $runId = New-RunId
 if (-not $BackupPath) { $BackupPath = ".\accounting-production-backup-$runId.dump" }
 
-$creds = Get-RdsMasterCreds -DbInstanceIdentifier $ProductionInstanceId -Region $Region
+# Ket noi bang techx_app (secret duy nhat IAM cho phep doc) + SET ROLE postgres (yeu cau da
+# GRANT postgres TO techx_app tu truoc, 1 lan, ngoai script nay - xem plan §9) de co du quyen DDL
+# cho ALTER SCHEMA/pg_restore ACL ben duoi.
+$creds = Get-ProductionAppCreds -Namespace $Namespace
 $podName = "pg-import-$runId"
 $pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
-    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase 'otel'
+    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase $creds.Database -SetRole postgres
 
 try {
     # --- R.0: backup-before-import (rollback checkpoint bat buoc) ---
@@ -67,7 +68,7 @@ try {
 
     Invoke-PgSql -Namespace $pod.Namespace -PodName $pod.PodName -Sql 'ALTER SCHEMA accounting RENAME TO accounting_old;'
 
-    kubectl exec -n $pod.Namespace $pod.PodName -- pg_restore --dbname=otel --schema=accounting /tmp/accounting-validated.dump
+    kubectl exec -n $pod.Namespace $pod.PodName -- pg_restore "--dbname=$($creds.Database)" --schema=accounting /tmp/accounting-validated.dump
     Assert-LastExitCode 'pg_restore (R.2 import production)'
 
     Write-Host '[OK] R.2 hoan tat.'

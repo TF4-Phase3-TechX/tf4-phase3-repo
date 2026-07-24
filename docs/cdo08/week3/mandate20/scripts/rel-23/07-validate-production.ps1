@@ -1,18 +1,23 @@
 # CDO08-REL-23 Subtask 4 - Validation checklist (§4.4/§7.1): row counts, quan he 1:1/1:N, orphan check,
-# tong tien. Dung chung duoc cho ca drill (-DbInstanceIdentifier isolated -Database otel_drill) lan
-# production that (-DbInstanceIdentifier techx-tf4-postgresql -Database otel, mac dinh) - tranh trung
-# logic. Neu truyen -ExpectedOrderCount/-ExpectedOrderItemCount/-ExpectedShippingCount se doi chieu
-# tuyet doi voi baseline; khong truyen thi chi in ra de doi chieu tay.
+# tong tien. Dung chung duoc cho ca drill lan production - tranh trung logic.
+#
+# - Drill (tren instance tam): truyen -PitrInfoPath (file JSON tu 01-restore-pitr-isolated.ps1) va
+#   -Database otel_drill. Ket noi thang bang master, khong can SetRole.
+# - Production (mac dinh, khong truyen -PitrInfoPath): dung techx_app (secret duy nhat IAM cho phep
+#   doc) + SET ROLE postgres cho du quyen doc day du.
+#
+# Neu truyen -ExpectedOrderCount/-ExpectedOrderItemCount/-ExpectedShippingCount se doi chieu tuyet doi
+# voi baseline; khong truyen thi chi in ra de doi chieu tay.
 #
 # Vi du (drill):
-#   .\07-validate-production.ps1 -DbInstanceIdentifier rel23-accounting-pitr-... -Database otel_drill
+#   .\07-validate-production.ps1 -PitrInfoPath .\rel23-pitr-....json -Database otel_drill
 # Vi du (production, sau R.2):
 #   .\07-validate-production.ps1 -ExpectedOrderCount 205891 -ExpectedOrderItemCount 377846 -ExpectedShippingCount 205891
 
 param(
-    [string]$DbInstanceIdentifier = 'techx-tf4-postgresql',
-    [string]$Database = 'otel',
-    [string]$Region = 'us-east-1',
+    [string]$PitrInfoPath,
+    [string]$Database,
+    [string]$Namespace = 'techx-tf4',
     [string]$OpsNamespace = 'rel23-ops',
     [Nullable[int]]$ExpectedOrderCount = $null,
     [Nullable[int]]$ExpectedOrderItemCount = $null,
@@ -24,9 +29,20 @@ $ErrorActionPreference = 'Stop'
 
 $runId = New-RunId
 $podName = "pg-validate-$runId"
-$creds = Get-RdsMasterCreds -DbInstanceIdentifier $DbInstanceIdentifier -Region $Region
-$pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
-    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase $Database
+
+if ($PitrInfoPath) {
+    if (-not (Test-Path $PitrInfoPath)) { throw "PitrInfoPath khong ton tai: $PitrInfoPath" }
+    $pitrInfo = Get-Content $PitrInfoPath -Raw | ConvertFrom-Json
+    if (-not $Database) { $Database = 'otel_drill' }
+    $pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
+        -PgHost $pitrInfo.Endpoint -PgUser $pitrInfo.MasterUser -PgPassword $pitrInfo.MasterPassword -PgDatabase $Database
+}
+else {
+    $creds = Get-ProductionAppCreds -Namespace $Namespace
+    if (-not $Database) { $Database = $creds.Database }
+    $pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
+        -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase $Database -SetRole postgres
+}
 
 $failed = @()
 

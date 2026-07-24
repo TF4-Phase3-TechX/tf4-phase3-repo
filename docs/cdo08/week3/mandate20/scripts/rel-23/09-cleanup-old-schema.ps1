@@ -8,8 +8,6 @@
 param(
     [string]$Namespace = 'techx-tf4',
     [string]$OpsNamespace = 'rel23-ops',
-    [string]$Region = 'us-east-1',
-    [string]$ProductionInstanceId = 'techx-tf4-postgresql',
     [switch]$Confirm
 )
 
@@ -22,9 +20,9 @@ if (-not $Confirm) {
 
 $runId = New-RunId
 $podName = "pg-cleanup-old-$runId"
-$creds = Get-RdsMasterCreds -DbInstanceIdentifier $ProductionInstanceId -Region $Region
+$creds = Get-ProductionAppCreds -Namespace $Namespace
 $pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
-    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase 'otel'
+    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase $creds.Database -SetRole postgres
 
 try {
     $hasOld = Invoke-PgSqlScalar -Namespace $pod.Namespace -PodName $pod.PodName `

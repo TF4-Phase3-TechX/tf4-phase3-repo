@@ -1,12 +1,13 @@
 # CDO08-REL-23 Subtask 3 - Export schema accounting tu instance PITR tam.
-# Xem plan §6.2. Dung Get-RdsMasterCreds (khong dung techx_app) vi can quyen doc day du + dump ACL dung.
+# Xem plan §6.2. Dung -PitrInfoPath (file JSON do 01-restore-pitr-isolated.ps1 sinh ra, chua
+# Endpoint + MasterPassword biet truoc) thay vi doc MasterUserSecret qua Secrets Manager - IAM role
+# van hanh khong duoc phep doc secret do (xem plan §9).
 #
 # Vi du:
-#   .\03-export-accounting.ps1 -IsolatedInstanceId rel23-accounting-pitr-20260724t120000z
+#   .\03-export-accounting.ps1 -PitrInfoPath .\rel23-pitr-20260724t120000z.json
 
 param(
-    [Parameter(Mandatory)][string]$IsolatedInstanceId,
-    [string]$Region = 'us-east-1',
+    [Parameter(Mandatory)][string]$PitrInfoPath,
     [string]$OpsNamespace = 'rel23-ops',
     [string]$DumpPath
 )
@@ -14,13 +15,15 @@ param(
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\00-common.ps1"
 
+if (-not (Test-Path $PitrInfoPath)) { throw "PitrInfoPath khong ton tai: $PitrInfoPath" }
+$pitrInfo = Get-Content $PitrInfoPath -Raw | ConvertFrom-Json
+
 $runId = New-RunId
 if (-not $DumpPath) { $DumpPath = ".\accounting-$runId.dump" }
 $podName = "pg-export-$runId"
 
-$creds = Get-RdsMasterCreds -DbInstanceIdentifier $IsolatedInstanceId -Region $Region
 $pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
-    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase 'otel'
+    -PgHost $pitrInfo.Endpoint -PgUser $pitrInfo.MasterUser -PgPassword $pitrInfo.MasterPassword -PgDatabase 'otel'
 
 try {
     Write-Host "[INFO] t_export_start=$(Get-UtcNowIso)"

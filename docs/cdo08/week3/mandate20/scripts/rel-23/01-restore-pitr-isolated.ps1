@@ -17,8 +17,11 @@ param(
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\00-common.ps1"
 
+# Prefix "techx-tf4-postgresql-restore-" la BAT BUOC - day la resource pattern duy nhat ma IAM cua
+# role van hanh (REL25RDSRestoreTestActions) cho phep rds:RestoreDBInstanceToPointInTime/DeleteDBInstance/
+# ModifyDBInstance. Da verify song bang aws iam simulate-principal-policy - doi ten khac se bi Deny.
 if (-not $RunId) { $RunId = New-RunId }
-$targetId = "rel23-accounting-pitr-$RunId"
+$targetId = "techx-tf4-postgresql-restore-$RunId"
 
 Write-Host "[INFO] t_restore_request=$(Get-UtcNowIso)"
 
@@ -57,7 +60,10 @@ aws ec2 authorize-security-group-ingress --region $Region `
     --group-id $tmpSgId --protocol tcp --port 5432 --source-group $nodeSgId | Out-Null
 Assert-LastExitCode 'aws ec2 authorize-security-group-ingress'
 
-# 2) Restore-to-point-in-time (mirror parameter group cua nguon - restore mac dinh khong ke thua)
+# 2) Restore-to-point-in-time (mirror parameter group cua nguon - restore mac dinh khong ke thua).
+#    KHONG dung --manage-master-user-password: IAM role van hanh khong duoc phep doc MasterUserSecret
+#    (secretsmanager:GetSecretValue chi cho phep tren techx/tf4/rds-postgres*) - xem plan doc §9.
+#    Thay vao do, dat mot password biet truoc ngay sau khi instance available (buoc 3 ben duoi).
 aws rds restore-db-instance-to-point-in-time --region $Region `
     --source-db-instance-identifier $SourceId `
     --target-db-instance-identifier $targetId `
@@ -66,7 +72,6 @@ aws rds restore-db-instance-to-point-in-time --region $Region `
     --db-subnet-group-name $SubnetGroup `
     --db-parameter-group-name $ParamGroup `
     --vpc-security-group-ids $tmpSgId `
-    --manage-master-user-password `
     --db-instance-class db.t4g.micro `
     --tags Key=Task,Value=CDO08-REL-23 Key=Ephemeral,Value=true | Out-Null
 Assert-LastExitCode 'aws rds restore-db-instance-to-point-in-time'
@@ -76,23 +81,35 @@ aws rds wait db-instance-available --region $Region --db-instance-identifier $ta
 Assert-LastExitCode 'aws rds wait db-instance-available'
 Write-Host "[INFO] t_instance_available=$(Get-UtcNowIso)"
 
+# 3) Dat master password biet truoc (rds:ModifyDBInstance duoc IAM cho phep tren pattern nay) -
+#    tranh hoan toan viec phai doc lai Secrets Manager cho instance tam.
+$masterPassword = New-RandomPassword
+aws rds modify-db-instance --region $Region --db-instance-identifier $targetId `
+    --master-user-password $masterPassword --apply-immediately | Out-Null
+Assert-LastExitCode 'aws rds modify-db-instance (set master password)'
+
+Write-Host '[INFO] Waiting for password change to apply...'
+aws rds wait db-instance-available --region $Region --db-instance-identifier $targetId
+Assert-LastExitCode 'aws rds wait db-instance-available (post password change)'
+
 $info = aws rds describe-db-instances --region $Region --db-instance-identifier $targetId `
-    --query 'DBInstances[0].{Endpoint:Endpoint.Address,SecretArn:MasterUserSecret.SecretArn}' --output json | ConvertFrom-Json
+    --query 'DBInstances[0].Endpoint.Address' --output text
 Assert-LastExitCode 'aws rds describe-db-instances (post-restore info)'
 
 Write-Host "[OK] Isolated PITR instance ready: $targetId"
-Write-Host "     Endpoint : $($info.Endpoint)"
-Write-Host "     SecretArn: $($info.SecretArn)"
+Write-Host "     Endpoint : $info"
 Write-Host "     TmpSgId  : $tmpSgId"
 Write-Host '[NOTE] KHONG cap nhat production endpoint o buoc nay.'
 Write-Host "[NOTE] Cleanup: .\02-cleanup-pitr-isolated.ps1 -TargetId $targetId -TmpSgId $tmpSgId"
 
 $outFile = ".\rel23-pitr-$RunId.json"
 [pscustomobject]@{
-    RunId     = $RunId
-    TargetId  = $targetId
-    Endpoint  = $info.Endpoint
-    TmpSgId   = $tmpSgId
-    RestoreTime = $RestoreTime
+    RunId          = $RunId
+    TargetId       = $targetId
+    Endpoint       = $info
+    TmpSgId        = $tmpSgId
+    RestoreTime    = $RestoreTime
+    MasterUser     = 'postgres'
+    MasterPassword = $masterPassword
 } | ConvertTo-Json | Set-Content -Path $outFile -Encoding utf8
-Write-Host "[INFO] Da luu thong tin instance tam vao $outFile (dung lam input cho 03/06)."
+Write-Host "[WARN] $outFile CHUA MAT KHAU THAT (MasterPassword) - dung cho 03/06, xoa file nay sau khi xong Subtask 2-3."

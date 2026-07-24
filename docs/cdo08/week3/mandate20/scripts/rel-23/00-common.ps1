@@ -32,27 +32,44 @@ function Get-SecretsManagerJson {
     return ($raw | ConvertFrom-Json)
 }
 
-function Get-RdsMasterCreds {
-    <#
-    Lay credential master (vd 'postgres') cua 1 RDS instance qua MasterUserSecret (Secrets Manager),
-    dung chung cho ca instance production va instance tam PITR. Khong echo password.
-    #>
-    param(
-        [Parameter(Mandatory)][string]$DbInstanceIdentifier,
-        [string]$Region = 'us-east-1'
-    )
-    $info = aws rds describe-db-instances --region $Region --db-instance-identifier $DbInstanceIdentifier `
-        --query 'DBInstances[0].{Host:Endpoint.Address,Port:Endpoint.Port,SecretArn:MasterUserSecret.SecretArn}' `
-        --output json | ConvertFrom-Json
-    Assert-LastExitCode 'aws rds describe-db-instances (master creds)'
-    if (-not $info.SecretArn) { throw "Instance $DbInstanceIdentifier khong co MasterUserSecret (manage_master_user_password khong bat?)" }
+function New-RandomPassword {
+    <# Sinh password ngau nhien an toan cho RDS master (chi chu/so - tranh moi ky tu RDS cam: / " @ khoang trang). #>
+    param([int]$Length = 24)
+    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    $bytes = New-Object byte[] $Length
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    -join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] })
+}
 
-    $creds = Get-SecretsManagerJson -SecretArn $info.SecretArn -Region $Region
+function Get-ProductionAppCreds {
+    <#
+    Doc secret rds-postgres-secret/dotnet-conn-string (K8s, namespace techx-tf4) va parse format Npgsql
+    "Host=..;Port=..;Database=..;Username=..;Password=..;.." thanh cac field roi. Day la credential
+    techx_app - IAM cua role van hanh CHI cho phep doc dung secret nay (khong doc duoc MasterUserSecret
+    cua RDS), nen moi thao tac can quyen DDL/owner (ALTER SCHEMA, DROP SCHEMA...) phai ket noi bang
+    techx_app roi "SET ROLE postgres" (yeu cau da GRANT postgres TO techx_app truoc, 1 lan, ngoai bo
+    script nay) - dung tham so -SetRole cua New-PgClientPod. Khong echo gia tri ra console.
+    #>
+    param([string]$Namespace = 'techx-tf4')
+
+    $b64 = kubectl get secret rds-postgres-secret -n $Namespace -o jsonpath='{.data.dotnet-conn-string}'
+    Assert-LastExitCode 'kubectl get secret rds-postgres-secret'
+    if ([string]::IsNullOrEmpty($b64)) { throw 'Khong doc duoc secret rds-postgres-secret/dotnet-conn-string' }
+    $connString = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64))
+
+    $fields = @{}
+    foreach ($pair in $connString -split ';') {
+        if ([string]::IsNullOrWhiteSpace($pair)) { continue }
+        $idx = $pair.IndexOf('=')
+        if ($idx -lt 0) { continue }
+        $fields[$pair.Substring(0, $idx).Trim()] = $pair.Substring($idx + 1).Trim()
+    }
     return @{
-        Host     = $info.Host
-        Port     = "$($info.Port)"
-        User     = $creds.username
-        Password = $creds.password
+        Host     = $fields['Host']
+        Port     = $fields['Port']
+        Database = $fields['Database']
+        User     = $fields['Username']
+        Password = $fields['Password']
     }
 }
 
@@ -69,7 +86,8 @@ function New-PgClientPod {
         [string]$PgPort = '5432',
         [Parameter(Mandatory)][string]$PgUser,
         [Parameter(Mandatory)][string]$PgPassword,
-        [Parameter(Mandatory)][string]$PgDatabase
+        [Parameter(Mandatory)][string]$PgDatabase,
+        [string]$SetRole
     )
 
     kubectl create namespace $Namespace --dry-run=client -o yaml | kubectl apply -f - | Out-Null
@@ -92,6 +110,15 @@ data:
     $secretYaml | kubectl apply -f - | Out-Null
     Assert-LastExitCode 'kubectl apply secret pg-creds'
 
+    # PGOPTIONS lam connection tu dong "SET ROLE" ngay sau khi authenticate - ap dung cho MOI libpq
+    # client (psql/pg_dump/pg_restore deu ton trong), khong can sua tung cau SQL rieng. Yeu cau da
+    # GRANT $SetRole TO $PgUser tu truoc (xem plan doc §9) - neu chua GRANT, ket noi se fail ngay.
+    # Chi chen block "env:" khi co -SetRole - list rong/null co the bi K8s tu choi validate.
+    $envBlock = ''
+    if ($SetRole) {
+        $envBlock = "    env:`n    - name: PGOPTIONS`n      value: `"-c role=$SetRole`"`n"
+    }
+
     $podYaml = @"
 apiVersion: v1
 kind: Pod
@@ -107,7 +134,7 @@ spec:
     envFrom:
     - secretRef:
         name: pg-creds
-    resources:
+$envBlock    resources:
       requests: { cpu: 5m, memory: 32Mi }
       limits: { cpu: 200m, memory: 128Mi }
     securityContext:

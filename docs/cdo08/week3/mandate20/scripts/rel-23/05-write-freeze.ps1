@@ -8,8 +8,6 @@
 param(
     [string]$Namespace = 'techx-tf4',
     [string]$OpsNamespace = 'rel23-ops',
-    [string]$Region = 'us-east-1',
-    [string]$ProductionInstanceId = 'techx-tf4-postgresql',
     [int]$TimeoutSeconds = 120,
     [int]$PollSeconds = 5
 )
@@ -26,17 +24,17 @@ Assert-LastExitCode 'kubectl rollout status (scale down)'
 
 $runId = New-RunId
 $podName = "pg-freeze-gate-$runId"
-$creds = Get-RdsMasterCreds -DbInstanceIdentifier $ProductionInstanceId -Region $Region
+$creds = Get-ProductionAppCreds -Namespace $Namespace
 $pod = New-PgClientPod -Namespace $OpsNamespace -PodName $podName `
-    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase 'otel'
+    -PgHost $creds.Host -PgPort $creds.Port -PgUser $creds.User -PgPassword $creds.Password -PgDatabase $creds.Database -SetRole postgres
 
 try {
-    Write-Host '[INFO] Gate: cho 0 active connection cua role techx_app...'
+    Write-Host '[INFO] Gate: cho 0 active connection cua role techx_app (tru chinh session gate nay)...'
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $count = -1
     do {
         $count = [int](Invoke-PgSqlScalar -Namespace $pod.Namespace -PodName $pod.PodName `
-            -Sql "SELECT count(*) FROM pg_stat_activity WHERE usename='techx_app';")
+            -Sql "SELECT count(*) FROM pg_stat_activity WHERE usename='techx_app' AND pid <> pg_backend_pid();")
         if ($count -eq 0) { break }
         Write-Host "[INFO] Con $count connection techx_app, doi $PollSeconds giay..."
         Start-Sleep -Seconds $PollSeconds
