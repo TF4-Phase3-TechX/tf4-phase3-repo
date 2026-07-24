@@ -67,8 +67,8 @@ resource "aws_s3_bucket_policy" "eks_audit_logs_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "DenyNonAdminDeleteObject"
-        Effect    = "Deny"
+        Sid    = "DenyNonAdminDeleteObject"
+        Effect = "Deny"
         Principal = {
           AWS = "*"
         }
@@ -87,8 +87,8 @@ resource "aws_s3_bucket_policy" "eks_audit_logs_policy" {
         }
       },
       {
-        Sid       = "DenyDeleteBucket"
-        Effect    = "Deny"
+        Sid    = "DenyDeleteBucket"
+        Effect = "Deny"
         Principal = {
           AWS = "*"
         }
@@ -101,8 +101,8 @@ resource "aws_s3_bucket_policy" "eks_audit_logs_policy" {
         }
       },
       {
-        Sid       = "DenyDisableVersioning"
-        Effect    = "Deny"
+        Sid    = "DenyDisableVersioning"
+        Effect = "Deny"
         Principal = {
           AWS = "*"
         }
@@ -115,8 +115,8 @@ resource "aws_s3_bucket_policy" "eks_audit_logs_policy" {
         }
       },
       {
-        Sid       = "DenyHTTPInsecureTransport"
-        Effect    = "Deny"
+        Sid    = "DenyHTTPInsecureTransport"
+        Effect = "Deny"
         Principal = {
           AWS = "*"
         }
@@ -173,9 +173,9 @@ resource "aws_iam_role_policy" "firehose_to_s3_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AllowS3Actions"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowS3Actions"
+        Effect = "Allow"
+        Action = [
           "s3:AbortMultipartUpload",
           "s3:GetBucketLocation",
           "s3:GetObject",
@@ -189,17 +189,17 @@ resource "aws_iam_role_policy" "firehose_to_s3_policy" {
         ]
       },
       {
-        Sid      = "AllowCloudWatchLogs"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Action = [
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.firehose_delivery_errors.arn}:*"
       },
       {
-        Sid      = "AllowLambdaInvoke"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowLambdaInvoke"
+        Effect = "Allow"
+        Action = [
           "lambda:InvokeFunction",
           "lambda:GetFunctionConfiguration"
         ]
@@ -332,8 +332,8 @@ resource "aws_kinesis_firehose_delivery_stream" "eks_audit_logs" {
     role_arn   = aws_iam_role.firehose_to_s3.arn
     bucket_arn = aws_s3_bucket.eks_audit_logs.arn
 
-    buffering_size      = 5  # MB (1-128)
-    buffering_interval  = 60 # Seconds (60-900)
+    buffering_size      = 5              # MB (1-128)
+    buffering_interval  = 60             # Seconds (60-900)
     compression_format  = "UNCOMPRESSED" # Evades double-gzip
     prefix              = "!yyyy/!MM/!dd/!HH/"
     error_output_prefix = "errors/!yyyy/!MM/!dd/!HH/!error-output-type/"
@@ -387,9 +387,9 @@ resource "aws_iam_role_policy" "cwl_to_firehose_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AllowPutRecordFirehose"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowPutRecordFirehose"
+        Effect = "Allow"
+        Action = [
           "firehose:PutRecord",
           "firehose:PutRecordBatch"
         ]
