@@ -186,7 +186,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
         safety_decision=safety_decision_for_outcome(outcome),
         confirmation_status="not_required",
     )
-        logger.info(
+    logger.info(
             "ai_assistant_completed",
             extra={
                 "model_id": assistant.provider.model_id,
@@ -202,7 +202,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                 "quarantined_reviews": outcome.quarantined_reviews,
             },
         )
-        return demo_pb2.AskProductAIAssistantResponse(
+    return demo_pb2.AskProductAIAssistantResponse(
             response=outcome.response,
             action_proposal=outcome.action_proposal,
         )

@@ -88,16 +88,22 @@ export const CopilotChatModal: React.FC = () => {
             const rawIntent = traceObj.parsedIntent || traceObj.parsed_intent;
             let parsedType = '';
             if (rawIntent) {
-                try {
-                    const parsed = typeof rawIntent === 'string' ? JSON.parse(rawIntent) : rawIntent;
-                    parsedType = parsed.search_type || '';
-                    if (parsed.response_message) {
-                        assistantText = parsed.response_message;
-                    } else if ((parsed.search_type === 'clarify' || parsed.search_type === 'unclear') && parsed.clarify_question) {
-                        assistantText = parsed.clarify_question;
+                if (typeof rawIntent === 'string' && rawIntent === 'guardrail_intervened') {
+                    assistantText = "Hệ thống AI không thể xử lý yêu cầu này vì vi phạm chính sách an toàn (Guardrail Intervened).";
+                } else if (typeof rawIntent === 'string' && !rawIntent.startsWith('{')) {
+                    assistantText = `Lỗi hệ thống AI: ${rawIntent}`;
+                } else {
+                    try {
+                        const parsed = typeof rawIntent === 'string' ? JSON.parse(rawIntent) : rawIntent;
+                        parsedType = parsed.search_type || '';
+                        if (parsed.response_message) {
+                            assistantText = parsed.response_message;
+                        } else if ((parsed.search_type === 'clarify' || parsed.search_type === 'unclear') && parsed.clarify_question) {
+                            assistantText = parsed.clarify_question;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing rawIntent:', e);
                     }
-                } catch (e) {
-                    // ignore
                 }
             }
 
@@ -222,10 +228,10 @@ export const CopilotChatModal: React.FC = () => {
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
             >
-                <span style={{ 
+                <span style={{
                     fontSize: '20px',
                     filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
-                }}>✨</span> 
+                }}>✨</span>
                 <span style={{
                     textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                 }}>Shopping Copilot</span>
@@ -299,7 +305,7 @@ export const CopilotChatModal: React.FC = () => {
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ 
+                    <span style={{
                         fontSize: '20px',
                         filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))',
                     }}>✨</span>
