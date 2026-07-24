@@ -32,7 +32,7 @@ Mục tiêu: nâng trần thông lượng lên 150–200+ users trên cùng 5 No
 |---|---|---|
 | DB connection pool | ✅ Chọn | Python mở/đóng conn mỗi query; Go pool không giới hạn — 2 điểm nghẽn trực tiếp |
 | connection reuse | ✅ Chọn | ThreadedConnectionPool Python là cơ chế reuse; Go `database/sql` reuse nếu có giới hạn |
-| downstream pool sizing | ✅ Chọn | Go MaxOpenConns=50, Python maxconn=50 → tổng conn < 112 (giới hạn RDS) |
+| downstream pool sizing | ✅ Chọn | Go MaxOpenConns=20, Python maxconn=50 → tổng conn tối đa 90 (2x20 Go + 50 Python), thực tế sử dụng an toàn dưới giới hạn 79 connections của RDS |
 | idle timeout | ✅ Chọn | Go SetConnMaxIdleTime(2m) + SetConnMaxLifetime(5m) → tránh stale connections |
 | HTTP keep-alive | ❌ Không áp dụng | Giao tiếp nội bộ qua gRPC (HTTP/2, có multiplexing sẵn) |
 | TLS connection reuse | ❌ Không áp dụng | TLS session resumption do RDS driver xử lý tự động |
@@ -66,17 +66,17 @@ Mục tiêu: nâng trần thông lượng lên 150–200+ users trên cùng 5 No
 
 | Trường | Nội dung |
 |---|---|
-| **Bottleneck** | Go `database/sql` mặc định MaxOpenConns=0 (vô hạn). Tải > 100 users → Go mở ồ ạt TCP conn mới tới RDS, vượt giới hạn 112 connections → lỗi `too many clients already` |
+| **Bottleneck** | Go `database/sql` mặc định MaxOpenConns=0 (vô hạn). Tải > 100 users → Go mở ồ ạt TCP conn mới tới RDS, vượt giới hạn 79 connections của RDS → lỗi `too many clients already` |
 | **Expected throughput impact** | Ngăn cascade failure; cart/checkout/payment giữ được kết nối ổn định → hệ thống trụ đến 150–200 users mà không sập DB |
 | **Resource impact** | TCP connections tới RDS giảm; CPU RDS giảm overhead; Pod memory không đổi |
-| **Correctness risk** | **Thấp** — nếu MaxOpenConns=50 quá nhỏ, request chờ trong pool (latency tăng nhẹ), không gây data corruption |
+| **Correctness risk** | **Thấp** — nếu MaxOpenConns=20 quá nhỏ, request chờ trong pool (latency tăng nhẹ), không gây data corruption |
 | **Rollback** | `git revert` commit; hoặc xóa 4 dòng SetMax* trong initDatabase() và redeploy |
 | **Test gate** | Tỷ lệ lỗi ≤ 2% tại 150 users; không có lỗi `too many clients` trong RDS log |
 | **Source-of-truth file** | `techx-corp-platform/src/product-catalog/main.go` — hàm `initDatabase()` |
 
 ```go
-db.SetMaxOpenConns(50)
-db.SetMaxIdleConns(10)
+db.SetMaxOpenConns(20)
+db.SetMaxIdleConns(5)
 db.SetConnMaxLifetime(5 * time.Minute)
 db.SetConnMaxIdleTime(2 * time.Minute)
 ```
@@ -156,3 +156,4 @@ Tất cả 3 TC commit vào 1 PR duy nhất → deploy 1 lần → tránh trạn
 - [x] Có rollback — mỗi TC có bước rollback cụ thể
 - [x] Có reviewer sign-off — Tech Lead approved
 - [x] Có change sequence — xem mục Change Sequence ở trên
+- [x] Có đường dẫn thư mục logs kiểm thử: [log/](./log/)

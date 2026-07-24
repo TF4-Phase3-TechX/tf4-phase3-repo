@@ -4,9 +4,9 @@ groups:
     rules:
       - alert: AIOpsIncidentDetected
         expr: |
-          sum by (incident_type, service, severity) (
-            increase(aiops_incidents_created_total[3m])
-          ) > 0
+          max by (incident_type, service, severity) (
+            aiops_incident_active
+          ) == 1
         labels:
           severity: "{{ $labels.severity }}"
           owner: aio01

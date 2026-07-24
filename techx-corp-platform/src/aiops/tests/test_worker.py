@@ -1,9 +1,13 @@
+import asyncio
+import time
 from dataclasses import replace
 
 import pytest
 from prometheus_client import REGISTRY
 
+from app.availability import AvailabilitySnapshot
 from app.config import Settings
+from app.detection import Detector
 from app.models import Decision, IncidentStatus
 from app.store import IncidentStore
 from app.worker import AIOpsWorker
@@ -35,6 +39,40 @@ class RecordingDetector:
     def llm_error(self, service, series, query, log_count):
         self.llm_services.append(service)
         return Decision(anomalous=False, incident_type="llm_timeout_error", service=service)
+
+
+class BlockingDetector(RecordingDetector):
+    @staticmethod
+    def latency(service, series, query):
+        time.sleep(0.1)
+        return Decision(
+            anomalous=False,
+            incident_type="service_latency_spike",
+            service=service,
+        )
+
+
+@pytest.mark.asyncio
+async def test_cpu_bound_detection_does_not_block_health_event_loop():
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("checkout",),
+            llm_services=(),
+            llm_log_services=(),
+        ),
+        EmptyTelemetry(),
+        BlockingDetector(),
+        IncidentStore(),
+        remediation=object(),
+    )
+
+    poll = asyncio.create_task(worker.poll_once())
+    # This timer represents a health/readiness request sharing FastAPI's event
+    # loop. It must run while synchronous detector CPU work is in progress.
+    await asyncio.wait_for(asyncio.sleep(0.02), timeout=0.08)
+    assert not poll.done()
+    await poll
 
 
 @pytest.mark.asyncio
@@ -166,3 +204,89 @@ async def test_worker_counts_opensearch_and_jaeger_poll_failures():
     assert REGISTRY.get_sample_value(
         "aiops_telemetry_poll_failures_total", labels("jaeger")
     ) == jaeger_before + 1
+
+
+class DownAvailability:
+    @staticmethod
+    def snapshot(service):
+        return AvailabilitySnapshot(
+            service=service,
+            state="down",
+            desired_replicas=1,
+            available_replicas=0,
+            ready_replicas=0,
+            updated_replicas=1,
+            reason="no_available_or_ready_replicas",
+        )
+
+
+class HealthyAvailability:
+    @staticmethod
+    def snapshot(service):
+        return AvailabilitySnapshot(
+            service=service,
+            state="healthy",
+            desired_replicas=1,
+            available_replicas=1,
+            ready_replicas=1,
+            updated_replicas=1,
+            reason="desired_replicas_ready",
+        )
+
+
+@pytest.mark.asyncio
+async def test_confirmed_service_down_creates_pageable_incident():
+    settings = replace(
+        Settings(),
+        services=("checkout",),
+        llm_services=(),
+        llm_log_services=(),
+        availability_sustained_polls=2,
+        recovery_polls=2,
+    )
+    recorder = ApprovalRecorder()
+    store = IncidentStore(cooldown_seconds=0)
+    counter_labels = {
+        "incident_type": "service_availability",
+        "service": "checkout",
+        "severity": "critical",
+    }
+    created_before = REGISTRY.get_sample_value(
+        "aiops_incidents_created_total", counter_labels
+    ) or 0
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        Detector(settings),
+        store,
+        remediation=recorder,
+        availability=DownAvailability(),
+    )
+
+    await worker.poll_once()
+    assert await store.list() == []
+
+    await worker.poll_once()
+    incidents = await store.list()
+
+    assert len(incidents) == 1
+    assert incidents[0].incident_type == "service_availability"
+    assert incidents[0].affected_service == "checkout"
+    assert incidents[0].severity == "high"
+    assert incidents[0].execution_attempts == 0
+    assert recorder.incident_ids == [incidents[0].incident_id]
+    assert REGISTRY.get_sample_value(
+        "aiops_incidents_created_total", counter_labels
+    ) == created_before + 1
+    assert REGISTRY.get_sample_value(
+        "aiops_incident_active", counter_labels
+    ) == 1
+
+    worker.availability = HealthyAvailability()
+    await worker.poll_once()
+    await worker.poll_once()
+
+    assert (await store.list())[0].status.value == "resolved"
+    assert REGISTRY.get_sample_value(
+        "aiops_incident_active", counter_labels
+    ) == 0
