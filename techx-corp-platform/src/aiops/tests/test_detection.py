@@ -1,11 +1,14 @@
+from app.availability import AvailabilitySnapshot
 from app.config import Settings
 from app.detection import (
     Detector,
     adaptive_breach,
     anomaly_scores,
+    classify_service_state,
     error_rate_query,
     latency_query,
     llm_error_query,
+    request_rate_query,
     signal_gate,
     torai_lite_score,
 )
@@ -238,3 +241,91 @@ def test_torai_lite_weights_are_explicit_and_configurable():
     )
 
     assert metric_first["score"] > log_first["score"]
+
+
+def availability_snapshot(state="healthy", desired=1, available=1, ready=1):
+    return AvailabilitySnapshot(
+        service="checkout",
+        state=state,
+        desired_replicas=desired,
+        available_replicas=available,
+        ready_replicas=ready,
+        updated_replicas=desired,
+        reason="test",
+    )
+
+
+def test_service_state_separates_busy_degraded_down_and_unknown():
+    healthy = availability_snapshot()
+    down = availability_snapshot("down", desired=1, available=0, ready=0)
+    unknown = availability_snapshot(
+        "unknown", desired=None, available=None, ready=None
+    )
+
+    assert (
+        classify_service_state(
+            healthy,
+            20.0,
+            latency_breached=False,
+            error_rate_breached=False,
+            busy_request_rate_threshold=5.0,
+        )
+        == "busy"
+    )
+    assert (
+        classify_service_state(
+            healthy,
+            20.0,
+            latency_breached=True,
+            error_rate_breached=False,
+            busy_request_rate_threshold=5.0,
+        )
+        == "degraded"
+    )
+    assert (
+        classify_service_state(
+            down,
+            None,
+            latency_breached=False,
+            error_rate_breached=False,
+            busy_request_rate_threshold=5.0,
+        )
+        == "down"
+    )
+    assert (
+        classify_service_state(
+            unknown,
+            None,
+            latency_breached=False,
+            error_rate_breached=False,
+            busy_request_rate_threshold=5.0,
+        )
+        == "unknown"
+    )
+
+
+def test_availability_requires_confirmation_and_unknown_never_pages():
+    detector = Detector(settings(availability_sustained_polls=2))
+    down = availability_snapshot("down", desired=2, available=0, ready=0)
+
+    assert detector.availability(down).anomalous is False
+    decision = detector.availability(down)
+    assert decision.anomalous is True
+    assert decision.severity == "high"
+    assert decision.runbook_id == "service-availability-escalation"
+
+    unknown = availability_snapshot(
+        "unknown", desired=None, available=None, ready=None
+    )
+    decision = detector.availability(unknown)
+    assert decision.anomalous is False
+    assert decision.breached is False
+    assert decision.coverage_status == "unavailable"
+
+
+def test_request_rate_query_is_service_and_namespace_scoped():
+    query = request_rate_query("checkout", "techx-tf4")
+
+    assert 'service_name="checkout"' in query
+    assert 'k8s_namespace_name="techx-tf4"' in query
+    assert 'span_kind="SPAN_KIND_SERVER"' in query
