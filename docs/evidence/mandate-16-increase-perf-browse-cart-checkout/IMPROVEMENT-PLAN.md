@@ -2,7 +2,7 @@
 
 **Mục tiêu:** giảm p95/p99 của Browse → Cart → Checkout dưới cùng sustained-load contract, đồng thời giữ nguyên correctness, reliability và resource invariants.
 
-Tài liệu này chỉ ghi nhận vấn đề, evidence và hướng điều tra. Solution design, target file và implementation detail sẽ được chốt sau khi có baseline chính thức ở 200 users và trace/metric tương ứng.
+Tài liệu ghi nhận vấn đề, evidence, hướng điều tra và các corrective change đã được merge. Mọi kết luận về p95/p99 vẫn cần baseline và optimized run cùng sustained-load contract.
 
 ## Nguyên tắc không được vi phạm
 
@@ -33,20 +33,24 @@ Kết luận này chỉ áp dụng cho fan-out hai-worker Product Catalog. Indep
 
 Không dùng finding này để suy ngược một root cause đơn lẻ cho các incident lịch sử không thuộc controlled reapply.
 
-## 2. Confirmation hydration vẫn có N+1 Product Catalog reads — chuẩn bị implementation
+## 2. Confirmation hydration N+1 Product Catalog reads — đã xử lý ở PR #565
 
 ### Evidence hiện có
 
-Checkout đã tính authoritative `cost` trước Payment. Sau khi `CheckoutGateway.placeOrder` trả về, `frontend/pages/api/checkout.ts` vẫn `await Promise.all(items.map(...))` và gọi `ProductCatalogService.getProductForDisplay(productId)` một lần cho từng order item. Mỗi call là một Product Catalog gRPC `GetProduct`; multi-item cart tạo N RPC độc lập trên confirmation path trước khi frontend API trả response.
+Trước PR [#565](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/565), Checkout đã tính authoritative `cost` trước Payment nhưng sau khi `CheckoutGateway.placeOrder` trả về, `frontend/pages/api/checkout.ts` vẫn gọi `ProductCatalogService.getProductForDisplay(productId)` một lần cho từng order item. Multi-item cart vì vậy tạo N Product Catalog gRPC `GetProduct` độc lập trên confirmation path.
 
-PR [#496](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/496) đã giữ checkout-returned monetary fields là authoritative và chỉ lấy `name`, `picture`, `categories`; nó đã loại Currency conversion khỏi confirmation hydration nhưng chưa loại N Product Catalog reads này. `cost` và shipping cost tiếp tục lấy trực tiếp từ Checkout response.
+### Đã triển khai
 
-### Chuẩn bị implementation — contract audit trước
+PR [#565](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/565) loại bỏ các read thừa trên normal confirmation path:
 
-- Inventory confirmation consumers và xác nhận chỉ cần `name`, `picture`, `categories` cùng authoritative monetary fields hiện có.
-- Xác định liệu display metadata có thể được mang trong Checkout response mà không phá response/proto consumer contract.
-- Chỉ sau contract audit mới chọn hướng bỏ N frontend Product Catalog RPC; chưa thay đổi proto/API trong hạng mục này.
-- Khi implement, test multi-item confirmation phải giữ item ordering, display fields, `cost`, shipping cost và error behavior.
+- Thêm field protobuf additive `OrderItem.product_display`, gồm `name`, `picture`, `categories`.
+- Checkout tái sử dụng display metadata từ kết quả Product Catalog đã đọc để định giá; không tạo Product Catalog RPC mới.
+- Product Catalog reads trong Checkout vẫn tuần tự; không khôi phục fan-out hai worker từng gây quá tải.
+- Frontend confirmation ưu tiên `productDisplay` từ Checkout response, nên không còn N lần `getProductForDisplay` trên normal path.
+- Khi frontend mới gặp Checkout pod cũ chưa trả `product_display`, frontend fallback về `getProductForDisplay`; rollout/mixed-version vẫn không làm confirmation lỗi.
+- Monetary fields và shipping cost từ Checkout response vẫn là authoritative.
+
+Regression coverage xác nhận display metadata giữ đúng thứ tự, trường hiển thị, `cost`, shipping cost và error behavior cho multi-item confirmation.
 
 ## 3. Browse catalog có N+1 Currency fan-out với non-USD — đã xử lý ở PR #324
 
@@ -95,26 +99,56 @@ Product route có thời điểm `productId` chưa sẵn sàng trong client hydr
 
 Chỉ khởi tạo Recommendations query khi product identifier hợp lệ; đảm bảo normalization của input và cache/query key nhất quán để không leak stale recommendation giữa product routes.
 
-## 5. Checkout USD path gọi Currency `Convert` theo từng item — chuẩn bị implementation
+## 5. Checkout USD path gọi Currency `Convert` theo từng item — đã xử lý ở PR #565
 
 ### Evidence hiện có
 
-Trong `checkout/main.go`, `prepOrderItems` đã validate mọi product price là USD. Tuy vậy khi `userCurrency == "USD"`, code vẫn lặp qua từng price và gọi unary `CurrencyService.Convert(price, "USD")`. Multi-item Checkout vì vậy tạo N Currency RPC no-op; non-USD path đã dùng một `BatchConvert` cho toàn bộ prices.
+Trước PR [#565](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/565), `prepOrderItems` đã validate mọi product price là USD nhưng khi `userCurrency == "USD"` vẫn gọi unary `CurrencyService.Convert(price, "USD")` cho từng item. Multi-item Checkout do đó tạo N Currency RPC no-op; non-USD path đã dùng một `BatchConvert` cho toàn bộ prices.
 
-### Chuẩn bị implementation
+### Đã triển khai
 
-- Xác nhận `Convert(USD, USD)` không có side effect hoặc business validation bổ sung cần giữ.
-- Nếu là pass-through, copy USD money đã validate trực tiếp thay vì phát sinh N Currency RPC.
-- Khi implement, thêm multi-item USD regression test xác nhận Currency `Convert` và `BatchConvert` đều không được gọi, đồng thời giữ item ordering, exact total, currency code và failure-before-write behavior.
+- USD item prices được copy bằng `copyMoney` sau validation, không gọi `Convert` hoặc `BatchConvert`.
+- Vẫn giữ đúng một lần Currency `Convert` cho shipping cost.
+- Non-USD item path vẫn dùng `CurrencyService.BatchConvert`, với validation response/cardinality/currency/money và checked money arithmetic.
+- Regression coverage xác nhận Checkout USD multi-item giữ exact total, item ordering và currency code; không gọi `Convert`/`BatchConvert` cho item prices và chỉ gọi một `Convert` cho shipping.
 
-## Prioritization trước implementation
+Thay đổi chỉ giảm downstream RPC; Checkout response, email payload và Kafka order event tăng nhẹ display metadata cho mỗi item.
 
-| Priority | Vấn đề | Lý do |
+## 6. Product Catalog PostgreSQL connection pool quá lớn — đã xử lý ở PR #592
+
+PR [#592](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/592) giới hạn connection pool của Product Catalog PostgreSQL:
+
+- `MaxOpenConns`: 20.
+- `MaxIdleConns`: 5.
+
+Mục tiêu là bound concurrent database connection usage của Product Catalog, giảm khả năng downstream database bị quá tải mà không tăng cluster capacity hoặc replica minimum.
+
+## Verification cho PR #565 và #592
+
+Đã chạy thành công:
+
+```text
+go test -count=1 ./...
+go vet ./...
+go build ./...
+npm run typecheck
+git diff --check
+```
+
+Runtime steady state của PR #565 chỉ giảm downstream RPC:
+
+- Confirmation giảm N Product Catalog `GetProduct` calls.
+- USD Checkout item pricing giảm N Currency `Convert` calls.
+
+## Prioritization sau implementation
+
+| Priority | Vấn đề | Trạng thái / lý do |
 |---|---|---|
-| P0 | Two-worker Product Catalog reads trong Checkout | Regression đã xác minh: controlled reapply làm Product Catalog quá tải và Checkout fail liên tục; đã rollback về tuần tự tại PR #558 |
-| P1 | Confirmation hydration N+1 Product Catalog reads | N gRPC `GetProduct` nằm trên client-observed confirmation path; cần contract audit trước khi đổi API/proto |
-| P2 | Checkout USD per-item Currency `Convert` | N Currency RPC no-op cho multi-item USD Checkout; có hướng pass-through nhỏ nhưng phải xác nhận contract |
-| P2 | Browse Currency N+1 | Đã xử lý tại PR #324; vẫn cần giữ baseline/optimized evidence về p95/p99 và correctness |
+| P0 | Two-worker Product Catalog reads trong Checkout | Regression đã xác minh; giữ tuần tự tại PR #558, không khôi phục fan-out |
+| P1 | Confirmation hydration N+1 Product Catalog reads | Đã xử lý tại PR #565 bằng `product_display` additive và compatibility fallback |
+| P2 | Checkout USD per-item Currency `Convert` | Đã xử lý tại PR #565 bằng validated `copyMoney`; shipping vẫn convert một lần |
+| P2 | Browse Currency N+1 | Đã xử lý tại PR #324; vẫn cần baseline/optimized evidence về p95/p99 và correctness |
+| P2 | Product Catalog PostgreSQL connection usage | Đã bound tại PR #592: open 20, idle 5 |
 | P3 | Invalid Recommendations hydration request | Low-risk request elimination; tác động chính là giảm noise và load thừa |
 
 ## Acceptance trước khi giữ bất kỳ improvement nào

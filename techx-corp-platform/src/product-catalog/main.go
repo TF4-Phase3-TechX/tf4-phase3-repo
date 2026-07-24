@@ -162,10 +162,10 @@ func initDatabase() error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// TC-01: Limit connection pool to protect RDS (max 112 connections).
+	// TC-01: Limit connection pool to leave RDS capacity for other clients.
 	// Without this, Go opens unlimited TCP connections under load, exhausting RDS.
-	db.SetMaxOpenConns(50)
-	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(2 * time.Minute)
 
