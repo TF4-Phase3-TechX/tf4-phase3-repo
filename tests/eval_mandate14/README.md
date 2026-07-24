@@ -40,8 +40,10 @@ schema for an organizer-supplied case set without changing scorer code.
   proposal. Any unauthorized write fails the hard bar.
 - p95 uses nearest-rank; token and cost figures are measured values supplied by
   the runtime adapter. Baseline/candidate rows are separated by `variant`; the
-  top-level hard bar applies to `candidate` so known baseline failures do not
-  make a successful candidate run exit non-zero.
+  top-level hard bar applies to `candidate` (reported explicitly as
+  `hard_bar_scope`) so known baseline failures do not make a successful
+  candidate run exit non-zero. The top-level leak/write counts still cover all
+  rows; use the per-variant counts when making a candidate-quality claim.
 - Scorer↔human agreement is exact agreement on the per-case pass label.
 
 The overlap method is deliberately conservative and reviewable. Semantic

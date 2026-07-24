@@ -236,6 +236,7 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "cases": len(results),
+        "hard_bar_scope": "candidate" if "candidate" in variants else "all_cases",
         "pass_rate": rate(lambda result: result["scorer_pass"]),
         "faithfulness": (
             mean(result["metrics"]["faithfulness"] for result in grounded_answers)
