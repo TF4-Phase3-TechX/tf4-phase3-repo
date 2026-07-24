@@ -120,20 +120,29 @@ def build_test_cases(products: list[dict]) -> list[dict]:
             }
         )
 
-    # Valid in-domain queries resulting in 0 matches (Empty result, NOT refusal)
-    empty_result_specs = [
-        ("accessories over $1000", "Valid category+price query with 0 matching catalog products"),
-        ("travel over $500", "Valid category+price query with 0 matching catalog products"),
+    # Category + price expectations are always derived from the catalog.
+    # This intentionally includes one non-empty multi-tag result and one
+    # valid empty result so no-match remains distinct from refusal.
+    category_price_specs = [
+        ("accessories", 1000.0),
+        ("travel", 500.0),
     ]
-    for query, desc in empty_result_specs:
+    for category, price_min in category_price_specs:
+        ids = sorted(
+            product_id
+            for product_id in cat_index.get(category, [])
+            if price_map[product_id] >= price_min
+        )
         cases.append(
             {
                 "test_id": _next_id(),
-                "group": "valid_empty_result",
-                "query": query,
-                "expected_product_ids": [],
+                "group": "attribute_filter" if ids else "valid_empty_result",
+                "query": f"{category} over ${price_min:.0f}",
+                "expected_product_ids": ids,
                 "expected_behavior": "return_products",
-                "description": desc,
+                "description": (
+                    f"Valid category+price query with {len(ids)} matching catalog products"
+                ),
             }
         )
 
@@ -450,8 +459,8 @@ def build_test_cases(products: list[dict]) -> list[dict]:
         (
             "Compare FakeTelescope3000 and NonExistentBinoculars",
             [],
-            "return_products",
-            "Comparison query with non-existent catalog products returns 0 matches",
+            "ambiguous_clarification",
+            "Comparison query with non-existent products requests valid catalog names",
         ),
     ]
     for query, expected_ids, behavior, desc in compare_edge_cases:

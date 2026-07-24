@@ -115,10 +115,69 @@ def _comparison_category_candidates(products: list[Any], category: str) -> list[
     category = (category or "").strip().lower()
     if not category:
         return list(products)
-    candidates = [p for p in products if any(category == c.lower() for c in getattr(p, "categories", []))]
-    if category == "telescopes":
-        candidates = [p for p in candidates if not any("accessories" in c.lower() for c in getattr(p, "categories", []))]
-    return candidates
+    return [
+        p
+        for p in products
+        if any(category == c.lower() for c in getattr(p, "categories", []))
+    ]
+
+
+_CATALOG_CATEGORY_TERMS = {
+    "telescopes": ("telescope", "telescopes", "kính thiên văn"),
+    "accessories": ("accessory", "accessories", "phụ kiện"),
+    "binoculars": ("binocular", "binoculars", "ống nhòm"),
+    "flashlights": ("flashlight", "flashlights", "đèn pin"),
+    "assembly": ("optical tube assembly", "ống quang"),
+    "books": ("catalog book", "product book", "sách thiên văn"),
+    "travel": ("travel telescope", "travel scope", "kính du lịch"),
+}
+
+_GENERIC_DISCOVERY_KEYWORDS = {
+    "advice",
+    "beginner",
+    "beginners",
+    "good",
+    "help",
+    "new",
+    "phù",
+    "recommend",
+    "recommendation",
+    "sao",
+    "telescope",
+    "telescopes",
+    "tư",
+    "vấn",
+    "xem",
+}
+
+
+def _explicit_catalog_category(query: str) -> str:
+    """Return a category only when the current turn names it explicitly."""
+    normalized = " ".join(
+        "".join(char if char.isalnum() else " " for char in query.lower()).split()
+    )
+    padded = f" {normalized} "
+    for category, terms in _CATALOG_CATEGORY_TERMS.items():
+        if any(f" {term} " in padded for term in terms):
+            return category
+    return ""
+
+
+def _keywords_are_generic_discovery_terms(keywords: str, category: str) -> bool:
+    """Detect model-emitted audience/advisory words that must not filter names."""
+    normalized = " ".join(
+        "".join(char if char.isalnum() else " " for char in keywords.lower()).split()
+    )
+    if not normalized:
+        return True
+    category_terms = {
+        token
+        for term in _CATALOG_CATEGORY_TERMS.get(category, ())
+        for token in term.split()
+    }
+    return set(normalized.split()).issubset(
+        _GENERIC_DISCOVERY_KEYWORDS | category_terms
+    )
 
 
 def _last_search_candidates(products: list[Any], session_id: str, user_id: str) -> list[Any]:
@@ -332,9 +391,21 @@ def route_search_products_ai(
             confidence_score = float(intent.get("confidence_score", 0.95))
             raw_search_type = intent.get("search_type", "")
             intent_label = _map_search_type_to_intent(raw_search_type)
+            explicit_category = _explicit_catalog_category(query)
+
+            if (
+                raw_search_type == "search"
+                and explicit_category
+                and _keywords_are_generic_discovery_terms(
+                    str(intent.get("keywords") or ""), explicit_category
+                )
+            ):
+                intent["category"] = explicit_category
+                intent.pop("keywords", None)
 
             # Rescue queries containing specific catalog product names (e.g. "Comet Book") from being wrongly refused as OUT_OF_SCOPE/UNCLEAR
             if raw_search_type == "out_of_scope" or intent_label == IntentLabel.UNCLEAR:
+                matched_product = None
                 try:
                     catalog_resp = product_catalog_stub.ListProducts(demo_pb2.Empty(), timeout=2.0)
                     matched_product = resolve_referenced_product(
@@ -342,13 +413,25 @@ def route_search_products_ai(
                         list(catalog_resp.products),
                         keywords=query,
                     )
-                    if matched_product:
-                        raw_search_type = "search"
-                        intent["search_type"] = "search"
-                        intent["keywords"] = matched_product.name
-                        intent_label = IntentLabel.PRODUCT_SEARCH
                 except Exception as e:
                     logger.warning(f"Failed to check catalog for out_of_scope rescue: {e}")
+                if matched_product:
+                    raw_search_type = "search"
+                    intent["search_type"] = "search"
+                    intent["keywords"] = matched_product.name
+                    intent_label = IntentLabel.PRODUCT_SEARCH
+                elif explicit_category:
+                    # Safety/PII checks already ran. A literal catalog category
+                    # is sufficient evidence that this is product discovery,
+                    # even when the model false-blocks advisory phrasing.
+                    raw_search_type = "search"
+                    intent["search_type"] = "search"
+                    intent["category"] = explicit_category
+                    intent.pop("keywords", None)
+                    intent.pop("clarify_question", None)
+                    confidence_score = max(confidence_score, 0.9)
+                    intent["confidence_score"] = confidence_score
+                    intent_label = IntentLabel.PRODUCT_SEARCH
 
             # Enforce confidence threshold for unclear fallback
             if confidence_score < INTENT_CONFIDENCE_THRESHOLD and intent_label != IntentLabel.CHITCHAT:
@@ -779,9 +862,11 @@ def route_search_products_ai(
             category = category_aliases.get(category, category)
             if category:
                 filters_applied["category"] = category
-                filtered = [p for p in filtered if any(category in c.lower() for c in p.categories)]
-                if category == "telescopes":
-                    filtered = [p for p in filtered if not any("accessories" in c.lower() for c in p.categories)]
+                filtered = [
+                    p
+                    for p in filtered
+                    if any(category == c.lower() for c in p.categories)
+                ]
 
             # Price filters
             price_min = intent.get("price_min")
@@ -819,34 +904,21 @@ def route_search_products_ai(
             filter_applied_json = json.dumps(filters_applied, ensure_ascii=False)
             candidate_count_after = len(filtered)
 
-            route_outcome = "success" if candidate_count_after > 0 else "refused"
+            route_outcome = "success" if candidate_count_after > 0 else "no_match"
             span.set_attribute("app.search.candidate_count_before", candidate_count_before)
             span.set_attribute("app.search.candidate_count_after", candidate_count_after)
             span.set_attribute("app.search.outcome", route_outcome)
-
-            if candidate_count_after == 0:
-                try:
-                    d = json.loads(filter_applied_json) if isinstance(filter_applied_json, str) and filter_applied_json.startswith("{") else {}
-                    d["refusal_reason"] = "no_match_after_filter"
-                    filter_applied_json = json.dumps(d, ensure_ascii=False)
-                except Exception:
-                    filter_applied_json = json.dumps({"refusal_reason": "no_match_after_filter"}, ensure_ascii=False)
 
             trace_msg = demo_pb2.SearchEvidenceTrace(
                 parsed_intent=parsed_intent_json,
                 filter_applied=filter_applied_json,
                 candidate_count_before=candidate_count_before,
                 candidate_count_after=candidate_count_after,
-                refused=(candidate_count_after == 0),
+                refused=False,
                 input_tokens=_in_tok,
                 output_tokens=_out_tok,
                 estimated_cost_usd=_calculate_search_cost(_in_tok, _out_tok),
             )
-            if candidate_count_after == 0 and hasattr(trace_msg, "refusal_reason"):
-                try:
-                    setattr(trace_msg, "refusal_reason", "no_match_after_filter")
-                except Exception:
-                    pass
 
             if filtered:
                 p_names = ", ".join(p.name for p in filtered[:3])

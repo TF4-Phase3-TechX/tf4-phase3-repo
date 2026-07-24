@@ -737,3 +737,169 @@ def test_multiturn_cheapest_review_and_cart_keep_the_same_referent():
     assert cart.action_proposal.product_id == "1YMWWN1N4O"
     assert cart.action_proposal.confirmation_required is True
     assert cart.outcome == "action_confirmation_required"
+
+
+def test_catalog_no_match_is_not_a_policy_refusal():
+    import router
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, query, history=None):
+            return {
+                "search_type": "search",
+                "confidence_score": 0.99,
+                "category": "travel",
+                "price_min": 500,
+            }
+
+    class Catalog:
+        def ListProducts(self, request, timeout):
+            return demo_pb2.ListProductsResponse(
+                products=[
+                    demo_pb2.Product(
+                        id="travel-scope",
+                        name="Travel Scope",
+                        categories=["telescopes", "travel"],
+                        price_usd=demo_pb2.Money(units=129),
+                    )
+                ]
+            )
+
+    class Tracer:
+        class Span:
+            def __init__(self):
+                self.attributes = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def set_attribute(self, key, value):
+                self.attributes[key] = value
+
+        def __init__(self):
+            self.span = self.Span()
+
+        def start_as_current_span(self, name):
+            return self.span
+
+    tracer = Tracer()
+    response = router.route_search_products_ai(
+        "travel over $500",
+        "no-match-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        Catalog(),
+        tracer,
+        None,
+    )
+
+    assert response.outcome == "no_match"
+    assert response.trace.refused is False
+    assert response.trace.refusal_reason == ""
+    assert tracer.span.attributes["app.search.outcome"] == "no_match"
+
+
+def test_benign_vietnamese_advisory_query_is_rescued_as_catalog_search():
+    import router
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, query, history=None):
+            return {
+                "search_type": "clarify",
+                "confidence_score": 0.45,
+                "clarify_question": "Bạn muốn sản phẩm nào?",
+            }
+
+    class Catalog:
+        products = [
+            demo_pb2.Product(
+                id="complete-scope",
+                name="Complete Scope",
+                categories=["telescopes"],
+            ),
+            demo_pb2.Product(
+                id="scope-imager",
+                name="Scope Imager",
+                categories=["accessories", "telescopes"],
+            ),
+            demo_pb2.Product(
+                id="book",
+                name="Catalog Book",
+                categories=["books"],
+            ),
+        ]
+
+        def ListProducts(self, request, timeout):
+            return demo_pb2.ListProductsResponse(products=self.products)
+
+    class Tracer:
+        class Span:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def set_attribute(self, key, value):
+                pass
+
+        def start_as_current_span(self, name):
+            return self.Span()
+
+    response = router.route_search_products_ai(
+        "Xin chào bạn, tư vấn giúp tôi kính thiên văn nào xem sao phù hợp cho người mới bắt đầu",
+        "false-block-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        Catalog(),
+        Tracer(),
+        None,
+    )
+
+    assert response.outcome == "success"
+    assert response.trace.refused is False
+    assert [product.id for product in response.results] == [
+        "complete-scope",
+        "scope-imager",
+    ]
+    parsed_intent = __import__("json").loads(response.trace.parsed_intent)
+    assert parsed_intent["search_type"] == "search"
+    assert parsed_intent["category"] == "telescopes"
+    assert "keywords" not in parsed_intent
+
+
+def test_telescope_category_keeps_products_with_multiple_catalog_tags():
+    products = [
+        DummyProduct("scope", "Complete Scope", ["telescopes"], price=300),
+        DummyProduct(
+            "assembly",
+            "Optical Tube Assembly",
+            ["accessories", "telescopes", "assembly"],
+            price=3599,
+        ),
+        DummyProduct(
+            "filter",
+            "Solar Filter",
+            ["accessories", "telescopes"],
+            price=69,
+        ),
+    ]
+
+    resolved = _resolve_comparison_products(
+        {
+            "category": "telescopes",
+            "comparison_selectors": ["most_expensive", "cheapest"],
+        },
+        products,
+    )
+
+    assert [product.id for product in resolved] == ["assembly", "filter"]
+    assert resolve_referenced_product(
+        [], products, category="telescopes", price_selector="most_expensive"
+    ).id == "assembly"
