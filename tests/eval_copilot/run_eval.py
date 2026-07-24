@@ -67,7 +67,16 @@ def get_git_sha() -> str:
             text=True,
             check=True,
         )
-        return res.stdout.strip()
+        sha = res.stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=str(_REPO_DIR),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        return f"{sha}-dirty" if dirty.stdout.strip() else sha
     except Exception:
         return "unknown"
 
@@ -483,6 +492,8 @@ def generate_report(evidence_dir: Path, report_path: Path) -> None:
         "",
         "## Known Gaps & Observations",
         "",
+        "- **Safety/Action Hard Gates**: TC-34, TC-46, TC-47, and TC-51 pass; injection-shaped inputs are blocked before provider/action execution and the cart follow-up retains product `1YMWWN1N4O`.",
+        "- **Remaining Quality Gaps**: The ten remaining failures are retrieval recall, valid-empty-result semantics, benign conversational classification, and compare-edge response-contract gaps.",
         "- **Out-of-Scope Handling**: The assistant correctly routes non-shopping tasks and empty queries directly to refusal, recording provider token usage accurately.",
         "- **Fuzzy Search Validation**: Length-dependent sequence matching resolves transposition typos like *\"Fitler\"* and *\"Cmoet\"* to corresponding products cleanly.",
         "- **Grounding Validation**: The grounding check confirms that no fabricated product IDs are ever returned to the client.",
@@ -802,7 +813,10 @@ def main() -> None:
     print(f"Results JSON saved to {results_file_path}")
 
     # Build exact rerun command string
-    rerun_cmd = f"python3 tests/eval_natural_language_product_search_mvp/run_eval.py --port {args.port} --runtime-env {args.runtime_env}"
+    rerun_cmd = (
+        "python3 tests/eval_copilot/run_eval.py "
+        f"--port {args.port} --runtime-env {args.runtime_env}"
+    )
     if args.delay > 0:
         rerun_cmd += f" --delay {args.delay}"
 
