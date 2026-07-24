@@ -1,0 +1,23 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/api/recommendations?productIds=0PUK6V6EV0,HTTPError('503 Server Error: Service Unavailable for url: /api/recommendations?productIds=0PUK6V6EV0'),1,2026-07-24T01:31:16Z,2026-07-24T01:31:16Z
+GET,/api/products/66VCHSJNUP,HTTPError('503 Server Error: Service Unavailable for url: /api/products/66VCHSJNUP'),3,2026-07-24T01:32:48Z,2026-07-24T01:34:48Z
+POST,/api/cart,HTTPError('503 Server Error: Service Unavailable for url: /api/cart'),3,2026-07-24T01:33:06Z,2026-07-24T01:35:25Z
+POST,/api/product-ask-ai-assistant/66VCHSJNUP,HTTPError('503 Server Error: Service Unavailable for url: /api/product-ask-ai-assistant/66VCHSJNUP'),1,2026-07-24T01:33:18Z,2026-07-24T01:33:18Z
+GET,/api/products/LS4PSXUNUM,HTTPError('503 Server Error: Service Unavailable for url: /api/products/LS4PSXUNUM'),4,2026-07-24T01:10:31Z,2026-07-24T01:34:48Z
+GET,/api/recommendations?productIds=L9ECAV7KIM,HTTPError('503 Server Error: Service Unavailable for url: /api/recommendations?productIds=L9ECAV7KIM'),1,2026-07-24T01:32:03Z,2026-07-24T01:32:03Z
+GET,/api/product-reviews/L9ECAV7KIM,HTTPError('503 Server Error: Service Unavailable for url: /api/product-reviews/L9ECAV7KIM'),1,2026-07-24T01:33:18Z,2026-07-24T01:33:18Z
+POST,/api/product-ask-ai-assistant/1YMWWN1N4O,HTTPError('503 Server Error: Service Unavailable for url: /api/product-ask-ai-assistant/1YMWWN1N4O'),1,2026-07-24T01:34:35Z,2026-07-24T01:34:35Z
+POST,/api/product-ask-ai-assistant/6E92ZMYYFZ,HTTPError('503 Server Error: Service Unavailable for url: /api/product-ask-ai-assistant/6E92ZMYYFZ'),2,2026-07-24T01:32:03Z,2026-07-24T01:33:06Z
+GET,/api/products/9SIQT8TOJO,HTTPError('503 Server Error: Service Unavailable for url: /api/products/9SIQT8TOJO'),1,2026-07-24T01:33:06Z,2026-07-24T01:33:06Z
+GET,/,HTTPError('503 Server Error: Service Unavailable for url: /'),8,2026-07-24T01:31:09Z,2026-07-24T01:35:36Z
+GET,/api/product-reviews/6E92ZMYYFZ,HTTPError('503 Server Error: Service Unavailable for url: /api/product-reviews/6E92ZMYYFZ'),2,2026-07-24T01:31:09Z,2026-07-24T01:35:36Z
+GET,/api/products/L9ECAV7KIM,HTTPError('503 Server Error: Service Unavailable for url: /api/products/L9ECAV7KIM'),2,2026-07-24T01:34:48Z,2026-07-24T01:34:48Z
+POST,/api/product-ask-ai-assistant/2ZYFJ3GM2N,HTTPError('503 Server Error: Service Unavailable for url: /api/product-ask-ai-assistant/2ZYFJ3GM2N'),1,2026-07-24T01:35:36Z,2026-07-24T01:35:36Z
+GET,/api/recommendations?productIds=2ZYFJ3GM2N,HTTPError('503 Server Error: Service Unavailable for url: /api/recommendations?productIds=2ZYFJ3GM2N'),2,2026-07-24T01:34:28Z,2026-07-24T01:34:48Z
+GET,/api/products/2ZYFJ3GM2N,HTTPError('503 Server Error: Service Unavailable for url: /api/products/2ZYFJ3GM2N'),2,2026-07-24T01:32:03Z,2026-07-24T01:32:40Z
+GET,/api/products/6E92ZMYYFZ,HTTPError('503 Server Error: Service Unavailable for url: /api/products/6E92ZMYYFZ'),5,2026-07-24T01:31:09Z,2026-07-24T01:35:25Z
+GET,/api/products?currencyCode=USD,HTTPError('503 Server Error: Service Unavailable for url: /api/products?currencyCode=USD'),3,2026-07-24T01:32:03Z,2026-07-24T01:34:48Z
+GET,/api/cart,HTTPError('503 Server Error: Service Unavailable for url: /api/cart'),9,2026-07-24T01:32:03Z,2026-07-24T01:35:36Z
+POST,/api/checkout,HTTPError('503 Server Error: Service Unavailable for url: /api/checkout'),1,2026-07-24T01:34:39Z,2026-07-24T01:34:39Z
+GET,/api/products/1YMWWN1N4O,HTTPError('503 Server Error: Service Unavailable for url: /api/products/1YMWWN1N4O'),2,2026-07-24T01:33:06Z,2026-07-24T01:34:48Z
+POST,/api/checkout,HTTPError('500 Server Error: Internal Server Error for url: /api/checkout'),6,2026-07-24T01:31:57Z,2026-07-24T01:32:43Z

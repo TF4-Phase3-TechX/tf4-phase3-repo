@@ -189,6 +189,42 @@ output "msk_orders_client_port" {
   value       = 9096
 }
 
+# REL-22 - MSK orders S3 archive outputs
+output "msk_orders_archive_bucket_name" {
+  description = "S3 bucket used for REL-22 MSK orders archive"
+  value       = aws_s3_bucket.msk_orders_archive.id
+}
+
+output "msk_orders_archive_bucket_arn" {
+  description = "ARN of the S3 bucket used for REL-22 MSK orders archive"
+  value       = aws_s3_bucket.msk_orders_archive.arn
+}
+
+output "msk_orders_archive_prefix" {
+  description = "Prefix reserved for MSK orders archived records"
+  value       = local.msk_orders_archive_prefix
+}
+
+output "msk_orders_archive_partition_convention" {
+  description = "Expected S3 partition convention for MSK Connect orders archive"
+  value       = local.msk_orders_archive_partition_convention
+}
+
+output "msk_connect_plugin_bucket_name" {
+  description = "S3 bucket used to store REL-22 MSK Connect custom plugin artifacts"
+  value       = aws_s3_bucket.msk_connect_plugins.id
+}
+
+output "msk_connect_plugin_bucket_arn" {
+  description = "ARN of the S3 bucket used to store REL-22 MSK Connect custom plugin artifacts"
+  value       = aws_s3_bucket.msk_connect_plugins.arn
+}
+
+output "msk_connect_plugin_prefix" {
+  description = "Prefix reserved for MSK Connect custom plugin artifacts"
+  value       = local.msk_connect_plugin_prefix
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
@@ -336,6 +372,27 @@ output "rds_postgresql_credential_handoff_note" {
   value       = "REL-14 does not create the PostgreSQL application secret. The RDS-managed master secret is admin/bootstrap only; SEC-13 owns techx/tf4/rds-postgres -> techx-tf4/rds-postgres-secret for workloads."
 }
 
+# REL-22 - RDS PostgreSQL AWS Backup retention outputs
+output "rds_postgresql_backup_vault_name" {
+  description = "AWS Backup vault name for REL-22 RDS PostgreSQL 35-day recovery points"
+  value       = aws_backup_vault.rds_postgresql.name
+}
+
+output "rds_postgresql_backup_vault_arn" {
+  description = "AWS Backup vault ARN for REL-22 RDS PostgreSQL recovery points"
+  value       = aws_backup_vault.rds_postgresql.arn
+}
+
+output "rds_postgresql_backup_plan_id" {
+  description = "AWS Backup plan ID for REL-22 RDS PostgreSQL 35-day retention"
+  value       = aws_backup_plan.rds_postgresql.id
+}
+
+output "rds_postgresql_backup_role_arn" {
+  description = "AWS Backup service role ARN used for REL-22 RDS PostgreSQL backup and restore readiness"
+  value       = aws_iam_role.rds_backup.arn
+}
+
 output "cloudflare_tunnel_token_secret_path" {
   description = "AWS Secrets Manager path for the CDO08 SEC-05 Cloudflare Tunnel token placeholder"
   value       = aws_secretsmanager_secret.cloudflare_tunnel_token.name
@@ -401,4 +458,30 @@ output "athena_analyst_policy_arn" {
 output "cloudwatch_insights_forensics_policy_arn" {
   description = "IAM policy ARN cho CloudWatch Logs Insights real-time forensic queries"
   value       = aws_iam_policy.cloudwatch_insights_forensics.arn
+}
+
+# CDO08-REL-24 - backup/archive separation-of-duties role outputs
+output "rel24_backup_admin_role_arn" {
+  description = "CDO08-REL-24 approved backup administration role ARN"
+  value       = aws_iam_role.rel24_backup_admin.arn
+}
+
+output "rel24_restore_operator_role_arn" {
+  description = "CDO08-REL-24 approved restore operator role ARN"
+  value       = aws_iam_role.rel24_restore_operator.arn
+}
+
+output "rel24_backup_delete_break_glass_role_arn" {
+  description = "CDO08-REL-24 break-glass role ARN for approved protected backup/archive deletion"
+  value       = aws_iam_role.rel24_backup_delete_break_glass.arn
+}
+
+output "rel24_msk_orders_archive_bucket_name" {
+  description = "Expected CDO08-REL-24 protected MSK orders archive bucket name from REL-22"
+  value       = local.rel24_msk_archive_bucket
+}
+
+output "rel24_normal_operator_role_arns" {
+  description = "Normal CI/operator roles denied from protected backup/archive deletion by CDO08-REL-24 controls"
+  value       = local.rel24_normal_operator_role_arns
 }

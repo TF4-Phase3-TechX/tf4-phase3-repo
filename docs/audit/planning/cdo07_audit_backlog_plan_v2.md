@@ -59,7 +59,7 @@ Hiện trạng:
   - `endpointPublicAccess=true`.
   - `endpointPrivateAccess=true`.
   - `publicAccessCidrs=["0.0.0.0/0"]`.
-  - `api`, `audit`, `authenticator` enabled.
+  - `audit`, `authenticator` enabled (`api` disabled để tối ưu chi phí).
   - `controllerManager`, `scheduler` disabled.
 - Audit profile `TF4-AuditReadOnlyAndAnalyze` bị deny `eks:DescribeCluster`.
 - `kubectl` context hiện tại: `techx-tf4-base`.
@@ -511,7 +511,7 @@ Hiện trạng:
 
 - Runtime xác nhận một số trade-off/risk:
   - EKS public endpoint `0.0.0.0/0`.
-  - EKS chỉ bật `api`, `audit`, `authenticator`.
+  - EKS chỉ bật `audit`, `authenticator` (`api` log đã tắt để giảm chi phí CloudWatch Ingestion).
   - CloudTrail log validation disabled.
   - AWS Config chưa bật.
   - Audit profile thiếu một số quyền đọc evidence.

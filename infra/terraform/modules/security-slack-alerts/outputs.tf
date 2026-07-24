@@ -56,9 +56,14 @@ output "anomaly_sns_topic_arn" {
   value       = aws_sns_topic.anomaly_alerts.arn
 }
 
-output "anomaly_alarm_eso_read_arn" {
-  description = "ARN of the CloudWatch Anomaly Detection Alarm for ESO GetSecretValue frequency"
-  value       = aws_cloudwatch_metric_alarm.eso_read_anomaly.arn
+output "anomaly_alarm_rate_spike_arn" {
+  description = "ARN of the static-threshold CloudWatch Alarm for GetSecretValue rate spike (>10 calls/60s)"
+  value       = aws_cloudwatch_metric_alarm.get_secret_value_spike.arn
+}
+
+output "anomaly_alarm_anomaly_detection_arn" {
+  description = "ARN of the ML Anomaly Detection CloudWatch Alarm for GetSecretValue frequency"
+  value       = aws_cloudwatch_metric_alarm.get_secret_value_anomaly.arn
 }
 
 output "anomaly_alarm_pipeline_silence_arn" {
@@ -66,7 +71,12 @@ output "anomaly_alarm_pipeline_silence_arn" {
   value       = aws_cloudwatch_metric_alarm.pipeline_silence.arn
 }
 
+output "metric_filter_total_count_name" {
+  description = "Name of the CloudWatch Metric Filter counting all GetSecretValue calls (MANDATE11_TTD)"
+  value       = aws_cloudwatch_log_metric_filter.get_secret_value_total.name
+}
+
 output "metric_filter_expected_read_name" {
-  description = "Name of the CloudWatch Metric Filter counting MANDATE11_EXPECTED_READ log events"
+  description = "Name of the CloudWatch Metric Filter counting allowlisted MANDATE11_EXPECTED_READ events"
   value       = aws_cloudwatch_log_metric_filter.expected_read_count.name
 }

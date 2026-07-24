@@ -22,8 +22,6 @@ RUN apk update && \
 WORKDIR /currency
 
 COPY ./src/currency/genproto/CMakeLists.txt genproto/CMakeLists.txt
-COPY ./src/currency/proto/ proto/
-
 COPY ./pb/demo.proto proto/demo.proto
 
 RUN mkdir -p build && cd build \

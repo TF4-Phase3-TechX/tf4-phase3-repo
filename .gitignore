@@ -88,6 +88,7 @@ logs/
 # ── Temp / Cache ──
 tmp/
 temp/
+.tmp/
 .cache/
 
 # ── User Note ──
@@ -102,3 +103,6 @@ note/
 huong-dan-grafana.md
 docs/aio01/w1_tasks_summary.md
 docs/aio01/w2_tasks_summary.md
+
+# ── Generated Manifests ──
+techx-corp-app.yaml

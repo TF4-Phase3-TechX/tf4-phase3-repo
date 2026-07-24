@@ -4,16 +4,16 @@ groups:
     rules:
       - alert: AIOpsIncidentDetected
         expr: |
-          sum by (incident_type, service, severity) (
-            increase(aiops_incidents_created_total[3m])
-          ) > 0
+          max by (incident_type, service, severity, impact) (
+            aiops_incident_active
+          ) == 1
         labels:
           severity: "{{ $labels.severity }}"
           owner: aio01
           component: aiops-detector
         annotations:
           summary: "AIOps detected {{ $labels.incident_type }} on {{ $labels.service }}"
-          description: "The sustained detector created an incident. Open the AIOps incident API, inspect its Prometheus/OpenSearch/Jaeger evidence and follow the bound runbook before approving any action."
+          description: "The sustained detector created an incident with impact={{ $labels.impact }}. Open the AIOps incident API for the exact SLO target, short/long burn rates and supporting evidence before approving any action."
           runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aiops/README.md
 
       - alert: AIOpsTelemetryPollingDegraded

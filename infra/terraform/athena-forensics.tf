@@ -54,6 +54,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "athena_results" {
     id     = "expire-athena-results"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = 7
     }
@@ -84,8 +86,8 @@ resource "aws_athena_workgroup" "audit_forensics" {
       }
     }
 
-    # Giới hạn scan tối đa 1 GB mỗi query để tránh chi phí bất thường
-    bytes_scanned_cutoff_per_query = 1073741824 # 1 GB
+    # Giới hạn scan tối đa 10 GB mỗi query để đảm bảo đủ dung lượng truy vấn EKS logs mà vẫn kiểm soát chi phí bất thường
+    bytes_scanned_cutoff_per_query = 10737418240 # 10 GB
   }
 
   tags = var.tags
@@ -342,19 +344,27 @@ resource "aws_glue_catalog_table" "aws_config_history" {
 
 # ─────────────────────────────────────────────────────────────
 # 6. Glue Table — EKS Audit Events
+# Schema PHẲNG: khớp với output của Lambda processor (firehose_cwl_processor)
+# trong eks-audit-firehose.tf, vốn đã tự giải nén GZIP, lọc noise
+# (healthz/livez/system:node:), và unnest từng logEvent thành 1 dòng
+# JSON độc lập (không còn nested trong "logEvents" array như envelope CWL gốc).
+# Table này gộp CHUNG cả 2 log type "audit" và "authenticator" (Hướng B -
+# subscription filter_pattern = "" để không đứt gãy chuỗi chứng cứ IAM
+# identity <-> hành động trên cluster). Dùng cột "logstream" để phân biệt
+# 2 loại (authenticator thường có log stream riêng so với kube-apiserver-audit).
 # ─────────────────────────────────────────────────────────────
 resource "aws_glue_catalog_table" "eks_audit_events" {
   database_name = aws_glue_catalog_database.audit_forensics.name
   name          = "eks_audit_events"
-  description   = "EKS Control Plane audit events - K8s API server activity"
+  description   = "EKS Control Plane audit + authenticator events (đã qua Lambda unnest & lọc noise) - K8s API server activity & IAM auth identity"
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    classification          = "json"
-    compressionType         = "gzip"
-    "projection.day.digits" = "2"
-    "projection.day.range"  = "1,31"
-    "projection.day.type"   = "integer"
+    classification              = "json"
+    "use.null.for.invalid.data" = "true"
+    "projection.day.digits"     = "2"
+    "projection.day.range"      = "1,31"
+    "projection.day.type"       = "integer"
     # Partition projection tự động tạo partition theo cấu trúc Firehose output
     "projection.enabled"        = "true"
     "projection.hour.digits"    = "2"
@@ -393,79 +403,79 @@ resource "aws_glue_catalog_table" "eks_audit_events" {
     ser_de_info {
       serialization_library = "org.openx.data.jsonserde.JsonSerDe"
       parameters = {
-        "ignore.malformed.json" = "true"
+        "ignore.malformed.json"     = "true"
+        "use.null.for.invalid.data" = "true"
       }
     }
 
+    # --- Schema phẳng khớp output Lambda (xem enriched = {...} trong lambda_handler) ---
     columns {
-      name = "kind"
+      name = "id"
       type = "string"
     }
     columns {
-      name = "apiversion"
+      name = "timestamp"
+      type = "bigint"
+    }
+    columns {
+      name = "message"
       type = "string"
     }
     columns {
-      name = "level"
+      name = "loggroup"
       type = "string"
     }
     columns {
-      name = "auditid"
+      name = "logstream"
       type = "string"
-    }
-    columns {
-      name = "stage"
-      type = "string"
-    }
-    columns {
-      name = "requesturi"
-      type = "string"
-    }
-    columns {
-      name = "verb"
-      type = "string"
-    }
-    columns {
-      name = "user"
-      type = "struct<username:string,uid:string,groups:array<string>,extra:map<string,array<string>>>"
-    }
-    columns {
-      name = "sourceips"
-      type = "array<string>"
-    }
-    columns {
-      name = "useragent"
-      type = "string"
-    }
-    columns {
-      name = "objectref"
-      type = "struct<resource:string,namespace:string,name:string,uid:string,apigroup:string,apiversion:string,resourceversion:string>"
-    }
-    columns {
-      name = "responsestatus"
-      type = "struct<status:string,message:string,reason:string,details:struct<name:string,group:string,kind:string,uid:string>,code:int>"
-    }
-    columns {
-      name = "requestobject"
-      type = "map<string,string>"
-    }
-    columns {
-      name = "responseobject"
-      type = "map<string,string>"
-    }
-    columns {
-      name = "requestreceivedtimestamp"
-      type = "string"
-    }
-    columns {
-      name = "stagetimestamp"
-      type = "string"
-    }
-    columns {
-      name = "annotations"
-      type = "map<string,string>"
     }
   }
+}
+
+# ─────────────────────────────────────────────────────────────
+# 6b. Athena Named Query — Query mẫu tạo View 'eks_audit_events_parsed'
+# Lambda processor đã unnest từng logEvent thành 1 dòng JSON độc lập,
+# nên view này KHÔNG cần CROSS JOIN UNNEST nữa như bản trước.
+#
+# Table gộp chung 2 nguồn (audit + authenticator, theo Hướng B), nên:
+#   - "message" của log audit là JSON (có kind/verb/requestURI/user...)
+#   - "message" của log authenticator KHÔNG phải JSON audit-format
+#     (json_extract_scalar sẽ trả NULL cho các cột đó, không lỗi, vì
+#     json_extract_scalar trả NULL thay vì throw khi input không phải JSON hợp lệ)
+# Cột log_source giúp phân tách nhanh 2 loại khi truy vấn.
+# ─────────────────────────────────────────────────────────────
+resource "aws_athena_named_query" "create_eks_audit_parsed_view" {
+  name        = "create_eks_audit_parsed_view"
+  workgroup   = aws_athena_workgroup.audit_forensics.name
+  database    = aws_glue_catalog_database.audit_forensics.name
+  description = "Parse EKS audit + authenticator events (schema phẳng, đã unnest sẵn ở Lambda) thành các cột dễ truy vấn"
+
+  query = <<EOF
+CREATE OR REPLACE VIEW eks_audit_events_parsed AS
+SELECT
+  year,
+  month,
+  day,
+  hour,
+  loggroup,
+  logstream,
+  CASE
+    WHEN logstream LIKE '%authenticator%' THEN 'authenticator'
+    ELSE 'audit'
+  END AS log_source,
+  from_unixtime("timestamp" / 1000) AS event_time,
+  json_extract_scalar(message, '$.kind') AS kind,
+  json_extract_scalar(message, '$.level') AS level,
+  json_extract_scalar(message, '$.verb') AS verb,
+  json_extract_scalar(message, '$.requestURI') AS requesturi,
+  json_extract_scalar(message, '$.user.username') AS username,
+  json_extract_scalar(message, '$.sourceIPs[0]') AS source_ip,
+  json_extract_scalar(message, '$.objectRef.namespace') AS namespace,
+  json_extract_scalar(message, '$.objectRef.name') AS resource_name,
+  json_extract_scalar(message, '$.responseStatus.code') AS response_code,
+  message AS raw_message
+FROM eks_audit_events;
+EOF
 }
 
 # ─────────────────────────────────────────────────────────────

@@ -10,26 +10,21 @@ import ProductCatalogService from '../../services/ProductCatalog.service';
 
 type TResponse = IProductCheckout | Empty;
 
-const handler = async ({ method, body, query }: NextApiRequest, res: NextApiResponse<TResponse>) => {
+const handler = async ({ method, body }: NextApiRequest, res: NextApiResponse<TResponse>) => {
   switch (method) {
     case 'POST': {
-      const { currencyCode = '' } = query;
       const orderData = body as PlaceOrderRequest;
       const { order: { items = [], ...order } = {} } = await CheckoutGateway.placeOrder(orderData);
 
       const productList: IProductCheckoutItem[] = await Promise.all(
-        items.map(async ({ item: { productId = '', quantity = 0 } = {}, cost }) => {
-          const product = await ProductCatalogService.getProduct(productId, currencyCode as string);
-
-          return {
-            cost,
-            item: {
-              productId,
-              quantity,
-              product,
-            },
-          };
-        })
+        items.map(async ({ item: { productId = '', quantity = 0 } = {}, cost, productDisplay }) => ({
+          cost,
+          item: {
+            productId,
+            quantity,
+            product: productDisplay ?? await ProductCatalogService.getProductForDisplay(productId),
+          },
+        }))
       );
 
       return res.status(200).json({ ...order, items: productList });

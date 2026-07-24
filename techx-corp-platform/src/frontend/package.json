@@ -70,8 +70,10 @@
   "overrides": {
     "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.1",
+    "postcss": "8.5.12",
     "fast-uri": "3.1.4",
     "minimatch": "10.2.5",
+    "postcss": "8.5.12",
     "sharp": "0.35.0"
   }
 }

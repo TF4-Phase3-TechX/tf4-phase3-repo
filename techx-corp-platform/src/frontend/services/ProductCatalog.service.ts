@@ -16,16 +16,23 @@ const ProductCatalogService = () => ({
   async listProducts(currencyCode = 'USD') {
     const { products: productList } = await ProductCatalogGateway.listProducts();
 
-    return Promise.all(
-      productList.map(async product => {
-        const priceUsd = await this.getProductPrice(product.priceUsd!, currencyCode);
+    if (!currencyCode || currencyCode === defaultCurrencyCode || productList.length === 0) {
+      return productList;
+    }
 
-        return {
-          ...product,
-          priceUsd,
-        };
-      })
+    const convertedPrices = await CurrencyGateway.batchConvert(
+      productList.map(product => product.priceUsd!),
+      currencyCode
     );
+
+    if (convertedPrices.length !== productList.length) {
+      throw new Error('Currency conversion response does not match product count');
+    }
+
+    return productList.map((product, index) => ({
+      ...product,
+      priceUsd: convertedPrices[index],
+    }));
   },
   async getProduct(id: string, currencyCode = 'USD') {
     const product = await ProductCatalogGateway.getProduct(id);
@@ -34,6 +41,11 @@ const ProductCatalogService = () => ({
       ...product,
       priceUsd: await this.getProductPrice(product.priceUsd!, currencyCode),
     };
+  },
+  async getProductForDisplay(id: string) {
+    const { name, picture, categories } = await ProductCatalogGateway.getProduct(id);
+
+    return { name, picture, categories };
   },
 });
 
