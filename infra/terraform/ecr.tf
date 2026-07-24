@@ -21,38 +21,37 @@ resource "aws_ecr_repository" "techx_corp" {
   }
 }
 
+locals {
+  ecr_src_dir  = "${path.module}/../../techx-corp-platform/src"
+  ecr_services = distinct([for f in fileset(local.ecr_src_dir, "**/Dockerfile") : split("/", f)[0]])
+
+  ecr_lifecycle_rules = concat(
+    [{
+      rulePriority = 1
+      description  = "Xóa ảnh không có tag (untagged) sau 7 ngày"
+      selection = {
+        tagStatus   = "untagged"
+        countType   = "sinceImagePushed"
+        countUnit   = "days"
+        countNumber = 7
+      }
+      action = { type = "expire" }
+    }],
+    [for i, svc in local.ecr_services : {
+      rulePriority = i + 2
+      description  = "Giữ tối đa 2 image mới nhất cho service ${svc}"
+      selection = {
+        tagStatus      = "tagged"
+        tagPatternList = ["*-${svc}"]
+        countType      = "imageCountMoreThan"
+        countNumber    = 2
+      }
+      action = { type = "expire" }
+    }]
+  )
+}
+
 resource "aws_ecr_lifecycle_policy" "techx_corp_policy" {
   repository = aws_ecr_repository.techx_corp.name
-
-  policy = <<EOF
-{
-  "rules": [
-    {
-      "rulePriority": 1,
-      "description": "Xóa ảnh không có tag (untagged) sau 7 ngày",
-      "selection": {
-        "tagStatus": "untagged",
-        "countType": "sinceImagePushed",
-        "countUnit": "days",
-        "countNumber": 7
-      },
-      "action": {
-        "type": "expire"
-      }
-    },
-    {
-      "rulePriority": 2,
-      "description": "Giữ tối đa 50 ảnh có tag gần nhất cho promotion và rollback",
-      "selection": {
-        "tagStatus": "any",
-        "countType": "imageCountMoreThan",
-        "countNumber": 50
-      },
-      "action": {
-        "type": "expire"
-      }
-    }
-  ]
-}
-EOF
+  policy     = jsonencode({ rules = local.ecr_lifecycle_rules })
 }
