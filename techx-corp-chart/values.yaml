@@ -1010,15 +1010,15 @@ components:
         value: "0.0.0.0"
       - name: ENVOY_ADMIN_PORT
         value: "10000"
-      # Fixed per-proxy budgets measured at 200 and 350 users; retune if proxy topology changes.
+      # Preserve 200-user traffic; shed AI and Browse only above measured demand.
       - name: ENVOY_LOCAL_RL_AI_RPS
-        value: "1"
+        value: "3"
       - name: ENVOY_LOCAL_RL_BROWSE_RPS
-        value: "15"
+        value: "20"
       - name: ENVOY_LOCAL_RL_CART_RPS
-        value: "9"
+        value: "10000"
       - name: ENVOY_LOCAL_RL_CHECKOUT_RPS
-        value: "4"
+        value: "10000"
       - name: ENVOY_LOCAL_RL_ENABLED_PERCENT
         value: "100"
       - name: ENVOY_LOCAL_RL_ENFORCED_PERCENT
