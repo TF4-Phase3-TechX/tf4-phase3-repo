@@ -5,7 +5,9 @@ from dataclasses import replace
 import pytest
 from prometheus_client import REGISTRY
 
+from app.availability import AvailabilitySnapshot
 from app.config import Settings
+from app.detection import Detector
 from app.models import Decision, IncidentStatus
 from app.store import IncidentStore
 from app.worker import AIOpsWorker
@@ -202,3 +204,62 @@ async def test_worker_counts_opensearch_and_jaeger_poll_failures():
     assert REGISTRY.get_sample_value(
         "aiops_telemetry_poll_failures_total", labels("jaeger")
     ) == jaeger_before + 1
+
+
+class DownAvailability:
+    @staticmethod
+    def snapshot(service):
+        return AvailabilitySnapshot(
+            service=service,
+            state="down",
+            desired_replicas=1,
+            available_replicas=0,
+            ready_replicas=0,
+            updated_replicas=1,
+            reason="no_available_or_ready_replicas",
+        )
+
+
+@pytest.mark.asyncio
+async def test_confirmed_service_down_creates_pageable_incident():
+    settings = replace(
+        Settings(),
+        services=("checkout",),
+        llm_services=(),
+        llm_log_services=(),
+        availability_sustained_polls=2,
+    )
+    recorder = ApprovalRecorder()
+    store = IncidentStore(cooldown_seconds=0)
+    counter_labels = {
+        "incident_type": "service_availability",
+        "service": "checkout",
+        "severity": "critical",
+    }
+    created_before = REGISTRY.get_sample_value(
+        "aiops_incidents_created_total", counter_labels
+    ) or 0
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        Detector(settings),
+        store,
+        remediation=recorder,
+        availability=DownAvailability(),
+    )
+
+    await worker.poll_once()
+    assert await store.list() == []
+
+    await worker.poll_once()
+    incidents = await store.list()
+
+    assert len(incidents) == 1
+    assert incidents[0].incident_type == "service_availability"
+    assert incidents[0].affected_service == "checkout"
+    assert incidents[0].severity == "high"
+    assert incidents[0].execution_attempts == 0
+    assert recorder.incident_ids == [incidents[0].incident_id]
+    assert REGISTRY.get_sample_value(
+        "aiops_incidents_created_total", counter_labels
+    ) == created_before + 1

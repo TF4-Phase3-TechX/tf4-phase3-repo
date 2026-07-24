@@ -1,16 +1,22 @@
 # TF4 AI Ops Safe MVP
 
-The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements three runtime signal families: per-service p95 latency, per-service error rate, and per-caller LLM/provider error rate attributed by the metric's `service_name` label.
+The `aiops` service continuously reads TF4 telemetry and turns sustained
+anomalies into auditable incidents. It implements four runtime signal
+families: Kubernetes Deployment availability, per-service p95 latency,
+per-service error rate, and per-caller LLM/provider error rate attributed by
+the metric's `service_name` label.
 
 ## Runtime flow
 
 ```text
+Kubernetes status ------+
 Prometheus metrics -----+
 OpenSearch logs --------+--> sustained detector --> evidence correlation
 Jaeger traces ----------+                         --> deterministic RCA
                                                   --> allowlisted runbook
                                                   --> Prometheus event counter
-                                                  --> Alertmanager Slack/email
+                                                  --> Alertmanager
+                                                  --> Slack/email on-call
                                                   --> per-incident approval
                                                   --> dry-run/live action
                                                   --> rollout + SLO verification
@@ -18,6 +24,33 @@ Jaeger traces ----------+                         --> deterministic RCA
 ```
 
 Prometheus is the primary detector. Logs and traces increase confidence and provide investigation references. Prometheus scrapes the worker's `/metrics` endpoint; a newly created, cooldown-deduplicated incident increments a severity-labelled counter, and the committed `AIOpsIncidentDetected` rule routes it through the existing Alertmanager Slack/email receivers. The service never mutates flagd. LLM output is not allowed to select or execute an action.
+
+The read-only Kubernetes adapter prevents an empty span series from being
+misclassified as a dead service. It combines Deployment desired, available,
+ready and updated replicas with request throughput and SLO decisions:
+
+| State | Meaning | Page behavior |
+|---|---|---|
+| `idle` | Deployment intentionally has zero desired replicas | no page |
+| `healthy` | Desired replicas are ready and traffic is below the busy seed | no page |
+| `busy` | Desired replicas are ready, traffic exceeds the configurable seed and SLO signals remain healthy | no page |
+| `degraded` | Replica availability is partial or latency/error breaches | incident only after confirmation |
+| `down` | Desired replicas are non-zero but no replica is available or ready | critical incident after confirmation |
+| `unknown` | Kubernetes status cannot be read | coverage warning; never treated as down |
+
+`AIOPS_AVAILABILITY_SUSTAINED_POLLS` defaults to two polls so a short rollout
+transition does not page as an outage. `AIOPS_BUSY_REQUEST_RATE_THRESHOLD` is
+an initial operator-facing seed, not a production-optimal threshold and never
+fires an incident by itself.
+
+For a confirmed availability incident, the worker increments
+`aiops_incidents_created_total{incident_type="service_availability", ...}`.
+The worker maps high severity to the counter label `critical` and all other
+incident severities to `warning`; the generic `AIOpsIncidentDetected` rule
+preserves that label. Production Alertmanager routes both severities through
+its mounted `alertmanager-slack-webhook` secret. This documents and implements
+the route, but only a timestamped receipt from `#tf4-alerts` proves real
+delivery.
 
 Detector decisions use a configurable absolute safety floor plus a robust
 baseline derived independently from each service's own recent series. The

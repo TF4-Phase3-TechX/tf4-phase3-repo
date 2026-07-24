@@ -8,8 +8,17 @@ from typing import Any
 
 from prometheus_client import Counter, Gauge
 
+from .availability import KubernetesAvailabilityClient
 from .config import Settings
-from .detection import Detector, error_rate_query, latency_query, llm_error_query
+from .detection import (
+    Detector,
+    classify_service_state,
+    error_rate_query,
+    latency_query,
+    llm_error_query,
+    request_rate_query,
+    values,
+)
 from .models import Evidence, Incident
 from .remediation import RemediationController
 from .store import IncidentStore
@@ -33,6 +42,12 @@ coverage_degraded = Counter(
     ["source", "signal", "service", "state"],
 )
 last_poll_success = Gauge("aiops_last_poll_success_unixtime", "Last successful telemetry polling time")
+service_state = Gauge(
+    "aiops_service_state",
+    "Current combined workload, traffic and SLO state",
+    ["service", "state"],
+)
+SERVICE_STATES = ("healthy", "busy", "idle", "degraded", "down", "unknown")
 
 
 def _series_service(series: dict[str, Any]) -> str | None:
@@ -54,12 +69,21 @@ def _log_service(hit: dict[str, Any]) -> str | None:
 
 
 class AIOpsWorker:
-    def __init__(self, settings: Settings, telemetry: TelemetryClient, detector: Detector, store: IncidentStore, remediation: RemediationController):
+    def __init__(
+        self,
+        settings: Settings,
+        telemetry: TelemetryClient,
+        detector: Detector,
+        store: IncidentStore,
+        remediation: RemediationController,
+        availability: KubernetesAvailabilityClient | None = None,
+    ):
         self.settings = settings
         self.telemetry = telemetry
         self.detector = detector
         self.store = store
         self.remediation = remediation
+        self.availability = availability
         self.running = False
 
     async def poll_once(self) -> None:
@@ -80,7 +104,7 @@ class AIOpsWorker:
         decisions = []
         for service in self.settings.services:
             query = latency_query(service, self.settings.namespace)
-            decisions.append(
+            latency_decision = (
                 await asyncio.to_thread(
                     self.detector.latency,
                     service,
@@ -88,10 +112,11 @@ class AIOpsWorker:
                     query,
                 )
             )
+            decisions.append(latency_decision)
             query = error_rate_query(
                 service, self.settings.minimum_request_count, self.settings.namespace
             )
-            decisions.append(
+            error_decision = (
                 await asyncio.to_thread(
                     self.detector.error_rate,
                     service,
@@ -99,6 +124,36 @@ class AIOpsWorker:
                     query,
                 )
             )
+            decisions.append(error_decision)
+
+            if self.availability:
+                snapshot = await asyncio.to_thread(
+                    self.availability.snapshot, service
+                )
+                decisions.append(
+                    await asyncio.to_thread(
+                        self.detector.availability, snapshot
+                    )
+                )
+                traffic_series = await query_range(
+                    request_rate_query(service, self.settings.namespace)
+                )
+                traffic_points = (
+                    values(traffic_series[0]) if traffic_series else []
+                )
+                state = classify_service_state(
+                    snapshot,
+                    traffic_points[-1] if traffic_points else None,
+                    latency_breached=latency_decision.breached,
+                    error_rate_breached=error_decision.breached,
+                    busy_request_rate_threshold=(
+                        self.settings.busy_request_rate_threshold
+                    ),
+                )
+                for candidate_state in SERVICE_STATES:
+                    service_state.labels(service, candidate_state).set(
+                        1 if candidate_state == state else 0
+                    )
 
         # Discover every instrumented LLM caller from the metric label. This
         # prevents a failure in a future caller (for example shopping-copilot)
@@ -167,8 +222,13 @@ class AIOpsWorker:
                 )
         for decision in decisions:
             if decision.coverage_status != "available":
+                source = (
+                    "kubernetes"
+                    if decision.incident_type == "service_availability"
+                    else "prometheus"
+                )
                 coverage_degraded.labels(
-                    "prometheus",
+                    source,
                     decision.incident_type,
                     decision.service,
                     decision.coverage_status,
@@ -178,6 +238,7 @@ class AIOpsWorker:
                     json.dumps(
                         {
                             "event": "signal_coverage_degraded",
+                            "source": source,
                             "signal": decision.incident_type,
                             "service": decision.service,
                             "state": decision.coverage_status,
