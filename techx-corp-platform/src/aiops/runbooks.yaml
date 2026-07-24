@@ -26,3 +26,11 @@ runbooks:
       - Correlate failed traces and scoped error logs for the same service and window.
       - Review recent deployments without assigning causality from timing alone.
       - Escalate to the owning service team with the evidence bundle.
+  - id: service-availability-escalation
+    incident_type: service_availability
+    automatic_action: null
+    steps:
+      - Confirm desired, available, ready and updated Deployment replicas.
+      - Inspect Pod and Deployment events for scheduling, probe, image or resource failures.
+      - Check recent rollout changes without assuming temporal correlation is causal.
+      - Page the owning service team through Alertmanager and follow its approved recovery runbook.

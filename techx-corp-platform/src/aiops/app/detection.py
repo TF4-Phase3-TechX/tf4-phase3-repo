@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
+from .availability import AvailabilitySnapshot
 from .config import Settings
 from .models import Decision, Evidence
 
@@ -187,7 +188,12 @@ def acute_window_breach(
     recent = points[-window:]
     breaches = []
     for candidate in recent:
-        candidate_scores = anomaly_scores([*reference, candidate], settings)
+        # Isolation Forest contributes only to operator confidence and cannot
+        # fire the acute gate. Re-fitting it for every confirmation candidate
+        # adds CPU cost without changing the breach decision.
+        candidate_scores = anomaly_scores(
+            [*reference, candidate], settings, include_isolation=False
+        )
         breaches.append(
             candidate >= floor and acute_breach(candidate_scores, settings)
         )
@@ -296,6 +302,81 @@ class Detector:
             + self.settings.isolation_confidence_weight * scores["isolation"]
             + self.settings.trend_confidence_weight * scores["slow_drift"],
             self.settings.maximum_confidence,
+        )
+
+    def availability(self, snapshot: AvailabilitySnapshot) -> Decision:
+        """Classify workload availability without treating missing data as down."""
+
+        coverage_status = (
+            "unavailable" if snapshot.state == "unknown" else "available"
+        )
+        breached = snapshot.state in {"degraded", "down"}
+        key = f"service_availability:{snapshot.service}"
+        self._streaks[key] = self._streaks[key] + 1 if breached else 0
+        anomalous = (
+            self._streaks[key]
+            >= max(self.settings.availability_sustained_polls, 1)
+        )
+        confidence = (
+            self.settings.availability_down_confidence
+            if snapshot.state == "down"
+            else self.settings.availability_degraded_confidence
+            if snapshot.state == "degraded"
+            else 0.0
+        )
+        return Decision(
+            anomalous=anomalous,
+            breached=breached,
+            coverage_status=coverage_status,
+            incident_type="service_availability",
+            service=snapshot.service,
+            severity="high" if snapshot.state == "down" else "medium",
+            confidence=confidence,
+            root_cause=(
+                f"Kubernetes reports {snapshot.available_replicas}/"
+                f"{snapshot.desired_replicas} available replicas for "
+                f"{snapshot.service}; the workload is {snapshot.state}, but "
+                "events, logs and recent changes are required to assign cause."
+            ),
+            evidence=[
+                Evidence(
+                    source="kubernetes-api",
+                    query=f"deployment/{snapshot.service}/status",
+                    window="current",
+                    value=snapshot.state,
+                ),
+                Evidence(
+                    source="kubernetes-api",
+                    query="desired/available/ready/updated replicas",
+                    window="current",
+                    value=(
+                        f"{snapshot.desired_replicas}/"
+                        f"{snapshot.available_replicas}/"
+                        f"{snapshot.ready_replicas}/"
+                        f"{snapshot.updated_replicas}"
+                    ),
+                ),
+            ],
+            candidates=[
+                {
+                    "service": snapshot.service,
+                    "score": confidence,
+                    "signals": {
+                        "availability_state": snapshot.state,
+                        "desired_replicas": snapshot.desired_replicas,
+                        "available_replicas": snapshot.available_replicas,
+                        "ready_replicas": snapshot.ready_replicas,
+                        "updated_replicas": snapshot.updated_replicas,
+                        "reason": snapshot.reason,
+                    },
+                }
+            ],
+            runbook_id="service-availability-escalation",
+            recommended_action=(
+                "Page the service owner, inspect Deployment/Pod events and "
+                "recent rollout state, and restore availability through the "
+                "approved service runbook."
+            ),
         )
 
     def latency(
@@ -560,3 +641,39 @@ def error_rate_query(
         "and on() (sum(increase(traces_span_metrics_calls_total{"
         f"{all_spans}}}[5m])) >= {minimum_requests})"
     )
+
+
+def request_rate_query(service: str, namespace: str | None = None) -> str:
+    """Return server request throughput without using it as a health signal."""
+
+    matchers = span_matchers(
+        service,
+        namespace=namespace,
+        include_operation=False,
+    )
+    return (
+        "sum(rate(traces_span_metrics_calls_total{"
+        f"{matchers}}}[5m]))"
+    )
+
+
+def classify_service_state(
+    availability: AvailabilitySnapshot,
+    request_rate: float | None,
+    *,
+    latency_breached: bool,
+    error_rate_breached: bool,
+    busy_request_rate_threshold: float,
+) -> str:
+    """Combine workload availability, traffic and SLO state for operators."""
+
+    if availability.state in {"unknown", "idle", "down"}:
+        return availability.state
+    if availability.state == "degraded" or latency_breached or error_rate_breached:
+        return "degraded"
+    if (
+        request_rate is not None
+        and request_rate >= max(busy_request_rate_threshold, 0.0)
+    ):
+        return "busy"
+    return "healthy"
