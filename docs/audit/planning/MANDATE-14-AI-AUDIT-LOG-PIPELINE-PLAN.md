@@ -11,6 +11,7 @@
 | Data producer | AIO — `product-reviews` |
 | Evidence location | `docs/audit/evidence/mandate-14-ai-audit/` |
 | Ngày lập | 2026-07-23 |
+| Ngày cập nhật | 2026-07-24 |
 | Ticket triển khai | [AUDIT-018](../tickets/AUDIT-018-MANDATE14-AI-AUDIT-LOG-PIPELINE.md) |
 
 ## 1. Quyết định thiết kế
@@ -55,10 +56,16 @@ token hoặc tool payload trong bất kỳ storage nào.
 - Helper không nhận raw prompt, response, user/session identity, confirmation
   token hoặc tool payload.
 - Log của ứng dụng đang đi qua OTLP đến OTel Collector.
+- OTel Collector hiện chạy dạng DaemonSet với request `50m/100Mi`, limit
+  `200m/200Mi`; log pipeline hiện chỉ có một OpenSearch exporter và memory queue
+  `queue_size: 1000`.
 - OTel Collector hiện export toàn bộ application log vào index
   `otel-logs-yyyy-MM-dd` trên OpenSearch.
+- OpenSearch hiện là single-node, storage `20Gi gp2`, JVM heap `800m` và security
+  plugin đang tắt.
 - Repo đã có mẫu Terraform CloudWatch Logs -> Firehose -> S3 Object Lock cho EKS
-  control-plane audit log; có thể tái sử dụng pattern, không trộn schema dữ liệu.
+  control-plane audit log dùng SSE-S3 (`AES256`); có thể tái sử dụng pattern,
+  không trộn schema dữ liệu hoặc dùng chung IAM role.
 
 Canonical payload:
 
@@ -88,10 +95,14 @@ canonical payload tám trường do ứng dụng sở hữu.
   chứng minh index-level least privilege.
 - Chưa có audit evidence pack sau khi canonical logger và dedicated pipeline
   được deploy; đây là đầu ra bắt buộc trước khi sign-off.
-- Collector exporter queue hiện là memory queue; chưa có bằng chứng phục hồi log
-  audit sau collector restart.
-- Permission set Audit hiện có một số quyền log/KMS scope rộng. Task này phải
-  thêm policy resource-scoped cho AI audit, không mở rộng wildcard hiện hữu.
+- Collector exporter queue hiện là memory queue `queue_size: 1000`. Giai đoạn đầu
+  chưa có queue sống qua collector restart; phải tăng capacity, alarm trước khi
+  đầy và đo drop thực tế trước khi quyết định persistent queue.
+- Collector hiện không có AWS IAM role. Việc thêm Pod Identity/IRSA để ghi
+  CloudWatch là thay đổi platform có blast radius tới DaemonSet dùng chung.
+- Permission set Audit hiện có một số quyền log/KMS scope rộng. Policy AI audit
+  mới phải resource-scoped, không thêm quyền KMS và không mở rộng wildcard hiện
+  hữu.
 
 ## 3. Phạm vi
 
@@ -210,7 +221,6 @@ exporters:
     sending_queue:
       enabled: true
       queue_size: 2000
-      storage: file_storage/ai_audit
     retry_on_failure:
       enabled: true
       initial_interval: 5s
@@ -225,7 +235,6 @@ exporters:
     sending_queue:
       enabled: true
       queue_size: 2000
-      storage: file_storage/ai_audit
 
 service:
   pipelines:
@@ -252,9 +261,13 @@ Yêu cầu khi chuyển skeleton thành cấu hình thật:
 - `raw_log: false` để không làm mất attributes.
 - `awscloudwatchlogs` exporter hiện có stability level alpha; bắt buộc pin/test
   version và giữ CloudWatch/S3 branch sau feature flag để rollback độc lập.
-- File-backed queue phải dùng volume ghi được, có giới hạn dung lượng và alarm.
-- Không đặt hai exporter dùng cùng một file queue ID nếu bản collector yêu cầu
-  storage namespace riêng.
+- Giai đoạn 1-2 dùng memory-backed queue `queue_size: 2000` cho từng exporter và
+  alarm khi queue đạt 80%. Không cấp PVC hoặc `hostPath` cho DaemonSet trong
+  baseline này.
+- Chỉ thiết kế file-backed queue khi metric chứng minh có event drop thực tế hoặc
+  CDO-07/CDO-08 xác định mất queue khi restart là rủi ro không chấp nhận được.
+  Thay đổi đó cần threat model và thiết kế storage riêng; không dùng chung queue
+  ID giữa hai exporter.
 - Không đặt `error_mode: ignore` cho audit filter trong production. Với
   `propagate`, lỗi đánh giá condition phải tăng failure metric và P0 alert; config
   syntax phải bị chặn từ preflight, không để tới runtime.
@@ -299,11 +312,11 @@ retention phải có ADR mới, Cost review, CDO-08 approval và CDO-07 sign-off
 
 | Storage | Resource đề xuất | Mục đích | Retention |
 |---|---|---|---|
-| OpenSearch | `ai-tool-audit-yyyy-MM-dd`, read alias `ai-tool-audit-read` | Hot search, dashboard, correlation | 14 ngày, ISM delete sau ngày 14 |
-| CloudWatch Logs | `/tf4/mandate-14/ai-tool-audit` | Logs Insights, metric filter, alarm, nguồn Firehose | 30 ngày |
+| OpenSearch | `ai-tool-audit-yyyy-MM-dd`, read alias `ai-tool-audit-read` | Hot search, dashboard, correlation | 7 ngày, ISM delete sau ngày 7 |
+| CloudWatch Logs | `/tf4/mandate-14/ai-tool-audit` | Logs Insights, metric filter, alarm, nguồn Firehose | 7 ngày |
 | S3 | `tf4-ai-audit-logs-<account-id>` / prefix `mandate-14/ai-tool-audit/` | Evidence authority | Tổng 365 ngày; Object Lock `COMPLIANCE` tối thiểu 90 ngày |
-| Firehose error logs | `/aws/firehose/tf4-ai-audit-errors` | Điều tra lỗi delivery | 14 ngày |
-| Safe validation errors | `/tf4/mandate-14/ai-tool-audit-validation` | Schema/privacy alert, không chứa content | 30 ngày |
+| Firehose error logs | `/aws/firehose/tf4-ai-audit-errors` | Điều tra lỗi delivery | 7 ngày |
+| Safe validation errors | `/tf4/mandate-14/ai-tool-audit-validation` | Schema/privacy alert, không chứa content | 7 ngày |
 
 S3 controls:
 
@@ -311,17 +324,25 @@ S3 controls:
 - Object Lock bật ngay khi tạo bucket.
 - Default retention `COMPLIANCE` 90 ngày.
 - Block Public Access bật đủ bốn control.
-- Encryption at rest bằng dedicated KMS CMK; bucket policy bắt buộc TLS và
-  server-side encryption.
-- Lifecycle đề xuất: Standard -> Standard-IA ngày 30 -> Glacier Flexible
-  Retrieval ngày 90 -> expire ngày 365. Implementer phải kiểm tra minimum storage
-  duration và cost trước khi apply.
+- Default encryption bằng SSE-S3 (`AES256`), theo pattern EKS audit hiện hữu;
+  không tạo KMS CMK riêng khi chưa có yêu cầu regulatory về key rotation hoặc
+  cross-account. Bucket policy bắt buộc TLS và từ chối thuật toán mã hóa khác
+  `AES256` nếu request chỉ định header mã hóa.
+- Lifecycle giữ object ở S3 Standard và expire ngày 365; không transition sang
+  Standard-IA/Glacier vì volume dự kiến dưới 100 MB/năm và minimum-charge/restore
+  overhead lớn hơn lợi ích tiết kiệm.
 - Lifecycle không được xóa object version khi Object Lock hoặc legal hold còn
   hiệu lực.
 - CDO-07 không có `PutObjectRetention`, `PutObjectLegalHold`,
   `BypassGovernanceRetention`, `DeleteObject` hoặc `DeleteObjectVersion`.
 - Legal hold, nếu có, do một break-glass compliance role riêng thực hiện qua
   change ticket; không cấp vào permission set Audit hằng ngày.
+
+CloudWatch Logs controls:
+
+- Dedicated Log Group dùng encryption mặc định của CloudWatch Logs bằng
+  AWS-managed key; không tạo CMK riêng cho payload metadata đã redact.
+- Retention 7 ngày và subscription filter chỉ áp dụng đúng dedicated Log Group.
 
 OpenSearch controls:
 
@@ -339,15 +360,20 @@ OpenSearch controls:
 
 ## 7. IAM và access control
 
+Việc cấp AWS identity cho OTel Collector là thay đổi platform lớn nhất trong kế
+hoạch này: collector hiện từ zero AWS access chuyển sang có quyền ghi CloudWatch.
+Pod Identity/IRSA phải được rollout canary và chứng minh không làm gián đoạn
+traces, metrics, general logs hoặc quyền Kubernetes hiện hữu.
+
 ### 7.1. Ma trận least privilege
 
 | Principal | Cho phép | Cấm rõ ràng / không cấp |
 |---|---|---|
 | `product-reviews` Pod Identity | Bedrock hiện hữu; gửi OTLP nội bộ | Không có quyền CloudWatch, Firehose, S3 AI audit |
-| OTel Collector service account role | `logs:CreateLogStream`, `logs:DescribeLogStreams`, `logs:PutLogEvents` trên đúng Log Group/streams | Không `CreateLogGroup`, không đọc/query log, không S3/Firehose/KMS data access |
-| CloudWatch Logs -> Firehose role | `firehose:PutRecord`, `firehose:PutRecordBatch` trên đúng delivery stream | Không stream khác; trust policy có `aws:SourceArn` và `aws:SourceAccount` |
-| Firehose delivery role | `s3:PutObject`, multipart actions tối thiểu, bucket location trên đúng bucket/prefix; KMS encrypt trên đúng key | Không đọc/query log; không delete; không đổi retention/versioning/policy |
-| CDO-07 SSO Audit role | CloudWatch read/query đúng Log Group; S3 `ListBucket` có prefix condition + `GetObject`/retention metadata đúng prefix; KMS decrypt đúng key; OpenSearch read/search đúng index | Không Put/Delete, không lifecycle/retention write, không Firehose write, không OpenSearch write |
+| OTel Collector service account role qua Pod Identity/IRSA | `logs:CreateLogStream`, `logs:DescribeLogStreams`, `logs:PutLogEvents` trên đúng Log Group/streams | Không `CreateLogGroup`, không đọc/query log, không S3/Firehose/KMS data access |
+| `tf4-ai-audit-cwl-to-firehose-role` | `firehose:PutRecord`, `firehose:PutRecordBatch` trên đúng delivery stream | Không stream khác; trust policy có `aws:SourceArn` và `aws:SourceAccount` |
+| `tf4-ai-audit-firehose-to-s3-role` | `s3:PutObject`, multipart actions tối thiểu và bucket location trên đúng bucket/prefix | Không đọc/query log; không KMS; không delete; không đổi retention/versioning/policy |
+| CDO-07 SSO Audit role | CloudWatch read/query đúng Log Group; S3 `ListBucket` có prefix condition + `GetObject`/retention metadata đúng prefix; OpenSearch read/search đúng index | Không KMS; không Put/Delete, không lifecycle/retention write, không Firehose write, không OpenSearch write |
 | CDO-08 / Platform runtime role | Health/config metadata cần thiết | Không đọc raw AI audit object/log nếu không có incident approval |
 | Terraform apply role | Tạo/cập nhật control-plane config qua reviewed IaC | Không `s3:GetObject`; không `DeleteObjectVersion`; không `BypassGovernanceRetention` |
 | Break-glass compliance role | Chỉ legal hold/retention extension qua approved incident/change | Không nằm trong permission set hằng ngày; mọi assume-role được CloudTrail alert |
@@ -358,13 +384,16 @@ OpenSearch controls:
   `arn:aws:logs:us-east-1:<account-id>:log-group:/tf4/mandate-14/ai-tool-audit:*`
 - Firehose ARN:
   `arn:aws:firehose:us-east-1:<account-id>:deliverystream/tf4-ai-audit-logs`
+- Dùng hai role riêng `tf4-ai-audit-cwl-to-firehose-role` và
+  `tf4-ai-audit-firehose-to-s3-role`; không mở rộng hai role EKS audit hiện hữu.
+- Trust policy của cả hai role phải giới hạn service principal bằng
+  `aws:SourceAccount` và `aws:SourceArn` của đúng Log Group/delivery stream khi
+  service hỗ trợ.
 - S3 bucket ARN và object prefix phải tách thành hai statement.
 - `s3:ListBucket` phải có `s3:prefix` giới hạn
   `mandate-14/ai-tool-audit/*`.
-- KMS policy giới hạn đúng role, `kms:ViaService` và encryption context khi
-  service hỗ trợ.
-- CMK của CloudWatch cho phép CloudWatch Logs service principal sử dụng key trên
-  đúng Log Group; không cấp quyền KMS này cho collector.
+- Không tạo hoặc cấp quyền KMS cho S3 AI audit hay CloudWatch Log Group. S3 dùng
+  SSE-S3 (`AES256`); CloudWatch Logs dùng encryption mặc định bằng AWS-managed key.
 - Các action buộc phải dùng `Resource: "*"` để hiển thị console phải nằm trong
   statement riêng và chỉ gồm action list/describe tối thiểu.
 
@@ -387,17 +416,22 @@ permission test.
 
 ## 9. Reliability, delivery semantics và monitoring
 
-Pipeline được thiết kế **at-least-once**. Retry có thể tạo duplicate; S3 giữ
-nguyên bản giao, query layer phải chịu được duplicate. Không thêm `event_id` vào
+Pipeline được thiết kế **at-least-once trong vòng đời collector process**. Retry
+có thể tạo duplicate; S3 giữ nguyên bản giao, query layer phải chịu được
+duplicate. Memory queue giai đoạn đầu không sống qua pod/node restart; giới hạn
+này phải được theo dõi và ghi rõ trong evidence. Không thêm `event_id` vào
 canonical payload trong task này. Khi đếm, dùng CloudWatch log event ID hoặc
 transport timestamp + trace/surface/tool làm correlation key và ghi rõ giới hạn
 dedupe.
 
 Controls:
 
-- Persistent sending queue cho hai dedicated exporters.
+- Memory sending queue `queue_size: 2000` cho từng dedicated exporter ở giai
+  đoạn 1-2; không dùng PVC/`hostPath` cho Collector DaemonSet.
 - Retry không giới hạn thời gian tại collector nhưng bị giới hạn bởi dung lượng
   queue; queue đầy phải alarm trước khi drop.
+- Chỉ chuyển sang persistent queue qua thay đổi thiết kế riêng nếu monitoring ghi
+  nhận drop hoặc restart-loss thực tế.
 - Collector config/rollout phải có readiness probe và PodDisruptionBudget phù
   hợp với mode chạy.
 - Theo dõi receiver accepted/refused/failed, exporter sent/send_failed, queue
@@ -410,7 +444,7 @@ Alarm tối thiểu:
 | Alarm | Điều kiện đề xuất | Severity |
 |---|---|---|
 | Collector audit exporter failures | `send_failed_log_records > 0` trong 5 phút | P0 |
-| Persistent queue pressure | queue >= 80% trong 5 phút | P1 |
+| Memory queue pressure | queue >= 80% trong 5 phút | P1 |
 | Silent pipeline | Có AI/tool activity nhưng 15 phút không có audit event | P0 |
 | Schema/privacy validation | Bất kỳ event malformed hoặc forbidden key | P0 |
 | Firehose delivery failure | DeliveryToS3 failure/throttle > 0 | P0 |
@@ -433,21 +467,31 @@ thành production SLO dài hạn cho tới khi có ít nhất 7 ngày metric.
 ### Giai đoạn 0 — Review và preflight
 
 1. CDO-07 duyệt schema, retention và negative access tests.
-2. CDO-08 duyệt IAM, KMS, NetworkPolicy và OpenSearch security.
+2. CDO-08 duyệt IAM, NetworkPolicy, SSE-S3/default CloudWatch encryption và
+   OpenSearch security.
 3. CDO-04 review cost dựa trên event rate/size thực tế, không dùng ước lượng EKS
    control-plane log.
 4. Pin OTel Collector image version/digest và xác nhận distribution chứa
-   `filter`, `opensearch`, `awscloudwatchlogs` và `file_storage`.
+   `filter`, `opensearch` và `awscloudwatchlogs`.
 5. Chạy config validation, Helm schema validation và render manifests.
+6. Baseline traces, metrics, general logs và collector resources trước khi thêm
+   Pod Identity/IRSA để so sánh sau rollout.
 
 ### Giai đoạn 1 — Storage và IAM trước
 
-1. Tạo KMS key, S3 Object Lock bucket, lifecycle và bucket policy.
-2. Tạo Firehose, error log group và service roles.
-3. Tạo dedicated CloudWatch Log Group 30 ngày và subscription.
+1. Tạo S3 Object Lock bucket với SSE-S3 (`AES256`), lifecycle Standard-only
+   expire ngày 365 và bucket policy.
+2. Tạo Firehose, error log group và hai service role riêng
+   `tf4-ai-audit-firehose-to-s3-role`,
+   `tf4-ai-audit-cwl-to-firehose-role`; thêm `aws:SourceArn` và
+   `aws:SourceAccount` vào trust policy.
+3. Tạo dedicated CloudWatch Log Group 7 ngày dùng encryption mặc định và
+   subscription.
 4. Tạo OpenSearch index template, ISM policy, role và NetworkPolicy.
 5. Tạo OTel Collector Pod Identity/IRSA role resource-scoped.
 6. Tạo/attach Audit read-only policy nhưng chưa nghiệm thu trước khi data tồn tại.
+7. Canary Pod Identity/IRSA trên collector, xác nhận traces, metrics và general
+   logs không regression trước khi bật audit exporter toàn DaemonSet.
 
 ### Giai đoạn 2 — Shadow routing
 
@@ -457,6 +501,8 @@ thành production SLO dài hạn cho tới khi có ít nhất 7 ngày metric.
 3. Phát test matrix gồm allow, block/refuse, provider unavailable, confirmation
    rejected và confirmation confirmed trong môi trường kiểm soát.
 4. Đối soát event count và exact fields ở ba sink.
+5. Theo dõi memory queue `queue_size: 2000`, collector memory/OOMKill và event
+   drop; chỉ mở thiết kế persistent queue nếu có số liệu chứng minh cần thiết.
 
 ### Giai đoạn 3 — Cutover
 
@@ -534,7 +580,9 @@ aws s3api head-object \
 ```
 
 `head-object` phải trả `ObjectLockMode=COMPLIANCE` và `ObjectLockRetainUntilDate`
-phù hợp. Test delete version bằng role không được phép phải trả `AccessDenied`.
+phù hợp. `get-bucket-encryption` phải trả `SSEAlgorithm=AES256`; Log Group không
+gắn customer-managed KMS key. Test delete version bằng role không được phép phải
+trả `AccessDenied`.
 
 ### 12.4. Least privilege
 
@@ -545,7 +593,7 @@ Negative tests bắt buộc:
 - Collector role không đọc CloudWatch/S3 và không ghi log group khác.
 - Firehose role không đọc object và không ghi prefix khác.
 - Platform runtime role không đọc audit data.
-- Permission set không chứa `s3:*`, `logs:*`, `es:*`, `kms:*` hoặc
+- Policy AI audit mới không chứa `s3:*`, `logs:*`, `es:*`, `kms:*` hoặc
   `Resource: "*"` ngoài action list/describe bắt buộc, có justification.
 
 ### 12.5. Failure recovery
@@ -554,10 +602,14 @@ Trong staging:
 
 1. Tạm làm một exporter không reachable.
 2. Phát synthetic audit events.
-3. Xác nhận event nằm trong persistent queue và alarm fire.
+3. Xác nhận event nằm trong memory queue, queue metric tăng và alarm fire ở 80%.
 4. Khôi phục exporter.
 5. Xác nhận đủ event được giao; ghi duplicate nếu có.
-6. Restart collector khi queue có dữ liệu và chứng minh queue phục hồi.
+6. Trong một test riêng, restart collector khi memory queue có synthetic event,
+   đo và ghi nhận restart-loss thay vì tuyên bố queue có thể phục hồi.
+7. Chỉ tạo work item persistent queue nếu monitoring/test ghi nhận drop hoặc
+   restart-loss vượt risk acceptance; thiết kế phải xử lý PVC per-node/`hostPath`
+   threat model trước khi triển khai.
 
 ## 13. Definition of Done
 
@@ -565,11 +617,19 @@ Trong staging:
 - [ ] Filter route bằng `log.attributes["log_type"] == "ai_tool_audit"`.
 - [ ] OpenSearch index/ISM riêng hoạt động; security gap được đóng hoặc ghi rõ
       OpenSearch không phải evidence authority.
-- [ ] CloudWatch Log Group retention 30 ngày.
+- [ ] OpenSearch ISM xóa `ai-tool-audit-*` sau 7 ngày.
+- [ ] CloudWatch Log Group retention 7 ngày.
+- [ ] CloudWatch Log Group dùng encryption mặc định, không có CMK riêng.
 - [ ] Firehose giao thành công vào S3 prefix đúng.
-- [ ] S3 versioning, encryption, Public Access Block và Object Lock
+- [ ] Hai IAM service role AI audit có tên riêng, resource scope đúng và trust
+      policy có `aws:SourceArn`/`aws:SourceAccount`.
+- [ ] S3 versioning, SSE-S3 `AES256`, Public Access Block và Object Lock
       `COMPLIANCE` 90 ngày được chứng minh.
-- [ ] S3 lifecycle giữ tổng 365 ngày.
+- [ ] S3 lifecycle giữ Standard-only và expire ngày 365.
+- [ ] Memory queue `queue_size: 2000` và alarm 80% hoạt động; quyết định hoãn
+      persistent queue có metric/test evidence.
+- [ ] Pod Identity/IRSA của collector không làm regression traces, metrics,
+      general logs hoặc collector memory.
 - [ ] Least-privilege policy và sáu negative tests đạt.
 - [ ] Controlled test đạt 100% delivery, không có forbidden content.
 - [ ] Delivery lag đạt mục tiêu nghiệm thu.
@@ -583,9 +643,11 @@ Trong staging:
 |---|---|---|
 | OpenSearch security plugin đang tắt | Không coi OpenSearch là evidence authority | CDO-08 + CDO-07 |
 | OTel component/version compatibility | Pin digest và config validate trước deploy | CDO-08 |
-| Persistent queue volume | Bắt buộc có storage và capacity alarm | CDO-08 |
-| Retention 14/30/365 ngày | Dùng baseline trong tài liệu | CDO-07 + CDO-04 |
-| KMS request/storage cost | Đo event rate/size và review trước apply | CDO-04 |
+| Collector có AWS identity lần đầu | Canary Pod Identity/IRSA và kiểm tra không regression toàn bộ telemetry | CDO-08 |
+| Memory queue mất dữ liệu khi collector restart | Queue 2000 + alarm 80%; chỉ chuyển persistent khi metric/test chứng minh cần | CDO-08 + CDO-07 |
+| OpenSearch 20Gi đầy hoặc collector OOMKill | Retention hot copy 7 ngày; theo dõi storage/memory trong shadow và sau cutover | CDO-04 + CDO-08 |
+| Retention 7/7/365 ngày (CloudWatch/OpenSearch/S3) | Dùng baseline trong tài liệu | CDO-07 + CDO-04 |
+| Chi phí/mode mã hóa | S3 SSE-S3 `AES256`, CloudWatch encryption mặc định; chỉ xem xét CMK khi có yêu cầu regulatory | CDO-04 + CDO-07 |
 | Duplicate at-least-once | Chấp nhận, document query/dedupe semantics | AIO + CDO-07 |
 | Legal hold owner | Break-glass compliance role, không phải daily Audit role | Lead + CDO-08 |
 
