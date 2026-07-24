@@ -195,9 +195,132 @@ resource "aws_iam_role_policy" "firehose_to_s3_policy" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.firehose_delivery_errors.arn}:*"
+      },
+      {
+        Sid    = "AllowLambdaInvoke"
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction",
+          "lambda:GetFunctionConfiguration"
+        ]
+        Resource = [
+          aws_lambda_function.firehose_cwl_processor.arn,
+          "${aws_lambda_function.firehose_cwl_processor.arn}:*"
+        ]
       }
     ]
   })
+}
+
+# 3b. Lambda Function cho Firehose Data Transformation: giải nén GZIP & chèn ngắt dòng \n
+data "archive_file" "firehose_cwl_processor_zip" {
+  type        = "zip"
+  output_path = "${path.module}/firehose_cwl_processor.zip"
+
+  source {
+    content  = <<EOF
+import base64
+import gzip
+import json
+
+
+def is_noise(message_str: str) -> bool:
+    """Chỉ log dạng JSON audit mới có thể là noise (healthz/livez/node heartbeat).
+    Log authenticator không phải JSON audit-format -> parse lỗi -> KHÔNG bị coi
+    là noise, luôn được giữ lại (Hướng B: giữ trọn chuỗi chứng cứ audit + authenticator)."""
+    try:
+        evt = json.loads(message_str)
+    except (json.JSONDecodeError, TypeError):
+        return False
+
+    request_uri = evt.get("requestURI") or ""
+    username = (evt.get("user") or {}).get("username") or ""
+
+    if request_uri.startswith("/healthz") or request_uri.startswith("/livez"):
+        return True
+    if username.startswith("system:node:"):
+        return True
+    return False
+
+
+def lambda_handler(event, context):
+    output = []
+    for record in event['records']:
+        payload = base64.b64decode(record['data'])
+        try:
+            decompressed = gzip.decompress(payload)
+            data_json = json.loads(decompressed)
+
+            if data_json.get('messageType') == 'CONTROL_MESSAGE':
+                output.append({'recordId': record['recordId'], 'result': 'Dropped', 'data': record['data']})
+                continue
+
+            log_group = data_json.get('logGroup')
+            log_stream = data_json.get('logStream')
+
+            out_bytes = b""
+            for log_event in data_json.get('logEvents', []):
+                message = log_event.get('message', '')
+                if is_noise(message):
+                    continue  # drop healthz/livez/node-heartbeat noise
+
+                enriched = {
+                    "id": log_event.get("id"),
+                    "timestamp": log_event.get("timestamp"),
+                    "message": message,
+                    "logGroup": log_group,
+                    "logStream": log_stream,
+                }
+                out_bytes += json.dumps(enriched).encode('utf-8') + b"\n"
+
+            if out_bytes == b"":
+                # Toàn bộ event trong record đều là noise -> Dropped,
+                # tránh ghi 1 dòng rỗng vô nghĩa ra S3
+                output.append({'recordId': record['recordId'], 'result': 'Dropped', 'data': record['data']})
+                continue
+
+            out_b64 = base64.b64encode(out_bytes).decode('utf-8')
+            output.append({'recordId': record['recordId'], 'result': 'Ok', 'data': out_b64})
+        except Exception:
+            output.append({'recordId': record['recordId'], 'result': 'ProcessingFailed', 'data': record['data']})
+
+    return {'records': output}
+EOF
+    filename = "index.py"
+  }
+}
+
+resource "aws_iam_role" "firehose_lambda_role" {
+  name = "tf4-firehose-lambda-processor-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "firehose_lambda_basic" {
+  role       = aws_iam_role.firehose_lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_lambda_function" "firehose_cwl_processor" {
+  filename         = data.archive_file.firehose_cwl_processor_zip.output_path
+  source_code_hash = data.archive_file.firehose_cwl_processor_zip.output_base64sha256
+  function_name    = "tf4-firehose-cwl-processor"
+  role             = aws_iam_role.firehose_lambda_role.arn
+  handler          = "index.lambda_handler"
+  runtime          = "python3.11"
+  timeout          = 60
+  memory_size      = 256
+
+  tags = var.tags
 }
 
 # 4. Amazon Data Firehose Delivery Stream
@@ -209,12 +332,24 @@ resource "aws_kinesis_firehose_delivery_stream" "eks_audit_logs" {
     role_arn   = aws_iam_role.firehose_to_s3.arn
     bucket_arn = aws_s3_bucket.eks_audit_logs.arn
 
-    buffering_size     = 5  # MB (1-128)
-    buffering_interval = 60 # Seconds (60-900)
-    compression_format = "GZIP"
-
+    buffering_size      = 5  # MB (1-128)
+    buffering_interval  = 60 # Seconds (60-900)
+    compression_format  = "UNCOMPRESSED" # Evades double-gzip
     prefix              = "!yyyy/!MM/!dd/!HH/"
     error_output_prefix = "errors/!yyyy/!MM/!dd/!HH/!error-output-type/"
+
+    # Lambda Processor tự động giải nén CloudWatch GZIP & chèn ngắt dòng \n chuẩn Newline-delimited JSON
+    processing_configuration {
+      enabled = "true"
+
+      processors {
+        type = "Lambda"
+        parameters {
+          parameter_name  = "LambdaArn"
+          parameter_value = "${aws_lambda_function.firehose_cwl_processor.arn}:$LATEST"
+        }
+      }
+    }
 
     cloudwatch_logging_options {
       enabled         = true
@@ -265,10 +400,15 @@ resource "aws_iam_role_policy" "cwl_to_firehose_policy" {
 }
 
 # 6. CloudWatch Subscription Filter để stream logs từ EKS log group sang Firehose
+# filter_pattern = "" -> nhận TOÀN BỘ audit + authenticator (Hướng B: forensic
+# cần chuỗi chứng cứ trọn vẹn "hành động gì" (audit) + "identity IAM nào" (authenticator)).
+# Lọc noise (healthz/livez/node heartbeat) đã chuyển sang Lambda processor
+# (firehose_cwl_processor) vì filter_pattern JSON cũ chỉ khớp audit log,
+# vô tình chặn luôn 100% log authenticator (khác schema, không có requestURI/user.username).
 resource "aws_cloudwatch_log_subscription_filter" "eks_audit_logs" {
   name            = "tf4-eks-audit-logs-subscription"
   log_group_name  = "/aws/eks/${var.cluster_name}/cluster"
-  filter_pattern  = "{ ($.requestURI != \"/healthz*\") && ($.requestURI != \"/livez*\") && ($.user.username != \"system:node:*\") }" # Lọc bỏ healthcheck & node heartbeat, giữ 100% vết thao tác người dùng
+  filter_pattern  = ""
   destination_arn = aws_kinesis_firehose_delivery_stream.eks_audit_logs.arn
   role_arn        = aws_iam_role.cwl_to_firehose.arn
 
