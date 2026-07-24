@@ -132,6 +132,44 @@ class SessionStore:
                 history.pop(0)
             self._memory_cache[key] = (time.time(), history)
 
+    def set_last_search_products(self, user_id: str, session_id: str, products: list[dict]) -> None:
+        if not session_id:
+            return
+        key = self._history_key(user_id, session_id) + ":products"
+        serialized = json.dumps(products, ensure_ascii=False)
+        if self._valkey_client is not None:
+            try:
+                self._valkey_client.setex(key, SESSION_TTL_SECONDS, serialized)
+                return
+            except Exception as exc:
+                logger.warning("Valkey write error for key %s: %s", key, exc)
+        with self._lock:
+            self._memory_cache[key] = (time.time(), products)
+
+    def get_last_search_products(self, user_id: str, session_id: str) -> list[dict]:
+        """Fetch last search products for session.
+
+        Design Rationale (Suggestion #15): Last search products is an optional optimization hint
+        for multi-turn context resolution, so read errors fail-open (returning empty list).
+        In contrast, get_history() is a security boundary and fails-closed when store is required.
+        """
+        if not session_id:
+            return []
+        key = self._history_key(user_id, session_id) + ":products"
+        if self._valkey_client is not None:
+            try:
+                raw_data = self._valkey_client.get(key)
+                if raw_data:
+                    return json.loads(raw_data.decode("utf-8") if isinstance(raw_data, bytes) else raw_data)
+            except Exception as exc:
+                logger.warning("Valkey read error for key %s: %s", key, exc)
+        with self._lock:
+            now = time.time()
+            if key in self._memory_cache:
+                timestamp, prods = self._memory_cache[key]
+                if now - timestamp <= SESSION_TTL_SECONDS:
+                    return list(prods)
+        return []
     def create_cart_proposal(
         self,
         user_id: str,
