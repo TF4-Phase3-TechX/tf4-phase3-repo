@@ -12,6 +12,23 @@ def _bool(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _float_map(name: str, default: str) -> dict[str, float]:
+    result: dict[str, float] = {}
+    raw = os.getenv(name, default)
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        key, separator, value = item.partition("=")
+        if not separator or not key.strip():
+            raise ValueError(f"{name} entries must use service=value: {item!r}")
+        parsed = float(value)
+        if not 0 < parsed < 1:
+            raise ValueError(f"{name} SLO targets must be between 0 and 1: {item!r}")
+        result[key.strip()] = parsed
+    return result
+
+
 @dataclass(frozen=True)
 class Settings:
     prometheus_url: str = os.getenv(
@@ -47,6 +64,18 @@ class Settings:
         os.getenv("AIOPS_ACUTE_MIN_BREACH_POINTS", "2")
     )
     recovery_polls: int = int(os.getenv("AIOPS_RECOVERY_POLLS", "2"))
+    availability_sustained_polls: int = int(
+        os.getenv("AIOPS_AVAILABILITY_SUSTAINED_POLLS", "2")
+    )
+    busy_request_rate_threshold: float = float(
+        os.getenv("AIOPS_BUSY_REQUEST_RATE_THRESHOLD", "5")
+    )
+    availability_down_confidence: float = float(
+        os.getenv("AIOPS_AVAILABILITY_DOWN_CONFIDENCE", "0.95")
+    )
+    availability_degraded_confidence: float = float(
+        os.getenv("AIOPS_AVAILABILITY_DEGRADED_CONFIDENCE", "0.80")
+    )
     cooldown_seconds: int = int(os.getenv("AIOPS_COOLDOWN_SECONDS", "600"))
     minimum_request_count: int = int(os.getenv("AIOPS_MINIMUM_REQUEST_COUNT", "20"))
     llm_minimum_call_count: int = int(os.getenv("AIOPS_LLM_MINIMUM_CALL_COUNT", "5"))
@@ -55,6 +84,26 @@ class Settings:
     latency_threshold_ms: float = float(os.getenv("AIOPS_LATENCY_THRESHOLD_MS", "1000"))
     error_rate_threshold: float = float(os.getenv("AIOPS_ERROR_RATE_THRESHOLD", "0.05"))
     llm_error_threshold: float = float(os.getenv("AIOPS_LLM_ERROR_THRESHOLD", "0.05"))
+    # Only services with an approved user-visible availability/success SLO are
+    # listed. Unlisted services retain the explicit fixed-threshold fallback.
+    service_slo_targets: dict[str, float] = field(
+        default_factory=lambda: _float_map(
+            "AIOPS_SERVICE_SLO_TARGETS",
+            "frontend=0.995,cart=0.995,checkout=0.99",
+        )
+    )
+    burn_rate_short_window_minutes: int = int(
+        os.getenv("AIOPS_BURN_RATE_SHORT_WINDOW_MINUTES", "5")
+    )
+    burn_rate_long_window_minutes: int = int(
+        os.getenv("AIOPS_BURN_RATE_LONG_WINDOW_MINUTES", "30")
+    )
+    burn_rate_warning_threshold: float = float(
+        os.getenv("AIOPS_BURN_RATE_WARNING_THRESHOLD", "2")
+    )
+    burn_rate_critical_threshold: float = float(
+        os.getenv("AIOPS_BURN_RATE_CRITICAL_THRESHOLD", "10")
+    )
     # Detector seeds are configurable because they must be recalibrated from
     # labelled normal and incident windows. Defaults are conservative 7a
     # starting values, not claims of production-optimal tuning.
@@ -183,3 +232,21 @@ class Settings:
     llm_log_services: tuple[str, ...] = field(
         default_factory=lambda: _csv("AIOPS_LLM_LOG_SERVICES", "llm,product-reviews")
     )
+
+    def __post_init__(self) -> None:
+        if self.burn_rate_short_window_minutes <= 0:
+            raise ValueError("burn-rate short window must be positive")
+        if (
+            self.burn_rate_long_window_minutes
+            <= self.burn_rate_short_window_minutes
+        ):
+            raise ValueError("burn-rate long window must be greater than short window")
+        if self.burn_rate_warning_threshold <= 0:
+            raise ValueError("burn-rate warning threshold must be positive")
+        if (
+            self.burn_rate_critical_threshold
+            < self.burn_rate_warning_threshold
+        ):
+            raise ValueError(
+                "burn-rate critical threshold must be >= warning threshold"
+            )

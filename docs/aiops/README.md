@@ -1,16 +1,22 @@
 # TF4 AI Ops Safe MVP
 
-The `aiops` service continuously reads TF4 telemetry and turns sustained anomalies into auditable incidents. It implements three runtime signal families: per-service p95 latency, per-service error rate, and per-caller LLM/provider error rate attributed by the metric's `service_name` label.
+The `aiops` service continuously reads TF4 telemetry and turns sustained
+anomalies into auditable incidents. It implements four runtime signal
+families: Kubernetes Deployment availability, per-service p95 latency,
+per-service error rate, and per-caller LLM/provider error rate attributed by
+the metric's `service_name` label.
 
 ## Runtime flow
 
 ```text
+Kubernetes status ------+
 Prometheus metrics -----+
 OpenSearch logs --------+--> sustained detector --> evidence correlation
 Jaeger traces ----------+                         --> deterministic RCA
                                                   --> allowlisted runbook
                                                   --> Prometheus event counter
-                                                  --> Alertmanager Slack/email
+                                                  --> Alertmanager
+                                                  --> Slack/email on-call
                                                   --> per-incident approval
                                                   --> dry-run/live action
                                                   --> rollout + SLO verification
@@ -18,6 +24,36 @@ Jaeger traces ----------+                         --> deterministic RCA
 ```
 
 Prometheus is the primary detector. Logs and traces increase confidence and provide investigation references. Prometheus scrapes the worker's `/metrics` endpoint; a newly created, cooldown-deduplicated incident increments a severity-labelled counter, and the committed `AIOpsIncidentDetected` rule routes it through the existing Alertmanager Slack/email receivers. The service never mutates flagd. LLM output is not allowed to select or execute an action.
+
+The read-only Kubernetes adapter prevents an empty span series from being
+misclassified as a dead service. It combines Deployment desired, available,
+ready and updated replicas with request throughput and SLO decisions:
+
+| State | Meaning | Page behavior |
+|---|---|---|
+| `idle` | Deployment intentionally has zero desired replicas | no page |
+| `healthy` | Desired replicas are ready and traffic is below the busy seed | no page |
+| `busy` | Desired replicas are ready, traffic exceeds the configurable seed and SLO signals remain healthy | no page |
+| `degraded` | Replica availability is partial or latency/error breaches | incident only after confirmation |
+| `down` | Desired replicas are non-zero but no replica is available or ready | critical incident after confirmation |
+| `unknown` | Kubernetes status cannot be read | coverage warning; never treated as down |
+
+`AIOPS_AVAILABILITY_SUSTAINED_POLLS` defaults to two polls so a short rollout
+transition does not page as an outage. `AIOPS_BUSY_REQUEST_RATE_THRESHOLD` is
+an initial operator-facing seed, not a production-optimal threshold and never
+fires an incident by itself.
+
+For a confirmed availability incident, the worker increments
+`aiops_incidents_created_total{incident_type="service_availability", ...}` for
+audit and sets `aiops_incident_active{...}=1` until the store observes enough
+fully covered recovery polls. The active gauge avoids losing a short counter
+pulse between Prometheus scrapes and lets Alertmanager send a resolved
+notification when it returns to zero. The worker maps high severity to the
+notification label `critical` and all other incident severities to `warning`;
+the generic `AIOpsIncidentDetected` rule preserves that label. Production
+Alertmanager routes both severities through its mounted
+`alertmanager-slack-webhook` secret. This documents and implements the route,
+but only a timestamped receipt from `#tf4-alerts` proves real delivery.
 
 Detector decisions use a configurable absolute safety floor plus a robust
 baseline derived independently from each service's own recent series. The
@@ -32,6 +68,25 @@ comes from the emitting service instead of a global configured owner.
 OpenSearch logs are corroborating evidence and never fire an LLM incident by
 themselves.
 
+For services with an approved success SLO, request-error incidents now carry
+request-weighted error-budget burn for two exact Prometheus windows. The
+configured TF4 targets are `frontend=99.5%`, `cart=99.5%`, and
+`checkout=99.0%`, sourced from `docs/requirements/onboarding/SLO.md`. A
+`critical_budget_burn` classification requires both the 5-minute and 30-minute
+burn rates to be at least 10x; both at least 2x produce
+`warning_budget_burn`. This multi-window requirement prevents one short spike
+from claiming sustained critical impact. Detection remains the adaptive
+baseline/floor gate, so the 30-minute impact window does not delay initial
+detection. Services without an approved SLO are explicitly labelled
+`fixed_threshold_fallback`; missing burn telemetry is
+`burn_rate_unavailable`, never zero.
+
+The worker exports
+`aiops_error_budget_burn_rate{service,window="5m|30m"}` and places the
+structured impact object in the incident API/summary. The active incident
+metric and Slack alert include the low-cardinality impact classification;
+operators use the incident API for exact numeric rates.
+
 Each span-metric detector requires `SPAN_KIND_SERVER`; `frontend` p95 uses the
 production browse-route selector while its error SLI covers normalized
 frontend server operations, and `checkout` uses the documented `PlaceOrder`
@@ -40,7 +95,8 @@ not healthy. A one-to-three-point baseline is `warming` and may fire only on
 the absolute floor. Neither state can auto-resolve an incident. An active
 incident auto-resolves only after `AIOPS_RECOVERY_POLLS` consecutive fully
 available, non-breaching polls; a later breach creates and notifies a new
-incident after the cooldown. Cart-specific coverage remains a 7b expansion.
+incident after the cooldown. Cart is included in the monitored service list
+and its error-rate impact uses the approved 99.5% success SLO.
 
 The design decision, initial three-signal baseline analysis, trade-offs and activation boundary are recorded in [ADR-007](./ADR-007-hybrid-anomaly-detection-and-safe-response.md).
 
@@ -92,7 +148,7 @@ For a controlled live drill, CDO must first confirm the namespace, Deployment al
 | POST | `/v1/incidents/{id}/approve` | Approve and execute the bound action |
 | POST | `/v1/incidents/{id}/reject` | Reject the action |
 
-The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incidents_created_total`; persistent state and automatic Jira creation remain follow-up work.
+The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incident_active`, while `aiops_incidents_created_total` remains the audit counter; persistent state and automatic Jira creation remain follow-up work.
 
 The unavailable-source semantics, production `app_llm_*` metric correction and operator summary concepts from the team's [PR #208](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/208) are consolidated into this service. The old prototype tree is not duplicated as a second runtime.
 

@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
+from .availability import AvailabilitySnapshot
 from .config import Settings
 from .models import Decision, Evidence
 
@@ -36,6 +37,17 @@ def values(series: dict[str, Any]) -> list[float]:
         for point in series.get("values", [])
         if point[1] not in {"NaN", None}
     ]
+
+
+def instant_value(series: list[dict[str, Any]]) -> float | None:
+    """Extract one Prometheus instant-vector value without treating gaps as zero."""
+
+    if not series:
+        return None
+    value = series[0].get("value", [None, None])[1]
+    if value in {"NaN", None}:
+        return None
+    return float(value)
 
 
 def robust_baseline(
@@ -303,6 +315,81 @@ class Detector:
             self.settings.maximum_confidence,
         )
 
+    def availability(self, snapshot: AvailabilitySnapshot) -> Decision:
+        """Classify workload availability without treating missing data as down."""
+
+        coverage_status = (
+            "unavailable" if snapshot.state == "unknown" else "available"
+        )
+        breached = snapshot.state in {"degraded", "down"}
+        key = f"service_availability:{snapshot.service}"
+        self._streaks[key] = self._streaks[key] + 1 if breached else 0
+        anomalous = (
+            self._streaks[key]
+            >= max(self.settings.availability_sustained_polls, 1)
+        )
+        confidence = (
+            self.settings.availability_down_confidence
+            if snapshot.state == "down"
+            else self.settings.availability_degraded_confidence
+            if snapshot.state == "degraded"
+            else 0.0
+        )
+        return Decision(
+            anomalous=anomalous,
+            breached=breached,
+            coverage_status=coverage_status,
+            incident_type="service_availability",
+            service=snapshot.service,
+            severity="high" if snapshot.state == "down" else "medium",
+            confidence=confidence,
+            root_cause=(
+                f"Kubernetes reports {snapshot.available_replicas}/"
+                f"{snapshot.desired_replicas} available replicas for "
+                f"{snapshot.service}; the workload is {snapshot.state}, but "
+                "events, logs and recent changes are required to assign cause."
+            ),
+            evidence=[
+                Evidence(
+                    source="kubernetes-api",
+                    query=f"deployment/{snapshot.service}/status",
+                    window="current",
+                    value=snapshot.state,
+                ),
+                Evidence(
+                    source="kubernetes-api",
+                    query="desired/available/ready/updated replicas",
+                    window="current",
+                    value=(
+                        f"{snapshot.desired_replicas}/"
+                        f"{snapshot.available_replicas}/"
+                        f"{snapshot.ready_replicas}/"
+                        f"{snapshot.updated_replicas}"
+                    ),
+                ),
+            ],
+            candidates=[
+                {
+                    "service": snapshot.service,
+                    "score": confidence,
+                    "signals": {
+                        "availability_state": snapshot.state,
+                        "desired_replicas": snapshot.desired_replicas,
+                        "available_replicas": snapshot.available_replicas,
+                        "ready_replicas": snapshot.ready_replicas,
+                        "updated_replicas": snapshot.updated_replicas,
+                        "reason": snapshot.reason,
+                    },
+                }
+            ],
+            runbook_id="service-availability-escalation",
+            recommended_action=(
+                "Page the service owner, inspect Deployment/Pod events and "
+                "recent rollout state, and restore availability through the "
+                "approved service runbook."
+            ),
+        )
+
     def latency(
         self, service: str, series: list[dict[str, Any]], query: str
     ) -> Decision:
@@ -354,13 +441,96 @@ class Detector:
         )
 
     def error_rate(
-        self, service: str, series: list[dict[str, Any]], query: str
+        self,
+        service: str,
+        series: list[dict[str, Any]],
+        query: str,
+        *,
+        burn_rates: tuple[float | None, float | None] | None = None,
     ) -> Decision:
         points = values(series[0]) if series else []
         current = points[-1] if points else 0.0
+        slo_target = self.settings.service_slo_targets.get(service)
+        detection_floor = self.settings.error_rate_threshold
+        if slo_target is not None:
+            detection_floor = min(
+                detection_floor,
+                (1 - slo_target) * self.settings.burn_rate_warning_threshold,
+            )
         breached, coverage_status, scores = signal_gate(
-            points, self.settings.error_rate_threshold, self.settings
+            points, detection_floor, self.settings
         )
+        impact: dict[str, Any]
+        burn_evidence: list[Evidence] = []
+        if slo_target is None:
+            impact = {
+                "level": "fixed_threshold_fallback",
+                "basis": "no_approved_service_slo",
+                "current_error_rate": round(current, 6),
+                "threshold": self.settings.error_rate_threshold,
+            }
+            severity = (
+                "high"
+                if current
+                >= self.settings.error_rate_threshold
+                * self.settings.error_high_multiplier
+                else "medium"
+            )
+        else:
+            short_rate, long_rate = burn_rates or (None, None)
+            short_window = self.settings.burn_rate_short_window_minutes
+            long_window = self.settings.burn_rate_long_window_minutes
+            warning = self.settings.burn_rate_warning_threshold
+            critical = self.settings.burn_rate_critical_threshold
+            if short_rate is None or long_rate is None:
+                impact_level = "burn_rate_unavailable"
+            elif short_rate >= critical and long_rate >= critical:
+                impact_level = "critical_budget_burn"
+            elif short_rate >= warning and long_rate >= warning:
+                impact_level = "warning_budget_burn"
+            else:
+                impact_level = "budget_burn_below_warning"
+            if impact_level in {"warning_budget_burn", "critical_budget_burn"}:
+                # A sustained, request-weighted SLO burn is itself a breach
+                # even when a recently degraded baseline has adapted to it.
+                breached = True
+                coverage_status = "available"
+            impact = {
+                "level": impact_level,
+                "basis": "multi_window_error_budget_burn",
+                "slo_target": slo_target,
+                "error_budget": round(1 - slo_target, 6),
+                "short_window": f"{short_window}m",
+                "short_burn_rate": (
+                    round(short_rate, 4) if short_rate is not None else None
+                ),
+                "long_window": f"{long_window}m",
+                "long_burn_rate": (
+                    round(long_rate, 4) if long_rate is not None else None
+                ),
+                "warning_threshold": warning,
+                "critical_threshold": critical,
+                "source": "prometheus_instant_query",
+            }
+            severity = "high" if impact_level == "critical_budget_burn" else "medium"
+            for window, value in (
+                (short_window, short_rate),
+                (long_window, long_rate),
+            ):
+                burn_evidence.append(
+                    Evidence(
+                        source="prometheus",
+                        query=error_budget_burn_rate_query(
+                            service,
+                            slo_target,
+                            window,
+                            self.settings.minimum_request_count,
+                            self.settings.namespace,
+                        ),
+                        window=f"{window}m",
+                        value=round(value, 4) if value is not None else "unavailable",
+                    )
+                )
         key = f"service_error_rate_spike:{service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
         anomalous = self._streaks[key] >= self.settings.sustained_polls
@@ -371,18 +541,13 @@ class Detector:
             coverage_status=coverage_status,
             incident_type="service_error_rate_spike",
             service=service,
-            severity=(
-                "high"
-                if current
-                >= self.settings.error_rate_threshold
-                * self.settings.error_high_multiplier
-                else "medium"
-            ),
+            severity=severity,
             confidence=confidence,
             root_cause=(
                 f"Sustained error-rate degradation on {service}; logs, traces and recent deployment "
                 "evidence are required before assigning a root cause."
             ),
+            impact=impact,
             evidence=[
                 Evidence(
                     source="prometheus",
@@ -398,6 +563,7 @@ class Detector:
                     window=f"{self.settings.lookback_minutes}m",
                     value=coverage_status,
                 ),
+                *burn_evidence,
             ],
             candidates=[
                 {"service": service, "score": round(confidence, 3), "signals": scores}
@@ -565,3 +731,73 @@ def error_rate_query(
         "and on() (sum(increase(traces_span_metrics_calls_total{"
         f"{all_spans}}}[5m])) >= {minimum_requests})"
     )
+
+
+def error_budget_burn_rate_query(
+    service: str,
+    slo_target: float,
+    window_minutes: int,
+    minimum_requests: int = 20,
+    namespace: str | None = None,
+) -> str:
+    """Return request-weighted error-budget consumption for one exact window."""
+
+    if not 0 < slo_target < 1:
+        raise ValueError("slo_target must be between 0 and 1")
+    if window_minutes <= 0:
+        raise ValueError("window_minutes must be positive")
+    all_spans = span_matchers(
+        service, namespace=namespace, include_operation=True
+    )
+    error_spans = span_matchers(
+        service,
+        namespace=namespace,
+        error_only=True,
+        include_operation=True,
+    )
+    error_budget = 1 - slo_target
+    window = f"{window_minutes}m"
+    return (
+        "((sum(increase(traces_span_metrics_calls_total{"
+        f"{error_spans}}}[{window}])) "
+        f"/ clamp_min(sum(increase(traces_span_metrics_calls_total{{{all_spans}}}[{window}])), 1)) "
+        f"/ {error_budget:.10g}) "
+        "and on() (sum(increase(traces_span_metrics_calls_total{"
+        f"{all_spans}}}[{window}])) >= {minimum_requests})"
+    )
+
+
+def request_rate_query(service: str, namespace: str | None = None) -> str:
+    """Return server request throughput without using it as a health signal."""
+
+    matchers = span_matchers(
+        service,
+        namespace=namespace,
+        include_operation=False,
+    )
+    return (
+        "sum(rate(traces_span_metrics_calls_total{"
+        f"{matchers}}}[5m]))"
+    )
+
+
+def classify_service_state(
+    availability: AvailabilitySnapshot,
+    request_rate: float | None,
+    *,
+    latency_breached: bool,
+    error_rate_breached: bool,
+    busy_request_rate_threshold: float,
+) -> str:
+    """Combine workload availability, traffic and SLO state for operators."""
+
+    if availability.state in {"unknown", "idle", "down"}:
+        return availability.state
+    if availability.state == "degraded" or latency_breached or error_rate_breached:
+        return "degraded"
+    if (
+        request_rate is not None
+        and request_rate >= max(busy_request_rate_threshold, 0.0)
+    ):
+        return "busy"
+    return "healthy"

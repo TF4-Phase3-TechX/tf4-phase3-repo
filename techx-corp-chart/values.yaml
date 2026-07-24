@@ -205,6 +205,9 @@ components:
     useDefault:
       env: true
     serviceAccountName: aiops
+    # Required for the read-only Kubernetes availability adapter. Mutation
+    # remains independently gated by aiopsRemediation.liveEnabled and RBAC.
+    automountServiceAccountToken: true
     service:
       port: 8080
     podAnnotations:
@@ -249,6 +252,8 @@ components:
         value: product-reviews
       - name: AIOPS_LLM_LOG_SERVICES
         value: llm,product-reviews
+      - name: AIOPS_MONITORED_SERVICES
+        value: llm,product-reviews,frontend,cart,checkout
       - name: AIOPS_POLL_SECONDS
         value: "45"
       - name: AIOPS_LOOKBACK_MINUTES
@@ -265,10 +270,36 @@ components:
         value: "5"
       - name: AIOPS_RECOVERY_POLLS
         value: "2"
+      # Confirm workload availability separately so a transient rollout does
+      # not page as a dead service.
+      - name: AIOPS_AVAILABILITY_SUSTAINED_POLLS
+        value: "2"
+      # Operator-facing busy-state seed only; it does not fire an incident and
+      # must be recalibrated from labelled production traffic.
+      - name: AIOPS_BUSY_REQUEST_RATE_THRESHOLD
+        value: "5"
+      - name: AIOPS_AVAILABILITY_DOWN_CONFIDENCE
+        value: "0.95"
+      - name: AIOPS_AVAILABILITY_DEGRADED_CONFIDENCE
+        value: "0.80"
       - name: AIOPS_LATENCY_THRESHOLD_MS
         value: "1000"
       - name: AIOPS_ERROR_RATE_THRESHOLD
         value: "0.05"
+      # Approved user-visible success SLOs from docs/requirements/onboarding/SLO.md.
+      # Services without an approved SLO use a labelled fixed-threshold fallback.
+      - name: AIOPS_SERVICE_SLO_TARGETS
+        value: frontend=0.995,cart=0.995,checkout=0.99
+      # Seed multi-window impact policy. These are configurable and require
+      # recalibration from labelled production windows in Mandate 7b.
+      - name: AIOPS_BURN_RATE_SHORT_WINDOW_MINUTES
+        value: "5"
+      - name: AIOPS_BURN_RATE_LONG_WINDOW_MINUTES
+        value: "30"
+      - name: AIOPS_BURN_RATE_WARNING_THRESHOLD
+        value: "2"
+      - name: AIOPS_BURN_RATE_CRITICAL_THRESHOLD
+        value: "10"
       - name: AIOPS_LLM_ERROR_THRESHOLD
         value: "0.05"
       - name: AIOPS_BASELINE_MAD_MULTIPLIER
@@ -396,6 +427,8 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: DB_CONNECTION_STRING
         value: Host=postgresql;Username=otelu;Password=otelp;Database=otel
+      - name: PGAPPNAME
+        value: accounting
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
@@ -993,6 +1026,19 @@ components:
         value: "0.0.0.0"
       - name: ENVOY_ADMIN_PORT
         value: "10000"
+      # Preserve 200-user traffic; shed AI and Browse only above measured demand.
+      - name: ENVOY_LOCAL_RL_AI_RPS
+        value: "3"
+      - name: ENVOY_LOCAL_RL_BROWSE_RPS
+        value: "20"
+      - name: ENVOY_LOCAL_RL_CART_RPS
+        value: "10000"
+      - name: ENVOY_LOCAL_RL_CHECKOUT_RPS
+        value: "10000"
+      - name: ENVOY_LOCAL_RL_ENABLED_PERCENT
+        value: "100"
+      - name: ENVOY_LOCAL_RL_ENFORCED_PERCENT
+        value: "100"
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
@@ -1244,6 +1290,8 @@ components:
         value: 16MiB
       - name: DB_CONNECTION_STRING
         value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+      - name: PGAPPNAME
+        value: product-catalog
       - name: OTEL_SEMCONV_STABILITY_OPT_IN
         value: database
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -1325,6 +1373,8 @@ components:
         value: "8013"
       - name: DB_CONNECTION_STRING
         value: host=postgresql user=otelu password=otelp dbname=otel
+      - name: PGAPPNAME
+        value: product-reviews
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: OTEL_PYTHON_LOG_CORRELATION
