@@ -33,8 +33,8 @@
 
 ### 1. Chỉ số lưu lượng & Độ trễ ở các mức tải chính
 * **Tại bước 275 Users (So sánh trực tiếp với Baseline):**
-  * **Offered RPS:** **`38.5`**
-  * **Successful RPS:** **`38.5`**
+  * **Offered RPS:** **`49.10`**
+  * **Successful RPS:** **`49.08`**
   * **Tỷ lệ lỗi (Failure Rate):** **`0.00%`** (So với `1.53%` trước đây)
   * **p99 Latency:** Đạt SLO hoàn hảo, không xảy ra hiện tượng nghẽn cổ chai DB.
 * **Tại bước 350 Users (Trần tải mới):**

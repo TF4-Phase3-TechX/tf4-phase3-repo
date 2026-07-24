@@ -23,6 +23,25 @@ async def test_prometheus_range_query_contract():
 
 
 @pytest.mark.asyncio
+async def test_prometheus_instant_query_contract():
+    async def handler(request: httpx.Request):
+        assert request.url.path == "/api/v1/query"
+        assert request.url.params["query"] == "burn_rate"
+        return httpx.Response(
+            200,
+            json={"status": "success", "data": {"result": [{"value": [1, "12.5"]}]}},
+        )
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    telemetry = TelemetryClient(
+        replace(Settings(), prometheus_url="http://prometheus"), http
+    )
+    result = await telemetry.query("burn_rate")
+    assert result[0]["value"][1] == "12.5"
+    await telemetry.close()
+
+
+@pytest.mark.asyncio
 async def test_opensearch_query_is_bounded_to_log_index_and_source_fields():
     async def handler(request: httpx.Request):
         assert request.url.path == "/otel-logs-*/_search"

@@ -50,6 +50,7 @@ class Incident(BaseModel):
     last_observed_at: datetime = Field(default_factory=utcnow)
     confidence: float
     suspected_root_cause: str
+    impact: dict[str, Any] = Field(default_factory=dict)
     evidence: list[Evidence] = Field(default_factory=list)
     rca_candidates: list[dict[str, Any]] = Field(default_factory=list)
     runbook_id: str
@@ -80,6 +81,7 @@ class Decision(BaseModel):
     severity: str = "medium"
     confidence: float = 0.0
     root_cause: str = "Insufficient evidence"
+    impact: dict[str, Any] = Field(default_factory=dict)
     evidence: list[Evidence] = Field(default_factory=list)
     candidates: list[dict[str, Any]] = Field(default_factory=list)
     runbook_id: str = "observe-and-escalate"

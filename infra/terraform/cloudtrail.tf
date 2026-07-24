@@ -50,7 +50,7 @@ resource "aws_kms_key" "cloudtrail" {
         Sid    = "AllowCloudWatchLogsEncrypt"
         Effect = "Allow"
         Principal = {
-          Service = "logs.us-east-1.amazonaws.com"
+          Service = "logs.${var.aws_region}.amazonaws.com"
         }
         Action = [
           "kms:Encrypt*",
@@ -62,7 +62,7 @@ resource "aws_kms_key" "cloudtrail" {
         Resource = "*"
         Condition = {
           ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:us-east-1:${data.aws_caller_identity.current.account_id}:*"
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"
           }
         }
       },
@@ -244,7 +244,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
         Resource = aws_s3_bucket.cloudtrail_logs.arn
         Condition = {
           StringEquals = {
-            "AWS:SourceArn" = "arn:aws:cloudtrail:us-east-1:${data.aws_caller_identity.current.account_id}:trail/tf4-general-cloudtrail"
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/tf4-general-cloudtrail"
           }
         }
       },
@@ -259,7 +259,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
         Condition = {
           StringEquals = {
             "s3:x-amz-acl"  = "bucket-owner-full-control"
-            "AWS:SourceArn" = "arn:aws:cloudtrail:us-east-1:${data.aws_caller_identity.current.account_id}:trail/tf4-general-cloudtrail"
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/tf4-general-cloudtrail"
           }
         }
       },
@@ -382,7 +382,7 @@ resource "aws_cloudtrail" "main" {
         "arn:aws:s3:::tf4-aws-config-worm-archive-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
         "arn:aws:s3:::tf4-aws-config-staging-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
         "arn:aws:s3:::tf4-cloudtrail-logs-bucket-${data.aws_caller_identity.current.account_id}/AWSLogs/",
-        "arn:aws:s3:::tf4-eks-audit-logs-${data.aws_caller_identity.current.account_id}/2026/"
+        "arn:aws:s3:::tf4-eks-audit-logs-${data.aws_caller_identity.current.account_id}/"
       ]
     }
   }
