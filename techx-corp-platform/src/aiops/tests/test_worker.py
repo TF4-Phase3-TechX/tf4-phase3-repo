@@ -220,6 +220,20 @@ class DownAvailability:
         )
 
 
+class HealthyAvailability:
+    @staticmethod
+    def snapshot(service):
+        return AvailabilitySnapshot(
+            service=service,
+            state="healthy",
+            desired_replicas=1,
+            available_replicas=1,
+            ready_replicas=1,
+            updated_replicas=1,
+            reason="desired_replicas_ready",
+        )
+
+
 @pytest.mark.asyncio
 async def test_confirmed_service_down_creates_pageable_incident():
     settings = replace(
@@ -228,6 +242,7 @@ async def test_confirmed_service_down_creates_pageable_incident():
         llm_services=(),
         llm_log_services=(),
         availability_sustained_polls=2,
+        recovery_polls=2,
     )
     recorder = ApprovalRecorder()
     store = IncidentStore(cooldown_seconds=0)
@@ -263,3 +278,15 @@ async def test_confirmed_service_down_creates_pageable_incident():
     assert REGISTRY.get_sample_value(
         "aiops_incidents_created_total", counter_labels
     ) == created_before + 1
+    assert REGISTRY.get_sample_value(
+        "aiops_incident_active", counter_labels
+    ) == 1
+
+    worker.availability = HealthyAvailability()
+    await worker.poll_once()
+    await worker.poll_once()
+
+    assert (await store.list())[0].status.value == "resolved"
+    assert REGISTRY.get_sample_value(
+        "aiops_incident_active", counter_labels
+    ) == 0

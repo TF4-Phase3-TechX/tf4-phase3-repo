@@ -44,13 +44,16 @@ an initial operator-facing seed, not a production-optimal threshold and never
 fires an incident by itself.
 
 For a confirmed availability incident, the worker increments
-`aiops_incidents_created_total{incident_type="service_availability", ...}`.
-The worker maps high severity to the counter label `critical` and all other
-incident severities to `warning`; the generic `AIOpsIncidentDetected` rule
-preserves that label. Production Alertmanager routes both severities through
-its mounted `alertmanager-slack-webhook` secret. This documents and implements
-the route, but only a timestamped receipt from `#tf4-alerts` proves real
-delivery.
+`aiops_incidents_created_total{incident_type="service_availability", ...}` for
+audit and sets `aiops_incident_active{...}=1` until the store observes enough
+fully covered recovery polls. The active gauge avoids losing a short counter
+pulse between Prometheus scrapes and lets Alertmanager send a resolved
+notification when it returns to zero. The worker maps high severity to the
+notification label `critical` and all other incident severities to `warning`;
+the generic `AIOpsIncidentDetected` rule preserves that label. Production
+Alertmanager routes both severities through its mounted
+`alertmanager-slack-webhook` secret. This documents and implements the route,
+but only a timestamped receipt from `#tf4-alerts` proves real delivery.
 
 Detector decisions use a configurable absolute safety floor plus a robust
 baseline derived independently from each service's own recent series. The
@@ -125,7 +128,7 @@ For a controlled live drill, CDO must first confirm the namespace, Deployment al
 | POST | `/v1/incidents/{id}/approve` | Approve and execute the bound action |
 | POST | `/v1/incidents/{id}/reject` | Reject the action |
 
-The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incidents_created_total`; persistent state and automatic Jira creation remain follow-up work.
+The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incident_active`, while `aiops_incidents_created_total` remains the audit counter; persistent state and automatic Jira creation remain follow-up work.
 
 The unavailable-source semantics, production `app_llm_*` metric correction and operator summary concepts from the team's [PR #208](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/208) are consolidated into this service. The old prototype tree is not duplicated as a second runtime.
 

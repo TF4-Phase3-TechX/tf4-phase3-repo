@@ -31,6 +31,11 @@ incidents_created = Counter(
     "Incidents created",
     ["incident_type", "service", "severity"],
 )
+incidents_active = Gauge(
+    "aiops_incident_active",
+    "Whether an incident is currently active and should remain routed to on-call",
+    ["incident_type", "service", "severity"],
+)
 incidents_resolved = Counter(
     "aiops_incidents_auto_resolved_total",
     "Incidents resolved after consecutive fully covered healthy polls",
@@ -48,6 +53,10 @@ service_state = Gauge(
     ["service", "state"],
 )
 SERVICE_STATES = ("healthy", "busy", "idle", "degraded", "down", "unknown")
+
+
+def _notification_severity(incident_severity: str) -> str:
+    return "critical" if incident_severity == "high" else "warning"
 
 
 def _series_service(series: dict[str, Any]) -> str | None:
@@ -252,6 +261,11 @@ class AIOpsWorker:
                     self.settings.recovery_polls,
                 )
                 if resolved:
+                    incidents_active.labels(
+                        resolved.incident_type,
+                        resolved.affected_service,
+                        _notification_severity(resolved.severity),
+                    ).set(0)
                     incidents_resolved.labels(
                         resolved.incident_type, resolved.affected_service
                     ).inc()
@@ -303,12 +317,17 @@ class AIOpsWorker:
                 ))
             stored, created = await self.store.upsert(incident)
             if created:
-                notification_severity = "critical" if incident.severity == "high" else "warning"
+                notification_severity = _notification_severity(incident.severity)
                 incidents_created.labels(
                     incident.incident_type,
                     incident.affected_service,
                     notification_severity,
                 ).inc()
+                incidents_active.labels(
+                    incident.incident_type,
+                    incident.affected_service,
+                    notification_severity,
+                ).set(1)
                 handler = getattr(self.remediation, "handle_incident", None)
                 if handler:
                     await handler(stored)
