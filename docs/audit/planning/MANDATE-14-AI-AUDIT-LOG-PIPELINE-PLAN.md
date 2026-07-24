@@ -30,6 +30,10 @@ Product Reviews Pod
         -> S3 Object Lock COMPLIANCE: bằng chứng dài hạn
 ```
 
+Task 62 chốt tên Log Group triển khai là
+`/aws/eks/techx-tf4/ai-audit`. Tên này thay thế tên working-design
+`/tf4/mandate-14/ai-tool-audit` trong các bản kế hoạch trước.
+
 Chọn **OpenTelemetry Collector** làm collector chính vì ứng dụng đang phát Python
 structured logs qua OTLP và collector hiện đã nhận log của `product-reviews`.
 Không triển khai thêm Fluent Bit song song trong phạm vi này vì sẽ tạo hai đường
@@ -133,7 +137,7 @@ flowchart LR
     C -->|"Có + schema hợp lệ"| E["AI Audit pipeline<br/>redaction defense + batch + retry"]
     C -->|"Marker có nhưng schema sai"| Q["Safe validation error<br/>không chứa raw content + P0 alert"]
     E --> F["OpenSearch<br/>ai-tool-audit-*<br/>hot copy"]
-    E --> G["CloudWatch Logs<br/>/tf4/mandate-14/ai-tool-audit"]
+    E --> G["CloudWatch Logs<br/>/aws/eks/techx-tf4/ai-audit"]
     G --> H["Subscription Filter<br/>toàn bộ dedicated group"]
     H --> I["Amazon Data Firehose<br/>GZIP + error prefix"]
     I --> J["S3 Object Lock COMPLIANCE<br/>evidence authority"]
@@ -229,7 +233,7 @@ exporters:
 
   awscloudwatchlogs/ai_tool_audit:
     region: us-east-1
-    log_group_name: /tf4/mandate-14/ai-tool-audit
+    log_group_name: /aws/eks/techx-tf4/ai-audit
     log_stream_name: "otel-{ServiceName}-{InstanceId}"
     raw_log: false
     sending_queue:
@@ -314,10 +318,10 @@ CDO-08 approval và CDO-07 sign-off.
 | Storage | Resource đề xuất | Mục đích | Retention |
 |---|---|---|---|
 | OpenSearch | `ai-tool-audit-yyyy-MM-dd`, read alias `ai-tool-audit-read` | Hot search, dashboard, correlation | 7 ngày, ISM delete sau ngày 7 |
-| CloudWatch Logs | `/tf4/mandate-14/ai-tool-audit` | Logs Insights, metric filter, alarm, nguồn Firehose | 7 ngày |
+| CloudWatch Logs | `/aws/eks/techx-tf4/ai-audit` | Logs Insights, metric filter, alarm, nguồn Firehose | 7 ngày |
 | S3 | `tf4-ai-audit-logs-<account-id>` / prefix `mandate-14/ai-tool-audit/` | Evidence authority | 90 ngày; Object Lock `COMPLIANCE` 90 ngày |
 | Firehose error logs | `/aws/firehose/tf4-ai-audit-errors` | Điều tra lỗi delivery | 7 ngày |
-| Safe validation errors | `/tf4/mandate-14/ai-tool-audit-validation` | Schema/privacy alert, không chứa content | 7 ngày |
+| Safe validation errors | `/aws/eks/techx-tf4/ai-audit-validation` | Schema/privacy alert, không chứa content | 7 ngày |
 
 S3 controls:
 
@@ -375,7 +379,7 @@ traces, metrics, general logs hoặc quyền Kubernetes hiện hữu.
 | `product-reviews` Pod Identity | Bedrock hiện hữu; gửi OTLP nội bộ | Không có quyền CloudWatch, Firehose, S3 AI audit |
 | OTel Collector service account role qua Pod Identity/IRSA | `logs:CreateLogStream`, `logs:DescribeLogStreams`, `logs:PutLogEvents` trên đúng Log Group/streams | Không `CreateLogGroup`, không đọc/query log, không S3/Firehose/KMS data access |
 | `tf4-ai-audit-cwl-to-firehose-role` | `firehose:PutRecord`, `firehose:PutRecordBatch` trên đúng delivery stream | Không stream khác; trust policy có `aws:SourceArn` và `aws:SourceAccount` |
-| `tf4-ai-audit-firehose-to-s3-role` | `s3:PutObject`, multipart actions tối thiểu và bucket location trên đúng bucket/prefix | Không đọc/query log; không KMS; không delete; không đổi retention/versioning/policy |
+| `tf4-ai-audit-firehose-to-s3-role` | `s3:PutObject`, `s3:GetObject`, multipart actions tối thiểu và bucket location trên đúng bucket/prefix | Không đọc object ngoài prefix delivery/error; không đọc/query log; không KMS; không delete; không đổi retention/versioning/policy |
 | CDO-07 SSO Audit role | CloudWatch read/query đúng Log Group; S3 `ListBucket` có prefix condition + `GetObject`/retention metadata đúng prefix; OpenSearch read/search đúng index | Không KMS; không Put/Delete, không lifecycle/retention write, không Firehose write, không OpenSearch write |
 | CDO-08 / Platform runtime role | Health/config metadata cần thiết | Không đọc raw AI audit object/log nếu không có incident approval |
 | Terraform apply role | Tạo/cập nhật control-plane config qua reviewed IaC | Không `s3:GetObject`; không `DeleteObjectVersion`; không `BypassGovernanceRetention` |
@@ -384,7 +388,7 @@ traces, metrics, general logs hoặc quyền Kubernetes hiện hữu.
 ### 7.2. Resource scoping bắt buộc
 
 - CloudWatch ARN:
-  `arn:aws:logs:us-east-1:<account-id>:log-group:/tf4/mandate-14/ai-tool-audit:*`
+  `arn:aws:logs:us-east-1:<account-id>:log-group:/aws/eks/techx-tf4/ai-audit:*`
 - Firehose ARN:
   `arn:aws:firehose:us-east-1:<account-id>:deliverystream/tf4-ai-audit-logs`
 - Dùng hai role riêng `tf4-ai-audit-cwl-to-firehose-role` và
@@ -563,7 +567,7 @@ Lưu output:
 
 ```bash
 aws logs describe-log-groups \
-  --log-group-name-prefix /tf4/mandate-14/ai-tool-audit
+  --log-group-name-prefix /aws/eks/techx-tf4/ai-audit
 
 aws s3api get-bucket-versioning \
   --bucket tf4-ai-audit-logs-<account-id>
@@ -594,7 +598,8 @@ Negative tests bắt buộc:
 - Audit role query/read được đúng AI audit resources.
 - Audit role không ghi/xóa CloudWatch, S3 hoặc OpenSearch.
 - Collector role không đọc CloudWatch/S3 và không ghi log group khác.
-- Firehose role không đọc object và không ghi prefix khác.
+- Firehose role không đọc object ngoài prefix delivery/error và không ghi prefix
+  khác.
 - Platform runtime role không đọc audit data.
 - Policy AI audit mới không chứa `s3:*`, `logs:*`, `es:*`, `kms:*` hoặc
   `Resource: "*"` ngoài action list/describe bắt buộc, có justification.
