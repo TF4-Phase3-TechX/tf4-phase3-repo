@@ -108,11 +108,11 @@ resource "aws_kms_alias" "cloudtrail" {
 }
 
 # CloudWatch Log Group nhận log từ CloudTrail
-# Retention: 90 ngày (đủ cho forensic trong mandate)
+# Retention: 7 ngày (Tối ưu chi phí lưu trữ, log lịch sử 90 ngày đã lưu trên S3 WORM)
 # Mã hóa bằng KMS CMK ở trên
 resource "aws_cloudwatch_log_group" "cloudtrail" {
   name              = "/aws/cloudtrail/tf4-general-cloudtrail"
-  retention_in_days = 90
+  retention_in_days = 7
   kms_key_id        = aws_kms_key.cloudtrail.arn
 
   tags = var.tags

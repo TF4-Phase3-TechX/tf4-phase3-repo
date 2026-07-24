@@ -35,7 +35,25 @@ data "aws_iam_policy_document" "plan_role_security_alerting_read" {
     resources = [
       "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts",
       "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
+      # H2 Anomaly Detection SNS topic
+      "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-anomaly",
     ]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingCloudWatchState"
+    effect = "Allow"
+
+    actions = [
+      "cloudwatch:DescribeAlarms",
+      "cloudwatch:DescribeAlarmsForMetric",
+      "cloudwatch:DescribeAnomalyDetectors",
+      "cloudwatch:GetMetricStatistics",
+      "cloudwatch:ListTagsForResource",
+      "logs:DescribeMetricFilters",
+    ]
+
+    resources = ["*"]
   }
 }
 

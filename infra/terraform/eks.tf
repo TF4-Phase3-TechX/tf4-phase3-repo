@@ -26,8 +26,9 @@ module "eks" {
     "karpenter.sh/node-security-group" = var.cluster_name
   }
 
-  # Bật Control Plane Logging
-  cluster_enabled_log_types = ["api", "audit", "authenticator"]
+  # Bật Control Plane Logging theo tuân thủ ADR-005 / AUDIT-001 (Đã tắt 'api' log để tối ưu chi phí CloudWatch Ingestion)
+  cluster_enabled_log_types              = ["audit", "authenticator"]
+  cloudwatch_log_group_retention_in_days = 7
 
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true

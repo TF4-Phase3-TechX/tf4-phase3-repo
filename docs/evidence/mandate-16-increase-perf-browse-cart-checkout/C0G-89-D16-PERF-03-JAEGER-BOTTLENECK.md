@@ -1,117 +1,84 @@
-# C0G-89 — D16-PERF-03: Xác định Critical-Path Latency Bottleneck với Jaeger
+# C0G-89 — D16-PERF-03: Jaeger metric observation
 
 **Jira:** `C0G-89` — `[D16-PERF-03] Identify Critical-Path Latency Bottleneck with Jaeger`  
-**Trạng thái evidence:** Ready for Tech Lead review  
-**Nguồn dữ liệu:** [C0G-88 baseline](baseline-and-resources-consump/BASELINE-PERFORMANCE.md)
+**Evidence status:** Captured; trace-level bottleneck is not established by this metrics-only refresh.
 
-## Phạm vi và dữ liệu
+## Scope and provenance
 
-Phân tích này chỉ dùng dữ liệu đã lưu của load test 200 concurrent users trong cửa sổ `2026-07-18T18:50:45Z` đến `2026-07-18T19:31:33Z`.
+This replaces the removed stale 2026-07-18 Locust/trace baseline with Jaeger span-metric evidence for the following historical Grafana range:
 
-> Cửa sổ C0G-88 dài 40m48s nên không phải strict 15-minute acceptance run. Điều này không làm thay đổi kết luận trace-level bên dưới, nhưng kết quả sau tối ưu vẫn phải được xác nhận lại bằng strict run riêng.
+- **Dashboard-local (ICT, UTC+07:00):** `2026-07-23 11:03:00`–`11:18:00`
+- **UTC:** `2026-07-23T04:03:00Z`–`2026-07-23T04:18:00Z`
+- **Dashboard:** [Flash Sale Verification Dashboard](http://localhost:13000/grafana/d/flash-sale-verification/flash-sale-verification-dashboard?orgId=1&from=2026-07-23T04%3A03%3A00.000Z&to=2026-07-23T04%3A18%3A00.000Z&timezone=browser)
+- **Dashboard image:** [`grafana/flash-sale-verification-20260723T0403Z-0418Z.png`](grafana/flash-sale-verification-20260723T0403Z-0418Z.png)
+- **Raw metrics:** [`jaeger/span-metrics-20260723T0403Z-0418Z.json`](jaeger/span-metrics-20260723T0403Z-0418Z.json)
+- **Locust run evidence:** [`locust/Locust-20260723T040040Z-041540Z.html`](locust/Locust-20260723T040040Z-041540Z.html), `2026-07-23T04:00:40Z`–`04:15:40Z` (15 minutes; SHA-256 `6bb44957a89015961057cdc693cbd4df472640050de6d714a6b53956abe63559`)
+- **Trace selection and exports:** [`jaeger/checkout-trace-selection-20260723T040040Z-041540Z.md`](jaeger/checkout-trace-selection-20260723T040040Z-041540Z.md)
 
-| Flow | Endpoint | Requests | Failures | p95 | p99 |
-|---|---|---:|---:|---:|---:|
-| Browse | `GET /` | 3,894 | 1 | 310ms | 520ms |
-| Cart read | `GET /api/cart` | 10,918 | 0 | 290ms | 500ms |
-| Cart write | `POST /api/cart` | 21,505 | 0 | 99ms | 320ms |
-| **Checkout** | **`POST /api/checkout`** | **7,095** | **0** | **500ms** | **820ms** |
+The Locust report overlaps, but is not identical to, the Grafana metric interval (`04:03:00Z`–`04:18:00Z`); this document does not treat them as one exact acceptance window.
 
-Nguồn: [`locust/stats.csv`](baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/locust/stats.csv). Trong phạm vi Browse → Cart → Checkout, `POST /api/checkout` có p99 cao nhất nên là flow bị ảnh hưởng.
+All latency values below are **Jaeger-derived server/internal span metrics in milliseconds**, not Locust client percentiles. Each point is:
 
-## Jaeger evidence
-
-| Vai trò | Trace ID | Loại request | Độ dài root trace | `PlaceOrder` server span | Preparation span |
-|---|---|---|---:|---:|---:|
-| Slow checkout | [`c2d1f3c03b6abbf5ac625dd285e74bb3`](baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/traces/checkout-slow-c2d1f3c03b6abbf5ac625dd285e74bb3.json) | `user_checkout_multi`, 2 order items | 1,647.316ms | 1,006.513ms | 759.897ms |
-| Representative checkout | [`0606c19c958648f9a92402a763394dc2`](baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/traces/checkout-representative-0606c19c958648f9a92402a763394dc2.json) | `user_checkout_single`, 1 order item | 402.660ms | 57.072ms | 29.539ms |
-
-Trace IDs được chọn từ [`selected-trace-ids.txt`](baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/traces/selected-trace-ids.txt). Cả hai trace có `rpc.grpc.status_code=0`; slow trace trả HTTP `200`.
-
-## Critical path và bottleneck
-
-### Slow trace critical path
-
-```text
-POST /api/checkout (1,015.254ms)
-└─ CheckoutService/PlaceOrder server (1,006.513ms)
-   └─ prepareOrderItemsAndShippingQuoteFromCart (759.897ms)
-      ├─ GetCart / Valkey (1.609ms / 0.764ms)
-      ├─ ProductCatalog/GetProduct #1 → PostgreSQL (183.782ms / 130.688ms)
-      ├─ Currency/Convert #1 (10.724ms)
-      ├─ ProductCatalog/GetProduct #2 → PostgreSQL (250.679ms / 83.722ms)
-      ├─ Currency/Convert #2 (298.793ms)
-      ├─ Shipping quote (7.525ms)
-      └─ Currency/Convert shipping (6.282ms)
-   ├─ Payment/Charge (24.778ms)
-   └─ Ship order (2.389ms)
+```promql
+histogram_quantile(q, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{...}[5m])))
 ```
 
-`prepareOrderItemsAndShippingQuoteFromCart` là slowest application span trong `PlaceOrder`:
+The query range contains 61 points at a 15-second step. Each value is a rolling five-minute estimate; therefore the first points include observations as early as `2026-07-23T03:58:00Z`.
+
+## Observed span metrics
+
+| Scope / labels | p50 range | p95 range | p99 range | Peak observation |
+|---|---:|---:|---:|---|
+| Frontend browse server spans: `GET /`, `GET /product.*`, `GET /api/products.*`, `GET /api/data.*` | 39.6–128.8ms | 329.1–1,701.7ms | 659.7–3,639.2ms | p99 **3,639.2ms** |
+| Frontend cart server spans: `(GET\|POST\|DELETE) /api/cart` | 48.5–180.1ms | 315.4–1,598.6ms | 567.8–1,979.4ms | p99 **1,979.4ms** |
+| Frontend checkout server span: `POST /api/checkout` | 303.9–553.4ms | 896.1–3,815.3ms | 1,143.3–4,848.0ms | p99 **4,848.0ms** |
+| Checkout server span: `oteldemo.CheckoutService/PlaceOrder` | 129.8–245.2ms | 399.6–965.5ms | 719.3–2,309.9ms | p99 **2,309.9ms** |
+| Checkout internal span: `prepareOrderItemsAndShippingQuoteFromCart` | 42.1–70.0ms | 197.3–728.7ms | 503.3–1,427.8ms | p99 **1,427.8ms** |
+
+The raw JSON records the exact PromQL, label filters, timestamps, and every returned point; the table only reports the minimum and maximum point in each 15-minute range.
+
+## Narrow observation
+
+`POST /api/checkout` had the highest observed p99 span-metric peak among the three frontend flow groups in this window (**4,848.0ms**). Its peak is higher than the matched checkout-service `PlaceOrder` p99 peak (**2,309.9ms**).
+
+This identifies a latency concentration at the frontend checkout server-span boundary during the sampled period. It does **not** prove that the difference is queueing, frontend CPU, a particular downstream dependency, or a specific code path. The preparation span is present and has its own p99 peak (**1,427.8ms**), but span metrics do not expose parent/child timing for a single request.
+
+## Trace-level critical path
+
+The supplied Locust report proves a 15-minute load run from `2026-07-23T04:00:40Z` to `04:15:40Z`. It reports `POST /api/checkout` p95/p99 of **5,200ms / 6,200ms** over 3,195 requests, with 11 failures; this is run provenance, not a comparison to the removed baseline.
+
+The trace selection exports include two successful `POST /api/checkout` requests from that run. The slow trace (`72708ed65492c14ff800826e3857eadf`, HTTP 200 and gRPC 0) establishes this parent/child path:
 
 ```text
-759.897ms / 1,006.513ms = 75.5%
+frontend POST /api/checkout (1,086.296ms)
+└─ checkout PlaceOrder server (979.617ms)
+   └─ prepareOrderItemsAndShippingQuoteFromCart (949.506ms)
 ```
 
-Nó cao hơn representative trace `730.358ms` (từ `29.539ms` lên `759.897ms`, xấp xỉ `25.7×`). Payment (`24.778ms`) và ship-order (`2.389ms`) không phải bottleneck của trace này.
+Preparation occupies **96.9%** of the slow trace's `PlaceOrder` server span (`949.506 / 979.617ms`). The same trace family has a representative success (`94c68de4ca5269a7a092129a71ed4be9`): frontend checkout 46.849ms, `PlaceOrder` 36.483ms, preparation 12.700ms. See the exported JSON and selection rationale in [`jaeger/checkout-trace-selection-20260723T040040Z-041540Z.md`](jaeger/checkout-trace-selection-20260723T040040Z-041540Z.md).
 
-## Root-cause statement
+This establishes the trace-level bottleneck relationship for the selected slow successful checkout. It does not establish why preparation was slow, that it is slow for every checkout, or a code-level cause.
 
-**Root cause:** checkout preparation xử lý từng cart item theo thứ tự: `GetProduct` rồi `Convert` cho item hiện tại trước khi bắt đầu item kế tiếp. Với slow multi-item trace, hai cặp work này tạo serial dependency trên critical path:
+## Evidence limits
 
-- item 1: `GetProduct` `183.782ms` → `Convert` `10.724ms`;
-- item 2: `GetProduct` `250.679ms` → `Convert` `298.793ms`.
+- The Grafana/Jaeger histograms aggregate spans; without the selected trace exports they cannot establish an individual trace critical path. The exports do not establish item count, database query count, retry, cache state, pool wait, serialization, or causality.
+- Do not compare the Locust report or rolling span percentiles numerically with the removed Locust baseline, and do not use them as a Mandate 16 acceptance or before/after performance verdict.
+- The Locust run and Grafana metric ranges overlap but differ; no exact cross-source client/metric correlation is claimed.
+- No resource, HPA, Kubernetes, or load-generator configuration evidence was collected for this refresh, by request.
 
-Tổng durations của hai `GetProduct` client spans là `434.461ms`; hai `Convert` client spans là `309.517ms`. Code hiện tại xác nhận thứ tự này: [`prepOrderItems`](../../../techx-corp-platform/src/checkout/main.go#L579-L600) dùng vòng lặp tuần tự, và [`prepareOrderItemsAndShippingQuoteFromCart`](../../../techx-corp-platform/src/checkout/main.go#L447-L485) chỉ quote shipping sau khi đã chuẩn bị toàn bộ item.
+## Acceptance checklist
 
-Đây là kết luận từ span parent/child, `startTime`, duration và code path hiện hữu; không suy luận từ CPU hay memory snapshot.
+- [x] Exact Grafana window and timezone recorded.
+- [x] Jaeger span-metric queries and raw returned values preserved.
+- [x] Dashboard image captured for the requested range.
+- [x] Stale Locust, trace, and resource baseline evidence removed.
+- [x] Trace-level critical-path bottleneck established — representative Jaeger trace exports preserved.
+- [ ] Tech Lead review completed.
 
-## Các giả thuyết đã kiểm tra
+## Known out-of-scope references
 
-| Hạng mục Jira yêu cầu | Quan sát từ trace/code | Kết luận |
-|---|---|---|
-| Repeated span | Hai `ProductCatalog/GetProduct`, hai product `postgresql`, hai item-level `Currency/Convert` trong order 2 items. | Có repeated per-item calls; đây là nguồn serial work. |
-| Sequential downstream call | Item 2 bắt đầu sau item 1 conversion; source loop xử lý từng item tuần tự. | Có serial dependency đã xác nhận. |
-| DB query count | 2 PostgreSQL `SELECT ... WHERE p.id = $1` spans, một cho mỗi product lookup. | 2 queries trong trace; không phải N+1 vượt ngoài số item ở sample này. |
-| Connection wait | Không có span/tag pool wait hoặc `sql.conn.acquire`. | Không đủ telemetry để kết luận có/không connection wait. |
-| Serialization | Không có serialization span; JSON shipping payload không nằm trên slow segment đáng kể. | Không đủ telemetry để kết luận serialization là cause. |
-| Cache miss | Cart dùng Valkey `HGET` thành công trong `0.764ms`; catalog trace cho thấy PostgreSQL query nhưng không có cache-hit/miss tag. | Cart cache không phải bottleneck; không kết luận catalog cache miss. |
-| Retry | `retryRead` tồn tại cho read calls, nhưng selected slow trace không có error status, retry event hoặc repeated failed attempt. | Không có retry evidence trong trace này. |
-| Queue buildup | `kafkaQueueProblems=off`; không có queue-wait/error span trong critical preparation branch. | Không có queue buildup evidence trong trace này. |
+The requested deletion leaves historical label-evidence paths in the following AIOps calibration files. They were intentionally not changed because they are outside this refresh scope:
 
-## Đề xuất optimization (không thêm compute)
-
-Thay đổi `prepOrderItems` để thực hiện product lookup và currency conversion cho các cart item **concurrently với bounded fan-out**, sau đó ghép kết quả theo index ban đầu. Không thay đổi replica, CPU, memory hoặc HPA.
-
-- Giới hạn concurrency theo số cart items (và một upper bound nhỏ) để không tạo request burst không kiểm soát đến Product Catalog/Currency.
-- Dùng `errgroup.WithContext` hoặc `sync.WaitGroup` + cancellation để trả error an toàn và giữ nguyên thứ tự items.
-- Giữ `retryRead` per-call hiện có; không retry payment/ship-order.
-- Shipping quote có thể chạy song song với item preparation vì nó chỉ dùng `address` và `cartItems`; đây là follow-up tối thiểu sau khi bounded item fan-out được benchmark.
-
-### Expected p99 impact
-
-Nếu chỉ song song hóa hai item branches của trace mẫu, critical duration của phần item work chuyển từ tổng `743.978ms` (`434.461ms + 309.517ms`) sang branch dài nhất khoảng `549.472ms` (`250.679ms + 298.793ms`): ceiling lý thuyết là giảm khoảng `194.506ms` trên preparation span.
-
-Do đó mục tiêu thực nghiệm hợp lý là giảm checkout p99 từ baseline `820ms` về khoảng **625ms hoặc thấp hơn**, nhưng đây là **estimate, không phải SLO claim**. Tail latency, downstream contention, item count và trace sampling có thể làm kết quả khác; phải xác nhận bằng strict 200-user/15-minute post-change run.
-
-## Risks và trade-offs
-
-- Bounded fan-out giảm serial latency nhưng tăng concurrent load lên Product Catalog, PostgreSQL và Currency; cần giới hạn rõ ràng và đo error rate/p99 sau thay đổi.
-- Cancellation/error aggregation phức tạp hơn; response phải vẫn fail atomically trước payment nếu bất kỳ preparation call nào lỗi.
-- Kết quả `orderItems` phải giữ đúng thứ tự cart để không thay đổi order semantics.
-- Không song song hóa payment, shipping fulfillment, empty-cart hoặc Kafka publish vì chúng có side effect/thứ tự nghiệp vụ.
-
-## Jira acceptance checklist
-
-- [x] Bottleneck có Jaeger evidence.
-- [x] Không kết luận chỉ từ phỏng đoán.
-- [x] Có before span duration.
-- [x] Có root-cause statement rõ.
-- [x] Có optimization proposal không thêm compute.
-- [ ] Tech Lead review hoàn tất.
-
-## Tech Lead review
-
-| Reviewer | Ngày | Quyết định | Ghi chú |
-|---|---|---|---|
-| Pending | — | Pending | Cần xác nhận bounded fan-out không vi phạm downstream capacity và order semantics trước khi triển khai. |
+- `docs/aiops/evidence/production-informed-calibration.json`
+- `docs/aiops/evidence/tf4-prometheus-labelled-windows-20260721.json`
+- `techx-corp-platform/src/aiops/benchmark/prometheus-calibration-job.yaml`

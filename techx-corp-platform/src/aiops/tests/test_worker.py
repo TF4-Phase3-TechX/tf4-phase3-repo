@@ -1,3 +1,5 @@
+import asyncio
+import time
 from dataclasses import replace
 
 import pytest
@@ -35,6 +37,40 @@ class RecordingDetector:
     def llm_error(self, service, series, query, log_count):
         self.llm_services.append(service)
         return Decision(anomalous=False, incident_type="llm_timeout_error", service=service)
+
+
+class BlockingDetector(RecordingDetector):
+    @staticmethod
+    def latency(service, series, query):
+        time.sleep(0.1)
+        return Decision(
+            anomalous=False,
+            incident_type="service_latency_spike",
+            service=service,
+        )
+
+
+@pytest.mark.asyncio
+async def test_cpu_bound_detection_does_not_block_health_event_loop():
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("checkout",),
+            llm_services=(),
+            llm_log_services=(),
+        ),
+        EmptyTelemetry(),
+        BlockingDetector(),
+        IncidentStore(),
+        remediation=object(),
+    )
+
+    poll = asyncio.create_task(worker.poll_once())
+    # This timer represents a health/readiness request sharing FastAPI's event
+    # loop. It must run while synchronous detector CPU work is in progress.
+    await asyncio.wait_for(asyncio.sleep(0.02), timeout=0.08)
+    assert not poll.done()
+    await poll
 
 
 @pytest.mark.asyncio

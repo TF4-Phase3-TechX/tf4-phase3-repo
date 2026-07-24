@@ -157,7 +157,9 @@ class WebsiteUser(HttpUser):
         with self.tracer.start_as_current_span("user_ask_product_ai_assistant", context=Context(), attributes={"product.id": product, "question": question}):
             logging.info(f"Asking the AI Assistant a question for: {product} {question}")
             question = {
-                "question": question
+                "question": question,
+                "sessionId": "mock-session-id",
+                "userId": "mock-user-id"
             }
             self.client.post("/api/product-ask-ai-assistant/" + product, json=question)
 

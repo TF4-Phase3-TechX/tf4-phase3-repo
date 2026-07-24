@@ -80,11 +80,25 @@ class AIOpsWorker:
         decisions = []
         for service in self.settings.services:
             query = latency_query(service, self.settings.namespace)
-            decisions.append(self.detector.latency(service, await query_range(query), query))
+            decisions.append(
+                await asyncio.to_thread(
+                    self.detector.latency,
+                    service,
+                    await query_range(query),
+                    query,
+                )
+            )
             query = error_rate_query(
                 service, self.settings.minimum_request_count, self.settings.namespace
             )
-            decisions.append(self.detector.error_rate(service, await query_range(query), query))
+            decisions.append(
+                await asyncio.to_thread(
+                    self.detector.error_rate,
+                    service,
+                    await query_range(query),
+                    query,
+                )
+            )
 
         # Discover every instrumented LLM caller from the metric label. This
         # prevents a failure in a future caller (for example shopping-copilot)
@@ -130,7 +144,8 @@ class AIOpsWorker:
         if attributed_series:
             for service, item in attributed_series:
                 decisions.append(
-                    self.detector.llm_error(
+                    await asyncio.to_thread(
+                        self.detector.llm_error,
                         service,
                         [item],
                         query,
@@ -142,8 +157,12 @@ class AIOpsWorker:
             # healthy zero. Expected callers are used only for that status.
             for service in self.settings.llm_services:
                 decisions.append(
-                    self.detector.llm_error(
-                        service, [], query, None if logs is None else log_counts.get(service, 0)
+                    await asyncio.to_thread(
+                        self.detector.llm_error,
+                        service,
+                        [],
+                        query,
+                        None if logs is None else log_counts.get(service, 0),
                     )
                 )
         for decision in decisions:
@@ -229,7 +248,12 @@ class AIOpsWorker:
                     incident.affected_service,
                     notification_severity,
                 ).inc()
-                self.remediation.request_approval(stored)
+                handler = getattr(self.remediation, "handle_incident", None)
+                if handler:
+                    await handler(stored)
+                else:
+                    # Backward-compatible seam for test doubles and manual-mode adapters.
+                    self.remediation.request_approval(stored)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
         if prometheus_ok:
             last_poll_success.set(time.time())

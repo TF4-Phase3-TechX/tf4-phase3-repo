@@ -112,7 +112,13 @@ func TestPrepOrderItemsPreservesOrderAndUsesOneBatch(t *testing.T) {
 			if id == "first" {
 				time.Sleep(20 * time.Millisecond)
 			}
-			return &pb.Product{Id: id, PriceUsd: usd(map[string]int64{"first": 1, "second": 2, "third": 3}[id], 0)}, nil
+			return &pb.Product{
+				Id:         id,
+				Name:       id + " name",
+				Picture:    id + " picture",
+				Categories: []string{id + " category"},
+				PriceUsd:   usd(map[string]int64{"first": 1, "second": 2, "third": 3}[id], 0),
+			}, nil
 		}},
 		currencySvcClient: currencyClient{
 			convert: func(context.Context, *pb.CurrencyConversionRequest) (*pb.Money, error) {
@@ -145,10 +151,52 @@ func TestPrepOrderItemsPreservesOrderAndUsesOneBatch(t *testing.T) {
 		if received[i].GetUnits() != want || got[i].GetItem() != items[i] || got[i].GetCost().GetUnits() != (want*10) {
 			t.Fatalf("index %d was not preserved: batch=%v item=%v cost=%v", i, received[i], got[i].GetItem(), got[i].GetCost())
 		}
+		if display := got[i].GetProductDisplay(); display.GetName() != items[i].GetProductId()+" name" || display.GetPicture() != items[i].GetProductId()+" picture" || len(display.GetCategories()) != 1 || display.GetCategories()[0] != items[i].GetProductId()+" category" {
+			t.Fatalf("index %d display=%v", i, display)
+		}
 	}
 }
 
-func TestPrepOrderItemsBoundsProductConcurrency(t *testing.T) {
+func TestPrepOrderItemsUSDUsesNoCurrencyRPCs(t *testing.T) {
+	var convertCalls, batchCalls int
+	cs := &checkout{
+		productCatalogSvcClient: productClient{get: func(_ context.Context, id string) (*pb.Product, error) {
+			return &pb.Product{
+				Id:         id,
+				Name:       id + " name",
+				Picture:    id + " picture",
+				Categories: []string{id + " category"},
+				PriceUsd:   usd(map[string]int64{"first": 1, "second": 2}[id], 500000000),
+			}, nil
+		}},
+		currencySvcClient: currencyClient{
+			convert: func(context.Context, *pb.CurrencyConversionRequest) (*pb.Money, error) {
+				convertCalls++
+				return nil, fmt.Errorf("unexpected conversion")
+			},
+			batch: func(context.Context, *pb.BatchCurrencyConversionRequest) (*pb.BatchCurrencyConversionResponse, error) {
+				batchCalls++
+				return nil, fmt.Errorf("unexpected batch conversion")
+			},
+		},
+	}
+
+	items := cartItems("first", "second")
+	got, err := cs.prepOrderItems(context.Background(), items, "USD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if convertCalls != 0 || batchCalls != 0 {
+		t.Fatalf("convert=%d batch=%d, want zero", convertCalls, batchCalls)
+	}
+	for i, want := range []int64{1, 2} {
+		if got[i].GetItem() != items[i] || got[i].GetCost().GetCurrencyCode() != "USD" || got[i].GetCost().GetUnits() != want || got[i].GetCost().GetNanos() != 500000000 || got[i].GetProductDisplay().GetName() != items[i].GetProductId()+" name" {
+			t.Fatalf("index %d item=%v cost=%v display=%v", i, got[i].GetItem(), got[i].GetCost(), got[i].GetProductDisplay())
+		}
+	}
+}
+
+func TestPrepOrderItemsFetchesProductsSequentially(t *testing.T) {
 	var mu sync.Mutex
 	active, maxActive := 0, 0
 	cs := &checkout{
@@ -170,9 +218,6 @@ func TestPrepOrderItemsBoundsProductConcurrency(t *testing.T) {
 			return &pb.Product{Id: id, PriceUsd: usd(1, 0)}, nil
 		}},
 		currencySvcClient: currencyClient{
-			convert: func(_ context.Context, req *pb.CurrencyConversionRequest) (*pb.Money, error) {
-				return copyMoney(req.GetFrom()), nil
-			},
 			batch: func(_ context.Context, req *pb.BatchCurrencyConversionRequest) (*pb.BatchCurrencyConversionResponse, error) {
 				return &pb.BatchCurrencyConversionResponse{Converted: []*pb.Money{{CurrencyCode: "EUR", Units: 1}, {CurrencyCode: "EUR", Units: 1}, {CurrencyCode: "EUR", Units: 1}, {CurrencyCode: "EUR", Units: 1}}}, nil
 			},
@@ -181,8 +226,8 @@ func TestPrepOrderItemsBoundsProductConcurrency(t *testing.T) {
 	if _, err := cs.prepOrderItems(context.Background(), cartItems("a", "b", "c", "d"), "EUR"); err != nil {
 		t.Fatal(err)
 	}
-	if maxActive > maxConcurrentOrderItemPreparations {
-		t.Fatalf("max product calls = %d, want <= %d", maxActive, maxConcurrentOrderItemPreparations)
+	if maxActive != 1 {
+		t.Fatalf("max product calls = %d, want 1", maxActive)
 	}
 }
 
@@ -220,30 +265,6 @@ func TestPrepOrderItemsRejectsInvalidBatchOutput(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestGetProductsCancellationWaitsForWorkers(t *testing.T) {
-	started := make(chan struct{}, 2)
-	stopped := make(chan struct{}, 2)
-	cs := &checkout{
-		productCatalogSvcClient: productClient{get: func(ctx context.Context, _ string) (*pb.Product, error) {
-			started <- struct{}{}
-			<-ctx.Done()
-			stopped <- struct{}{}
-			return nil, ctx.Err()
-		}},
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	result := make(chan error, 1)
-	go func() { result <- cs.getProducts(ctx, cartItems("a", "b", "c"), make([]*pb.Product, 3)) }()
-	<-started
-	<-started
-	cancel()
-	if err := <-result; err == nil {
-		t.Fatal("expected cancellation error")
-	}
-	<-stopped
-	<-stopped
 }
 
 func TestPlaceOrderPreparationFailuresDoNotWrite(t *testing.T) {
@@ -330,6 +351,7 @@ func TestPlaceOrderKeepsExactMoneyTotal(t *testing.T) {
 	defer shipping.Close()
 
 	items := []*pb.CartItem{{ProductId: "a", Quantity: 2}, {ProductId: "b", Quantity: 3}}
+	var convertCalls int
 	payment := &paymentClient{}
 	cs := &checkout{
 		cartSvcClient: &cartClient{items: items},
@@ -341,6 +363,7 @@ func TestPlaceOrderKeepsExactMoneyTotal(t *testing.T) {
 		}},
 		currencySvcClient: currencyClient{
 			convert: func(_ context.Context, req *pb.CurrencyConversionRequest) (*pb.Money, error) {
+				convertCalls++
 				return copyMoney(req.GetFrom()), nil
 			},
 			batch: func(context.Context, *pb.BatchCurrencyConversionRequest) (*pb.BatchCurrencyConversionResponse, error) {
@@ -356,5 +379,8 @@ func TestPlaceOrderKeepsExactMoneyTotal(t *testing.T) {
 	got := payment.amount.Load()
 	if got == nil || got.GetCurrencyCode() != "USD" || got.GetUnits() != 7 || got.GetNanos() != 500000000 {
 		t.Fatalf("charge=%v, want USD 7.500000000", got)
+	}
+	if convertCalls != 1 {
+		t.Fatalf("convert calls=%d, want 1 shipping conversion", convertCalls)
 	}
 }

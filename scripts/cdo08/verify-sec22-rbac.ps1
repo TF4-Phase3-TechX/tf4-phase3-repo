@@ -18,7 +18,10 @@ function Test-Permission {
     $identity = "system:serviceaccount:${Namespace}:${ServiceAccount}"
     $actual = (& kubectl auth can-i $Verb $Resource --namespace $Namespace --as $identity 2>&1 | Out-String).Trim()
 
-    if ($LASTEXITCODE -ne 0) {
+    # `kubectl auth can-i` deliberately exits 1 when the authorization answer
+    # is `no`. Treat both canonical answers as valid test results and reserve
+    # ERROR for transport, authentication, impersonation, or CLI failures.
+    if ($actual -notin @("yes", "no")) {
         $actual = "ERROR: $actual"
     }
 

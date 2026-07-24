@@ -11,9 +11,10 @@ runbooks:
     incident_type: service_latency_spike
     automatic_action: rollback_previous_replicaset
     preconditions:
-      - Per-incident approval is valid.
+      - A signed policy version pre-authorizes this exact incident/action/target envelope, or a per-incident approval is valid in manual mode.
       - Deployment is allowlisted and retains a previous ReplicaSet.
       - Latency degradation is sustained and user-facing.
+      - Dry-run/preflight resolves both the current and previous templates before mutation.
     verification:
       - Deployment rollout becomes ready.
       - Latency and error rate recover without degrading checkout/storefront SLO.

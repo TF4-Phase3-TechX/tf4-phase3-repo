@@ -15,43 +15,38 @@ Các improvement không được đổi latency lấy compute hoặc correctness
 - Không disable tracing, logging, flagd, retry hay validation để giảm latency.
 - Browse, Cart và Checkout phải giữ kết quả đúng; error rate không được tăng.
 
-## 1. Checkout preparation có khả năng tạo critical path tuần tự
+## 1. Two-worker Product Catalog reads trong Checkout preparation gây quá tải — regression đã xác minh
 
 ### Evidence hiện có
 
 Current Jaeger trace cho thấy `prepareOrderItemsAndShippingQuoteFromCart` mất **21.498 ms**, chiếm khoảng 59% selected `CheckoutService/PlaceOrder` span (**36.348 ms**). Trong phase này trace có Product Catalog, Currency và Quote dependency trước Payment.
 
-Với multi-item cart, mỗi item cần product lookup và currency conversion. Nếu các call này xảy ra tuần tự, critical path sẽ tăng cùng số item và tail latency có thể tăng mạnh hơn khi downstream có jitter hoặc retry.
+Controlled reapply của worker pool hai Product Catalog reads từ PR [#496](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/496) làm Product Catalog quá tải và Checkout fail liên tục dưới load. Để tiếp tục quan sát, `getProducts` đã được trả về một Product Catalog RPC in-flight theo từng Checkout tại commit [`42e10de`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/42e10de) / PR [#558](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/558).
 
-### Câu hỏi cần xác nhận trong baseline chính thức
+Kết luận này chỉ áp dụng cho fan-out hai-worker Product Catalog. Independent Shipping quote parallelization, non-USD `BatchConvert`, validation, retry/deadline và exact-money handling vẫn giữ nguyên trong corrective change; chúng không bị quy kết là nguyên nhân của regression này.
 
-- Multi-item Checkout có p95/p99 cao hơn single-item Checkout ở cùng user load không?
-- Child span nào đóng góp lớn nhất tại p99: Product Catalog, Currency, Quote hay retry/backoff?
-- Shipping quote có độc lập với item preparation không?
-- Có downstream saturation, queue buildup, connection-pool pressure hoặc retry amplification trong sustained window không?
+### Đã xử lý để tiếp tục quan sát
 
-### Hướng xử lý cần đánh giá sau evidence
+- Product Catalog reads trong `getProducts` chạy tuần tự, giữ nguyên thứ tự cart item, retry/deadline và nil-response validation.
+- Parallel order-item preparation với independent Shipping quote vẫn giữ nguyên; lỗi ở một nhánh vẫn cancel nhánh còn lại trước Payment, fulfillment hoặc cart mutation.
+- Non-USD item conversion vẫn dùng `CurrencyService.BatchConvert`, với validation response/cardinality/currency/money và checked money arithmetic.
 
-Đánh giá khả năng rút ngắn critical path bằng cách chỉ concurrent hóa các read operation thực sự độc lập. Nếu chọn approach này, cần bounded concurrency, preserve item ordering, giữ retry/deadline hiện hữu và cancel work đúng cách khi một dependency fail. Payment, shipping fulfillment, cart mutation và post-payment side effects phải tiếp tục có ordering correctness rõ ràng.
+Không dùng finding này để suy ngược một root cause đơn lẻ cho các incident lịch sử không thuộc controlled reapply.
 
-## 2. Checkout confirmation có dấu hiệu downstream work dư thừa
+## 2. Confirmation hydration vẫn có N+1 Product Catalog reads — chuẩn bị implementation
 
 ### Evidence hiện có
 
-Checkout đã tính authoritative order cost trước payment. Sau đó confirmation response cần hydrate product display data; generic product hydration có thể kéo theo Currency work cho một price không phải dữ liệu được confirmation page dùng để hiển thị.
+Checkout đã tính authoritative `cost` trước Payment. Sau khi `CheckoutGateway.placeOrder` trả về, `frontend/pages/api/checkout.ts` vẫn `await Promise.all(items.map(...))` và gọi `ProductCatalogService.getProductForDisplay(productId)` một lần cho từng order item. Mỗi call là một Product Catalog gRPC `GetProduct`; multi-item cart tạo N RPC độc lập trên confirmation path trước khi frontend API trả response.
 
-Điều này có thể tạo thêm Product Catalog/Currency dependency trên request path sau khi Checkout business flow đã hoàn thành phần cost calculation cần thiết.
+PR [#496](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/496) đã giữ checkout-returned monetary fields là authoritative và chỉ lấy `name`, `picture`, `categories`; nó đã loại Currency conversion khỏi confirmation hydration nhưng chưa loại N Product Catalog reads này. `cost` và shipping cost tiếp tục lấy trực tiếp từ Checkout response.
 
-### Câu hỏi cần xác nhận
+### Chuẩn bị implementation — contract audit trước
 
-- Confirmation page/consumer thực sự cần những field product nào?
-- Có consumer nào phụ thuộc vào hydrated product price theo selected currency không?
-- Bao nhiêu Product Catalog/Currency request được sinh thêm trên mỗi Checkout, đặc biệt ở multi-item cart?
-- Work này xuất hiện trong client-observed Checkout latency hay sau response boundary?
-
-### Hướng xử lý cần đánh giá sau evidence
-
-Xác định response contract tối thiểu cho confirmation display và loại bỏ work không phục vụ consumer đó. Bất kỳ thay đổi nào cũng phải bảo toàn meaning của monetary fields: không được trả USD value dưới tên hoặc contract khiến caller hiểu là selected currency.
+- Inventory confirmation consumers và xác nhận chỉ cần `name`, `picture`, `categories` cùng authoritative monetary fields hiện có.
+- Xác định liệu display metadata có thể được mang trong Checkout response mà không phá response/proto consumer contract.
+- Chỉ sau contract audit mới chọn hướng bỏ N frontend Product Catalog RPC; chưa thay đổi proto/API trong hạng mục này.
+- Khi implement, test multi-item confirmation phải giữ item ordering, display fields, `cost`, shipping cost và error behavior.
 
 ## 3. Browse catalog có N+1 Currency fan-out với non-USD — đã xử lý ở PR #324
 
@@ -100,28 +95,26 @@ Product route có thời điểm `productId` chưa sẵn sàng trong client hydr
 
 Chỉ khởi tạo Recommendations query khi product identifier hợp lệ; đảm bảo normalization của input và cache/query key nhất quán để không leak stale recommendation giữa product routes.
 
-## 5. Observability cần được dùng để chứng minh root cause, không chỉ show service latency
+## 5. Checkout USD path gọi Currency `Convert` theo từng item — chuẩn bị implementation
 
 ### Evidence hiện có
 
-Jaeger, Grafana span metrics và Locust raw artifacts hiện đã available. Current trace đã chỉ ra Checkout preparation phase, nhưng chưa đủ để kết luận p99 root cause ở 200 users.
+Trong `checkout/main.go`, `prepOrderItems` đã validate mọi product price là USD. Tuy vậy khi `userCurrency == "USD"`, code vẫn lặp qua từng price và gọi unary `CurrencyService.Convert(price, "USD")`. Multi-item Checkout vì vậy tạo N Currency RPC no-op; non-USD path đã dùng một `BatchConvert` cho toàn bộ prices.
 
-### Điều cần có trong baseline và optimized run
+### Chuẩn bị implementation
 
-- Exact T0/T1 UTC; cùng window ở Locust, Grafana và Jaeger.
-- Checkout traces gồm cả representative successful request và slow/error request nếu tồn tại.
-- p50/p95/p99 riêng cho Browse, Cart, Checkout và storefront.
-- Dependency request/error/latency cho Cart, Product Catalog, Currency, Quote, Payment, Shipping, Email và Kafka.
-- CPU/memory usage, throttling, replica count, node count/node-hours, restart/OOM/Pending và relevant pool/queue signals.
-- Request volume, success denominator và endpoint mix để chứng minh before/after comparable.
+- Xác nhận `Convert(USD, USD)` không có side effect hoặc business validation bổ sung cần giữ.
+- Nếu là pass-through, copy USD money đã validate trực tiếp thay vì phát sinh N Currency RPC.
+- Khi implement, thêm multi-item USD regression test xác nhận Currency `Convert` và `BatchConvert` đều không được gọi, đồng thời giữ item ordering, exact total, currency code và failure-before-write behavior.
 
 ## Prioritization trước implementation
 
 | Priority | Vấn đề | Lý do |
 |---|---|---|
-| P0 | Checkout preparation sequential path | Nằm trên selected critical path; khả năng tăng theo cart size và downstream jitter |
-| P1 | Confirmation hydration work dư thừa | Có khả năng loại bỏ downstream work mà không đổi business result |
-| P2 | Browse Currency N+1 | Có potential fan-out lớn, nhưng phụ thuộc money/rate semantics |
+| P0 | Two-worker Product Catalog reads trong Checkout | Regression đã xác minh: controlled reapply làm Product Catalog quá tải và Checkout fail liên tục; đã rollback về tuần tự tại PR #558 |
+| P1 | Confirmation hydration N+1 Product Catalog reads | N gRPC `GetProduct` nằm trên client-observed confirmation path; cần contract audit trước khi đổi API/proto |
+| P2 | Checkout USD per-item Currency `Convert` | N Currency RPC no-op cho multi-item USD Checkout; có hướng pass-through nhỏ nhưng phải xác nhận contract |
+| P2 | Browse Currency N+1 | Đã xử lý tại PR #324; vẫn cần giữ baseline/optimized evidence về p95/p99 và correctness |
 | P3 | Invalid Recommendations hydration request | Low-risk request elimination; tác động chính là giảm noise và load thừa |
 
 ## Acceptance trước khi giữ bất kỳ improvement nào

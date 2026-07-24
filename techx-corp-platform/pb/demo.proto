@@ -297,9 +297,16 @@ service EmailService {
     rpc SendOrderConfirmation(SendOrderConfirmationRequest) returns (Empty) {}
 }
 
+message ProductDisplay {
+    string name = 1;
+    string picture = 2;
+    repeated string categories = 3;
+}
+
 message OrderItem {
     CartItem item = 1;
     Money cost = 2;
+    ProductDisplay product_display = 3;
 }
 
 message OrderResult {
