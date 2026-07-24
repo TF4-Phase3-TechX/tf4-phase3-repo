@@ -68,6 +68,25 @@ comes from the emitting service instead of a global configured owner.
 OpenSearch logs are corroborating evidence and never fire an LLM incident by
 themselves.
 
+For services with an approved success SLO, request-error incidents now carry
+request-weighted error-budget burn for two exact Prometheus windows. The
+configured TF4 targets are `frontend=99.5%`, `cart=99.5%`, and
+`checkout=99.0%`, sourced from `docs/requirements/onboarding/SLO.md`. A
+`critical_budget_burn` classification requires both the 5-minute and 30-minute
+burn rates to be at least 10x; both at least 2x produce
+`warning_budget_burn`. This multi-window requirement prevents one short spike
+from claiming sustained critical impact. Detection remains the adaptive
+baseline/floor gate, so the 30-minute impact window does not delay initial
+detection. Services without an approved SLO are explicitly labelled
+`fixed_threshold_fallback`; missing burn telemetry is
+`burn_rate_unavailable`, never zero.
+
+The worker exports
+`aiops_error_budget_burn_rate{service,window="5m|30m"}` and places the
+structured impact object in the incident API/summary. The active incident
+metric and Slack alert include the low-cardinality impact classification;
+operators use the incident API for exact numeric rates.
+
 Each span-metric detector requires `SPAN_KIND_SERVER`; `frontend` p95 uses the
 production browse-route selector while its error SLI covers normalized
 frontend server operations, and `checkout` uses the documented `PlaceOrder`
@@ -76,7 +95,8 @@ not healthy. A one-to-three-point baseline is `warming` and may fire only on
 the absolute floor. Neither state can auto-resolve an incident. An active
 incident auto-resolves only after `AIOPS_RECOVERY_POLLS` consecutive fully
 available, non-breaching polls; a later breach creates and notifies a new
-incident after the cooldown. Cart-specific coverage remains a 7b expansion.
+incident after the cooldown. Cart is included in the monitored service list
+and its error-rate impact uses the approved 99.5% success SLO.
 
 The design decision, initial three-signal baseline analysis, trade-offs and activation boundary are recorded in [ADR-007](./ADR-007-hybrid-anomaly-detection-and-safe-response.md).
 

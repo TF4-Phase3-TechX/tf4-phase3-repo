@@ -252,6 +252,8 @@ components:
         value: product-reviews
       - name: AIOPS_LLM_LOG_SERVICES
         value: llm,product-reviews
+      - name: AIOPS_MONITORED_SERVICES
+        value: llm,product-reviews,frontend,cart,checkout
       - name: AIOPS_POLL_SECONDS
         value: "45"
       - name: AIOPS_LOOKBACK_MINUTES
@@ -284,6 +286,20 @@ components:
         value: "1000"
       - name: AIOPS_ERROR_RATE_THRESHOLD
         value: "0.05"
+      # Approved user-visible success SLOs from docs/requirements/onboarding/SLO.md.
+      # Services without an approved SLO use a labelled fixed-threshold fallback.
+      - name: AIOPS_SERVICE_SLO_TARGETS
+        value: frontend=0.995,cart=0.995,checkout=0.99
+      # Seed multi-window impact policy. These are configurable and require
+      # recalibration from labelled production windows in Mandate 7b.
+      - name: AIOPS_BURN_RATE_SHORT_WINDOW_MINUTES
+        value: "5"
+      - name: AIOPS_BURN_RATE_LONG_WINDOW_MINUTES
+        value: "30"
+      - name: AIOPS_BURN_RATE_WARNING_THRESHOLD
+        value: "2"
+      - name: AIOPS_BURN_RATE_CRITICAL_THRESHOLD
+        value: "10"
       - name: AIOPS_LLM_ERROR_THRESHOLD
         value: "0.05"
       - name: AIOPS_BASELINE_MAD_MULTIPLIER
