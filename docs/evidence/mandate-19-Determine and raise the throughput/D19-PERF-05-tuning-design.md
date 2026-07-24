@@ -156,3 +156,4 @@ Tất cả 3 TC commit vào 1 PR duy nhất → deploy 1 lần → tránh trạn
 - [x] Có rollback — mỗi TC có bước rollback cụ thể
 - [x] Có reviewer sign-off — Tech Lead approved
 - [x] Có change sequence — xem mục Change Sequence ở trên
+- [x] Có đường dẫn thư mục logs kiểm thử: [log/](./log/)

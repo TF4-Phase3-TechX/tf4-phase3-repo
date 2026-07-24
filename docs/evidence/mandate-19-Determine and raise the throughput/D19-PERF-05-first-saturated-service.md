@@ -39,7 +39,7 @@ Dựa trên dữ liệu giám sát thu thập từ [telemetry-bottleneck-raw.jso
 
 | Service / Dependency | Saturation Signal | Threshold | At RPS | Evidence | Verdict |
 | :--- | :--- | :--- | :---: | :--- | :--- |
-| **Amazon RDS PostgreSQL** | CPU Utilization | `98.92%` | ~300 RPS | [telemetry-bottleneck-raw.json](file:///d:/tf4-phase3-repo/docs/evidence/mandate-19-Determine%20and%20raise%20the%20throughput/telemetry-bottleneck-raw.json) | **SATURATED (Bão hòa - Điểm nghẽn chính)** |
+| **Amazon RDS PostgreSQL** | CPU Utilization | `98.92%` | ~300 RPS | [telemetry-bottleneck-raw.json](./telemetry-bottleneck-raw.json) | **SATURATED (Bão hòa - Điểm nghẽn chính)** |
 | **product-reviews container** | CPU Throttling | `15.55%` | ~300 RPS | Prometheus Container Metrics | **CONGESTED (Bị bóp băng thông phụ)** |
 | **product-catalog container** | None | N/A | ~300 RPS | Prometheus Container Metrics | **HEALTHY** |
 
@@ -56,6 +56,7 @@ Dựa trên dữ liệu giám sát thu thập từ [telemetry-bottleneck-raw.jso
     *   *Triệu chứng (Symptom):* Độ trễ của endpoint `/api/checkout` tăng vọt và xuất hiện lỗi timeout 504 Gateway Timeout trên storefront.
 - [x] **Có tuning hypothesis (Giả thuyết tối ưu):** Triển khai cơ chế connection pooling ở phía client (hoặc qua PgBouncer) để giảm tải quá trình SSL handshake, đồng thời tuning TCP keep-alive để tái sử dụng kết nối.
 - [x] **Có expected impact:** Dự kiến giảm tải CPU của RDS xuống dưới 50% ở cùng mức tải, nâng trần thông lượng (breakpoint mới) lên gấp 2-3 lần (>350 concurrent users) mà không cần nâng cấp số lượng node EKS hay cấu hình RDS.
+- [x] **Thư mục chứa logs kiểm thử thô (Log folder):** [docs/evidence/mandate-19-Determine and raise the throughput/log/](./log/)
 
 ---
 
