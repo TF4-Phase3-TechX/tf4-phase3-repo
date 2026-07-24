@@ -69,11 +69,132 @@ static_resources:
                           direct_response: { status: 404 }
 
                         # Allowed public routes
-                        - match: { prefix: "/images/" }
+                        - name: images
+                          match: { prefix: "/images/" }
                           route: { cluster: image-provider, prefix_rewrite: "/" }
-                        - match: { prefix: "/" }  # Default/catch-all route - keep last since prefix:"/" matches everything
+
+                        # Local buckets are per Envoy process. Unknown and static routes stay on the
+                        # unthrottled catch-all so new endpoints are not limited accidentally.
+                        - name: checkout
+                          match:
+                            path: "/api/checkout"
+                            headers:
+                              - name: ":method"
+                                string_match: { exact: "POST" }
+                          route: { cluster: frontend }
+                          typed_per_filter_config:
+                            envoy.filters.http.local_ratelimit:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                              stat_prefix: checkout
+                              token_bucket:
+                                max_tokens: ${ENVOY_LOCAL_RL_CHECKOUT_RPS}
+                                tokens_per_fill: ${ENVOY_LOCAL_RL_CHECKOUT_RPS}
+                                fill_interval: 1s
+                              filter_enabled:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENABLED_PERCENT}
+                                  denominator: HUNDRED
+                              filter_enforced:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENFORCED_PERCENT}
+                                  denominator: HUNDRED
+                              response_headers_to_add:
+                                - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                                  header: { key: "retry-after", value: "1" }
+
+                        - name: cart
+                          match:
+                            path: "/api/cart"
+                            headers:
+                              - name: ":method"
+                                string_match:
+                                  safe_regex: { regex: "GET|POST|DELETE" }
+                          route: { cluster: frontend }
+                          typed_per_filter_config:
+                            envoy.filters.http.local_ratelimit:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                              stat_prefix: cart
+                              token_bucket:
+                                max_tokens: ${ENVOY_LOCAL_RL_CART_RPS}
+                                tokens_per_fill: ${ENVOY_LOCAL_RL_CART_RPS}
+                                fill_interval: 1s
+                              filter_enabled:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENABLED_PERCENT}
+                                  denominator: HUNDRED
+                              filter_enforced:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENFORCED_PERCENT}
+                                  denominator: HUNDRED
+                              response_headers_to_add:
+                                - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                                  header: { key: "retry-after", value: "1" }
+
+                        - name: ai
+                          match:
+                            safe_regex:
+                              regex: "/api/(product-ask-ai-assistant/[^/]+|product-search-ai|copilot-cart-confirm)"
+                            headers:
+                              - name: ":method"
+                                string_match: { exact: "POST" }
+                          route: { cluster: frontend }
+                          typed_per_filter_config:
+                            envoy.filters.http.local_ratelimit:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                              stat_prefix: ai
+                              token_bucket:
+                                max_tokens: ${ENVOY_LOCAL_RL_AI_RPS}
+                                tokens_per_fill: ${ENVOY_LOCAL_RL_AI_RPS}
+                                fill_interval: 1s
+                              filter_enabled:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENABLED_PERCENT}
+                                  denominator: HUNDRED
+                              filter_enforced:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENFORCED_PERCENT}
+                                  denominator: HUNDRED
+                              response_headers_to_add:
+                                - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                                  header: { key: "retry-after", value: "1" }
+
+                        - name: browse
+                          match:
+                            # RE2's program-size guard requires compact grouping.
+                            safe_regex:
+                              regex: "/(|api/(product.*|recommendations|data.*|currency|shipping)|(product|cart).*)"
+                            headers:
+                              - name: ":method"
+                                string_match: { exact: "GET" }
+                          route: { cluster: frontend }
+                          typed_per_filter_config:
+                            envoy.filters.http.local_ratelimit:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                              stat_prefix: browse
+                              token_bucket:
+                                max_tokens: ${ENVOY_LOCAL_RL_BROWSE_RPS}
+                                tokens_per_fill: ${ENVOY_LOCAL_RL_BROWSE_RPS}
+                                fill_interval: 1s
+                              filter_enabled:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENABLED_PERCENT}
+                                  denominator: HUNDRED
+                              filter_enforced:
+                                default_value:
+                                  numerator: ${ENVOY_LOCAL_RL_ENFORCED_PERCENT}
+                                  denominator: HUNDRED
+                              response_headers_to_add:
+                                - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                                  header: { key: "retry-after", value: "1" }
+
+                        - name: frontend-catch-all
+                          match: { prefix: "/" }  # Keep last since prefix:"/" matches everything.
                           route: { cluster: frontend }
                 http_filters:
+                  - name: envoy.filters.http.local_ratelimit
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                      stat_prefix: local_rate_limiter
                   - name: envoy.filters.http.fault
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.fault.v3.HTTPFault
