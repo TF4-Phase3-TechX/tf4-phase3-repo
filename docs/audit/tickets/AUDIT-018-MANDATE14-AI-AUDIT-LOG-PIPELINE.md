@@ -77,8 +77,8 @@ Least Privilege.
 ### 4.1. OTel Collector / Helm
 
 - Pin `opentelemetry-collector-contrib` bằng version và image digest.
-- Xác nhận distribution có `filterprocessor`, `awscloudwatchlogsexporter`,
-  `opensearchexporter` và `file_storage`.
+- Xác nhận distribution có `filterprocessor`, `awscloudwatchlogsexporter` và
+  `opensearchexporter`.
 - Ghi nhận `awscloudwatchlogsexporter` đang ở stability level alpha; chỉ rollout
   sau staging/recovery test và đặt CloudWatch/S3 branch sau feature flag.
 - Thêm dedicated logs pipeline.
@@ -89,9 +89,15 @@ Least Privilege.
   ```
 
 - Giữ OTLP attributes khi export CloudWatch (`raw_log: false`).
-- Thêm persistent sending queue, retry và capacity limit.
+- Giai đoạn 1-2 dùng memory sending queue `queue_size: 2000` cho từng dedicated
+  exporter, retry và alarm khi queue đạt 80%; không cấp PVC/`hostPath` cho
+  Collector DaemonSet.
+- Chỉ mở thiết kế persistent queue như một work item riêng nếu metric chứng minh
+  có event drop hoặc restart-loss vượt risk acceptance.
 - Thêm safe schema/privacy validation; error record không chứa raw content.
-- Thêm NetworkPolicy và service account role riêng cho collector.
+- Thêm NetworkPolicy và service account role mới cho collector qua Pod
+  Identity/IRSA; đây là thay đổi từ zero AWS access và phải canary trước rollout
+  toàn DaemonSet.
 - Shadow dual-write trước khi loại AI audit khỏi general index.
 
 File dự kiến:
@@ -105,7 +111,7 @@ File dự kiến:
 - Tạo index pattern `ai-tool-audit-*`.
 - Tạo index template/mapping cho canonical fields.
 - Tạo read alias `ai-tool-audit-read`.
-- Tạo ISM delete sau 14 ngày.
+- Tạo ISM delete sau 7 ngày.
 - Bật authentication/FGAC hoặc đóng security gap tương đương.
 - OTel chỉ có quyền write vào dedicated index.
 - Audit chỉ có `read/search/view_index_metadata`.
@@ -119,18 +125,18 @@ CloudWatch/S3 vẫn phải đạt.
 
 Tạo resource bằng Terraform, không tạo tay:
 
-- CloudWatch Log Group `/tf4/mandate-14/ai-tool-audit`, retention 30 ngày.
-- CloudWatch validation/error Log Group, retention 30 ngày.
+- CloudWatch Log Group `/tf4/mandate-14/ai-tool-audit`, retention 7 ngày.
+- CloudWatch validation/error Log Group, retention 7 ngày.
 - Firehose delivery stream `tf4-ai-audit-logs`.
-- Firehose delivery error Log Group, retention 14 ngày.
+- Firehose delivery error Log Group, retention 7 ngày.
 - S3 bucket `tf4-ai-audit-logs-<account-id>`:
   - Versioning enabled;
   - Object Lock `COMPLIANCE` 90 ngày;
   - total retention 365 ngày;
   - Public Access Block;
   - TLS-only bucket policy;
-  - encryption bằng dedicated KMS CMK;
-  - lifecycle theo design sau khi Cost review;
+  - encryption bằng SSE-S3 (`AES256`), không tạo KMS CMK riêng;
+  - lifecycle giữ Standard-only và expire ngày 365;
   - `force_destroy=false`.
 - CloudWatch subscription filter từ dedicated Log Group sang Firehose.
 - Firehose bật CloudWatch Logs decompression + message extraction, GZIP output
@@ -147,28 +153,57 @@ File dự kiến:
 Không tái sử dụng prefix/schema EKS control-plane audit cho AI audit vì hai loại
 record có schema, owner và query contract khác nhau.
 
-### 4.4. IAM / SSO
+### 4.4. IAM / SSO — permission delta sau khi quét repo
 
-Tạo các role/policy tách biệt:
+Không yêu cầu lại quyền đã có trong các policy hiện hữu:
 
-1. OTel Collector -> CloudWatch Logs.
-2. CloudWatch Logs -> đúng Firehose stream.
-3. Firehose -> đúng S3 bucket/prefix + KMS encrypt.
-4. CDO-07 SSO -> read/query đúng CloudWatch, S3 prefix, KMS key và OpenSearch
-   index.
+- `TF4-BaseReadOnly` và `TF4-AuditReadOnlyAndAnalyze` đã có CloudWatch Logs
+  read/query: `logs:Describe*`, `logs:Get*`, `logs:FilterLogEvents`,
+  `logs:StartQuery`, `logs:StopQuery`, `logs:GetQueryResults`. Không thêm các
+  quyền này cho CDO-07.
+- CDO-07 đã có S3 `GetObject`, `ListBucket`, bucket location/versioning,
+  Object Lock configuration, encryption configuration và Public Access Block;
+  chỉ cần mở rộng resource scope tới bucket AI Audit/prefix mới. Các action
+  `s3:GetBucketPolicy`, `s3:GetBucketPolicyStatus` và
+  `s3:GetLifecycleConfiguration` cũng đã có nhưng hiện chỉ scope cho CloudTrail;
+  chỉ mở rộng resource sang AI Audit bucket, không yêu cầu lại action.
+- `product-reviews` đã có Pod Identity cho Bedrock. Không cấp CloudWatch,
+  Firehose, S3 hoặc KMS permission mới cho application role.
+- Các role `tf4-firehose-to-s3-role` và `tf4-cwl-to-firehose-role` hiện chỉ
+  scope cho EKS audit. Không mở rộng hoặc tái sử dụng các role này.
+- KMS permission không thuộc delta AI Audit: S3 dùng SSE-S3 và CloudWatch dùng
+  AWS-managed encryption.
 
-Yêu cầu:
+Chỉ yêu cầu các delta sau:
 
-- Không cấp `s3:*`, `logs:*`, `es:*` hoặc `kms:*`.
-- Không cấp data-plane read cho collector/Firehose.
-- Không cấp write/delete cho CDO-07.
-- Không cấp `s3:BypassGovernanceRetention`,
-  `s3:PutObjectRetention`, `s3:PutObjectLegalHold`.
-- Trust policy service role có `aws:SourceArn`/`aws:SourceAccount` phù hợp.
-- `s3:ListBucket` có prefix condition.
-- Action console list/describe buộc dùng `Resource: "*"` phải tách statement và
-  có justification.
-- Validate policy bằng IAM Access Analyzer.
+1. **OTel Collector role mới qua Pod Identity/IRSA** trên đúng Log Group
+   `/tf4/mandate-14/ai-tool-audit`:
+   `logs:CreateLogStream`, `logs:DescribeLogStreams`,
+   `logs:PutLogEvents`. Không cấp `logs:CreateLogGroup`, quyền đọc/query log,
+   S3, Firehose hoặc KMS.
+2. **`tf4-ai-audit-cwl-to-firehose-role` mới** với
+   `firehose:PutRecord` và `firehose:PutRecordBatch` trên đúng stream
+   `tf4-ai-audit-logs`; trust policy phải có `aws:SourceArn` và
+   `aws:SourceAccount` phù hợp.
+3. **`tf4-ai-audit-firehose-to-s3-role` mới** với `s3:PutObject`,
+   `s3:AbortMultipartUpload`, `s3:GetBucketLocation` và các multipart action
+   tối thiểu trên đúng bucket/prefix; thêm `logs:PutLogEvents` chỉ trên
+   Firehose error Log Group. Không có read object, delete, retention change
+   hoặc KMS permission.
+4. **CDO-07 resource delta**: mở rộng các quyền S3 read đã có tới đúng
+   `tf4-ai-audit-logs-<account-id>`; `s3:ListBucket` phải có condition prefix
+   `mandate-14/ai-tool-audit/*`. Chỉ bổ sung action còn thiếu
+   `s3:GetObjectRetention` trên AI audit object prefix và
+   `s3:GetLifecycleConfiguration` trên AI audit bucket nếu policy hiện hữu chưa
+   có resource scope tương ứng.
+5. OpenSearch data-plane read chưa yêu cầu trong ticket này vì security plugin
+   hiện disabled; nếu chưa bật FGAC tại nghiệm thu thì OpenSearch là
+   convenience copy và acceptance access control giữ trạng thái `BLOCKED`.
+
+Không cấp `s3:*`, `logs:*`, `es:*` hoặc `kms:*`; không cấp write/delete cho
+CDO-07; không cấp `s3:BypassGovernanceRetention`, `s3:PutObjectRetention` hoặc
+`s3:PutObjectLegalHold`. Mọi policy delta phải resource-scoped và được
+IAM Access Analyzer validate.
 
 Update documentation:
 
@@ -181,7 +216,7 @@ Update documentation:
 Tạo dashboard/alarms tối thiểu:
 
 - OTel audit exporter send failure > 0.
-- Persistent queue >= 80%.
+- Memory queue >= 80%.
 - Có AI/tool activity nhưng 15 phút không có audit event.
 - Schema/privacy validation failure.
 - Firehose delivery failure/throttling.
@@ -195,11 +230,11 @@ response hoặc tool payload.
 
 | Store | Retention | Vai trò |
 |---|---|---|
-| OpenSearch `ai-tool-audit-*` | 14 ngày | Hot searchable copy |
-| CloudWatch `/tf4/mandate-14/ai-tool-audit` | 30 ngày | Operational query/alert + Firehose source |
+| OpenSearch `ai-tool-audit-*` | 7 ngày | Hot searchable copy |
+| CloudWatch `/tf4/mandate-14/ai-tool-audit` | 7 ngày | Operational query/alert + Firehose source |
 | S3 AI audit bucket | 365 ngày tổng; WORM COMPLIANCE tối thiểu 90 ngày | Evidence authority |
-| Firehose errors | 14 ngày | Delivery troubleshooting |
-| Safe validation errors | 30 ngày | Schema/privacy monitoring |
+| Firehose errors | 7 ngày | Delivery troubleshooting |
+| Safe validation errors | 7 ngày | Schema/privacy monitoring |
 
 Classification: audit metadata nội bộ. Dù payload không chứa raw content, quyền
 vẫn bị giới hạn vì `trace_id`, model/tool và safety decision có thể tiết lộ hành
@@ -213,7 +248,8 @@ review, CDO-08 approval và CDO-07 sign-off.
 ### Subtask 1 — Preflight và cost
 
 - Đo event rate, average/p95 event size trên synthetic/runtime window.
-- Ước tính CloudWatch ingest/storage, Firehose, S3/KMS và OpenSearch storage.
+- Ước tính CloudWatch ingest/storage, Firehose, S3 và OpenSearch storage; xác
+  nhận SSE-S3/AWS-managed encryption không cần KMS CMK mới.
 - Pin collector version/digest.
 - Chạy config validation và xác nhận component support.
 
@@ -230,7 +266,7 @@ review, CDO-08 approval và CDO-07 sign-off.
 
 ### Subtask 3 — OpenSearch security và lifecycle
 
-- Index template, role, read alias, ISM 14 ngày.
+- Index template, role, read alias, ISM 7 ngày.
 - FGAC/authentication và NetworkPolicy.
 - Negative write/delete tests cho Audit role.
 
@@ -304,8 +340,9 @@ Chỉ dùng synthetic IDs/content.
 
 ### AC-04 — Retention và integrity
 
-- [ ] OpenSearch ISM = 14 ngày.
-- [ ] CloudWatch retention = 30 ngày, không `Never Expire`.
+- [ ] OpenSearch ISM = 7 ngày.
+- [ ] CloudWatch, Firehose error và safe validation Log Group retention = 7 ngày,
+      không `Never Expire`.
 - [ ] S3 Versioning = `Enabled`.
 - [ ] S3 Object Lock = `COMPLIANCE`, default 90 ngày.
 - [ ] S3 total lifecycle retention = 365 ngày.
@@ -325,7 +362,8 @@ Chỉ dùng synthetic IDs/content.
 
 ### AC-06 — Reliability và monitoring
 
-- [ ] Persistent queue sống qua collector restart trong staging test.
+- [ ] Memory queue `queue_size: 2000` và alarm 80% đã test; restart-loss được
+      đo và ghi nhận, không tuyên bố persistent recovery.
 - [ ] Exporter/queue/Firehose/schema/privacy alarms đã test.
 - [ ] Recovery giao đủ event; duplicate nếu có được ghi nhận.
 - [ ] Theo dõi production/cutover đủ 24 giờ, không có P0/P1 mở.
@@ -397,7 +435,7 @@ cluster/namespace, identity đã dùng và command/query có thể tái tạo.
 | Canonical logger đã merge/package | Done ở code; cần deploy/recapture | AIO |
 | OTel component compatibility / CloudWatch exporter alpha | Chưa xác nhận version/digest và recovery behavior | CDO-08 |
 | OpenSearch FGAC/security | Baseline đang disabled | CDO-08 |
-| IAM/SSO attachment | Chưa có policy AI audit scoped | CDO-08 |
+| IAM/SSO attachment | CloudWatch Logs read/query của CDO-07 đã có; chỉ còn collector role mới, hai AI Audit service roles và resource-scoped S3 delta | CDO-08 |
 | Cost estimate theo AI event volume | Chưa có | CDO-04 |
 | Live canonical sample | Pending deployment | AIO + CDO-08 |
 
