@@ -10,7 +10,6 @@ import os
 from typing import Any, Callable
 
 import demo_pb2
-from audit_logging import emit_ai_tool_audit, safety_decision_for_outcome
 from bedrock_adapter import (
     IntentLabel,
     ProviderFailure,
@@ -136,6 +135,56 @@ def _explicit_catalog_scope(query: str) -> bool:
     return any(marker in normalized for marker in ("toàn bộ catalog", "toàn catalog", "entire catalog", "whole catalog"))
 
 
+def _references_previous_result_scope(query: str) -> bool:
+    normalized = query.lower()
+    return any(
+        marker in normalized
+        for marker in (
+            "trong số đó",
+            "trong danh sách đó",
+            "trong các sản phẩm này",
+            "among those",
+            "from those",
+            "in that list",
+        )
+    )
+
+
+def _has_explicit_product_reference(query: str, products: list[Any]) -> bool:
+    """Return true only when the current turn itself names a catalog entity."""
+    normalized = normalize_text(query, MAX_QUESTION_CHARS).lower()
+    normalized_tokens = set(
+        token
+        for token in "".join(
+            char if char.isalnum() else " " for char in normalized
+        ).split()
+        if len(token) >= 5
+    )
+    generic_tokens = {
+        "product",
+        "products",
+        "sản phẩm",
+        "telescope",
+        "telescopes",
+        "refractor",
+        "binoculars",
+    }
+    for product in products:
+        name = str(getattr(product, "name", "") or "").lower()
+        if name and name in normalized:
+            return True
+        name_tokens = {
+            token
+            for token in "".join(
+                char if char.isalnum() else " " for char in name
+            ).split()
+            if len(token) >= 5 and token not in generic_tokens
+        }
+        if normalized_tokens & name_tokens:
+            return True
+    return False
+
+
 def _comparison_candidates(
     intent: dict[str, Any], products: list[Any], session_id: str, user_id: str, query: str
 ) -> tuple[list[Any], str]:
@@ -224,6 +273,7 @@ def route_search_products_ai(
     record_metrics_fn: Callable,
     user_id: str = "guest",
     fetch_reviews: Callable[[str], list[tuple[Any, ...]]] | None = None,
+    audit_callback: Callable[..., None] | None = None,
 ) -> demo_pb2.SearchProductsAIAssistantResponse:
     """Orchestrate per-turn dynamic intent classification and tool allow-list routing."""
     with tracer.start_as_current_span("search_products_ai") as span:
@@ -264,12 +314,14 @@ def route_search_products_ai(
                 sanitized_history.append({"role": r, "content": c})
 
             # --- 4. Fast-path chitchat check vs. LLM per-turn intent classification ---
+            provider_attempted = False
             if _is_fastpath_chitchat(query):
                 intent = {
                     "search_type": "chitchat",
                     "confidence_score": 1.0,
                 }
             else:
+                provider_attempted = True
                 intent = assistant.provider.parse_search_intent(query, history=sanitized_history)
 
             _metadata = intent.get("_metadata") or {}
@@ -332,13 +384,14 @@ def route_search_products_ai(
                     input_tokens=_in_tok,
                     output_tokens=_out_tok,
                 )
-            if _metadata:
-                emit_ai_tool_audit(
-                    logger,
+            if provider_attempted and audit_callback:
+                audit_callback(
                     surface="copilot_search",
                     model_id=assistant.provider.model_id,
                     tool_name="bedrock.converse",
-                    safety_decision=safety_decision_for_outcome(raw_search_type),
+                    safety_decision=(
+                        "refuse" if raw_search_type in {"out_of_scope", "unclear"} else "allow"
+                    ),
                     confirmation_status="not_required",
                 )
 
@@ -447,6 +500,19 @@ def route_search_products_ai(
                     "bedrock_compare",
                     lambda: assistant.compare_products(compared, query, session_id, user_id),
                 )
+                if comparison_outcome.provider_attempted and audit_callback:
+                    audit_callback(
+                        surface="copilot_search",
+                        model_id=assistant.provider.model_id,
+                        tool_name="bedrock.converse",
+                        safety_decision=(
+                            "provider_unavailable"
+                            if comparison_outcome.outcome == "unavailable"
+                            or comparison_outcome.error_class
+                            else "allow"
+                        ),
+                        confirmation_status="not_required",
+                    )
                 answer_text = comparison_outcome.response
                 intent["response_message"] = answer_text  # compatibility for older clients
                 parsed_intent_json = json.dumps(intent, ensure_ascii=False)
@@ -494,7 +560,11 @@ def route_search_products_ai(
             # D. PURCHASE (Cart Action) Intent -> Allowed tool: "cart_action"
             if intent_label == IntentLabel.PURCHASE:
                 span.set_attribute("app.search.outcome", "cart_action")
-                target_kw = intent.get("keywords") or ""
+                target_kw = (
+                    intent.get("keywords") or ""
+                    if _has_explicit_product_reference(query, all_products)
+                    else ""
+                )
                 target = resolve_referenced_product(
                     sanitized_history,
                     all_products,
@@ -600,7 +670,17 @@ def route_search_products_ai(
             # Copilot deliberately does not invoke the model-backed review Q&A.
             if intent_label == IntentLabel.REVIEW_QA:
                 span.set_attribute("app.search.outcome", "reviews_qa")
+                remembered_products = (
+                    session_store.get_last_search_products(user_id, session_id)
+                    if session_id
+                    else []
+                )
                 target_kw = intent.get("keywords") or ""
+                if (
+                    len(remembered_products) == 1
+                    and not _has_explicit_product_reference(query, all_products)
+                ):
+                    target_kw = ""
                 target_product = resolve_referenced_product(
                     sanitized_history,
                     all_products,
@@ -629,6 +709,18 @@ def route_search_products_ai(
                     intent["response_message"] = answer_text
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
                     if session_id:
+                        session_store.set_last_search_products(
+                            user_id,
+                            session_id,
+                            [
+                                {
+                                    "id": target_product.id,
+                                    "name": target_product.name,
+                                    "description": getattr(target_product, "description", ""),
+                                    "categories": list(getattr(target_product, "categories", [])),
+                                }
+                            ],
+                        )
                         session_store.append_turn(user_id, session_id, "user", query)
                         session_store.append_turn(user_id, session_id, "assistant", answer_text)
 
@@ -675,6 +767,11 @@ def route_search_products_ai(
             valid_ids = {p.id for p in all_products}
             filtered = list(all_products)
             filters_applied = {}
+            if session_id and _references_previous_result_scope(query):
+                scoped_products = _last_search_candidates(all_products, session_id, user_id)
+                if scoped_products:
+                    filtered = scoped_products
+                    filters_applied["scope"] = "last_search"
 
             # Category filter
             category = intent.get("category", "").strip().lower()
@@ -790,14 +887,6 @@ def route_search_products_ai(
             span.set_attribute("app.search.outcome", "provider_failure")
             span.set_attribute("error.class", exc.error_class)
             logger.warning("parse_search_intent_provider_failure: %s", exc)
-            emit_ai_tool_audit(
-                logger,
-                surface="copilot_search",
-                model_id=getattr(assistant.provider, "model_id", "unknown"),
-                tool_name="bedrock.converse",
-                safety_decision="provider_unavailable",
-                confirmation_status="not_required",
-            )
             if record_metrics_fn:
                 record_metrics_fn(
                     model_id=getattr(assistant.provider, "model_id", "unknown"),
@@ -808,6 +897,18 @@ def route_search_products_ai(
                     latency_ms=getattr(exc, "latency_ms", 0.0),
                     input_tokens=getattr(exc, "input_tokens", 0),
                     output_tokens=getattr(exc, "output_tokens", 0),
+                )
+            if audit_callback:
+                audit_callback(
+                    surface="copilot_search",
+                    model_id=getattr(assistant.provider, "model_id", "unknown"),
+                    tool_name="bedrock.converse",
+                    safety_decision=(
+                        "block"
+                        if exc.error_class == "guardrail_intervened"
+                        else "provider_unavailable"
+                    ),
+                    confirmation_status="not_required",
                 )
             ref_reason = "schema_validation_failed" if exc.error_class == "invalid_response" else (
                 "guardrail_blocked" if exc.error_class == "guardrail_intervened" else "provider_failure"

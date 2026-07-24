@@ -44,6 +44,10 @@ _ATTACK_PATTERNS = tuple(
         r"\[\s*(override|sys|system|admin)\s*\]",
         r"\{\{\s*(override|sys|system|admin)\s*\}\}",
         r"<<\s*(admin|sys|system|override)\s*>>",
+        r"\b(drop|truncate|alter|delete)\s+(table|database|schema)\b",
+        r"[\"']role[\"']\s*:\s*[\"'](system|developer|assistant)[\"']",
+        r"\b(bỏ qua|bo qua)\b.{0,60}\b(chỉ thị|chi thi|hướng dẫn|huong dan|quy tắc|quy tac)\b.{0,80}\b(admin|quản trị|quan tri|mật khẩu|mat khau|bí mật|bi mat)\b",
+        r"\b(không cần|khong can|bỏ qua|bo qua)\b.{0,30}\b(xác nhận|xac nhan|confirmation)\b",
     )
 )
 _ACTION_PATTERNS = tuple(
