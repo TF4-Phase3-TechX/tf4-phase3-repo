@@ -191,7 +191,6 @@ T_total = (t_restore_request -> t_instance_available)
 ## 11. Rủi Ro Cần Xác Nhận
 
 - Pin `log.retention.hours=168` cho MSK `orders` (`infra/terraform/msk.tf`) — chưa làm, cần quyết định riêng.
-- Image `apache/kafka:3.9.0` cho pod Kafka client chưa smoke-test thật.
 - GAP-06, RPO/RTO matrix (`accounting`: 2 giờ), cost estimate procedure-only — cần cập nhật riêng.
 - Chưa có PM sign-off — không chạy Subtask 2-4 thật cho tới khi được duyệt.
 

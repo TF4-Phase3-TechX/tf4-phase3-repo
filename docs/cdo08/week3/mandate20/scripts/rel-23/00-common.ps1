@@ -22,16 +22,6 @@ function New-RunId {
     (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ').ToLower()
 }
 
-function Get-SecretsManagerJson {
-    param(
-        [Parameter(Mandatory)][string]$SecretArn,
-        [string]$Region = 'us-east-1'
-    )
-    $raw = aws secretsmanager get-secret-value --region $Region --secret-id $SecretArn --query SecretString --output text
-    Assert-LastExitCode 'aws secretsmanager get-secret-value'
-    return ($raw | ConvertFrom-Json)
-}
-
 function New-RandomPassword {
     <# Sinh password ngau nhien an toan cho RDS master (chi chu/so - tranh moi ky tu RDS cam: / " @ khoang trang). #>
     param([int]$Length = 24)
