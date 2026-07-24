@@ -114,7 +114,9 @@ File dự kiến:
 - Tạo ISM delete sau 7 ngày.
 - Bật authentication/FGAC hoặc đóng security gap tương đương.
 - OTel chỉ có quyền write vào dedicated index.
-- Audit chỉ có `read/search/view_index_metadata`.
+- Khi security plugin/FGAC được bật, Audit chỉ có
+  `read/search/view_index_metadata`; chưa yêu cầu IAM data-plane read trong
+  baseline hiện tại.
 - Không coi OpenSearch là evidence authority.
 
 Nếu `DISABLE_SECURITY_PLUGIN=true` vẫn còn tại nghiệm thu, phần OpenSearch
@@ -186,8 +188,9 @@ Chỉ yêu cầu các delta sau:
    `tf4-ai-audit-logs`; trust policy phải có `aws:SourceArn` và
    `aws:SourceAccount` phù hợp.
 3. **`tf4-ai-audit-firehose-to-s3-role` mới** với `s3:PutObject`,
-   `s3:AbortMultipartUpload`, `s3:GetBucketLocation` và các multipart action
-   tối thiểu trên đúng bucket/prefix; thêm `logs:PutLogEvents` chỉ trên
+   `s3:AbortMultipartUpload`, `s3:GetBucketLocation`,
+   `s3:ListBucketMultipartUploads` và các multipart action tối thiểu trên đúng
+   bucket/prefix; thêm `logs:PutLogEvents` chỉ trên
    Firehose error Log Group. Không có read object, delete, retention change
    hoặc KMS permission.
 4. **CDO-07 resource delta**: mở rộng các quyền S3 read đã có tới đúng
