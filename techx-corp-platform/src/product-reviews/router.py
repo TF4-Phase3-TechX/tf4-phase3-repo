@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any, Callable
 
 import demo_pb2
@@ -129,7 +130,7 @@ _CATALOG_CATEGORY_TERMS = {
     "flashlights": ("flashlight", "flashlights", "đèn pin"),
     "assembly": ("optical tube assembly", "ống quang"),
     "books": ("catalog book", "product book", "sách thiên văn"),
-    "travel": ("travel telescope", "travel scope", "kính du lịch"),
+    "travel": ("travel", "travel telescope", "travel scope", "kính du lịch"),
 }
 
 _GENERIC_DISCOVERY_KEYWORDS = {
@@ -178,6 +179,59 @@ def _keywords_are_generic_discovery_terms(keywords: str, category: str) -> bool:
     return set(normalized.split()).issubset(
         _GENERIC_DISCOVERY_KEYWORDS | category_terms
     )
+
+
+_PRICE_VALUE_PATTERN = r"\$?\s*(\d+(?:\.\d+)?)"
+
+
+def _deterministic_category_price_intent(query: str) -> dict[str, Any] | None:
+    """Parse bounded literal category+price filters without an LLM call."""
+    category = _explicit_catalog_category(query)
+    if not category:
+        return None
+
+    normalized = query.lower()
+    between = re.search(
+        rf"(?:between|từ)\s*{_PRICE_VALUE_PATTERN}\s*"
+        rf"(?:and|to|đến|-)\s*{_PRICE_VALUE_PATTERN}",
+        normalized,
+    )
+    if between:
+        lower, upper = (float(value) for value in between.groups())
+        if lower > upper:
+            return None
+        return {
+            "search_type": "search",
+            "confidence_score": 1.0,
+            "category": category,
+            "price_min": lower,
+            "price_max": upper,
+        }
+
+    under = re.search(
+        rf"(?:under|below|less\s+than|dưới)\s*{_PRICE_VALUE_PATTERN}",
+        normalized,
+    )
+    if under:
+        return {
+            "search_type": "search",
+            "confidence_score": 1.0,
+            "category": category,
+            "price_max": float(under.group(1)),
+        }
+
+    over = re.search(
+        rf"(?:over|above|more\s+than|trên)\s*{_PRICE_VALUE_PATTERN}",
+        normalized,
+    )
+    if over:
+        return {
+            "search_type": "search",
+            "confidence_score": 1.0,
+            "category": category,
+            "price_min": float(over.group(1)),
+        }
+    return None
 
 
 def _last_search_candidates(products: list[Any], session_id: str, user_id: str) -> list[Any]:
@@ -379,6 +433,8 @@ def route_search_products_ai(
                     "search_type": "chitchat",
                     "confidence_score": 1.0,
                 }
+            elif deterministic_intent := _deterministic_category_price_intent(query):
+                intent = deterministic_intent
             else:
                 provider_attempted = True
                 intent = assistant.provider.parse_search_intent(query, history=sanitized_history)
@@ -456,7 +512,7 @@ def route_search_products_ai(
             )
 
             # Record Stage-1 intent classification telemetry metrics
-            if record_metrics_fn:
+            if record_metrics_fn and provider_attempted:
                 record_metrics_fn(
                     model_id=assistant.provider.model_id,
                     guardrail_version=assistant.provider.guardrail_version,

@@ -18,7 +18,10 @@ from bedrock_adapter import (
     _is_fastpath_chitchat,
     resolve_referenced_product,
 )
-from router import _resolve_comparison_products
+from router import (
+    _deterministic_category_price_intent,
+    _resolve_comparison_products,
+)
 from session_store import session_store
 from safety import is_attack, contains_pii, normalize_text, MAX_QUESTION_CHARS
 from ai_assistant import AssistantOutcome
@@ -903,3 +906,94 @@ def test_telescope_category_keeps_products_with_multiple_catalog_tags():
     assert resolve_referenced_product(
         [], products, category="telescopes", price_selector="most_expensive"
     ).id == "assembly"
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        (
+            "accessories under $100",
+            {"category": "accessories", "price_max": 100.0},
+        ),
+        (
+            "travel over $500",
+            {"category": "travel", "price_min": 500.0},
+        ),
+        (
+            "kính thiên văn từ 100 đến 300 đô",
+            {
+                "category": "telescopes",
+                "price_min": 100.0,
+                "price_max": 300.0,
+            },
+        ),
+    ],
+)
+def test_literal_category_price_filters_have_deterministic_intents(query, expected):
+    intent = _deterministic_category_price_intent(query)
+
+    assert intent is not None
+    assert intent["search_type"] == "search"
+    assert intent["confidence_score"] == 1.0
+    for key, value in expected.items():
+        assert intent[key] == value
+
+
+def test_literal_category_price_route_does_not_depend_on_provider_latency():
+    import router
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, query, history=None):
+            raise AssertionError("literal category+price filter must not call provider")
+
+    class Catalog:
+        def ListProducts(self, request, timeout):
+            return demo_pb2.ListProductsResponse(
+                products=[
+                    demo_pb2.Product(
+                        id="filter",
+                        name="Solar Filter",
+                        categories=["accessories", "telescopes"],
+                        price_usd=demo_pb2.Money(units=69),
+                    ),
+                    demo_pb2.Product(
+                        id="assembly",
+                        name="Optical Tube Assembly",
+                        categories=["accessories", "telescopes"],
+                        price_usd=demo_pb2.Money(units=3599),
+                    ),
+                ]
+            )
+
+    class Tracer:
+        class Span:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def set_attribute(self, key, value):
+                pass
+
+        def start_as_current_span(self, name):
+            return self.Span()
+
+    metrics_calls = []
+    response = router.route_search_products_ai(
+        "accessories under $100",
+        "deterministic-filter-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        Catalog(),
+        Tracer(),
+        metrics_calls.append,
+    )
+
+    assert response.outcome == "success"
+    assert [product.id for product in response.results] == ["filter"]
+    assert response.trace.input_tokens == 0
+    assert response.trace.output_tokens == 0
+    assert metrics_calls == []
