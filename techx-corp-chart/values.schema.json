@@ -32,15 +32,12 @@
         "create"
       ]
     },
-    "prometheusRetainStorageClass": {
+    "gp3StorageClasses": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "enabled": {
           "type": "boolean"
-        },
-        "name": {
-          "type": "string"
         },
         "provisioner": {
           "type": "string"
@@ -51,7 +48,6 @@
       },
       "required": [
         "enabled",
-        "name",
         "provisioner",
         "allowVolumeExpansion"
       ]
