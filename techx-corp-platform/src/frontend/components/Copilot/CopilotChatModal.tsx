@@ -79,11 +79,15 @@ export const CopilotChatModal: React.FC = () => {
                 body: JSON.stringify({ query: userMsgText, sessionId, userId }),
             });
             const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || `Copilot request failed with status ${response.status}`);
+            }
 
             const proposal = data.actionProposal || data.action_proposal || undefined;
             const results = data.results || [];
 
             let assistantText = data.response;
+            const outcome = data.outcome || '';
             const traceObj = data.trace || {};
             const rawIntent = traceObj.parsedIntent || traceObj.parsed_intent;
             let parsedType = '';
@@ -91,9 +95,13 @@ export const CopilotChatModal: React.FC = () => {
                 try {
                     const parsed = typeof rawIntent === 'string' ? JSON.parse(rawIntent) : rawIntent;
                     parsedType = parsed.search_type || '';
-                    if (parsed.response_message) {
+                    if (!assistantText && parsed.response_message) {
                         assistantText = parsed.response_message;
-                    } else if ((parsed.search_type === 'clarify' || parsed.search_type === 'unclear') && parsed.clarify_question) {
+                    } else if (
+                        !assistantText
+                        && (parsed.search_type === 'clarify' || parsed.search_type === 'unclear')
+                        && parsed.clarify_question
+                    ) {
                         assistantText = parsed.clarify_question;
                     }
                 } catch (e) {
@@ -119,7 +127,13 @@ export const CopilotChatModal: React.FC = () => {
                 }
             }
 
-            const shouldShowResults = parsedType !== 'reviews' && parsedType !== 'chitchat' && parsedType !== 'unclear' && parsedType !== 'clarify' && Array.isArray(results) && results.length > 0;
+            const shouldShowResults = outcome !== 'provider_unavailable'
+                && parsedType !== 'reviews'
+                && parsedType !== 'chitchat'
+                && parsedType !== 'unclear'
+                && parsedType !== 'clarify'
+                && Array.isArray(results)
+                && results.length > 0;
 
             const assistantMsg: ChatMessage = {
                 id: `msg_${Date.now() + 1}`,
