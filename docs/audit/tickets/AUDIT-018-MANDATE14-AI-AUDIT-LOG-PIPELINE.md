@@ -7,6 +7,8 @@
 | Jira ID | Gán key khi tạo ticket trên Jira `AI MANDATE #14` |
 | Reporter / Verifier | CDO-07 (Auditability) |
 | Assignee | CDO-08 / Platform |
+| IAM/SSO grant | CDO-08 / Platform chỉ cấp hoặc attach phần read-only cho role CDO-07 |
+| Service-role owner | Người triển khai tự tạo và cấu hình các service role bằng IaC |
 | Data producer | AIO — `product-reviews` |
 | Cost reviewer | CDO-04 |
 | Priority | P0 — blocker cho phần Auditability của Mandate 14 |
@@ -176,37 +178,39 @@ Không yêu cầu lại quyền đã có trong các policy hiện hữu:
 - KMS permission không thuộc delta AI Audit: S3 dùng SSE-S3 và CloudWatch dùng
   AWS-managed encryption.
 
-Chỉ yêu cầu các delta sau:
+Phần CDO-08 cần cấp hoặc attach cho role CDO-07 chỉ gồm permission delta dưới
+đây:
 
-1. **OTel Collector role mới qua Pod Identity/IRSA** trên đúng Log Group
-   `/tf4/mandate-14/ai-tool-audit`:
-   `logs:CreateLogStream`, `logs:DescribeLogStreams`,
-   `logs:PutLogEvents`. Không cấp `logs:CreateLogGroup`, quyền đọc/query log,
-   S3, Firehose hoặc KMS.
-2. **`tf4-ai-audit-cwl-to-firehose-role` mới** với
-   `firehose:PutRecord` và `firehose:PutRecordBatch` trên đúng stream
-   `tf4-ai-audit-logs`; trust policy phải có `aws:SourceArn` và
-   `aws:SourceAccount` phù hợp.
-3. **`tf4-ai-audit-firehose-to-s3-role` mới** với `s3:PutObject`,
-   `s3:AbortMultipartUpload`, `s3:GetBucketLocation`,
-   `s3:ListBucketMultipartUploads` và các multipart action tối thiểu trên đúng
-   bucket/prefix; thêm `logs:PutLogEvents` chỉ trên
-   Firehose error Log Group. Không có read object, delete, retention change
-   hoặc KMS permission.
-4. **CDO-07 resource delta**: mở rộng các quyền S3 read đã có tới đúng
+1. **CDO-07 resource delta**: mở rộng các quyền S3 read đã có tới đúng
    `tf4-ai-audit-logs-<account-id>`; `s3:ListBucket` phải có condition prefix
    `mandate-14/ai-tool-audit/*`. Chỉ bổ sung action còn thiếu
    `s3:GetObjectRetention` trên AI audit object prefix và
    `s3:GetLifecycleConfiguration` trên AI audit bucket nếu policy hiện hữu chưa
    có resource scope tương ứng.
-5. OpenSearch data-plane read chưa yêu cầu trong ticket này vì security plugin
+2. OpenSearch data-plane read chưa yêu cầu trong ticket này vì security plugin
    hiện disabled; nếu chưa bật FGAC tại nghiệm thu thì OpenSearch là
    convenience copy và acceptance access control giữ trạng thái `BLOCKED`.
 
+Các service role của pipeline do người triển khai tự tạo và cấu hình trong
+Terraform/Helm, không phải request CDO-08 cấp thêm vào role CDO-07:
+
+- **OTel Collector role qua Pod Identity/IRSA** trên đúng Log Group
+  `/tf4/mandate-14/ai-tool-audit`: `logs:CreateLogStream`,
+  `logs:DescribeLogStreams`, `logs:PutLogEvents`. Không cấp
+  `logs:CreateLogGroup`, quyền đọc/query log, S3, Firehose hoặc KMS.
+- **`tf4-ai-audit-cwl-to-firehose-role`** với `firehose:PutRecord` và
+  `firehose:PutRecordBatch` trên đúng stream `tf4-ai-audit-logs`; trust policy
+  phải có `aws:SourceArn` và `aws:SourceAccount` phù hợp.
+- **`tf4-ai-audit-firehose-to-s3-role`** với `s3:PutObject`,
+  `s3:AbortMultipartUpload`, `s3:GetBucketLocation`,
+  `s3:ListBucketMultipartUploads` và các multipart action tối thiểu trên đúng
+  bucket/prefix; thêm `logs:PutLogEvents` chỉ trên Firehose error Log Group.
+  Không có read object, delete, retention change hoặc KMS permission.
+
 Không cấp `s3:*`, `logs:*`, `es:*` hoặc `kms:*`; không cấp write/delete cho
 CDO-07; không cấp `s3:BypassGovernanceRetention`, `s3:PutObjectRetention` hoặc
-`s3:PutObjectLegalHold`. Mọi policy delta phải resource-scoped và được
-IAM Access Analyzer validate.
+`s3:PutObjectLegalHold`. Permission delta của CDO-07 phải resource-scoped và
+được IAM Access Analyzer validate.
 
 Update documentation:
 
@@ -265,7 +269,7 @@ review, CDO-08 approval và CDO-07 sign-off.
 - Security/IAM review trước apply.
 - Apply theo workflow hiện hữu.
 
-**Owner:** CDO-08
+**Owner:** Người triển khai; CDO-08 review và attach permission delta cho CDO-07
 
 ### Subtask 3 — OpenSearch security và lifecycle
 
@@ -438,7 +442,7 @@ cluster/namespace, identity đã dùng và command/query có thể tái tạo.
 | Canonical logger đã merge/package | Done ở code; cần deploy/recapture | AIO |
 | OTel component compatibility / CloudWatch exporter alpha | Chưa xác nhận version/digest và recovery behavior | CDO-08 |
 | OpenSearch FGAC/security | Baseline đang disabled | CDO-08 |
-| IAM/SSO attachment | CloudWatch Logs read/query của CDO-07 đã có; chỉ còn collector role mới, hai AI Audit service roles và resource-scoped S3 delta | CDO-08 |
+| IAM/SSO attachment | CDO-08 chỉ attach resource-scoped read/query delta cho CDO-07; ba service role do người triển khai tự cấu hình bằng IaC | CDO-08 + Người triển khai |
 | Cost estimate theo AI event volume | Chưa có | CDO-04 |
 | Live canonical sample | Pending deployment | AIO + CDO-08 |
 
