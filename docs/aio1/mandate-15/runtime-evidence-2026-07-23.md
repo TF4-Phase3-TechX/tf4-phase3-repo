@@ -1,9 +1,9 @@
 # Mandate 15 partial runtime evidence — 2026-07-23
 
-> Canonical Jira: TF4AIO-80 / TF4AIO-77  
-> Collection account: `511825856493`  
-> Collection role: `TF4-AIReadOnlyOrLimitedInvoke`  
-> Evidence window: 2026-07-23 14:08Z–14:23Z  
+> Canonical Jira: TF4AIO-80 / TF4AIO-77
+> Collection account: `511825856493`
+> Collection role: `TF4-AIReadOnlyOrLimitedInvoke`
+> Evidence window: 2026-07-23 14:08Z–14:23Z
 > Status: **PARTIAL — detection and safety path observed; live MTTD and real-channel receipt pending**
 
 ## Claim boundary
