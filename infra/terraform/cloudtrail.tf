@@ -383,7 +383,7 @@ resource "aws_cloudtrail" "main" {
         "arn:aws:s3:::tf4-aws-config-staging-${data.aws_caller_identity.current.account_id}-${var.aws_region}/aws-config/",
         "arn:aws:s3:::tf4-cloudtrail-logs-bucket-${data.aws_caller_identity.current.account_id}/AWSLogs/",
         "arn:aws:s3:::tf4-postgresql-migration-backups-${data.aws_caller_identity.current.account_id}-${var.aws_region}/rel15/",
-        "arn:aws:s3:::tf4-msk-orders-archive-${data.aws_caller_identity.current.account_id}-${var.aws_region}/orders/"
+        "arn:aws:s3:::tf4-msk-orders-archive-${data.aws_caller_identity.current.account_id}-${var.aws_region}/orders/",
         "arn:aws:s3:::tf4-eks-audit-logs-${data.aws_caller_identity.current.account_id}/"
       ]
     }
