@@ -34,6 +34,22 @@ class TelemetryClient:
         except (httpx.HTTPError, ValueError) as exc:
             raise TelemetryError(f"Prometheus query failed: {exc}") from exc
 
+    async def query(self, query: str) -> list[dict[str, Any]]:
+        """Run an instant Prometheus query for exact current-window ratios."""
+
+        try:
+            response = await self.client.get(
+                f"{self.settings.prometheus_url.rstrip('/')}/api/v1/query",
+                params={"query": query},
+            )
+            response.raise_for_status()
+            body = response.json()
+            if body.get("status") != "success":
+                raise TelemetryError(str(body))
+            return body.get("data", {}).get("result", [])
+        except (httpx.HTTPError, ValueError) as exc:
+            raise TelemetryError(f"Prometheus query failed: {exc}") from exc
+
     async def search_logs(
         self, services: tuple[str, ...], terms: tuple[str, ...]
     ) -> list[dict[str, Any]] | None:

@@ -13,13 +13,15 @@ from .config import Settings
 from .detection import (
     Detector,
     classify_service_state,
+    error_budget_burn_rate_query,
     error_rate_query,
+    instant_value,
     latency_query,
     llm_error_query,
     request_rate_query,
     values,
 )
-from .models import Evidence, Incident
+from .models import Evidence, Incident, IncidentStatus
 from .remediation import RemediationController
 from .store import IncidentStore
 from .telemetry import TelemetryClient, TelemetryError
@@ -29,12 +31,17 @@ poll_failures = Counter("aiops_telemetry_poll_failures_total", "Telemetry poll f
 incidents_created = Counter(
     "aiops_incidents_created_total",
     "Incidents created",
-    ["incident_type", "service", "severity"],
+    ["incident_type", "service", "severity", "impact"],
 )
 incidents_active = Gauge(
     "aiops_incident_active",
     "Whether an incident is currently active and should remain routed to on-call",
-    ["incident_type", "service", "severity"],
+    ["incident_type", "service", "severity", "impact"],
+)
+error_budget_burn_rate = Gauge(
+    "aiops_error_budget_burn_rate",
+    "Current request-weighted error-budget burn rate for an approved service SLO",
+    ["service", "window"],
 )
 incidents_resolved = Counter(
     "aiops_incidents_auto_resolved_total",
@@ -57,6 +64,10 @@ SERVICE_STATES = ("healthy", "busy", "idle", "degraded", "down", "unknown")
 
 def _notification_severity(incident_severity: str) -> str:
     return "critical" if incident_severity == "high" else "warning"
+
+
+def _impact_level(impact: dict[str, Any]) -> str:
+    return str(impact.get("level") or "not_assessed")
 
 
 def _series_service(series: dict[str, Any]) -> str | None:
@@ -110,6 +121,24 @@ class AIOpsWorker:
                 log.error(json.dumps({"event": "telemetry_degraded", "source": "prometheus", "error": str(exc)}))
                 return []
 
+        async def query_instant(query: str):
+            nonlocal prometheus_ok
+            try:
+                return await self.telemetry.query(query)
+            except TelemetryError as exc:
+                prometheus_ok = False
+                poll_failures.labels("prometheus").inc()
+                log.error(
+                    json.dumps(
+                        {
+                            "event": "telemetry_degraded",
+                            "source": "prometheus",
+                            "error": str(exc),
+                        }
+                    )
+                )
+                return []
+
         decisions = []
         for service in self.settings.services:
             query = latency_query(service, self.settings.namespace)
@@ -125,12 +154,34 @@ class AIOpsWorker:
             query = error_rate_query(
                 service, self.settings.minimum_request_count, self.settings.namespace
             )
+            burn_rates: tuple[float | None, float | None] | None = None
+            slo_target = self.settings.service_slo_targets.get(service)
+            if slo_target is not None:
+                observed_burn_rates: list[float | None] = []
+                for window in (
+                    self.settings.burn_rate_short_window_minutes,
+                    self.settings.burn_rate_long_window_minutes,
+                ):
+                    burn_query = error_budget_burn_rate_query(
+                        service,
+                        slo_target,
+                        window,
+                        self.settings.minimum_request_count,
+                        self.settings.namespace,
+                    )
+                    observed = instant_value(await query_instant(burn_query))
+                    observed_burn_rates.append(observed)
+                    error_budget_burn_rate.labels(service, f"{window}m").set(
+                        observed if observed is not None else float("nan")
+                    )
+                burn_rates = (observed_burn_rates[0], observed_burn_rates[1])
             error_decision = (
                 await asyncio.to_thread(
                     self.detector.error_rate,
                     service,
                     await query_range(query),
                     query,
+                    burn_rates=burn_rates,
                 )
             )
             decisions.append(error_decision)
@@ -265,6 +316,7 @@ class AIOpsWorker:
                         resolved.incident_type,
                         resolved.affected_service,
                         _notification_severity(resolved.severity),
+                        _impact_level(resolved.impact),
                     ).set(0)
                     incidents_resolved.labels(
                         resolved.incident_type, resolved.affected_service
@@ -292,6 +344,7 @@ class AIOpsWorker:
                 tenant_id=self.settings.tenant_id,
                 confidence=decision.confidence,
                 suspected_root_cause=decision.root_cause,
+                impact=decision.impact,
                 evidence=decision.evidence,
                 rca_candidates=decision.candidates,
                 runbook_id=decision.runbook_id,
@@ -315,6 +368,24 @@ class AIOpsWorker:
                     source="jaeger", query=f"service={decision.service}", window=f"{self.settings.lookback_minutes}m",
                     value=len(traces), reference=str(trace_id) if trace_id else None,
                 ))
+            active_before = next(
+                (
+                    existing
+                    for existing in await self.store.list()
+                    if existing.dedup_key == incident.dedup_key
+                    and existing.status
+                    not in {IncidentStatus.RESOLVED, IncidentStatus.REJECTED}
+                ),
+                None,
+            )
+            previous_routing = (
+                (
+                    _notification_severity(active_before.severity),
+                    _impact_level(active_before.impact),
+                )
+                if active_before
+                else None
+            )
             stored, created = await self.store.upsert(incident)
             if created:
                 notification_severity = _notification_severity(incident.severity)
@@ -322,11 +393,13 @@ class AIOpsWorker:
                     incident.incident_type,
                     incident.affected_service,
                     notification_severity,
+                    _impact_level(incident.impact),
                 ).inc()
                 incidents_active.labels(
                     incident.incident_type,
                     incident.affected_service,
                     notification_severity,
+                    _impact_level(incident.impact),
                 ).set(1)
                 handler = getattr(self.remediation, "handle_incident", None)
                 if handler:
@@ -335,6 +408,34 @@ class AIOpsWorker:
                     # Backward-compatible seam for test doubles and manual-mode adapters.
                     self.remediation.request_approval(stored)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
+            elif active_before and stored.incident_id == active_before.incident_id:
+                current_routing = (
+                    _notification_severity(stored.severity),
+                    _impact_level(stored.impact),
+                )
+                if previous_routing != current_routing:
+                    incidents_active.labels(
+                        stored.incident_type,
+                        stored.affected_service,
+                        previous_routing[0],
+                        previous_routing[1],
+                    ).set(0)
+                    incidents_active.labels(
+                        stored.incident_type,
+                        stored.affected_service,
+                        current_routing[0],
+                        current_routing[1],
+                    ).set(1)
+                    log.info(
+                        json.dumps(
+                            {
+                                "event": "incident_routing_changed",
+                                "incident_id": stored.incident_id,
+                                "previous": previous_routing,
+                                "current": current_routing,
+                            }
+                        )
+                    )
         if prometheus_ok:
             last_poll_success.set(time.time())
 

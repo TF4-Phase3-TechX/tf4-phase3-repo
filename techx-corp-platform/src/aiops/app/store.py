@@ -21,10 +21,34 @@ class IncidentStore:
             existing = self._items.get(existing_id or "")
             if existing and existing.status not in {IncidentStatus.RESOLVED, IncidentStatus.REJECTED}:
                 self._recovery_streaks.pop(candidate.dedup_key, None)
+                previous_routing = {
+                    "severity": existing.severity,
+                    "impact": existing.impact.get("level", "not_assessed"),
+                }
                 existing.last_observed_at = utcnow()
+                existing.severity = candidate.severity
+                existing.impact = candidate.impact
                 existing.evidence = candidate.evidence
                 existing.confidence = candidate.confidence
-                existing.audit_events.append(AuditEvent(event="incident_observed_again"))
+                existing.suspected_root_cause = candidate.suspected_root_cause
+                existing.rca_candidates = candidate.rca_candidates
+                current_routing = {
+                    "severity": existing.severity,
+                    "impact": existing.impact.get("level", "not_assessed"),
+                }
+                existing.audit_events.append(
+                    AuditEvent(
+                        event=(
+                            "incident_routing_changed"
+                            if previous_routing != current_routing
+                            else "incident_observed_again"
+                        ),
+                        detail={
+                            "previous": previous_routing,
+                            "current": current_routing,
+                        },
+                    )
+                )
                 return existing, False
             recent = [i for i in self._items.values() if i.dedup_key == candidate.dedup_key]
             if recent and utcnow() - max(i.last_observed_at for i in recent) < self.cooldown:
