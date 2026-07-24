@@ -113,6 +113,11 @@ def main() -> int:
         action="store_true",
         help="Return zero for an intentionally failing baseline fixture.",
     )
+    parser.add_argument(
+        "--require-all-pass",
+        action="store_true",
+        help="Fail certification when any supplied public/hidden case fails.",
+    )
     args = parser.parse_args()
 
     raw = args.input.read_bytes()
@@ -135,6 +140,12 @@ def main() -> int:
     )
     print(json.dumps(report["aggregate"], ensure_ascii=False, indent=2))
     hard_bars_pass = report["aggregate"]["hard_bars"]["pass"]
+    all_cases_pass = (
+        report["aggregate"]["case_pass"]["numerator"]
+        == report["aggregate"]["case_pass"]["denominator"]
+    )
+    if args.require_all_pass and not all_cases_pass:
+        return 3
     return 0 if hard_bars_pass or args.allow_hard_bar_failures else 2
 
 

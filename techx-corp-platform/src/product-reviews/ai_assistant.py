@@ -38,6 +38,7 @@ class AssistantOutcome:
     response_contract_stage: str = "not_applicable"
     action_proposal: Any = None
     provider_attempted: bool = False
+    citations: tuple[dict[str, Any], ...] = ()
 
 
 class GroundedAssistant:
@@ -153,6 +154,7 @@ class GroundedAssistant:
                 provider_stop_reason=result.stop_reason,
                 response_contract_stage=result.contract_stage,
                 provider_attempted=True,
+                citations=tuple(validated["citations"]),
             )
         except (ProviderFailure, UnsafeModelOutput) as exc:
             fallback = self._comparison_fallback(
@@ -231,6 +233,7 @@ class GroundedAssistant:
                 provider_stop_reason=result.stop_reason,
                 response_contract_stage=result.contract_stage,
                 provider_attempted=True,
+                citations=tuple(validated["citations"]),
             )
         except ProviderFailure as exc:
             outcome = "blocked" if exc.error_class == "guardrail_intervened" else "unavailable"

@@ -13,7 +13,7 @@ args=(
   --require-calibration
 )
 if [[ "${MANDATE14_CERTIFY:-0}" == "1" ]]; then
-  args+=(--require-clean-git)
+  args+=(--require-clean-git --require-all-pass)
 fi
 
 "${python_bin}" "${args[@]}"
