@@ -205,6 +205,9 @@ components:
     useDefault:
       env: true
     serviceAccountName: aiops
+    # Required for the read-only Kubernetes availability adapter. Mutation
+    # remains independently gated by aiopsRemediation.liveEnabled and RBAC.
+    automountServiceAccountToken: true
     service:
       port: 8080
     podAnnotations:

@@ -430,6 +430,50 @@ jobs:
               assert 'replicas' not in deployments[name]['spec']
           PY
 
+      - name: Assert AIOps read-only Kubernetes API wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          resources = [
+              resource
+              for resource in yaml.safe_load_all(
+                  Path("rendered/techx-corp-app.yaml").read_text()
+              )
+              if resource
+          ]
+          aiops_accounts = [
+              resource
+              for resource in resources
+              if resource.get("kind") == "ServiceAccount"
+              and resource["metadata"]["name"] == "aiops"
+          ]
+          assert len(aiops_accounts) == 1, "AIOps ServiceAccount must render once"
+          assert aiops_accounts[0]["automountServiceAccountToken"] is True
+
+          aiops = next(
+              resource
+              for resource in resources
+              if resource.get("kind") == "Deployment"
+              and resource["metadata"]["name"] == "aiops"
+          )
+          assert aiops["spec"]["template"]["spec"]["serviceAccountName"] == "aiops"
+
+          role = next(
+              resource
+              for resource in resources
+              if resource.get("kind") == "Role"
+              and resource["metadata"]["name"] == "aiops-remediation"
+          )
+          deployment_rule = next(
+              rule
+              for rule in role["rules"]
+              if "deployments" in rule.get("resources", [])
+          )
+          assert set(deployment_rule["verbs"]) == {"get", "list", "watch"}
+          PY
+
       - name: Upload rendered manifests
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

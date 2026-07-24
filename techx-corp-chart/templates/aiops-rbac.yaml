@@ -1,12 +1,5 @@
 {{- if (.Values.components.aiops).enabled }}
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: aiops
-  labels:
-    {{- include "techx-corp.labels" . | nindent 4 }}
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
