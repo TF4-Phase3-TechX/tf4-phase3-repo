@@ -45,6 +45,35 @@ only `/spec/replicas`. A direct pod-template fault or AIOps rollback may be
 reconciled before the verification window. The drill must not start until CDO
 approves a time-bounded reconciliation strategy.
 
+### Read-only refresh — 2026-07-25
+
+Observed at `2026-07-25T06:05:20Z`:
+
+| Item | Refreshed state |
+|---|---|
+| AIOps Deployment | generation 9; desired/ready/available `1/1/1`; same `c2560b9-aiops` digest |
+| Remediation gates | `REMEDIATION_MODE=dry-run`; autonomous `false`; allowed Deployment unset |
+| Product-reviews Deployment | generation 38, revision 37; desired/ready/available `1/1/1` |
+| Product-reviews template | same `9954486-product-reviews` digest; request `75m/96Mi`, limit `300m/192Mi` |
+| Previous ReplicaSet | revision 36 remains retained with the same image and CPU resources as revision 37 |
+| Telemetry status API | Prometheus available (17 series); OpenSearch available/yellow; Jaeger API available (17 services) |
+| Active AIOps alerts | `0`; coverage-degraded alerts `0` at the observation time |
+
+The current role cannot read the Argo CD `Application` CR, so runtime Argo
+state is not claimed. The GitOps source still configures `techx-corp` with
+automated self-heal and ignores only `/spec/replicas`; CDO must verify the live
+Application before approving the drill.
+
+One `product-reviews/service_latency_spike` incident was observed at
+`2026-07-25T04:45:49Z` and auto-resolved after two healthy polls. It bound the
+`deployment-latency-rollback` runbook but recorded `execution_attempts=0` and
+`approval_status=cancelled_recovered`. This is useful detector/runbook routing
+evidence only; it is not auto-mitigation evidence.
+
+Although the aggregate telemetry status endpoint was available, one Jaeger pod
+scrape returned `up=0` during the point-in-time query. Therefore the
+30–60-minute telemetry-stability activation gate remains pending.
+
 ## Revalidated offline evidence
 
 From `techx-corp-platform/src/aiops`:
