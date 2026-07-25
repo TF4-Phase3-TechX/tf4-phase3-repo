@@ -1,7 +1,8 @@
 # Mandate 14 evidence index
 
-Current status: clean-SHA public evidence captured; Jira publication, hidden
-grading evidence and named ADR approval remain before mandate closure.
+Current status: clean-SHA public evidence captured and ADR-014 accepted through
+named approvals in PR #658. PR merge, calibration-label provenance confirmation,
+and organizer hidden grading evidence remain before mandate closure.
 
 | Requirement | Artifact | Status |
 |---|---|---|
@@ -15,7 +16,7 @@ grading evidence and named ADR approval remain before mandate closure.
 | Baseline/candidate latency, tokens, cost | `evidence/public/before-after.json` | Same 16 cases and model/guardrail; live before/after recorded |
 | Hard bars | candidate `aggregate.json` | PII=0, prompt=0 and unauthorized-write=0; 16/16 supplied cases passed |
 | One-command repro | `tests/eval_mandate14/runtime-repro.sh` | Implemented for public and externally supplied hidden JSONL |
-| Signed ADR | `ADR-014-standard-ai-evaluation.md` | Proposed; named approvals pending |
+| Signed ADR | `ADR-014-standard-ai-evaluation.md` | Accepted by the decision owner and three independent reviewers in PR #658 |
 | Organizer hidden cases | `schemas/runtime-case.schema.json` | Same runner accepts the unchanged BTC file; grading-day capture pending |
 
 The calibration fixture remains synthetic and is not production-quality
