@@ -86,6 +86,7 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         allowed_deployments=(str(case["service"]),),
         verification_polls=len(action_health),
         rollback_verification_polls=max(len(rollback_health), 1),
+        verification_consecutive_healthy_polls=len(action_health),
         # The replay supplies deterministic post-action samples directly; only
         # runtime Prometheus verification needs the real settle delay.
         verification_settle_seconds=0,
@@ -103,7 +104,7 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         suspected_root_cause="external replay scenario",
         evidence=[
             Evidence(
-                source="external_replay",
+                source="prometheus",
                 query=f"scenario:{case['id']}",
                 window="scenario",
                 value="breached",

@@ -67,3 +67,39 @@ async def test_unknown_coverage_resets_consecutive_recovery_streak():
     await store.reset_recovery(active.incident_type, active.affected_service)
     assert await store.observe_recovery(active.incident_type, active.affected_service, 2) is None
     assert active.status == IncidentStatus.OPEN
+
+
+@pytest.mark.asyncio
+async def test_mutation_blocked_incident_never_auto_resolves():
+    store = IncidentStore(cooldown_seconds=0)
+    active, _ = await store.upsert(incident())
+    active.status = IncidentStatus.ESCALATED
+    active.mutation_blocked = True
+    active.escalation_reason = "rollback unverified"
+
+    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
+    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
+    assert active.status == IncidentStatus.ESCALATED
+    assert any(
+        event.event == "auto_resolve_suppressed_mutation_blocked"
+        for event in active.audit_events
+    )
+
+
+@pytest.mark.asyncio
+async def test_target_quarantine_blocks_auto_resolve_and_survives_clear_cycle():
+    store = IncidentStore(cooldown_seconds=0)
+    active, _ = await store.upsert(incident())
+    active.status = IncidentStatus.ESCALATED
+    await store.block_target(
+        active.affected_service,
+        reason="post-mutation safety failure",
+        incident_id=active.incident_id,
+    )
+
+    assert await store.is_target_blocked(active.affected_service) is True
+    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
+    assert active.status == IncidentStatus.ESCALATED
+
+    assert await store.clear_target_block(active.affected_service) is True
+    assert await store.is_target_blocked(active.affected_service) is False

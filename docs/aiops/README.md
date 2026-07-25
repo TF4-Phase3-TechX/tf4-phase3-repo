@@ -122,8 +122,9 @@ curl -X POST http://localhost:8088/v1/incidents/INCIDENT_ID/approve \
 - Every action requires a non-expired approval for that incident.
 - Only allowlisted Deployments can be targeted.
 - One action can run per target; arbitrary commands and flagd mutation are unsupported.
-- A live rollback is successful only when the Deployment is ready, target p95 recovers, and checkout/storefront error rate stays below 1%.
-- Failed verification restores the original pod template and escalates.
+- A live remediation is successful only when the Deployment is ready, the mutated service's p95 and error rate recover, request volume meets the verification floor, and the trailing consecutive verification polls are healthy.
+- Failed verification restores the original pod template, escalates, and quarantines further mutation for that target until an operator clears the process-local block.
+- Cross-service (for example checkout/storefront) error guards are not applied silently; they require an explicit approved dependency mapping.
 
 Create the approval Secret before deploying if the API will be used:
 

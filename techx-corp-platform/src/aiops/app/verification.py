@@ -24,6 +24,19 @@ def target_error_rate_query(service: str, namespace: str, window: str) -> str:
     )
 
 
+def target_request_count_query(service: str, namespace: str, window: str) -> str:
+    """Request volume for the mutated service over the verification window."""
+
+    matchers = (
+        f'service_name="{service}",'
+        'span_kind="SPAN_KIND_SERVER",'
+        f'k8s_namespace_name="{namespace}"'
+    )
+    return (
+        f"sum(increase(traces_span_metrics_calls_total{{{matchers}}}[{window}]))"
+    )
+
+
 def evaluate_target_slo(
     *,
     service: str,
@@ -31,13 +44,13 @@ def evaluate_target_slo(
     latency_threshold_ms: float,
     target_error_rate: float | None,
     error_rate_threshold: float,
+    request_count: float | None = None,
+    minimum_request_count: float = 0,
 ) -> dict[str, Any]:
     """Evaluate only telemetry attributable to the mutated target.
 
-    Missing latency or error-rate coverage fails closed. This prevents a fast
-    error response from being mistaken for successful latency recovery while
-    avoiding unrelated frontend/checkout noise vetoing another service's
-    remediation.
+    Missing latency or error-rate coverage fails closed. Insufficient request
+    volume also fails closed so a near-empty series cannot claim recovery.
     """
 
     latency_healthy = (
@@ -47,14 +60,31 @@ def evaluate_target_slo(
         target_error_rate is not None
         and target_error_rate < error_rate_threshold
     )
+    volume_required = max(minimum_request_count, 0)
+    volume_healthy = (
+        True
+        if volume_required <= 0
+        else request_count is not None and request_count >= volume_required
+    )
+    coverage_complete = (
+        p95_latency_ms is not None
+        and target_error_rate is not None
+        and (volume_required <= 0 or request_count is not None)
+    )
     return {
-        "healthy": latency_healthy and error_rate_healthy,
+        "healthy": (
+            coverage_complete
+            and latency_healthy
+            and error_rate_healthy
+            and volume_healthy
+        ),
         "target_service": service,
         "p95_latency_ms": p95_latency_ms,
         "threshold_ms": latency_threshold_ms,
         "target_error_rate": target_error_rate,
         "target_error_rate_threshold": error_rate_threshold,
-        "coverage_complete": (
-            p95_latency_ms is not None and target_error_rate is not None
-        ),
+        "request_count": request_count,
+        "minimum_request_count": volume_required,
+        "volume_sufficient": volume_healthy,
+        "coverage_complete": coverage_complete,
     }

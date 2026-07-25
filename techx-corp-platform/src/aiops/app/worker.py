@@ -21,7 +21,7 @@ from .detection import (
     request_rate_query,
     values,
 )
-from .models import Evidence, Incident, IncidentStatus
+from .models import AuditEvent, Evidence, Incident, IncidentStatus
 from .remediation import RemediationController
 from .store import IncidentStore
 from .telemetry import TelemetryClient, TelemetryError
@@ -105,6 +105,42 @@ class AIOpsWorker:
         self.remediation = remediation
         self.availability = availability
         self.running = False
+        self._remediation_tasks: set[asyncio.Task[Any]] = set()
+
+    async def _run_remediation(self, incident: Incident) -> None:
+        """Execute remediation off the detection loop so other services keep polling."""
+
+        try:
+            handler = getattr(self.remediation, "handle_incident", None)
+            if handler:
+                await handler(incident)
+            else:
+                self.remediation.request_approval(incident)
+            # Post-mutation safety failures quarantine the Deployment so a later
+            # incident cannot re-mutate after auto-resolve of a non-blocked peer.
+            if incident.mutation_blocked and (
+                incident.execution_attempts > 0 or incident.rollback_result is not None
+            ):
+                await self.store.block_target(
+                    incident.affected_service,
+                    reason=incident.escalation_reason
+                    or "mutation_blocked after remediation safety path",
+                    incident_id=incident.incident_id,
+                )
+                log.warning(
+                    json.dumps(
+                        {
+                            "event": "target_mutation_quarantined",
+                            "service": incident.affected_service,
+                            "incident_id": incident.incident_id,
+                            "reason": incident.escalation_reason,
+                        }
+                    )
+                )
+        except Exception:
+            log.exception(
+                "remediation task failed for incident %s", incident.incident_id
+            )
 
     async def poll_once(self) -> None:
         import time
@@ -413,12 +449,36 @@ class AIOpsWorker:
                     notification_severity,
                     _impact_level(incident.impact),
                 ).set(1)
-                handler = getattr(self.remediation, "handle_incident", None)
-                if handler:
-                    await handler(stored)
+                if await self.store.is_target_blocked(stored.affected_service):
+                    block = await self.store.target_block(stored.affected_service)
+                    stored.status = IncidentStatus.ESCALATED
+                    stored.mutation_blocked = True
+                    stored.escalation_reason = (
+                        "Target mutation quarantine is active; operator unlock required"
+                    )
+                    stored.audit_events.append(
+                        AuditEvent(
+                            event="target_quarantine_denied_remediation",
+                            detail=block or {},
+                        )
+                    )
+                    log.warning(
+                        json.dumps(
+                            {
+                                "event": "remediation_skipped_target_quarantine",
+                                "incident_id": stored.incident_id,
+                                "service": stored.affected_service,
+                                "block": block,
+                            }
+                        )
+                    )
                 else:
-                    # Backward-compatible seam for test doubles and manual-mode adapters.
-                    self.remediation.request_approval(stored)
+                    task = asyncio.create_task(
+                        self._run_remediation(stored),
+                        name=f"aiops-remediate-{stored.incident_id}",
+                    )
+                    self._remediation_tasks.add(task)
+                    task.add_done_callback(self._remediation_tasks.discard)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
             elif active_before and stored.incident_id == active_before.incident_id:
                 current_routing = (

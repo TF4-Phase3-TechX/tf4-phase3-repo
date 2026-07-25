@@ -17,7 +17,11 @@ from .remediation import PolicyDenied, RemediationController
 from .store import IncidentStore
 from .summary import IncidentSummaryGenerator
 from .telemetry import TelemetryClient
-from .verification import evaluate_target_slo, target_error_rate_query
+from .verification import (
+    evaluate_target_slo,
+    target_error_rate_query,
+    target_request_count_query,
+)
 from .worker import AIOpsWorker
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -27,30 +31,30 @@ telemetry = TelemetryClient(settings)
 
 
 async def verify_service_slo(service: str) -> dict[str, object]:
+    window = settings.verification_metric_window
     latency_series = await telemetry.query_range(
-        latency_query(
-            service,
-            settings.namespace,
-            settings.verification_metric_window,
-        )
+        latency_query(service, settings.namespace, window)
     )
     points = values(latency_series[0]) if latency_series else []
     current = points[-1] if points else None
     guard_series = await telemetry.query_range(
-        target_error_rate_query(
-            service,
-            settings.namespace,
-            settings.verification_metric_window,
-        )
+        target_error_rate_query(service, settings.namespace, window)
     )
     guard_points = values(guard_series[0]) if guard_series else []
     target_error_rate = guard_points[-1] if guard_points else None
+    volume_series = await telemetry.query_range(
+        target_request_count_query(service, settings.namespace, window)
+    )
+    volume_points = values(volume_series[0]) if volume_series else []
+    request_count = volume_points[-1] if volume_points else None
     return evaluate_target_slo(
         service=service,
         p95_latency_ms=current,
         latency_threshold_ms=settings.latency_threshold_ms,
         target_error_rate=target_error_rate,
         error_rate_threshold=settings.verification_error_rate_threshold,
+        request_count=request_count,
+        minimum_request_count=settings.verification_minimum_request_count,
     )
 
 
@@ -157,6 +161,25 @@ async def reject(incident_id: str):
         raise HTTPException(404, "Incident not found")
     remediation.reject(incident)
     return incident
+
+
+@app.get("/v1/targets/{service}/mutation-block")
+async def get_mutation_block(service: str):
+    detail = await store.target_block(service)
+    return {"service": service, "blocked": detail is not None, "detail": detail}
+
+
+@app.delete(
+    "/v1/targets/{service}/mutation-block",
+    dependencies=[Depends(require_token)],
+)
+async def clear_mutation_block(service: str):
+    """Operator unlock after reviewing an escalated post-mutation quarantine."""
+
+    cleared = await store.clear_target_block(service)
+    if not cleared:
+        raise HTTPException(404, "Target is not under mutation quarantine")
+    return {"service": service, "cleared": True}
 
 
 if __name__ == "__main__":

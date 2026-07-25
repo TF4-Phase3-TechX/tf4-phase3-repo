@@ -95,6 +95,7 @@ async def test_failed_slo_verification_restores_original_template():
             Settings(), remediation_mode="live", verification_polls=1,
             rollback_verification_polls=1, verification_settle_seconds=0,
             verification_interval_seconds=0,
+            verification_consecutive_healthy_polls=1,
         ), adapter=adapter, verifier=unhealthy_then_recovered,
     )
     item = incident()
@@ -196,6 +197,7 @@ async def test_unverified_rollback_escalates_and_blocks_mutation():
             Settings(), remediation_mode="live", verification_polls=1,
             rollback_verification_polls=1, verification_settle_seconds=0,
             verification_interval_seconds=0,
+            verification_consecutive_healthy_polls=1,
         ), adapter=adapter, verifier=always_unhealthy,
     )
     item = incident()
@@ -246,7 +248,9 @@ async def test_verification_waits_for_post_action_metric_window(monkeypatch):
         replace(
             Settings(),
             verification_settle_seconds=30,
+            verification_metric_window="15s",
             verification_interval_seconds=0,
+            verification_consecutive_healthy_polls=1,
         ),
         adapter=adapter,
         verifier=healthy,
@@ -260,3 +264,64 @@ async def test_verification_waits_for_post_action_metric_window(monkeypatch):
 
     assert result["healthy"] is True
     assert sleeps == [30]
+
+
+@pytest.mark.asyncio
+async def test_trailing_consecutive_polls_ignore_stale_first_sample():
+    adapter = FakeAdapter()
+    outcomes = iter(
+        [
+            {"healthy": False, "p95_latency_ms": 7000},
+            {"healthy": True, "p95_latency_ms": 100},
+            {"healthy": True, "p95_latency_ms": 100},
+        ]
+    )
+
+    async def stale_then_healthy(_):
+        return next(outcomes)
+
+    controller = RemediationController(
+        replace(
+            Settings(),
+            verification_settle_seconds=0,
+            verification_interval_seconds=0,
+            verification_polls=3,
+            verification_consecutive_healthy_polls=2,
+        ),
+        adapter=adapter,
+        verifier=stale_then_healthy,
+    )
+
+    result = await controller._verification_window(
+        adapter, "product-reviews", polls=3
+    )
+
+    assert result["poll_healthy"] == [False, True, True]
+    assert result["healthy"] is True
+    assert result["consecutive_required"] == 2
+
+
+@pytest.mark.asyncio
+async def test_unavailable_prometheus_evidence_denies_autonomous_policy():
+    controller = RemediationController(
+        replace(
+            Settings(),
+            autonomous_remediation_enabled=True,
+            remediation_mode="dry-run",
+            allowed_deployments=("product-reviews",),
+        )
+    )
+    item = incident(with_evidence=False)
+    item.evidence = [
+        Evidence(
+            source="prometheus",
+            query="p95",
+            window="5m",
+            value="unavailable",
+        )
+    ]
+
+    await controller.handle_incident(item)
+
+    assert item.status == IncidentStatus.ESCALATED
+    assert "evidence_present" in (item.escalation_reason or "")

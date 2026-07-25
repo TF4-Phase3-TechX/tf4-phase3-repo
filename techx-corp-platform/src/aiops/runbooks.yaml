@@ -17,7 +17,9 @@ runbooks:
       - Dry-run/preflight resolves both the current and previous templates before mutation.
     verification:
       - Deployment rollout becomes ready.
-      - Latency and error rate recover without degrading checkout/storefront SLO.
+      - Target p95 latency and target error rate recover for the mutated service.
+      - Request volume meets the verification floor (missing/low traffic fails closed).
+      - Cross-service dependency guards are optional policy mappings, not silent defaults.
   - id: service-error-rate-escalation
     incident_type: service_error_rate_spike
     automatic_action: null

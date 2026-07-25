@@ -180,6 +180,13 @@ class ApprovalRecorder:
         incident.approval_status = "pending"
 
 
+async def _await_remediation_tasks(worker: AIOpsWorker) -> None:
+    """Remediation runs off the detection loop; tests wait for background tasks."""
+
+    if worker._remediation_tasks:
+        await asyncio.gather(*list(worker._remediation_tasks), return_exceptions=True)
+
+
 @pytest.mark.asyncio
 async def test_worker_breach_recover_breach_notifies_for_two_incidents():
     settings = replace(Settings(), services=(), recovery_polls=2)
@@ -194,6 +201,7 @@ async def test_worker_breach_recover_breach_notifies_for_two_incidents():
 
     for _ in range(4):
         await worker.poll_once()
+        await _await_remediation_tasks(worker)
 
     assert len(recorder.incident_ids) == 2
     assert recorder.incident_ids[0] != recorder.incident_ids[1]
@@ -295,9 +303,11 @@ async def test_confirmed_service_down_creates_pageable_incident():
     )
 
     await worker.poll_once()
+    await _await_remediation_tasks(worker)
     assert await store.list() == []
 
     await worker.poll_once()
+    await _await_remediation_tasks(worker)
     incidents = await store.list()
 
     assert len(incidents) == 1
