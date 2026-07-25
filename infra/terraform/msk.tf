@@ -90,6 +90,16 @@ resource "aws_msk_cluster" "orders" {
     client_subnets  = module.vpc.private_subnets
     security_groups = [aws_security_group.msk.id]
 
+    connectivity_info {
+      vpc_connectivity {
+        client_authentication {
+          sasl {
+            iam = true
+          }
+        }
+      }
+    }
+
     storage_info {
       ebs_storage_info {
         volume_size = 10
@@ -99,6 +109,7 @@ resource "aws_msk_cluster" "orders" {
 
   client_authentication {
     sasl {
+      iam   = true
       scram = true
     }
   }
@@ -128,6 +139,27 @@ resource "aws_msk_cluster" "orders" {
 
   tags = merge(var.tags, {
     Name = "techx-tf4-orders"
+  })
+}
+
+# REL-28: allow Amazon Data Firehose to create the managed VPC connection required
+# for private MSK native source ingestion. App clients remain on SASL/SCRAM.
+resource "aws_msk_cluster_policy" "orders_firehose_private_connectivity" {
+  cluster_arn = aws_msk_cluster.orders.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowFirehoseCreateVpcConnection"
+        Effect = "Allow"
+        Principal = {
+          Service = "firehose.amazonaws.com"
+        }
+        Action   = "kafka:CreateVpcConnection"
+        Resource = aws_msk_cluster.orders.arn
+      }
+    ]
   })
 }
 
