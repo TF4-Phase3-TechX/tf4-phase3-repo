@@ -1,243 +1,332 @@
-# CDO08-REL-25 - Yêu cầu điều kiện chạy internal dry run
+# CDO08-REL-25 - Request chốt phương án internal dry run
 
-**Task:** Tự động hóa PITR shared RDS và khôi phục schema accounting  
-**Owner:** CDO08 Reliability  
-**Mức ưu tiên:** P0  
-**Môi trường:** Internal isolated restore drill  
-**Thực hiện:** Nhân (CDO08 Reliability)  
-**Bên cấp quyền:** Platform / Cloud Security  
-**Cập nhật:** 2026-07-24
+**Subtask:** Automate shared-RDS PITR and accounting schema recovery workflow
+**Owner:** CDO08 Reliability
+**Mức ưu tiên:** P0
+**Bên cần phê duyệt:** PM / Tech Lead / Platform / Cloud Security
+**Cập nhật:** 2026-07-25
 
-## Nội dung yêu cầu
+## Mục tiêu
 
-Nhờ leader và các bên liên quan cấp hoặc phê duyệt các điều kiện AWS và
-Kubernetes bên dưới để CDO08 thực hiện một lần internal dry run RDS PITR.
-
-## Vì sao cần request này
-
-Acceptance Criteria yêu cầu **restore thành công trong internal dry run**.
-Kiểm tra cú pháp hoặc chạy `PREFLIGHT_ONLY=true` chỉ chứng minh script và
-guardrail hoạt động; chưa chứng minh AWS có thể tạo RDS PITR thật, validation
-client kết nối được, schema `accounting` export/import thành công hoặc RTO thực
-tế là bao nhiêu.
-
-Internal dry run phải tạo một RDS instance mới từ automated backup. Đây là tài
-nguyên AWS có phát sinh chi phí và cần quyền cao hơn các lệnh read-only.
-**Nhân sẽ tự tạo toàn bộ resources cần thiết** (security groups, validation pod,
-temporary secrets) sau khi được Platform cấp đủ quyền AWS và Kubernetes.
-Không assign cho người khác tạo sẵn.
-
-Không thể dùng production SG, production endpoint, production DNS hoặc
-production application pod để thay thế. Việc đó có thể làm validation nhầm trên
-production hoặc khiến dữ liệu restore bị production truy cập, trái với yêu cầu
-restore cô lập và không đụng production.
-
-Các tài nguyên và quyền được yêu cầu bên dưới là mức tối thiểu để:
-
-- tạo RDS PITR mới trong private network;
-- chỉ cho validation client kết nối qua TCP/5432;
-- dùng temporary credential thay vì ghi secret thật vào script;
-- export/import riêng schema `accounting`;
-- ghi log start/end và tổng RTO thực tế;
-- cleanup RDS, pod và temporary secret sau khi lưu evidence.
-
-## Blocker hiện tại
-
-Kết quả kiểm tra read-only ngày 2026-07-24:
-
-- AWS SSO và Kubernetes context đang truy cập được.
-- Source RDS đang ở trạng thái `available`, private và có PITR restore window
-  hợp lệ từ automated backup.
-- Chưa tìm thấy security group có tag `Environment=RestoreDrill`.
-- Chưa có pod đang chạy với label `restore-validation-client=true`.
-- SSO role hiện tại từng nhận lỗi `UnauthorizedOperation` khi gọi
-  `ec2:CreateSecurityGroup`.
-- Operator chưa được cung cấp `ACCOUNTING_TARGET_HOST` cô lập và temporary
-  database credential.
-
-Các bước kiểm tra trên không tạo RDS instance, security group, pod, secret, DNS
-record hoặc tài nguyên cloud nào.
-
-## Tài nguyên Nhân sẽ tự tạo
-
-Sau khi được cấp đủ quyền AWS và Kubernetes, Nhân sẽ tự tạo toàn bộ
-các tài nguyên bên dưới trước khi chạy dry run.
-
-### Validation-client security group
-
-Nhân tự tạo trong cùng VPC với source RDS:
-
-- Không cần database ingress.
-- Chỉ gắn vào ENI của validation-client pod.
-- Tag `Purpose=RestoreValidationClient`.
-
-### Restore-target security group
-
-Nhân tự tạo trong cùng VPC với source RDS:
-
-- Chỉ có một ingress rule: TCP/5432 từ validation-client security group.
-- Không cho phép CIDR, IPv6 CIDR, prefix list, production security group hoặc
-  public ingress.
-- Tag `Purpose=RestoreTarget`.
-
-Cả hai security group phải có tags:
+Chọn access path phù hợp để chạy internal dry run:
 
 ```text
-Owner=CDO08
-Environment=RestoreDrill
-Mandate=20
-Task=CDO08-REL-25
-RestoreDrillId=<approved-drill-id>
-TTLHours=24
-CleanupAfter=<approved-UTC-timestamp>
-CostCenter=ReliabilityDrill
-Production=false
+Shared production RDS backup
+  -> PITR sang RDS mới
+  -> export riêng schema accounting
+  -> import vào database accounting_drill
+  -> validate dữ liệu và đo RTO
+  -> cleanup toàn bộ tài nguyên drill
 ```
 
-### Accounting drill target database
+Production RDS chỉ được dùng làm PITR source, không bị modify, đổi SG, đổi DNS
+hoặc import dữ liệu.
 
-Nhân tự tạo hoặc provision một database dùng cho `ACCOUNTING_TARGET_HOST`.
-Target này phải:
+## Vấn đề cần quyết định
 
-- private và chỉ validation client truy cập được;
-- không trùng source RDS endpoint hoặc PITR staging endpoint;
-- không dùng production DNS;
-- được phép thao tác drop/create schema `accounting`;
-- không chứa schema `catalog` hoặc `reviews`.
-
-### Validation pod
-
-Nhân tự tạo pod trong namespace `techx-tf4` với:
-
-- label `restore-validation-client=true`;
-- image có `pg_isready`, `pg_dump`, `pg_restore` và `psql`;
-- service account riêng cho restore drill;
-- không có production application role hoặc production DNS alias;
-- credential nhận từ Kubernetes Secret tạm do Nhân tự tạo;
-- được xóa cùng temporary secrets sau khi thu evidence.
-
-## Quyền AWS cần Platform cấp cho Nhân
-
-Nhân cần được cấp các quyền sau vào SSO role để tự tạo và vận hành
-toàn bộ resources drill:
+Thiết kế ban đầu dùng validation pod với dedicated Security Group for Pods.
+Attempt thực tế xác nhận:
 
 ```text
-sts:GetCallerIdentity
-rds:DescribeDBInstances
-rds:DescribeDBInstanceAutomatedBackups
-rds:DescribeDBSubnetGroups
-rds:ListTagsForResource
-rds:RestoreDBInstanceToPointInTime
-rds:ModifyDBInstance
-rds:DeleteDBInstance
-ec2:DescribeSecurityGroups
-ec2:DescribeNetworkInterfaces
-ec2:CreateSecurityGroup
-ec2:CreateTags
-ec2:AuthorizeSecurityGroupIngress
-ec2:RevokeSecurityGroupIngress
-ec2:DeleteSecurityGroup
+EKS node types: t3.large, t3a.large
+ENABLE_POD_ENI=false
+Pod status: Pending
+Scheduler error: Insufficient vpc.amazonaws.com/pod-eni
 ```
 
-Trong phạm vi AWS condition hỗ trợ, giới hạn quyền tạo, gắn tag và xóa vào tài
-nguyên có:
+AWS không hỗ trợ Security Groups for Pods trên instance family `t`. Vì vậy chỉ
+bật `ENABLE_POD_ENI=true` không giải quyết được vấn đề trên node hiện tại.
+
+Ba phương án đã được đánh giá dưới đây.
+
+## Phương án 1: Dedicated Security Group for EKS Pod
+
+### Luồng
 
 ```text
-Environment=RestoreDrill
-Task=CDO08-REL-25
-Production=false
+Validation pod
+  -> branch ENI
+  -> validation-client SG
+  -> TCP/5432
+  -> restore-target SG
+  -> restored RDS
 ```
 
-Quyền `rds:DeleteDBInstance` chỉ dùng cho cleanup đã được review sau khi lưu
-evidence.
+### Điểm tốt
 
-## Quyền Kubernetes cần Platform cấp cho Nhân
+- Mức cô lập tốt.
+- Chỉ validation pod có network path tới Restore RDS.
+- Khớp thiết kế guardrail ban đầu.
 
-Nhân cần được cấp quyền trong namespace `techx-tf4` để tự tạo và
-xóa các tài nguyên Kubernetes của drill:
+### Vì sao không phù hợp hiện tại
+
+- Node `t3.large` và `t3a.large` không hỗ trợ ENI trunking cần cho Pod SG.
+- `ENABLE_POD_ENI=false`.
+- Bật cờ trên node family `t` vẫn không tạo được branch ENI.
+- Muốn sử dụng phải tạo node group mới bằng instance type hỗ trợ trunking.
+- Phải rollout VPC CNI và thay đổi networking của production EKS.
+- Mức thay đổi quá lớn chỉ để chạy một validation pod tạm thời.
+
+### Kết luận
 
 ```text
-pods: create, get, list, delete, exec
-secrets: create, get, delete
-serviceaccounts: create, delete
-SecurityGroupPolicy (VPC CNI CRD): create, delete
+KHÔNG CHỌN
 ```
 
-Nhân sẽ tự tạo validation pod, service account, temporary Secrets và
-`SecurityGroupPolicy` theo spec. Platform không cần tạo sẵn.
+Không bật `ENABLE_POD_ENI` và không đổi node group production chỉ để phục vụ
+REL-25 internal dry run.
 
-## Giá trị runtime cần chuyển qua kênh bảo mật
+## Phương án 2: Standard EKS Pod dùng EKS Node SG
 
-Đề nghị cung cấp các giá trị sau ngoài Git và ticket:
+### Luồng
 
 ```text
-EXPECTED_AWS_ACCOUNT_ID
-EXPECTED_KUBE_CONTEXT
-RESTORE_SECURITY_GROUP_ID
-VALIDATION_CLIENT_SECURITY_GROUP_ID
-ACCOUNTING_TARGET_HOST
-temporary PostgreSQL authentication material
+Validation pod
+  -> network interface của EKS node
+  -> EKS node SG
+  -> TCP/5432
+  -> restore-target SG
+  -> restored RDS
 ```
 
-CDO08 sẽ chọn restore timestamp và target identifier sau khi PITR window và
-naming guardrail pass.
+### Điểm tốt
 
-## Nội dung cần leader phê duyệt
+- Không cần Pod ENI hoặc `SecurityGroupPolicy`.
+- Không cần bật `ENABLE_POD_ENI`.
+- Không cần đổi node group.
+- Thay đổi script ít hơn phương án EC2/SSM.
 
-Đề nghị xác nhận:
+### Rủi ro
 
-- cho phép Nhân tạo một private, single-AZ RDS PITR instance để chạy drill;
-- TTL tối đa 24 giờ và khoảng chi phí tối đa được phép;
-- restore timestamp window được chấp thuận;
-- Platform cấp đủ quyền AWS và Kubernetes cho Nhân để tự tạo resources;
-- Nhân chịu trách nhiệm tạo, vận hành và cleanup toàn bộ drill resources;
-- PM review evidence trước khi Nhân thực hiện cleanup và đóng subtask.
+- Restore RDS phải cho phép TCP/5432 từ EKS node SG.
+- Các pod khác dùng cùng node SG cũng có network path tới Restore RDS.
+- PITR sao chép database users/passwords; production pod có credential hiện tại
+  có thể đăng nhập Restore RDS nếu biết hoặc nhận được endpoint.
+- NetworkPolicy chỉ áp dụng cho validation pod không ngăn các pod khác kết nối.
+- Không đáp ứng đúng guardrail:
 
-## Evidence CDO08 sẽ cung cấp
+```text
+Chỉ validation client được kết nối.
+```
 
-Sau khi được cấp đủ điều kiện, CDO08 sẽ cung cấp:
+- Evidence sẽ phải ghi nhận đây là reduced-isolation mode.
 
-- preflight log có `preflight_only_passed no_rds_instance_created`;
-- live log thể hiện restore request, instance `available`, network validation,
-  accounting export/import và duration của từng phase;
-- kết quả integrity có số orphan của shipping/order-item bằng `0`, đồng thời
-  không có schema `catalog` hoặc `reviews`;
-- tổng `rto_seconds`;
-- cleanup evidence xác nhận RDS drill target, temporary pod và secrets đã được
-  xóa.
+### Khi nào có thể dùng
 
-Subtask chỉ hoàn thành khi lệnh internal dry run trả exit code `0` và toàn bộ
-evidence trên được review.
+Chỉ dùng khi PM/Tech Lead chính thức chấp nhận reduced isolation, thay đổi
+Acceptance Criteria và áp dụng đầy đủ kiểm soát bù:
 
----
+- không tạo production DNS;
+- Restore RDS tồn tại trong thời gian rất ngắn;
+- không công bố endpoint cho application;
+- có egress policy được enforce cho các workload khác;
+- cleanup ngay sau validation.
 
-## PM Approval
+### Kết luận
 
-**Người phê duyệt:** Hải (PM)  
-**Ngày:** 2026-07-24  
-**Trạng thái:** ✅ APPROVED
+```text
+KHÔNG KHUYẾN NGHỊ
+```
 
-### Nội dung phê duyệt
+Phương án chạy được về kỹ thuật nhưng không đạt mức cô lập mong muốn và tạo rủi
+ro production pod truy cập nhầm Restore RDS.
 
-Tôi xác nhận đã đọc toàn bộ request này và phê duyệt các điều kiện sau:
+## Phương án 3: Temporary private EC2 qua SSM
 
-- Cho phép **Nhân** tạo **một** private, single-AZ RDS PITR instance trong môi
-  trường isolated để chạy internal dry run. Instance phải được cleanup sau khi
-  lưu evidence, không để lại resource mồ côi.
-- TTL tối đa **24 giờ** kể từ khi RDS PITR target được tạo.
-- Restore timestamp phải nằm trong PITR window hiện có của source RDS; không
-  yêu cầu backup bổ sung.
-- **Nhân tự tạo toàn bộ resources cần thiết** (security groups, validation pod,
-  temporary secrets, accounting drill target) — không assign cho người khác.
-- Yêu cầu Platform/Cloud Security **cấp quyền AWS và Kubernetes** cho Nhân theo
-  danh sách trong request. Platform không cần tạo sẵn resource.
-- Nhân **không được** dùng production SG, production endpoint, production DNS
-  hoặc production application pod để thay thế bất kỳ prerequisite nào.
-- PM sẽ review evidence trước khi Nhân cleanup và đóng subtask REL25-2.
+### Luồng
 
-### Ghi chú
+```text
+Operator
+  -> AWS Systems Manager
+  -> temporary private EC2
+  -> validation-client SG
+  -> TCP/5432
+  -> restore-target SG
+  -> restored RDS
+```
 
-Request được đánh giá hợp lý, tối thiểu quyền và không tạo rủi ro cho
-production. Các guardrail trong script `rel25-restore-accounting-pitr.sh` đã
-được review và đủ để ngăn restore nhầm production.
-Nhân là người duy nhất chịu trách nhiệm end-to-end cho dry run này.
+### Tài nguyên tạm được tạo
+
+1. Một private EC2 validation client.
+2. Một validation-client SG gắn trực tiếp vào EC2.
+3. Một restore-target SG gắn trực tiếp vào RDS PITR.
+4. Một RDS instance mới được tạo bằng PITR.
+5. Một database `accounting_drill` trong RDS mới.
+6. Một temporary secret/credential phục vụ drill.
+
+EC2 yêu cầu:
+
+```text
+Public IP: false
+Inbound: không có
+SSH port 22: không mở
+Access: SSM Session Manager/Run Command
+Storage: encrypted, DeleteOnTermination=true
+TTL/cleanup tags: bắt buộc
+PostgreSQL client version: 17
+```
+
+Network rules:
+
+```text
+validation-client SG
+  -> gắn trực tiếp vào temporary EC2
+
+restore-target SG
+  -> gắn trực tiếp vào RDS PITR
+  -> ingress TCP/5432 duy nhất từ validation-client SG
+```
+
+Đây là SG thông thường của EC2/RDS, không liên quan Pod SG, Pod ENI,
+`SecurityGroupPolicy`, EKS node group hoặc `ENABLE_POD_ENI`.
+
+### Điểm tốt
+
+- Validation client có SG riêng và thực sự được cô lập.
+- Không thay đổi production EKS.
+- Không phụ thuộc instance type của EKS node.
+- Không mở RDS cho EKS node SG hoặc production pods.
+- Truy cập EC2 qua SSM, không cần public IP/SSH.
+- Đáp ứng guardrail chỉ validation client có network path.
+- Tài nguyên có thể tạo và cleanup độc lập theo RestoreDrill tags.
+
+### Điểm cần bổ sung
+
+- Script hiện dùng `kubectl exec`; cần thêm SSM execution backend.
+- Cần instance profile tối thiểu cho SSM và quyền đọc đúng temporary secret.
+- Cần AMI được duyệt có PostgreSQL 17 client hoặc bootstrap tương đương.
+- Có thêm chi phí EC2 trong thời gian drill, nhưng EC2 sẽ bị terminate ngay sau
+  khi evidence hoàn tất.
+
+### Kết luận
+
+```text
+KHUYẾN NGHỊ CHỌN
+```
+
+Đây là phương án cân bằng tốt nhất giữa isolation, mức ảnh hưởng production,
+chi phí và khả năng cleanup.
+
+## Thiết kế recovery được đề xuất
+
+Chỉ tạo một RDS PITR mới để giảm chi phí:
+
+```text
+Temporary restored RDS
+├── otel
+│   ├── accounting
+│   ├── catalog
+│   └── reviews
+└── accounting_drill
+    └── accounting
+```
+
+Workflow:
+
+1. Chọn restore timestamp trong PITR window.
+2. Tạo private RDS PITR instance mới.
+3. Chờ RDS `available` và verify restore-target SG.
+4. Temporary EC2 kết nối tới RDS qua TCP/5432.
+5. Tạo database `accounting_drill` trên restored RDS.
+6. Chạy `pg_dump --schema=accounting` từ database `otel`.
+7. Chạy `pg_restore` vào database `accounting_drill`.
+8. Validate orphan, sequence và row counts.
+9. Fail nếu `accounting_drill` có schema `catalog` hoặc `reviews`.
+10. Ghi UTC start/end/duration từng phase và tổng `rto_seconds`.
+11. Lưu evidence.
+12. Cleanup RDS, EC2, EBS, SG và temporary secret.
+
+Database `otel` là PITR source bên trong RDS mới. Database
+`accounting_drill` là accounting recovery target và chỉ chứa schema
+`accounting`.
+
+Nếu yêu cầu là toàn bộ RDS instance cuối tuyệt đối không được chứa
+`catalog/reviews`, cần tạo RDS target thứ hai. Phương án đó có chi phí và thời
+gian cao hơn; cần PM xác nhận riêng.
+
+## Thay đổi script cần thực hiện
+
+Thêm backend:
+
+```text
+VALIDATION_BACKEND=ssm
+VALIDATION_INSTANCE_ID=<temporary-ec2-id>
+```
+
+Tạo abstraction:
+
+```text
+validation_exec
+  kubernetes -> kubectl exec
+  ssm        -> aws ssm send-command/get-command-invocation
+```
+
+Trong SSM mode:
+
+- không yêu cầu validation pod;
+- không yêu cầu validation-client pod SG;
+- kiểm tra EC2 private, không có public IP;
+- kiểm tra EC2 gắn đúng validation-client SG;
+- kiểm tra SSM instance ở trạng thái `Online`;
+- kiểm tra `pg_isready`, `pg_dump`, `pg_restore`, `psql`;
+- không ghi secret hoặc endpoint thật vào log.
+
+Các guardrail vẫn giữ:
+
+- đúng AWS account;
+- PITR target khác production;
+- target private;
+- restore SG khác production SG;
+- restore SG chỉ nhận TCP/5432 từ validation-client SG;
+- không production DNS;
+- không import vào production endpoint/database;
+- chỉ dump/restore schema `accounting`;
+- integrity validation;
+- phase timestamps và tổng RTO;
+- fail-safe cleanup và log tài nguyên còn sót.
+
+## Quyết định đề xuất
+
+```text
+REL-25 sử dụng temporary private EC2 qua SSM làm validation client.
+Không sử dụng dedicated Security Groups for Pods.
+Không bật ENABLE_POD_ENI.
+Không thay đổi EKS node group.
+Không sử dụng EKS node SG làm source cho Restore RDS.
+```
+
+## Nội dung cần phê duyệt
+
+Đề nghị PM/Tech Lead/Platform xác nhận:
+
+- chấp thuận phương án temporary private EC2 qua SSM;
+- AMI và instance type được phép sử dụng;
+- private subnet và SSM access path;
+- instance profile tối thiểu;
+- TTL/chi phí tối đa;
+- cho phép tạo một private RDS PITR instance;
+- cho phép tạo database `accounting_drill` trong restored RDS;
+- owner thực hiện cleanup và review evidence.
+
+## Trạng thái attempt trước
+
+Attempt dùng Pod SG đã được cleanup hoàn toàn:
+
+- validation pod đã xóa;
+- temporary Secret đã xóa;
+- `SecurityGroupPolicy` đã xóa;
+- validation-client SG đã xóa;
+- restore-target SG đã xóa;
+- RDS PITR target chưa từng được tạo;
+- production RDS không bị thay đổi;
+- không còn tài nguyên REL-25 phát sinh chi phí.
+
+## Evidence
+
+```text
+docs/cdo08/week3/mandate20/evidence/CDO08-REL-25-INTERNAL-DRY-RUN-VERIFICATION-20260724.md
+docs/cdo08/week3/mandate20/implementation/CDO08-REL-25-internal-dry-run-execution-guide.md
+```
+
+Subtask chỉ được đánh dấu Done sau khi live PITR trả exit code `0`, có
+`rto_seconds`, validation pass và cleanup evidence được review.
