@@ -114,8 +114,12 @@ Observed result:
 - every observed pod remained Ready with zero restarts;
 - active AIOps incidents and alerts remained empty.
 
-The restore is isolated in
+The restore completed through
 [GitOps PR #174](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174).
+It merged as `f46ee7e6683172ce66935e23e26789ee88390ba1`; the live Deployment
+returned to `10 users / spawn rate 1` at `2026-07-25T04:33:24Z`. The new
+load-generator pod was Ready with zero restarts, and no AIOps incident or alert
+was active after restore.
 The exact observations and bounded confusion matrix are preserved in
 [live-labeled-set-20260724-25.json](evidence/live-labeled-set-20260724-25.json).
 

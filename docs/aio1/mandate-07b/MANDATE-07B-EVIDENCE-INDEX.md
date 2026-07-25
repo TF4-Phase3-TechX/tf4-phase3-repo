@@ -87,6 +87,13 @@ During the healthy-busy case, two covered observations classified both
 burn rates remained zero, all observed pods stayed Ready with zero restarts,
 and no AIOps incident or alert fired.
 
+The load override was removed through reviewed
+[GitOps PR #174](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174),
+merged as `f46ee7e6683172ce66935e23e26789ee88390ba1`. Production returned to
+`10 users / spawn rate 1` at `2026-07-25T04:33:24Z`; the replacement
+load-generator pod was Ready with zero restarts and no active AIOps incident or
+alert.
+
 Hidden organizer scenarios remain grading-day evidence. The `1.0` values above
 describe only this two-event controlled set and are not long-run production
 accuracy.

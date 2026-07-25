@@ -45,9 +45,14 @@
       "scenario_kind": "healthy_busy",
       "injection": {
         "gitops_load_pr": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/171",
+        "gitops_restore_pr": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174",
         "users": 150,
         "spawn_rate": 10,
-        "live_config_observed_utc": "2026-07-25T04:09:03Z"
+        "live_config_observed_utc": "2026-07-25T04:09:03Z",
+        "restore_merged_utc": "2026-07-25T04:32:27Z",
+        "baseline_config_restored_utc": "2026-07-25T04:33:24Z",
+        "restored_users": 10,
+        "restored_spawn_rate": 1
       },
       "observations": [
         {
@@ -79,7 +84,14 @@
           "observed_pod_restarts": 0
         }
       ],
-      "classification": "TN"
+      "classification": "TN",
+      "restore_observation": {
+        "captured_at_utc": "2026-07-25T04:33:48Z",
+        "load_generator_ready": true,
+        "load_generator_restarts": 0,
+        "active_incident_count": 0,
+        "active_alert_count": 0
+      }
     }
   ],
   "aggregate": {
