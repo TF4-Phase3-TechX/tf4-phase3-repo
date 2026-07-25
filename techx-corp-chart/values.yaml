@@ -2055,7 +2055,7 @@ opentelemetry-collector:
           exporters: [opensearch]
       telemetry:
         metrics:
-          level: detailed
+          level: normal
           readers:
             - periodic:
                 interval: 10000
