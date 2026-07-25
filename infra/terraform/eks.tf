@@ -84,7 +84,8 @@ module "eks" {
       }
 
       labels = {
-        role = "worker"
+        role                         = "worker"
+        "optimization.techx.io/tier" = "protected"
       }
 
       tags = var.tags

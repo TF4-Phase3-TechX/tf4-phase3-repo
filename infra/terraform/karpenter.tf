@@ -22,9 +22,8 @@ module "karpenter" {
   node_iam_role_use_name_prefix = false
   create_access_entry           = true
 
-  # Current mandate uses On-Demand worker capacity only. Spot interruption
-  # handling can be enabled later if a Spot NodePool is introduced.
-  enable_spot_termination = false
+  # The ARM64 Spot pool consumes the module-managed interruption queue.
+  enable_spot_termination = true
 
   tags = var.tags
 }
@@ -42,6 +41,11 @@ resource "helm_release" "karpenter" {
   set {
     name  = "settings.clusterName"
     value = module.eks.cluster_name
+  }
+
+  set {
+    name  = "settings.interruptionQueue"
+    value = module.karpenter.queue_name
   }
 
   set {
