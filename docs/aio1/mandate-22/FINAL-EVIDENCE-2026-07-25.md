@@ -154,10 +154,12 @@ Architecture and activation gates are in
 [ADR-022](ADR-022-safe-closed-loop-mitigation.md).
 
 The AIO policy owner is named. A controlled drill was announced to the shared
-team and the activation/restoration PRs received named GitOps reviews. However,
-the ADR on `main` still has pending CDO deployment-owner and on-call/SRE
-signature rows. Generic PR approval and chat acknowledgement are not promoted
-into formal ADR signatures.
+team and the activation/restoration PRs received named GitOps reviews.
+[PR #667](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/667)
+records Đinh Danh Nam as the accepting AIO1 Tech Lead/policy owner and Đinh
+Viết Quyết (CDO08) as the deployment owner for the bounded drill scope. The
+on-call/SRE signature remains pending; generic PR approval is not promoted into
+that separate role.
 
 ## 6. Constraints and blockers
 
@@ -197,7 +199,7 @@ approved runtime window or the BTC hidden grading scenario.
 - successful live end-to-end remediation accepted healthy by the deployed
   verifier;
 - manual-versus-automatic MTTR improvement;
-- formal ADR acceptance by both named CDO deployment and on-call/SRE owners;
+- formal ADR acceptance by a named on-call/SRE owner;
 - grading-day BTC hidden scenarios.
 
 TF4AIO-83 should remain open or pending mentor acceptance. This evidence packet
