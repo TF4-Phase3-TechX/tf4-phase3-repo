@@ -82,7 +82,7 @@ Evidence:
 
 | Measurement | Value | Evidence boundary |
 |---|---:|---|
-| Before: legacy static alert delay | at least 300 seconds | Configuration-derived from existing `for: 5m` rules; not an observed incident |
+| Before: legacy static alert delay | at least 300 seconds | Configuration-derived from the existing [`for: 5m` application rules](../../../techx-corp-chart/prometheus/flash-sale-alerts.yaml); not an observed incident |
 | After: detector incident creation | ~60.9 seconds | Runtime-observed controlled availability drill |
 | After: Prometheus alert start | ~113 seconds | Runtime-observed alert start |
 

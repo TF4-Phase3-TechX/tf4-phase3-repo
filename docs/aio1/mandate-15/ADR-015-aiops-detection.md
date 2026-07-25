@@ -89,7 +89,7 @@ A single worker poll may produce an incident when `AIOPS_SUSTAINED_POLLS=1`, but
 
 | Period | MTTD measurement method | Value |
 |---|---|---|
-| **Before** (historical static alert rules) | Estimated static threshold rule delay (`for: 5m` window) | ~300–600s (5–10 min) |
+| **Before** (historical static alert rules) | Configuration-derived from the existing [`for: 5m` application rules](../../../techx-corp-chart/prometheus/flash-sale-alerts.yaml); not an observed incident | at least 300s |
 | **After — offline simulation** (this harness) | Scenarios declare 15-second sample intervals; replay groups three samples per 45-second poll and records the first `decision.anomalous` poll | **45s** (1 detector cycle) |
 | **After — live detector** | Controlled `llm` availability fault: externally observed down state to incident creation | **~60.9s** |
 | **After — live alert start** | Controlled `llm` availability fault: externally observed down state to Prometheus alert start | **~113s** |
