@@ -221,6 +221,12 @@ components:
         value: http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200
       - name: JAEGER_URL
         value: http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui
+      # Evidence enrichment returns full trace payloads. Keep it bounded so a
+      # high-load incident cannot turn a healthy Jaeger API into a 10s timeout.
+      - name: AIOPS_JAEGER_TRACE_LOOKBACK
+        value: "5m"
+      - name: AIOPS_JAEGER_TRACE_LIMIT
+        value: "5"
       - name: GRAFANA_URL
         value: http://grafana.techx-observability.svc.cluster.local/grafana
       - name: OPENSEARCH_DATASOURCE_UID

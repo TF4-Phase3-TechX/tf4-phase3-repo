@@ -43,6 +43,11 @@ class Settings:
         "JAEGER_URL",
         "http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui",
     )
+    # Trace enrichment is deliberately narrower than the detector's metric
+    # lookback. Jaeger returns complete trace payloads, so a 30-minute/20-trace
+    # query can exceed the client timeout during a load incident.
+    jaeger_trace_lookback: str = os.getenv("AIOPS_JAEGER_TRACE_LOOKBACK", "5m")
+    jaeger_trace_limit: int = int(os.getenv("AIOPS_JAEGER_TRACE_LIMIT", "5"))
     grafana_url: str = os.getenv(
         "GRAFANA_URL", "http://grafana.techx-observability.svc.cluster.local/grafana"
     )
@@ -244,6 +249,8 @@ class Settings:
     )
 
     def __post_init__(self) -> None:
+        if self.jaeger_trace_limit <= 0:
+            raise ValueError("Jaeger trace limit must be positive")
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
         if (
