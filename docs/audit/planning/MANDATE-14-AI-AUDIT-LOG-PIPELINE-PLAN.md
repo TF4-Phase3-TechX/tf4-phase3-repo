@@ -65,19 +65,24 @@ Tài liệu đưa phần **Tối ưu Chi phí** lên trước để các team (C
 ### 3.1. Sơ đồ Luồng Dữ liệu
 
 ```mermaid
-flowchart LR
-    A["Product Reviews Pod<br/>canonical ai_tool_audit event"] -->|"OTLP gRPC/HTTP<br/>TLS / private network"| B["OTel Collector<br/>techx-observability"]
+flowchart TD
+    A["Product Reviews Pod<br/>(canonical ai_tool_audit event)"] -->|"OTLP gRPC/HTTP<br/>TLS / private network"| B["OTel Collector<br/>(techx-observability)"]
+    
     B --> C{"log.attributes['log_type']<br/>== 'ai_tool_audit'?"}
-    C -->|"Không"| D["Pipeline Application Log<br/>otel-logs-*"]
-    C -->|"Có + Hợp lệ"| E["AI Audit Pipeline<br/>redaction check + batch + retry"]
-    C -->|"Có + Sai Schema"| Q["Safe Validation Error<br/>no raw text + P0 alert"]
+    
+    C -->|"Không"| D["Pipeline Application Log<br/>(otel-logs-*)"]
+    C -->|"Có + Sai Schema"| Q["Safe Validation Error<br/>(no raw text + P0 alert)"]
+    C -->|"Có + Hợp lệ"| E["AI Audit Pipeline<br/>(redaction check + batch + retry)"]
+    
     E --> F["OpenSearch<br/>ai-tool-audit-*<br/>(Hot Search 7d)"]
     E --> G["CloudWatch Logs<br/>/tf4/mandate-14/ai-tool-audit<br/>(Operational 7d)"]
-    G --> H["CloudWatch Subscription Filter"]
-    H --> I["Amazon Data Firehose<br/>GZIP + Error prefix"]
-    I --> J["S3 Object Lock COMPLIANCE<br/>(Evidence Authority 90d)"]
+    
     F -. "trace_id" .-> K["Jaeger"]
     G -. "metric filter" .-> L["CloudWatch Alarm"]
+    
+    G --> H["CloudWatch Subscription Filter"]
+    H --> I["Amazon Data Firehose<br/>(GZIP + Error prefix)"]
+    I --> J["S3 Object Lock COMPLIANCE<br/>(Evidence Authority 90d)"]
 ```
 
 ---
