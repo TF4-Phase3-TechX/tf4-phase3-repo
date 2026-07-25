@@ -265,7 +265,6 @@ resource "aws_mskconnect_worker_configuration" "orders_s3_sink" {
     key.converter=org.apache.kafka.connect.storage.StringConverter
     value.converter=org.apache.kafka.connect.json.JsonConverter
     value.converter.schemas.enable=false
-    connector.client.config.override.policy=All
     offset.flush.interval.ms=60000
     config.providers=secretsmanager
     config.providers.secretsmanager.class=com.amazonaws.kafka.config.providers.SecretsManagerConfigProvider
