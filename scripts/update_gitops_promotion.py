@@ -112,13 +112,16 @@ if __name__ == "__main__":
     if args.self_test:
         self_test()
     else:
-        required = [args.gitops_dir, args.services_json, args.image_digests_json, args.image_tag, args.source_sha]
+        services = json.loads(args.services_json) if args.services_json else []
+        required = [args.gitops_dir, args.services_json, args.source_sha]
+        if services:
+            required.extend([args.image_digests_json, args.image_tag])
         if not all(required):
             parser.error("promotion arguments are required unless --self-test is used")
         update_revisions(
             args.gitops_dir,
-            json.loads(args.services_json),
-            json.loads(args.image_digests_json),
+            services,
+            json.loads(args.image_digests_json) if args.image_digests_json else {},
             args.image_tag,
             args.source_sha,
             args.chart_changed,
