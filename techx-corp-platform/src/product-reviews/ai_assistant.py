@@ -167,6 +167,11 @@ class GroundedAssistant:
                 outcome="degraded",
                 error_class=getattr(exc, "error_class", type(exc).__name__.lower())[:64],
                 quarantined_reviews=quarantined_reviews,
+                latency_ms=getattr(exc, "latency_ms", 0),
+                input_tokens=getattr(exc, "input_tokens", 0),
+                output_tokens=getattr(exc, "output_tokens", 0),
+                provider_stop_reason=getattr(exc, "stop_reason", "not_applicable"),
+                response_contract_stage=getattr(exc, "contract_stage", "not_applicable"),
                 provider_attempted=True,
             )
 

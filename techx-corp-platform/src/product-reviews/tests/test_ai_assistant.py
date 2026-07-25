@@ -133,7 +133,14 @@ def test_comparison_is_synthesized_from_two_products_and_exact_sources():
 
 
 def test_comparison_provider_failure_returns_grounded_price_fallback():
-    assistant = make_assistant(Provider(error=ProviderFailure("timeout")))
+    assistant = make_assistant(Provider(error=ProviderFailure(
+        "invalid_response",
+        latency_ms=321,
+        input_tokens=101,
+        output_tokens=21,
+        stop_reason="tool_use",
+        contract_stage="tool_block_count",
+    )))
     outcome = assistant.compare_products(
         [Product("p1", "Budget Scope", 50), Product("p2", "Premium Scope", 500)],
         "Compare the cheapest and most expensive products",
@@ -142,3 +149,8 @@ def test_comparison_provider_failure_returns_grounded_price_fallback():
     assert outcome.outcome == "degraded"
     assert "$450.00" in outcome.response
     assert "Budget Scope" in outcome.response
+    assert outcome.latency_ms == 321
+    assert outcome.input_tokens == 101
+    assert outcome.output_tokens == 21
+    assert outcome.provider_stop_reason == "tool_use"
+    assert outcome.response_contract_stage == "tool_block_count"
