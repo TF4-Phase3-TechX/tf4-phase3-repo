@@ -331,3 +331,41 @@ async def test_confirmed_service_down_creates_pageable_incident():
     assert REGISTRY.get_sample_value(
         "aiops_incident_active", counter_labels
     ) == 0
+
+
+@pytest.mark.asyncio
+async def test_worker_skips_remediation_when_target_quarantined():
+    """Worker must not dispatch remediation for a quarantined target."""
+
+    settings = replace(Settings(), services=(), recovery_polls=2)
+    recorder = ApprovalRecorder()
+    store = IncidentStore(cooldown_seconds=0)
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        LifecycleDetector(),
+        store,
+        remediation=recorder,
+    )
+    # Block the target before any incident is created.
+    await store.block_target(
+        "product-reviews",
+        reason="post-mutation safety failure (test)",
+        incident_id="prev-inc-001",
+    )
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+
+    incidents = await store.list()
+    assert len(incidents) == 1
+    inc = incidents[0]
+    assert inc.status == IncidentStatus.ESCALATED
+    assert inc.mutation_blocked is True
+    assert "operator unlock" in (inc.escalation_reason or "").lower()
+    assert any(
+        event.event == "target_quarantine_denied_remediation"
+        for event in inc.audit_events
+    )
+    # Remediation should never have been called.
+    assert recorder.incident_ids == []

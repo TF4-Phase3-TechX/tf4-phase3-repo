@@ -71,6 +71,21 @@ action, every verification sample, rollback application, rollback verification,
 mutation-blocked state and escalation reason. The external replay entry accepts
 JSONL without code changes and exercises the canonical runtime controller.
 
+## Accepted trade-offs (post #669 hardening)
+
+1. **Process-local quarantine.** Post-mutation safety quarantine survives incident
+   auto-resolve but is lost on pod restart. This is acceptable only while
+   autonomous live mode is disabled. A durable saga or CRD-backed quarantine is
+   required before sustained live autonomous operation.
+2. **Target-scoped verification.** Post-action SLO verification is scoped to the
+   mutated service only. Cross-service or end-to-end dependency guards (e.g.
+   checkout/storefront error rate) are not silently applied; they require an
+   explicit approved dependency mapping in action policy configuration.
+3. **Previous ReplicaSet fallback.** Without a CDO-pinned known-good revision
+   (`AIOPS_KNOWN_GOOD_REVISIONS`), the controller assumes `owned[1]` is the
+   rollback target. This is not guaranteed to be fault-free. CDO must set a pin
+   for every target before enabling live autonomous mode.
+
 ## Activation gates
 
 1. Review and merge implementation.

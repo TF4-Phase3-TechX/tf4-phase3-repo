@@ -497,6 +497,12 @@ class RemediationController:
                 incident.audit_events.append(
                     AuditEvent(event="kubernetes_server_dry_run_passed")
                 )
+            # Evidence freshness trade-off: authorize_by_policy checked
+            # Prometheus evidence earlier in this call; we do not re-query here
+            # because the bounded single-service action scope limits the window
+            # to seconds, and a re-query failure should not leave us half-way
+            # through mutation.  Documented as accepted in ADR-022 trade-offs.
+            #
             # Do not retry live mutation: a client timeout after server success
             # would otherwise re-patch a concurrent GitOps change.
             await self._retry(

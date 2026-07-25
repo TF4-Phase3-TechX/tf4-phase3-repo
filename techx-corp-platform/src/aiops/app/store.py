@@ -80,8 +80,6 @@ class IncidentStore:
                 ):
                     break
                 self._items.pop(oldest.incident_id, None)
-                if self._active.get(oldest.dedup_key) == oldest.incident_id:
-                    self._active.pop(oldest.dedup_key, None)
             return candidate, True
 
     async def reset_recovery(self, incident_type: str, service: str) -> None:
