@@ -27,17 +27,25 @@ telemetry = TelemetryClient(settings)
 
 async def verify_service_slo(service: str) -> dict[str, object]:
     latency_series = await telemetry.query_range(
-        latency_query(service, settings.namespace)
+        latency_query(
+            service,
+            settings.namespace,
+            settings.verification_metric_window,
+        )
     )
     points = values(latency_series[0]) if latency_series else []
     current = points[-1] if points else None
     guard_query = (
         'sum(rate(traces_span_metrics_calls_total{service_name=~"frontend|checkout",span_kind="SPAN_KIND_SERVER",k8s_namespace_name="'
         + settings.namespace
-        + '",status_code="STATUS_CODE_ERROR"}[5m])) '
+        + '",status_code="STATUS_CODE_ERROR"}['
+        + settings.verification_metric_window
+        + "])) "
         '/ clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=~"frontend|checkout",span_kind="SPAN_KIND_SERVER",k8s_namespace_name="'
         + settings.namespace
-        + '"}[5m])), 0.000001)'
+        + '"}['
+        + settings.verification_metric_window
+        + "])), 0.000001)"
     )
     guard_series = await telemetry.query_range(guard_query)
     guard_points = values(guard_series[0]) if guard_series else []

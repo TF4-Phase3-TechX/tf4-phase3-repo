@@ -93,7 +93,8 @@ async def test_failed_slo_verification_restores_original_template():
     controller = RemediationController(
         replace(
             Settings(), remediation_mode="live", verification_polls=1,
-            rollback_verification_polls=1, verification_interval_seconds=0,
+            rollback_verification_polls=1, verification_settle_seconds=0,
+            verification_interval_seconds=0,
         ), adapter=adapter, verifier=unhealthy_then_recovered,
     )
     item = incident()
@@ -193,7 +194,8 @@ async def test_unverified_rollback_escalates_and_blocks_mutation():
     controller = RemediationController(
         replace(
             Settings(), remediation_mode="live", verification_polls=1,
-            rollback_verification_polls=1, verification_interval_seconds=0,
+            rollback_verification_polls=1, verification_settle_seconds=0,
+            verification_interval_seconds=0,
         ), adapter=adapter, verifier=always_unhealthy,
     )
     item = incident()
@@ -226,3 +228,35 @@ async def test_held_target_lease_denies_action_before_mutation():
         await controller.execute(item)
 
     assert adapter.patches == []
+
+
+@pytest.mark.asyncio
+async def test_verification_waits_for_post_action_metric_window(monkeypatch):
+    adapter = FakeAdapter()
+    sleeps = []
+
+    async def record_sleep(seconds):
+        sleeps.append(seconds)
+
+    async def healthy(_):
+        return {"healthy": True, "p95_latency_ms": 300}
+
+    monkeypatch.setattr("app.remediation.asyncio.sleep", record_sleep)
+    controller = RemediationController(
+        replace(
+            Settings(),
+            verification_settle_seconds=30,
+            verification_interval_seconds=0,
+        ),
+        adapter=adapter,
+        verifier=healthy,
+    )
+
+    result = await controller._verification_window(
+        adapter,
+        "product-reviews",
+        polls=1,
+    )
+
+    assert result["healthy"] is True
+    assert sleeps == [30]
