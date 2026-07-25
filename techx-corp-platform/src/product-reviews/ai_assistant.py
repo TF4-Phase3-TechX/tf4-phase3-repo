@@ -37,6 +37,7 @@ class AssistantOutcome:
     provider_stop_reason: str = "not_applicable"
     response_contract_stage: str = "not_applicable"
     action_proposal: Any = None
+    provider_attempted: bool = False
 
 
 class GroundedAssistant:
@@ -165,10 +166,17 @@ class GroundedAssistant:
                 outcome="degraded",
                 error_class=getattr(exc, "error_class", type(exc).__name__.lower())[:64],
                 quarantined_reviews=quarantined_reviews,
+                latency_ms=getattr(exc, "latency_ms", 0),
+                input_tokens=getattr(exc, "input_tokens", 0),
+                output_tokens=getattr(exc, "output_tokens", 0),
+                provider_stop_reason=getattr(exc, "stop_reason", "not_applicable"),
+                response_contract_stage=getattr(exc, "contract_stage", "not_applicable"),
+                provider_attempted=True,
             )
 
     def answer(self, product_id: str, question: str, session_id: str = "", user_id: str = "guest") -> AssistantOutcome:
         quarantined_reviews = 0
+        provider_attempted = False
         if not question or is_attack(question):
             return AssistantOutcome(response=BLOCKED_RESPONSE, outcome="blocked")
         elif is_action_intent(question):
