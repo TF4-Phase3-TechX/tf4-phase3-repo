@@ -12,7 +12,7 @@
 | Merged detector implementation | [PR #509](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/509), merge `dc42af5b92f8211574ca02fd2768ccf2afb5d3b5` | Done |
 | Open replay accepting external JSONL | `python -m benchmark.replay INPUT.jsonl --output OUTPUT.json` | Done |
 | Committed labeled set | [`labeled-scenarios-v1.jsonl`](labeled-scenarios-v1.jsonl) | Done |
-| Continuous in-cluster workload | AIOps Deployment Ready on exact `c2560b9-aiops` image with zero current-pod restarts | Observed |
+| Continuous in-cluster workload | [GitOps #118](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/118) and [read-only runtime capture](evidence/continuous-runtime-20260725.md): Deployment `1/1` Ready on exact `c2560b9-aiops` digest, current pod restart `0` | Observed |
 | Real-channel incident summary | Slack FIRING/RESOLVED for `llm/service_availability` | Observed |
 | Busy but healthy does not page | [GitOps #171](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/171) plus machine-readable observations | Observed |
 | Masking resistance | External replay case passes; live hidden case remains grading-day evidence | Offline |
@@ -56,6 +56,10 @@ The focused replay tests also pass `19/19`.
 
 This is evidence level 3. It proves deterministic behavior on the committed
 fixture, not production accuracy or hidden-set acceptance.
+
+The same external-input command is the replay `repro`; replace the committed
+fixture path with a mentor/BTC-supplied schema-v1 JSONL file without changing
+the scorer.
 
 ## Live availability incident
 
@@ -146,6 +150,15 @@ load-generator pod was Ready with zero restarts, and no AIOps incident or alert
 was active after restore.
 The exact observations and bounded confusion matrix are preserved in
 [live-labeled-set-20260724-25.json](evidence/live-labeled-set-20260724-25.json).
+
+## Submission readiness
+
+- The evidence documents are currently in [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633), not yet on `main`.
+- ADR-015 still needs a named Tech Lead acceptance.
+- The PR/commit, replay command, runtime proof, labeled set, MTTD boundary,
+  screenshots and signed ADR must be posted together on `TF4AIO-80`; repository
+  files alone do not satisfy Jira-based submission.
+- Organizer hidden-set outputs remain grading-day evidence.
 
 ## Claim boundary
 

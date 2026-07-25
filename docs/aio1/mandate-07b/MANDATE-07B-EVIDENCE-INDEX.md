@@ -15,6 +15,7 @@
 | Impact-based alerting | Request-weighted 5m/30m burn-rate implementation merged in PR #616 | Implemented and CI-tested |
 | Non-spam behavior | Alert lifecycle is grouped by `incident_type + service`; two fully covered busy observations produced no incident or alert | Observed on bounded drill |
 | More than one service | Runtime configuration monitors `llm`, `product-reviews`, `frontend`, `cart` and `checkout`; generic signals are separated from LLM-only signals | Deployed |
+| Signed ADR | [ADR-007](../../aiops/ADR-007-hybrid-anomaly-detection-and-safe-response.md) is signed for 7a design; its named CDO deployment-owner and on-call/SRE 7b activation signatures remain pending | Not complete for 7b |
 
 ## Live positive: `llm` unavailable
 
@@ -117,6 +118,28 @@ accuracy.
 5. Restore the GitOps override immediately after the hold window.
 6. Correlate detector, Prometheus and Slack evidence by service and incident
    type.
+
+The read-only Kubernetes commands and captured output used to verify the
+continuously running detector are committed in the
+[Mandate 15 runtime capture](../mandate-15/evidence/continuous-runtime-20260725.md).
+The deterministic external-scenario repro is:
+
+```bash
+cd techx-corp-platform/src/aiops
+python -m benchmark.replay \
+  ../../../docs/aio1/mandate-15/labeled-scenarios-v1.jsonl \
+  --output /tmp/m15-replay-report.json
+```
+
+## Submission readiness
+
+- The evidence documents are currently in [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633), not yet on `main`.
+- The event-level `1.0/1.0` result is a team-controlled two-event set, not the
+  mentor-injected labeled set named in the mandate.
+- Live high-burn escalation is not yet observed; only implementation/CI plus
+  the zero-burn, non-spam live negative are proven.
+- The four required items must be posted together on `TF4AIO-72`: code
+  PR/commit, repro, working E2E proof and a 7b-signed ADR.
 
 ## Claim boundary
 
