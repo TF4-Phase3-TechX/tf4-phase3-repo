@@ -56,9 +56,9 @@ module "eks" {
   eks_managed_node_groups = {
     general = {
       name         = "techx-general-ng"
-      min_size     = 2
+      min_size     = 1
       max_size     = 4
-      desired_size = 2
+      desired_size = 1
 
       instance_types = ["t3.large"]
       capacity_type  = "ON_DEMAND"
