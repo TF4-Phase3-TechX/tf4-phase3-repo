@@ -5,7 +5,7 @@ application.
 
 ## Local Build
 
-Copy the `demo.proto` file to this directory and run `npm ci`
+Copy the `demo.proto` file to this directory and run `npm ci` 
 
 ## Docker Build
 
@@ -14,3 +14,4 @@ From the root directory, run:
 ```sh
 docker compose build payment
 ```
+
