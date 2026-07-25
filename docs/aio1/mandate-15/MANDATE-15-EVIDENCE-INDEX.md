@@ -137,10 +137,13 @@ Observed result:
 
 The first observation's full p95/error/burn fields were recovered from
 Prometheus using an instant query pinned to `2026-07-25T04:11:20Z`; its
-retrieval time is recorded separately. Kubernetes workload health was not
-historically available for that exact timestamp, so the evidence claims two
-signal-complete detector observations and one final workload-health snapshot,
-not two fully covered Kubernetes snapshots.
+retrieval time is recorded separately. Its exact PromQL, Prometheus source and
+API results are preserved in the
+[historical query artifact](evidence/historical-prometheus-20260725T041120Z.json).
+Kubernetes workload health was not historically available for that exact
+timestamp, so the evidence claims two signal-complete detector observations
+and one final workload-health snapshot, not two fully covered Kubernetes
+snapshots.
 
 The restore completed through
 [GitOps PR #174](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174).

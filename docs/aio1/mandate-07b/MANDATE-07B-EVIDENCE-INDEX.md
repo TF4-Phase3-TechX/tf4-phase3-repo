@@ -13,7 +13,7 @@
 | Alert resolves after recovery | Restored workload produced detector auto-resolution, active gauge `1 -> 0` and a dedicated Slack `[RESOLVED]` receipt | Observed |
 | Precision / recall / lead time | One controlled positive plus one healthy-busy negative; machine-readable event-level report | Observed |
 | Impact-based alerting | Request-weighted 5m/30m burn-rate implementation merged in PR #616 | Implemented and CI-tested |
-| Non-spam behavior | Alert lifecycle is grouped by `incident_type + service`; two fully covered busy observations produced no incident or alert | Observed on bounded drill |
+| Non-spam behavior | Alert lifecycle is grouped by `incident_type + service`; two signal-complete busy observations plus one final workload-health snapshot produced no incident or alert | Observed on bounded drill |
 | More than one service | Runtime configuration monitors `llm`, `product-reviews`, `frontend`, `cart` and `checkout`; generic signals are separated from LLM-only signals | Deployed |
 | Signed ADR | [ADR-007](../../aiops/ADR-007-hybrid-anomaly-detection-and-safe-response.md) is signed for 7a design; its named CDO deployment-owner and on-call/SRE 7b activation signatures remain pending | Not complete for 7b |
 
@@ -93,9 +93,12 @@ GitOps #171 originally expected checkout itself to cross the busy seed.
 Runtime traffic distribution left checkout healthy below that seed, so this
 evidence is explicitly scoped to the frontend/cart busy result. It does not
 claim the checkout-specific expectation passed. The first observation's
-p95/error/burn fields were retrieved later through a Prometheus instant query
-pinned to its original timestamp; only the final observation has a matching
-Kubernetes readiness/restart snapshot.
+p95/error/burn fields were retrieved later through Prometheus instant queries
+pinned to its original timestamp. The exact PromQL, source and API results are
+preserved in the
+[historical query artifact](../mandate-15/evidence/historical-prometheus-20260725T041120Z.json).
+Only the final observation has a matching Kubernetes readiness/restart
+snapshot.
 
 The load override was removed through reviewed
 [GitOps PR #174](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174),

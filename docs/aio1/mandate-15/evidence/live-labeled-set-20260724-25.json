@@ -59,6 +59,8 @@
           "captured_at_utc": "2026-07-25T04:11:20Z",
           "capture_mode": "historical_prometheus_instant_query",
           "retrieved_at_utc": "2026-07-25T05:16:07Z",
+          "query_evidence": "historical-prometheus-20260725T041120Z.json",
+          "prometheus_source": "http://prometheus.techx-observability.svc.cluster.local:9090",
           "frontend_request_rate_per_second": 33.773329006579935,
           "frontend_p95_milliseconds": 286.4643268540535,
           "frontend_error_rate": 0,
