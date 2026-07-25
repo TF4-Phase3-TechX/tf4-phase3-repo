@@ -17,7 +17,7 @@
 | Busy but healthy does not page | [GitOps #171](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/171) plus machine-readable observations | Observed |
 | Masking resistance | External replay case passes; live hidden case remains grading-day evidence | Offline |
 | MTTD before/after | Configuration-derived before and live after are recorded below | Bounded claim |
-| Signed ADR | [`ADR-015`](ADR-015-aiops-detection.md) has author signature; named Tech Lead acceptance remains pending | In progress |
+| Signed ADR | [`ADR-015`](ADR-015-aiops-detection.md) is signed by AIOps Lead Đình Thông Trần and accepted by Tech Lead Đinh Danh Nam | Done |
 
 ## Why busy differs from broken
 
@@ -157,7 +157,7 @@ The exact observations and bounded confusion matrix are preserved in
 ## Submission readiness
 
 - The evidence documents are currently in [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633), not yet on `main`.
-- ADR-015 still needs a named Tech Lead acceptance.
+- ADR-015 has named AIOps Lead and Tech Lead acceptance.
 - The PR/commit, replay command, runtime proof, labeled set, MTTD boundary,
   screenshots and signed ADR must be posted together on `TF4AIO-80`; repository
   files alone do not satisfy Jira-based submission.

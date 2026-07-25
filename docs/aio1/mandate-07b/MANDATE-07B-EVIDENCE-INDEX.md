@@ -15,7 +15,7 @@
 | Impact-based alerting | Request-weighted 5m/30m burn-rate implementation merged in PR #616 | Implemented and CI-tested |
 | Non-spam behavior | Alert lifecycle is grouped by `incident_type + service`; two signal-complete busy observations plus one final workload-health snapshot produced no incident or alert | Observed on bounded drill |
 | More than one service | Runtime configuration monitors `llm`, `product-reviews`, `frontend`, `cart` and `checkout`; generic signals are separated from LLM-only signals | Deployed |
-| Signed ADR | [ADR-007](../../aiops/ADR-007-hybrid-anomaly-detection-and-safe-response.md) is signed for 7a design; its named CDO deployment-owner and on-call/SRE 7b activation signatures remain pending | Not complete for 7b |
+| Signed ADR | [ADR-007](../../aiops/ADR-007-hybrid-anomaly-detection-and-safe-response.md) records Đinh Danh Nam as AIO1 Tech Lead/decision owner and Đinh Viết Quyết (CDO08) as the bounded-drill deployment owner; the on-call/SRE activation signature remains pending | Partially complete for 7b |
 
 ## Live positive: `llm` unavailable
 
@@ -141,8 +141,9 @@ python -m benchmark.replay \
   mentor-injected labeled set named in the mandate.
 - Live high-burn escalation is not yet observed; only implementation/CI plus
   the zero-burn, non-spam live negative are proven.
-- The four required items must be posted together on `TF4AIO-72`: code
-  PR/commit, repro, working E2E proof and a 7b-signed ADR.
+- The four required items are posted together on `TF4AIO-72`: code PR/commit,
+  repro, working E2E proof and the named ADR record. The on-call/SRE activation
+  signature remains an explicit governance gap.
 
 ## Claim boundary
 
