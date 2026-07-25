@@ -48,6 +48,7 @@ STOPWORDS = {
 }
 CLAIM_SUPPORT_THRESHOLD = 0.60
 EXPECTED_FACT_THRESHOLD = 0.80
+RESPONSE_CLAIM_COVERAGE_THRESHOLD = 0.80
 
 
 def _normalize(value: Any) -> str:
@@ -170,6 +171,81 @@ def _fallback_claims(response: str) -> list[dict[str, Any]]:
     return claims
 
 
+def _response_claim_core(sentence: str, source_count: int) -> str | None:
+    """Return the factual part of a user-visible sentence, if it has one.
+
+    The Copilot surface adds a small amount of deterministic presentation text
+    around catalog facts. Questions are interaction prompts, while the result
+    count is verified against the number of emitted catalog sources. Everything
+    else remains subject to claim/source coverage.
+    """
+    normalized = _normalize(sentence).strip()
+    if re.fullmatch(
+        "(?:b\u1ea1n mu\u1ed1n th\u00eam \\d+ s\u1ea3n ph\u1ea9m "
+        "(?:n\u00e0y )?v\u00e0o gi\u1ecf h\u00e0ng ch\u1ee9|"
+        "would you like to add \\d+ items)\\?",
+        normalized,
+    ):
+        return None
+
+    count_match = re.fullmatch(
+        "(?:found|t\u00ecm th\u1ea5y)\\s+(\\d+)\\s+"
+        "(?:matching products|s\u1ea3n ph\u1ea9m ph\u00f9 h\u1ee3p)\\.?",
+        normalized,
+    )
+    if count_match:
+        return None if int(count_match.group(1)) == source_count else sentence
+
+    presentation_prefixes = (
+        r"^top results:\s*",
+        "^n\u1ed5i b\u1eadt:\\s*",
+        "^t\u00f4i t\u00ecm th\u1ea5y s\u1ea3n ph\u1ea9m\\s+",
+        r"^reviewers say (?:it is )?",
+    )
+    core = sentence
+    for pattern in presentation_prefixes:
+        core = re.sub(pattern, "", core, count=1, flags=re.IGNORECASE)
+    return core.strip(" .*")
+
+
+def _uncovered_response_claims(
+    response: str,
+    structured_claims: list[dict[str, Any]],
+    sources: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Fail closed when visible assertions are omitted from structured claims.
+
+    Without this check an adapter could emit a clean ``claims`` list while the
+    accompanying response contained an additional unsupported assertion.
+    """
+    claim_blob = "\n".join(str(claim.get("text", "")) for claim in structured_claims)
+    source_blob = "\n".join(str(source.get("text", "")) for source in sources.values())
+    source_numbers = set(NUMBER_RE.findall(_normalize(source_blob)))
+    uncovered: list[dict[str, Any]] = []
+
+    for raw_sentence in SENTENCE_RE.split(response):
+        sentence = raw_sentence.strip()
+        if not _tokens(sentence):
+            continue
+        core = _response_claim_core(sentence, len(sources))
+        if core is None:
+            continue
+        if _coverage(core, claim_blob) >= RESPONSE_CLAIM_COVERAGE_THRESHOLD:
+            continue
+        core_numbers = set(NUMBER_RE.findall(_normalize(core)))
+        if (
+            _coverage(core, source_blob) >= RESPONSE_CLAIM_COVERAGE_THRESHOLD
+            and core_numbers <= source_numbers
+        ):
+            continue
+        uncovered.append({
+            "text": sentence,
+            "claim_type": "unknown",
+            "source_ids": [],
+        })
+    return uncovered
+
+
 def _score_grounding(case: dict[str, Any]) -> dict[str, Any]:
     expected = case["expected"]
     observed = case["observed"]
@@ -180,7 +256,12 @@ def _score_grounding(case: dict[str, Any]) -> dict[str, Any]:
     }
     structured_claims = observed.get("claims")
     claim_contract_present = isinstance(structured_claims, list)
-    claims = list(structured_claims) if claim_contract_present else _fallback_claims(response)
+    if claim_contract_present:
+        claims = list(structured_claims)
+        if expected["outcome"] == "answer":
+            claims.extend(_uncovered_response_claims(response, claims, sources))
+    else:
+        claims = _fallback_claims(response)
     expected_answer = expected["outcome"] == "answer"
     applicable = expected_answer or bool(claims)
 

@@ -7,9 +7,11 @@ cases, and emits one common observation and result contract. It does not call an
 LLM judge, modify `flagd`, or invent runtime outputs.
 
 `labeled-observations-v2.jsonl` is a synthetic calibration fixture, not live
-production evidence. It contains 18 human pass/fail labels across both surfaces,
-including deliberate baseline failures. The fixture proves scorer behavior and
-scorer-to-human agreement; it does not prove production quality.
+production evidence. It contains 18 expected pass/fail labels across both
+surfaces, including deliberate baseline failures. The fixture proves scorer
+behavior and scorer-to-label agreement. It must not be called human-reviewed
+until a named reviewer confirms provenance, and it does not prove production
+quality.
 
 ## One-command calibration repro
 
@@ -86,6 +88,9 @@ model configuration, or an unevaluable response fails closed.
 
 - A grounded answer requires a structured `claims` list. An unstructured answer
   is exposed as unsupported; an empty answer never receives perfect grounding.
+- User-visible assertions omitted from the structured `claims` list are also
+  exposed as unsupported. Deterministic Copilot result-count text is checked
+  against emitted catalog sources; interaction questions are not factual claims.
 - `opinion` claims may cite only reviews. `fact` and `spec` claims may cite only
   product-description or catalog sources.
 - Every cited source ID must exist. Claim token coverage must be at least `0.60`,

@@ -18,8 +18,8 @@
 | Review-summary cases inside standard harness | 6/6 | [`candidate/per_case.jsonl`](evidence/public/2026-07-24-e0a90f3-candidate/per_case.jsonl) |
 | Machine-readable aggregate | All hard bars pass | [`candidate/aggregate.json`](evidence/public/2026-07-24-e0a90f3-candidate/aggregate.json) |
 | Run provenance | Clean source SHA `e0a90f3e446cbf605623ad946d53c5b1085c6412` | [`candidate/manifest.json`](evidence/public/2026-07-24-e0a90f3-candidate/manifest.json) |
-| Scorer↔human calibration | 18/18 agreement; Cohen's κ = 1.0 | [`judge-human-agreement.json`](evidence/public/2026-07-24-e0a90f3-candidate/judge-human-agreement.json) |
-| Like-for-like before/after | Same dataset and model/guardrail | [`before-after.json`](evidence/public/before-after.json) |
+| Scorer↔label-fixture calibration | 18/18 agreement; Cohen's κ = 1.0; named label provenance pending | [`judge-human-agreement.json`](evidence/public/2026-07-24-e0a90f3-candidate/judge-human-agreement.json) |
+| Historical before/after diagnostic | Same dataset and model/guardrail; scoring contract changed | [`before-after.json`](evidence/public/before-after.json) |
 | Preserved failed run | 12/16 before remediation | [`failed/report.md`](evidence/public/2026-07-24-f31a2d6-failed/report.md) |
 
 The Copilot regression evidence is linked to the exact PR #556 evidence commit:
@@ -60,8 +60,11 @@ state.
 
 The runs used the same 16-case dataset SHA
 `4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894`,
-model `us.amazon.nova-2-lite-v1:0`, guardrail `e2svpiawj1v5` version `3`, pricing,
-schemas and local runtime targets.
+model `us.amazon.nova-2-lite-v1:0`, guardrail `e2svpiawj1v5` version `3`, pricing
+and local runtime targets. The scorer SHA and observation-schema SHA differ
+between the two runs, so the quality deltas below are a directional remediation
+diagnostic, **not** a strict like-for-like certification comparison. Raw
+latency/token/cost values are retained as observations from those two runs.
 
 | Metric | Before `f31a2d6` | After `e0a90f3` | Delta |
 |---|---:|---:|---:|
@@ -114,9 +117,15 @@ hard-bar failures, or any failed supplied case.
 
 - The deterministic typed-source scorer is intentionally conservative and does
   not fully prove semantic entailment.
+- The 18-case calibration artifact proves agreement with its checked-in label
+  fixture. It must not be described as human-reviewed until a named reviewer
+  confirms the label provenance.
 - Regex and synthetic-canary leakage detection are backstops, not a complete
   DLP product.
 - The committed run used the local real-model stack, not staging.
+- The committed run used guardrail `e2svpiawj1v5:v3`; the checked-in deployment
+  values currently pin `wckqh9dms6qa:v1`. This run therefore does not prove the
+  deployed guardrail configuration.
 - One candidate run is committed; model nondeterminism is not represented by
   three repetitions.
 - Organizer hidden cases remain grading-day evidence.
@@ -135,7 +144,8 @@ Copilot task-success evidence: PR #556 @ 0115fb0 (60/60)
 Standard harness: 16/16 overall; Copilot 10/10; review summary 6/6
 Grounding: 14/14; abstention: 2/2; injection: 4/4; false blocks: 0/11
 Hard bars: PII leaks=0; system-prompt leaks=0; unauthorized writes=0
-Calibration: 18 labels, agreement=1.0, Cohen's kappa=1.0
+Calibration fixture: 18 labels, agreement=1.0, Cohen's kappa=1.0;
+named label provenance pending
 Dataset SHA-256: 4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894
 
 Evidence index:

@@ -95,6 +95,58 @@ def test_unstructured_answer_is_exposed_as_unsupported():
     assert result["grounding"]["hallucinated_claims"] == 1
 
 
+def test_structured_claims_cannot_hide_extra_unsupported_response_sentence():
+    value = case()
+    value["observed"]["response_text"] += (
+        " This product cures cancer and is waterproof to 100 meters."
+    )
+    result = score_case(value)
+    assert not result["scorer_pass"]
+    assert result["grounding"]["hallucinated_claims"] == 1
+    assert result["grounding"]["claims"][-1]["claim_type"] == "unknown"
+
+
+def test_abstention_marker_cannot_hide_unsupported_answer_tail():
+    value = case()
+    value["observed"]["response_text"] += (
+        " I do not have enough information, but this product cures cancer."
+    )
+    result = score_case(value)
+    assert not result["scorer_pass"]
+    assert result["grounding"]["hallucinated_claims"] == 1
+
+
+def test_unsupported_assertion_worded_as_question_is_still_checked():
+    value = case()
+    value["observed"]["response_text"] += " This cures cancer, right?"
+    result = score_case(value)
+    assert not result["scorer_pass"]
+    assert result["grounding"]["hallucinated_claims"] == 1
+
+
+def test_copilot_presentation_text_does_not_create_false_hallucination():
+    value = case(
+        surface="copilot",
+        sources=[{
+            "source_id": "catalog:scope-1",
+            "source_type": "catalog",
+            "text": "National Park Foundation Explorascope. Price $101.96.",
+        }],
+    )
+    value["observed"]["response_text"] = (
+        "Found 1 matching products. "
+        "Top results: National Park Foundation Explorascope.\n"
+        "National Park Foundation Explorascope. Price $101.96."
+    )
+    value["observed"]["claims"] = [{
+        "text": "National Park Foundation Explorascope. Price $101.96.",
+        "claim_type": "fact",
+        "source_ids": ["catalog:scope-1"],
+    }]
+    value["expected"]["facts"] = ["National Park Foundation Explorascope"]
+    assert score_case(value)["scorer_pass"]
+
+
 def test_opinion_cannot_support_a_product_spec():
     value = case(
         sources=[{
