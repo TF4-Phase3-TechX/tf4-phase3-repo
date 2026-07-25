@@ -21,31 +21,30 @@ Dưới đây là bảng thống kê toàn bộ tài nguyên rà soát trước 
 
 | Resource Type | Resource ID | State | Size | Owner | Last Used | Decision | Evidence / Rationale |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **EBS Volume** | `vol-0ce59bf32f9aea7d5` | `available` | 10 GiB | `None` | `2026-07-14` | **Delete** | Trạng thái `available` (chưa gắn). Tạo cho `techx-observability/postgresql-pvc` nhưng namespace này hiện không có DB chạy. Thiếu tags bắt buộc. |
-| **EBS Volume** | `vol-0878313d6b2957e96` | `in-use` | 5 GiB | `CDO_04` | `Active` | **Keep** | Gắn cho `valkey-cart` PVC. Tài nguyên đang hoạt động. |
-| **EBS Volume** | `vol-0cb8c31ac039d6597` | `in-use` | 10 GiB | `CDO_04` | `Active` | **Keep** | Gắn cho `postgresql` PVC trong `techx-tf4`. Tài nguyên hoạt động. |
-| **EBS Volume** | `vol-01a7d9f5b6270c06d` | `in-use` | 10 GiB | `CDO_04` | `Active` | **Keep** | Gắn cho `kafka` PVC. Tài nguyên hoạt động. |
+| **EBS Volume** | `vol-0ce59bf32f9aea7d5` | `available` | 10 GiB | `CDO08` | `2026-07-14` | **Delete** | Quyết định dọn dẹp (retire REL-15 bridge) đã qua cửa sổ quan sát PG-04. |
+| **EBS Volume** | `vol-0878313d6b2957e96` | `available` | 5 GiB | `CDO08` | `2026-07-14` | **Delete** | Valkey self-hosted cũ sau di trú ElastiCache. CDO-08 duyệt Cleanup. |
+| **EBS Volume** | `vol-0cb8c31ac039d6597` | `available` | 10 GiB | `CDO08` | `2026-07-13` | **Delete** | Postgres self-hosted cũ sau di trú RDS. CDO-08 duyệt Cleanup. |
+| **EBS Volume** | `vol-01a7d9f5b6270c06d` | `available` | 10 GiB | `CDO08` | `2026-07-14` | **Delete** | Kafka self-hosted cũ sau di trú MSK. CDO-08 duyệt Cleanup. |
 | **EBS Volume** | `vol-0024e483121338f0e` | `in-use` | 40 GiB | `CDO_04` | `Active` | **Keep** | Gắn cho `opensearch-0` PVC. Tài nguyên hoạt động. |
 | **EBS Volume** | Các root volumes khác | `in-use` | 20-30 GiB| `CDO_04` | `Active` | **Keep** | Volumes hệ điều hành EKS Worker Nodes (`vol-0b51a9`, `vol-06c540`, `vol-033296`, `vol-06b2fc`, `vol-066beb`). |
-| **Elastic IP** | `32.192.113.119` (`eipalloc-02d48563f995b22e7`) | `unassociated` | N/A | `None` | `Unknown` | **Delete** | Tên `tf4-cdo04-sandbox-nat-eip`. Trạng thái không liên kết với ENI nào. Thiếu tag `Owner`/`lifecycle`. |
+| **Elastic IP** | `32.192.113.119` (`eipalloc-02d48563f995b22e7`) | `unassociated` | N/A | `CDO04` | `Unknown` | **Delete** | Tên `tf4-cdo04-sandbox-nat-eip`. Trạng thái không liên kết, CDO-04 duyệt Cleanup. |
 | **Elastic IP** | `18.204.125.157` (`eipalloc-094e405d1f27`) | `associated` | N/A | `CDO_04` | `Active` | **Keep** | Gán cho NAT Gateway. Có đủ tags. |
 | **Elastic IP** | `35.153.42.208` (`eipalloc-058c21d1d7ae`) | `associated` | N/A | `CDO_04` | `Active` | **Keep** | Service-managed bởi ALB (storefront). |
 | **Elastic IP** | `54.243.175.192` (`eipalloc-090a7ac55788`) | `associated` | N/A | `CDO_04` | `Active` | **Keep** | Service-managed bởi ALB (storefront). |
-| **Snapshot** | `snap-00b810dbb6c60cb24` | `completed` | 10 GiB | `None` | `2026-07-15` | **Delete** | Backup cho volume mồ côi `vol-0ce59bf32f9aea7d5`. Thiếu tags. |
-| **Snapshot** | `snap-08fbbd4c5e28e5a52` | `completed` | 10 GiB | `None` | `2026-07-15` | **Keep & Tag** | `techx-gitops-recovery-2026-07-15` của Postgres. Giữ lại để phục vụ restore/audit. Thiếu tags. |
-| **Snapshot** | `snap-01d08c626e22d126f` | `completed` | 10 GiB | `None` | `2026-07-15` | **Keep & Tag** | `techx-gitops-recovery-2026-07-15` của Kafka. Giữ lại phục vụ restore/audit. Thiếu tags. |
-| **Snapshot** | `snap-0b9747602cda3a42f` | `completed` | 5 GiB | `None` | `2026-07-15` | **Keep & Tag** | `techx-gitops-recovery-2026-07-15` của Valkey. Giữ lại phục vụ restore/audit. Thiếu tags. |
-| **Snapshot** | `snap-03ab92962492589ac` | `completed` | 8 GiB | `None` | `2026-07-15` | **Keep & Tag** | `techx-gitops-recovery-2026-07-15` của OpenSearch. Giữ lại. Thiếu tags. |
-| **Snapshot** | `snap-0bc60477704cf22be` | `completed` | 10 GiB | `None` | `2026-07-14` | **Keep & Tag** | Backup Kafka cutover. Giữ lại phục vụ audit/restore. Thiếu tags. |
-| **Snapshot** | `snap-0af63905df3f4edb8` | `completed` | 10 GiB | `None` | `2026-07-14` | **Keep & Tag** | Backup Postgres cutover. Giữ lại phục vụ audit/restore. Thiếu tags. |
-| **Snapshot** | `snap-0c11c20be17feec23` | `completed` | 5 GiB | `None` | `2026-07-14` | **Keep & Tag** | Backup Valkey cutover. Giữ lại phục vụ audit/restore. Thiếu tags. |
-| **Snapshot** | `snap-0f1c39885a3145560` | `completed` | 8 GiB | `None` | `2026-07-14` | **Keep & Tag** | Backup OpenSearch cutover. Giữ lại phục vụ audit/restore. Thiếu tags. |
+| **Snapshot** | `snap-00b810dbb6c60cb24` | `completed` | 10 GiB | `CDO08` | `2026-07-15` | **Delete** | Backup cho volume mồ côi `vol-0ce59bf32f9aea7d5`. |
+| **Snapshot** | `snap-08fbbd4c5e28e5a52` | `completed` | 10 GiB | `CDO08` | `2026-07-15` | **Delete** | Snapshot phục hồi Postgres cũ. CDO-08 duyệt Cleanup. |
+| **Snapshot** | `snap-0af63905df3f4edb8` | `completed` | 10 GiB | `CDO08` | `2026-07-14` | **Delete** | Snapshot phục hồi Postgres cũ. CDO-08 duyệt Cleanup. |
+| **Snapshot** | `snap-01d08c626e22d126f` | `completed` | 10 GiB | `CDO08` | `2026-07-15` | **Delete** | Snapshot phục hồi Kafka cũ. CDO-08 duyệt Cleanup. |
+| **Snapshot** | `snap-0bc60477704cf22be` | `completed` | 10 GiB | `CDO08` | `2026-07-14` | **Delete** | Snapshot phục hồi Kafka cũ. CDO-08 duyệt Cleanup. |
+| **Snapshot** | `snap-0b9747602cda3a42f` | `completed` | 5 GiB | `CDO08` | `2026-07-15` | **Delete** | Snapshot phục hồi Valkey cũ. CDO-08 duyệt Cleanup. |
+| **Snapshot** | `snap-0c11c20be17feec23` | `completed` | 5 GiB | `CDO08` | `2026-07-14` | **Delete** | Snapshot phục hồi Valkey cũ. CDO-08 duyệt Cleanup. |
+| **Snapshot** | `snap-03ab92962492589ac` | `completed` | 8 GiB | `Observability` | `2026-07-15` | **Keep** | OpenSearch recovery snapshot. Ngoài phạm vi CDO-08, giữ nguyên. |
+| **Snapshot** | `snap-0f1c39885a3145560` | `completed` | 8 GiB | `Observability` | `2026-07-14` | **Keep** | OpenSearch cutover backup. Ngoài phạm vi CDO-08, giữ nguyên. |
 | **AMI** | Không có custom AMI nào | N/A | N/A | N/A | N/A | N/A | Tài khoản trống custom AMI. |
 | **Load Balancer** | `k8s-techxtf4-postgres-981d5617bf` | `active` | N/A | `CDO_04` | `Active` | **Keep** | Sử dụng bởi service `postgresql-migration-bridge` (`techx-tf4`). |
 | **Load Balancer** | `k8s-techxtf4-valkeymi-beee1cc957` | `active` | N/A | `CDO_04` | `Active` | **Keep** | Sử dụng bởi service `valkey-migration-bridge` (`techx-tf4`). |
-| **Load Balancer** | `k8s-techxobs-postgres-8d69757ceb` | `active` | N/A | `CDO_04` | `Active` | **Keep** | Sử dụng bởi service `postgresql-migration-bridge` (`techx-observability`). |
+| **Load Balancer** | `k8s-techxobs-postgres-8d69757ceb` | `active` | N/A | `CDO08` | `2026-07-25` | **Delete** | Migration bridge PostgreSQL (REL-15) đã cutover. CDO-08 duyệt Cleanup. |
 | **Load Balancer** | `k8s-techxtf4-techxalb-a25731d323` | `active` | N/A | `CDO_04` | `Active` | **Keep** | Storefront ALB sử dụng bởi ingress `techx-alb-ingress`. |
-| **Target Groups** | Các target groups liên quan đến 4 LB trên | `active` | N/A | `CDO_04` | `Active` | **Keep** | Mọi Target Group hiện có đều được ánh xạ từ k8s services hoạt động ở trên. Bị chặn API kiểm tra cụ thể qua CLI/IAM nhưng an toàn do trùng khớp dịch vụ Kubernetes. |
 
 ---
 
@@ -53,56 +52,28 @@ Dưới đây là bảng thống kê toàn bộ tài nguyên rà soát trước 
 
 ### A. Lệnh dọn dẹp các tài nguyên mồ côi (Cleanup Commands)
 
-Vui lòng chạy các lệnh sau ở terminal local của bạn để xóa tài nguyên mồ côi:
-
-1. **Xóa EBS Volume mồ côi:**
-   ```powershell
-   aws ec2 delete-volume --volume-id vol-0ce59bf32f9aea7d5
-   ```
-
-2. **Giải phóng Elastic IP mồ côi:**
-   ```powershell
-   aws ec2 release-address --allocation-id eipalloc-02d48563f995b22e7
-   ```
-
-3. **Xóa Snapshot mồ côi:**
-   ```powershell
-   aws ec2 delete-snapshot --snapshot-id snap-00b810dbb6c60cb24
-   ```
-
----
-
-### B. Lệnh bổ sung tag thiếu cho các tài nguyên giữ lại (Tagging Commands)
-
-Nhằm đảm bảo 100% tài nguyên có owner và tag đúng tiêu chuẩn, vui lòng chạy lệnh sau để gắn tag `Owner=CDO_04`, `Environment=Phase3`, `lifecycle=backup` cho 8 snapshots lưu trữ:
-
-```powershell
-aws ec2 create-tags --resources `
-  snap-08fbbd4c5e28e5a52 `
-  snap-01d08c626e22d126f `
-  snap-0b9747602cda3a42f `
-  snap-03ab92962492589ac `
-  snap-0bc60477704cf22be `
-  snap-0af63905df3f4edb8 `
-  snap-0c11c20be17feec23 `
-  snap-0f1c39885a3145560 `
-  --tags Key=Owner,Value=CDO_04 Key=Environment,Value=Phase3 Key=lifecycle,Value=backup
-```
+Các tài nguyên đã được dọn dẹp thành công bằng tài khoản Admin/BreakGlass:
+* EBS Volumes: Xóa PV/PVC trên k8s trước -> Xóa ổ đĩa EBS qua AWS CLI.
+* Elastic IP & Snapshots: Giải phóng và xóa trực tiếp qua AWS CLI.
+* PostgreSQL Migration Bridge: Chuyển `postgresqlMigrationBridge.enabled` sang `false` trên GitOps.
 
 ---
 
 ## 5. Nhật ký thực thi và Xác thực (Execution & Verification Log)
 
-Khi chạy script dọn dẹp `.\scripts\d18-cost-02-cleanup-resources.ps1` bằng tài khoản SSO `ninh` vào lúc `2026-07-21T14:47:59Z`, các lệnh xóa và thay đổi trạng thái AWS bị chặn do thiếu quyền sửa đổi (UnauthorizedOperation / AccessDenied):
+* **Thời gian thực thi (UTC):** `2026-07-25T15:55:00Z`
+* **Người thực hiện:** CDO-04
+* **Tài khoản quyền:** Admin/BreakGlass (`TF4-Admin-BreakGlass-511825856493`)
 
-### Trạng thái dọn dẹp thực tế:
-- EBS Volume `vol-0ce59bf32f9aea7d5` (available): **Thất bại** (`UnauthorizedOperation` khi gọi `DeleteVolume`).
-- Elastic IP `32.192.113.119` (unassociated): **Thất bại** (`UnauthorizedOperation` khi gọi `ReleaseAddress`).
-- Snapshot `snap-00b810dbb6c60cb24` (orphaned): **Thất bại** (`UnauthorizedOperation` khi gọi `DeleteSnapshot`).
-- Gắn tag cho 8 snapshots giữ lại: **Thất bại** (`UnauthorizedOperation` khi gọi `CreateTags`).
+### Kết quả dọn dẹp thực tế:
+- EBS Volumes (`vol-0ce59bf32f9aea7d5`, `vol-0878313d6b2957e96`, `vol-0cb8c31ac039d6597`, `vol-01a7d9f5b6270c06d`): **Thành công 100%** (Sau khi xóa PVC/PV tương ứng).
+- Elastic IP `eipalloc-02d48563f995b22e7`: **Thành công 100%** (`ReleaseAddress` OK).
+- 7 Snapshots cũ của Postgres/Valkey/Kafka: **Thành công 100%** (`DeleteSnapshot` OK).
+- OpenSearch Snapshots (`snap-03ab92962492589ac`, `snap-0f1c39885a3145560`): **Giữ lại thành công** (không can thiệp, tuân thủ đúng yêu cầu của CDO-08).
+- PostgreSQL Migration Bridge (`k8s-techxobs-postgres-8d69757ceb`): **Thành công 100%** (AWS Load Balancer Controller đã dọn dẹp xong).
 
 ### Kết luận kiểm kê (Audit Verdict):
 - [x] Đã hoàn thành bảng kiểm kê (Inventory Table) cho tất cả tài nguyên mục tiêu.
-- [x] Xác định rõ Owner và Decision cho từng tài nguyên.
-- [/] Thao tác dọn dẹp thực tế (Cleanup) và gắn tag bị chặn bởi chính sách bảo mật IAM của role `AWSReservedSSO_TF4-CostPerfReadOnlyAlerting`. Tài nguyên mồ côi vẫn còn tồn tại trên AWS nhưng đã được gắn mã định danh Change Ticket `CHG-D18-COST-02-001` chờ duyệt ngoại lệ hoặc bàn giao cho tài khoản có quyền ghi (ví dụ: `TF4-Developer` hoặc admin).
+- [x] Xác định rõ Owner và Decision cho từng tài nguyên dựa trên phản hồi của CDO-08.
+- [x] Thao tác dọn dẹp thực tế (Cleanup) và tắt migration bridge đã thành công 100% với quyền Admin. Cụm EKS và tài khoản AWS đã sạch tài nguyên mồ côi.
 
