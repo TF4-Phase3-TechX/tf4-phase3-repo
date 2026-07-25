@@ -4,7 +4,7 @@
 **Date:** 2026-07-21 (Updated: 2026-07-22; config/dataset aligned 2026-07-22)
 **Ticket:** TF4AIO-80 (AI MANDATE #15)
 **Author:** Đình Thông Trần (Assignee, AIOps Lead)
-**Reviewer:** _(Tech Lead signature pending live cluster evidence)_
+**Reviewer:** Đinh Danh Nam (Tech Lead; accepted 2026-07-25)
 
 ---
 
@@ -161,8 +161,8 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
   FIRING/RESOLVED on-call receipts are observed.
 - ✅ A bounded healthy-busy drill classified frontend/cart as `busy` for two
   covered observations without creating an incident or alert.
-- ⏳ Named Tech Lead acceptance and organizer hidden-set evidence remain
-  pending.
+- ✅ Named Tech Lead acceptance is recorded below.
+- ⏳ Organizer hidden-set evidence remains pending.
 
 ---
 
@@ -171,4 +171,4 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 | Role | Name | Date | Status |
 |---|---|---|---|
 | Author / AIOps Lead | Đình Thông Trần | 2026-07-21 | Signed |
-| Tech Lead | _(pending live cluster evidence)_ | | In Progress |
+| Tech Lead | Đinh Danh Nam (`c0mmie-b0msh3ll`) | 2026-07-25 | Accepted for the documented detector design, public replay, and bounded runtime evidence; hidden-set acceptance remains separate |
