@@ -29,3 +29,14 @@ records and the successful plus forced-wrong drill evidence on TF4AIO-83.
 The current runtime inventory, activation gates, proposed fault mechanism,
 stop conditions and evidence checklist are recorded in
 [`LIVE-DRILL-READINESS-2026-07-24.md`](LIVE-DRILL-READINESS-2026-07-24.md).
+
+## Final evidence packet
+
+The controlled 2026-07-25 drill, machine-readable audit summary, timing,
+blockers and strict claim boundary are indexed in
+[`FINAL-EVIDENCE-2026-07-25.md`](FINAL-EVIDENCE-2026-07-25.md).
+
+The drill proves the live safety/failure path. It does not prove a successful
+closed-loop pass because the deployed cross-service verifier rejected the
+otherwise recovered target. No further EKS/load drill is authorized during the
+CDO-04 freeze window.

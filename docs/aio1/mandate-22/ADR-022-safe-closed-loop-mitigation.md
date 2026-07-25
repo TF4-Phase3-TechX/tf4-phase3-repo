@@ -1,7 +1,8 @@
 # ADR-022: Pre-authorized safe closed-loop mitigation
 
 - Date: 2026-07-21
-- Status: **Proposed — runtime signatures and live drills pending**
+- Status: **Proposed — controlled runtime evidence captured; formal signatures
+  and successful live verification pending**
 - Canonical Jira: [TF4AIO-83](https://aio1-xbrain.atlassian.net/browse/TF4AIO-83)
 
 ## Signature record
@@ -13,6 +14,25 @@
 | _Name required_ | On-call/SRE owner | Pending | — | Escalation, telemetry verification and live-drill acceptance |
 
 Pending rows are hard activation gates. They are not inferred from generic PR approval.
+
+## Runtime decision record — 2026-07-25
+
+A reviewed, time-bounded production drill exercised the detector, policy,
+Lease, server dry-run, one autonomous Deployment action, real-telemetry
+verification, automatic rollback, escalation, mutation block and GitOps
+restore. See
+[`FINAL-EVIDENCE-2026-07-25.md`](FINAL-EVIDENCE-2026-07-25.md).
+
+The target product-reviews p95 recovered from `15000ms` to `1.9ms`, but the
+deployed verifier also applied an undeclared aggregate frontend/checkout
+error-rate guard. The action was therefore rejected and the safety branch ran.
+The follow-up implementation scopes the mandatory error-rate guard to the
+mutated service and fails closed when that target telemetry is absent.
+
+This follow-up is implemented/tested offline only. The CDO-04 freeze prohibits
+another EKS/load drill, so this ADR remains Proposed. PR approvals or chat
+acknowledgements are evidence of reviewed activity, not substitutes for the two
+pending named signatures above.
 
 ## Decision
 
