@@ -141,50 +141,62 @@ class AIOpsWorker:
 
         decisions = []
         for service in self.settings.services:
-            query = latency_query(service, self.settings.namespace)
-            latency_decision = (
-                await asyncio.to_thread(
-                    self.detector.latency,
-                    service,
-                    await query_range(query),
-                    query,
-                )
-            )
-            decisions.append(latency_decision)
-            query = error_rate_query(
-                service, self.settings.minimum_request_count, self.settings.namespace
-            )
-            burn_rates: tuple[float | None, float | None] | None = None
-            slo_target = self.settings.service_slo_targets.get(service)
-            if slo_target is not None:
-                observed_burn_rates: list[float | None] = []
-                for window in (
-                    self.settings.burn_rate_short_window_minutes,
-                    self.settings.burn_rate_long_window_minutes,
-                ):
-                    burn_query = error_budget_burn_rate_query(
+            latency_breached = False
+            error_rate_breached = False
+            if service in self.settings.generic_signal_services:
+                query = latency_query(service, self.settings.namespace)
+                latency_decision = (
+                    await asyncio.to_thread(
+                        self.detector.latency,
                         service,
-                        slo_target,
-                        window,
-                        self.settings.minimum_request_count,
-                        self.settings.namespace,
+                        await query_range(query),
+                        query,
                     )
-                    observed = instant_value(await query_instant(burn_query))
-                    observed_burn_rates.append(observed)
-                    error_budget_burn_rate.labels(service, f"{window}m").set(
-                        observed if observed is not None else float("nan")
-                    )
-                burn_rates = (observed_burn_rates[0], observed_burn_rates[1])
-            error_decision = (
-                await asyncio.to_thread(
-                    self.detector.error_rate,
-                    service,
-                    await query_range(query),
-                    query,
-                    burn_rates=burn_rates,
                 )
-            )
-            decisions.append(error_decision)
+                decisions.append(latency_decision)
+                latency_breached = latency_decision.breached
+
+                query = error_rate_query(
+                    service,
+                    self.settings.minimum_request_count,
+                    self.settings.namespace,
+                )
+                burn_rates: tuple[float | None, float | None] | None = None
+                slo_target = self.settings.service_slo_targets.get(service)
+                if slo_target is not None:
+                    observed_burn_rates: list[float | None] = []
+                    for window in (
+                        self.settings.burn_rate_short_window_minutes,
+                        self.settings.burn_rate_long_window_minutes,
+                    ):
+                        burn_query = error_budget_burn_rate_query(
+                            service,
+                            slo_target,
+                            window,
+                            self.settings.minimum_request_count,
+                            self.settings.namespace,
+                        )
+                        observed = instant_value(await query_instant(burn_query))
+                        observed_burn_rates.append(observed)
+                        error_budget_burn_rate.labels(service, f"{window}m").set(
+                            observed if observed is not None else float("nan")
+                        )
+                    burn_rates = (
+                        observed_burn_rates[0],
+                        observed_burn_rates[1],
+                    )
+
+                error_decision = (
+                    await asyncio.to_thread(
+                        self.detector.error_rate,
+                        service,
+                        await query_range(query),
+                        query,
+                        burn_rates=burn_rates,
+                    )
+                )
+                decisions.append(error_decision)
+                error_rate_breached = error_decision.breached
 
             if self.availability:
                 snapshot = await asyncio.to_thread(
@@ -204,8 +216,8 @@ class AIOpsWorker:
                 state = classify_service_state(
                     snapshot,
                     traffic_points[-1] if traffic_points else None,
-                    latency_breached=latency_decision.breached,
-                    error_rate_breached=error_decision.breached,
+                    latency_breached=latency_breached,
+                    error_rate_breached=error_rate_breached,
                     busy_request_rate_threshold=(
                         self.settings.busy_request_rate_threshold
                     ),

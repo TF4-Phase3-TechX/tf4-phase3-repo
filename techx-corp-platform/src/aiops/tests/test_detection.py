@@ -70,6 +70,7 @@ def test_error_rate_uses_per_service_span_metrics_and_requires_sustained_polls()
     assert 'span_name="oteldemo.CheckoutService/PlaceOrder"' in query
     assert "increase(" in query
     assert ">= 20" in query
+    assert "or vector(0)" in query
     assert detector.error_rate("checkout", series, query).anomalous is False
     assert detector.error_rate("checkout", series, query).anomalous is True
 
@@ -92,6 +93,7 @@ def test_burn_rate_query_is_request_weighted_and_scoped_to_exact_window():
         "checkout", 0.99, 30, minimum_requests=40, namespace="techx-tf4"
     )
     assert "increase(" in query
+    assert "or vector(0)" in query
     assert "[30m]" in query
     assert "/ 0.01" in query
     assert ">= 40" in query

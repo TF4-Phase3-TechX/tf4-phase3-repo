@@ -51,7 +51,7 @@
       "mutation_blocked": false,
       "audit": [
         {
-          "at": "2026-07-22T15:38:59.053522Z",
+          "at": "2026-07-24T14:45:24.143429Z",
           "event": "autonomous_policy_evaluated",
           "detail": {
             "policy_version": "m22-v1",
@@ -67,7 +67,7 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.053522Z",
+          "at": "2026-07-24T14:45:24.143429Z",
           "event": "action_preauthorized",
           "detail": {
             "policy_version": "m22-v1",
@@ -75,7 +75,7 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.053522Z",
+          "at": "2026-07-24T14:45:24.143429Z",
           "event": "action_preflight_started",
           "detail": {
             "target": "product-reviews",
@@ -83,24 +83,24 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.064406Z",
+          "at": "2026-07-24T14:45:24.149434Z",
           "event": "action_preflight_passed",
           "detail": {
             "target": "product-reviews"
           }
         },
         {
-          "at": "2026-07-22T15:38:59.065601Z",
+          "at": "2026-07-24T14:45:24.150473Z",
           "event": "kubernetes_server_dry_run_passed",
           "detail": {}
         },
         {
-          "at": "2026-07-22T15:38:59.065601Z",
+          "at": "2026-07-24T14:45:24.151474Z",
           "event": "action_executed",
           "detail": {}
         },
         {
-          "at": "2026-07-22T15:38:59.067603Z",
+          "at": "2026-07-24T14:45:24.152482Z",
           "event": "remediation_verified",
           "detail": {}
         }
@@ -190,7 +190,7 @@
       "mutation_blocked": false,
       "audit": [
         {
-          "at": "2026-07-22T15:38:59.073601Z",
+          "at": "2026-07-24T14:45:24.157480Z",
           "event": "autonomous_policy_evaluated",
           "detail": {
             "policy_version": "m22-v1",
@@ -206,7 +206,7 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.073601Z",
+          "at": "2026-07-24T14:45:24.157480Z",
           "event": "action_preauthorized",
           "detail": {
             "policy_version": "m22-v1",
@@ -214,7 +214,7 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.073601Z",
+          "at": "2026-07-24T14:45:24.157480Z",
           "event": "action_preflight_started",
           "detail": {
             "target": "product-reviews",
@@ -222,31 +222,31 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.074106Z",
+          "at": "2026-07-24T14:45:24.157480Z",
           "event": "action_preflight_passed",
           "detail": {
             "target": "product-reviews"
           }
         },
         {
-          "at": "2026-07-22T15:38:59.075116Z",
+          "at": "2026-07-24T14:45:24.157480Z",
           "event": "kubernetes_server_dry_run_passed",
           "detail": {}
         },
         {
-          "at": "2026-07-22T15:38:59.076125Z",
+          "at": "2026-07-24T14:45:24.158480Z",
           "event": "action_executed",
           "detail": {}
         },
         {
-          "at": "2026-07-22T15:38:59.078127Z",
+          "at": "2026-07-24T14:45:24.159481Z",
           "event": "rollback_applied",
           "detail": {
             "reason": "Remediation did not recover during the stabilization window"
           }
         },
         {
-          "at": "2026-07-22T15:38:59.079126Z",
+          "at": "2026-07-24T14:45:24.159481Z",
           "event": "rollback_verified",
           "detail": {}
         }
@@ -336,7 +336,7 @@
       "mutation_blocked": true,
       "audit": [
         {
-          "at": "2026-07-22T15:38:59.085177Z",
+          "at": "2026-07-24T14:45:24.162718Z",
           "event": "autonomous_policy_evaluated",
           "detail": {
             "policy_version": "m22-v1",
@@ -352,7 +352,7 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.085177Z",
+          "at": "2026-07-24T14:45:24.162718Z",
           "event": "action_preauthorized",
           "detail": {
             "policy_version": "m22-v1",
@@ -360,7 +360,7 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.085177Z",
+          "at": "2026-07-24T14:45:24.162718Z",
           "event": "action_preflight_started",
           "detail": {
             "target": "product-reviews",
@@ -368,31 +368,31 @@
           }
         },
         {
-          "at": "2026-07-22T15:38:59.085728Z",
+          "at": "2026-07-24T14:45:24.163695Z",
           "event": "action_preflight_passed",
           "detail": {
             "target": "product-reviews"
           }
         },
         {
-          "at": "2026-07-22T15:38:59.086733Z",
+          "at": "2026-07-24T14:45:24.163695Z",
           "event": "kubernetes_server_dry_run_passed",
           "detail": {}
         },
         {
-          "at": "2026-07-22T15:38:59.086733Z",
+          "at": "2026-07-24T14:45:24.163695Z",
           "event": "action_executed",
           "detail": {}
         },
         {
-          "at": "2026-07-22T15:38:59.088736Z",
+          "at": "2026-07-24T14:45:24.164697Z",
           "event": "rollback_applied",
           "detail": {
             "reason": "Remediation did not recover during the stabilization window"
           }
         },
         {
-          "at": "2026-07-22T15:38:59.091735Z",
+          "at": "2026-07-24T14:45:24.165698Z",
           "event": "rollback_unverified_escalation",
           "detail": {}
         }
