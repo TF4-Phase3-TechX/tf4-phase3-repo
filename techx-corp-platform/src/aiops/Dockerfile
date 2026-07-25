@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/python@sha256:967409cf4148210d7c1bb872ffdda42a8b73cfc738f95eae7413045d0d6c30ee AS builder
+FROM cgr.dev/chainguard/python@sha256:0eddb3213e83cfbd03dd9dbb28d94ced9fa61839f66b29ccb4422bde4b153a2b AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
@@ -7,7 +7,7 @@ COPY src/aiops/requirements.txt .
 RUN python -m venv /home/nonroot/venv \
     && /home/nonroot/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-FROM cgr.dev/chainguard/python@sha256:2c6a2e8bdeb1336cd8545d3586d1c1e5b4f7564ef00924b0447ebfbe57a549ee AS runtime
+FROM cgr.dev/chainguard/python@sha256:71cda8424b96989702cdfe23d806e059845965e96a1b08da4d39cc0f1cb946a0 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

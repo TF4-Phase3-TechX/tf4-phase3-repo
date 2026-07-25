@@ -1,0 +1,12 @@
+{
+  "labeled_cases": 18,
+  "agreement": 1.0,
+  "cohen_kappa": 1.0,
+  "confusion_matrix": {
+    "true_positive": 11,
+    "true_negative": 7,
+    "false_positive": 0,
+    "false_negative": 0
+  },
+  "disagreements": []
+}

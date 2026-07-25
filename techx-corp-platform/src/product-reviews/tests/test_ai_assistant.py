@@ -56,6 +56,9 @@ def test_review_attack_is_removed_and_grounded_answer_passes():
     outcome = make_assistant(provider).answer("p1", "How are the moon views?")
     assert outcome.outcome == "answered"
     assert outcome.quarantined_reviews == 1
+    assert outcome.citations == (
+        {"review_id": 1, "evidence_quote": "clear views of the moon"},
+    )
     assert len(provider.calls[0][2]) == 1
 
 

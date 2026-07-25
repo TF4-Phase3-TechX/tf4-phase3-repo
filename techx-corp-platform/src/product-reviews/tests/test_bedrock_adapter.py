@@ -548,23 +548,3 @@ def test_compare_products_uses_dedicated_grounded_tool():
         "tool": {"name": "emit_grounded_comparison"}
     }
     assert client.request["modelId"] == "model"
-
-
-@pytest.mark.parametrize(
-    ("response", "expected_stage"),
-    [
-        ({"stopReason": "tool_use", "output": {"message": {"content": []}}, "usage": {"inputTokens": 101, "outputTokens": 21}}, "tool_block_count"),
-        (tool_response_with("not-an-object", tool_name="emit_grounded_comparison"), "payload_type"),
-    ],
-)
-def test_compare_contract_failures_preserve_billable_usage(response, expected_stage):
-    with pytest.raises(ProviderFailure) as failure:
-        adapter(FakeClient(response), output_mode="tool").compare_products(
-            "compare them", {"products": [], "sources": {}}
-        )
-
-    assert failure.value.error_class == "invalid_response"
-    assert failure.value.contract_stage == expected_stage
-    assert failure.value.input_tokens == 101
-    assert failure.value.output_tokens == 21
-    assert failure.value.stop_reason == "tool_use"

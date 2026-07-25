@@ -538,63 +538,6 @@ def test_copilot_cart_quantity_limit_is_a_business_response_not_provider_failure
     assert not response.HasField("action_proposal")
 
 
-@pytest.mark.parametrize(
-    ("query", "keywords", "expected_outcome", "expected_text"),
-    [
-        (
-            "Add National Park Foundation Explorascope to my cart",
-            "National Park Foundation Explorascope",
-            "action_confirmation_required",
-            "Would you like to add 1 of this product to your cart?",
-        ),
-        (
-            "Add a nonexistent tripod to my cart",
-            "nonexistent tripod",
-            "clarification_required",
-            "I could not find the product you want to add to your cart.",
-        ),
-    ],
-)
-def test_cart_responses_follow_english_query_language(query, keywords, expected_outcome, expected_text):
-    import router
-
-    class Provider:
-        model_id = "test-model"
-        guardrail_version = "1"
-
-        def parse_search_intent(self, _query, history=None):
-            return {"search_type": "cart_action", "confidence_score": 0.99, "keywords": keywords}
-
-    class Catalog:
-        def ListProducts(self, request, timeout):
-            return demo_pb2.ListProductsResponse(products=[
-                demo_pb2.Product(
-                    id="explorascope",
-                    name="National Park Foundation Explorascope",
-                    categories=["telescopes"],
-                ),
-            ])
-
-    class Tracer:
-        class Span:
-            def __enter__(self): return self
-            def __exit__(self, *args): pass
-            def set_attribute(self, key, value): pass
-        def start_as_current_span(self, name): return self.Span()
-
-    response = router.route_search_products_ai(
-        query,
-        f"english-cart-{expected_outcome}",
-        type("Assistant", (), {"provider": Provider()})(),
-        Catalog(),
-        Tracer(),
-        None,
-    )
-
-    assert response.outcome == expected_outcome
-    assert expected_text in response.response
-
-
 def test_compare_relative_extrema_are_scoped_to_last_search_results():
     import router
 

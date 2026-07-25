@@ -226,13 +226,13 @@ output "msk_connect_plugin_prefix" {
 }
 
 output "msk_orders_s3_sink_connector_arn" {
-  description = "MSK Connect connector ARN for REL-22 orders S3 archive"
-  value       = aws_mskconnect_connector.orders_s3_sink.arn
+  description = "MSK Connect connector ARN for REL-22 orders S3 archive (null when msk_connect_connector_enabled=false)"
+  value       = try(aws_mskconnect_connector.orders_s3_sink[0].arn, null)
 }
 
 output "msk_orders_s3_sink_connector_name" {
-  description = "MSK Connect connector name for REL-22 orders S3 archive"
-  value       = aws_mskconnect_connector.orders_s3_sink.name
+  description = "MSK Connect connector name for REL-22 orders S3 archive (null when msk_connect_connector_enabled=false)"
+  value       = try(aws_mskconnect_connector.orders_s3_sink[0].name, null)
 }
 
 output "msk_orders_s3_sink_custom_plugin_arn" {

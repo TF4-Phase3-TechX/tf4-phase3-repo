@@ -698,12 +698,12 @@ Local verification on 2026-07-24:
 | Check | Result |
 |---|---|
 | Python compilation for `src/product-reviews/*.py` | Passed |
-| Full product-reviews unit suite using service virtualenv (CI) | **130 passed** |
+| Full product-reviews unit suite using service virtualenv | **126 passed** |
 | Focused intent/adapter/cart-confirmation suite | **78 passed** after strict-review contract update |
 | `git diff --check` | Passed after strict-review hygiene update |
 | Generated Python protobuf/grpc imports | Generated with repository service virtualenv |
 | Frontend type check | Passed with `npm run typecheck` in the repository-pinned Node 22 image |
-| Real Bedrock application-path evaluation | **60/60 passed (100%)**; clean-SHA evidence at `tests/eval_copilot/evidence/2026-07-24-22-50-55-1522/` |
+| Real Bedrock comparison evaluation | Pending |
 | Staging canary | Pending |
 | Physical service extraction | Pending by decision |
 
@@ -720,11 +720,6 @@ Covered tests include:
 - full route returns two expected IDs and comparison prose;
 - provider/validator failure returns the deterministic degraded answer.
 
-The 60/60 real Bedrock run covers both model-routed requests and the
-deterministic category/price parser paths. It records the pinned Nova 2 Lite
-model identifier, request token usage, and estimated cost in the committed
-evidence bundle.
-
 ## Acceptance and open items
 
 | Item | Status | Exit criterion |
@@ -732,7 +727,7 @@ evidence bundle.
 | Local implementation and unit tests | Complete | Full service unit suite passes |
 | Frontend type check | Complete | `npm run typecheck` passes in the repository-pinned Node 22 image |
 | Frontend production build | Pending | Production build passes in a dependency-provisioned environment |
-| Offline real-model application-path evaluation | Complete | 60/60 cases pass; committed evidence records model, token, cost, and configuration snapshots |
+| Offline real-model comparison bake-off | Pending | All hard gates in this ADR pass |
 | Staging runtime canary | Pending | Quality, p95, cost, Guardrail, and failure drills pass |
 | Dashboard separation by stage/model | Pending | Intent and comparison are independently visible |
 | Structured session entity state beyond last results | Partial | Explicit selected-product/reference schema replaces remaining history text lookup |

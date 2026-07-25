@@ -758,11 +758,7 @@ def route_search_products_ai(
                             idempotency_key=confirmation_token,
                         ),
                     )
-                    confirmation_msg = _message(
-                        query,
-                        f"Tôi tìm thấy sản phẩm **{target.name}**. Bạn muốn thêm {qty} sản phẩm này vào giỏ hàng chứ?",
-                        f"I found **{target.name}**. Would you like to add {qty} of this product to your cart?",
-                    )
+                    confirmation_msg = f"Tôi tìm thấy sản phẩm **{target.name}**. Bạn muốn thêm {qty} sản phẩm này vào giỏ hàng chứ?"
                     intent["response_message"] = confirmation_msg
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
                     if session_id:
@@ -786,11 +782,7 @@ def route_search_products_ai(
                     )
                 else:
                     # Bug #20 fix: Include clarify_question for PURCHASE miss
-                    clarify_q = _message(
-                        query,
-                        "Tôi chưa tìm thấy sản phẩm bạn muốn thêm vào giỏ hàng. Bạn có thể cho biết tên sản phẩm cụ thể không?",
-                        "I could not find the product you want to add to your cart. Could you provide the specific product name?",
-                    )
+                    clarify_q = "Tôi chưa tìm thấy sản phẩm bạn muốn thêm vào giỏ hàng. Bạn có thể cho biết tên sản phẩm cụ thể không?"
                     intent["search_type"] = "unclear"
                     intent["clarify_question"] = clarify_q
                     intent["response_message"] = clarify_q

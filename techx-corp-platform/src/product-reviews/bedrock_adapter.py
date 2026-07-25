@@ -876,13 +876,6 @@ class BedrockAdapter:
                 "toolChoice": {"tool": {"name": "emit_grounded_comparison"}},
             }
 
-        # Keep billable usage if the provider responds but its payload fails our
-        # contract.  These values are also surfaced in degraded outcomes.
-        elapsed = 0.0
-        input_tokens = 0
-        output_tokens = 0
-        stop_reason = "not_received"
-        contract_stage = "response_envelope"
         try:
             response = self.client.converse(**request)
             elapsed = self.clock() - started
@@ -914,38 +907,17 @@ class BedrockAdapter:
             if self.output_mode == "json_schema":
                 text_blocks = [block["text"] for block in blocks if isinstance(block, dict) and "text" in block]
                 if len(text_blocks) != 1:
-                    raise ProviderFailure(
-                        "invalid_response",
-                        latency_ms=elapsed * 1_000,
-                        input_tokens=input_tokens,
-                        output_tokens=output_tokens,
-                        stop_reason=stop_reason,
-                        contract_stage="text_block_count",
-                    )
+                    raise ProviderFailure("invalid_response", contract_stage="text_block_count")
                 payload = json.loads(text_blocks[0])
                 contract_stage = "text_json"
             else:
                 tool_blocks = [block["toolUse"] for block in blocks if isinstance(block, dict) and "toolUse" in block]
                 if len(tool_blocks) != 1 or tool_blocks[0].get("name") != "emit_grounded_comparison":
-                    raise ProviderFailure(
-                        "invalid_response",
-                        latency_ms=elapsed * 1_000,
-                        input_tokens=input_tokens,
-                        output_tokens=output_tokens,
-                        stop_reason=stop_reason,
-                        contract_stage="tool_block_count",
-                    )
+                    raise ProviderFailure("invalid_response", contract_stage="tool_block_count")
                 payload = tool_blocks[0].get("input")
                 contract_stage = "tool_input_dict"
             if not isinstance(payload, dict):
-                raise ProviderFailure(
-                    "invalid_response",
-                    latency_ms=elapsed * 1_000,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    stop_reason=stop_reason,
-                    contract_stage="payload_type",
-                )
+                raise ProviderFailure("invalid_response", contract_stage="payload_type")
             self.breaker.success()
             return BedrockResult(
                 payload=payload,
@@ -961,14 +933,7 @@ class BedrockAdapter:
                 self.breaker.failure(self.clock())
             raise
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
-            raise ProviderFailure(
-                "invalid_response",
-                latency_ms=elapsed * 1_000,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                stop_reason=stop_reason,
-                contract_stage=contract_stage,
-            ) from exc
+            raise ProviderFailure("invalid_response") from exc
         except Exception as exc:
             error_name = type(exc).__name__.lower()
             if _trips_circuit(error_name):
