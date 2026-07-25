@@ -91,11 +91,20 @@ A single worker poll may produce an incident when `AIOPS_SUSTAINED_POLLS=1`, but
 |---|---|---|
 | **Before** (historical static alert rules) | Estimated static threshold rule delay (`for: 5m` window) | ~300–600s (5–10 min) |
 | **After — offline simulation** (this harness) | Scenarios declare 15-second sample intervals; replay groups three samples per 45-second poll and records the first `decision.anomalous` poll | **45s** (1 detector cycle) |
-| **After — live cluster** | Continuous pod proof; real on-call timestamps from TF4AIO-80/77 | Pending live evidence |
+| **After — live detector** | Controlled `llm` availability fault: externally observed down state to incident creation | **~60.9s** |
+| **After — live alert start** | Controlled `llm` availability fault: externally observed down state to Prometheus alert start | **~113s** |
 
-> **Note:** The offline MTTD of 45s is reproducible from the committed JSONL dataset (`labeled-scenarios-v1.jsonl`) using the one-command repro below. Live cluster MTTD will be recorded when continuous pod proof is available; it may differ due to real Prometheus scrape jitter and network latency. Do not conflate the two measurements.
+> **Note:** The offline MTTD of 45s is reproducible from the committed JSONL
+> dataset (`labeled-scenarios-v1.jsonl`). The live detector value is longer
+> because incident onset is not aligned to the 45-second poll schedule. The
+> alert-start value additionally includes rule evaluation delay. Slack delivery
+> latency is not claimed because the screenshot does not preserve an
+> independent receipt timestamp.
 
 On the labeled dataset, **offline simulated MTTD-after is 45s (1 detector cycle)** for all real_incident cases (TP=3, avg_lead_time_seconds=45.0).
+
+The bounded live chronology and its exact claim boundary are recorded in
+[`MANDATE-15-EVIDENCE-INDEX.md`](MANDATE-15-EVIDENCE-INDEX.md).
 
 ---
 
@@ -148,7 +157,12 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 - ✅ Auditable scoring logic (all formulas in this ADR and in `detection.py`)
 - ✅ Incident summary artifact per detected event (service, severity, runbook, evidence; validated by `test_incident_summary_contains_service_severity_runbook`)
 - ✅ Hard floors: PII leakage = N/A (AIOps detector does not handle PII); unauthorized writes = blocked by `REMEDIATION_MODE=dry-run` default + approval gate
-- ⏳ Live cluster / continuous pod proof and real on-call timestamps: tracked in TF4AIO-80/77 (not blocked by this phase-1 harness PR)
+- ✅ Continuous in-cluster workload, controlled incident creation and
+  FIRING/RESOLVED on-call receipts are observed.
+- ✅ A bounded healthy-busy drill classified frontend/cart as `busy` for two
+  covered observations without creating an incident or alert.
+- ⏳ Named Tech Lead acceptance and organizer hidden-set evidence remain
+  pending.
 
 ---
 
