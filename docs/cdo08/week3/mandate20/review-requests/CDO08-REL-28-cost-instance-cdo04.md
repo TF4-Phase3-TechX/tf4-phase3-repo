@@ -4,7 +4,7 @@
 | ------------- | -------------------------------------------------------------- |
 | Từ            | CDO08                                                          |
 | Đến           | CDO04 (Cost/Infra)                                             |
-| Backlog       | `CDO08-REL-XX` - MSK Broker Upgrade for Firehose Compatibility |
+| Backlog       | `CDO08-REL-28` - MSK Broker Upgrade for Firehose Compatibility |
 | Ngày gửi      | 2026-07-25                                                     |
 | Deadline      | \_\_\_, trước khi implement Terraform broker upgrade           |
 | Review result | \_\_\_                                                         |
