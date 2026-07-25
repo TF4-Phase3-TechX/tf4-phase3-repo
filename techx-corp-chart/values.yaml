@@ -2583,3 +2583,4 @@ mirrormaker2:
     limits:
       cpu: 500m
       memory: 1Gi
+# Trigger promotion PR
