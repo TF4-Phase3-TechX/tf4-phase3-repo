@@ -139,10 +139,6 @@ output "msk_orders_bootstrap_brokers_sasl_iam" {
   value       = aws_msk_cluster.orders.bootstrap_brokers_sasl_iam
 }
 
-output "msk_orders_bootstrap_brokers_vpc_connectivity_sasl_iam" {
-  description = "Multi-VPC private connectivity SASL/IAM bootstrap brokers for Firehose native MSK source"
-  value       = aws_msk_cluster.orders.bootstrap_brokers_vpc_connectivity_sasl_iam
-}
 output "msk_orders_broker_node_type" {
   description = "MSK broker node type for the orders migration target"
   value       = aws_msk_cluster.orders.broker_node_group_info[0].instance_type
