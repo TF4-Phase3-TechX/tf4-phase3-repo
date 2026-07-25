@@ -215,10 +215,12 @@ jobs:
 
           verify_artifact() {
             local image_ref="$1" artifact_id="$2" predicate_file="$3" attempt
-            cosign verify \
+            if ! cosign verify \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              "$image_ref" --output text > "security-artifacts/cosign-verify-${artifact_id}.txt" 2>&1
+              "$image_ref" --output text > "security-artifacts/cosign-verify-${artifact_id}.txt" 2>&1; then
+              return 1
+            fi
             for attempt in 1 2 3 4 5; do
               if cosign verify-attestation \
                 --type custom \
@@ -231,7 +233,7 @@ jobs:
                    | if (.Data? | type) == "string" then (.Data | fromjson) else . end
                    | select(. == $expected[0])] | length > 0
                 ' "security-artifacts/provenance-verify-${artifact_id}.json" > /dev/null; then
-                return
+                return 0
               fi
               sleep $(( attempt * 5 ))
             done
@@ -247,10 +249,16 @@ jobs:
             local predicate_file="security-artifacts/delivery-predicate-${artifact_id}.json"
             trivy image --severity HIGH,CRITICAL --format table --output "security-artifacts/trivy-${artifact_id}.txt" "$image_ref" || true
             trivy image --severity HIGH,CRITICAL --format json --output "security-artifacts/trivy-${artifact_id}.json" "$image_ref" || true
-            trivy image --severity HIGH,CRITICAL --exit-code 1 "$image_ref" > /dev/null
-            trivy image --format cyclonedx --output "$sbom_file" "$image_ref"
-            cosign sign --yes "$image_ref"
-            jq -n \
+            if ! trivy image --severity HIGH,CRITICAL --exit-code 1 "$image_ref" > /dev/null; then
+              return 1
+            fi
+            if ! trivy image --format cyclonedx --output "$sbom_file" "$image_ref"; then
+              return 1
+            fi
+            if ! cosign sign --yes "$image_ref"; then
+              return 1
+            fi
+            if ! jq -n \
               --arg repo "${{ github.repository }}" \
               --arg commit "${{ github.sha }}" \
               --arg workflow "${{ github.workflow }}" \
@@ -259,8 +267,12 @@ jobs:
               --arg image_digest "$digest" \
               --arg architecture "$platform" \
               --slurpfile sbom "$sbom_file" \
-              '{kind: "secure-delivery-evidence", manifest_role: "child", repo: $repo, commit: $commit, workflow: $workflow, run_id: $run_id, service_name: $service_name, image_digest: $image_digest, architecture: $architecture, sbom: {kind: "cyclonedx-sbom", document: $sbom[0]}}' > "$predicate_file"
-            cosign attest --yes --predicate "$predicate_file" --type custom "$image_ref"
+              '{kind: "secure-delivery-evidence", manifest_role: "child", repo: $repo, commit: $commit, workflow: $workflow, run_id: $run_id, service_name: $service_name, image_digest: $image_digest, architecture: $architecture, sbom: {kind: "cyclonedx-sbom", document: $sbom[0]}}' > "$predicate_file"; then
+              return 1
+            fi
+            if ! cosign attest --yes --predicate "$predicate_file" --type custom "$image_ref"; then
+              return 1
+            fi
             verify_artifact "$image_ref" "$artifact_id" "$predicate_file"
           }
 
@@ -269,8 +281,10 @@ jobs:
             local artifact_id="${service}-index-${digest//:/-}"
             local image_ref="${IMAGE_REPOSITORY}@${digest}"
             local predicate_file="security-artifacts/delivery-predicate-${artifact_id}.json"
-            cosign sign --yes "$image_ref"
-            jq -n \
+            if ! cosign sign --yes "$image_ref"; then
+              return 1
+            fi
+            if ! jq -n \
               --arg repo "${{ github.repository }}" \
               --arg commit "${{ github.sha }}" \
               --arg workflow "${{ github.workflow }}" \
@@ -278,8 +292,12 @@ jobs:
               --arg service_name "$service" \
               --arg image_digest "$digest" \
               --argjson child_digests "$child_digests" \
-              '{kind: "secure-delivery-evidence", manifest_role: "index", repo: $repo, commit: $commit, workflow: $workflow, run_id: $run_id, service_name: $service_name, image_digest: $image_digest, child_digests: $child_digests}' > "$predicate_file"
-            cosign attest --yes --predicate "$predicate_file" --type custom "$image_ref"
+              '{kind: "secure-delivery-evidence", manifest_role: "index", repo: $repo, commit: $commit, workflow: $workflow, run_id: $run_id, service_name: $service_name, image_digest: $image_digest, child_digests: $child_digests}' > "$predicate_file"; then
+              return 1
+            fi
+            if ! cosign attest --yes --predicate "$predicate_file" --type custom "$image_ref"; then
+              return 1
+            fi
             verify_artifact "$image_ref" "$artifact_id" "$predicate_file"
           }
 
