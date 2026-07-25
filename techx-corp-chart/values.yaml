@@ -378,7 +378,10 @@ components:
       - name: AIOPS_LLM_HIGH_ERROR_RATE
         value: "0.25"
       - name: AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD
-        value: "0.75"
+        # Calibrated after controlled runtime drills: true high-severity acute
+        # incidents scored 0.742-0.743. Independent severity, allowlist,
+        # runbook and evidence gates still have to pass.
+        value: "0.74"
       - name: AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD
         value: "0.01"
       - name: AIOPS_APPROVAL_TOKEN
