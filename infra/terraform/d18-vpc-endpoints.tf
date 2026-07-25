@@ -1,4 +1,4 @@
-# Security Group for VPC Interface Endpoints (Allow HTTPS 443 from VPC CIDR)
+# Security Group for VPC Interface Endpoints (Allow HTTPS 443 from VPC CIDR) - CDO_04
 resource "aws_security_group" "vpc_endpoints" {
   name        = "tf4-d18-vpc-endpoints-sg"
   description = "Security Group for VPC Interface Endpoints"
