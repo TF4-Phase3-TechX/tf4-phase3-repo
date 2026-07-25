@@ -1,6 +1,6 @@
 {
   "schema_version": "aio1-live-detection-set-v1",
-  "prepared_at_utc": "2026-07-25T04:12:32Z",
+  "prepared_at_utc": "2026-07-25T05:16:07Z",
   "label_authority": {
     "type": "team_controlled_gitops_drill",
     "owner": "TF4 AIO1",
@@ -57,15 +57,33 @@
       "observations": [
         {
           "captured_at_utc": "2026-07-25T04:11:20Z",
+          "capture_mode": "historical_prometheus_instant_query",
+          "retrieved_at_utc": "2026-07-25T05:16:07Z",
           "frontend_request_rate_per_second": 33.773329006579935,
+          "frontend_p95_milliseconds": 286.4643268540535,
+          "frontend_error_rate": 0,
+          "frontend_burn_rate_5m": 0,
+          "frontend_burn_rate_30m": 0,
           "cart_request_rate_per_second": 14.625,
+          "cart_p95_milliseconds": 6.316455696202534,
+          "cart_error_rate": 0,
+          "cart_burn_rate_5m": 0,
+          "cart_burn_rate_30m": 0,
           "frontend_state": "busy",
           "cart_state": "busy",
+          "checkout_request_rate_per_second": 2.1873450630580336,
+          "checkout_p95_milliseconds": 199.0999999999999,
+          "checkout_error_rate": 0,
+          "checkout_burn_rate_5m": 0,
+          "checkout_burn_rate_30m": 0,
+          "checkout_state": "healthy",
           "active_incident_count": 0,
-          "active_alert_count": 0
+          "active_alert_count": 0,
+          "workload_health_observed": false
         },
         {
           "captured_at_utc": "2026-07-25T04:12:32Z",
+          "capture_mode": "live_prometheus_query_and_kubectl_workload_snapshot",
           "frontend_request_rate_per_second": 66.28677962132281,
           "frontend_p95_milliseconds": 204.3124219545427,
           "frontend_error_rate": 0,

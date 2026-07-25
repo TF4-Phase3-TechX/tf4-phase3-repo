@@ -92,13 +92,29 @@ delivery latency.
 temporarily changes only load-generator users `10 -> 150` and spawn rate
 `1 -> 10`.
 
-Success requires two fully covered detector polls with:
+The initial GitOps #171 plan targeted checkout and proposed these success
+signals:
 
 - checkout Deployment still ready;
 - request rate above `AIOPS_BUSY_REQUEST_RATE_THRESHOLD=5`;
 - `aiops_service_state{service="checkout",state="busy"} == 1`;
 - p95/error/burn decisions non-breaching;
 - no checkout incident and no `AIOpsIncidentDetected` Slack alert.
+
+Runtime traffic distribution did **not** push checkout above the busy seed.
+Checkout peaked near `3.0 req/s` and remained healthy. The same controlled load
+did push two other monitored services above the seed: frontend and cart.
+Therefore this evidence intentionally changes scope from "checkout busy" to
+"frontend/cart busy"; it does not claim that the checkout-specific expectation
+passed.
+
+The accepted bounded evidence condition is:
+
+- frontend and cart remain `busy` for two signal-complete observations;
+- their p95/error/burn decisions remain non-breaching;
+- no incident or alert is created;
+- a Kubernetes workload-health snapshot confirms Ready pods and zero restarts
+  at the final observation.
 
 Abort on readiness loss, pod restart, SLO breach, unexpected alert or another
 team reporting interference. Restore load-generator to chart defaults
@@ -111,8 +127,16 @@ Observed result:
 - `cart`: `busy`, request rate approximately `14.6 -> 22.2 req/s`,
   p95 `6.2 ms`, error and 5m/30m burn rate `0`;
 - checkout remained healthy;
-- every observed pod remained Ready with zero restarts;
+- the final Kubernetes workload snapshot showed every inspected pod Ready with
+  zero restarts;
 - active AIOps incidents and alerts remained empty.
+
+The first observation's full p95/error/burn fields were recovered from
+Prometheus using an instant query pinned to `2026-07-25T04:11:20Z`; its
+retrieval time is recorded separately. Kubernetes workload health was not
+historically available for that exact timestamp, so the evidence claims two
+signal-complete detector observations and one final workload-health snapshot,
+not two fully covered Kubernetes snapshots.
 
 The restore completed through
 [GitOps PR #174](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174).
@@ -126,7 +150,8 @@ The exact observations and bounded confusion matrix are preserved in
 ## Claim boundary
 
 The detector is implemented, on trunk, continuously deployed and observed
-creating a real incident summary and on-call notification. The healthy-busy
-negative is observed over a bounded two-poll drill. The current public evidence
+creating a real incident summary and on-call notification. The frontend/cart
+healthy-busy negative is observed over two signal-complete observations plus
+one final workload-health snapshot. The current public evidence
 does not yet prove a live masking case, live high-burn escalation, long-run
 production precision/recall or organizer acceptance.

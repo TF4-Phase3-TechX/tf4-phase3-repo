@@ -81,11 +81,20 @@ Bounded event-level result:
 Machine-readable evidence:
 [live-labeled-set-20260724-25.json](../mandate-15/evidence/live-labeled-set-20260724-25.json).
 
-During the healthy-busy case, two covered observations classified both
+During the healthy-busy case, two signal-complete observations classified both
 `frontend` and `cart` as `busy`. Request rates rose from approximately
 33.8/14.6 req/s to 66.3/22.2 req/s respectively. Their error rates and 5m/30m
-burn rates remained zero, all observed pods stayed Ready with zero restarts,
-and no AIOps incident or alert fired.
+burn rates remained zero and no AIOps incident or alert fired. The final
+Kubernetes workload snapshot showed the inspected pods Ready with zero
+restarts.
+
+GitOps #171 originally expected checkout itself to cross the busy seed.
+Runtime traffic distribution left checkout healthy below that seed, so this
+evidence is explicitly scoped to the frontend/cart busy result. It does not
+claim the checkout-specific expectation passed. The first observation's
+p95/error/burn fields were retrieved later through a Prometheus instant query
+pinned to its original timestamp; only the final observation has a matching
+Kubernetes readiness/restart snapshot.
 
 The load override was removed through reviewed
 [GitOps PR #174](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174),
