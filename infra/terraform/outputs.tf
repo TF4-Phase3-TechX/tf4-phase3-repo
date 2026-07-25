@@ -225,6 +225,56 @@ output "msk_connect_plugin_prefix" {
   value       = local.msk_connect_plugin_prefix
 }
 
+output "msk_orders_s3_sink_connector_arn" {
+  description = "MSK Connect connector ARN for REL-22 orders S3 archive"
+  value       = aws_mskconnect_connector.orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_connector_name" {
+  description = "MSK Connect connector name for REL-22 orders S3 archive"
+  value       = aws_mskconnect_connector.orders_s3_sink.name
+}
+
+output "msk_orders_s3_sink_custom_plugin_arn" {
+  description = "Custom plugin ARN used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_custom_plugin.orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_custom_plugin_revision" {
+  description = "Custom plugin revision used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_custom_plugin.orders_s3_sink.latest_revision
+}
+
+output "msk_orders_s3_sink_worker_configuration_arn" {
+  description = "Worker configuration ARN used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_worker_configuration.orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_worker_configuration_revision" {
+  description = "Worker configuration revision used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_worker_configuration.orders_s3_sink.latest_revision
+}
+
+output "msk_orders_s3_sink_log_group_name" {
+  description = "CloudWatch log group for the REL-22 orders S3 Sink connector"
+  value       = aws_cloudwatch_log_group.msk_connect_orders_s3_sink.name
+}
+
+output "msk_orders_s3_sink_service_role_arn" {
+  description = "Service execution role ARN for the REL-22 orders S3 Sink connector"
+  value       = aws_iam_role.msk_connect_orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_plugin_artifact" {
+  description = "Pinned S3 object used for the REL-22 MSK Connect custom plugin"
+  value = {
+    bucket     = aws_s3_bucket.msk_connect_plugins.id
+    key        = local.msk_connect_plugin_key
+    version_id = local.msk_connect_plugin_version_id
+    sha256     = local.msk_connect_plugin_sha256
+  }
+}
+
 output "elasticache_valkey_replication_group_id" {
   description = "ElastiCache Valkey replication group ID for the cart migration target"
   value       = aws_elasticache_replication_group.valkey_cart.replication_group_id
