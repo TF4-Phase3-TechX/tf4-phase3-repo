@@ -102,11 +102,6 @@ data "aws_iam_policy_document" "msk_connect_assume_role" {
       values   = [data.aws_caller_identity.current.account_id]
     }
 
-    condition {
-      test     = "ArnLike"
-      variable = "aws:SourceArn"
-      values   = ["arn:${data.aws_partition.current.partition}:kafkaconnect:${var.aws_region}:${data.aws_caller_identity.current.account_id}:connector/*"]
-    }
   }
 }
 
