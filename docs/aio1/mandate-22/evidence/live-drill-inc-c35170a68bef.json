@@ -153,7 +153,7 @@
       "successful end-to-end remediation accepted healthy by the deployed verifier",
       "manual-versus-automatic MTTR improvement",
       "durable OpenSearch persistence of the full in-memory incident record",
-      "formal ADR acceptance by both named CDO deployment and on-call/SRE owners"
+      "formal ADR acceptance by a named on-call/SRE owner"
     ]
   }
 }
