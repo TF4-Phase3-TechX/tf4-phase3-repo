@@ -154,7 +154,7 @@ class GroundedAssistant:
                 response_contract_stage=result.contract_stage,
                 provider_attempted=True,
             )
-        except (ProviderFailure, UnsafeModelOutput) as exc:
+        except ProviderFailure as exc:
             fallback = self._comparison_fallback(
                 [self._product_dict(product) for product in products],
                 question,
@@ -172,6 +172,28 @@ class GroundedAssistant:
                 output_tokens=getattr(exc, "output_tokens", 0),
                 provider_stop_reason=getattr(exc, "stop_reason", "not_applicable"),
                 response_contract_stage=getattr(exc, "contract_stage", "not_applicable"),
+                provider_attempted=True,
+            )
+        except UnsafeModelOutput as exc:
+            # The provider call succeeded before grounding validation rejected
+            # its payload. Retain the billable usage from that successful call.
+            fallback = self._comparison_fallback(
+                [self._product_dict(product) for product in products],
+                question,
+            )
+            if session_id:
+                session_store.append_turn(user_id, session_id, "user", question)
+                session_store.append_turn(user_id, session_id, "assistant", fallback)
+            return AssistantOutcome(
+                response=fallback,
+                outcome="degraded",
+                error_class=type(exc).__name__.lower()[:64],
+                quarantined_reviews=quarantined_reviews,
+                latency_ms=result.latency_ms,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                provider_stop_reason=result.stop_reason,
+                response_contract_stage=result.contract_stage,
                 provider_attempted=True,
             )
 

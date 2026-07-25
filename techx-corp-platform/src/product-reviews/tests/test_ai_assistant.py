@@ -154,3 +154,25 @@ def test_comparison_provider_failure_returns_grounded_price_fallback():
     assert outcome.output_tokens == 21
     assert outcome.provider_stop_reason == "tool_use"
     assert outcome.response_contract_stage == "tool_block_count"
+
+
+def test_comparison_validation_failure_preserves_provider_usage_metadata():
+    provider = Provider({
+        "decision": "answered",
+        "answer": "Budget Scope is waterproof.",
+        "citations": [
+            {"source_id": "product:p1:price", "evidence_quote": "$999.00"},
+        ],
+    })
+
+    outcome = make_assistant(provider).compare_products(
+        [Product("p1", "Budget Scope", 50), Product("p2", "Premium Scope", 500)],
+        "Compare the cheapest and most expensive products",
+    )
+
+    assert len(provider.calls) == 1
+    assert outcome.outcome == "degraded"
+    assert outcome.error_class == "unsafemodeloutput"
+    assert outcome.latency_ms == 20
+    assert outcome.input_tokens == 80
+    assert outcome.output_tokens == 30
