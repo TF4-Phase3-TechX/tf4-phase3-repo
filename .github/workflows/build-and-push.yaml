@@ -428,7 +428,7 @@ jobs:
           fi
           printf 'open_pr=%s\n' "$open_pr" >> "$GITHUB_OUTPUT"
           cd ..
-          image_digests_json="${IMAGE_DIGESTS_JSON:-{}}"
+          image_digests_json="$IMAGE_DIGESTS_JSON"
           args=(
             --gitops-dir gitops
             --services-json "$SERVICES_JSON"
@@ -466,7 +466,7 @@ jobs:
             git push --force-with-lease="$branch:" origin "$branch"
           fi
           services="$(jq -r '.[]' <<< "$SERVICES_JSON" | paste -sd, -)"
-          image_digests_json="${IMAGE_DIGESTS_JSON:-{}}"
+          image_digests_json="$IMAGE_DIGESTS_JSON"
           section="### Promotion \`${SOURCE_SHA::7}\`"$'\n\n'"Source commit: \`${SOURCE_SHA}\`"
           if [[ "$SERVICES_JSON" != '[]' ]]; then
             section+=$'\n\n'"Image tag: \`${IMAGE_TAG}\`"$'\n\n'"Services: \`${services}\`"
