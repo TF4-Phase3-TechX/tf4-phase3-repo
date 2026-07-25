@@ -459,11 +459,34 @@ jobs:
           fi
           git add environments/production/image-revisions.yaml argocd/root-resources/applications.yaml
           git commit -m "chore(gitops): promote ${SOURCE_SHA::7}"
-          if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-            expected_tip="$(git rev-parse "origin/$branch")"
-            git push --force-with-lease="$branch:$expected_tip" origin "$branch"
-          else
-            git push --force-with-lease="$branch:" origin "$branch"
+          push_promotion() {
+            if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+              expected_tip="$(git rev-parse "origin/$branch")"
+              git push --force-with-lease="$branch:$expected_tip" origin "$branch"
+            else
+              git push --force-with-lease="$branch:" origin "$branch"
+            fi
+          }
+          if ! push_promotion; then
+            git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            git reset --hard "origin/$branch"
+            cd ..
+            args=(
+              --gitops-dir gitops
+              --services-json "$SERVICES_JSON"
+              --image-digests-json "$IMAGE_DIGESTS_JSON"
+              --image-tag "$IMAGE_TAG"
+              --source-sha "$SOURCE_SHA"
+            )
+            [[ "$CHART_CHANGED" == 'true' ]] && args+=(--chart-changed)
+            python scripts/update_gitops_promotion.py "${args[@]}"
+            git -C gitops diff --check
+            cd gitops
+            if ! git diff --quiet; then
+              git add environments/production/image-revisions.yaml argocd/root-resources/applications.yaml
+              git commit -m "chore(gitops): promote ${SOURCE_SHA::7}"
+              push_promotion
+            fi
           fi
           services="$(jq -r '.[]' <<< "$SERVICES_JSON" | paste -sd, -)"
           image_digests_json="$IMAGE_DIGESTS_JSON"
