@@ -1,10 +1,12 @@
 # ADR-014: Standard evaluation for review summary and Shopping Copilot
 
-- Status: Proposed — named review pending
+- Status: Accepted
 - Date: 2026-07-23
+- Accepted: 2026-07-25
 - Jira: TF4AIO-79, TF4AIO-81, TF4AIO-82
 - Decision owner: Nguyễn Trần Huy Vũ
-- Implementer/reviewer: Đinh Danh Nam
+- Implementer: Đinh Danh Nam
+- Named reviewers: Tran Dinh Thong, Lê Ngọc Thành Tâm, Nguyen Tat Van
 
 ## Context
 
@@ -109,10 +111,14 @@ Hidden grading cases must never be used to tune thresholds.
 
 ## Approval record
 
-Do not change Status to Accepted until reviewers enter full names and record
-approval in the closure PR or Jira.
+The decision owner and three independent reviewers recorded named approval in
+[PR #658](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658).
+The approvals cover ADR-014 and the Mandate 14 public evidence at commit
+`4694421`.
 
-| Role | Full name | Decision | Date |
-|---|---|---|---|
-| AIO1 / decision owner | Nguyễn Trần Huy Vũ | Pending | — |
-| AIO1 reviewer | Đinh Danh Nam | Pending | — |
+| Role | Full name | Decision | Date | Approval evidence |
+|---|---|---|---|---|
+| AIO1 / decision owner | Nguyễn Trần Huy Vũ (`@HuyVu12`) | Accepted | 2026-07-25 | [Owner approval comment](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658#issuecomment-5078703729) |
+| Independent reviewer | Tran Dinh Thong (`@trandinhthong7`) | Approved | 2026-07-25 | [Named approval comment](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658#issuecomment-5078696209), [PR approval](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658#pullrequestreview-4779339933) |
+| Independent reviewer | Lê Ngọc Thành Tâm (`@H1eu232`) | Approved | 2026-07-25 | [PR approval](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658#pullrequestreview-4779340324) |
+| Independent reviewer | Nguyen Tat Van (`@TatVan-24`) | Approved | 2026-07-25 | [PR approval](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658#pullrequestreview-4779342628) |
