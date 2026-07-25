@@ -7,10 +7,16 @@ from app.models import Evidence, Incident, IncidentStatus
 from app.remediation import PolicyDenied, RemediationController
 
 
-def incident(service="product-reviews", *, with_evidence=False):
+def incident(
+    service="product-reviews",
+    *,
+    with_evidence=False,
+    severity="high",
+    confidence=.9,
+):
     return Incident(
-        incident_type="service_latency_spike", severity="high", affected_service=service,
-        confidence=.9, suspected_root_cause="recent deploy", runbook_id="deployment-latency-rollback",
+        incident_type="service_latency_spike", severity=severity, affected_service=service,
+        confidence=confidence, suspected_root_cause="recent deploy", runbook_id="deployment-latency-rollback",
         recommended_action="rollback",
         evidence=[Evidence(source="prometheus", query="p95", window="5m", value=2000)]
         if with_evidence else [],
@@ -119,6 +125,48 @@ async def test_preauthorized_policy_needs_no_per_incident_button_in_dry_run():
     assert item.execution_attempts == 1
     assert item.verification_result["mode"] == "dry-run"
     assert any(event.event == "autonomous_policy_evaluated" for event in item.audit_events)
+
+
+@pytest.mark.asyncio
+async def test_calibrated_gate_allows_observed_high_severity_acute_incident():
+    controller = RemediationController(
+        replace(
+            Settings(),
+            autonomous_remediation_enabled=True,
+            remediation_mode="dry-run",
+            allowed_deployments=("product-reviews",),
+        )
+    )
+    item = incident(with_evidence=True, confidence=.742)
+
+    await controller.handle_incident(item)
+
+    assert item.approval_status == "preauthorized_policy"
+    assert item.execution_attempts == 1
+    assert item.verification_result["mode"] == "dry-run"
+
+
+@pytest.mark.asyncio
+async def test_calibrated_gate_still_denies_medium_severity_at_same_confidence():
+    controller = RemediationController(
+        replace(
+            Settings(),
+            autonomous_remediation_enabled=True,
+            remediation_mode="dry-run",
+            allowed_deployments=("product-reviews",),
+        )
+    )
+    item = incident(
+        with_evidence=True,
+        severity="medium",
+        confidence=.743,
+    )
+
+    await controller.handle_incident(item)
+
+    assert item.status == IncidentStatus.ESCALATED
+    assert item.execution_attempts == 0
+    assert "severity_high" in item.escalation_reason
 
 
 @pytest.mark.asyncio
