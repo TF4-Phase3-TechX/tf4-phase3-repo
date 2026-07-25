@@ -226,7 +226,8 @@ jobs:
                 --type custom \
                 --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*@refs/heads/main$" \
                 --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-                "$image_ref" --output json > "security-artifacts/provenance-verify-${artifact_id}.json" 2>&1 &&
+                "$image_ref" --output json > "security-artifacts/provenance-verify-${artifact_id}.json" \
+                2> "security-artifacts/provenance-verify-${artifact_id}.log" &&
                 jq -s -e --slurpfile expected "$predicate_file" '
                   def statements: .[] | if type == "array" then .[] else . end;
                   [statements | .payload | @base64d | fromjson | .predicate

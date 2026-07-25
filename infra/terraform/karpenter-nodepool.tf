@@ -86,6 +86,10 @@ resource "kubernetes_manifest" "karpenter_nodepool_general" {
     }
   }
 
+  field_manager {
+    force_conflicts = true
+  }
+
   depends_on = [kubernetes_manifest.karpenter_ec2nodeclass_general]
 }
 
