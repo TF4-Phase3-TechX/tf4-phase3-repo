@@ -1,0 +1,36 @@
+runbooks:
+  - id: llm-timeout-escalation
+    incident_type: llm_timeout_error
+    automatic_action: null
+    steps:
+      - Confirm the error-rate window in Prometheus.
+      - Correlate timeout/rate-limit logs and failed traces.
+      - Verify provider configuration and application fallback behavior.
+      - Escalate to the product-reviews and LLM owners.
+  - id: deployment-latency-rollback
+    incident_type: service_latency_spike
+    automatic_action: rollback_previous_replicaset
+    preconditions:
+      - A signed policy version pre-authorizes this exact incident/action/target envelope, or a per-incident approval is valid in manual mode.
+      - Deployment is allowlisted and retains a previous ReplicaSet.
+      - Latency degradation is sustained and user-facing.
+      - Dry-run/preflight resolves both the current and previous templates before mutation.
+    verification:
+      - Deployment rollout becomes ready.
+      - Latency and error rate recover without degrading checkout/storefront SLO.
+  - id: service-error-rate-escalation
+    incident_type: service_error_rate_spike
+    automatic_action: null
+    steps:
+      - Confirm the per-service error-rate and minimum request volume in Prometheus.
+      - Correlate failed traces and scoped error logs for the same service and window.
+      - Review recent deployments without assigning causality from timing alone.
+      - Escalate to the owning service team with the evidence bundle.
+  - id: service-availability-escalation
+    incident_type: service_availability
+    automatic_action: null
+    steps:
+      - Confirm desired, available, ready and updated Deployment replicas.
+      - Inspect Pod and Deployment events for scheduling, probe, image or resource failures.
+      - Check recent rollout changes without assuming temporal correlation is causal.
+      - Page the owning service team through Alertmanager and follow its approved recovery runbook.

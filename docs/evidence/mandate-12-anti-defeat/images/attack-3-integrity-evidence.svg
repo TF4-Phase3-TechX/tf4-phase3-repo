@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720">
+  <rect width="1400" height="720" fill="#08111f"/>
+  <rect x="44" y="42" width="1312" height="636" rx="22" fill="#0d1b2a" stroke="#263c54" stroke-width="2"/>
+  <text x="84" y="105" fill="#e8f1fb" font-family="Arial, sans-serif" font-size="34" font-weight="700">MANDATE-12 · Đòn 3 — Cryptographic integrity validation</text>
+  <rect x="1110" y="70" width="180" height="58" rx="29" fill="#113b2a" stroke="#35d07f" stroke-width="2"/>
+  <text x="1200" y="108" text-anchor="middle" fill="#6ff0aa" font-family="Arial, sans-serif" font-size="26" font-weight="700">PASS</text>
+  <line x1="84" y1="145" x2="1316" y2="145" stroke="#263c54" stroke-width="2"/>
+  <text x="84" y="202" fill="#7f9db9" font-family="Menlo, Consolas, monospace" font-size="21">trail</text>
+  <text x="320" y="202" fill="#ffffff" font-family="Menlo, Consolas, monospace" font-size="21">arn:aws:cloudtrail:us-east-1:511825856493:trail/tf4-general-cloudtrail</text>
+  <text x="84" y="250" fill="#7f9db9" font-family="Menlo, Consolas, monospace" font-size="21">window</text>
+  <text x="320" y="250" fill="#ffffff" font-family="Menlo, Consolas, monospace" font-size="21">2026-07-21T08:00:00Z → 2026-07-21T09:00:00Z</text>
+  <rect x="84" y="294" width="1232" height="216" rx="14" fill="#071019" stroke="#1c3145"/>
+  <text x="114" y="344" fill="#9fb8cf" font-family="Menlo, Consolas, monospace" font-size="22">Results found for requested window:</text>
+  <text x="114" y="414" fill="#6ff0aa" font-family="Menlo, Consolas, monospace" font-size="34" font-weight="700">2/2 digest files valid</text>
+  <text x="114" y="472" fill="#6ff0aa" font-family="Menlo, Consolas, monospace" font-size="34" font-weight="700">102/102 log files valid</text>
+  <g font-family="Menlo, Consolas, monospace" font-size="21">
+    <text x="84" y="563" fill="#7f9db9">command</text><text x="320" y="563" fill="#ffffff">aws cloudtrail validate-logs --verbose</text>
+    <text x="84" y="610" fill="#7f9db9">exit code</text><text x="320" y="610" fill="#6ff0aa">0</text>
+  </g>
+  <text x="84" y="650" fill="#a9c1d8" font-family="Arial, sans-serif" font-size="18">Runtime evidence snapshot · every digest and log file returned “valid”</text>
+</svg>

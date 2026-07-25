@@ -1,0 +1,168 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: aiops-prometheus-calibration
+  namespace: techx-tf4
+  labels:
+    app.kubernetes.io/name: aiops-prometheus-calibration
+    app.kubernetes.io/part-of: aiops
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aiops-prometheus-calibration
+        app.kubernetes.io/part-of: aiops
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: collector
+          image: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:d1c4632-product-reviews
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          command:
+            - python
+            - -c
+          args:
+            - |
+              import json
+              import urllib.parse
+              import urllib.request
+
+              base = "http://prometheus.techx-observability.svc.cluster.local:9090"
+              namespace = 'k8s_namespace_name="techx-tf4"'
+              latency = {
+                  "frontend": 'histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",' + namespace + ',span_name=~"GET /|GET /product.*|GET /api/products.*|GET /api/data.*"}[5m])))',
+                  "checkout": 'histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name="checkout",span_kind="SPAN_KIND_SERVER",' + namespace + ',span_name="oteldemo.CheckoutService/PlaceOrder"}[5m])))',
+              }
+
+              def error_rate(service, operation=None):
+                  operation_matcher = f',span_name="{operation}"' if operation else ""
+                  common = f'service_name="{service}",span_kind="SPAN_KIND_SERVER",{namespace}{operation_matcher}'
+                  errors = common + ',status_code="STATUS_CODE_ERROR"'
+                  return f'(sum(rate(traces_span_metrics_calls_total{{{errors}}}[5m])) / clamp_min(sum(rate(traces_span_metrics_calls_total{{{common}}}[5m])), 0.000001)) and on() (sum(increase(traces_span_metrics_calls_total{{{common}}}[5m])) >= 20)'
+
+              windows = [
+                  {
+                      "suffix": "normal-load-20260718",
+                      "start": "2026-07-18T18:50:45Z",
+                      "end": "2026-07-18T19:31:33Z",
+                      "labels": {
+                          "frontend-latency": False,
+                          "frontend-error-rate": False,
+                          "checkout-latency": False,
+                          "checkout-error-rate": False,
+                      },
+                      "purpose": "200-user baseline: checkout had zero failures and user-facing p95 stayed below the SLO",
+                  },
+                  {
+                      "suffix": "incident-currency-20260717",
+                      "start": "2026-07-17T03:10:00Z",
+                      "end": "2026-07-17T04:10:00Z",
+                      "labels": {
+                          "frontend-latency": True,
+                          "frontend-error-rate": True,
+                          "checkout-latency": True,
+                          "checkout-error-rate": True,
+                      },
+                      "purpose": "labelled currency saturation incident; frontend/checkout errors rose from 03:40 UTC",
+                  },
+                  {
+                      "suffix": "incident-browse-checkout-20260720",
+                      "start": "2026-07-19T16:40:00Z",
+                      "end": "2026-07-19T17:41:00Z",
+                      "labels": {
+                          "frontend-latency": False,
+                          "frontend-error-rate": True,
+                          "checkout-latency": False,
+                          "checkout-error-rate": True,
+                      },
+                      "purpose": "labelled frontend/checkout incident; alerts fired at 17:21-17:23 UTC and error rates peaked near 17:41 UTC",
+                      "normal_latency_purpose": "incident window, but this signal stayed below its 1000 ms SLO floor; labelled normal per signal to penalize cross-signal over-alerting",
+                      "frontend_error_purpose": "labelled frontend/checkout incident; frontend error rate crossed the 5% SLO floor and peaked near 8.7%",
+                  },
+              ]
+              query_specs = {
+                  "frontend-latency": (latency["frontend"], 1000.0),
+                  "frontend-error-rate": (error_rate("frontend"), 0.05),
+                  "checkout-latency": (latency["checkout"], 1000.0),
+                  "checkout-error-rate": (error_rate("checkout", "oteldemo.CheckoutService/PlaceOrder"), 0.05),
+              }
+              cases = []
+              unavailable = []
+              for window in windows:
+                  for signal, (query, floor) in query_specs.items():
+                      params = urllib.parse.urlencode({
+                          "query": query,
+                          "start": window["start"],
+                          "end": window["end"],
+                          "step": 60,
+                      })
+                      with urllib.request.urlopen(base + "/api/v1/query_range?" + params, timeout=30) as response:
+                          body = json.load(response)
+                      result = body.get("data", {}).get("result", [])
+                      if len(result) != 1:
+                          unavailable.append({
+                              "name": signal + "-" + window["suffix"],
+                              "series": len(result),
+                          })
+                          continue
+                      points = [float(value) for _, value in result[0].get("values", []) if value not in (None, "NaN")]
+                      if len(points) < 4:
+                          unavailable.append({
+                              "name": signal + "-" + window["suffix"],
+                              "points": len(points),
+                          })
+                          continue
+                      purpose = window["purpose"]
+                      if not window["labels"][signal]:
+                          purpose = window.get("normal_latency_purpose", purpose)
+                      elif signal == "frontend-error-rate":
+                          purpose = window.get("frontend_error_purpose", purpose)
+                      cases.append({
+                          "name": signal + "-" + window["suffix"],
+                          "points": points,
+                          "floor": floor,
+                          "anomalous": window["labels"][signal],
+                          "purpose": purpose,
+                          "query": query,
+                          "start": window["start"],
+                          "end": window["end"],
+                          "sample_count": len(points),
+                      })
+              print(json.dumps({
+                  "scope": "TF4 production Prometheus replay using committed load/incident windows",
+                  "source": {
+                      "kind": "prometheus_query_range",
+                      "namespace": "techx-tf4",
+                      "step_seconds": 60,
+                      "label_authority": "committed TF4 load-test summary and CDO07 postmortems",
+                      "label_evidence": [
+                          "docs/evidence/mandate-16-increase-perf-browse-cart-checkout/baseline-and-resources-consump/runs/baseline-200-users-20260718T1850Z/SUMMARY.md",
+                          "docs/audit/postmortems/incident-20260717-currency-timeout.md",
+                          "docs/audit/postmortems/incident-20260720-loadgen-currency-observability.md",
+                      ],
+                  },
+                  "cases": cases,
+                  "unavailable": unavailable,
+              }))

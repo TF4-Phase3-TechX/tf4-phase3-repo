@@ -10,7 +10,6 @@ import uuid
 import logging
 
 from locust import HttpUser, task, between, LoadTestShape
-from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry, event
 
 from opentelemetry import context, baggage, trace
 from opentelemetry.context import Context
@@ -35,8 +34,6 @@ from opentelemetry.sdk.resources import Resource
 from openfeature import api
 from openfeature.contrib.provider.ofrep import OFREPProvider
 from openfeature.contrib.hook.opentelemetry import TracingHook
-
-from playwright.async_api import Route, Request
 
 # Configure tracer provider first (needed for trace context in logs)
 tracer_provider = TracerProvider()
@@ -160,7 +157,9 @@ class WebsiteUser(HttpUser):
         with self.tracer.start_as_current_span("user_ask_product_ai_assistant", context=Context(), attributes={"product.id": product, "question": question}):
             logging.info(f"Asking the AI Assistant a question for: {product} {question}")
             question = {
-                "question": question
+                "question": question,
+                "sessionId": "mock-session-id",
+                "userId": "mock-user-id"
             }
             self.client.post("/api/product-ask-ai-assistant/" + product, json=question)
 
@@ -243,6 +242,8 @@ class WebsiteUser(HttpUser):
 browser_traffic_enabled = os.environ.get("LOCUST_BROWSER_TRAFFIC_ENABLED", "").lower() in ("true", "yes", "on")
 
 if browser_traffic_enabled:
+    from locust_plugins.users.playwright import PlaywrightUser, PageWithRetry, pw
+
     class WebsiteBrowserUser(PlaywrightUser):
         headless = True  # to use a headless browser, without a GUI
 
@@ -281,7 +282,7 @@ if browser_traffic_enabled:
                 except Exception as e:
                     logging.error(f"Error in add to cart task: {str(e)}")
 
-async def add_baggage_header(route: Route, request: Request):
+async def add_baggage_header(route, request):
     existing_baggage = request.headers.get('baggage', '')
     headers = {
         **request.headers,
@@ -290,31 +291,32 @@ async def add_baggage_header(route: Route, request: Request):
     await route.continue_(headers=headers)
 
 
-class Task4FlashSaleShape(LoadTestShape):
-    """Task-4: 200 users, 15 minutes steady-state with controlled ramp-up/down."""
-
-    RAMP_SECONDS = 60         # 1 phút tăng tải (Ramp-up)
-    STEADY_SECONDS = 900       # 15 phút duy trì đỉnh tải (Steady-state)
-    RAMP_DOWN_SECONDS = 20     # 20 giây giảm tải có kiểm soát (Ramp-down)
-    TARGET_USERS = 200
-    SPAWN_RATE = 3.33          # ~200 users / 60s để đạt đỉnh trong 1 phút
-
-    def tick(self):
-        run_time = self.get_run_time()
-        ramp_end = self.RAMP_SECONDS
-        steady_end = ramp_end + self.STEADY_SECONDS
-        total_end = steady_end + self.RAMP_DOWN_SECONDS
-
-        if run_time < ramp_end:
-            return (self.TARGET_USERS, self.SPAWN_RATE)
-        if run_time < steady_end:
-            return (self.TARGET_USERS, self.SPAWN_RATE)
-        if run_time < total_end:
-            elapsed_down = run_time - steady_end
-            remaining = max(0, self.TARGET_USERS - int(elapsed_down * self.SPAWN_RATE))
-            return (remaining, self.SPAWN_RATE)
-        return None
-
-
+# Locust tự phát hiện bất kỳ class nào kế thừa LoadTestShape có trong module -
+# nó không đọc một biến "load_shape" nào cả. Nên phải định nghĩa class NGAY
+# TRONG khối if này thì mới thực sự opt-in được theo LOCUST_LOAD_SHAPE; định
+# nghĩa ở top-level sẽ luôn bị Locust dùng bất kể điều kiện dưới đây.
 if os.environ.get("LOCUST_LOAD_SHAPE", "").lower() == "task4":
-    load_shape = Task4FlashSaleShape
+    class Task4FlashSaleShape(LoadTestShape):
+        """Task-4: 200 users, 15 minutes steady-state with controlled ramp-up/down."""
+
+        RAMP_SECONDS = 60         # 1 phút tăng tải (Ramp-up)
+        STEADY_SECONDS = 900       # 15 phút duy trì đỉnh tải (Steady-state)
+        RAMP_DOWN_SECONDS = 20     # 20 giây giảm tải có kiểm soát (Ramp-down)
+        TARGET_USERS = 200
+        SPAWN_RATE = 3.33          # ~200 users / 60s để đạt đỉnh trong 1 phút
+
+        def tick(self):
+            run_time = self.get_run_time()
+            ramp_end = self.RAMP_SECONDS
+            steady_end = ramp_end + self.STEADY_SECONDS
+            total_end = steady_end + self.RAMP_DOWN_SECONDS
+
+            if run_time < ramp_end:
+                return (self.TARGET_USERS, self.SPAWN_RATE)
+            if run_time < steady_end:
+                return (self.TARGET_USERS, self.SPAWN_RATE)
+            if run_time < total_end:
+                elapsed_down = run_time - steady_end
+                remaining = max(0, self.TARGET_USERS - int(elapsed_down * self.SPAWN_RATE))
+                return (remaining, self.SPAWN_RATE)
+            return None

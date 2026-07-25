@@ -15,8 +15,8 @@ const ProductReviewService = () => ({
 
         return averageScore;
     },
-    async askProductAIAssistant(id: string, question: string) {
-        const response = await ProductReviewGateway.askProductAIAssistant(id, question);
+    async askProductAIAssistant(id: string, question: string, sessionId: string, userId: string) {
+        const response = await ProductReviewGateway.askProductAIAssistant(id, question, sessionId, userId);
 
         return response;
     },

@@ -1,0 +1,27 @@
+# System Configuration Snapshot — 2026-07-22-01-33-25-2405
+allow_list:
+  search_types:
+    - search
+    - compare
+    - out_of_scope
+  allowed_schema_fields:
+    - search_type
+    - category
+    - price_min
+    - price_max
+    - keywords
+    - comparison_targets
+  allowed_categories:
+    - telescopes
+    - accessories
+    - travel
+    - astronomy
+    - optics
+thresholds:
+  max_question_chars: 500
+  precision_threshold: 0.5
+  deadline_seconds: 4.5
+guardrail_rules:
+  identifier: "e2svpiawj1v5"
+  version: "3"
+  status: "enabled"

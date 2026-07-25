@@ -1,0 +1,2766 @@
+﻿{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-07-14T21:36:20Z",
+                "labels": {
+                    "app.kubernetes.io/component": "applicationset-controller",
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-applicationset-controller",
+                    "app.kubernetes.io/part-of": "argocd",
+                    "app.kubernetes.io/version": "v2.11.5",
+                    "helm.sh/chart": "argo-cd-7.3.7"
+                },
+                "name": "argocd-applicationset-controller",
+                "namespace": "argocd",
+                "resourceVersion": "2560619",
+                "uid": "5e90878b-ce9c-43bf-8095-f5c2a0df459f"
+            },
+            "spec": {
+                "clusterIP": "172.20.40.65",
+                "clusterIPs": [
+                    "172.20.40.65"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http-webhook",
+                        "port": 7000,
+                        "protocol": "TCP",
+                        "targetPort": "webhook"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/name": "argocd-applicationset-controller"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-07-14T21:36:20Z",
+                "labels": {
+                    "app.kubernetes.io/component": "dex-server",
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-dex-server",
+                    "app.kubernetes.io/part-of": "argocd",
+                    "app.kubernetes.io/version": "v2.11.5",
+                    "helm.sh/chart": "argo-cd-7.3.7"
+                },
+                "name": "argocd-dex-server",
+                "namespace": "argocd",
+                "resourceVersion": "2560616",
+                "uid": "1d181fe9-833d-469f-8e2e-ab1e317fbf55"
+            },
+            "spec": {
+                "clusterIP": "172.20.7.123",
+                "clusterIPs": [
+                    "172.20.7.123"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 5556,
+                        "protocol": "TCP",
+                        "targetPort": "http"
+                    },
+                    {
+                        "name": "grpc",
+                        "port": 5557,
+                        "protocol": "TCP",
+                        "targetPort": "grpc"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/name": "argocd-dex-server"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-07-14T21:36:20Z",
+                "labels": {
+                    "app.kubernetes.io/component": "redis",
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-redis",
+                    "app.kubernetes.io/part-of": "argocd",
+                    "app.kubernetes.io/version": "v2.11.5",
+                    "helm.sh/chart": "argo-cd-7.3.7"
+                },
+                "name": "argocd-redis",
+                "namespace": "argocd",
+                "resourceVersion": "2560623",
+                "uid": "645bfb25-a15c-4e60-8695-f7a1d152ae72"
+            },
+            "spec": {
+                "clusterIP": "172.20.129.17",
+                "clusterIPs": [
+                    "172.20.129.17"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "redis",
+                        "port": 6379,
+                        "protocol": "TCP",
+                        "targetPort": "redis"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/name": "argocd-redis"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-07-14T21:36:20Z",
+                "labels": {
+                    "app.kubernetes.io/component": "repo-server",
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-repo-server",
+                    "app.kubernetes.io/part-of": "argocd",
+                    "app.kubernetes.io/version": "v2.11.5",
+                    "helm.sh/chart": "argo-cd-7.3.7"
+                },
+                "name": "argocd-repo-server",
+                "namespace": "argocd",
+                "resourceVersion": "2560625",
+                "uid": "fa507dcd-6c9b-4033-9b4e-95cc1db19b60"
+            },
+            "spec": {
+                "clusterIP": "172.20.36.205",
+                "clusterIPs": [
+                    "172.20.36.205"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-repo-server",
+                        "port": 8081,
+                        "protocol": "TCP",
+                        "targetPort": "repo-server"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/name": "argocd-repo-server"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-07-14T21:36:20Z",
+                "labels": {
+                    "app.kubernetes.io/component": "server",
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-server",
+                    "app.kubernetes.io/part-of": "argocd",
+                    "app.kubernetes.io/version": "v2.11.5",
+                    "helm.sh/chart": "argo-cd-7.3.7"
+                },
+                "name": "argocd-server",
+                "namespace": "argocd",
+                "resourceVersion": "2560621",
+                "uid": "013d3a70-e7cb-4c7a-ba35-8ca12ead99c8"
+            },
+            "spec": {
+                "clusterIP": "172.20.254.225",
+                "clusterIPs": [
+                    "172.20.254.225"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 80,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    },
+                    {
+                        "name": "https",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "argocd",
+                    "app.kubernetes.io/name": "argocd-server"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-07-07T09:12:25Z",
+                "labels": {
+                    "component": "apiserver",
+                    "provider": "kubernetes"
+                },
+                "name": "kubernetes",
+                "namespace": "default",
+                "resourceVersion": "193",
+                "uid": "54a0b732-8776-47b5-93f3-2628031bba24"
+            },
+            "spec": {
+                "clusterIP": "172.20.0.1",
+                "clusterIPs": [
+                    "172.20.0.1"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "https",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": 443
+                    }
+                ],
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/instance\":\"external-secrets\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"external-secrets-webhook\",\"app.kubernetes.io/version\":\"v0.9.20\",\"argocd.argoproj.io/instance\":\"external-secrets\",\"external-secrets.io/component\":\"webhook\",\"helm.sh/chart\":\"external-secrets-0.9.20\"},\"name\":\"external-secrets-webhook\",\"namespace\":\"external-secrets\"},\"spec\":{\"ports\":[{\"name\":\"webhook\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":10250}],\"selector\":{\"app.kubernetes.io/instance\":\"external-secrets\",\"app.kubernetes.io/name\":\"external-secrets-webhook\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "external-secrets",
+                    "meta.helm.sh/release-namespace": "external-secrets"
+                },
+                "creationTimestamp": "2026-07-14T21:35:35Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "external-secrets",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "external-secrets-webhook",
+                    "app.kubernetes.io/version": "v0.9.20",
+                    "argocd.argoproj.io/instance": "external-secrets",
+                    "external-secrets.io/component": "webhook",
+                    "helm.sh/chart": "external-secrets-0.9.20"
+                },
+                "name": "external-secrets-webhook",
+                "namespace": "external-secrets",
+                "resourceVersion": "2568714",
+                "uid": "9d281bcb-7d27-4a67-abac-9403f2037e07"
+            },
+            "spec": {
+                "clusterIP": "172.20.210.186",
+                "clusterIPs": [
+                    "172.20.210.186"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "webhook",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": 10250
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "external-secrets",
+                    "app.kubernetes.io/name": "external-secrets-webhook"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "aws-load-balancer-controller",
+                    "meta.helm.sh/release-namespace": "kube-system"
+                },
+                "creationTimestamp": "2026-07-07T09:33:54Z",
+                "labels": {
+                    "app.kubernetes.io/component": "webhook",
+                    "app.kubernetes.io/instance": "aws-load-balancer-controller",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "aws-load-balancer-controller",
+                    "app.kubernetes.io/version": "v3.4.0",
+                    "helm.sh/chart": "aws-load-balancer-controller-3.4.0",
+                    "prometheus.io/service-monitor": "false"
+                },
+                "name": "aws-load-balancer-webhook-service",
+                "namespace": "kube-system",
+                "resourceVersion": "3945",
+                "uid": "318bedec-2925-4299-a5f2-a20206ef02c5"
+            },
+            "spec": {
+                "clusterIP": "172.20.185.12",
+                "clusterIPs": [
+                    "172.20.185.12"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "webhook-server",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": "webhook-server"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "aws-load-balancer-controller",
+                    "app.kubernetes.io/name": "aws-load-balancer-controller"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-07-07T09:12:26Z",
+                "name": "eks-extension-metrics-api",
+                "namespace": "kube-system",
+                "resourceVersion": "243",
+                "uid": "0cf26c76-11d6-45d8-8bf4-2496a9bef0ac"
+            },
+            "spec": {
+                "clusterIP": "172.20.91.119",
+                "clusterIPs": [
+                    "172.20.91.119"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "metrics-api",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": 10443
+                    }
+                ],
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "karpenter",
+                    "meta.helm.sh/release-namespace": "kube-system"
+                },
+                "creationTimestamp": "2026-07-14T16:31:25Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "karpenter",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "karpenter",
+                    "app.kubernetes.io/version": "1.14.0",
+                    "helm.sh/chart": "karpenter-1.14.0"
+                },
+                "name": "karpenter",
+                "namespace": "kube-system",
+                "resourceVersion": "2463739",
+                "uid": "d6add116-654d-428a-b5e3-f3734cb602ba"
+            },
+            "spec": {
+                "clusterIP": "172.20.13.127",
+                "clusterIPs": [
+                    "172.20.13.127"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http-metrics",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": "http-metrics"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "karpenter",
+                    "app.kubernetes.io/name": "karpenter"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "prometheus.io/port": "9153",
+                    "prometheus.io/scrape": "true"
+                },
+                "creationTimestamp": "2026-07-07T09:13:58Z",
+                "labels": {
+                    "eks.amazonaws.com/component": "kube-dns",
+                    "k8s-app": "kube-dns",
+                    "kubernetes.io/cluster-service": "true",
+                    "kubernetes.io/name": "CoreDNS"
+                },
+                "name": "kube-dns",
+                "namespace": "kube-system",
+                "resourceVersion": "564",
+                "uid": "476d1b6b-2ca4-4eb4-89ee-aea0d150aa64"
+            },
+            "spec": {
+                "clusterIP": "172.20.0.10",
+                "clusterIPs": [
+                    "172.20.0.10"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "dns",
+                        "port": 53,
+                        "protocol": "UDP",
+                        "targetPort": 53
+                    },
+                    {
+                        "name": "dns-tcp",
+                        "port": 53,
+                        "protocol": "TCP",
+                        "targetPort": 53
+                    },
+                    {
+                        "name": "metrics",
+                        "port": 9153,
+                        "protocol": "TCP",
+                        "targetPort": 9153
+                    }
+                ],
+                "selector": {
+                    "k8s-app": "kube-dns"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-07-19T18:16:48Z",
+                "labels": {
+                    "app.kubernetes.io/component": "admission-controller",
+                    "app.kubernetes.io/instance": "kyverno",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "kyverno-admission-controller",
+                    "app.kubernetes.io/part-of": "kyverno",
+                    "app.kubernetes.io/version": "3.8.2",
+                    "argocd.argoproj.io/instance": "kyverno",
+                    "helm.sh/chart": "kyverno-3.8.2"
+                },
+                "name": "kyverno-svc",
+                "namespace": "kyverno",
+                "resourceVersion": "4920924",
+                "uid": "21376166-140f-4b3b-a384-9c72b1e4c5ef"
+            },
+            "spec": {
+                "clusterIP": "172.20.197.56",
+                "clusterIPs": [
+                    "172.20.197.56"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "appProtocol": "https",
+                        "name": "https",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": "https"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "admission-controller",
+                    "app.kubernetes.io/instance": "kyverno",
+                    "app.kubernetes.io/part-of": "kyverno"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-07-19T18:16:48Z",
+                "labels": {
+                    "app.kubernetes.io/component": "admission-controller",
+                    "app.kubernetes.io/instance": "kyverno",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "kyverno-admission-controller",
+                    "app.kubernetes.io/part-of": "kyverno",
+                    "app.kubernetes.io/version": "3.8.2",
+                    "argocd.argoproj.io/instance": "kyverno",
+                    "helm.sh/chart": "kyverno-3.8.2"
+                },
+                "name": "kyverno-svc-metrics",
+                "namespace": "kyverno",
+                "resourceVersion": "4920923",
+                "uid": "0d2ea2ee-d140-4d1c-81db-d3b9b02adea9"
+            },
+            "spec": {
+                "clusterIP": "172.20.3.128",
+                "clusterIPs": [
+                    "172.20.3.128"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "metrics-port",
+                        "port": 8000,
+                        "protocol": "TCP",
+                        "targetPort": 8000
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "admission-controller",
+                    "app.kubernetes.io/instance": "kyverno",
+                    "app.kubernetes.io/part-of": "kyverno"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"grafana\",\"app.kubernetes.io/version\":\"13.0.1\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"grafana-12.3.0\"},\"name\":\"grafana\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"name\":\"service\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":\"grafana\"}],\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"grafana\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-09T01:56:34Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "grafana",
+                    "app.kubernetes.io/version": "13.0.1",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "grafana-12.3.0"
+                },
+                "name": "grafana",
+                "namespace": "techx-observability",
+                "resourceVersion": "2571979",
+                "uid": "3ae1f5f4-02ee-481e-b6ba-68a1709228ee"
+            },
+            "spec": {
+                "clusterIP": "172.20.108.200",
+                "clusterIPs": [
+                    "172.20.108.200"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "service",
+                        "port": 80,
+                        "protocol": "TCP",
+                        "targetPort": "grafana"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "grafana"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"all-in-one\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"jaeger\",\"app.kubernetes.io/version\":\"2.17.0\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"jaeger-4.7.0\"},\"name\":\"jaeger\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"name\":\"zk-compact-trft\",\"port\":5775,\"protocol\":\"UDP\",\"targetPort\":5775},{\"name\":\"config-rest\",\"port\":5778,\"targetPort\":5778},{\"name\":\"jg-compact-trft\",\"port\":6831,\"protocol\":\"UDP\",\"targetPort\":6831},{\"name\":\"jg-binary-trft\",\"port\":6832,\"protocol\":\"UDP\",\"targetPort\":6832},{\"appProtocol\":\"http\",\"name\":\"http-zipkin\",\"port\":9411,\"targetPort\":9411},{\"appProtocol\":\"grpc\",\"name\":\"grpc-http\",\"port\":14250,\"targetPort\":14250},{\"name\":\"c-tchan-trft\",\"port\":14267,\"targetPort\":14267},{\"appProtocol\":\"http\",\"name\":\"http-c-binary-trft\",\"port\":14268,\"targetPort\":14268},{\"appProtocol\":\"grpc\",\"name\":\"otlp-grpc\",\"port\":4317,\"targetPort\":4317},{\"appProtocol\":\"http\",\"name\":\"otlp-http\",\"port\":4318,\"targetPort\":4318},{\"name\":\"http-query\",\"port\":16686,\"targetPort\":16686},{\"name\":\"grpc-query\",\"port\":16685,\"targetPort\":16685},{\"appProtocol\":\"http\",\"name\":\"internal-metrics\",\"port\":8888,\"targetPort\":8888},{\"appProtocol\":\"http\",\"name\":\"span-metrics\",\"port\":8889,\"targetPort\":8889}],\"selector\":{\"app.kubernetes.io/component\":\"all-in-one\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"jaeger\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-09T01:56:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "all-in-one",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "jaeger",
+                    "app.kubernetes.io/version": "2.17.0",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "jaeger-4.7.0"
+                },
+                "name": "jaeger",
+                "namespace": "techx-observability",
+                "resourceVersion": "2571980",
+                "uid": "6e0c4e34-e791-4f40-91c8-ddba8f21acde"
+            },
+            "spec": {
+                "clusterIP": "172.20.88.27",
+                "clusterIPs": [
+                    "172.20.88.27"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "zk-compact-trft",
+                        "port": 5775,
+                        "protocol": "UDP",
+                        "targetPort": 5775
+                    },
+                    {
+                        "name": "config-rest",
+                        "port": 5778,
+                        "protocol": "TCP",
+                        "targetPort": 5778
+                    },
+                    {
+                        "name": "jg-compact-trft",
+                        "port": 6831,
+                        "protocol": "UDP",
+                        "targetPort": 6831
+                    },
+                    {
+                        "name": "jg-binary-trft",
+                        "port": 6832,
+                        "protocol": "UDP",
+                        "targetPort": 6832
+                    },
+                    {
+                        "appProtocol": "http",
+                        "name": "http-zipkin",
+                        "port": 9411,
+                        "protocol": "TCP",
+                        "targetPort": 9411
+                    },
+                    {
+                        "appProtocol": "grpc",
+                        "name": "grpc-http",
+                        "port": 14250,
+                        "protocol": "TCP",
+                        "targetPort": 14250
+                    },
+                    {
+                        "name": "c-tchan-trft",
+                        "port": 14267,
+                        "protocol": "TCP",
+                        "targetPort": 14267
+                    },
+                    {
+                        "appProtocol": "http",
+                        "name": "http-c-binary-trft",
+                        "port": 14268,
+                        "protocol": "TCP",
+                        "targetPort": 14268
+                    },
+                    {
+                        "appProtocol": "grpc",
+                        "name": "otlp-grpc",
+                        "port": 4317,
+                        "protocol": "TCP",
+                        "targetPort": 4317
+                    },
+                    {
+                        "appProtocol": "http",
+                        "name": "otlp-http",
+                        "port": 4318,
+                        "protocol": "TCP",
+                        "targetPort": 4318
+                    },
+                    {
+                        "name": "http-query",
+                        "port": 16686,
+                        "protocol": "TCP",
+                        "targetPort": 16686
+                    },
+                    {
+                        "name": "grpc-query",
+                        "port": 16685,
+                        "protocol": "TCP",
+                        "targetPort": 16685
+                    },
+                    {
+                        "appProtocol": "http",
+                        "name": "internal-metrics",
+                        "port": 8888,
+                        "protocol": "TCP",
+                        "targetPort": 8888
+                    },
+                    {
+                        "appProtocol": "http",
+                        "name": "span-metrics",
+                        "port": 8889,
+                        "protocol": "TCP",
+                        "targetPort": 8889
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "all-in-one",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "jaeger"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"metrics-server\",\"app.kubernetes.io/version\":\"0.8.1\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"metrics-server-3.13.1\"},\"name\":\"metrics-server\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"appProtocol\":\"https\",\"name\":\"https\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":\"https\"}],\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"metrics-server\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-13T20:11:58Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "metrics-server",
+                    "app.kubernetes.io/version": "0.8.1",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "metrics-server-3.13.1"
+                },
+                "name": "metrics-server",
+                "namespace": "techx-observability",
+                "resourceVersion": "2709842",
+                "uid": "df5a7035-f4b1-4c93-833a-70337ac5c02c"
+            },
+            "spec": {
+                "clusterIP": "172.20.162.24",
+                "clusterIPs": [
+                    "172.20.162.24"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "appProtocol": "https",
+                        "name": "https",
+                        "port": 443,
+                        "protocol": "TCP",
+                        "targetPort": "https"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "metrics-server"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"opensearch\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"opensearch\",\"app.kubernetes.io/version\":\"3.6.0\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"opensearch-3.6.0\"},\"name\":\"opensearch\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":9200,\"protocol\":\"TCP\"},{\"name\":\"transport\",\"port\":9300,\"protocol\":\"TCP\"},{\"name\":\"metrics\",\"port\":9600,\"protocol\":\"TCP\"}],\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"opensearch\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-09T01:56:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "opensearch",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "opensearch",
+                    "app.kubernetes.io/version": "3.6.0",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "opensearch-3.6.0"
+                },
+                "name": "opensearch",
+                "namespace": "techx-observability",
+                "resourceVersion": "2571981",
+                "uid": "6d6f1c6a-158e-4b06-b195-3ee4910c307b"
+            },
+            "spec": {
+                "clusterIP": "172.20.152.38",
+                "clusterIPs": [
+                    "172.20.152.38"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 9200,
+                        "protocol": "TCP",
+                        "targetPort": 9200
+                    },
+                    {
+                        "name": "transport",
+                        "port": 9300,
+                        "protocol": "TCP",
+                        "targetPort": 9300
+                    },
+                    {
+                        "name": "metrics",
+                        "port": 9600,
+                        "protocol": "TCP",
+                        "targetPort": 9600
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "opensearch"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"service.alpha.kubernetes.io/tolerate-unready-endpoints\":\"true\"},\"labels\":{\"app.kubernetes.io/component\":\"opensearch\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"opensearch\",\"app.kubernetes.io/version\":\"3.6.0\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"opensearch-3.6.0\"},\"name\":\"opensearch-headless\",\"namespace\":\"techx-observability\"},\"spec\":{\"clusterIP\":\"None\",\"ports\":[{\"name\":\"http\",\"port\":9200},{\"name\":\"transport\",\"port\":9300},{\"name\":\"metrics\",\"port\":9600}],\"publishNotReadyAddresses\":true,\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"opensearch\"}}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability",
+                    "service.alpha.kubernetes.io/tolerate-unready-endpoints": "true"
+                },
+                "creationTimestamp": "2026-07-09T01:56:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "opensearch",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "opensearch",
+                    "app.kubernetes.io/version": "3.6.0",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "opensearch-3.6.0"
+                },
+                "name": "opensearch-headless",
+                "namespace": "techx-observability",
+                "resourceVersion": "2572005",
+                "uid": "c2641e5e-abc1-443e-beb5-63e2be6f4bda"
+            },
+            "spec": {
+                "clusterIP": "None",
+                "clusterIPs": [
+                    "None"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 9200,
+                        "protocol": "TCP",
+                        "targetPort": 9200
+                    },
+                    {
+                        "name": "transport",
+                        "port": 9300,
+                        "protocol": "TCP",
+                        "targetPort": 9300
+                    },
+                    {
+                        "name": "metrics",
+                        "port": 9600,
+                        "protocol": "TCP",
+                        "targetPort": 9600
+                    }
+                ],
+                "publishNotReadyAddresses": true,
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "opensearch"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"agent-collector\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"opentelemetry-collector\",\"app.kubernetes.io/part-of\":\"opentelemetry-collector\",\"app.kubernetes.io/version\":\"0.151.0\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"component\":\"agent-collector\",\"helm.sh/chart\":\"opentelemetry-collector-0.153.0\"},\"name\":\"otel-collector\",\"namespace\":\"techx-observability\"},\"spec\":{\"internalTrafficPolicy\":\"Local\",\"ports\":[{\"name\":\"jaeger-compact\",\"port\":6831,\"protocol\":\"UDP\",\"targetPort\":6831},{\"name\":\"jaeger-grpc\",\"port\":14250,\"protocol\":\"TCP\",\"targetPort\":14250},{\"name\":\"jaeger-thrift\",\"port\":14268,\"protocol\":\"TCP\",\"targetPort\":14268},{\"name\":\"metrics\",\"port\":8888,\"protocol\":\"TCP\",\"targetPort\":8888},{\"appProtocol\":\"grpc\",\"name\":\"otlp\",\"port\":4317,\"protocol\":\"TCP\",\"targetPort\":4317},{\"name\":\"otlp-http\",\"port\":4318,\"protocol\":\"TCP\",\"targetPort\":4318},{\"name\":\"zipkin\",\"port\":9411,\"protocol\":\"TCP\",\"targetPort\":9411}],\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"opentelemetry-collector\",\"component\":\"agent-collector\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-09T01:56:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "agent-collector",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "opentelemetry-collector",
+                    "app.kubernetes.io/part-of": "opentelemetry-collector",
+                    "app.kubernetes.io/version": "0.151.0",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "component": "agent-collector",
+                    "helm.sh/chart": "opentelemetry-collector-0.153.0"
+                },
+                "name": "otel-collector",
+                "namespace": "techx-observability",
+                "resourceVersion": "2572009",
+                "uid": "82465c32-a660-4b53-9a6c-1cebd262a551"
+            },
+            "spec": {
+                "clusterIP": "172.20.75.235",
+                "clusterIPs": [
+                    "172.20.75.235"
+                ],
+                "internalTrafficPolicy": "Local",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "jaeger-compact",
+                        "port": 6831,
+                        "protocol": "UDP",
+                        "targetPort": 6831
+                    },
+                    {
+                        "name": "jaeger-grpc",
+                        "port": 14250,
+                        "protocol": "TCP",
+                        "targetPort": 14250
+                    },
+                    {
+                        "name": "jaeger-thrift",
+                        "port": 14268,
+                        "protocol": "TCP",
+                        "targetPort": 14268
+                    },
+                    {
+                        "name": "metrics",
+                        "port": 8888,
+                        "protocol": "TCP",
+                        "targetPort": 8888
+                    },
+                    {
+                        "appProtocol": "grpc",
+                        "name": "otlp",
+                        "port": 4317,
+                        "protocol": "TCP",
+                        "targetPort": 4317
+                    },
+                    {
+                        "name": "otlp-http",
+                        "port": 4318,
+                        "protocol": "TCP",
+                        "targetPort": 4318
+                    },
+                    {
+                        "name": "zipkin",
+                        "port": 9411,
+                        "protocol": "TCP",
+                        "targetPort": 9411
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "opentelemetry-collector",
+                    "component": "agent-collector"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "ignore-check.kube-linter.io/dangling-service": "Temporary REL-15 DMS bridge; PostgreSQL pods are rendered in the app manifest and verified at runtime.",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"ignore-check.kube-linter.io/dangling-service\":\"Temporary REL-15 DMS bridge; PostgreSQL pods are rendered in the app manifest and verified at runtime.\",\"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type\":\"ip\",\"service.beta.kubernetes.io/aws-load-balancer-scheme\":\"internal\",\"service.beta.kubernetes.io/aws-load-balancer-type\":\"nlb\"},\"labels\":{\"app.kubernetes.io/component\":\"postgresql\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"postgresql-migration-bridge\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"argocd.argoproj.io/instance\":\"techx-observability\"},\"name\":\"postgresql-migration-bridge\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"name\":\"tcp-postgresql\",\"port\":5432,\"protocol\":\"TCP\",\"targetPort\":5432}],\"selector\":{\"opentelemetry.io/name\":\"postgresql\"},\"type\":\"LoadBalancer\"}}\n",
+                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "ip",
+                    "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
+                    "service.beta.kubernetes.io/aws-load-balancer-type": "nlb"
+                },
+                "creationTimestamp": "2026-07-20T08:45:07Z",
+                "finalizers": [
+                    "service.k8s.aws/resources"
+                ],
+                "labels": {
+                    "app.kubernetes.io/component": "postgresql",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "postgresql-migration-bridge",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "argocd.argoproj.io/instance": "techx-observability"
+                },
+                "name": "postgresql-migration-bridge",
+                "namespace": "techx-observability",
+                "resourceVersion": "5311573",
+                "uid": "de38e21b-c622-4a86-858a-7e60a1f776a8"
+            },
+            "spec": {
+                "allocateLoadBalancerNodePorts": true,
+                "clusterIP": "172.20.86.170",
+                "clusterIPs": [
+                    "172.20.86.170"
+                ],
+                "externalTrafficPolicy": "Cluster",
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "loadBalancerClass": "service.k8s.aws/nlb",
+                "ports": [
+                    {
+                        "name": "tcp-postgresql",
+                        "nodePort": 30774,
+                        "port": 5432,
+                        "protocol": "TCP",
+                        "targetPort": 5432
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "postgresql"
+                },
+                "sessionAffinity": "None",
+                "type": "LoadBalancer"
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "hostname": "k8s-techxobs-postgres-8d69757ceb-b76f75e1848b986d.elb.us-east-1.amazonaws.com",
+                            "ports": [
+                                {
+                                    "port": 5432,
+                                    "protocol": "TCP"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"server\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"prometheus\",\"app.kubernetes.io/part-of\":\"prometheus\",\"app.kubernetes.io/version\":\"v3.11.3\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"prometheus-29.6.0\"},\"name\":\"prometheus\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":9090,\"protocol\":\"TCP\",\"targetPort\":9090}],\"selector\":{\"app.kubernetes.io/component\":\"server\",\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"prometheus\"},\"sessionAffinity\":\"None\",\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-09T01:56:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "server",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "prometheus",
+                    "app.kubernetes.io/part-of": "prometheus",
+                    "app.kubernetes.io/version": "v3.11.3",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "prometheus-29.6.0"
+                },
+                "name": "prometheus",
+                "namespace": "techx-observability",
+                "resourceVersion": "2572026",
+                "uid": "2b48f163-f1cd-467a-8829-ba73a8acf138"
+            },
+            "spec": {
+                "clusterIP": "172.20.132.28",
+                "clusterIPs": [
+                    "172.20.132.28"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 9090,
+                        "protocol": "TCP",
+                        "targetPort": 9090
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/component": "server",
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "prometheus"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"alertmanager\",\"app.kubernetes.io/version\":\"v0.32.1\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"alertmanager-1.36.0\"},\"name\":\"techx-observability-alertmanager\",\"namespace\":\"techx-observability\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":9093,\"protocol\":\"TCP\",\"targetPort\":\"http\"}],\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"alertmanager\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-13T12:37:17Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "alertmanager",
+                    "app.kubernetes.io/version": "v0.32.1",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "alertmanager-1.36.0"
+                },
+                "name": "techx-observability-alertmanager",
+                "namespace": "techx-observability",
+                "resourceVersion": "2572049",
+                "uid": "106e42d9-182a-4c19-961b-fac0cc592a24"
+            },
+            "spec": {
+                "clusterIP": "172.20.140.143",
+                "clusterIPs": [
+                    "172.20.140.143"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 9093,
+                        "protocol": "TCP",
+                        "targetPort": "http"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "alertmanager"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"alertmanager\",\"app.kubernetes.io/version\":\"v0.32.1\",\"argocd.argoproj.io/instance\":\"techx-observability\",\"helm.sh/chart\":\"alertmanager-1.36.0\"},\"name\":\"techx-observability-alertmanager-headless\",\"namespace\":\"techx-observability\"},\"spec\":{\"clusterIP\":\"None\",\"ports\":[{\"name\":\"http\",\"port\":9093,\"protocol\":\"TCP\",\"targetPort\":\"http\"}],\"selector\":{\"app.kubernetes.io/instance\":\"techx-observability\",\"app.kubernetes.io/name\":\"alertmanager\"}}}\n",
+                    "meta.helm.sh/release-name": "techx-observability",
+                    "meta.helm.sh/release-namespace": "techx-observability"
+                },
+                "creationTimestamp": "2026-07-13T12:37:17Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "alertmanager",
+                    "app.kubernetes.io/version": "v0.32.1",
+                    "argocd.argoproj.io/instance": "techx-observability",
+                    "helm.sh/chart": "alertmanager-1.36.0"
+                },
+                "name": "techx-observability-alertmanager-headless",
+                "namespace": "techx-observability",
+                "resourceVersion": "2572046",
+                "uid": "02c1db38-66f9-44f8-9327-81c60d23c224"
+            },
+            "spec": {
+                "clusterIP": "None",
+                "clusterIPs": [
+                    "None"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 9093,
+                        "protocol": "TCP",
+                        "targetPort": "http"
+                    }
+                ],
+                "selector": {
+                    "app.kubernetes.io/instance": "techx-observability",
+                    "app.kubernetes.io/name": "alertmanager"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"ad\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"ad\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"ad\"},\"name\":\"ad\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"ad\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "ad",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "ad",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "ad"
+                },
+                "name": "ad",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572357",
+                "uid": "1dd11811-5170-4c84-89c4-521c8a113e3d"
+            },
+            "spec": {
+                "clusterIP": "172.20.226.181",
+                "clusterIPs": [
+                    "172.20.226.181"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "ad"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "argo-rollouts.argoproj.io/managed-by-rollouts": "cart",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"cart\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"cart\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"cart\"},\"name\":\"cart\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"cart\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:34Z",
+                "labels": {
+                    "app.kubernetes.io/component": "cart",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "cart",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "cart"
+                },
+                "name": "cart",
+                "namespace": "techx-tf4",
+                "resourceVersion": "5952619",
+                "uid": "396fbfd2-eda2-4fcb-914d-e266ed60cf94"
+            },
+            "spec": {
+                "clusterIP": "172.20.148.103",
+                "clusterIPs": [
+                    "172.20.148.103"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "cart",
+                    "rollouts-pod-template-hash": "766c6b8f5c"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "argo-rollouts.argoproj.io/managed-by-rollouts": "cart",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"cart\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"cart\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"cart\"},\"name\":\"cart-preview\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"cart\"},\"type\":\"ClusterIP\"}}\n"
+                },
+                "creationTimestamp": "2026-07-21T04:35:29Z",
+                "labels": {
+                    "app.kubernetes.io/component": "cart",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "cart",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "cart"
+                },
+                "name": "cart-preview",
+                "namespace": "techx-tf4",
+                "resourceVersion": "5951926",
+                "uid": "6bf0bd77-9925-4fb2-a576-cba3b87f7003"
+            },
+            "spec": {
+                "clusterIP": "172.20.245.7",
+                "clusterIPs": [
+                    "172.20.245.7"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "cart",
+                    "rollouts-pod-template-hash": "766c6b8f5c"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"checkout\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"checkout\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"checkout\"},\"name\":\"checkout\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"checkout\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:35Z",
+                "labels": {
+                    "app.kubernetes.io/component": "checkout",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "checkout",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "checkout"
+                },
+                "name": "checkout",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572368",
+                "uid": "00f2d0c0-f79c-47be-8987-7c11c303ddc7"
+            },
+            "spec": {
+                "clusterIP": "172.20.60.78",
+                "clusterIPs": [
+                    "172.20.60.78"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "checkout"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"currency\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"currency\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"currency\"},\"name\":\"currency\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"currency\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:35Z",
+                "labels": {
+                    "app.kubernetes.io/component": "currency",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "currency",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "currency"
+                },
+                "name": "currency",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572362",
+                "uid": "2cb8da7c-6b78-4093-aadb-5c53b59ce896"
+            },
+            "spec": {
+                "clusterIP": "172.20.138.94",
+                "clusterIPs": [
+                    "172.20.138.94"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "currency"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"email\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"email\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"email\"},\"name\":\"email\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"email\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:36Z",
+                "labels": {
+                    "app.kubernetes.io/component": "email",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "email",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "email"
+                },
+                "name": "email",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572373",
+                "uid": "7d7bb748-6b1c-4a26-9d93-503c1d98f7f5"
+            },
+            "spec": {
+                "clusterIP": "172.20.152.217",
+                "clusterIPs": [
+                    "172.20.152.217"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "email"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"flagd\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"flagd\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"flagd\"},\"name\":\"flagd\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"rpc\",\"port\":8013,\"targetPort\":8013},{\"name\":\"ofrep\",\"port\":8016,\"targetPort\":8016}],\"selector\":{\"opentelemetry.io/name\":\"flagd\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:36Z",
+                "labels": {
+                    "app.kubernetes.io/component": "flagd",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "flagd",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "flagd"
+                },
+                "name": "flagd",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572366",
+                "uid": "10e49694-1617-42d3-a76e-d67ea2eb4d48"
+            },
+            "spec": {
+                "clusterIP": "172.20.53.96",
+                "clusterIPs": [
+                    "172.20.53.96"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "rpc",
+                        "port": 8013,
+                        "protocol": "TCP",
+                        "targetPort": 8013
+                    },
+                    {
+                        "name": "ofrep",
+                        "port": 8016,
+                        "protocol": "TCP",
+                        "targetPort": 8016
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "flagd"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"frontend\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"frontend\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"frontend\"},\"name\":\"frontend\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"frontend\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:37Z",
+                "labels": {
+                    "app.kubernetes.io/component": "frontend",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "frontend",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "frontend"
+                },
+                "name": "frontend",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572372",
+                "uid": "3a87b3ef-dfcc-4079-bff2-8fb8b1b638f5"
+            },
+            "spec": {
+                "clusterIP": "172.20.39.20",
+                "clusterIPs": [
+                    "172.20.39.20"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "frontend"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"frontend-proxy\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"frontend-proxy\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"frontend-proxy\"},\"name\":\"frontend-proxy\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"frontend-proxy\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:37Z",
+                "labels": {
+                    "app.kubernetes.io/component": "frontend-proxy",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "frontend-proxy",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "frontend-proxy"
+                },
+                "name": "frontend-proxy",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572367",
+                "uid": "f6c1ba7e-b7ce-4448-a4a5-1456bbd57dde"
+            },
+            "spec": {
+                "clusterIP": "172.20.74.72",
+                "clusterIPs": [
+                    "172.20.74.72"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "frontend-proxy"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"image-provider\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"image-provider\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"image-provider\"},\"name\":\"image-provider\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8081,\"targetPort\":8081}],\"selector\":{\"opentelemetry.io/name\":\"image-provider\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:38Z",
+                "labels": {
+                    "app.kubernetes.io/component": "image-provider",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "image-provider",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "image-provider"
+                },
+                "name": "image-provider",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572371",
+                "uid": "d15a98de-bc11-49f6-b666-2ddbb47af234"
+            },
+            "spec": {
+                "clusterIP": "172.20.214.139",
+                "clusterIPs": [
+                    "172.20.214.139"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8081,
+                        "protocol": "TCP",
+                        "targetPort": 8081
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "image-provider"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"kafka\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"kafka\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"kafka\"},\"name\":\"kafka\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"plaintext\",\"port\":9092,\"targetPort\":9092},{\"name\":\"controller\",\"port\":9093,\"targetPort\":9093}],\"selector\":{\"opentelemetry.io/name\":\"kafka\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:38Z",
+                "labels": {
+                    "app.kubernetes.io/component": "kafka",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "kafka",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "kafka"
+                },
+                "name": "kafka",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572369",
+                "uid": "67295072-36de-4e77-a069-24712c5d2bf7"
+            },
+            "spec": {
+                "clusterIP": "172.20.180.83",
+                "clusterIPs": [
+                    "172.20.180.83"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "plaintext",
+                        "port": 9092,
+                        "protocol": "TCP",
+                        "targetPort": 9092
+                    },
+                    {
+                        "name": "controller",
+                        "port": 9093,
+                        "protocol": "TCP",
+                        "targetPort": 9093
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "kafka"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"llm\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"llm\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"llm\"},\"name\":\"llm\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8000,\"targetPort\":8000}],\"selector\":{\"opentelemetry.io/name\":\"llm\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:39Z",
+                "labels": {
+                    "app.kubernetes.io/component": "llm",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "llm",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "llm"
+                },
+                "name": "llm",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572365",
+                "uid": "561edaf4-24aa-4053-ad71-1bc0ffae08bf"
+            },
+            "spec": {
+                "clusterIP": "172.20.163.157",
+                "clusterIPs": [
+                    "172.20.163.157"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8000,
+                        "protocol": "TCP",
+                        "targetPort": 8000
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "llm"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"load-generator\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"load-generator\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"load-generator\"},\"name\":\"load-generator\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8089,\"targetPort\":8089}],\"selector\":{\"opentelemetry.io/name\":\"load-generator\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:39Z",
+                "labels": {
+                    "app.kubernetes.io/component": "load-generator",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "load-generator",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "load-generator"
+                },
+                "name": "load-generator",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572370",
+                "uid": "95d13771-3ac8-4f81-a808-45ab76e636fa"
+            },
+            "spec": {
+                "clusterIP": "172.20.219.77",
+                "clusterIPs": [
+                    "172.20.219.77"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8089,
+                        "protocol": "TCP",
+                        "targetPort": 8089
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "load-generator"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-07-21T06:46:55Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "orders-mirrormaker2",
+                    "app.kubernetes.io/managed-by": "strimzi-cluster-operator",
+                    "app.kubernetes.io/name": "kafka-mirror-maker-2",
+                    "app.kubernetes.io/part-of": "strimzi-orders-mirrormaker2",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "mirrormaker2",
+                    "strimzi.io/cluster": "orders-mirrormaker2",
+                    "strimzi.io/component-type": "kafka-mirror-maker-2",
+                    "strimzi.io/kind": "KafkaMirrorMaker2",
+                    "strimzi.io/name": "orders-mirrormaker2-mirrormaker2"
+                },
+                "name": "orders-mirrormaker2-mirrormaker2",
+                "namespace": "techx-tf4",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kafka.strimzi.io/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": false,
+                        "kind": "KafkaMirrorMaker2",
+                        "name": "orders-mirrormaker2",
+                        "uid": "5aa0b11b-e23a-4521-86cc-943c1f972c2f"
+                    }
+                ],
+                "resourceVersion": "6011745",
+                "uid": "ccf01da2-fbd5-4ea2-b0c6-201974260bcd"
+            },
+            "spec": {
+                "clusterIP": "None",
+                "clusterIPs": [
+                    "None"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "rest-api",
+                        "port": 8083,
+                        "protocol": "TCP",
+                        "targetPort": "rest-api"
+                    }
+                ],
+                "publishNotReadyAddresses": true,
+                "selector": {
+                    "strimzi.io/cluster": "orders-mirrormaker2",
+                    "strimzi.io/kind": "KafkaMirrorMaker2",
+                    "strimzi.io/name": "orders-mirrormaker2-mirrormaker2"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-07-21T06:46:55Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "orders-mirrormaker2",
+                    "app.kubernetes.io/managed-by": "strimzi-cluster-operator",
+                    "app.kubernetes.io/name": "kafka-mirror-maker-2",
+                    "app.kubernetes.io/part-of": "strimzi-orders-mirrormaker2",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "mirrormaker2",
+                    "strimzi.io/cluster": "orders-mirrormaker2",
+                    "strimzi.io/component-type": "kafka-mirror-maker-2",
+                    "strimzi.io/kind": "KafkaMirrorMaker2",
+                    "strimzi.io/name": "orders-mirrormaker2-mirrormaker2"
+                },
+                "name": "orders-mirrormaker2-mirrormaker2-api",
+                "namespace": "techx-tf4",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kafka.strimzi.io/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": false,
+                        "kind": "KafkaMirrorMaker2",
+                        "name": "orders-mirrormaker2",
+                        "uid": "5aa0b11b-e23a-4521-86cc-943c1f972c2f"
+                    }
+                ],
+                "resourceVersion": "6011741",
+                "uid": "2ce161aa-8859-4fd9-8cdb-411df8f81a86"
+            },
+            "spec": {
+                "clusterIP": "172.20.246.182",
+                "clusterIPs": [
+                    "172.20.246.182"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "rest-api",
+                        "port": 8083,
+                        "protocol": "TCP",
+                        "targetPort": "rest-api"
+                    }
+                ],
+                "selector": {
+                    "strimzi.io/cluster": "orders-mirrormaker2",
+                    "strimzi.io/kind": "KafkaMirrorMaker2",
+                    "strimzi.io/name": "orders-mirrormaker2-mirrormaker2"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"payment\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"payment\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"payment\"},\"name\":\"payment\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"payment\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:39Z",
+                "labels": {
+                    "app.kubernetes.io/component": "payment",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "payment",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "payment"
+                },
+                "name": "payment",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572393",
+                "uid": "f66b5bdf-dccc-45cb-9cca-c6e69ac67da9"
+            },
+            "spec": {
+                "clusterIP": "172.20.95.167",
+                "clusterIPs": [
+                    "172.20.95.167"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "payment"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"postgresql\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"postgresql\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"postgresql\"},\"name\":\"postgresql\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":5432,\"targetPort\":5432}],\"selector\":{\"opentelemetry.io/name\":\"postgresql\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:40Z",
+                "labels": {
+                    "app.kubernetes.io/component": "postgresql",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "postgresql",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "postgresql"
+                },
+                "name": "postgresql",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572394",
+                "uid": "46ad7045-b2dd-48ea-944a-974386901f7b"
+            },
+            "spec": {
+                "clusterIP": "172.20.87.154",
+                "clusterIPs": [
+                    "172.20.87.154"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 5432,
+                        "protocol": "TCP",
+                        "targetPort": 5432
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "postgresql"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "ignore-check.kube-linter.io/dangling-service": "Temporary REL-15 DMS bridge; PostgreSQL pods are rendered in the app manifest and verified at runtime.",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"ignore-check.kube-linter.io/dangling-service\":\"Temporary REL-15 DMS bridge; PostgreSQL pods are rendered in the app manifest and verified at runtime.\",\"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type\":\"ip\",\"service.beta.kubernetes.io/aws-load-balancer-scheme\":\"internal\",\"service.beta.kubernetes.io/aws-load-balancer-type\":\"nlb\"},\"labels\":{\"app.kubernetes.io/component\":\"postgresql\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"postgresql-migration-bridge\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"argocd.argoproj.io/instance\":\"techx-corp\"},\"name\":\"postgresql-migration-bridge\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-postgresql\",\"port\":5432,\"protocol\":\"TCP\",\"targetPort\":5432}],\"selector\":{\"opentelemetry.io/name\":\"postgresql\"},\"type\":\"LoadBalancer\"}}\n",
+                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "ip",
+                    "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
+                    "service.beta.kubernetes.io/aws-load-balancer-type": "nlb"
+                },
+                "creationTimestamp": "2026-07-20T08:45:00Z",
+                "finalizers": [
+                    "service.k8s.aws/resources"
+                ],
+                "labels": {
+                    "app.kubernetes.io/component": "postgresql",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "postgresql-migration-bridge",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "argocd.argoproj.io/instance": "techx-corp"
+                },
+                "name": "postgresql-migration-bridge",
+                "namespace": "techx-tf4",
+                "resourceVersion": "5311485",
+                "uid": "7bca2c36-6551-4c0b-b938-44012a8312df"
+            },
+            "spec": {
+                "allocateLoadBalancerNodePorts": true,
+                "clusterIP": "172.20.223.188",
+                "clusterIPs": [
+                    "172.20.223.188"
+                ],
+                "externalTrafficPolicy": "Cluster",
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "loadBalancerClass": "service.k8s.aws/nlb",
+                "ports": [
+                    {
+                        "name": "tcp-postgresql",
+                        "nodePort": 30241,
+                        "port": 5432,
+                        "protocol": "TCP",
+                        "targetPort": 5432
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "postgresql"
+                },
+                "sessionAffinity": "None",
+                "type": "LoadBalancer"
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "hostname": "k8s-techxtf4-postgres-981d5617bf-18dcaaac76555685.elb.us-east-1.amazonaws.com",
+                            "ports": [
+                                {
+                                    "port": 5432,
+                                    "protocol": "TCP"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"product-catalog\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"product-catalog\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"product-catalog\"},\"name\":\"product-catalog\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"product-catalog\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:40Z",
+                "labels": {
+                    "app.kubernetes.io/component": "product-catalog",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "product-catalog",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "product-catalog"
+                },
+                "name": "product-catalog",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572387",
+                "uid": "3ea43dd2-0341-4828-80b8-88a1d257ad7a"
+            },
+            "spec": {
+                "clusterIP": "172.20.14.135",
+                "clusterIPs": [
+                    "172.20.14.135"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "product-catalog"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"product-reviews\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"product-reviews\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"product-reviews\"},\"name\":\"product-reviews\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":3551,\"targetPort\":3551}],\"selector\":{\"opentelemetry.io/name\":\"product-reviews\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:41Z",
+                "labels": {
+                    "app.kubernetes.io/component": "product-reviews",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "product-reviews",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "product-reviews"
+                },
+                "name": "product-reviews",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572405",
+                "uid": "c3b87880-ed01-4a13-b3ac-0cf514c31710"
+            },
+            "spec": {
+                "clusterIP": "172.20.99.48",
+                "clusterIPs": [
+                    "172.20.99.48"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 3551,
+                        "protocol": "TCP",
+                        "targetPort": 3551
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "product-reviews"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"quote\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"quote\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"quote\"},\"name\":\"quote\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"quote\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:41Z",
+                "labels": {
+                    "app.kubernetes.io/component": "quote",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "quote",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "quote"
+                },
+                "name": "quote",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572413",
+                "uid": "d7b72c45-682f-40b1-a435-c2ed93808067"
+            },
+            "spec": {
+                "clusterIP": "172.20.114.244",
+                "clusterIPs": [
+                    "172.20.114.244"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "quote"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"recommendation\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"recommendation\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"recommendation\"},\"name\":\"recommendation\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"recommendation\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:42Z",
+                "labels": {
+                    "app.kubernetes.io/component": "recommendation",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "recommendation",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "recommendation"
+                },
+                "name": "recommendation",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572422",
+                "uid": "dceb55f7-ef83-432e-a6dc-699d293e56d4"
+            },
+            "spec": {
+                "clusterIP": "172.20.173.151",
+                "clusterIPs": [
+                    "172.20.173.151"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "recommendation"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"shipping\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"shipping\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"shipping\"},\"name\":\"shipping\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-service\",\"port\":8080,\"targetPort\":8080}],\"selector\":{\"opentelemetry.io/name\":\"shipping\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:42Z",
+                "labels": {
+                    "app.kubernetes.io/component": "shipping",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "shipping",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "shipping"
+                },
+                "name": "shipping",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572426",
+                "uid": "15b34646-89c7-42ff-8e36-db8635ecf595"
+            },
+            "spec": {
+                "clusterIP": "172.20.221.24",
+                "clusterIPs": [
+                    "172.20.221.24"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "tcp-service",
+                        "port": 8080,
+                        "protocol": "TCP",
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "shipping"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"valkey-cart\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"valkey-cart\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.40.9\",\"opentelemetry.io/name\":\"valkey-cart\"},\"name\":\"valkey-cart\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"valkey-cart\",\"port\":6379,\"targetPort\":6379}],\"selector\":{\"opentelemetry.io/name\":\"valkey-cart\"},\"type\":\"ClusterIP\"}}\n",
+                    "meta.helm.sh/release-name": "techx-corp",
+                    "meta.helm.sh/release-namespace": "techx-tf4"
+                },
+                "creationTimestamp": "2026-07-07T18:35:43Z",
+                "labels": {
+                    "app.kubernetes.io/component": "valkey-cart",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "valkey-cart",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "app.kubernetes.io/version": "2.2.0",
+                    "argocd.argoproj.io/instance": "techx-corp",
+                    "helm.sh/chart": "techx-corp-0.40.9",
+                    "opentelemetry.io/name": "valkey-cart"
+                },
+                "name": "valkey-cart",
+                "namespace": "techx-tf4",
+                "resourceVersion": "2572427",
+                "uid": "6150e054-b5d2-48cb-9651-84f304a467d3"
+            },
+            "spec": {
+                "clusterIP": "172.20.4.115",
+                "clusterIPs": [
+                    "172.20.4.115"
+                ],
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "ports": [
+                    {
+                        "name": "valkey-cart",
+                        "port": 6379,
+                        "protocol": "TCP",
+                        "targetPort": 6379
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "valkey-cart"
+                },
+                "sessionAffinity": "None",
+                "type": "ClusterIP"
+            },
+            "status": {
+                "loadBalancer": {}
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "annotations": {
+                    "ignore-check.kube-linter.io/dangling-service": "Temporary bridge for ElastiCache Valkey Online Migration; valkey-cart pod is rendered in the app manifest and verified at runtime.",
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"ignore-check.kube-linter.io/dangling-service\":\"Temporary bridge for ElastiCache Valkey Online Migration; valkey-cart pod is rendered in the app manifest and verified at runtime.\",\"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type\":\"ip\",\"service.beta.kubernetes.io/aws-load-balancer-scheme\":\"internal\",\"service.beta.kubernetes.io/aws-load-balancer-type\":\"nlb\"},\"labels\":{\"app.kubernetes.io/component\":\"valkey\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"valkey-migration-bridge\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"argocd.argoproj.io/instance\":\"techx-corp\"},\"name\":\"valkey-migration-bridge\",\"namespace\":\"techx-tf4\"},\"spec\":{\"ports\":[{\"name\":\"tcp-valkey\",\"port\":6379,\"protocol\":\"TCP\",\"targetPort\":6379}],\"selector\":{\"opentelemetry.io/name\":\"valkey-cart\"},\"type\":\"LoadBalancer\"}}\n",
+                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "ip",
+                    "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
+                    "service.beta.kubernetes.io/aws-load-balancer-type": "nlb"
+                },
+                "creationTimestamp": "2026-07-21T02:33:39Z",
+                "finalizers": [
+                    "service.k8s.aws/resources"
+                ],
+                "labels": {
+                    "app.kubernetes.io/component": "valkey",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "valkey-migration-bridge",
+                    "app.kubernetes.io/part-of": "techx-corp",
+                    "argocd.argoproj.io/instance": "techx-corp"
+                },
+                "name": "valkey-migration-bridge",
+                "namespace": "techx-tf4",
+                "resourceVersion": "5874833",
+                "uid": "076c899d-3853-409a-b107-b0cb2073d89e"
+            },
+            "spec": {
+                "allocateLoadBalancerNodePorts": true,
+                "clusterIP": "172.20.218.164",
+                "clusterIPs": [
+                    "172.20.218.164"
+                ],
+                "externalTrafficPolicy": "Cluster",
+                "internalTrafficPolicy": "Cluster",
+                "ipFamilies": [
+                    "IPv4"
+                ],
+                "ipFamilyPolicy": "SingleStack",
+                "loadBalancerClass": "service.k8s.aws/nlb",
+                "ports": [
+                    {
+                        "name": "tcp-valkey",
+                        "nodePort": 30427,
+                        "port": 6379,
+                        "protocol": "TCP",
+                        "targetPort": 6379
+                    }
+                ],
+                "selector": {
+                    "opentelemetry.io/name": "valkey-cart"
+                },
+                "sessionAffinity": "None",
+                "type": "LoadBalancer"
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "hostname": "k8s-techxtf4-valkeymi-beee1cc957-8936634d35fbd8cd.elb.us-east-1.amazonaws.com",
+                            "ports": [
+                                {
+                                    "port": 6379,
+                                    "protocol": "TCP"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

@@ -158,6 +158,9 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "config:DescribeConfigurationRecorderStatus",
       "config:DescribeDeliveryChannels",
       "config:DescribeRetentionConfigurations",
+      "dlm:GetLifecyclePolicy",
+      "dlm:ListLifecyclePolicies",
+      "dlm:ListTagsForResource",
       "ec2:Describe*",
       "ecr:Describe*",
       "ecr:GetLifecyclePolicy",
@@ -181,6 +184,8 @@ data "aws_iam_policy_document" "github_actions_plan" {
       "kafka:Describe*",
       "kafka:GetBootstrapBrokers",
       "kafka:List*",
+      "kafkaconnect:Describe*",
+      "kafkaconnect:List*",
       "rds:Describe*",
       "rds:ListTagsForResource",
       "s3:GetAccelerateConfiguration",
@@ -196,6 +201,37 @@ data "aws_iam_policy_document" "github_actions_plan" {
     ]
 
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingSqsState"
+    effect = "Allow"
+
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ListQueueTags",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-dlq",
+    ]
+  }
+
+  statement {
+    sid    = "ReadSecurityAlertingSnsState"
+    effect = "Allow"
+
+    actions = [
+      "sns:GetTopicAttributes",
+      "sns:ListTagsForResource",
+      "sns:ListSubscriptionsByTopic",
+    ]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts",
+      "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:audit-security-alerts-formatted",
+    ]
   }
 
   statement {

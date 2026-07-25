@@ -1,0 +1,764 @@
+{
+  "collected_at_utc": "2026-07-23T02:19:41.174942+00:00",
+  "logs": [
+    {
+      "id": "O-S0jJ8BsGfV08Z6U9eP",
+      "index": "otel-logs-2026-07-23",
+      "source": {
+        "@timestamp": "2026-07-23T02:00:53.098937088Z",
+        "attributes": {
+          "code.file.path": "/app/product_reviews_server.py",
+          "code.function.name": "get_ai_assistant_response",
+          "code.line.number": 178,
+          "data_stream": {
+            "dataset": "default",
+            "namespace": "namespace",
+            "type": "record"
+          },
+          "error_class": "timeout",
+          "estimated_cost_usd": 0,
+          "guardrail_version": "3",
+          "input_tokens": 0,
+          "latency_ms": 0,
+          "model_id": "us.amazon.nova-2-lite-v1:0",
+          "otelServiceName": "product-reviews",
+          "otelSpanID": "8d6499565a97ae92",
+          "otelTraceID": "ec1f8f0087cd980b7bdad98ba0daf39d",
+          "otelTraceSampled": true,
+          "outcome": "unavailable",
+          "output_tokens": 0,
+          "provider_stop_reason": "not_received",
+          "quarantined_reviews": 0,
+          "response_contract_stage": "not_applicable"
+        },
+        "body": "ai_assistant_completed",
+        "instrumentationScope": {
+          "name": "main"
+        },
+        "observedTimestamp": "2026-07-23T02:00:55.949087239Z",
+        "resource": {
+          "container.image.name": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp",
+          "container.image.tag": "d3f6ec8-product-reviews",
+          "host.name": "otel-collector-agent-k4jj7",
+          "k8s.cluster.uid": "67b7ad74-5c83-4b09-8da5-64249d8ee7d6",
+          "k8s.container.name": "product-reviews",
+          "k8s.deployment.name": "product-reviews",
+          "k8s.namespace.name": "techx-tf4",
+          "k8s.node.name": "ip-10-0-11-37.ec2.internal",
+          "k8s.pod.name": "product-reviews-6576656b6b-m9bl6",
+          "k8s.pod.start_time": "2026-07-22T16:25:49Z",
+          "k8s.pod.uid": "f63ae04f-7697-46fc-b422-18d455017276",
+          "k8s.replicaset.name": "product-reviews-6576656b6b",
+          "k8s.replicaset.uid": "4d6f7a05-da83-452a-87d3-2bede5612332",
+          "os.type": "linux",
+          "service.instance.id": "techx-tf4.product-reviews-6576656b6b-m9bl6.product-reviews",
+          "service.name": "product-reviews",
+          "service.namespace": "techx-corp",
+          "service.version": "2.2.0",
+          "telemetry.sdk.language": "python",
+          "telemetry.sdk.name": "opentelemetry",
+          "telemetry.sdk.version": "1.39.1"
+        },
+        "severity": {
+          "number": 9,
+          "text": "INFO"
+        },
+        "spanId": "8d6499565a97ae92",
+        "traceId": "ec1f8f0087cd980b7bdad98ba0daf39d"
+      }
+    },
+    {
+      "id": "peSzjJ8BsGfV08Z68WBI",
+      "index": "otel-logs-2026-07-23",
+      "source": {
+        "@timestamp": "2026-07-23T02:00:25.60713216Z",
+        "attributes": {
+          "code.file.path": "/app/product_reviews_server.py",
+          "code.function.name": "search_products_ai",
+          "code.line.number": 625,
+          "data_stream": {
+            "dataset": "default",
+            "namespace": "namespace",
+            "type": "record"
+          },
+          "error_class": "timeout",
+          "otelServiceName": "product-reviews",
+          "otelSpanID": "5253af3911b9857c",
+          "otelTraceID": "0e23c597ddca0288b672e845103e9abf",
+          "otelTraceSampled": true
+        },
+        "body": "nl_search_provider_failure",
+        "instrumentationScope": {
+          "name": "main"
+        },
+        "observedTimestamp": "2026-07-23T02:00:30.791131872Z",
+        "resource": {
+          "container.image.name": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp",
+          "container.image.tag": "d3f6ec8-product-reviews",
+          "host.name": "otel-collector-agent-k4jj7",
+          "k8s.cluster.uid": "67b7ad74-5c83-4b09-8da5-64249d8ee7d6",
+          "k8s.container.name": "product-reviews",
+          "k8s.deployment.name": "product-reviews",
+          "k8s.namespace.name": "techx-tf4",
+          "k8s.node.name": "ip-10-0-11-37.ec2.internal",
+          "k8s.pod.name": "product-reviews-6576656b6b-m9bl6",
+          "k8s.pod.start_time": "2026-07-22T16:25:49Z",
+          "k8s.pod.uid": "f63ae04f-7697-46fc-b422-18d455017276",
+          "k8s.replicaset.name": "product-reviews-6576656b6b",
+          "k8s.replicaset.uid": "4d6f7a05-da83-452a-87d3-2bede5612332",
+          "os.type": "linux",
+          "service.instance.id": "techx-tf4.product-reviews-6576656b6b-m9bl6.product-reviews",
+          "service.name": "product-reviews",
+          "service.namespace": "techx-corp",
+          "service.version": "2.2.0",
+          "telemetry.sdk.language": "python",
+          "telemetry.sdk.name": "opentelemetry",
+          "telemetry.sdk.version": "1.39.1"
+        },
+        "severity": {
+          "number": 9,
+          "text": "INFO"
+        },
+        "spanId": "5253af3911b9857c",
+        "traceId": "0e23c597ddca0288b672e845103e9abf"
+      }
+    }
+  ],
+  "metrics": {
+    "calls_30m": {
+      "query": "sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[30m]))",
+      "result": [
+        {
+          "metric": {},
+          "value": [
+            1784773167.971,
+            "1.0446907077083085"
+          ]
+        }
+      ]
+    },
+    "errors_30m": {
+      "query": "sum(increase(app_llm_errors_total{service_name=\"product-reviews\"}[30m]))",
+      "result": [
+        {
+          "metric": {},
+          "value": [
+            1784773167.98,
+            "1.0446907077083083"
+          ]
+        }
+      ]
+    },
+    "estimated_cost_usd_30m": {
+      "query": "sum(increase(app_llm_estimated_cost_usd_USD_total{service_name=\"product-reviews\"}[30m]))",
+      "result": [
+        {
+          "metric": {},
+          "value": [
+            1784773168.069,
+            "0"
+          ]
+        }
+      ]
+    },
+    "input_tokens_30m": {
+      "query": "sum(increase(app_llm_prompt_tokens_total{service_name=\"product-reviews\"}[30m]))",
+      "result": [
+        {
+          "metric": {},
+          "value": [
+            1784773168.055,
+            "0"
+          ]
+        }
+      ]
+    },
+    "latency_p95_seconds_30m": {
+      "query": "histogram_quantile(0.95, sum by (le) (rate(app_llm_latency_seconds_bucket{service_name=\"product-reviews\"}[30m])))",
+      "result": [
+        {
+          "metric": {},
+          "value": [
+            1784773168.076,
+            "0"
+          ]
+        }
+      ]
+    },
+    "output_tokens_30m": {
+      "query": "sum(increase(app_llm_completion_tokens_total{service_name=\"product-reviews\"}[30m]))",
+      "result": [
+        {
+          "metric": {},
+          "value": [
+            1784773168.062,
+            "0"
+          ]
+        }
+      ]
+    }
+  },
+  "traces": [
+    {
+      "spans": [
+        {
+          "duration_us": 63,
+          "operation": "grpc.health.v1.Health/Check",
+          "service": "product-reviews",
+          "spanID": "1ffbaa9a45ccf70d",
+          "startTime": 1784772715683403,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:55.683403+00:00",
+      "traceID": "2ab2bbe3810aad6c08806c23672d7d68"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 81903,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "a94a06fe72085771",
+          "startTime": 1784772715504797,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 81186,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "6cabd03dd732d61e",
+          "startTime": 1784772715505449,
+          "tags": {}
+        },
+        {
+          "duration_us": 2809,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "1beb0c8581a9bf73",
+          "startTime": 1784772715582217,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:55.504797+00:00",
+      "traceID": "335e7e24f84a6a946ea2a1219ea92d36"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 111861,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "d45a6456e4546881",
+          "startTime": 1784772713899164,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 111289,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "5ff01c9d4f6173b9",
+          "startTime": 1784772713899681,
+          "tags": {}
+        },
+        {
+          "duration_us": 4758,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "1efdf425cb8a6504",
+          "startTime": 1784772714002774,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:53.899164+00:00",
+      "traceID": "b6f43ee5d093866c6c19ed0879a91d05"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 97662,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "730e35e2b30249fe",
+          "startTime": 1784772713902314,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 96160,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "829a2997d0c86673",
+          "startTime": 1784772713903780,
+          "tags": {}
+        },
+        {
+          "duration_us": 4306,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "7d8fcb9af5b2cc7c",
+          "startTime": 1784772713994468,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:53.902314+00:00",
+      "traceID": "3454e6817d90df18c70a221e3e39b735"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 79,
+          "operation": "grpc.health.v1.Health/Check",
+          "service": "product-reviews",
+          "spanID": "2212d6e67e64a6d9",
+          "startTime": 1784772713665017,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:53.665017+00:00",
+      "traceID": "6ccb1af0bf503716f5e3c91e2ed98136"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 68206,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "2eae1dce6135a391",
+          "startTime": 1784772713170903,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 67579,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "80ef3bce497d00af",
+          "startTime": 1784772713171490,
+          "tags": {}
+        },
+        {
+          "duration_us": 3194,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "d3bb70a500eb94f4",
+          "startTime": 1784772713234410,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:53.170903+00:00",
+      "traceID": "ce6a2df3c9589b7c78fb5ad5ae0e5833"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 59438,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "b1b5e601d87b568d",
+          "startTime": 1784772713172213,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 58944,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "25de04885f844357",
+          "startTime": 1784772713172659,
+          "tags": {}
+        },
+        {
+          "duration_us": 26534,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "6d79239eec02654d",
+          "startTime": 1784772713203702,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:53.172213+00:00",
+      "traceID": "745edbf3691af8c03f2661d814641f15"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 38328,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "9e4b685ab1bb66df",
+          "startTime": 1784772712077386,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 37448,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "3d19c76ea9c4f68d",
+          "startTime": 1784772712078227,
+          "tags": {}
+        },
+        {
+          "duration_us": 2589,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "d5547e06344047cd",
+          "startTime": 1784772712111911,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:52.077386+00:00",
+      "traceID": "bf4c2cd0a1897fb0d01b40bbdd613dce"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 54023,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "861710909245ebe6",
+          "startTime": 1784772711947338,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 53557,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "6c7e4f6ff00b6e86",
+          "startTime": 1784772711947760,
+          "tags": {}
+        },
+        {
+          "duration_us": 2698,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "4e55d07d98471e2b",
+          "startTime": 1784772711997178,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:51.947338+00:00",
+      "traceID": "710ac563fc85a52e3177b439fa27105b"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 79,
+          "operation": "grpc.health.v1.Health/Check",
+          "service": "product-reviews",
+          "spanID": "88732913cd0e6ad7",
+          "startTime": 1784772711670163,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:51.670163+00:00",
+      "traceID": "ee8e145bc824c0d7e0f5cd9a2f0c68a3"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 33441,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "05e9e7aaf10c5048",
+          "startTime": 1784772710338918,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 32900,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "6575fa395113fb06",
+          "startTime": 1784772710339403,
+          "tags": {}
+        },
+        {
+          "duration_us": 2490,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "5979c264e954ea30",
+          "startTime": 1784772710368615,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:50.338918+00:00",
+      "traceID": "b84f13de44e49fe70b512df44b81f3ff"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 42225,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "fa9d68919d6f6a25",
+          "startTime": 1784772709924028,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 41251,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "47fbadee40ad4a51",
+          "startTime": 1784772709924948,
+          "tags": {}
+        },
+        {
+          "duration_us": 2688,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "31a852defb11dc12",
+          "startTime": 1784772709960658,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:49.924028+00:00",
+      "traceID": "e83a6696311bbc65c710e728718b98fe"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 78,
+          "operation": "grpc.health.v1.Health/Check",
+          "service": "product-reviews",
+          "spanID": "72288741f2bd8948",
+          "startTime": 1784772709657478,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:49.657478+00:00",
+      "traceID": "ea873f3ae4c45d33e16a56d328319d51"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 135736,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "67886d8f50263ffa",
+          "startTime": 1784772709547426,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 131286,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "a082b62d0126136e",
+          "startTime": 1784772709551821,
+          "tags": {}
+        },
+        {
+          "duration_us": 19608,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "d2a8463e87369139",
+          "startTime": 1784772709652877,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:49.547426+00:00",
+      "traceID": "3d46c1322f44ab52000fb91f7b4dc15f"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 148977,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "d41a6950addf2986",
+          "startTime": 1784772709450500,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 138880,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "325f381b990acba5",
+          "startTime": 1784772709460541,
+          "tags": {}
+        },
+        {
+          "duration_us": 2910,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "41212ad2d750bba6",
+          "startTime": 1784772709595025,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:49.450500+00:00",
+      "traceID": "81589642e02043a1849d4fffc7d0e9fc"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 100231,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "6c96cb16fecdff01",
+          "startTime": 1784772708817418,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 93844,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "e7e491a5f4d595a6",
+          "startTime": 1784772708823748,
+          "tags": {}
+        },
+        {
+          "duration_us": 5429,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "ad755609402ef400",
+          "startTime": 1784772708907643,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:48.817418+00:00",
+      "traceID": "fbafd650ad4262b351dc18e95ccf2832"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 54052,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "1da12383e04a84bc",
+          "startTime": 1784772708202003,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 53173,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "a805b85edce727b2",
+          "startTime": 1784772708202749,
+          "tags": {}
+        },
+        {
+          "duration_us": 2820,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "8ecc4f90142c65fa",
+          "startTime": 1784772708251760,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:48.202003+00:00",
+      "traceID": "ff429fedcc77335f3373c47075aa09fc"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 65997,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "6361b312624f1a3d",
+          "startTime": 1784772708075971,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 57511,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "1510d1cc7970b69d",
+          "startTime": 1784772708084418,
+          "tags": {}
+        },
+        {
+          "duration_us": 2749,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "e36bd6f33542dc88",
+          "startTime": 1784772708137946,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:48.075971+00:00",
+      "traceID": "e6e523dd5d9b85f1d34d6aca5e49fbda"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 36658,
+          "operation": "oteldemo.ProductReviewService/GetProductReviews",
+          "service": "product-reviews",
+          "spanID": "1b91eab3f063089c",
+          "startTime": 1784772708031659,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        },
+        {
+          "duration_us": 36098,
+          "operation": "get_product_reviews",
+          "service": "product-reviews",
+          "spanID": "ffab832a47ef6a3d",
+          "startTime": 1784772708032167,
+          "tags": {}
+        },
+        {
+          "duration_us": 3136,
+          "operation": "otel",
+          "service": "product-reviews",
+          "spanID": "1e1a9d93f9d59479",
+          "startTime": 1784772708063374,
+          "tags": {}
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:48.031659+00:00",
+      "traceID": "2d2533d60bd2e3c49488f06d0ee2e8d4"
+    },
+    {
+      "spans": [
+        {
+          "duration_us": 65,
+          "operation": "grpc.health.v1.Health/Check",
+          "service": "product-reviews",
+          "spanID": "ffcf4585e406a929",
+          "startTime": 1784772707659645,
+          "tags": {
+            "rpc.grpc.status_code": 0
+          }
+        }
+      ],
+      "start_utc": "2026-07-23T02:11:47.659645+00:00",
+      "traceID": "0de15c9f20d55eef0c825feb9cdf622d"
+    }
+  ],
+  "window": "last 30 minutes"
+}

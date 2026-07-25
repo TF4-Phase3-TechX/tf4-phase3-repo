@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780">
+  <rect width="1400" height="780" fill="#08111f"/>
+  <rect x="44" y="42" width="1312" height="696" rx="22" fill="#0d1b2a" stroke="#263c54" stroke-width="2"/>
+  <text x="84" y="105" fill="#e8f1fb" font-family="Arial, sans-serif" font-size="34" font-weight="700">MANDATE-12 · Đòn 2 — S3 GetObject captured</text>
+  <rect x="1110" y="70" width="180" height="58" rx="29" fill="#113b2a" stroke="#35d07f" stroke-width="2"/>
+  <text x="1200" y="108" text-anchor="middle" fill="#6ff0aa" font-family="Arial, sans-serif" font-size="26" font-weight="700">PASS</text>
+  <line x1="84" y1="145" x2="1316" y2="145" stroke="#263c54" stroke-width="2"/>
+  <g font-family="Menlo, Consolas, monospace" font-size="22">
+    <text x="84" y="205" fill="#7f9db9">eventTime</text><text x="370" y="205" fill="#ffffff">2026-07-21T10:19:47Z</text>
+    <text x="84" y="252" fill="#7f9db9">eventName</text><text x="370" y="252" fill="#6ff0aa">GetObject</text>
+    <text x="84" y="299" fill="#7f9db9">eventCategory</text><text x="370" y="299" fill="#ffffff">Data</text>
+    <text x="84" y="346" fill="#7f9db9">readOnly</text><text x="370" y="346" fill="#ffffff">true</text>
+    <text x="84" y="393" fill="#7f9db9">actor</text><text x="370" y="393" fill="#ffffff">AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze / truc.le</text>
+    <text x="84" y="440" fill="#7f9db9">bucket</text><text x="370" y="440" fill="#ffffff">tf4-cloudtrail-logs-bucket-511825856493</text>
+    <text x="84" y="487" fill="#7f9db9">objectKey</text><text x="370" y="487" fill="#ffffff">AWSLogs/.../20260721T0000Z_LevFxwnpSaV3V4Vv.json.gz</text>
+    <text x="84" y="534" fill="#7f9db9">eventID</text><text x="370" y="534" fill="#ffffff">1a7cc2b6-5d32-4d5f-9a0f-17b3e08d5893</text>
+    <text x="84" y="581" fill="#7f9db9">CW timestamp</text><text x="370" y="581" fill="#ffffff">2026-07-21 10:25:01.065Z</text>
+    <text x="84" y="628" fill="#7f9db9">observed latency</text><text x="370" y="628" fill="#ffc857">~5m 14s</text>
+  </g>
+  <rect x="84" y="664" width="1232" height="44" rx="8" fill="#10283a"/>
+  <text x="104" y="693" fill="#a9c1d8" font-family="Arial, sans-serif" font-size="18">Runtime evidence snapshot · CloudWatch Logs Insights query 70a2c6c1-170a-41ef-b323-f514b3b8784f · source IP intentionally redacted</text>
+</svg>

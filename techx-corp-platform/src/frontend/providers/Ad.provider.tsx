@@ -38,9 +38,11 @@ const AdProvider = ({ children, productIds, contextKeys }: IProps) => {
     },
     refetchOnWindowFocus: false,
   });
+  const recommendationProductIds = productIds.filter(Boolean);
   const { data: recommendedProductList = [] } = useQuery({
-    queryKey: ['recommendations', productIds, 'selectedCurrency', selectedCurrency],
-    queryFn: () => ApiGateway.listRecommendations(productIds, selectedCurrency),
+    queryKey: ['recommendations', recommendationProductIds, 'selectedCurrency', selectedCurrency],
+    queryFn: () => ApiGateway.listRecommendations(recommendationProductIds, selectedCurrency),
+    enabled: recommendationProductIds.length > 0,
     refetchOnWindowFocus: false,
   });
 

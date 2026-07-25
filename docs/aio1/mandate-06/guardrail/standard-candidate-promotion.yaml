@@ -1,0 +1,105 @@
+schema_version: 1
+change_id: M06-GUARDRAIL-STANDARD-V2
+scope: standard_tier_plus_one_measured_semantic_topic
+
+reason:
+  recorded_miss: direct-attack-09
+  observation: Standard-only evaluation Guardrail h2za64pyoh1i version 1 did not intervene in either ApplyGuardrail or exact Converse.
+  corrective_delta: Add exactly one Standard DENY topic named PromptInjectionAndHiddenInstructionRequests.
+  calibration: Evaluation version 2 blocked all 15 curated attacks but only 54 of 60 generated variants; the same topic was tuned against those recorded failures without changing the dataset or gates.
+  limitation: The model returned the safe insufficient-information response in the recorded Converse miss, but that is not a Guardrail intervention.
+
+invariants:
+  - The candidate preserves the v1 content-filter strengths, four PII rules and blocked messages.
+  - Expected policy differences are the STANDARD content-filter tier, US cross-Region profile, and exactly one measured Standard semantic DENY topic.
+  - Production Guardrail wckqh9dms6qa version 1 remains immutable and is never deleted; its DRAFT may be updated only after evaluation version 3 passes.
+  - The application model, prompt contract, local filter and output mode do not change in the AWS policy promotion.
+  - Contextual grounding and additional PII entities remain deferred to separately measured changes.
+
+aws:
+  source_region: us-east-1
+  model_profile: us.amazon.nova-2-lite-v1:0
+  model_destination_regions: [us-east-1, us-east-2, us-west-2]
+  guardrail_profile:
+    id: us.guardrail.v1:0
+    destination_regions: [us-east-1, us-east-2, us-west-2]
+
+evaluation:
+  account_id: "589077667575"
+  guardrail_id: h2za64pyoh1i
+  guardrail_arn: arn:aws:bedrock:us-east-1:589077667575:guardrail/h2za64pyoh1i
+  historical_standard_only_version: "1"
+  historical_standard_only_result: FAIL_PROMPT_ATTACK_INTERVENTION
+  historical_semantic_topic_version: "2"
+  historical_semantic_topic_result: FAIL_GENERATED_VARIANT_GATE_54_OF_60
+  target_version: "3"
+  target_status: READY
+  evaluator_role_name: tf4-m06-standard-guardrail-evaluator
+  evidence: docs/aio1/mandate-06/guardrail/evaluation-standard-v3-evidence.json
+  apply_report: docs/aio1/mandate-06/eval/guardrail_hardening/apply-report-eval-h2za64pyoh1i-v3.json
+  apply_result: PASS_15_OF_15_CURATED_58_OF_60_VARIANTS_0_OF_25_BENIGN_BLOCKED
+  converse_report: docs/aio1/mandate-06/eval/guardrail_hardening/converse-report-eval-h2za64pyoh1i-v3-final.json
+  converse_result: PASS_5_OF_5_REGEX_BYPASS_ATTACKS_5_OF_5_BENIGN
+
+production:
+  account_id: "511825856493"
+  guardrail_id: wckqh9dms6qa
+  guardrail_arn: arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa
+  rollback_version: "1"
+  expected_target_version: "2"
+  target_version_must_be_verified_before_publish: true
+  gitops_values_source: deploy/values-aio-llm.yaml
+  deletion_forbidden: true
+
+candidate:
+  canonical_input: docs/aio1/mandate-06/guardrail/create-standard-candidate-v2.json
+  required_content_filter_tier: STANDARD
+  required_topic_tier: STANDARD
+  required_topic_name: PromptInjectionAndHiddenInstructionRequests
+  required_topic_count: 1
+  required_guardrail_profile: us.guardrail.v1:0
+  required_utf8_example_locales: [en, vi, fr, es, id]
+
+iam:
+  cdo_deployer_template: docs/aio1/mandate-06/iam/cdo-standard-guardrail-deployer.template.json
+  evaluator_template: docs/aio1/mandate-06/iam/evaluator-standard-candidate.template.json
+  runtime_transition_template: docs/aio1/mandate-06/iam/runtime-policy-standard-transition.template.json
+  production_transition_allowed_guardrails:
+    - arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa:1
+    - arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa:2
+  access_analyzer_required: true
+
+gitops:
+  repository: TF4-Phase3-TechX/tf4-phase3-gitops-manifests
+  production_values_target: environments/production/app-values.yaml
+  candidate_values_template: docs/aio1/mandate-06/guardrail/gitops-values-standard-candidate.template.yaml
+  parameters:
+    BEDROCK_GUARDRAIL_ID: wckqh9dms6qa
+    BEDROCK_GUARDRAIL_VERSION: "2"
+  only_expected_diff: BEDROCK_GUARDRAIL_VERSION
+
+evaluation_gates:
+  - evaluation_guardrail_h2za64pyoh1i_version_3_ready
+  - utf8_topic_readback_exact
+  - apply_guardrail_100_case_numeric_suite_passes_without_errors
+  - converse_10_case_numeric_suite_passes_without_errors
+  - recorded_direct_attack_09_intervenes
+
+production_gates:
+  - production_latest_version_is_1_before_draft_update
+  - production_draft_matches_canonical_policy
+  - production_version_2_ready
+  - runtime_transition_policy_allows_versions_1_and_2
+  - production_smoke_passes
+  - gitops_diff_changes_only_guardrail_version
+  - named_cdo_owner_aio_witness_security_reviewer_and_rollback_owner
+
+rollback:
+  trigger: any_safety_identity_provider_or_storefront_gate_failure
+  action: revert_gitops_to_wckqh9dms6qa_version_1
+  iam_prerequisite: transition_policy_keeps_versions_1_and_2_allowed
+  guardrail_cleanup: retain_both_numeric_versions_for_forensics
+
+evidence:
+  template: docs/aio1/mandate-06/guardrail/sanitized-standard-candidate-evidence.template.json
+  retention: metadata_only

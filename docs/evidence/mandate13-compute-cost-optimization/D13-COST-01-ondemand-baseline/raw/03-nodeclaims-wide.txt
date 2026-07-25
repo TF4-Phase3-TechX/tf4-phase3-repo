@@ -1,0 +1,4 @@
+NAME                  TYPE        CAPACITY    ZONE         NODE                          READY   AGE    IMAGEID                 ID                                      NODEPOOL        NODECLASS       DRIFTED
+techx-general-2k74s   t3a.large   on-demand   us-east-1b   ip-10-0-11-37.ec2.internal    True    146m   ami-09f62c72654741033   aws:///us-east-1b/i-01aae8ffa93cdb3ec   techx-general   techx-general   
+techx-general-djg4k   t3a.large   on-demand   us-east-1b   ip-10-0-11-217.ec2.internal   True    6d9h   ami-09f62c72654741033   aws:///us-east-1b/i-0b9df4a4ec1d03c16   techx-general   techx-general   
+techx-general-v6zw9   t3a.large   on-demand   us-east-1a   ip-10-0-10-8.ec2.internal     True    136m   ami-09f62c72654741033   aws:///us-east-1a/i-0869b2c204e950346   techx-general   techx-general   

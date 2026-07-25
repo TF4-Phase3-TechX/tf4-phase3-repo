@@ -85,7 +85,8 @@ template:
     imagePullSecrets:
       {{- ((.imageOverride).pullSecrets) | default .defaultValues.image.pullSecrets | toYaml | nindent 6}}
     {{- end }}
-    serviceAccountName: {{ .serviceAccountName | default (include "techx-corp.serviceAccountName" .) }}
+    serviceAccountName: {{ .serviceAccountName | default .name }}
+    automountServiceAccountToken: {{ .automountServiceAccountToken | default false }}
     {{- $schedulingRules := .schedulingRules | default dict }}
     {{- if or .defaultValues.schedulingRules.nodeSelector $schedulingRules.nodeSelector}}
     nodeSelector:

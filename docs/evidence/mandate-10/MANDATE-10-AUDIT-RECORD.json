@@ -1,0 +1,86 @@
+{
+  "recordType": "MANDATE-10-audit-evidence",
+  "owner": "Nguyễn Phú Triệu (CDO-07 Auditability)",
+  "evidenceCollectedAt": "2026-07-21",
+  "repository": "TF4-Phase3-TechX/tf4-phase3-repo",
+  "scope": [
+    "Provenance Chain",
+    "Human Approval Evidence",
+    "main branch protection review"
+  ],
+  "provenanceChain": {
+    "cluster": "techx-tf4-cluster",
+    "clusterStatus": "ACTIVE",
+    "kubernetesVersion": "1.34",
+    "namespace": "techx-tf4",
+    "pod": "currency-858bcdfbc6-pq4rb",
+    "container": "currency",
+    "image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:a930936-currency",
+    "imageDigest": "sha256:663bf6d56564e82cd767233bb70c45df6818a18d64781a7dc37732a4247e791c",
+    "ecrDigestMatch": true,
+    "signatureVerification": "PASS",
+    "cosignExitCode": 0,
+    "oidcIssuer": "https://token.actions.githubusercontent.com",
+    "workflow": "build-and-push",
+    "workflowRef": "refs/heads/main",
+    "githubActionsRunId": "29811592226",
+    "provenanceCommit": "a93093665767a27c40b71e6597b10c1ce20dd702",
+    "sbomKind": "cyclonedx-sbom",
+    "sbomFormat": "CycloneDX",
+    "vulnerabilityCount": 0,
+    "attestationPullRequestNumberPresent": false
+  },
+  "humanApproval": {
+    "pullRequestNumber": 443,
+    "title": "fix(currency): pass otel batch processor runtime options",
+    "state": "closed",
+    "merged": true,
+    "baseBranch": "main",
+    "headSha": "acbd4ac48d977bd13e801d7ca9708aa911f001f7",
+    "mergeCommitSha": "a93093665767a27c40b71e6597b10c1ce20dd702",
+    "commitMatch": true,
+    "mergedBy": "NamHoang4268",
+    "mergedAt": "2026-07-21T07:44:41Z",
+    "url": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/443",
+    "approvals": [
+      {
+        "reviewer": "NamHoang4268",
+        "state": "APPROVED",
+        "submittedAt": "2026-07-21T07:40:58Z",
+        "commitId": "acbd4ac48d977bd13e801d7ca9708aa911f001f7",
+        "reviewUrl": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/443#pullrequestreview-4742342478"
+      },
+      {
+        "reviewer": "Remmusss",
+        "state": "APPROVED",
+        "submittedAt": "2026-07-21T07:42:24Z",
+        "commitId": "acbd4ac48d977bd13e801d7ca9708aa911f001f7",
+        "reviewUrl": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/443#pullrequestreview-4742352476"
+      }
+    ]
+  },
+  "branchProtection": {
+    "ruleset": "main",
+    "branch": "main",
+    "enforcement": "active",
+    "requiredApprovingReviewCount": 2,
+    "requireCodeOwnerReview": true,
+    "requiredStatusChecks": "NOT CONFIGURED",
+    "finding": "Required status checks are not configured for main."
+  },
+  "evidenceImages": [
+    "images/P1-01-cluster-context.png",
+    "images/P1-02-pod-runtime-image-digest.png",
+    "images/P1-03-ecr-digest-match.png",
+    "images/P1-04-cosign-signature-verification.png",
+    "images/P1-05-provenance-attestation-sbom-retake-required.png",
+    "images/H2-01-commit-to-pr.png",
+    "images/H2-02-pr-approval-reviewers.png",
+    "images/H2-03-main-branch-protection.png"
+  ],
+  "findings": [
+    "Required status checks are not configured for main.",
+    "P1-05 screenshot must be recaptured using the correct SBOM vulnerability property.",
+    "The signed attestation does not contain a direct pull_request_number field."
+  ]
+}

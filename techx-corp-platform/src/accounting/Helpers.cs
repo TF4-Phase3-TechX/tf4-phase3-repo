@@ -27,8 +27,21 @@ namespace Accounting
         {
             foreach (var env in envs.OrderBy(x => x.Key))
             {
-                Console.WriteLine(env);
+                Console.WriteLine(FormatEnvironmentVariable(env));
             }
+        }
+
+        private static string FormatEnvironmentVariable(DictionaryEntry env)
+        {
+            var key = env.Key.ToString() ?? "";
+            var value = IsSensitive(key) ? "<redacted>" : env.Value;
+            return $"[{key}, {value}]";
+        }
+
+        private static bool IsSensitive(string key)
+        {
+            var sensitiveMarkers = new[] { "PASSWORD", "SECRET", "TOKEN", "KEY" };
+            return sensitiveMarkers.Any(marker => key.Contains(marker, StringComparison.InvariantCultureIgnoreCase));
         }
     }
 }

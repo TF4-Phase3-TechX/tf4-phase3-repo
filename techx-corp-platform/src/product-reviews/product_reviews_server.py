@@ -6,9 +6,11 @@
 """Product review gRPC service with an application-owned Bedrock safety path."""
 
 from concurrent import futures
+import json
 import logging
 import os
 import random
+import time
 
 import grpc
 from google.protobuf.json_format import MessageToDict
@@ -23,19 +25,25 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 
 from ai_assistant import AssistantOutcome, GroundedAssistant
+from audit_logging import emit_ai_tool_audit, safety_decision_for_outcome
 from bedrock_adapter import BedrockAdapter
+from bedrock_adapter import ProviderFailure
 from database import fetch_avg_product_review_score_from_db, fetch_product_reviews_from_db
 import demo_pb2
 import demo_pb2_grpc
-from metrics import init_metrics
-from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
+from metrics import init_metrics, llm_metric_identity
+from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
+from session_store import session_store
 
 
 logger = logging.getLogger("main")
 tracer = trace.get_tracer("product-reviews")
 product_review_svc_metrics = None
 product_catalog_stub = None
+cart_stub = None
 assistant = None
+
+SEARCH_UNAVAILABLE_RESPONSE = "I can only help you search for products in our catalog."
 
 
 def must_map_env(key: str) -> str:
@@ -61,7 +69,18 @@ class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
     def AskProductAIAssistant(self, request, context):
         # Question content is intentionally absent from logs and trace attributes.
         logger.info("ai_assistant_request", extra={"product_id": request.product_id})
-        return get_ai_assistant_response(request.product_id, request.question)
+        session_id = getattr(request, "session_id", "")
+        user_id = getattr(request, "user_id", "guest") or "guest"
+        return get_ai_assistant_response(request.product_id, request.question, session_id, user_id)
+
+    def SearchProductsAIAssistant(self, request, context):
+        logger.info("nl_search_request")
+        session_id = getattr(request, "session_id", "")
+        user_id = getattr(request, "user_id", "guest") or "guest"
+        return search_products_ai(request.query, session_id, user_id)
+
+    def ConfirmCartAction(self, request, context):
+        return confirm_cart_action(request.user_id, request.session_id, request.confirmation_token)
 
     def Check(self, request, context):
         return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.SERVING)
@@ -98,9 +117,10 @@ def fetch_product_info(product_id: str) -> dict:
     return MessageToDict(product, preserving_proto_field_name=True)
 
 
-def get_ai_assistant_response(request_product_id: str, question: str):
+def get_ai_assistant_response(request_product_id: str, question: str, session_id: str = "", user_id: str = "guest"):
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
         span.set_attribute("app.product.id", request_product_id)
+        span.set_attribute("app.caller.feature", "product_qa")
         # Preserve the BTC-owned incident flags at the application boundary.
         # They exercise safe degradation and output blocking without selecting
         # a mock provider or allowing intentionally inaccurate content through.
@@ -112,7 +132,7 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                 error_class="injected_rate_limit",
             )
         else:
-            outcome = assistant.answer(request_product_id, question)
+            outcome = assistant.answer(request_product_id, question, session_id, user_id)
             if check_feature_flag("llmInaccurateResponse") and request_product_id == "L9ECAV7KIM":
                 outcome = AssistantOutcome(
                     response=INSUFFICIENT_RESPONSE,
@@ -122,8 +142,14 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                     output_tokens=outcome.output_tokens,
                     error_class="injected_inaccurate_response_blocked",
                     quarantined_reviews=outcome.quarantined_reviews,
+                    provider_attempted=outcome.provider_attempted,
                 )
-        attributes = {
+        attributes = llm_metric_identity(
+            os.environ.get("OTEL_SERVICE_NAME", "product-reviews")
+        ) | {
+            # Explicit attribution is part of the app_llm_* metric contract.
+            # Prometheus normalizes these keys to service_name and
+            # llm_operation, allowing AIOps to route incidents per caller.
             "llm.model": assistant.provider.model_id,
             "llm.call": "converse",
             "llm.outcome": outcome.outcome,
@@ -136,8 +162,7 @@ def get_ai_assistant_response(request_product_id: str, question: str):
         span.set_attribute("app.ai.outcome", outcome.outcome)
         span.set_attribute("app.ai.guardrail.version", assistant.provider.guardrail_version)
         product_review_svc_metrics["app_ai_assistant_counter"].add(1, attributes)
-        provider_attempted = outcome.outcome != "blocked" or bool(outcome.error_class)
-        if provider_attempted:
+        if outcome.provider_attempted:
             product_review_svc_metrics["app_llm_call_counter"].add(1, attributes)
             product_review_svc_metrics["app_llm_latency_histogram"].record(outcome.latency_ms / 1_000, attributes)
         product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(outcome.input_tokens, attributes)
@@ -167,7 +192,143 @@ def get_ai_assistant_response(request_product_id: str, question: str):
                 "quarantined_reviews": outcome.quarantined_reviews,
             },
         )
-        return demo_pb2.AskProductAIAssistantResponse(response=outcome.response)
+        if outcome.provider_attempted:
+            emit_ai_tool_audit(
+                logger,
+                surface="product_qa",
+                model_id=assistant.provider.model_id,
+                tool_name="bedrock.converse",
+                safety_decision=safety_decision_for_outcome(outcome.outcome),
+                confirmation_status="not_required",
+            )
+        return demo_pb2.AskProductAIAssistantResponse(
+            response=outcome.response,
+            action_proposal=outcome.action_proposal,
+        )
+
+
+from router import route_search_products_ai
+
+
+def search_products_ai(query: str, session_id: str = "", user_id: str = "guest"):
+    def audit_callback(**event) -> None:
+        # Keep ownership at the server integration boundary so tests and other
+        # transports can replace the emitter without patching router imports.
+        emit_ai_tool_audit(logger, **event)
+
+    return route_search_products_ai(
+        query=query,
+        session_id=session_id,
+        user_id=user_id,
+        assistant=assistant,
+        product_catalog_stub=product_catalog_stub,
+        tracer=tracer,
+        record_metrics_fn=_record_search_metrics,
+        fetch_reviews=fetch_product_reviews_from_db,
+        audit_callback=audit_callback,
+    )
+
+
+def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):
+    """Atomically consume a proposal, then perform the only Copilot cart write."""
+    with tracer.start_as_current_span("confirm_cart_action") as span:
+        try:
+            proposal = session_store.consume_cart_proposal(user_id, session_id, confirmation_token)
+        except (ValueError, RuntimeError):
+            proposal = None
+        if not proposal:
+            span.set_attribute("app.cart.confirmation.outcome", "invalid_or_expired")
+            emit_ai_tool_audit(
+                logger,
+                surface="shopping_copilot",
+                model_id="not_applicable",
+                tool_name="modify_cart",
+                safety_decision="refuse",
+                confirmation_status="rejected",
+            )
+            return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="invalid_or_expired")
+
+        try:
+            cart_stub.AddItem(
+                demo_pb2.AddItemRequest(
+                    user_id=proposal["user_id"],
+                    item=demo_pb2.CartItem(
+                        product_id=proposal["product_id"],
+                        quantity=proposal["quantity"],
+                    ),
+                ),
+                timeout=2.0,
+            )
+        except grpc.RpcError as exc:
+            # The token is intentionally already consumed: retrying below the
+            # confirmation boundary could duplicate a write. The user must ask
+            # for a fresh proposal after a downstream failure.
+            logger.warning("copilot_cart_confirmation_failed", extra={"grpc_code": str(exc.code())})
+            span.set_attribute("app.cart.confirmation.outcome", "downstream_failed")
+            emit_ai_tool_audit(
+                logger,
+                surface="shopping_copilot",
+                model_id="not_applicable",
+                tool_name="modify_cart",
+                safety_decision="allow",
+                confirmation_status="confirmed",
+            )
+            return demo_pb2.ConfirmCartActionResponse(applied=False, outcome="downstream_failed")
+
+        span.set_attribute("app.cart.confirmation.outcome", "applied")
+        span.set_attribute("app.cart.product_id", proposal["product_id"])
+        emit_ai_tool_audit(
+            logger,
+            surface="shopping_copilot",
+            model_id="not_applicable",
+            tool_name="modify_cart",
+            safety_decision="allow",
+            confirmation_status="confirmed",
+        )
+        return demo_pb2.ConfirmCartActionResponse(applied=True, outcome="applied")
+
+
+def _record_search_metrics(
+    *,
+    model_id: str,
+    guardrail_version: str,
+    operation: str = "parse_search_intent",
+    outcome: str,
+    error_class: str | None,
+    latency_ms: float,
+    input_tokens: int,
+    output_tokens: int,
+) -> None:
+    """Update all Prometheus/OTel metrics for a search Bedrock call.
+
+    Mirrors the telemetry block in get_ai_assistant_response() so that search
+    traffic is visible to the same budget-cap alerts (daily/hourly token cost,
+    error rate, latency p95) established for the Q&A path.
+    """
+    attributes = {
+        "llm.model": model_id,
+        "llm.call": operation,
+        "llm.outcome": outcome,
+        "guardrail.version": guardrail_version,
+        "error.class": error_class or "none",
+    }
+    product_review_svc_metrics["app_ai_assistant_counter"].add(1, attributes)
+    # Always count the Bedrock call and record latency/tokens — even on failure —
+    # so cost accounting remains accurate.
+    product_review_svc_metrics["app_llm_call_counter"].add(1, attributes)
+    if latency_ms > 0:
+        product_review_svc_metrics["app_llm_latency_histogram"].record(latency_ms / 1_000, attributes)
+    product_review_svc_metrics["app_llm_prompt_tokens_counter"].add(input_tokens, attributes)
+    product_review_svc_metrics["app_llm_completion_tokens_counter"].add(output_tokens, attributes)
+    estimated_cost = (
+        input_tokens * float(os.environ.get("BEDROCK_INPUT_USD_PER_MILLION", "1"))
+        + output_tokens * float(os.environ.get("BEDROCK_OUTPUT_USD_PER_MILLION", "5"))
+    ) / 1_000_000
+    product_review_svc_metrics["app_llm_estimated_cost_counter"].add(estimated_cost, attributes)
+    if outcome == "unavailable":
+        product_review_svc_metrics["app_ai_fallback_counter"].add(1, attributes)
+        product_review_svc_metrics["app_llm_error_counter"].add(1, attributes)
+
 
 
 def configure_logging(service_name: str) -> None:
@@ -178,7 +339,7 @@ def configure_logging(service_name: str) -> None:
 
 
 def main() -> None:
-    global tracer, product_review_svc_metrics, product_catalog_stub, assistant
+    global tracer, product_review_svc_metrics, product_catalog_stub, cart_stub, assistant
     service_name = must_map_env("OTEL_SERVICE_NAME")
     api.set_provider(
         FlagdProvider(host=os.environ.get("FLAGD_HOST", "flagd"), port=int(os.environ.get("FLAGD_PORT", "8013")))
@@ -189,6 +350,9 @@ def main() -> None:
 
     product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(
         grpc.insecure_channel(must_map_env("PRODUCT_CATALOG_ADDR"))
+    )
+    cart_stub = demo_pb2_grpc.CartServiceStub(
+        grpc.insecure_channel(must_map_env("CART_ADDR"))
     )
     system_canary = os.environ.get("BEDROCK_SYSTEM_CANARY", "")
     provider = BedrockAdapter(
@@ -207,14 +371,22 @@ def main() -> None:
         system_canary=system_canary,
     )
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    # Health runs on its own server/pool so a slow, blocking Bedrock call can't
+    # starve the readiness probe out of a worker thread (see incident 2026-07-22).
+    health_service = ProductReviewService()
+    health_server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+    health_pb2_grpc.add_HealthServicer_to_server(health_service, health_server)
+    health_port = os.environ.get("PRODUCT_REVIEWS_HEALTH_PORT", "3552")
+    health_server.add_insecure_port(f"[::]:{health_port}")
+    health_server.start()
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
     service = ProductReviewService()
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
-    health_pb2_grpc.add_HealthServicer_to_server(service, server)
     port = must_map_env("PRODUCT_REVIEWS_PORT")
     server.add_insecure_port(f"[::]:{port}")
     server.start()
-    logger.info("product_reviews_service_started", extra={"port": port})
+    logger.info("product_reviews_service_started", extra={"port": port, "health_port": health_port})
     server.wait_for_termination()
 
 

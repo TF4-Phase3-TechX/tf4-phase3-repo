@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0",
+  "change_id": "M06-GUARDRAIL-STANDARD-V2",
+  "captured_at_utc": "REPLACE_ISO_8601_UTC",
+  "captured_by_role_arn": "REPLACE_ROLE_ARN_WITHOUT_SESSION_TOKEN",
+  "content_retention": "metadata_only_no_prompts_reviews_responses_or_pii",
+  "source": {
+    "repository": "TF4-Phase3-TechX/tf4-phase3-repo",
+    "git_commit": "REPLACE_40_CHAR_COMMIT",
+    "candidate_config_path": "docs/aio1/mandate-06/guardrail/create-standard-candidate-v2.json",
+    "candidate_config_canonical_sha256": "REPLACE_64_CHAR_SHA256",
+    "promotion_contract_path": "docs/aio1/mandate-06/guardrail/standard-candidate-promotion.yaml"
+  },
+  "aws": {
+    "account_id": "511825856493",
+    "source_region": "us-east-1",
+    "candidate": {
+      "guardrail_id": "wckqh9dms6qa",
+      "guardrail_arn": "arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa",
+      "guardrail_version": "REPLACE_NUMERIC_VERSION",
+      "status": "READY",
+      "name": "tf4-product-reviews-standard-candidate-v2",
+      "content_filter_tier": "STANDARD",
+      "guardrail_profile_id": "us.guardrail.v1:0",
+      "guardrail_profile_arn": "arn:aws:bedrock:us-east-1:511825856493:guardrail-profile/us.guardrail.v1:0",
+      "destination_regions": ["us-east-1", "us-east-2", "us-west-2"]
+    },
+    "rollback": {
+      "guardrail_id": "wckqh9dms6qa",
+      "guardrail_version": "1",
+      "guardrail_arn": "arn:aws:bedrock:us-east-1:511825856493:guardrail/wckqh9dms6qa",
+      "status": "READY",
+      "unchanged_and_not_deleted": true
+    }
+  },
+  "policy_equivalence": {
+    "comparison_method": "normalized_get_guardrail_policy_diff",
+    "expected_differences": [
+      "name",
+      "description",
+      "id_arn_version_and_timestamps",
+      "contentPolicy.tier.tierName",
+      "topicPolicy.tier.tierName",
+      "topicPolicy.topics.PromptInjectionAndHiddenInstructionRequests",
+      "crossRegionDetails"
+    ],
+    "unexpected_difference_count": 0,
+    "sanitized_diff_url": "REPLACE_HTTPS_URL"
+  },
+  "iam": {
+    "runtime_policy_arn": "REPLACE_RUNTIME_POLICY_ARN",
+    "runtime_policy_version": "REPLACE_POLICY_VERSION",
+    "access_analyzer_result": "PASS",
+    "allows_current_guardrail_during_rollback_window": true,
+    "allows_candidate_guardrail": true,
+    "guardrail_profile_regions": ["us-east-1", "us-east-2", "us-west-2"],
+    "validation_evidence_url": "REPLACE_HTTPS_URL"
+  },
+  "evaluation": {
+    "evaluator_role_arn": "REPLACE_EVALUATOR_ROLE_ARN",
+    "apply_guardrail": {
+      "dataset_sha256": "REPLACE_64_CHAR_SHA256",
+      "total_cases": 100,
+      "curated_attack_cases": 15,
+      "generated_attack_variants": 60,
+      "benign_controls": 25,
+      "processed_cases": 0,
+      "error_cases": 0,
+      "curated_block_rate": 0.0,
+      "generated_variant_block_rate": 0.0,
+      "benign_block_count": 0,
+      "report_url": "REPLACE_HTTPS_URL",
+      "result": "REPLACE_PASS_OR_FAIL"
+    },
+    "converse": {
+      "dataset_sha256": "REPLACE_64_CHAR_SHA256",
+      "total_cases": 10,
+      "attack_cases": 5,
+      "benign_controls": 5,
+      "processed_cases": 0,
+      "error_cases": 0,
+      "guardrail_intervened_attack_cases": 0,
+      "guardrail_intervened_benign_cases": 0,
+      "production_payload_match_cases": 0,
+      "local_filter_bypass_attack_cases": 0,
+      "p95_end_to_end_ms": 0.0,
+      "max_end_to_end_ms": 0.0,
+      "locales": ["en", "vi", "fr", "es", "id"],
+      "report_url": "REPLACE_HTTPS_URL",
+      "result": "REPLACE_PASS_OR_FAIL"
+    },
+    "scope_note": "These suites measure INPUT prompt attacks and benign controls; they do not establish a PII or output-leakage result."
+  },
+  "gitops": {
+    "repository": "TF4-Phase3-TechX/tf4-phase3-gitops-manifests",
+    "pull_request_url": "REPLACE_HTTPS_URL",
+    "merged_commit": "REPLACE_40_CHAR_COMMIT",
+    "effective_values_path": "environments/production/app-values.yaml",
+    "diff_only_changes_guardrail_version": true,
+    "argocd_sync_revision": "REPLACE_REVISION",
+    "helm_revision": "REPLACE_REVISION"
+  },
+  "verification": {
+    "deployment_ready": false,
+    "normal_request_passed": false,
+    "adversarial_request_blocked_by_bedrock": false,
+    "provider_error_rate": 0.0,
+    "storefront_slo_passed": false,
+    "raw_content_logged": false,
+    "evidence_url": "REPLACE_HTTPS_URL"
+  },
+  "rollback": {
+    "drill_completed": false,
+    "restored_guardrail_id": "wckqh9dms6qa",
+    "restored_guardrail_version": "1",
+    "recovery_seconds": 0,
+    "evidence_url": "REPLACE_HTTPS_URL"
+  },
+  "signatures": {
+    "cdo_deployment_owner": "REPLACE_NAME",
+    "aio_witness": "REPLACE_NAME",
+    "rollback_owner": "REPLACE_NAME",
+    "security_reviewer": "REPLACE_NAME"
+  }
+}

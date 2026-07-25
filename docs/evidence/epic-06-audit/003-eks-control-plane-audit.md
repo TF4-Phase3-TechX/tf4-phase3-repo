@@ -32,7 +32,7 @@ Evidence này kiểm tra khả năng truy vết một request read-only tới Ku
 | Thuộc tính | Giá trị | Đánh giá |
 | --- | --- | --- |
 | Cluster status | `ACTIVE` | **PASS** |
-| Control plane logs đang bật | `api`, `audit`, `authenticator` | **PASS** |
+| Control plane logs đang bật | `audit`, `authenticator` | **PASS** |
 | CloudWatch log group | `/aws/eks/techx-tf4-cluster/cluster` | **PASS** |
 | Retention | 90 ngày | Ghi nhận |
 | Customer-managed KMS key | Chưa cấu hình | Ngoài phạm vi control này |

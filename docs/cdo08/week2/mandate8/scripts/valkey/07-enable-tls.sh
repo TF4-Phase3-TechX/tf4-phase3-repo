@@ -6,10 +6,10 @@
 # plaintext and TLS clients), only moving to "required" in phase 3 once no
 # client uses plaintext anymore.
 #
-# Usage: 07-enable-tls.sh <1|2|3>
+# Usage: 07-enable-tls.sh <1|2|3|4>
 set -euo pipefail
 
-PHASE="${1:?Usage: 07-enable-tls.sh <1|2|3>}"
+PHASE="${1:?Usage: 07-enable-tls.sh <1|2|3|4>}"
 NAMESPACE="techx-tf4"
 
 case "$PHASE" in
@@ -28,13 +28,22 @@ case "$PHASE" in
     echo "Verify no plaintext connections remain (check cart logs for ssl=false) before phase 3."
     ;;
   3)
-    echo "Phase 3: flip ElastiCache to transit_encryption_mode=required (Terraform)."
-    echo "Requires TF_VALKEY_AUTH_TOKEN GitHub secret set and infra/terraform/elasticache.tf"
-    echo "updated to transit_encryption_mode=\"required\" + auth_token=var.valkey_auth_token."
+    echo "Phase 3: promote ElastiCache transit_encryption_mode=required (Terraform),"
+    echo "without changing AUTH token in the same apply."
+    echo "After this stage converges and Cart is confirmed to connect with"
+    echo "VALKEY_TLS=true, create the AUTH token PR with"
+    echo "auth_token_update_strategy=ROTATE."
     echo "Apply via the terraform-apply pipeline, not directly from this script."
     ;;
+  4)
+    echo "Phase 4: add AUTH token with auth_token_update_strategy=ROTATE (Terraform)."
+    echo "Requires TF_VALKEY_AUTH_TOKEN GitHub secret set; the workflow passes it as"
+    echo "TF_VAR_valkey_auth_token. After this stage converges, verify Cart connects"
+    echo "with VALKEY_TLS=true and VALKEY_PASSWORD, then create a final cleanup PR to"
+    echo "switch auth_token_update_strategy=SET."
+    ;;
   *)
-    echo "Unknown phase: $PHASE (expected 1, 2, or 3)" >&2
+    echo "Unknown phase: $PHASE (expected 1, 2, 3, or 4)" >&2
     exit 1
     ;;
 esac

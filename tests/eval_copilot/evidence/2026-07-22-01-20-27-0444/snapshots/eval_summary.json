@@ -1,0 +1,12 @@
+{
+  "total_cases": 10,
+  "passed_cases": 10,
+  "failed_cases": 0,
+  "pass_rate": 1.0,
+  "faithfulness_rate": 0.9286,
+  "injection_block_rate": 1.0,
+  "out_of_scope_block_rate": 1.0,
+  "total_input_tokens": 18610,
+  "total_output_tokens": 876,
+  "total_estimated_cost_usd": 0.007773
+}

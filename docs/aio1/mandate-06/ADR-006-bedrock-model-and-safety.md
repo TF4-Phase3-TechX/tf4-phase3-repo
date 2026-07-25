@@ -1,10 +1,21 @@
 # ADR-006: Amazon Bedrock model selection and trust/safety boundary
 
 - Date: 2026-07-14
-- Status: **Accepted** (runtime gates passed 2026-07-17; effective when the closure PR receives the named approvals and merges)
-- Owner: Nam
+- Status: **Accepted** (runtime gates passed and closure PR merged 2026-07-17)
+- Owner: Đinh Danh Nam
 - Required approvers: AIO1 Tech Lead, CDO deployment owner, CDO-07 Audit
-- Signatures: recorded through the closure PR reviews; runtime evidence is linked below
+
+## Recorded signatures
+
+Approval is recorded directly here; the reader is not required to reconstruct it from a PR review list.
+
+| Signer | Role | Decision | Date | Reviewed scope / source record |
+|---|---|---|---|---|
+| Đinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead and decision owner | **Approved for merge** | 2026-07-17 | ADR-006, model decision and production evidence at head `8abf298`; [named sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5001632575) |
+| Hoàng Minh Hải (`2hm1901`) | CDO08 deployment evidence reviewer | **Approved** | 2026-07-17 | Generation 22, final workload health, image digest, SLO/provider/application checks and rollback evidence; [review](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#pullrequestreview-4721409299) |
+| Đinh Văn Ty (`anons1811s`) | CDO-07 Audit signer | **Sign-off with evidence-scope limitation** | 2026-07-17 | Metadata-only evidence, retained logs and deployment read-back; [named audit sign-off](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/280#issuecomment-5000507925) |
+
+The CDO-07 signer's GitHub profile does not expose a public full name. The full-name mapping above is retained from the repository's CDO-07 ownership/signatory evidence; the GitHub handle remains beside it so the approval is independently traceable to the original record.
 
 ## Context
 
@@ -103,10 +114,10 @@ Conservative validation can increase insufficient responses. Structured-output s
 | Evidence | Link/status |
 |---|---|
 | Three-model sanitized bake-off | Complete: [`eval/bakeoff-report.json`](eval/bakeoff-report.json), Nova winner |
-| Guardrail version/export | Canary `e2svpiawj1v5:3`; rollback source `wckqh9dms6qa:1`; templates committed |
+| Guardrail version/export | Production/canary `wckqh9dms6qa:1`; legacy evaluation `e2svpiawj1v5:3`; Standard hardening evaluation `h2za64pyoh1i:3`; templates committed |
 | Canary/SLO/telemetry | Complete: [runtime acceptance record](runtime-acceptance-2026-07-17.md), [GitOps evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/22#issuecomment-4998938865) |
 | Rollback drill | Complete: [actual rollback evidence](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/16#issuecomment-4998935068) |
 | Mentor/application-path record | Complete: grounded, unsupported, injection, action, PII and failure paths in the [runtime record](runtime-acceptance-2026-07-17.md) |
-| Nam / Tech Lead | Closure PR approval required |
-| CDO deployment owner | Closure PR approval required |
-| CDO-07 Audit | Closure PR approval required |
+| Đinh Danh Nam / AIO1 Tech Lead | Approved 2026-07-17; direct signature recorded above |
+| Hoàng Minh Hải (`2hm1901`) / CDO08 deployment evidence reviewer | Approved 2026-07-17; direct signature recorded above |
+| Đinh Văn Ty (`anons1811s`) / CDO-07 Audit | Signed off with evidence-scope limitation 2026-07-17; direct signature recorded above |

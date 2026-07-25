@@ -12,8 +12,11 @@ use tracing::info;
 
 use super::shipping_types::Quote;
 
-pub async fn create_quote_from_count(count: u32) -> Result<Quote, tonic::Status> {
-    let f = match request_quote(count).await {
+pub async fn create_quote_from_count(
+    client: &awc::Client,
+    count: u32,
+) -> Result<Quote, tonic::Status> {
+    let f = match request_quote(client, count).await {
         Ok(float) => float,
         Err(err) => {
             let msg = format!("{}", err);
@@ -36,10 +39,7 @@ pub async fn create_quote_from_count(count: u32) -> Result<Quote, tonic::Status>
     }))
 }
 
-async fn request_quote(count: u32) -> Result<f64, anyhow::Error> {
-    let client = awc::ClientBuilder::new()
-        .timeout(std::time::Duration::from_secs(2))
-        .finish();
+async fn request_quote(client: &awc::Client, count: u32) -> Result<f64, anyhow::Error> {
     let quote_service_addr: String = format!(
         "{}{}",
         env::var("QUOTE_ADDR")

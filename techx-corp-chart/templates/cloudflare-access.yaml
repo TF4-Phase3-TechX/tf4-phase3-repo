@@ -1,0 +1,96 @@
+{{- if .Values.cloudflareAccess.enabled -}}
+{{- $name := "cloudflared" -}}
+{{- $namespace := .Values.cloudflareAccess.namespace | default .Release.Namespace -}}
+{{- $metricsPort := .Values.cloudflareAccess.metrics.port | default 2000 -}}
+{{- if .Values.cloudflareAccess.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: cloudflared
+    app.kubernetes.io/component: private-access
+    app.kubernetes.io/part-of: techx-corp
+---
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: cloudflared
+    app.kubernetes.io/component: private-access
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: cloudflared
+    app.kubernetes.io/component: private-access
+    app.kubernetes.io/part-of: techx-corp
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.cloudflareAccess.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudflared
+      app.kubernetes.io/component: private-access
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cloudflared
+        app.kubernetes.io/component: private-access
+        app.kubernetes.io/part-of: techx-corp
+    spec:
+      serviceAccountName: {{ $name }}
+      containers:
+        - name: cloudflared
+          image: "{{ .Values.cloudflareAccess.image.repository }}:{{ .Values.cloudflareAccess.image.tag }}"
+          imagePullPolicy: {{ .Values.cloudflareAccess.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --loglevel
+            - info
+            - --metrics
+            - 0.0.0.0:{{ $metricsPort }}
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.cloudflareAccess.tokenSecret.name }}
+                  key: {{ .Values.cloudflareAccess.tokenSecret.key }}
+          ports:
+            - name: metrics
+              containerPort: {{ $metricsPort }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.cloudflareAccess.resources | nindent 12 }}
+{{- end }}

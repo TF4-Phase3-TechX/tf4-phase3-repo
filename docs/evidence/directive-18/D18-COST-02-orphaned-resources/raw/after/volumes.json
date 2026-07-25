@@ -1,0 +1,693 @@
+﻿{
+    "Volumes": [
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 100,
+            "Tags": [
+                {
+                    "Key": "kubernetes.io/created-for/pvc/name",
+                    "Value": "valkey-cart-pvc"
+                },
+                {
+                    "Key": "KubernetesCluster",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/namespace",
+                    "Value": "techx-tf4"
+                },
+                {
+                    "Key": "CSIVolumeName",
+                    "Value": "pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pv/name",
+                    "Value": "pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "techx-tf4-cluster-dynamic-pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster",
+                    "Value": "true"
+                }
+            ],
+            "VolumeType": "gp2",
+            "MultiAttachEnabled": false,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-0878313d6b2957e96",
+            "Size": 5,
+            "SnapshotId": "",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-14T16:07:55.688000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": false,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-0878313d6b2957e96",
+                    "InstanceId": "i-01b00d955a0af0fac",
+                    "Device": "/dev/xvdaa",
+                    "State": "attached",
+                    "AttachTime": "2026-07-16T04:07:04+00:00"
+                }
+            ],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az2",
+            "Iops": 3000,
+            "Tags": [
+                {
+                    "Key": "eks:eks-cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "karpenter.k8s.aws/ec2nodeclass",
+                    "Value": "techx-general"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "TF4"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "karpenter.sh/discovery",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "karpenter.sh/nodepool",
+                    "Value": "techx-general"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "Phase3"
+                }
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": false,
+            "Throughput": 125,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-0b51a922d243e2ba9",
+            "Size": 20,
+            "SnapshotId": "snap-0e97948f244aeaf2c",
+            "AvailabilityZone": "us-east-1b",
+            "State": "in-use",
+            "CreateTime": "2026-07-16T03:57:12.062000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": true,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-0b51a922d243e2ba9",
+                    "InstanceId": "i-0b9df4a4ec1d03c16",
+                    "Device": "/dev/xvda",
+                    "State": "attached",
+                    "AttachTime": "2026-07-16T03:57:12+00:00"
+                }
+            ],
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:511825856493:key/939a7c56-230e-4117-a253-e421d3393d6f"
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 3000,
+            "Tags": [
+                {
+                    "Key": "Environment",
+                    "Value": "Phase3"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "eks:eks-cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "karpenter.k8s.aws/ec2nodeclass",
+                    "Value": "techx-general"
+                },
+                {
+                    "Key": "karpenter.sh/discovery",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "TF4"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "karpenter.sh/nodepool",
+                    "Value": "techx-general"
+                }
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": false,
+            "Throughput": 125,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-06c54018d04572ff2",
+            "Size": 20,
+            "SnapshotId": "snap-0e97948f244aeaf2c",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-18T19:57:33.250000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": true,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-06c54018d04572ff2",
+                    "InstanceId": "i-0662168fdb18c47d4",
+                    "Device": "/dev/xvda",
+                    "State": "attached",
+                    "AttachTime": "2026-07-18T19:57:33+00:00"
+                }
+            ],
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:511825856493:key/939a7c56-230e-4117-a253-e421d3393d6f"
+        },
+        {
+            "AvailabilityZoneId": "use1-az2",
+            "Iops": 3000,
+            "Tags": [
+                {
+                    "Key": "eks:nodegroup-name",
+                    "Value": "techx-general-ng-20260707091432750200000017"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "Phase3"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "techx-general-ng"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "TF4"
+                },
+                {
+                    "Key": "eks:cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "CDO_04"
+                }
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": false,
+            "Throughput": 125,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-033296b104ab73e9f",
+            "Size": 20,
+            "SnapshotId": "snap-08991289be8ee9623",
+            "AvailabilityZone": "us-east-1b",
+            "State": "in-use",
+            "CreateTime": "2026-07-09T01:54:32.670000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": true,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-033296b104ab73e9f",
+                    "InstanceId": "i-0825abf366929a005",
+                    "Device": "/dev/xvda",
+                    "State": "attached",
+                    "AttachTime": "2026-07-09T01:54:32+00:00"
+                }
+            ],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 100,
+            "Tags": [
+                {
+                    "Key": "CSIVolumeName",
+                    "Value": "pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster",
+                    "Value": "true"
+                },
+                {
+                    "Key": "KubernetesCluster",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "techx-tf4-cluster-dynamic-pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/namespace",
+                    "Value": "techx-tf4"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pv/name",
+                    "Value": "pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/name",
+                    "Value": "postgresql-pvc"
+                }
+            ],
+            "VolumeType": "gp2",
+            "MultiAttachEnabled": false,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-0cb8c31ac039d6597",
+            "Size": 10,
+            "SnapshotId": "",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-13T14:25:14.927000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": false,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-0cb8c31ac039d6597",
+                    "InstanceId": "i-01b00d955a0af0fac",
+                    "Device": "/dev/xvdab",
+                    "State": "attached",
+                    "AttachTime": "2026-07-16T09:44:50+00:00"
+                }
+            ],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 100,
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "techx-tf4-cluster-dynamic-pvc-765efb99-68d1-42d1-8002-943b1308cf2e"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pv/name",
+                    "Value": "pvc-765efb99-68d1-42d1-8002-943b1308cf2e"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/namespace",
+                    "Value": "techx-observability"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/name",
+                    "Value": "postgresql-pvc"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "CSIVolumeName",
+                    "Value": "pvc-765efb99-68d1-42d1-8002-943b1308cf2e"
+                },
+                {
+                    "Key": "KubernetesCluster",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster",
+                    "Value": "true"
+                }
+            ],
+            "VolumeType": "gp2",
+            "MultiAttachEnabled": false,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-0ce59bf32f9aea7d5",
+            "Size": 10,
+            "SnapshotId": "",
+            "AvailabilityZone": "us-east-1a",
+            "State": "available",
+            "CreateTime": "2026-07-14T22:06:40.832000+00:00",
+            "Attachments": [],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 3000,
+            "Tags": [
+                {
+                    "Key": "CSIVolumeName",
+                    "Value": "pvc-efca0cc7-6cb1-4793-8864-d4c6e46a2fe7"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/name",
+                    "Value": "prometheus"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pv/name",
+                    "Value": "pvc-efca0cc7-6cb1-4793-8864-d4c6e46a2fe7"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster",
+                    "Value": "true"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "KubernetesCluster",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "techx-tf4-cluster-dynamic-pvc-efca0cc7-6cb1-4793-8864-d4c6e46a2fe7"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/namespace",
+                    "Value": "techx-observability"
+                }
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": false,
+            "Throughput": 125,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-051c0352bdfaceb5d",
+            "Size": 20,
+            "SnapshotId": "",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-16T16:33:38.285000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": false,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-051c0352bdfaceb5d",
+                    "InstanceId": "i-01b00d955a0af0fac",
+                    "Device": "/dev/xvdac",
+                    "State": "attached",
+                    "AttachTime": "2026-07-16T16:33:42+00:00"
+                }
+            ],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 3000,
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "techx-general-ng"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "TF4"
+                },
+                {
+                    "Key": "eks:nodegroup-name",
+                    "Value": "techx-general-ng-20260707091432750200000017"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "Phase3"
+                },
+                {
+                    "Key": "eks:cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "CDO_04"
+                }
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": false,
+            "Throughput": 125,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-06b2fca3a888feece",
+            "Size": 20,
+            "SnapshotId": "snap-08991289be8ee9623",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-09T01:54:32.440000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": true,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-06b2fca3a888feece",
+                    "InstanceId": "i-01b00d955a0af0fac",
+                    "Device": "/dev/xvda",
+                    "State": "attached",
+                    "AttachTime": "2026-07-09T01:54:32+00:00"
+                }
+            ],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 3000,
+            "Tags": [
+                {
+                    "Key": "Team",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "Phase3"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "CDO_04"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "TF4"
+                }
+            ],
+            "VolumeType": "gp3",
+            "MultiAttachEnabled": false,
+            "Throughput": 125,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-066beb21b3874e4fb",
+            "Size": 30,
+            "SnapshotId": "snap-030b04a4190eef497",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-21T01:41:49.799000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": true,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-066beb21b3874e4fb",
+                    "InstanceId": "i-0e2c3215e01b857af",
+                    "Device": "/dev/xvda",
+                    "State": "attached",
+                    "AttachTime": "2026-07-21T01:41:49+00:00"
+                }
+            ],
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:511825856493:key/939a7c56-230e-4117-a253-e421d3393d6f"
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "Iops": 100,
+            "Tags": [
+                {
+                    "Key": "ebs.csi.aws.com/cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pv/name",
+                    "Value": "pvc-cb14ee85-b485-439e-b407-9ab1f76eb1dc"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster",
+                    "Value": "true"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "techx-tf4-cluster-dynamic-pvc-cb14ee85-b485-439e-b407-9ab1f76eb1dc"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/name",
+                    "Value": "kafka-pvc"
+                },
+                {
+                    "Key": "CSIVolumeName",
+                    "Value": "pvc-cb14ee85-b485-439e-b407-9ab1f76eb1dc"
+                },
+                {
+                    "Key": "KubernetesCluster",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/namespace",
+                    "Value": "techx-tf4"
+                }
+            ],
+            "VolumeType": "gp2",
+            "MultiAttachEnabled": false,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-01a7d9f5b6270c06d",
+            "Size": 10,
+            "SnapshotId": "",
+            "AvailabilityZone": "us-east-1a",
+            "State": "in-use",
+            "CreateTime": "2026-07-14T16:07:57.262000+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": false,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-01a7d9f5b6270c06d",
+                    "InstanceId": "i-01b00d955a0af0fac",
+                    "Device": "/dev/xvdad",
+                    "State": "attached",
+                    "AttachTime": "2026-07-18T19:58:27+00:00"
+                }
+            ],
+            "Encrypted": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az2",
+            "Iops": 120,
+            "Tags": [
+                {
+                    "Key": "ebs.csi.aws.com/cluster",
+                    "Value": "true"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/name",
+                    "Value": "opensearch-opensearch-0"
+                },
+                {
+                    "Key": "KubernetesCluster",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "kubernetes.io/cluster/techx-tf4-cluster",
+                    "Value": "owned"
+                },
+                {
+                    "Key": "CSIVolumeName",
+                    "Value": "pvc-233c6ad3-c964-4032-816c-4a38d720f0f1"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pv/name",
+                    "Value": "pvc-233c6ad3-c964-4032-816c-4a38d720f0f1"
+                },
+                {
+                    "Key": "kubernetes.io/created-for/pvc/namespace",
+                    "Value": "techx-observability"
+                },
+                {
+                    "Key": "ebs.csi.aws.com/cluster-name",
+                    "Value": "techx-tf4-cluster"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "techx-tf4-cluster-dynamic-pvc-233c6ad3-c964-4032-816c-4a38d720f0f1"
+                }
+            ],
+            "VolumeType": "gp2",
+            "MultiAttachEnabled": false,
+            "Operator": {
+                "Managed": false,
+                "HiddenByDefault": false
+            },
+            "VolumeId": "vol-0024e483121338f0e",
+            "Size": 40,
+            "SnapshotId": "",
+            "AvailabilityZone": "us-east-1b",
+            "State": "in-use",
+            "CreateTime": "2026-07-13T12:11:54+00:00",
+            "Attachments": [
+                {
+                    "DeleteOnTermination": false,
+                    "EbsCardIndex": 0,
+                    "VolumeId": "vol-0024e483121338f0e",
+                    "InstanceId": "i-0b9df4a4ec1d03c16",
+                    "Device": "/dev/xvdaa",
+                    "State": "attached",
+                    "AttachTime": "2026-07-16T03:58:00+00:00"
+                }
+            ],
+            "Encrypted": false
+        }
+    ]
+}

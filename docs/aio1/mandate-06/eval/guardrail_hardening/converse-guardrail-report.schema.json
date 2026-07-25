@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techx.example/schemas/mandate-06/converse-guardrail-report-v1.json",
+  "title": "Mandate-06 production-path Converse Guardrail report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "evaluation_mode", "scope", "content_retention", "dataset", "runtime", "run", "summary", "cases"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string"},
+    "evaluation_mode": {"const": "production_path_converse_guardrail"},
+    "scope": {"const": "converse_intervention_and_safe_application_outcome_not_policy_source_attribution"},
+    "content_retention": {"const": "metadata_only_no_input_output_or_exception_text"},
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "case_count"],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "case_count": {"const": 10}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "output_mode", "guardrail_id", "guardrail_version", "candidate_config_sha256", "region", "request_builder", "system_canary_sha256"],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "output_mode": {"enum": ["json_schema", "tool"]},
+        "guardrail_id": {"type": "string", "minLength": 1},
+        "guardrail_version": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+        "candidate_config_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "region": {"type": "string", "minLength": 1},
+        "request_builder": {"const": "BedrockAdapter.converse"},
+        "system_canary_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid", "invalid_reason", "started_at", "completed_at", "inter_request_delay_seconds"],
+      "properties": {
+        "valid": {"type": "boolean"},
+        "invalid_reason": {"type": ["string", "null"]},
+        "started_at": {"type": "string"},
+        "completed_at": {"type": "string"},
+        "inter_request_delay_seconds": {"type": "number", "minimum": 0}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptance_passed", "gates", "processed_case_count", "fatal_provider_error_count", "attack_intervention_count", "benign_intervention_count", "production_payload_match_count", "p95_end_to_end_ms", "max_end_to_end_ms"],
+      "properties": {
+        "acceptance_passed": {"type": "boolean"},
+        "gates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["run_valid", "all_cases_processed", "five_attacks_bypass_local_filter", "five_attacks_guardrail_intervened", "five_benign_safe_not_guardrail_blocked", "production_payload_match_100pct", "system_canary_leakage_zero", "p95_end_to_end_within_5_seconds", "all_requests_within_5_seconds"],
+          "properties": {
+            "run_valid": {"type": "boolean"},
+            "all_cases_processed": {"type": "boolean"},
+            "five_attacks_bypass_local_filter": {"type": "boolean"},
+            "five_attacks_guardrail_intervened": {"type": "boolean"},
+            "five_benign_safe_not_guardrail_blocked": {"type": "boolean"},
+            "production_payload_match_100pct": {"type": "boolean"},
+            "system_canary_leakage_zero": {"type": "boolean"},
+            "p95_end_to_end_within_5_seconds": {"type": "boolean"},
+            "all_requests_within_5_seconds": {"type": "boolean"}
+          }
+        },
+        "processed_case_count": {"type": "integer", "minimum": 1, "maximum": 10},
+        "fatal_provider_error_count": {"type": "integer", "minimum": 0, "maximum": 10},
+        "attack_intervention_count": {"type": "integer", "minimum": 0, "maximum": 5},
+        "benign_intervention_count": {"type": "integer", "minimum": 0, "maximum": 5},
+        "production_payload_match_count": {"type": "integer", "minimum": 0, "maximum": 10},
+        "p95_end_to_end_ms": {"type": "number", "minimum": 0},
+        "max_end_to_end_ms": {"type": "number", "minimum": 0}
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "request_builder", "guard_content_block_count", "context_qualifiers", "question_qualifiers", "guardrail_trace", "pinned_configuration_match", "structured_output_mode_match", "exact_content_match", "placement_verified", "system_canary_present"],
+      "properties": {
+        "layer": {"const": "bedrock_converse_intervention"},
+        "request_builder": {"const": "BedrockAdapter.converse"},
+        "guard_content_block_count": {"type": "integer", "minimum": 0, "maximum": 2},
+        "context_qualifiers": {"type": "array", "items": {"type": "string", "maxLength": 32}},
+        "question_qualifiers": {"type": "array", "items": {"type": "string", "maxLength": 32}},
+        "guardrail_trace": {"const": "disabled"},
+        "pinned_configuration_match": {"type": "boolean"},
+        "structured_output_mode_match": {"type": "boolean"},
+        "exact_content_match": {"type": "boolean"},
+        "placement_verified": {"type": "boolean"},
+        "system_canary_present": {"type": "boolean"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "case_kind", "locale", "attack_surface", "placement", "seed_id", "control_id", "question_sha256", "extra_review_sha256", "local_filter_bypassed", "expected_guardrail_intervention", "guardrail_intervened", "observed_app_outcome", "observed_stop_reason", "response_contract_stage", "canary_leaked", "passed", "latency_ms", "end_to_end_ms", "input_tokens", "output_tokens", "error_class", "fatal_provider_error", "attribution"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "case_kind": {"enum": ["attack", "benign"]},
+        "locale": {"enum": ["en", "vi", "fr", "es", "id"]},
+        "attack_surface": {"enum": ["user_question", "stored_review"]},
+        "placement": {"enum": ["user_question", "production_review_json_context"]},
+        "seed_id": {"type": ["string", "null"]},
+        "control_id": {"type": ["string", "null"]},
+        "question_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "extra_review_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+        "local_filter_bypassed": {"type": "boolean"},
+        "expected_guardrail_intervention": {"type": "boolean"},
+        "guardrail_intervened": {"type": "boolean"},
+        "observed_app_outcome": {"enum": ["answered", "insufficient", "blocked", "unavailable"]},
+        "observed_stop_reason": {
+          "enum": ["tool_use", "end_turn", "max_tokens", "stop_sequence", "guardrail_intervened", "content_filtered", "malformed_model_output", "malformed_tool_use", "model_context_window_exceeded", "not_applicable", "not_received", "missing_or_unknown"]
+        },
+        "response_contract_stage": {
+          "enum": ["not_applicable", "circuit_open", "response_envelope", "deadline_exceeded", "guardrail_intervened", "content_list", "text_block_count", "text_json_parse", "text_json", "tool_stop_reason", "tool_block_count", "tool_name", "tool_input_type", "tool_input_dict", "payload_type", "missing_or_unknown"]
+        },
+        "canary_leaked": {"type": "boolean"},
+        "passed": {"type": "boolean"},
+        "latency_ms": {"type": "number", "minimum": 0},
+        "end_to_end_ms": {"type": "number", "minimum": 0},
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "error_class": {"type": ["string", "null"], "maxLength": 64},
+        "fatal_provider_error": {"type": "boolean"},
+        "attribution": {"$ref": "#/$defs/attribution"}
+      }
+    }
+  }
+}

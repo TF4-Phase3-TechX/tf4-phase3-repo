@@ -10,7 +10,7 @@ RG_ID="techx-tf4-valkey-cart"
 echo "Completing migration for $RG_ID (promoting ElastiCache to primary) ..."
 aws elasticache complete-migration \
   --replication-group-id "$RG_ID" \
-  --force false
+  --no-force
 
 aws elasticache describe-replication-groups --replication-group-id "$RG_ID" \
   --query 'ReplicationGroups[0].Status' --output text

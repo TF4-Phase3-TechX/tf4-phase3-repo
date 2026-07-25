@@ -4,17 +4,21 @@
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import { useMutation, MutateOptions } from '@tanstack/react-query';
 import ApiGateway from '../gateways/Api.gateway';
+import SessionGateway from '../gateways/Session.gateway';
+import { v4 } from 'uuid';
 
 export interface AiRequestPayload {
     question: string;
 }
 
-export type AiResponse = { text: string } | string;
+export type AiResponse = { response?: string; text?: string; actionProposal?: any } | string;
 
 interface AiAssistantContextValue {
     aiResponse: AiResponse | null;
     aiLoading: boolean;
     aiError: Error | null;
+    sessionId: string;
+    userId: string;
     sendAiRequest: (
         payload: AiRequestPayload,
         options?: MutateOptions<AiResponse, Error, AiRequestPayload, unknown>
@@ -26,6 +30,8 @@ const Context = createContext<AiAssistantContextValue>({
     aiResponse: null,
     aiLoading: false,
     aiError: null,
+    sessionId: '',
+    userId: '',
     sendAiRequest: () => {},
     reset: () => {},
 });
@@ -38,8 +44,10 @@ interface ProductAIAssistantProviderProps {
 }
 
 const ProductAIAssistantProvider = ({ children, productId }: ProductAIAssistantProviderProps) => {
+    const sessionId = useMemo(() => v4(), []);
+    const userId = useMemo(() => SessionGateway.getSession().userId, []);
     const mutation = useMutation<AiResponse, Error, AiRequestPayload>({
-        mutationFn: ({ question }) => ApiGateway.askProductAIAssistant(productId, question),
+        mutationFn: ({ question }) => ApiGateway.askProductAIAssistant(productId, question, sessionId, userId),
     });
 
     // Clear AI state when switching products.
@@ -52,6 +60,8 @@ const ProductAIAssistantProvider = ({ children, productId }: ProductAIAssistantP
             aiResponse: mutation.data ?? null,
             aiLoading: mutation.isPending,
             aiError: mutation.error ?? null,
+            sessionId,
+            userId,
             sendAiRequest: (
                 payload: AiRequestPayload,
                 options?: MutateOptions<AiResponse, Error, AiRequestPayload, unknown>
@@ -60,7 +70,7 @@ const ProductAIAssistantProvider = ({ children, productId }: ProductAIAssistantP
             },
             reset: () => mutation.reset(),
         }),
-        [mutation.data, mutation.isPending, mutation.error]
+        [mutation.data, mutation.isPending, mutation.error, sessionId, userId]
     );
 
     return <Context.Provider value={value}>{children}</Context.Provider>;
