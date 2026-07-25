@@ -28,6 +28,18 @@ from db_source import load_products_from_sql  # noqa: E402
 from dataset_builder import build_test_cases  # noqa: E402
 
 
+def stable_source_path(path: str | None) -> str | None:
+    """Store a repo-relative source path so metadata survives checkout moves."""
+    if path is None:
+        return None
+    resolved = Path(path).resolve()
+    repo_root = _SCRIPT_DIR.parents[1]
+    try:
+        return resolved.relative_to(repo_root).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate the evaluation dataset (eval_dataset.json)."
@@ -77,7 +89,7 @@ def main() -> None:
         "test_cases": test_cases,
         "_meta": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "source_file": str(Path(args.sql_file).resolve()) if args.sql_file else None,
+            "source_file": stable_source_path(args.sql_file),
             "product_count": len(products),
             "dataset_sha256": dataset_sha256,
         },

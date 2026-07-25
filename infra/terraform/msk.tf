@@ -90,6 +90,16 @@ resource "aws_msk_cluster" "orders" {
     client_subnets  = module.vpc.private_subnets
     security_groups = [aws_security_group.msk.id]
 
+    connectivity_info {
+      vpc_connectivity {
+        client_authentication {
+          sasl {
+            iam = true
+          }
+        }
+      }
+    }
+
     storage_info {
       ebs_storage_info {
         volume_size = 10

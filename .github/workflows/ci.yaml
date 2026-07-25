@@ -516,12 +516,12 @@ jobs:
         run: |
           kube-linter lint --config .kube-linter.yaml ./rendered/techx-observability.yaml > kube-linter-obs.txt 2>&1 || obs_failed=1
           kube-linter lint --config .kube-linter.yaml ./rendered/techx-corp-app.yaml > kube-linter-app.txt 2>&1 || app_failed=1
-          
+
           echo "=== Observability Linter Output ==="
           cat kube-linter-obs.txt
           echo "=== App Linter Output ==="
           cat kube-linter-app.txt
-          
+
           if [ -n "$obs_failed" ] || [ -n "$app_failed" ]; then
             exit 1
           fi

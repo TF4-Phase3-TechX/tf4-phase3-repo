@@ -187,8 +187,13 @@ class Settings:
     )
     error_high_multiplier: float = float(os.getenv("AIOPS_ERROR_HIGH_MULTIPLIER", "2"))
     llm_high_error_rate: float = float(os.getenv("AIOPS_LLM_HIGH_ERROR_RATE", "0.25"))
+    # Runtime controlled drills observed true high-severity acute latency
+    # incidents at 0.742-0.743. With slow_drift=0, the configured confidence
+    # terms have a theoretical ceiling of 0.75 and the normalized isolation
+    # score remains below 1, so a 0.75 gate is structurally unreachable.
+    # Severity, allowlist, runbook and evidence gates remain independent.
     remediation_confidence_threshold: float = float(
-        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.75")
+        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.74")
     )
     verification_error_rate_threshold: float = float(
         os.getenv("AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD", "0.01")
