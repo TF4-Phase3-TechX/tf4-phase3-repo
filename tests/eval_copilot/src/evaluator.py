@@ -70,9 +70,23 @@ def evaluate(
                 expected_ids, actual_ids, actual_refused, grounding_result, expected_behavior
             )
 
-        if expected_behavior in ("refuse_out_of_scope", "refuse_injection"):
+        if expected_behavior in ("refuse_out_of_scope", "refuse_injection", "refuse", "ambiguous_clarification"):
             return _eval_refusal(
                 actual_ids, actual_refused, grounding_result, expected_behavior
+            )
+
+        if expected_behavior == "cart_action_proposal":
+            if actual_ids and expected_ids.issubset(actual_ids):
+                return {
+                    "passed": True,
+                    "reason": "pass",
+                    "details": {
+                        "grounding_result": grounding_result,
+                        "expected_behavior": expected_behavior,
+                    },
+                }
+            return _eval_return_products(
+                expected_ids, actual_ids, actual_refused, grounding_result, expected_behavior
             )
 
         # Unknown expected_behavior → fail closed

@@ -134,6 +134,11 @@ output "msk_orders_bootstrap_brokers_sasl_scram" {
   value       = aws_msk_cluster.orders.bootstrap_brokers_sasl_scram
 }
 
+output "msk_orders_bootstrap_brokers_sasl_iam" {
+  description = "Private SASL/IAM bootstrap brokers for Firehose native MSK source"
+  value       = aws_msk_cluster.orders.bootstrap_brokers_sasl_iam
+}
+
 output "msk_orders_broker_node_type" {
   description = "MSK broker node type for the orders migration target"
   value       = aws_msk_cluster.orders.broker_node_group_info[0].instance_type
@@ -180,8 +185,8 @@ output "msk_orders_scram_secret_handoff_note" {
 }
 
 output "msk_orders_authentication_protocol" {
-  description = "Authentication and transport protocol expected by Kafka clients"
-  value       = "SASL_SSL with SCRAM-SHA-512"
+  description = "Authentication and transport protocol expected by Kafka clients and Firehose"
+  value       = "SASL_SSL dual-auth: SCRAM-SHA-512 for apps and IAM for Firehose"
 }
 
 output "msk_orders_client_port" {

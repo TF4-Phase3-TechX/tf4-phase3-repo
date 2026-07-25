@@ -80,6 +80,16 @@ def test_frontend_latency_query_reuses_user_visible_slo_routes():
     assert 'span_kind="SPAN_KIND_SERVER"' in query
     assert 'span_name=~"GET /|GET /product.*' in query
     assert "POST /api/checkout" not in query
+    assert "[5m]" in query
+
+
+def test_latency_query_accepts_short_post_action_verification_window():
+    query = latency_query("product-reviews", "techx-tf4", "30s")
+
+    assert 'service_name="product-reviews"' in query
+    assert 'k8s_namespace_name="techx-tf4"' in query
+    assert "[30s]" in query
+    assert "[5m]" not in query
 
 
 def test_frontend_error_query_uses_canonical_all_server_span_boundary():
