@@ -1,19 +1,21 @@
 # ADR-022: Pre-authorized safe closed-loop mitigation
 
 - Date: 2026-07-21
-- Status: **Proposed — controlled runtime evidence captured; formal signatures
-  and successful live verification pending**
+- Status: **Accepted by AIO1 Tech Lead for the documented policy and captured
+  safety-path evidence; on-call/SRE signature and successful live verification
+  remain pending**
 - Canonical Jira: [TF4AIO-83](https://aio1-xbrain.atlassian.net/browse/TF4AIO-83)
 
 ## Signature record
 
 | Name | Role | Decision | Date | Scope |
 |---|---|---|---|---|
-| Đinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead / policy owner | Proposed | 2026-07-21 | Architecture and implementation submitted for review |
-| _Name required_ | CDO deployment owner | Pending | — | Target, RBAC, known-good revision, blast radius and drill window |
+| Đinh Danh Nam (`c0mmie-b0msh3ll`) | AIO1 Tech Lead / policy owner | Accepted | 2026-07-25 | Deterministic policy, bounded action, target-scoped verification fix, rollback/escalation and stated claim boundary |
+| Đinh Viết Quyết (CDO08) | CDO deployment owner | Approved for the bounded deployment/drill scope | 2026-07-25 | Target, RBAC, retained known-good revision, blast radius and reviewed drill window; named approval communicated to AIO1 |
 | _Name required_ | On-call/SRE owner | Pending | — | Escalation, telemetry verification and live-drill acceptance |
 
-Pending rows are hard activation gates. They are not inferred from generic PR approval.
+The remaining on-call/SRE row is a hard activation gate. It is not inferred
+from generic PR approval.
 
 ## Runtime decision record — 2026-07-25
 
@@ -30,9 +32,10 @@ The follow-up implementation scopes the mandatory error-rate guard to the
 mutated service and fails closed when that target telemetry is absent.
 
 This follow-up is implemented/tested offline only. The CDO-04 freeze prohibits
-another EKS/load drill, so this ADR remains Proposed. PR approvals or chat
-acknowledgements are evidence of reviewed activity, not substitutes for the two
-pending named signatures above.
+another EKS/load drill. AIO1 and the CDO deployment owner accept the documented
+policy and bounded drill scope, but successful post-fix live verification and
+the named on-call/SRE signature remain pending. Generic PR approvals are not a
+substitute for that remaining role.
 
 ## Decision
 
