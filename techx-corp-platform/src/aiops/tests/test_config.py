@@ -25,3 +25,20 @@ def test_burn_rate_windows_must_be_ordered():
     }
     with pytest.raises(ValueError):
         Settings(**values)
+
+
+def test_generic_signal_services_are_configured_separately(monkeypatch):
+    monkeypatch.setenv(
+        "AIOPS_GENERIC_SIGNAL_SERVICES",
+        "product-reviews,frontend,cart,checkout",
+    )
+
+    settings = Settings()
+
+    assert settings.generic_signal_services == (
+        "product-reviews",
+        "frontend",
+        "cart",
+        "checkout",
+    )
+    assert "llm" not in settings.generic_signal_services

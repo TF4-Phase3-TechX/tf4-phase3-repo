@@ -48,11 +48,10 @@ serviceAccount:
 aiopsRemediation:
   liveEnabled: false
 
-prometheusRetainStorageClass:
-  enabled: true
-  name: gp2-retain
-  provisioner: kubernetes.io/aws-ebs
-  allowVolumeExpansion: false
+gp3StorageClasses:
+  enabled: false
+  provisioner: ebs.csi.aws.com
+  allowVolumeExpansion: true
 
 cloudflareAccess:
   enabled: false
@@ -254,6 +253,8 @@ components:
         value: llm,product-reviews
       - name: AIOPS_MONITORED_SERVICES
         value: llm,product-reviews,frontend,cart,checkout
+      - name: AIOPS_GENERIC_SIGNAL_SERVICES
+        value: product-reviews,frontend,cart,checkout
       - name: AIOPS_POLL_SECONDS
         value: "45"
       - name: AIOPS_LOOKBACK_MINUTES
@@ -1180,8 +1181,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      requests: { cpu: 300m, memory: 256Mi }
-      limits: { cpu: 600m, memory: 512Mi }
+      requests: { cpu: 150m, memory: 160Mi }
+      limits: { cpu: 600m, memory: 256Mi }
     securityContext:
       runAsUser: 10001
       runAsGroup: 10001
@@ -1958,14 +1959,6 @@ opentelemetry-collector:
               allowed_origins:
                 - "http://*"
                 - "https://*"
-      kafkametrics:
-        scrapers:
-          - brokers
-          - topics
-          - consumers
-        brokers:
-          - kafka:9092
-        collection_interval: 10s
     exporters:
       otlp/jaeger:
         endpoint: jaeger:4317
@@ -2054,7 +2047,7 @@ opentelemetry-collector:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [otlp/jaeger, spanmetrics]
         metrics:
-          receivers: [otlp, kafkametrics, spanmetrics]
+          receivers: [otlp, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
           exporters: [otlphttp/prometheus]
         logs:
@@ -2107,7 +2100,7 @@ jaeger:
         memory: 1Gi
       limits:
         cpu: 500m
-        memory: 1Gi
+        memory: 2Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -2352,7 +2345,8 @@ prometheus:
         - postgresql.index.name
     persistentVolume:
       enabled: true
-      storageClass: gp2-retain
+      existingClaim: prometheus
+      storageClass: gp3-retain
       size: 20Gi
       annotations:
         helm.sh/resource-policy: keep
@@ -2437,8 +2431,8 @@ opensearch:
   persistence:
     enabled: true
     enableInitChown: false
-    size: 20Gi
-    storageClass: "gp2"
+    size: 160Gi
+    storageClass: "gp3"
     image: busybox
     imageTag: "1.36.1"
   initResources:

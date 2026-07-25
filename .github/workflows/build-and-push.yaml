@@ -17,6 +17,7 @@ on:
       - 'techx-corp-platform/**'
       - 'techx-corp-chart/**'
       - 'deploy/build-push-images.sh'
+      - 'scripts/update_gitops_promotion.py'
       - '.github/workflows/build-and-push.yaml'
 
 permissions:
@@ -494,8 +495,10 @@ jobs:
           path: gitops
 
       - name: Update GitOps revisions
+        id: promotion-branch
         env:
           CHART_CHANGED: ${{ needs.changes.outputs.chart_changed }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           IMAGE_DIGESTS_JSON: ${{ needs.build.outputs.image_digests }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
@@ -503,74 +506,43 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd gitops
           branch="promotion/production"
+          open_prs="$(gh pr list --repo TF4-Phase3-TechX/tf4-phase3-gitops-manifests --head "$branch" --base main --state open --limit 2 --json number)"
+          open_count="$(jq 'length' <<< "$open_prs")"
+          [[ "$open_count" -le 1 ]] || { echo "expected at most one open promotion PR" >&2; exit 1; }
+          open_pr="$(jq -r '.[0].number // empty' <<< "$open_prs")"
+
+          cd gitops
           git config user.name "techx-tf4-gitops-promotion"
           git config user.email "techx-tf4-gitops-promotion@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+          if [[ -n "$open_pr" ]]; then
             git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            git show-ref --verify --quiet "refs/remotes/origin/$branch" || { echo "open promotion PR #$open_pr has no branch" >&2; exit 1; }
+            git checkout -B "$branch" "origin/$branch"
+          else
+            git checkout -B "$branch" origin/main
           fi
-          git checkout -B "$branch" origin/main
+          printf 'open_pr=%s\n' "$open_pr" >> "$GITHUB_OUTPUT"
           cd ..
-          python - <<'PY'
-          from pathlib import Path
-          import json, os, re
-
-          services = json.loads(os.environ["SERVICES_JSON"])
-          digests = json.loads(os.environ.get("IMAGE_DIGESTS_JSON") or "{}")
-          if services:
-              path = Path("gitops/environments/production/image-revisions.yaml")
-              text = path.read_text()
-              for service in services:
-                  digest = digests.get(service)
-                  if not digest:
-                      raise SystemExit(f"missing digest for promoted service {service}")
-                  tag = f'{os.environ["IMAGE_TAG"]}-{service}'
-                  pattern = (
-                      rf'(\n  {re.escape(service)}:\n'
-                      rf'    imageOverride:\n'
-                      rf'      tag: ")[^"]+(")'
-                      rf'(?:\n      digest: "sha256:[0-9a-fA-F]{{64}}")?'
-                  )
-                  replacement = rf'\g<1>{tag}\g<2>' + f'\n      digest: "{digest}"'
-                  text, count = re.subn(pattern, replacement, text)
-                  if count == 0:
-                      entry_pattern = rf'(?m)^  {re.escape(service)}:\s*$'
-                      if re.search(entry_pattern, text):
-                          raise SystemExit(f"malformed image override for existing service {service}")
-                      header = "components:\n"
-                      if text.count(header) != 1:
-                          raise SystemExit("expected exactly one components mapping")
-                      block = (
-                          f'  {service}:\n'
-                          '    imageOverride:\n'
-                          f'      tag: "{tag}"\n'
-                          f'      digest: "{digest}"\n'
-                      )
-                      text = text.replace(header, header + block, 1)
-                  elif count != 1:
-                      raise SystemExit(f"expected at most one image override for {service}, found {count}")
-              path.write_text(text)
-
-          if os.environ["CHART_CHANGED"] == "true":
-              path = Path("gitops/argocd/root-resources/applications.yaml")
-              text = path.read_text()
-              pattern = (
-                  r"(repoURL: 'https://github.com/TF4-Phase3-TechX/tf4-phase3-repo.git'\n"
-                  r"      targetRevision: )[0-9a-f]{40}"
-              )
-              text, count = re.subn(pattern, rf'\g<1>{os.environ["SOURCE_SHA"]}', text)
-              if count != 2:
-                  raise SystemExit(f"expected two chart source revisions, found {count}")
-              path.write_text(text)
-          PY
+          image_digests_json="${IMAGE_DIGESTS_JSON:-{}}"
+          args=(
+            --gitops-dir gitops
+            --services-json "$SERVICES_JSON"
+            --image-digests-json "$image_digests_json"
+            --image-tag "$IMAGE_TAG"
+            --source-sha "$SOURCE_SHA"
+          )
+          [[ "$CHART_CHANGED" == 'true' ]] && args+=(--chart-changed)
+          python scripts/update_gitops_promotion.py "${args[@]}"
           git -C gitops diff --check
 
       - name: Create or update promotion PR
         env:
           CHART_CHANGED: ${{ needs.changes.outputs.chart_changed }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IMAGE_DIGESTS_JSON: ${{ needs.build.outputs.image_digests }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          OPEN_PR: ${{ steps.promotion-branch.outputs.open_pr }}
           SERVICES_JSON: ${{ needs.changes.outputs.services }}
           SOURCE_SHA: ${{ github.sha }}
         shell: bash
@@ -590,17 +562,23 @@ jobs:
             git push --force-with-lease="$branch:" origin "$branch"
           fi
           services="$(jq -r '.[]' <<< "$SERVICES_JSON" | paste -sd, -)"
-          body="Source commit: \`${SOURCE_SHA}\`"
+          image_digests_json="${IMAGE_DIGESTS_JSON:-{}}"
+          section="### Promotion \`${SOURCE_SHA::7}\`"$'\n\n'"Source commit: \`${SOURCE_SHA}\`"
           if [[ "$SERVICES_JSON" != '[]' ]]; then
-            body+=$'\n\n'"Image tag: \`${IMAGE_TAG}\`"$'\n\n'"Services: \`${services}\`"
-            body+=$'\n\n'"Promoted image digests:"$'\n'
+            section+=$'\n\n'"Image tag: \`${IMAGE_TAG}\`"$'\n\n'"Services: \`${services}\`"
+            section+=$'\n\n'"Promoted image digests:"$'\n'
             while IFS='=' read -r service digest; do
               [[ -n "$service" && -n "$digest" ]] || continue
-              body+=$'\n'"- \`${service}\`: \`${digest}\`"
-            done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$IMAGE_DIGESTS_JSON")
+              section+=$'\n'"- \`${service}\`: \`${digest}\`"
+            done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<< "$image_digests_json")
           fi
           if [[ "$CHART_CHANGED" == 'true' ]]; then
-            body+=$'\n\n'"Chart source SHA: \`${SOURCE_SHA}\` (techx-corp and techx-observability)"
+            section+=$'\n\n'"Chart source SHA: \`${SOURCE_SHA}\` (techx-corp and techx-observability)"
           fi
-          body+=$'\n\nReview and merge to let Argo CD deploy this release.'
-          gh pr create --base main --head "$branch" --title "chore(gitops): promote ${SOURCE_SHA::7}" --body "$body" || gh pr edit "$branch" --title "chore(gitops): promote ${SOURCE_SHA::7}" --body "$body"
+          if [[ -n "$OPEN_PR" ]]; then
+            body="$(gh pr view "$OPEN_PR" --repo TF4-Phase3-TechX/tf4-phase3-gitops-manifests --json body --jq '.body')"$'\n\n---\n\n'"$section"
+            gh pr edit "$OPEN_PR" --repo TF4-Phase3-TechX/tf4-phase3-gitops-manifests --title "chore(gitops): promote ${SOURCE_SHA::7}" --body "$body"
+          else
+            body="$section"$'\n\n---\n\nReview and merge to let Argo CD deploy this release.'
+            gh pr create --base main --head "$branch" --title "chore(gitops): promote ${SOURCE_SHA::7}" --body "$body"
+          fi
