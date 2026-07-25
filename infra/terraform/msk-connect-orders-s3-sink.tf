@@ -265,6 +265,7 @@ resource "aws_mskconnect_worker_configuration" "orders_s3_sink" {
     key.converter=org.apache.kafka.connect.storage.StringConverter
     value.converter=org.apache.kafka.connect.json.JsonConverter
     value.converter.schemas.enable=false
+    connector.client.config.override.policy=All
     offset.flush.interval.ms=60000
     config.providers=secretsmanager
     config.providers.secretsmanager.class=com.amazonaws.kafka.config.providers.SecretsManagerConfigProvider
@@ -272,13 +273,7 @@ resource "aws_mskconnect_worker_configuration" "orders_s3_sink" {
   PROPERTIES
 }
 
-# MSK Connect connector is gated behind var.msk_connect_connector_enabled.
-# Default: false — account 511825856493 has a backend MSK Connect provisioned
-# capacity restriction. Enable after AWS Support lifts the restriction.
-# See investigation notes in fix/cdo08-rel22-msk-connect-worker-config branch.
 resource "aws_mskconnect_connector" "orders_s3_sink" {
-  count = var.msk_connect_connector_enabled ? 1 : 0
-
   name                       = local.msk_connect_orders_s3_sink_name
   kafkaconnect_version       = "2.7.1"
   service_execution_role_arn = aws_iam_role.msk_connect_orders_s3_sink.arn
