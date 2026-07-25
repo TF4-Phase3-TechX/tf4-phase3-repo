@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 
 
@@ -214,6 +215,15 @@ class Settings:
     rollback_verification_polls: int = int(
         os.getenv("AIOPS_ROLLBACK_VERIFICATION_POLLS", "3")
     )
+    # Detection deliberately uses a stable 5m rate window. Post-action
+    # verification must exclude the pre-action incident, so it uses a short
+    # window after an explicit settle delay while retaining the same SLO.
+    verification_metric_window: str = os.getenv(
+        "AIOPS_VERIFICATION_METRIC_WINDOW", "2m"
+    )
+    verification_settle_seconds: float = float(
+        os.getenv("AIOPS_VERIFICATION_SETTLE_SECONDS", "120")
+    )
     verification_interval_seconds: float = float(
         os.getenv("AIOPS_VERIFICATION_INTERVAL_SECONDS", "20")
     )
@@ -256,6 +266,14 @@ class Settings:
     def __post_init__(self) -> None:
         if self.jaeger_trace_limit <= 0:
             raise ValueError("Jaeger trace limit must be positive")
+        if not re.fullmatch(
+            r"[1-9]\d*(?:ms|s|m|h|d|w|y)", self.verification_metric_window
+        ):
+            raise ValueError(
+                "verification metric window must be one positive Prometheus duration"
+            )
+        if self.verification_settle_seconds < 0:
+            raise ValueError("verification settle seconds cannot be negative")
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
         if (

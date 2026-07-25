@@ -245,6 +245,13 @@ components:
         value: "3"
       - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
         value: "3"
+      # Verify only post-action telemetry. Runtime probing showed the span
+      # metrics are empty at 30s/1m and available at 2m, so wait for one full
+      # 2m window before retaining the same three-poll, 1s latency-SLO decision.
+      - name: AIOPS_VERIFICATION_METRIC_WINDOW
+        value: "2m"
+      - name: AIOPS_VERIFICATION_SETTLE_SECONDS
+        value: "120"
       - name: AIOPS_VERIFICATION_INTERVAL_SECONDS
         value: "20"
       - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
