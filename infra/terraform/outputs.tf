@@ -230,6 +230,10 @@ output "msk_connect_plugin_prefix" {
   value       = local.msk_connect_plugin_prefix
 }
 
+output "msk_orders_kafka_connect_archive_irsa_role_arn" {
+  description = "IRSA role ARN for REL-22 self-managed Kafka Connect orders archive fallback"
+  value       = module.msk_orders_kafka_connect_archive_irsa.iam_role_arn
+}
 output "msk_orders_s3_sink_connector_arn" {
   description = "MSK Connect connector ARN for REL-22 orders S3 archive (null when msk_connect_connector_enabled=false)"
   value       = try(aws_mskconnect_connector.orders_s3_sink[0].arn, null)
