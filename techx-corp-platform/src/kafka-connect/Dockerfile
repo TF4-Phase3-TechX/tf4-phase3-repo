@@ -8,6 +8,7 @@ ARG NETTY_VERSION=4.1.136.Final
 ARG ZOOKEEPER_VERSION=3.8.6
 ARG BOUNCYCASTLE_VERSION=1.84
 ARG PLEXUS_UTILS_VERSION=3.6.1
+ARG JETTY_VERSION=12.0.36
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl gzip tar tini unzip ca-certificates \
@@ -28,6 +29,7 @@ RUN apt-get update \
     && find /opt/kafka "$connector_lib_dir" -name 'zookeeper-*.jar' -delete \
     && find /opt/kafka "$connector_lib_dir" -name 'bcprov-jdk18on-*.jar' -delete \
     && find /opt/kafka "$connector_lib_dir" -name 'plexus-utils-*.jar' -delete \
+    && find /opt/kafka "$connector_lib_dir" -name 'jetty-security-*.jar' -delete \
     && find /opt/kafka "$connector_lib_dir" -name 'jline-*.jar' -delete \
     && curl -fsSL "https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/${JACKSON_VERSION}/jackson-core-${JACKSON_VERSION}.jar" -o /tmp/jackson-core.jar \
     && curl -fsSL "https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/${JACKSON_VERSION}/jackson-databind-${JACKSON_VERSION}.jar" -o /tmp/jackson-databind.jar \
@@ -36,6 +38,7 @@ RUN apt-get update \
     && curl -fsSL "https://repo1.maven.org/maven2/org/apache/zookeeper/zookeeper/${ZOOKEEPER_VERSION}/zookeeper-${ZOOKEEPER_VERSION}.jar" -o /tmp/zookeeper.jar \
     && curl -fsSL "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/${BOUNCYCASTLE_VERSION}/bcprov-jdk18on-${BOUNCYCASTLE_VERSION}.jar" -o /tmp/bcprov-jdk18on.jar \
     && curl -fsSL "https://repo1.maven.org/maven2/org/codehaus/plexus/plexus-utils/${PLEXUS_UTILS_VERSION}/plexus-utils-${PLEXUS_UTILS_VERSION}.jar" -o /tmp/plexus-utils.jar \
+    && curl -fsSL "https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-security/${JETTY_VERSION}/jetty-security-${JETTY_VERSION}.jar" -o /tmp/jetty-security.jar \
     && for lib_dir in /opt/kafka/libs "$connector_lib_dir"; do \
         cp /tmp/jackson-core.jar "$lib_dir/jackson-core-${JACKSON_VERSION}.jar"; \
         cp /tmp/jackson-databind.jar "$lib_dir/jackson-databind-${JACKSON_VERSION}.jar"; \
@@ -44,6 +47,7 @@ RUN apt-get update \
         cp /tmp/zookeeper.jar "$lib_dir/zookeeper-${ZOOKEEPER_VERSION}.jar"; \
         cp /tmp/bcprov-jdk18on.jar "$lib_dir/bcprov-jdk18on-${BOUNCYCASTLE_VERSION}.jar"; \
         cp /tmp/plexus-utils.jar "$lib_dir/plexus-utils-${PLEXUS_UTILS_VERSION}.jar"; \
+        cp /tmp/jetty-security.jar "$lib_dir/jetty-security-${JETTY_VERSION}.jar"; \
     done \
     && rm -rf /tmp/kafka.tgz /tmp/kafka-connect-s3.zip /tmp/*.jar \
     && chown -R app:app /opt/kafka /usr/share/confluent-hub-components /var/lib/kafka-connect
