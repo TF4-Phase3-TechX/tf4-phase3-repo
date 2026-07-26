@@ -1356,3 +1356,115 @@ def test_router_reads_five_complete_exchanges(monkeypatch):
 
     assert len(captured) == 10
     assert [turn["role"] for turn in captured] == ["user", "assistant"] * 5
+
+
+def test_contextual_price_reference_and_product_purpose_are_deterministic():
+    import router
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise AssertionError("grounded contextual turns must not call the provider")
+
+    class Catalog:
+        def ListProducts(self, request, timeout):
+            return demo_pb2.ListProductsResponse(
+                products=[
+                    demo_pb2.Product(
+                        id="imager",
+                        name="Solar System Color Imager",
+                        description=(
+                            "Use it with a telescope to image Saturn, Jupiter, "
+                            "and other Solar System objects."
+                        ),
+                        categories=["accessories", "telescopes"],
+                        price_usd=demo_pb2.Money(units=175),
+                    ),
+                    demo_pb2.Product(
+                        id="scope",
+                        name="Starsense Explorer Refractor Telescope",
+                        description="A beginner telescope.",
+                        categories=["telescopes"],
+                        price_usd=demo_pb2.Money(units=349, nanos=950000000),
+                    ),
+                ]
+            )
+
+    session_id = "contextual-price-purpose-session"
+    user_id = "contextual-price-purpose-user"
+    session_store.set_last_search_products(
+        user_id,
+        session_id,
+        [{"id": "imager"}, {"id": "scope"}],
+    )
+    assistant = type("Assistant", (), {"provider": Provider()})()
+    catalog = Catalog()
+
+    first_price_reference = router.route_search_products_ai(
+        "cái 175 đô la là gì thế",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+    )
+    second_price_reference = router.route_search_products_ai(
+        "cái có giá 175 dollar ấy",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+    )
+    purpose = router.route_search_products_ai(
+        "nó dùng để làm gì",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+        fetch_reviews=lambda _product_id: pytest.fail(
+            "product-purpose answers must not read reviews"
+        ),
+    )
+    repeated_purpose = router.route_search_products_ai(
+        "nó dùng để làm gì",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+        fetch_reviews=lambda _product_id: pytest.fail(
+            "product-purpose answers must not read reviews"
+        ),
+    )
+
+    assert [product.id for product in first_price_reference.results] == ["imager"]
+    assert [product.id for product in second_price_reference.results] == ["imager"]
+    assert first_price_reference.model_calls == 0
+    assert second_price_reference.model_calls == 0
+    assert first_price_reference.cache_reason == "context_dependent"
+    assert purpose.outcome == "answered"
+    assert purpose.model_calls == 0
+    assert purpose.cache_reason == "context_dependent"
+    assert "Công dụng của Solar System Color Imager" in purpose.response
+    assert "Use it with a telescope" in purpose.response
+    assert "đánh giá" not in purpose.response.lower()
+    assert repeated_purpose.response == purpose.response
+    assert repeated_purpose.model_calls == 0
+
+
+def test_contextual_exact_price_does_not_treat_budget_as_a_reference():
+    import router
+
+    assert router._exact_referenced_price("kính thiên văn dưới 175 dollar") is None
+    assert router._exact_referenced_price("products over $175") is None
+    assert router._exact_referenced_price("product under $175") is None
+    assert router._exact_referenced_price("the one at most $175") is None
+    assert router._exact_referenced_price("the $175 one") == 175.0

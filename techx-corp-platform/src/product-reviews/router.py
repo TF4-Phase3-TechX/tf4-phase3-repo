@@ -316,6 +316,38 @@ def _keywords_are_generic_discovery_terms(keywords: str, category: str) -> bool:
 
 
 _PRICE_VALUE_PATTERN = r"\$?\s*(\d+(?:\.\d+)?)"
+_EXACT_PRICE_REFERENCE_MARKERS = (
+    "cái",
+    "món",
+    "sản phẩm",
+    "item",
+    "one",
+    "product",
+)
+_PRODUCT_PURPOSE_MARKERS = (
+    "dùng để làm gì",
+    "để làm gì",
+    "công dụng",
+    "chức năng",
+    "what is it for",
+    "what's it for",
+    "what does it do",
+    "used for",
+)
+_RELATIVE_PRICE_MARKERS = (
+    "under",
+    "below",
+    "less than",
+    "at most",
+    "over",
+    "above",
+    "more than",
+    "at least",
+    "between",
+    "dưới",
+    "trên",
+    "từ",
+)
 
 
 def _deterministic_category_price_intent(query: str) -> dict[str, Any] | None:
@@ -368,6 +400,38 @@ def _deterministic_category_price_intent(query: str) -> dict[str, Any] | None:
     return None
 
 
+def _exact_referenced_price(query: str) -> float | None:
+    """Extract a currency-qualified price only from a deictic product reference."""
+    normalized = query.lower()
+    if any(
+        re.search(rf"(?<!\w){re.escape(marker)}(?!\w)", normalized)
+        for marker in _RELATIVE_PRICE_MARKERS
+    ):
+        return None
+    if not any(
+        re.search(rf"(?<!\w){re.escape(marker)}(?!\w)", normalized)
+        for marker in _EXACT_PRICE_REFERENCE_MARKERS
+    ):
+        return None
+    match = re.search(
+        r"(?:\$\s*(\d+(?:[.,]\d{1,2})?)"
+        r"|(\d+(?:[.,]\d{1,2})?)\s*(?:usd|dollars?|đô(?:\s+la)?))",
+        normalized,
+    )
+    if not match:
+        return None
+    raw_value = next(value for value in match.groups() if value is not None)
+    try:
+        return float(raw_value.replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _is_product_purpose_query(query: str) -> bool:
+    normalized = normalize_exact_request(query)
+    return any(marker in normalized for marker in _PRODUCT_PURPOSE_MARKERS)
+
+
 def _last_search_candidates(products: list[Any], session_id: str, user_id: str) -> list[Any]:
     stored = session_store.get_last_search_products(user_id, session_id) if session_id else []
     stored_ids = {
@@ -375,6 +439,37 @@ def _last_search_candidates(products: list[Any], session_id: str, user_id: str) 
         for row in stored
     }
     return [product for product in products if product.id in stored_ids]
+
+
+def _resolve_exact_price_reference(
+    query: str,
+    products: list[Any],
+    session_id: str,
+    user_id: str,
+) -> tuple[Any | None, float | None]:
+    """Resolve an exact price against the previous result set, never the whole catalog."""
+    referenced_price = _exact_referenced_price(query)
+    if referenced_price is None or not session_id:
+        return None, referenced_price
+    matches = [
+        product
+        for product in _last_search_candidates(products, session_id, user_id)
+        if abs(_product_price(product) - referenced_price) < 0.005
+    ]
+    return (matches[0] if len(matches) == 1 else None), referenced_price
+
+
+def _resolve_product_purpose_target(
+    query: str,
+    products: list[Any],
+    session_id: str,
+    user_id: str,
+) -> Any | None:
+    explicit = _strict_explicit_product(query, products)
+    if explicit is not None:
+        return explicit
+    remembered = _last_search_candidates(products, session_id, user_id)
+    return remembered[0] if len(remembered) == 1 else None
 
 
 def _explicit_catalog_scope(query: str) -> bool:
@@ -776,6 +871,163 @@ def route_search_products_ai(
                                 status=recalled.status,
                             )
                         )
+
+            # Session-relative price references and product-purpose questions are
+            # grounded by the catalog and do not need probabilistic classification.
+            referenced_price = _exact_referenced_price(query)
+            purpose_query = _is_product_purpose_query(query)
+            if referenced_price is not None or purpose_query:
+                if prefetched_catalog is None:
+                    prefetched_catalog = product_catalog_stub.ListProducts(
+                        demo_pb2.Empty(), timeout=2.0
+                    )
+                contextual_products = list(prefetched_catalog.products)
+                default_cache_reason = "context_dependent"
+
+                if referenced_price is not None:
+                    target_product, _ = _resolve_exact_price_reference(
+                        query,
+                        contextual_products,
+                        session_id,
+                        user_id,
+                    )
+                    if target_product is not None:
+                        if session_id:
+                            session_store.set_last_search_products(
+                                user_id,
+                                session_id,
+                                [
+                                    {
+                                        "id": target_product.id,
+                                        "name": target_product.name,
+                                        "description": getattr(
+                                            target_product, "description", ""
+                                        ),
+                                        "categories": list(
+                                            getattr(target_product, "categories", [])
+                                        ),
+                                    }
+                                ],
+                            )
+                        span.set_attribute(
+                            "app.search.outcome", "session_price_reference"
+                        )
+                        return finalize(
+                            demo_pb2.SearchProductsAIAssistantResponse(
+                                results=[target_product],
+                                response=_message(
+                                    query,
+                                    f"Sản phẩm có giá ${_product_price(target_product):.2f} là {target_product.name}.",
+                                    f"The ${_product_price(target_product):.2f} product is {target_product.name}.",
+                                ),
+                                outcome="success",
+                                trace=demo_pb2.SearchEvidenceTrace(
+                                    parsed_intent=json.dumps(
+                                        {
+                                            "search_type": "search",
+                                            "resolution": "session_exact_price",
+                                        }
+                                    ),
+                                    filter_applied=json.dumps(
+                                        {
+                                            "scope": "last_search",
+                                            "price_usd": referenced_price,
+                                        }
+                                    ),
+                                    candidate_count_before=len(
+                                        contextual_products
+                                    ),
+                                    candidate_count_after=1,
+                                ),
+                                cache_eligible=False,
+                                model_calls=0,
+                            )
+                        )
+
+                if purpose_query:
+                    target_product = _resolve_product_purpose_target(
+                        query,
+                        contextual_products,
+                        session_id,
+                        user_id,
+                    )
+                    if target_product is not None:
+                        description = str(
+                            getattr(target_product, "description", "") or ""
+                        ).strip()
+                        answer = _message(
+                            query,
+                            f"Công dụng của {target_product.name}: {description}",
+                            f"Purpose of {target_product.name}: {description}",
+                        )
+                        if session_id:
+                            session_store.set_last_search_products(
+                                user_id,
+                                session_id,
+                                [
+                                    {
+                                        "id": target_product.id,
+                                        "name": target_product.name,
+                                        "description": description,
+                                        "categories": list(
+                                            getattr(target_product, "categories", [])
+                                        ),
+                                    }
+                                ],
+                            )
+                        span.set_attribute(
+                            "app.search.outcome", "catalog_product_purpose"
+                        )
+                        return finalize(
+                            demo_pb2.SearchProductsAIAssistantResponse(
+                                results=[target_product],
+                                response=answer,
+                                outcome="answered",
+                                trace=demo_pb2.SearchEvidenceTrace(
+                                    parsed_intent=json.dumps(
+                                        {
+                                            "search_type": "product_info",
+                                            "resolution": "catalog_description",
+                                        }
+                                    ),
+                                    filter_applied=json.dumps(
+                                        {
+                                            "product_id": target_product.id,
+                                            "scope": "last_search_or_explicit",
+                                        }
+                                    ),
+                                    candidate_count_before=len(
+                                        contextual_products
+                                    ),
+                                    candidate_count_after=1,
+                                ),
+                                cache_eligible=False,
+                                model_calls=0,
+                            )
+                        )
+                    clarify_q = _message(
+                        query,
+                        "Bạn muốn hỏi công dụng của sản phẩm nào? Vui lòng chọn hoặc nêu tên một sản phẩm.",
+                        "Which product's purpose would you like to know? Please select or name one product.",
+                    )
+                    return finalize(
+                        _refused_search_response(
+                            parsed_intent=json.dumps(
+                                {
+                                    "search_type": "unclear",
+                                    "resolution": "catalog_description",
+                                }
+                            ),
+                            filter_applied=json.dumps(
+                                {"scope": "last_search_or_explicit"}
+                            ),
+                            before=len(contextual_products),
+                            after=0,
+                            refusal_reason="no_unique_product",
+                            response=clarify_q,
+                            outcome="clarification_required",
+                        )
+                    )
 
             if (
                 applied_profile is None
