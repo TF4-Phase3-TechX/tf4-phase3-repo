@@ -35,7 +35,19 @@ module "eks" {
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns    = {}
+    coredns = {
+      configuration_values = jsonencode({
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "70Mi"
+          }
+          limits = {
+            memory = "170Mi"
+          }
+        }
+      })
+    }
     kube-proxy = {}
     vpc-cni    = {}
     aws-ebs-csi-driver = {
@@ -56,9 +68,9 @@ module "eks" {
   eks_managed_node_groups = {
     general = {
       name         = "techx-general-ng"
-      min_size     = 1
+      min_size     = 2
       max_size     = 4
-      desired_size = 1
+      desired_size = 2
 
       instance_types = ["t3.large"]
       capacity_type  = "ON_DEMAND"
