@@ -156,11 +156,14 @@ The exact observations and bounded confusion matrix are preserved in
 
 ## Submission readiness
 
-- The evidence documents are currently in [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633), not yet on `main`.
+- [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633)
+  passed refreshed CI and named review, then merged to `main` as
+  `9c7b271a9639629ecc264d1e13df34e357df98a4`.
 - ADR-015 has named AIOps Lead and Tech Lead acceptance.
 - The PR/commit, replay command, runtime proof, labeled set, MTTD boundary,
-  screenshots and signed ADR must be posted together on `TF4AIO-80`; repository
-  files alone do not satisfy Jira-based submission.
+  screenshots and signed ADR are linked from canonical Jira ticket
+  `TF4AIO-80`. The ticket remains `In Progress`; merged evidence is not mentor
+  or organizer acceptance.
 - Organizer hidden-set outputs remain grading-day evidence.
 
 ## Claim boundary
