@@ -1381,6 +1381,20 @@ components:
         value: production
       - name: VALKEY_ADDR
         value: valkey-cart:6379
+      - name: AI_CACHE_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: hmac-secret
+      - name: AI_MEMORY_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: hmac-secret
+      - name: AI_RESPONSE_CACHE_TTL_SECONDS
+        value: "300"
+      - name: MAX_HISTORY_EXCHANGES
+        value: "5"
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT

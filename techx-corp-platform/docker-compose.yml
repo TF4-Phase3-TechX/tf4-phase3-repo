@@ -560,12 +560,24 @@ services:
       - BEDROCK_OUTPUT_USD_PER_MILLION=2.50
       - BEDROCK_SYSTEM_CANARY
       - PRODUCT_CATALOG_ADDR
+      - CART_ADDR
+      - VALKEY_ADDR
+      - VALKEY_PASSWORD
+      - VALKEY_TLS
+      - AI_CACHE_HMAC_SECRET
+      - AI_MEMORY_HMAC_SECRET
+      - AI_RESPONSE_CACHE_TTL_SECONDS=300
+      - MAX_HISTORY_EXCHANGES=5
       - FLAGD_HOST
       - FLAGD_PORT
     depends_on:
+      cart:
+        condition: service_started
       product-catalog:
         condition: service_started
       postgresql:
+        condition: service_started
+      valkey-cart:
         condition: service_started
       otel-collector:
         condition: service_started
