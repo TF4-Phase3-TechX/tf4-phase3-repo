@@ -116,6 +116,8 @@ jobs:
 
           start_epoch="$(cat rel24-evidence/start-epoch.txt)"
           end_epoch="$(date -u +%s)"
+          start_time="$(date -u -d "@${start_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+          end_time="$(date -u -d "@${end_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
 
           echo "## CloudTrail queries" >> rel24-evidence/summary.md
           echo "" >> rel24-evidence/summary.md
@@ -128,8 +130,8 @@ jobs:
             local output_file="rel24-evidence/cloudtrail-${event_name}.json"
             aws cloudtrail lookup-events \
               --lookup-attributes AttributeKey=EventName,AttributeValue="${event_name}" \
-              --start-time "@${start_epoch}" \
-              --end-time "@${end_epoch}" \
+              --start-time "${start_time}" \
+              --end-time "${end_time}" \
               --region "${AWS_REGION}" \
               > "${output_file}" || true
 
