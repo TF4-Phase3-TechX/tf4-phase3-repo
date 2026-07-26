@@ -1,10 +1,10 @@
 # CDO08-REL-24 Negative Deletion Test Evidence
 
-Status: Ready to execute after Terraform apply
+Status: Policy simulation evidence captured - CloudTrail runtime attempts pending if mentor requires live audit events
 
 ## Scope
 
-This test proves that normal CI/operator roles cannot delete protected recovery assets and that CloudTrail records the attempt. Do not run destructive commands against production recovery points. Use only disposable test snapshots/objects named with `rel24-negative-test-`.
+This test proves that normal CI/operator roles cannot delete protected recovery assets. The current evidence uses IAM `SimulatePrincipalPolicy` for the protected CI apply role to avoid destructive operations against production recovery assets. If mentor requires runtime audit events, run the same actions from a temporary CI job against disposable `rel24-negative-test-*` assets and append CloudTrail event IDs.
 
 ## Preconditions
 
@@ -12,6 +12,7 @@ This test proves that normal CI/operator roles cannot delete protected recovery 
 - Infra Terraform has applied REL-24 roles and PostgreSQL migration backup bucket policy.
 - CloudTrail `tf4-general-cloudtrail` is logging management events and selected S3 data events.
 - Test resources are disposable and named with `rel24-negative-test-`.
+- PM/Platform confirmed the CI apply role policy simulator result after bootstrap guardrail application.
 
 ## Role ARNs
 
@@ -30,6 +31,27 @@ terraform -chdir=infra/terraform output rel24_msk_orders_archive_bucket_name
 ## Negative Tests
 
 Run each delete attempt from the normal role path being tested. For CI, run from a temporary GitHub Actions job that assumes `tf4-github-actions-terraform-apply`; for a human normal operator, use the operator role session.
+
+## Policy Simulation Evidence
+
+Verification source: PM/Platform screenshot from IAM `SimulatePrincipalPolicy`.
+
+Policy source:
+
+```text
+arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply
+```
+
+Simulation result:
+
+| Action | Decision |
+| --- | --- |
+| `rds:DeleteDBSnapshot` | `explicitDeny` |
+| `elasticache:DeleteSnapshot` | `explicitDeny` |
+| `s3:DeleteObject` | `explicitDeny` |
+| `kafka:DeleteCluster` | `explicitDeny` |
+
+Conclusion: the normal CI apply role is blocked from deleting the protected recovery asset classes required by REL-24. This satisfies the policy-control portion of the negative deletion test without touching production assets.
 
 ### RDS Snapshot Delete
 
@@ -119,7 +141,7 @@ Record the following for each test:
 
 | Test | Actor ARN | Action | Target | Result | CloudTrail event ID/time |
 | --- | --- | --- | --- | --- | --- |
-| RDS snapshot delete | TBD | `DeleteDBSnapshot` | `rel24-negative-test-rds` | AccessDenied expected | TBD |
-| ElastiCache snapshot delete | TBD | `DeleteSnapshot` | `rel24-negative-test-valkey` | AccessDenied expected | TBD |
-| S3 archive object delete | TBD | `DeleteObject` | `rel15/rel24-negative-test-object` | AccessDenied expected | TBD |
-| MSK delete | TBD | `DeleteCluster` | disposable test ARN only | AccessDenied expected | TBD |
+| RDS snapshot delete | `arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply` | `rds:DeleteDBSnapshot` | protected RDS snapshots | `explicitDeny` by IAM simulator | N/A - simulator evidence, no live delete attempted |
+| ElastiCache snapshot delete | `arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply` | `elasticache:DeleteSnapshot` | protected ElastiCache snapshots | `explicitDeny` by IAM simulator | N/A - simulator evidence, no live delete attempted |
+| S3 archive object delete | `arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply` | `s3:DeleteObject` | protected backup/archive object prefixes | `explicitDeny` by IAM simulator | N/A - simulator evidence, no live delete attempted |
+| MSK delete | `arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply` | `kafka:DeleteCluster` | protected MSK cluster class | `explicitDeny` by IAM simulator | N/A - simulator evidence, no live delete attempted |
