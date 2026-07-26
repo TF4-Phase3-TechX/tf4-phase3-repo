@@ -1468,3 +1468,29 @@ def test_contextual_exact_price_does_not_treat_budget_as_a_reference():
     assert router._exact_referenced_price("product under $175") is None
     assert router._exact_referenced_price("the one at most $175") is None
     assert router._exact_referenced_price("the $175 one") == 175.0
+
+
+def test_invalid_classifier_response_requests_clarification():
+    import router
+    from bedrock_adapter import ProviderFailure
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise ProviderFailure("invalid_response")
+
+    response = router.route_search_products_ai(
+        "show me something suitable",
+        "invalid-provider-response-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        _SingleProductCatalog(),
+        _NoopTracer(),
+        None,
+        user_id="invalid-provider-response-user",
+    )
+
+    assert response.outcome == "clarification_required"
+    assert response.trace.refused is True
+    assert "temporarily unavailable" not in response.response

@@ -1808,16 +1808,29 @@ def route_search_products_ai(
             ref_reason = "schema_validation_failed" if exc.error_class == "invalid_response" else (
                 "guardrail_blocked" if exc.error_class == "guardrail_intervened" else "provider_failure"
             )
+            invalid_response = exc.error_class == "invalid_response"
             return finalize(_refused_search_response(
                 input_tokens=getattr(exc, "input_tokens", 0),
                 output_tokens=getattr(exc, "output_tokens", 0),
                 refusal_reason=ref_reason,
                 response=_message(
                     query,
-                    "Copilot hiện tạm thời không khả dụng. Vui lòng thử lại sau.",
-                    "Copilot is temporarily unavailable. Please try again later.",
+                    (
+                        "Tôi chưa xử lý được cách diễn đạt này. Bạn có thể nói rõ tên sản phẩm hoặc yêu cầu không?"
+                        if invalid_response
+                        else "Copilot hiện tạm thời không khả dụng. Vui lòng thử lại sau."
+                    ),
+                    (
+                        "I could not process that wording. Could you name the product or clarify the request?"
+                        if invalid_response
+                        else "Copilot is temporarily unavailable. Please try again later."
+                    ),
                 ),
-                outcome="provider_unavailable",
+                outcome=(
+                    "clarification_required"
+                    if invalid_response
+                    else "provider_unavailable"
+                ),
             ))
         except Exception as exc:
             span.set_attribute("app.search.outcome", "error")
