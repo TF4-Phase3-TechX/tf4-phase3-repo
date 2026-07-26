@@ -2,7 +2,10 @@
 
 ## Current status
 
-The code path, unit/regression tests, additive protobuf contract, container closure, metrics, replay harness, runtime replay, and safe invalidation drill are implemented. A PR/commit link, Jira comment, and named ADR approval are intentionally still pending.
+The code path, unit/regression tests, additive protobuf contract, container
+closure, metrics, semantic replay harness, runtime replay, and safe
+invalidation drill are implemented on a clean `origin/main`-based branch. A
+PR/Jira link and named ADR approval are intentionally still pending.
 
 Do not close `AI MANDATE #23` until those external artifacts exist.
 
@@ -31,7 +34,11 @@ Do not close `AI MANDATE #23` until those external artifacts exist.
 | `MAX_HISTORY_EXCHANGES` | `5` | Complete session exchanges retained |
 | `APP_ENV` | deployment-specific | Staging/production disallow process-memory fallback |
 
-The Helm deployment reads both HMAC values from key `hmac-secret` in Kubernetes Secret `ai-state-hmac-secret`. Provision that secret through the approved secret-management path before rollout; never commit the value.
+The Helm deployment reads distinct `cache-hmac-secret` and
+`memory-hmac-secret` keys from Kubernetes Secret `ai-state-hmac-secret`.
+Provision two independently generated values through the approved
+secret-management path before rollout; never commit either value. The
+deployment intentionally fails closed when the secret or either key is absent.
 
 ## Local verification
 
@@ -86,6 +93,41 @@ content to protect diagnostics. The Compose default is `false`; local
 developers can opt in through `.env.override`.
 
 ### Captured runtime evidence
+
+The canonical semantically asserted replay is:
+
+`tests/eval_mandate23/evidence/runtime-20260726T175526Z/`
+
+| Product Q&A observation | Runtime result |
+|---|---:|
+| Semantically validated cases | 9 / 9 |
+| Assertion failures | 0 |
+| Cold misses | 3 / 3 |
+| Warm hits | 6 / 6 |
+| Warm hit rate | 66.67% |
+| Model calls | 3 (cold only) |
+| Input / output tokens | 4,434 / 993 |
+| Estimated cost | USD 0.00381270 |
+| Mean cold latency | 2,051.25 ms |
+| Mean warm latency | 7.28 ms |
+| Measured latency reduction | 99.64% |
+
+All nine memory operations were also semantically validated with zero
+assertion failures: each repetition stored an allow-listed preference,
+recalled it from a new session for the same user, and proved `not_found` for a
+different user.
+
+The canonical three-turn context proof is:
+
+`tests/eval_mandate23/evidence/short-term-20260726T175526Z/`
+
+All 9 / 9 calls were semantically validated with zero assertion failures.
+Every conversation asserted that the initial search contained product
+`6E92ZMYYFZ`, the relative cheapest turn selected exactly that product, and the
+‚Äúthis product‚Äù review turn returned exactly the same product and named Solar
+Filter. Transport success alone no longer counts as a passing replay.
+
+The earlier 2026-07-26 replay remains preserved for historical comparison:
 
 The 2026-07-26 replay used the production gRPC boundary from the rebuilt
 `product-reviews` container, the same dataset/configuration, three independent
@@ -150,7 +192,7 @@ The drill records the exact row ID and original description/score, checks miss ‚
 
 ## Acceptance checklist
 
-- [x] Existing 132 product-review tests remain green.
+- [x] Existing 173 product-review tests remain green on the clean main-based branch.
 - [x] Cold miss ‚Üí hit with no second provider call.
 - [x] Cross-user repeat misses.
 - [x] Source/model/prompt/Guardrail/schema identity participates in keys.
@@ -164,8 +206,11 @@ The drill records the exact row ID and original description/score, checks miss ‚
 - [x] Profile requires explicit consent and rejects PII/arbitrary fields.
 - [x] Profile show/apply/forget, expiry, cross-session recall, and cross-user isolation are tested.
 - [x] Runtime cold/warm replay executed with three independent repetitions.
+- [x] Runtime replay semantic assertions executed with zero failures.
 - [x] Runtime source invalidation drill captured and restored.
 - [x] Rebuilt production container imported the complete module closure and served the runtime replay.
+- [x] Frontend AI diagnostics tests (5 / 5) and Next.js production build pass.
+- [x] Helm 3.17.3 template render and Docker Compose configuration pass.
 - [ ] PR/commit linked to Jira.
 - [ ] ADR-023 has named approval.
 - [ ] Jira ticket has the four required evidence items.

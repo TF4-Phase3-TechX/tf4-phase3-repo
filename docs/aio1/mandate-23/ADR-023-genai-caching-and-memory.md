@@ -83,11 +83,17 @@ No predicted number is accepted as evidence.
 
 ## Security and operational consequences
 
-- User isolation depends on secret HMAC key material. Production deployment requires Kubernetes Secret `ai-state-hmac-secret`; the key is not committed.
+- User isolation depends on secret HMAC key material. Production deployment requires Kubernetes Secret `ai-state-hmac-secret` with independently generated `cache-hmac-secret` and `memory-hmac-secret` values; neither value is committed.
 - Valkey loss removes optimization and profile availability but cannot produce a fabricated remembered/deleted state.
 - Computing a source fingerprint still reads current catalog/review data on lookup. This is required for freshness and is cheaper than a repeated provider call.
 - Exact caching intentionally leaves semantic equivalents as misses.
 - Copilot early eligibility is conservative, so some safe repeated queries remain misses by design.
+- The replay contract accepts caller-supplied `user_id` values because hidden
+  evaluation must control identities. In the anonymous demo frontend this ID
+  is an unguessable client session identifier, not an authenticated account
+  principal. Production account memory must bind `user_id` at a trusted
+  gateway to the authenticated subject and must not expose the internal gRPC
+  service publicly.
 
 ## Alternatives rejected
 
