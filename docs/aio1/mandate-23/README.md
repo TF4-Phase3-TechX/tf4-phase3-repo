@@ -70,6 +70,21 @@ Run at least three repetitions per case with the same dataset, model, prompt, Gu
 
 Do not manually enter or estimate hit rate, latency, tokens, or cost.
 
+## Frontend diagnostics
+
+Product Q&A and Shopping Copilot render an expandable `AI diagnostics` panel
+only when the Next.js server starts with:
+
+```sh
+AI_DEBUG_METADATA_ENABLED=true
+```
+
+This is a server-side gate. When disabled or unset, the API projection removes
+cache, model-call, token, cost, latency, and memory metadata before serializing
+the browser response. Production therefore does not rely on CSS or hidden DOM
+content to protect diagnostics. The Compose default is `false`; local
+developers can opt in through `.env.override`.
+
 ### Captured runtime evidence
 
 The 2026-07-26 replay used the production gRPC boundary from the rebuilt

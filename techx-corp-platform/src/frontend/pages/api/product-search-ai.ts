@@ -4,6 +4,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import InstrumentationMiddleware from '../../utils/telemetry/InstrumentationMiddleware';
 import ProductReviewGateway from '../../gateways/rpc/ProductReview.gateway';
+import { projectAiResponse } from '../../utils/aiDebugMetadata';
 
 const handler = async ({ method, body }: NextApiRequest, res: NextApiResponse) => {
     switch (method) {
@@ -13,7 +14,7 @@ const handler = async ({ method, body }: NextApiRequest, res: NextApiResponse) =
                 return res.status(400).json({ error: 'query, sessionId and userId are required' });
             }
             const response = await ProductReviewGateway.searchProductsAIAssistant(query, sessionId, userId);
-            return res.status(200).json(response);
+            return res.status(200).json(projectAiResponse(response));
         }
         default: {
             return res.status(405).send('');
