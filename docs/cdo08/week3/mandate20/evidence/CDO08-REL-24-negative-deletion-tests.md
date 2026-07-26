@@ -1,10 +1,10 @@
 # CDO08-REL-24 Negative Deletion Test Evidence
 
-Status: Runtime evidence workflow added - pending GitHub Actions run on `main`
+Status: Runtime evidence captured from GitHub Actions run `30191955252`
 
 ## Scope
 
-This test proves that normal CI/operator roles cannot delete protected recovery assets. IAM `SimulatePrincipalPolicy` is retained below as a pre-check only. Runtime evidence must come from the manual GitHub Actions workflow `.github/workflows/rel24-negative-deletion-tests.yaml`, run from `main`, because the protected CI apply role only trusts GitHub OIDC sessions from `refs/heads/main`.
+This test proves that normal CI/operator roles cannot delete protected recovery assets. Runtime evidence was captured from the manual GitHub Actions workflow `.github/workflows/rel24-negative-deletion-tests.yaml`, run from `main`, because the protected CI apply role only trusts GitHub OIDC sessions from `refs/heads/main`.
 
 ## Preconditions
 
@@ -13,7 +13,7 @@ This test proves that normal CI/operator roles cannot delete protected recovery 
 - CloudTrail `tf4-general-cloudtrail` is logging management events and selected S3 data events.
 - Test resources are disposable and named with `rel24-negative-test-`.
 - PM/Platform confirmed the CI apply role policy simulator result after bootstrap guardrail application.
-- Runtime test workflow has been added and must be run on `main`: `rel24-negative-deletion-tests`.
+- Runtime test workflow ran successfully on `main`: `rel24-negative-deletion-tests`, run `30191955252`.
 
 ## Role ARNs
 
@@ -47,13 +47,47 @@ Why workflow is required:
 - That role trust policy allows GitHub OIDC only for `repo:TF4-Phase3-TechX/tf4-phase3-repo:ref:refs/heads/main`.
 - Running from local SSO credentials would prove the wrong actor.
 
+Workflow run:
+
+```text
+https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/actions/runs/30191955252
+```
+
 Workflow output artifact:
 
 ```text
 rel24-negative-deletion-evidence
 ```
 
-The artifact contains command outputs plus CloudTrail / CloudWatch Logs query results. Copy its final actor/action/result/event IDs into the table at the bottom of this file after the workflow run completes.
+The artifact contains command outputs plus CloudTrail / CloudWatch Logs query results.
+
+Runtime summary:
+
+```text
+Run time UTC: 2026-07-26T06:58:06Z
+Region: us-east-1
+Actor ARN: arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions
+```
+
+Runtime delete attempt results:
+
+| Test | Runtime result |
+| --- | --- |
+| RDS snapshot delete | `AccessDenied`, explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` |
+| ElastiCache snapshot delete | `AccessDenied`, explicit deny in identity-based policy |
+| S3 archive object delete | `AccessDenied`, explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` |
+| MSK delete | `AccessDeniedException`, explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` |
+
+Runtime audit query result:
+
+| Event | Audit result |
+| --- | --- |
+| `DeleteDBSnapshot` | CloudTrail event found: `0851b4de-96ae-4490-ac23-257b9e92d555` at `2026-07-26T06:58:09Z` |
+| `DeleteSnapshot` | CloudTrail event found: `22209e0d-5ec5-4449-82c4-4d4bbd8d81a7` at `2026-07-26T06:58:09Z` |
+| `DeleteCluster` | CloudTrail event found: `db06d1eb-1bc7-4d79-942d-5e2673ea5eb6` at `2026-07-26T06:58:11Z` |
+| `DeleteObject` | CloudTrail S3 data event found in trail S3 log object: `0bcdcb4e-4e18-41fc-a4e8-3c6774c9b9bd` at `2026-07-26T06:58:10Z` |
+
+S3 `DeleteObject` audit source: `s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/us-east-1/2026/07/26/511825856493_CloudTrail_us-east-1_20260726T0700Z_ihVD5Y1OUwIRj2jt.json.gz`.
 
 ## Policy Simulation Pre-Check
 
@@ -195,7 +229,7 @@ Record the following for each test:
 
 | Test | Actor ARN | Action | Target | Result | CloudTrail event ID/time |
 | --- | --- | --- | --- | --- | --- |
-| RDS snapshot delete | Pending workflow artifact | `rds:DeleteDBSnapshot` | `rel24-negative-test-rds` | Pending runtime `AccessDenied` | Pending CloudTrail event ID/time |
-| ElastiCache snapshot delete | Pending workflow artifact | `elasticache:DeleteSnapshot` | `rel24-negative-test-valkey` | Pending runtime `AccessDenied` | Pending CloudTrail event ID/time |
-| S3 archive object delete | Pending workflow artifact | `s3:DeleteObject` | `rel15/rel24-negative-test-object` | Pending runtime `AccessDenied` | Pending CloudWatch Logs/CloudTrail data event time |
-| MSK delete | Pending workflow artifact | `kafka:DeleteCluster` | disposable `rel24-negative-test-msk` ARN | Pending runtime `AccessDenied` | Pending CloudTrail event ID/time |
+| RDS snapshot delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `rds:DeleteDBSnapshot` | `rel24-negative-test-rds` | `AccessDenied` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | `0851b4de-96ae-4490-ac23-257b9e92d555` / `2026-07-26T06:58:09Z` |
+| ElastiCache snapshot delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `elasticache:DeleteSnapshot` | `rel24-negative-test-valkey` | `AccessDenied` explicit deny in identity-based policy | `22209e0d-5ec5-4449-82c4-4d4bbd8d81a7` / `2026-07-26T06:58:09Z` |
+| S3 archive object delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `s3:DeleteObject` | `rel15/rel24-negative-test-object` | `AccessDenied` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | `0bcdcb4e-4e18-41fc-a4e8-3c6774c9b9bd` / `2026-07-26T06:58:10Z` |
+| MSK delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `kafka:DeleteCluster` | disposable `rel24-negative-test-msk` ARN | `AccessDeniedException` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | `db06d1eb-1bc7-4d79-942d-5e2673ea5eb6` / `2026-07-26T06:58:11Z` |
