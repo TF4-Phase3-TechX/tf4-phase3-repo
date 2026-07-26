@@ -1,283 +1,368 @@
-# CDO08-REL-25 - Isolated Restore Environment and Guardrails
-
-**Mandate:** [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) - Directive #20
-**Subtask:** Design isolated restore environment and safety guardrails
-**Owner:** CDO08 Reliability
-**Updated:** 2026-07-23
+# CDO08 REL-25 - Isolated restore environment guardrails
 
 ## Mục tiêu
 
-Ngăn restore nhầm hoặc ghi đè production khi chạy Mandate 20 restore drill. Restore phải đi vào môi trường tách biệt, không dùng production identifier, production endpoint, production DNS, hoặc production app access path.
+Ngăn workflow PITR:
 
-## Giải thích ngắn gọn
+- restore nhầm vào production identifier;
+- dùng production endpoint hoặc security group;
+- tạo public RDS/EC2;
+- cho workload ngoài validation client kết nối;
+- để lại tài nguyên drill phát sinh chi phí.
 
-Subtask này tạo lớp kiểm tra an toàn trước khi validation một bản restore.
-Nó không tự tạo RDS, subnet hoặc security group.
-
-Luồng sử dụng:
+Guardrail được tích hợp trực tiếp trong entry point:
 
 ```text
-tạo restore target tách biệt
--> tạo security group chỉ cho validation client
--> tạo secret tạm
--> chạy preflight
--> kiểm tra dữ liệu
--> thu evidence
--> cleanup
+docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-accounting-pitr.sh
 ```
 
-Mỗi guardrail giải quyết một rủi ro cụ thể:
+Không còn preflight Pod/Kubernetes riêng.
 
-| Guardrail | Rủi ro được ngăn |
-| --- | --- |
-| Tên chứa `drill` và `restore` | Nhìn nhầm tài nguyên drill thành production hoặc xóa nhầm tài nguyên. |
-| Identifier/endpoint khác production | Restore hoặc validation nhầm trực tiếp trên production. |
-| Private subnet và restore-only SG | Internet hoặc production application kết nối vào database restore. |
-| Chỉ validation client được kết nối | Client không thuộc drill đọc hoặc ghi dữ liệu restore. |
-| Temporary secret | Credential production bị dùng hoặc phát tán trong drill. |
-| Không dùng production DNS | Application thật bị điều hướng nhầm sang database restore. |
-| TTL và cleanup tags | Tài nguyên drill bị để quên và tiếp tục phát sinh chi phí. |
-| Preflight fail-fast | Dừng thao tác trước khi validation nếu phát hiện target không an toàn. |
+## Naming contract
 
-Preflight chỉ là lớp xác minh. Việc security group thực sự chỉ cho validation
-client kết nối phải được triển khai và lưu evidence trong restore drill.
-
-## Naming Contract
-
-Restore target phải có prefix/suffix rõ:
+Input:
 
 ```text
 RESTORE_DRILL_ID=rel25-YYYYMMDD
-RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-YYYYMMDD-postgresql-restore
-RESTORE_TARGET_DNS_NAME=rel25-YYYYMMDD-postgresql-restore.internal
 ```
 
-Không dùng:
+Có thể thêm suffix khi chạy lại:
 
 ```text
-techx-tf4-postgresql
-techx-tf4-postgresql.covse6gsuue2.us-east-1.rds.amazonaws.com
-*.prod*
-*.production*
+RESTORE_DRILL_ID=rel25-YYYYMMDD-b
 ```
 
-## Isolation Design
-
-Restore target phải nằm trên private subnet hoặc restore-only subnet group. Security group chỉ mở `tcp/5432` từ validation client, không mở từ production app service account hoặc toàn bộ production runtime.
-
-Access path duy nhất được chấp nhận:
+RDS target bắt buộc:
 
 ```text
-validation-client pod -> restore-only security group -> restore RDS target
-```
-
-Validation client phải có label:
-
-```text
-restore-validation-client=true
-```
-
-## Temporary Secrets
-
-Secret phục vụ drill phải là secret tạm, ví dụ:
-
-```text
-rds-admin-temp-rel25-YYYYMMDD
-rds-app-temp-rel25-YYYYMMDD
-```
-
-Rules:
-
-- không dùng production app secret
-- không commit plaintext credential
-- secret chỉ cấp quyền restore/validation
-- xóa secret sau khi evidence hoàn tất
-
-## No-production-DNS Guardrail
-
-Restore target không được gắn production DNS. Preflight chặn alias chứa `prod` hoặc `production`, và chặn endpoint/identifier production đã biết.
-
-Preflight script:
-
-```text
-docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
+RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-${RESTORE_DRILL_ID}-accounting-restore
 ```
 
 Script fail nếu:
 
-- `RESTORE_TARGET_IDENTIFIER` trùng `techx-tf4-postgresql`
-- `RESTORE_TARGET_ENDPOINT` trùng production RDS endpoint được resolve trực tiếp từ AWS
-- identifier không bắt đầu bằng `techx-tf4-drill-${RESTORE_DRILL_ID}`
-- identifier thiếu marker `drill` hoặc `restore`
-- DNS alias chứa `prod` hoặc `production`
-- AWS RDS resolved endpoint không khớp biến input
-- RDS target `PubliclyAccessible=True`
-- không có validation client pod theo selector `restore-validation-client=true`
+- drill ID sai format;
+- target identifier không khớp chính xác naming contract;
+- target identifier trùng production source;
+- target đã tồn tại.
 
-## Cost, TTL, Cleanup Tags
+## AWS account guardrail
 
-Mọi resource drill phải có tag/label:
+Operator phải cung cấp:
+
+```text
+AWS_PROFILE
+EXPECTED_AWS_ACCOUNT_ID
+```
+
+Script gọi `sts:GetCallerIdentity` và fail nếu account hiện tại khác account kỳ
+vọng. Account ID không có default trong source code.
+
+## Production source guardrail
+
+Production RDS mặc định:
+
+```text
+SOURCE_DB_IDENTIFIER=techx-tf4-postgresql
+```
+
+Đối với source, script chỉ gọi:
+
+```text
+rds:DescribeDBInstances
+rds:DescribeDBInstanceAutomatedBackups
+rds:DescribeDBSubnetGroups
+```
+
+Production chỉ được dùng làm source của:
+
+```text
+rds:RestoreDBInstanceToPointInTime
+```
+
+Script không modify, reboot, delete, đổi SG hoặc chạy SQL trên production.
+
+## Restore timestamp guardrail
+
+`RESTORE_TIMESTAMP` được parse thành UTC và phải nằm trong:
+
+```text
+EarliestTime <= RESTORE_TIMESTAMP <= LatestTime
+```
+
+Window được đọc từ RDS automated backups. Script fail trước khi tạo resource
+nếu timestamp không hợp lệ hoặc nằm ngoài retention window.
+
+## Private subnet guardrail
+
+Validation EC2 dùng một subnet lấy từ production DB subnet group.
+
+Trước khi tạo EC2, script kiểm tra:
+
+```text
+MapPublicIpOnLaunch=False
+```
+
+EC2 được tạo với:
+
+```text
+AssociatePublicIpAddress=false
+```
+
+Sau khi EC2 chạy, script đọc metadata và fail nếu `PublicIpAddress` khác
+`None`.
+
+## Validation EC2 guardrail
+
+EC2 validation:
+
+```text
+AMI: latest Amazon Linux 2023
+Instance type: t3.nano
+Ingress: none
+SSH: disabled
+Access: AWS Systems Manager only
+EBS: encrypted gp3
+DeleteOnTermination: true
+IMDSv2: required
+```
+
+Script kiểm tra EC2 chỉ gắn validation SG và chờ SSM `Online`.
+
+## Security group contract
+
+Script tạo hai SG trong cùng VPC:
+
+```text
+Validation SG
+Restore SG
+```
+
+Network path duy nhất tới restored RDS:
+
+```text
+Temporary EC2
+  -> Validation SG
+  -> TCP/5432
+  -> Restore SG
+  -> Restored RDS
+```
+
+Restore SG chỉ có ingress:
+
+```text
+Protocol: TCP
+Port: 5432
+Source: Validation SG
+```
+
+Không dùng:
+
+- CIDR ingress;
+- IPv6 ingress;
+- prefix list;
+- production SG;
+- EKS node SG;
+- public ingress;
+- port ngoài `5432`.
+
+## Restore RDS guardrail
+
+PITR request luôn có:
+
+```text
+PubliclyAccessible=false
+MultiAZ=false
+DBSubnetGroupName=techx-tf4-postgresql-private
+VpcSecurityGroupIds=<restore-sg-only>
+```
+
+Sau khi target `available`, script apply lại restore SG rồi kiểm tra:
+
+- status là `available`;
+- target private;
+- đúng DB subnet group;
+- chỉ có restore SG;
+- endpoint khác production endpoint.
+
+Nếu một điều kiện sai, workflow fail và chạy cleanup.
+
+## Secret guardrail
+
+Script không chứa password.
+
+Validation IAM role chỉ được cấp:
+
+```text
+secretsmanager:DescribeSecret
+secretsmanager:GetSecretValue
+```
+
+Resource là đúng source RDS managed master secret ARN, không phải wildcard toàn
+bộ Secrets Manager.
+
+EC2 đọc secret trong runtime. Secret value:
+
+- không trả về SSM output;
+- không ghi vào execution log;
+- không ghi vào evidence;
+- chỉ tồn tại trong environment của remote process.
+
+IAM role và inline policy bị xóa sau drill.
+
+## Accounting-only guardrail
+
+Remote recovery script:
+
+```text
+docs/cdo08/week3/mandate20/scripts/postgres/rel25-accounting-recovery-remote.sh
+```
+
+Chỉ chạy:
+
+```text
+pg_dump --schema=accounting
+pg_restore --schema=accounting
+```
+
+Target database bắt buộc:
+
+```text
+ACCOUNTING_TARGET_DB=accounting_drill
+```
+
+Validation fail nếu target có schema:
+
+```text
+catalog
+reviews
+```
+
+## Data integrity guardrail
+
+Remote validation:
+
+- so row count `accounting.order`;
+- so row count `accounting.shipping`;
+- so row count `accounting.orderitem`;
+- fail khi source và target counts khác nhau;
+- fail khi có duplicate `order_id`;
+- fail khi có shipping orphan;
+- fail khi có orderitem orphan;
+- ghi nhận sequence count.
+
+## TTL và cost tags
+
+Tài nguyên drill có:
 
 ```text
 Owner=CDO08
-Team=CDO08
-Project=TF4
 Environment=RestoreDrill
 Mandate=20
 Task=CDO08-REL-25
-RestoreDrillId=rel25-YYYYMMDD
-TTLHours=24
-CleanupAfter=YYYY-MM-DDTHH:mm:ssZ
+RestoreDrillId=<drill-id>
+TTLHours=<hours>
+CleanupAfter=<UTC timestamp>
 CostCenter=ReliabilityDrill
 Production=false
 ```
 
-Cleanup checklist:
+Default:
 
-- delete validation pods/jobs
-- delete Kubernetes temporary secrets
-- delete restore-only RDS target sau khi export evidence
-- delete restore-only security group/subnet group nếu không còn reference
-- verify không còn Route53/CNAME trỏ vào restore target
+```text
+TTL_HOURS=6
+```
 
-## Acceptance Criteria Mapping
+## Cleanup guardrail
 
-| Acceptance Criteria | Evidence/Guardrail |
+Default:
+
+```text
+AUTO_CLEANUP=true
+```
+
+EXIT trap chạy khi success và failure:
+
+```text
+delete RDS PITR target
+-> terminate EC2 và DeleteOnTermination EBS
+-> revoke SG cross-reference
+-> delete restore SG
+-> delete validation SG
+-> delete IAM instance profile
+-> delete inline secret policy
+-> detach SSM managed policy
+-> delete IAM role
+```
+
+Nếu cleanup không hoàn tất, script:
+
+- trả exit code khác `0`;
+- ghi `cleanup_remaining_*`;
+- ghi resource ID cần xử lý thủ công.
+
+## Preflight modes
+
+Preflight read-only:
+
+```bash
+PREFLIGHT_ONLY=true \
+bash docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-accounting-pitr.sh
+```
+
+Preflight không tạo IAM, SG, EC2 hoặc RDS.
+
+Live run cũng chạy cùng preflight ở đầu workflow:
+
+```bash
+PREFLIGHT_ONLY=false \
+CONFIRM_PITR_RESTORE=YES \
+AUTO_CLEANUP=true \
+bash docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-accounting-pitr.sh
+```
+
+## Acceptance Criteria mapping
+
+| Tiêu chí | Guardrail |
 | --- | --- |
-| Restore target không dùng production identifier/endpoint | Preflight chặn production identifier và endpoint. |
-| Chỉ validation client được kết nối | Thiết kế SG chỉ mở từ validation client; preflight yêu cầu pod label `restore-validation-client=true`. |
-| Có preflight check fail nếu target trùng production | `rel25-restore-target-preflight.sh` fail-fast khi identifier/endpoint/resolved endpoint trùng production. |
+| Restore target không dùng production identifier/endpoint | Exact naming contract, target absence check và endpoint comparison. |
+| Chỉ validation client được kết nối | Restore SG chỉ nhận TCP/5432 từ validation SG gắn trực tiếp vào private EC2. |
+| Preflight fail nếu target trùng production | Entry point fail trước resource creation nếu identifier trùng hoặc naming sai. |
+| Không dùng production SG | Restore SG được tạo riêng và target phải chỉ gắn SG đó. |
+| Không dùng production DNS | Workflow dùng AWS-generated drill endpoint và không tạo DNS record. |
+| Temporary secrets | EC2 role chỉ đọc exact managed secret ARN trong thời gian drill. |
+| Cost/TTL/cleanup tags | Bắt buộc trên EC2, EBS, SG và RDS target. |
+| Cleanup | EXIT trap và independent AWS verification. |
 
-## Example Command
+## Verification đã chứng minh
 
-```bash
-AWS_PROFILE=your-sso-profile \
-RESTORE_DRILL_ID=rel25-20260723 \
-RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-20260723-postgresql-restore \
-RESTORE_TARGET_ENDPOINT=techx-tf4-drill-rel25-20260723-postgresql-restore.xxxxxx.us-east-1.rds.amazonaws.com \
-RESTORE_TARGET_DNS_NAME=rel25-20260723-postgresql-restore.internal \
-VALIDATION_CLIENT_SELECTOR=restore-validation-client=true \
-bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-```
-
-## Verification
-
-The preflight script passed `bash -n` and ShellCheck on 2026-07-23. Manual
-negative checks also confirmed that a production identifier and a DNS name
-containing `prod` both return a non-zero exit code without calling AWS.
-
-```bash
-docker run --rm -v "$PWD:/repo:ro" koalaman/shellcheck:stable \
-  /repo/docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-```
-
-### Cách tự kiểm tra preflight
-
-Chạy các lệnh dưới đây trong Git Bash tại thư mục gốc của repo.
-
-Kiểm tra cú pháp và ShellCheck, không kết nối AWS:
-
-```bash
-bash -n ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-
-docker run --rm -v "$PWD:/repo:ro" koalaman/shellcheck:stable \
-  /repo/docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-```
-
-Kiểm tra production identifier bị chặn, không gọi AWS:
-
-```bash
-AWS_PROFILE=dummy \
-RESTORE_DRILL_ID=rel25-20260723 \
-RESTORE_TARGET_IDENTIFIER=techx-tf4-postgresql \
-RESTORE_TARGET_ENDPOINT=fake-restore-endpoint \
-bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-
-test $? -ne 0 && echo "PASS: production identifier was blocked"
-```
-
-Kết quả mong đợi:
+Live dry run `rel25-20260726-b`:
 
 ```text
-[ERROR] Restore target identifier matches production identifier: techx-tf4-postgresql
-PASS: production identifier was blocked
+Target private: PASS
+Endpoint distinct from production: PASS
+Restore SG isolation: PASS
+Accounting validation: PASS
+RTO: 1572 seconds
+Cleanup: PASS
+Production unchanged: PASS
 ```
 
-Kiểm tra production DNS bị chặn, không gọi AWS:
-
-```bash
-AWS_PROFILE=dummy \
-RESTORE_DRILL_ID=rel25-20260723 \
-RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-20260723-postgresql-restore \
-RESTORE_TARGET_ENDPOINT=fake-restore-endpoint \
-RESTORE_TARGET_DNS_NAME=postgres.prod.internal \
-bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-
-test $? -ne 0 && echo "PASS: production DNS was blocked"
-```
-
-Kết quả mong đợi:
+Post-refactor run `rel25-20260726-refactor` xác nhận guardrail vẫn PASS sau khi
+xóa standalone Pod preflight và chuyển checks vào entry point:
 
 ```text
-[ERROR] Restore DNS name must not contain prod/production.
-PASS: production DNS was blocked
+Preflight: PASS
+Private EC2/RDS: PASS
+Exact validation-SG -> restore-SG TCP/5432 path: PASS
+Endpoint distinct from production: PASS
+Accounting validation: PASS
+RTO: 1867 seconds
+Cleanup: PASS
+Production unchanged: PASS
 ```
 
-### Commands to run before a drill
-
-Prerequisites:
-
-- Bash, AWS CLI v2, and kubectl are installed.
-- The operator has an AWS SSO profile with permission to describe both RDS
-  instances.
-- The operator has read access to the TF4 EKS cluster.
-- The isolated restore target and validation-client pod already exist.
-
-Each operator must use their own SSO profile. A read-only profile with
-`rds:DescribeDBInstances` is sufficient.
-
-Authenticate and verify that AWS and Kubernetes point to the intended TF4
-account and cluster:
-
-```powershell
-$env:AWS_PROFILE="your-sso-profile"
-aws sso login --profile $env:AWS_PROFILE
-aws sts get-caller-identity --profile $env:AWS_PROFILE
-kubectl config current-context
-kubectl -n techx-tf4 get pod -l restore-validation-client=true
-```
-
-Expected AWS account and Kubernetes context:
+Evidence:
 
 ```text
-AWS account: 511825856493
-Kubernetes context: arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
-```
-
-Run the preflight from Bash after the isolated restore target and validation
-client exist:
-
-```bash
-export AWS_PROFILE=your-sso-profile
-export AWS_REGION=us-east-1
-export RESTORE_DRILL_ID=rel25-YYYYMMDD
-export RESTORE_TARGET_IDENTIFIER=techx-tf4-drill-rel25-YYYYMMDD-postgresql-restore
-export RESTORE_TARGET_ENDPOINT=endpoint-cua-restore-target
-export RESTORE_TARGET_DNS_NAME=rel25-YYYYMMDD-postgresql-restore.internal
-export NAMESPACE=techx-tf4
-export VALIDATION_CLIENT_SELECTOR=restore-validation-client=true
-
-bash ./docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-target-preflight.sh
-```
-
-Do not replace `RESTORE_TARGET_IDENTIFIER` or `RESTORE_TARGET_ENDPOINT` with
-production values just to make the command pass. The script must stop with
-`[ERROR]` when either value matches production.
-
-The script intentionally has no default AWS profile. Another operator can run
-the same script by setting `AWS_PROFILE` to their own authenticated profile:
-
-```bash
-export AWS_PROFILE=your-sso-profile
-aws sso login --profile "$AWS_PROFILE"
+docs/cdo08/week3/mandate20/evidence/CDO08-REL-25-INTERNAL-DRY-RUN-EVIDENCE.md
 ```
