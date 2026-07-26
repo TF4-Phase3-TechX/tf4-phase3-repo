@@ -1,13 +1,41 @@
-{{- if and .Values.prometheus.enabled .Values.prometheusRetainStorageClass.enabled }}
+{{- if .Values.gp3StorageClasses.enabled }}
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ .Values.prometheusRetainStorageClass.name | quote }}
+  name: gp2-retain
   annotations:
     storageclass.kubernetes.io/is-default-class: "false"
-provisioner: {{ .Values.prometheusRetainStorageClass.provisioner | quote }}
+provisioner: kubernetes.io/aws-ebs
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
-allowVolumeExpansion: {{ .Values.prometheusRetainStorageClass.allowVolumeExpansion }}
+allowVolumeExpansion: false
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: {{ .Values.gp3StorageClasses.provisioner | quote }}
+parameters:
+  type: gp3
+  tagSpecification_1: D18Snapshot=true
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: {{ .Values.gp3StorageClasses.allowVolumeExpansion }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-retain
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: {{ .Values.gp3StorageClasses.provisioner | quote }}
+parameters:
+  type: gp3
+  tagSpecification_1: D18Snapshot=true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: {{ .Values.gp3StorageClasses.allowVolumeExpansion }}
 {{- end }}

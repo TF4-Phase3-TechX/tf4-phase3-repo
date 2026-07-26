@@ -1,0 +1,150 @@
+{
+  "schema_version": "aio1-prometheus-instant-query-evidence-v1",
+  "source": "http://prometheus.techx-observability.svc.cluster.local:9090",
+  "api": "/api/v1/query",
+  "evaluation_time_utc": "2026-07-25T04:11:20Z",
+  "retrieved_at_utc": "2026-07-25T05:55:41Z",
+  "retrieval_path": "read-only HTTP queries executed from the deployed AIOps pod",
+  "query_provenance": {
+    "image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:c2560b9-aiops@sha256:c9e386038d1e75e28a8ef1627fdb35435db1d0a1343c0402dc2bc6749556f01d",
+    "namespace": "techx-tf4",
+    "minimum_request_count": 20,
+    "service_slo_targets": {
+      "frontend": 0.995,
+      "cart": 0.995,
+      "checkout": 0.99
+    },
+    "query_functions": [
+      "app.detection.request_rate_query",
+      "app.detection.latency_query",
+      "app.detection.error_rate_query",
+      "app.detection.error_budget_burn_rate_query"
+    ]
+  },
+  "queries": [
+    {
+      "field": "frontend.request_rate",
+      "promql": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m]))",
+      "api_status": "success",
+      "raw_value": [1784952680, "33.773329006579935"]
+    },
+    {
+      "field": "frontend.p95_ms",
+      "promql": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[5m])))",
+      "api_status": "success",
+      "raw_value": [1784952680, "286.4643268540535"]
+    },
+    {
+      "field": "frontend.error_rate",
+      "promql": "((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])), 0.000001)) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "frontend.burn_rate_5m",
+      "promql": "(((sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[5m])), 1)) / 0.005) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[5m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "frontend.burn_rate_30m",
+      "promql": "(((sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\",status_code=\"STATUS_CODE_ERROR\"}[30m])) or vector(0)) / clamp_min(sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[30m])), 1)) / 0.005) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[30m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "frontend.state",
+      "promql": "aiops_service_state{service=\"frontend\"} == 1",
+      "api_status": "success",
+      "raw_metric": {"service": "frontend", "state": "busy"},
+      "raw_value": [1784952680, "1"]
+    },
+    {
+      "field": "cart.request_rate",
+      "promql": "sum(rate(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m]))",
+      "api_status": "success",
+      "raw_value": [1784952680, "14.625"]
+    },
+    {
+      "field": "cart.p95_ms",
+      "promql": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])))",
+      "api_status": "success",
+      "raw_value": [1784952680, "6.316455696202534"]
+    },
+    {
+      "field": "cart.error_rate",
+      "promql": "((sum(rate(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])), 0.000001)) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "cart.burn_rate_5m",
+      "promql": "(((sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])), 1)) / 0.005) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "cart.burn_rate_30m",
+      "promql": "(((sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",status_code=\"STATUS_CODE_ERROR\"}[30m])) or vector(0)) / clamp_min(sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[30m])), 1)) / 0.005) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"cart\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[30m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "cart.state",
+      "promql": "aiops_service_state{service=\"cart\"} == 1",
+      "api_status": "success",
+      "raw_metric": {"service": "cart", "state": "busy"},
+      "raw_value": [1784952680, "1"]
+    },
+    {
+      "field": "checkout.request_rate",
+      "promql": "sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\"}[5m]))",
+      "api_status": "success",
+      "raw_value": [1784952680, "2.1873450630580336"]
+    },
+    {
+      "field": "checkout.p95_ms",
+      "promql": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[5m])))",
+      "api_status": "success",
+      "raw_value": [1784952680, "199.0999999999999"]
+    },
+    {
+      "field": "checkout.error_rate",
+      "promql": "((sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[5m])), 0.000001)) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[5m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "checkout.burn_rate_5m",
+      "promql": "(((sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[5m])), 1)) / 0.01) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[5m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "checkout.burn_rate_30m",
+      "promql": "(((sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\",status_code=\"STATUS_CODE_ERROR\"}[30m])) or vector(0)) / clamp_min(sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[30m])), 1)) / 0.01) and on() (sum(increase(traces_span_metrics_calls_total{service_name=\"checkout\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"techx-tf4\",span_name=\"oteldemo.CheckoutService/PlaceOrder\"}[30m])) >= 20)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "checkout.state",
+      "promql": "aiops_service_state{service=\"checkout\"} == 1",
+      "api_status": "success",
+      "raw_metric": {"service": "checkout", "state": "healthy"},
+      "raw_value": [1784952680, "1"]
+    },
+    {
+      "field": "active_incident_count",
+      "promql": "sum(aiops_incident_active) or vector(0)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    },
+    {
+      "field": "active_alert_count",
+      "promql": "count(ALERTS{alertname=\"AIOpsIncidentDetected\",alertstate=\"firing\"}) or vector(0)",
+      "api_status": "success",
+      "raw_value": [1784952680, "0"]
+    }
+  ],
+  "claim_boundary": "These instant queries reproduce the signal and detector-state fields at the historical evaluation timestamp. Kubernetes readiness and restart history were not available for that exact timestamp and are not claimed."
+}

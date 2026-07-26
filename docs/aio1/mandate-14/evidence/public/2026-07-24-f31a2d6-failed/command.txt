@@ -1,0 +1,1 @@
+/home/huyvu/Desktop/Workspace/tf4-phase3/.eval-venv/bin/python tests/eval_mandate14/run_harness.py --dataset tests/eval_mandate14/public-cases-v1.jsonl --output-dir /tmp/m14-public-f31a2d6 --product-reviews-target localhost:32824 --cart-target localhost:32819 --runtime-env local --require-clean-git

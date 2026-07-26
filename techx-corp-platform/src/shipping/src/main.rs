@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-use actix_web::{App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use opentelemetry_instrumentation_actix_web::{RequestMetrics, RequestTracing};
 use std::env;
 use tracing::info;
@@ -44,7 +44,12 @@ async fn main() -> std::io::Result<()> {
     );
 
     HttpServer::new(|| {
+        let quote_client = awc::ClientBuilder::new()
+            .timeout(std::time::Duration::from_secs(2))
+            .finish();
+
         App::new()
+            .app_data(web::Data::new(quote_client))
             .wrap(RequestTracing::new())
             .wrap(RequestMetrics::default())
             .service(get_quote)

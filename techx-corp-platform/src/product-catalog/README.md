@@ -12,7 +12,7 @@ When this service is run the output should be similar to the following
 To build the service binary, run:
 
 ```sh
-go build -o /go/bin/product-catalog/
+go build -o /go/bin/product-catalog/ 
 ```
 
 ## Docker Build
@@ -39,3 +39,4 @@ To bump all dependencies run:
 go get -u -t ./...
 go mod tidy
 ```
+

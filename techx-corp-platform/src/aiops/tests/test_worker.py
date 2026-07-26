@@ -30,13 +30,15 @@ class EmptyTelemetry:
 class RecordingDetector:
     def __init__(self):
         self.llm_services = []
+        self.latency_services = []
+        self.error_rate_services = []
 
-    @staticmethod
-    def latency(service, series, query):
+    def latency(self, service, series, query):
+        self.latency_services.append(service)
         return Decision(anomalous=False, incident_type="service_latency_spike", service=service)
 
-    @staticmethod
-    def error_rate(service, series, query, **kwargs):
+    def error_rate(self, service, series, query, **kwargs):
+        self.error_rate_services.append(service)
         return Decision(anomalous=False, incident_type="service_error_rate_spike", service=service)
 
     def llm_error(self, service, series, query, log_count):
@@ -97,6 +99,29 @@ async def test_missing_llm_metric_reports_coverage_for_expected_caller():
     await worker.poll_once()
 
     assert detector.llm_services == ["product-reviews"]
+
+
+@pytest.mark.asyncio
+async def test_generic_span_detection_only_runs_for_explicitly_instrumented_services():
+    detector = RecordingDetector()
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("llm", "cart"),
+            generic_signal_services=("cart",),
+            llm_services=(),
+            llm_log_services=(),
+        ),
+        EmptyTelemetry(),
+        detector,
+        IncidentStore(),
+        remediation=object(),
+    )
+
+    await worker.poll_once()
+
+    assert detector.latency_services == ["cart"]
+    assert detector.error_rate_services == ["cart"]
 
 
 class MultiCallerTelemetry(EmptyTelemetry):

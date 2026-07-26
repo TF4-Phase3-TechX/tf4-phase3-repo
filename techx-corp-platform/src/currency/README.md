@@ -29,4 +29,4 @@ service. To run the client, execute the below command.
 docker exec -it <container_name> currencyclient 7000
 ```
 
-`7000` is port where currency listens to.
+`7000` is port where currency listens to. 

@@ -1,7 +1,7 @@
 # ADR-007: Bounded multi-turn memory and confirmed cart action (excessive-agency control) for the Shopping Copilot
 
 - Date: 2026-07-21
-- Status: **Implemented, verification pending** (local unit/type checks pass; runtime canary and named approvals remain)
+- Status: **Implemented, verification pending** (local unit checks pass; frontend/runtime verification and named approvals remain)
 - Owner: Huy Vũ
 - Required approvers: AIO1 Tech Lead (Nam), CartService owner (cross-team dependency, see Open Items), CDO-07 Audit
 - Signatures: to be recorded through the closure PR once runtime gates pass
@@ -111,7 +111,7 @@ Cart action and multi-turn memory add a new trust boundary (session store) and a
 | Proto changes (`demo.proto`) | Implemented on integration branch |
 | `bedrock_adapter.py` cart_action schema | Implemented on integration branch |
 | Session/proposal safety unit tests | Local pass: bounded/scoped history, invalid IDs, expiry, cross-user/cross-session rejection and replay rejection |
-| Frontend type check | Local `npx tsc --noEmit` pass |
+| Frontend type check | Passed with `npm run typecheck` in the repository-pinned Node 22 image |
 | Eval dataset additions (6 new test groups) | Not yet implemented |
 | Runtime canary (multi-pod session store, cart confirmation flow) | Pending |
 | AIO1 Tech Lead (Nam) | Review required |

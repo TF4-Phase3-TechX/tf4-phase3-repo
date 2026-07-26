@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 
 
@@ -43,6 +44,11 @@ class Settings:
         "JAEGER_URL",
         "http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui",
     )
+    # Trace enrichment is deliberately narrower than the detector's metric
+    # lookback. Jaeger returns complete trace payloads, so a 30-minute/20-trace
+    # query can exceed the client timeout during a load incident.
+    jaeger_trace_lookback: str = os.getenv("AIOPS_JAEGER_TRACE_LOOKBACK", "5m")
+    jaeger_trace_limit: int = int(os.getenv("AIOPS_JAEGER_TRACE_LIMIT", "5"))
     grafana_url: str = os.getenv(
         "GRAFANA_URL", "http://grafana.techx-observability.svc.cluster.local/grafana"
     )
@@ -182,8 +188,13 @@ class Settings:
     )
     error_high_multiplier: float = float(os.getenv("AIOPS_ERROR_HIGH_MULTIPLIER", "2"))
     llm_high_error_rate: float = float(os.getenv("AIOPS_LLM_HIGH_ERROR_RATE", "0.25"))
+    # Runtime controlled drills observed true high-severity acute latency
+    # incidents at 0.742-0.743. With slow_drift=0, the configured confidence
+    # terms have a theoretical ceiling of 0.75 and the normalized isolation
+    # score remains below 1, so a 0.75 gate is structurally unreachable.
+    # Severity, allowlist, runbook and evidence gates remain independent.
     remediation_confidence_threshold: float = float(
-        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.75")
+        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.74")
     )
     verification_error_rate_threshold: float = float(
         os.getenv("AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD", "0.01")
@@ -203,6 +214,15 @@ class Settings:
     verification_polls: int = int(os.getenv("AIOPS_VERIFICATION_POLLS", "3"))
     rollback_verification_polls: int = int(
         os.getenv("AIOPS_ROLLBACK_VERIFICATION_POLLS", "3")
+    )
+    # Detection deliberately uses a stable 5m rate window. Post-action
+    # verification must exclude the pre-action incident, so it uses a short
+    # window after an explicit settle delay while retaining the same SLO.
+    verification_metric_window: str = os.getenv(
+        "AIOPS_VERIFICATION_METRIC_WINDOW", "2m"
+    )
+    verification_settle_seconds: float = float(
+        os.getenv("AIOPS_VERIFICATION_SETTLE_SECONDS", "120")
     )
     verification_interval_seconds: float = float(
         os.getenv("AIOPS_VERIFICATION_INTERVAL_SECONDS", "20")
@@ -224,6 +244,16 @@ class Settings:
             "AIOPS_MONITORED_SERVICES", "llm,product-reviews,frontend,checkout"
         )
     )
+    # Only services that export the generic server-span metrics belong in this
+    # set. Availability monitoring still covers every monitored service, while
+    # service-specific signals (for example LLM call errors) use their own
+    # instrumentation and ownership discovery.
+    generic_signal_services: tuple[str, ...] = field(
+        default_factory=lambda: _csv(
+            "AIOPS_GENERIC_SIGNAL_SERVICES",
+            "product-reviews,frontend,cart,checkout",
+        )
+    )
     # Expected callers are used only to report unavailable coverage. Actual
     # incident ownership is discovered from the service_name metric label.
     llm_services: tuple[str, ...] = field(
@@ -234,6 +264,16 @@ class Settings:
     )
 
     def __post_init__(self) -> None:
+        if self.jaeger_trace_limit <= 0:
+            raise ValueError("Jaeger trace limit must be positive")
+        if not re.fullmatch(
+            r"[1-9]\d*(?:ms|s|m|h|d|w|y)", self.verification_metric_window
+        ):
+            raise ValueError(
+                "verification metric window must be one positive Prometheus duration"
+            )
+        if self.verification_settle_seconds < 0:
+            raise ValueError("verification settle seconds cannot be negative")
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
         if (

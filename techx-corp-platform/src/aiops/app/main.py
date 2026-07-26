@@ -17,6 +17,7 @@ from .remediation import PolicyDenied, RemediationController
 from .store import IncidentStore
 from .summary import IncidentSummaryGenerator
 from .telemetry import TelemetryClient
+from .verification import evaluate_target_slo, target_error_rate_query
 from .worker import AIOpsWorker
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -27,31 +28,30 @@ telemetry = TelemetryClient(settings)
 
 async def verify_service_slo(service: str) -> dict[str, object]:
     latency_series = await telemetry.query_range(
-        latency_query(service, settings.namespace)
+        latency_query(
+            service,
+            settings.namespace,
+            settings.verification_metric_window,
+        )
     )
     points = values(latency_series[0]) if latency_series else []
     current = points[-1] if points else None
-    guard_query = (
-        'sum(rate(traces_span_metrics_calls_total{service_name=~"frontend|checkout",span_kind="SPAN_KIND_SERVER",k8s_namespace_name="'
-        + settings.namespace
-        + '",status_code="STATUS_CODE_ERROR"}[5m])) '
-        '/ clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=~"frontend|checkout",span_kind="SPAN_KIND_SERVER",k8s_namespace_name="'
-        + settings.namespace
-        + '"}[5m])), 0.000001)'
+    guard_series = await telemetry.query_range(
+        target_error_rate_query(
+            service,
+            settings.namespace,
+            settings.verification_metric_window,
+        )
     )
-    guard_series = await telemetry.query_range(guard_query)
     guard_points = values(guard_series[0]) if guard_series else []
-    guard_error_rate = guard_points[-1] if guard_points else None
-    return {
-        "healthy": current is not None
-        and current < settings.latency_threshold_ms
-        and guard_error_rate is not None
-        and guard_error_rate < settings.verification_error_rate_threshold,
-        "p95_latency_ms": current,
-        "threshold_ms": settings.latency_threshold_ms,
-        "checkout_storefront_error_rate": guard_error_rate,
-        "checkout_storefront_error_rate_threshold": settings.verification_error_rate_threshold,
-    }
+    target_error_rate = guard_points[-1] if guard_points else None
+    return evaluate_target_slo(
+        service=service,
+        p95_latency_ms=current,
+        latency_threshold_ms=settings.latency_threshold_ms,
+        target_error_rate=target_error_rate,
+        error_rate_threshold=settings.verification_error_rate_threshold,
+    )
 
 
 remediation = RemediationController(settings, verifier=verify_service_slo)
