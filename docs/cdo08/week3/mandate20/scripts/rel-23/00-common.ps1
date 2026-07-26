@@ -290,3 +290,4 @@ function Remove-KafkaClientPod {
     kubectl delete pod $PodName -n $Namespace --ignore-not-found --wait=false | Out-Null
     kubectl delete secret $KafkaSecretName -n $Namespace --ignore-not-found | Out-Null
 }
+

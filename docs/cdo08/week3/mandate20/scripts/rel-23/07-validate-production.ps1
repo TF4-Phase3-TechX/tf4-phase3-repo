@@ -98,3 +98,4 @@ if ($failed.Count -gt 0) {
 
 Write-Host '[OK] Validation PASS.'
 Write-Host '[NOTE] PASS o day chi chung minh noi bo (khong orphan, dung quan he) - KHONG chung minh du du lieu tuyet doi (schema khong co cot timestamp). Nguon chan ly ve tinh day du la Kafka - xem plan §7.1/§7.2.1.'
+

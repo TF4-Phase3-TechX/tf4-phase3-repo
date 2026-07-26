@@ -66,3 +66,4 @@ finally {
 }
 
 Write-Host '[OK] R.5 hoan tat. Chay tiep 09-cleanup-old-schema.ps1 sau khi da theo doi on dinh mot khoang thoi gian (khong xoa accounting_old ngay).'
+

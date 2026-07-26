@@ -39,3 +39,4 @@ try {
 finally {
     Remove-PgClientPod -Namespace $pod.Namespace -PodName $pod.PodName
 }
+

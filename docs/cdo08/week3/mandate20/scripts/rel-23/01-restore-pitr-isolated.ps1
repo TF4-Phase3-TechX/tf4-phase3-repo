@@ -2,7 +2,7 @@
 # Xem docs/cdo08/week3/mandate20/implementation/CDO08-REL-23-accounting-rds-isolation-plan.md §5.
 #
 # Vi du:
-#   .\01-restore-pitr-isolated.ps1 -RestoreTime 2026-07-20T10:00:00Z
+#   .\01-restore-pitr-isolated.ps1 -RestoreTime 2026-07-25T09:05:00Z
 
 param(
     [Parameter(Mandatory)][string]$RestoreTime,
@@ -73,6 +73,7 @@ aws rds restore-db-instance-to-point-in-time --region $Region `
     --db-parameter-group-name $ParamGroup `
     --vpc-security-group-ids $tmpSgId `
     --db-instance-class db.t4g.micro `
+    --no-multi-az `
     --tags Key=Task,Value=CDO08-REL-23 Key=Ephemeral,Value=true | Out-Null
 Assert-LastExitCode 'aws rds restore-db-instance-to-point-in-time'
 
@@ -100,7 +101,6 @@ Write-Host "[OK] Isolated PITR instance ready: $targetId"
 Write-Host "     Endpoint : $info"
 Write-Host "     TmpSgId  : $tmpSgId"
 Write-Host '[NOTE] KHONG cap nhat production endpoint o buoc nay.'
-Write-Host "[NOTE] Cleanup: .\02-cleanup-pitr-isolated.ps1 -TargetId $targetId -TmpSgId $tmpSgId"
 
 $outFile = ".\rel23-pitr-$RunId.json"
 [pscustomobject]@{
@@ -112,4 +112,5 @@ $outFile = ".\rel23-pitr-$RunId.json"
     MasterUser     = 'postgres'
     MasterPassword = $masterPassword
 } | ConvertTo-Json | Set-Content -Path $outFile -Encoding utf8
-Write-Host "[WARN] $outFile CHUA MAT KHAU THAT (MasterPassword) - dung cho 03/06, xoa file nay sau khi xong Subtask 2-3."
+Write-Host "[WARN] $outFile CHUA MAT KHAU THAT (MasterPassword) - dung cho 03/04/06/07, xoa sau khi xong Subtask 2-3."
+Write-Host "[NOTE] Cleanup: .\02-cleanup-pitr-isolated.ps1 -PitrInfoPath $outFile"
