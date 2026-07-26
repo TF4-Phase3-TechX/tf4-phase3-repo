@@ -40,22 +40,26 @@ and degraded; traffic does not mask the health breach.
 
 ## Offline reproducible scenario set
 
-Reproduced from current `main` on 2026-07-25:
+Reproduced on PR #669 head on 2026-07-26:
 
 ```text
-Total cases: 5
-Passed: 5/5
-Events: 6
-TP/FP/FN/TN: 3/0/0/3
+Total cases: 6
+Passed: 6/6
+Events: 8
+TP/FP/FN/TN: 4/0/0/4
 Precision: 1.0
 Recall: 1.0
 Average simulated MTTD: 45 seconds
 ```
 
-The focused replay tests also pass `19/19`.
+The focused replay tests also pass `19/19`. The added
+`m15-cross-service-masking-02` case keeps a large isolated frontend latency
+spike non-pageable while a simultaneous subtle checkout error-rate incident
+still fires from checkout's own baseline within one detector cycle.
 
 This is evidence level 3. It proves deterministic behavior on the committed
-fixture, not production accuracy or hidden-set acceptance.
+fixture, not the still-missing live masking incident, production accuracy or
+hidden-set acceptance.
 
 The same external-input command is the replay `repro`; replace the committed
 fixture path with a mentor/BTC-supplied schema-v1 JSONL file without changing
