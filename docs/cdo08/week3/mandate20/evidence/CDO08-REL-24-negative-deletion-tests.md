@@ -1,6 +1,6 @@
 # CDO08-REL-24 Negative Deletion Test Evidence
 
-Status: Policy simulation evidence captured - CloudTrail runtime attempts pending if mentor requires live audit events
+Status: Policy simulation evidence captured - CloudTrail runtime attempts pending only if mentor requires live audit events
 
 ## Scope
 
@@ -34,12 +34,38 @@ Run each delete attempt from the normal role path being tested. For CI, run from
 
 ## Policy Simulation Evidence
 
-Verification source: PM/Platform screenshot from IAM `SimulatePrincipalPolicy`.
+Verification source: AWS CLI live verification on 2026-07-26T10:59:42+07:00, matching PM/Platform IAM `SimulatePrincipalPolicy` screenshot.
+
+Verifier caller identity:
+
+```json
+{
+  "Account": "511825856493",
+  "Arn": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-SecurityIAMSSOManager_7fec96c816beda10/thuy"
+}
+```
 
 Policy source:
 
 ```text
 arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply
+```
+
+CI apply role guardrails observed:
+
+```text
+PermissionsBoundary: arn:aws:iam::511825856493:policy/tf4-rel24-protected-recovery-assets-guardrail
+Attached policy:     arn:aws:iam::511825856493:policy/tf4-rel24-ci-protected-recovery-assets-deny
+Compatibility allow: IAMFullAccess + PowerUserAccess still attached, constrained by the explicit deny and boundary.
+```
+
+Command:
+
+```bash
+aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply \
+  --action-names rds:DeleteDBSnapshot elasticache:DeleteSnapshot s3:DeleteObject kafka:DeleteCluster \
+  --resource-arns "*"
 ```
 
 Simulation result:
@@ -50,6 +76,11 @@ Simulation result:
 | `elasticache:DeleteSnapshot` | `explicitDeny` |
 | `s3:DeleteObject` | `explicitDeny` |
 | `kafka:DeleteCluster` | `explicitDeny` |
+
+Matched deny sources:
+
+- `tf4-rel24-ci-protected-recovery-assets-deny`
+- `tf4-rel24-protected-recovery-assets-guardrail` permissions boundary
 
 Conclusion: the normal CI apply role is blocked from deleting the protected recovery asset classes required by REL-24. This satisfies the policy-control portion of the negative deletion test without touching production assets.
 
