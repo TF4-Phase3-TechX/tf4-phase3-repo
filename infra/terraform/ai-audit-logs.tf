@@ -177,6 +177,11 @@ resource "aws_iam_role" "ai_audit_firehose_to_s3" {
         Service = "firehose.amazonaws.com"
       }
       Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 

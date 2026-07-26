@@ -79,6 +79,42 @@ spec:
                       -H 'Content-Type: application/json' \
                       --data '{"index":{"number_of_replicas":0}}' >/dev/null
                   done
+
+                  ai_pattern='ai-tool-audit-*'
+                  ai_policy={{ .Values.opensearch.otelLogsLifecycle.aiAuditPolicyId | default "ai-tool-audit-retention" | quote }}
+                  ai_retention={{ .Values.opensearch.otelLogsLifecycle.aiAuditRetention | default "7d" | quote }}
+
+                  ai_policy_status="$(curl -sS --retry 3 --retry-all-errors --retry-delay 1 -o /dev/null -w '%{http_code}' "$endpoint/_plugins/_ism/policies/$ai_policy")"
+                  case "$ai_policy_status" in
+                    200) ;;
+                    404)
+                      request -X PUT "$endpoint/_plugins/_ism/policies/$ai_policy" \
+                        -H 'Content-Type: application/json' \
+                        --data "{\"policy\":{\"description\":\"Delete $ai_pattern after $ai_retention\",\"default_state\":\"hot\",\"ism_template\":[{\"index_patterns\":[\"$ai_pattern\"],\"priority\":100}],\"states\":[{\"name\":\"hot\",\"actions\":[],\"transitions\":[{\"state_name\":\"delete\",\"conditions\":{\"min_index_age\":\"$ai_retention\"}}]},{\"name\":\"delete\",\"actions\":[{\"delete\":{}}],\"transitions\":[]}]}}" >/dev/null
+                      ;;
+                    *) echo "Unexpected ISM policy status for AI audit: $ai_policy_status" >&2; exit 1 ;;
+                  esac
+
+                  request -X PUT "$endpoint/_index_template/ai-tool-audit-single-node" \
+                    -H 'Content-Type: application/json' \
+                    --data "{\"index_patterns\":[\"$ai_pattern\"],\"priority\":100,\"template\":{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0}}}" >/dev/null
+
+                  ai_indexes="$(request "$endpoint/_cat/indices/$ai_pattern?h=index")"
+                  for index in $ai_indexes; do
+                    if ! request -X POST "$endpoint/_plugins/_ism/add/$index" \
+                      -H 'Content-Type: application/json' \
+                      --data "{\"policy_id\":\"$ai_policy\"}" >/dev/null; then
+                      echo "ISM add returned an error for $index; verifying current assignment" >&2
+                    fi
+                    assignment="$(request "$endpoint/_plugins/_ism/explain/$index?show_policy=true")"
+                    printf '%s' "$assignment" | grep -Eq "\"(index\\.plugins\\.index_state_management\\.policy_id|index\\.opendistro\\.index_state_management\\.policy_id)\"[[:space:]]*:[[:space:]]*\"$ai_policy\"" || {
+                      echo "Unexpected ISM policy for $index" >&2
+                      exit 1
+                    }
+                    request -X PUT "$endpoint/$index/_settings" \
+                      -H 'Content-Type: application/json' \
+                      --data '{"index":{"number_of_replicas":0}}' >/dev/null
+                  done
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
