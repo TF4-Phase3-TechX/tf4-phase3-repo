@@ -54,6 +54,10 @@ spec:
       serviceAccountName: {{ $sa.name | default $name }}
       automountServiceAccountToken: true
       securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -61,6 +65,9 @@ spec:
           image: {{ $imageRef | quote }}
           imagePullPolicy: {{ $image.pullPolicy | default "IfNotPresent" }}
           securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
