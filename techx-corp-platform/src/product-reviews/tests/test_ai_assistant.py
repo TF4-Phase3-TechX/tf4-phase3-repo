@@ -1,6 +1,9 @@
 from ai_assistant import GroundedAssistant
 from bedrock_adapter import BedrockResult, ProviderFailure
 from safety import BLOCKED_RESPONSE, INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
+from response_cache import ResponseCache
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 
 ROWS = [
@@ -179,3 +182,200 @@ def test_comparison_validation_failure_preserves_provider_usage_metadata():
     assert outcome.latency_ms == 20
     assert outcome.input_tokens == 80
     assert outcome.output_tokens == 30
+
+
+def test_product_qa_cold_then_hit_avoids_second_provider_call():
+    provider = Provider({
+        "decision": "answered",
+        "answer": "It gives clear moon views.",
+        "citations": [{"review_id": 1, "evidence_quote": "clear views of the moon"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(secret="test-secret"),
+    )
+
+    cold = assistant.answer("p1", "How are the moon views?", user_id="user-a")
+    warm = assistant.answer("p1", "How are the moon views?", user_id="user-a")
+
+    assert cold.cache_status == "miss"
+    assert cold.cache_eligible is True
+    assert cold.model_calls == 1
+    assert warm.cache_status == "hit"
+    assert warm.model_calls == 0
+    assert warm.input_tokens == warm.output_tokens == 0
+    assert len(provider.calls) == 1
+
+
+def test_product_qa_cache_is_user_scoped():
+    provider = Provider({
+        "decision": "answered",
+        "answer": "It gives clear moon views.",
+        "citations": [{"review_id": 1, "evidence_quote": "clear views of the moon"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(secret="test-secret"),
+    )
+
+    assistant.answer("p1", "How are the moon views?", user_id="user-a")
+    other_user = assistant.answer(
+        "p1", "How are the moon views?", user_id="user-b"
+    )
+
+    assert other_user.cache_status == "miss"
+    assert len(provider.calls) == 2
+
+
+def test_product_qa_source_change_forces_miss_and_new_answer():
+    rows = [(1, "alice", "old verified marker", 4)]
+
+    class EvidenceProvider(Provider):
+        def converse(self, question, product, reviews):
+            self.calls.append((question, product, reviews))
+            marker = reviews[0]["description"]
+            return BedrockResult(
+                {
+                    "decision": "answered",
+                    "answer": f"Evidence: {marker}.",
+                    "citations": [
+                        {"review_id": 1, "evidence_quote": marker}
+                    ],
+                },
+                12,
+                50,
+                10,
+                False,
+            )
+
+    provider = EvidenceProvider()
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: list(rows),
+        response_cache=ResponseCache(secret="test-secret"),
+    )
+    assistant.answer("p1", "What do reviews say?", user_id="user-a")
+    assert assistant.answer(
+        "p1", "What do reviews say?", user_id="user-a"
+    ).cache_status == "hit"
+
+    rows[0] = (1, "alice", "new verified marker", 2)
+    changed = assistant.answer("p1", "What do reviews say?", user_id="user-a")
+
+    assert changed.cache_status == "miss"
+    assert changed.cache_reason == "source_changed"
+    assert "new verified marker" in changed.response
+    assert len(provider.calls) == 2
+
+
+def test_invalid_model_output_is_never_cached():
+    provider = Provider({
+        "decision": "answered",
+        "answer": "It is waterproof.",
+        "citations": [{"review_id": 1, "evidence_quote": "waterproof"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(secret="test-secret"),
+    )
+
+    first = assistant.answer("p1", "Is it waterproof?", user_id="user-a")
+    second = assistant.answer("p1", "Is it waterproof?", user_id="user-a")
+
+    assert first.outcome == second.outcome == "insufficient"
+    assert first.cache_status == second.cache_status == "miss"
+    assert len(provider.calls) == 2
+
+
+def test_cache_outage_degrades_to_provider_miss():
+    class BrokenCache:
+        def get(self, *_args):
+            raise OSError("cache unavailable")
+
+        def set(self, *_args, **_kwargs):
+            raise OSError("cache unavailable")
+
+    provider = Provider({
+        "decision": "answered",
+        "answer": "It gives clear moon views.",
+        "citations": [{"review_id": 1, "evidence_quote": "clear views of the moon"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(
+            redis_client=BrokenCache(),
+            secret="test-secret",
+        ),
+    )
+
+    outcome = assistant.answer("p1", "How are the moon views?", user_id="user-a")
+
+    assert outcome.outcome == "answered"
+    assert outcome.cache_status == "miss"
+    assert outcome.cache_reason == "cache_error"
+    assert outcome.model_calls == 1
+
+
+def test_guest_product_qa_is_not_response_cached():
+    provider = Provider({
+        "decision": "answered",
+        "answer": "It gives clear moon views.",
+        "citations": [{"review_id": 1, "evidence_quote": "clear views of the moon"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(secret="test-secret"),
+    )
+
+    first = assistant.answer("p1", "How are the moon views?", user_id="guest")
+    second = assistant.answer("p1", "How are the moon views?", user_id="guest")
+
+    assert first.cache_eligible is second.cache_eligible is False
+    assert first.cache_reason == second.cache_reason == "missing_user_identity"
+    assert len(provider.calls) == 2
+
+
+def test_concurrent_cold_requests_are_single_flight():
+    class SlowProvider(Provider):
+        def converse(self, question, product, reviews):
+            time.sleep(0.05)
+            return super().converse(question, product, reviews)
+
+    provider = SlowProvider({
+        "decision": "answered",
+        "answer": "It gives clear moon views.",
+        "citations": [{"review_id": 1, "evidence_quote": "clear views of the moon"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(secret="test-secret"),
+    )
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        outcomes = list(
+            executor.map(
+                lambda _: assistant.answer(
+                    "p1",
+                    "How are the moon views?",
+                    user_id="concurrent-user",
+                ),
+                range(5),
+            )
+        )
+
+    assert len(provider.calls) == 1
+    assert sum(outcome.cache_status == "miss" for outcome in outcomes) == 1
+    assert sum(outcome.cache_status == "hit" for outcome in outcomes) == 4

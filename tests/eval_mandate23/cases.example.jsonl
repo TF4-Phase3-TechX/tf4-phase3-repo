@@ -1,0 +1,6 @@
+{"case_id":"product-qa-cold","surface":"product_qa","request":{"product_id":"OLJCESPC7Z","question":"What do customer reviews say about this telescope?"},"user_id":"m23-cache-user","session_id":"m23-cache-session"}
+{"case_id":"product-qa-warm-1","surface":"product_qa","request":{"product_id":"OLJCESPC7Z","question":"What do customer reviews say about this telescope?"},"user_id":"m23-cache-user","session_id":"m23-cache-session"}
+{"case_id":"product-qa-warm-2","surface":"product_qa","request":{"product_id":"OLJCESPC7Z","question":"What do customer reviews say about this telescope?"},"user_id":"m23-cache-user","session_id":"m23-cache-session"}
+{"case_id":"memory-remember","surface":"copilot","request":{"query":"Please remember my preferred category is telescopes"},"user_id":"m23-memory-user","session_id":"m23-memory-session-a"}
+{"case_id":"memory-recall-new-session","surface":"copilot","request":{"query":"Show what you remember"},"user_id":"m23-memory-user","session_id":"m23-memory-session-b"}
+{"case_id":"memory-cross-user","surface":"copilot","request":{"query":"Show what you remember"},"user_id":"m23-other-user","session_id":"m23-memory-session-c"}
