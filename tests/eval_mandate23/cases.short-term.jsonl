@@ -1,3 +1,3 @@
-{"case_id":"short-term-search","surface":"copilot","request":{"query":"Tôi muốn tìm hiểu các mẫu kính thiên văn"},"user_id":"m23-short-term-user","session_id":"m23-short-term-session"}
-{"case_id":"short-term-cheapest","surface":"copilot","request":{"query":"Trong số đó cái nào có giá rẻ nhất?"},"user_id":"m23-short-term-user","session_id":"m23-short-term-session"}
-{"case_id":"short-term-review","surface":"copilot","request":{"query":"Đánh giá của người dùng về sản phẩm này thế nào?"},"user_id":"m23-short-term-user","session_id":"m23-short-term-session"}
+{"case_id":"short-term-search","surface":"copilot","request":{"query":"Tôi muốn tìm hiểu các mẫu kính thiên văn"},"user_id":"m23-short-term-user","session_id":"m23-short-term-session","expect":{"outcome":"success","result_product_ids_contains":["6E92ZMYYFZ"]}}
+{"case_id":"short-term-cheapest","surface":"copilot","request":{"query":"Trong số đó cái nào có giá rẻ nhất?"},"user_id":"m23-short-term-user","session_id":"m23-short-term-session","expect":{"outcome":"success","result_product_ids":["6E92ZMYYFZ"]}}
+{"case_id":"short-term-review","surface":"copilot","request":{"query":"Đánh giá của người dùng về sản phẩm này thế nào?"},"user_id":"m23-short-term-user","session_id":"m23-short-term-session","expect":{"outcome":"answered","result_product_ids":["6E92ZMYYFZ"],"response_contains":"Solar Filter"}}

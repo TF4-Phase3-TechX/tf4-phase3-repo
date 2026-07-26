@@ -50,6 +50,8 @@ def _read_cases(path: str) -> list[dict[str, Any]]:
                 raise ValueError(
                     f"line {line_number}: user_id and session_id are required"
                 )
+            if "expect" in value and not isinstance(value["expect"], dict):
+                raise ValueError(f"line {line_number}: expect must be an object")
             cases.append(value)
         return cases
     finally:
@@ -98,6 +100,15 @@ def aggregate(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "groups": {}}
     for name, items in groups.items():
         successful = [item for item in items if not item.get("error")]
+        validated = [
+            item
+            for item in items
+            if int((item.get("assertions") or {}).get("checked", 0)) > 0
+        ]
+        assertion_failures = sum(
+            (item.get("assertions") or {}).get("status") == "failed"
+            for item in items
+        )
         hits = sum(item.get("cache") == "hit" for item in successful)
         latencies = [float(item.get("latency_ms", 0)) for item in successful]
         misses = [
@@ -113,6 +124,9 @@ def aggregate(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
         result["groups"][name] = {
             "cases": len(items),
             "successful_cases": len(successful),
+            "failed_cases": len(items) - len(successful),
+            "validated_cases": len(validated),
+            "assertion_failures": assertion_failures,
             "cache_hits": hits,
             "cache_misses": len(successful) - hits,
             "hit_rate": hits / len(successful) if successful else 0.0,
@@ -137,6 +151,95 @@ def _request_payload(case: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     request = raw_request if isinstance(raw_request, dict) else {"question": raw_request}
     surface = str(case.get("surface") or request.get("surface") or "product_qa")
     return surface, request
+
+
+def validate_expectations(
+    case: dict[str, Any],
+    observation: dict[str, Any],
+) -> tuple[int, list[str]]:
+    """Validate semantic outcomes, not only transport success."""
+    expected = case.get("expect")
+    if not expected:
+        return 0, []
+    if not isinstance(expected, dict):
+        return 0, ["expect must be an object"]
+
+    errors: list[str] = []
+    checked = 0
+    payload = observation.get("response")
+    payload = payload if isinstance(payload, dict) else {}
+
+    for field in (
+        "cache",
+        "cache_eligible",
+        "cache_reason",
+        "model_calls",
+        "memory_status",
+    ):
+        if field not in expected:
+            continue
+        checked += 1
+        actual = observation.get(field)
+        if actual != expected[field]:
+            errors.append(
+                f"{field}: expected {expected[field]!r}, observed {actual!r}"
+            )
+
+    if "outcome" in expected:
+        checked += 1
+        actual = payload.get("outcome", "")
+        if actual != expected["outcome"]:
+            errors.append(
+                f"outcome: expected {expected['outcome']!r}, observed {actual!r}"
+            )
+
+    response_text = str(payload.get("response") or "")
+    for field, should_contain in (
+        ("response_contains", True),
+        ("response_not_contains", False),
+    ):
+        if field not in expected:
+            continue
+        values = expected[field]
+        values = [values] if isinstance(values, str) else values
+        if not isinstance(values, list) or not all(
+            isinstance(value, str) and value for value in values
+        ):
+            errors.append(f"{field}: expected a string or non-empty string list")
+            continue
+        for value in values:
+            checked += 1
+            present = value.casefold() in response_text.casefold()
+            if present != should_contain:
+                qualifier = "contain" if should_contain else "exclude"
+                errors.append(f"{field}: response must {qualifier} {value!r}")
+
+    results = payload.get("results")
+    result_ids = (
+        [str(item.get("id") or "") for item in results if isinstance(item, dict)]
+        if isinstance(results, list)
+        else []
+    )
+    if "result_product_ids" in expected:
+        checked += 1
+        wanted = expected["result_product_ids"]
+        if not isinstance(wanted, list) or result_ids != wanted:
+            errors.append(
+                f"result_product_ids: expected {wanted!r}, observed {result_ids!r}"
+            )
+    if "result_product_ids_contains" in expected:
+        wanted = expected["result_product_ids_contains"]
+        if not isinstance(wanted, list):
+            errors.append("result_product_ids_contains: expected a list")
+        else:
+            for product_id in wanted:
+                checked += 1
+                if product_id not in result_ids:
+                    errors.append(
+                        f"result_product_ids_contains: missing {product_id!r}"
+                    )
+
+    return checked, errors
 
 
 def run_case(
@@ -180,7 +283,7 @@ def run_case(
         client_latency_ms = (time.monotonic() - started) * 1_000
         payload = MessageToDict(response, preserving_proto_field_name=True)
         cache_status = str(getattr(response, "cache_status", "") or "miss")
-        return {
+        observation = {
             "schema_version": SCHEMA_VERSION,
             "case_id": str(case.get("case_id") or ""),
             "surface": surface,
@@ -203,6 +306,21 @@ def run_case(
             "memory_status": str(getattr(response, "memory_status", "")),
             "response": payload,
         }
+        checked, validation_errors = validate_expectations(case, observation)
+        observation["assertions"] = {
+            "status": (
+                "failed"
+                if validation_errors
+                else "passed"
+                if checked
+                else "not_configured"
+            ),
+            "checked": checked,
+        }
+        if validation_errors:
+            observation["error"] = "AssertionError"
+            observation["error_message"] = "; ".join(validation_errors)[:2_000]
+        return observation
     except Exception as exc:
         return {
             "schema_version": SCHEMA_VERSION,
@@ -222,12 +340,14 @@ def _report(summary: dict[str, Any]) -> str:
     lines = [
         "# Mandate 23 replay report",
         "",
-        "| Surface | Cases | Hit rate | Miss mean ms | Hit mean ms | Model calls | Tokens | Cost USD |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Surface | Cases | Validated | Failures | Assertion failures | Hit rate | Miss mean ms | Hit mean ms | Model calls | Tokens | Cost USD |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for surface, row in summary["groups"].items():
         lines.append(
-            f"| {surface} | {row['cases']} | {row['hit_rate']:.2%} | "
+            f"| {surface} | {row['cases']} | {row['validated_cases']} | "
+            f"{row['failed_cases']} | {row['assertion_failures']} | "
+            f"{row['hit_rate']:.2%} | "
             f"{row['latency_ms']['miss_mean']:.2f} | {row['latency_ms']['hit_mean']:.2f} | "
             f"{row['model_calls']} | {row['input_tokens'] + row['output_tokens']} | "
             f"{row['estimated_cost_usd']:.8f} |"
@@ -235,7 +355,7 @@ def _report(summary: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "All numbers above are computed from this runtime replay. Errors remain in `per_case.jsonl` and are not counted as successful cache observations.",
+            "All numbers above are computed from this runtime replay. Transport or semantic assertion failures remain in `per_case.jsonl`, fail the command, and are not counted as successful cache observations.",
             "",
         ]
     )
