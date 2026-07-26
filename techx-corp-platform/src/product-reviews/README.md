@@ -1,6 +1,6 @@
 # Product Reviews Service
 
-This gRPC service returns product reviews and answers short questions through a grounded Amazon Bedrock path. The application fetches product/review evidence deterministically, removes unneeded identity fields, redacts PII, quarantines instruction-like reviews, invokes one pinned Bedrock model with a pinned Guardrail, and validates exact review quotes before display. The model has no DB, cart, checkout, or arbitrary tool access.
+This gRPC service returns product reviews and answers short questions through grounded Amazon Bedrock paths. The application fetches product/review evidence deterministically, removes unneeded identity fields, redacts PII, quarantines instruction-like reviews, invokes one pinned Bedrock model with a pinned Guardrail, and validates exact evidence quotes before display. The model has no DB, cart, checkout, or arbitrary tool access.
 
 ## Build and test
 
@@ -25,6 +25,6 @@ python -m pytest src/product-reviews/tests -q
 
 Production credentials come only from EKS Pod Identity using ServiceAccount `product-reviews-bedrock`; the repo has no provider key. Local real-model evaluation uses temporary AWS SSO credentials.
 
-Provider errors return the static unavailable response. There is no automatic fallback to a mock or different model. Online logs/traces must keep `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` and contain metadata only.
+Single-product provider errors return the static unavailable response. A resolved two-product comparison may degrade to a deterministic catalog-price comparison, but never to model-authored or review claims. There is no automatic fallback to a mock or different model. Online logs/traces must keep `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false` and contain metadata only.
 
 The canonical decision, IAM template and evaluation procedure are in [`docs/aio1/mandate-06`](../../../docs/aio1/mandate-06/ADR-006-bedrock-model-and-safety.md).

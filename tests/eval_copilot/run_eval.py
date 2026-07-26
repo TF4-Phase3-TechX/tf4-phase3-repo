@@ -67,7 +67,16 @@ def get_git_sha() -> str:
             text=True,
             check=True,
         )
-        return res.stdout.strip()
+        sha = res.stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=str(_REPO_DIR),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        return f"{sha}-dirty" if dirty.stdout.strip() else sha
     except Exception:
         return "unknown"
 
@@ -192,15 +201,24 @@ def generate_snapshot_folder(
 allow_list:
   search_types:
     - search
+    - reviews
     - compare
+    - cart_action
+    - chitchat
+    - clarify
     - out_of_scope
   allowed_schema_fields:
     - search_type
+    - confidence_score
     - category
     - price_min
     - price_max
+    - sort_by
     - keywords
+    - quantity
     - comparison_targets
+    - clarify_question
+    - response_message
   allowed_categories:
     - telescopes
     - accessories
@@ -276,10 +294,10 @@ def generate_run_readme(
     readme_lines = [
         f"# Evaluation Run Evidence — `{run_dir.name}`",
         "",
-        f"> **Timestamp (UTC)**: `{timestamp}`  ",
-        f"> **Git SHA**: `{git_sha}`  ",
-        f"> **Model ID**: `{model_id}`  ",
-        f"> **Environment**: `{runtime_env}`  ",
+        f"> **Timestamp (UTC)**: `{timestamp}`",
+        f"> **Git SHA**: `{git_sha}`",
+        f"> **Model ID**: `{model_id}`",
+        f"> **Environment**: `{runtime_env}`",
         f"> **Config Source**: `{config_source}`",
         "",
         "## 1. System Snapshots & Hashes",
@@ -458,7 +476,8 @@ def generate_report(evidence_dir: Path, report_path: Path) -> None:
         status_emoji = "✅ PASS" if r["passed"] else "❌ FAIL"
         expected_str = ", ".join(r["expected_product_ids"]) if r["expected_product_ids"] else "[]"
         actual_str = ", ".join(r["actual_product_ids"]) if r["actual_product_ids"] else "[]"
-        refused_str = "`True`" if r["actual_refused"] else "`False`"
+        refused_reason = r.get("refusal_reason", "")
+        refused_str = f"`True` ({refused_reason})" if r["actual_refused"] and refused_reason else ("`True`" if r["actual_refused"] else "`False`")
         details = r.get("details", {})
         recall_str = f"{details['recall']:.2f}" if "recall" in details else "—"
         precision_str = f"{details['precision']:.2f}" if "precision" in details else "—"
@@ -469,13 +488,48 @@ def generate_report(evidence_dir: Path, report_path: Path) -> None:
             f"| `{r['test_id']}` | `{r['group']}` | *\"{r['query']}\"* | {expected_str} | {actual_str} | {refused_str} | {recall_str} | {precision_str} | {in_tok}/{out_tok} | `${cost:.6f}` | **{status_emoji}** | `{r['reason']}` |"
         )
 
+    result_by_id = {
+        str(result.get("test_id")): result for result in latest_run["results"]
+    }
+    selected_regression_ids = ("TC-34", "TC-46", "TC-47", "TC-51")
+    selected_regressions_pass = all(
+        result_by_id.get(test_id, {}).get("passed") is True
+        for test_id in selected_regression_ids
+    )
+    tc51_products = result_by_id.get("TC-51", {}).get("actual_product_ids", [])
+    tc51_referent = ", ".join(tc51_products) if tc51_products else "unavailable"
+    failed_results = [
+        result for result in latest_run["results"] if not result.get("passed")
+    ]
+    if failed_results:
+        failure_summary = ", ".join(
+            f"{result.get('test_id', 'unknown')} ({result.get('reason', 'unknown')})"
+            for result in failed_results
+        )
+        quality_observation = (
+            f"- **Task-success failures**: {len(failed_results)} case(s): "
+            f"{failure_summary}."
+        )
+    else:
+        quality_observation = (
+            "- **Task-success failures**: None in the latest real-model run; "
+            f"all {latest_summary.get('total_cases', 0)} cases passed."
+        )
+
     lines.extend([
         "",
-        "## Known Gaps & Observations",
+        "## Latest Run Observations",
         "",
+        (
+            "- **Selected Safety/Action Regressions**: "
+            f"{'PASS' if selected_regressions_pass else 'FAIL'} for "
+            f"{', '.join(selected_regression_ids)}; the cart journey retained "
+            f"grounded catalog product `{tc51_referent}`."
+        ),
+        quality_observation,
         "- **Out-of-Scope Handling**: The assistant correctly routes non-shopping tasks and empty queries directly to refusal, recording provider token usage accurately.",
-        "- **Fuzzy Search Validation**: Length-dependent sequence matching resolves transposition typos like *\"Fitler\"* and *\"Cmoet\"* to corresponding products cleanly.",
         "- **Grounding Validation**: The grounding check confirms that no fabricated product IDs are ever returned to the client.",
+        "- **Mandate 14 Boundary**: This report covers Copilot task-success regressions. Cross-surface leakage, unauthorized-write, latency, token, and cost scoring is published through the standard Mandate 14 harness.",
     ])
 
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -549,19 +603,55 @@ def main() -> None:
         if args.delay > 0:
             time.sleep(args.delay)
 
+        turn_traces = []
+        turn_num = 1
         input_tokens = 0
         output_tokens = 0
         estimated_cost_usd = 0.0
-
         time.sleep(1.5)
         session_id = f"eval_session_{tc['test_id']}_{uuid.uuid4().hex[:8]}"
         for prev_q in tc.get("history_queries", []):
             for attempt in range(2):
                 try:
-                    stub.SearchProductsAIAssistant(
+                    h_res = stub.SearchProductsAIAssistant(
                         demo_pb2.SearchProductsAIAssistantRequest(query=prev_q, session_id=session_id),
                         timeout=30.0,
                     )
+                    h_intent = {}
+                    if hasattr(h_res, "trace") and hasattr(h_res.trace, "parsed_intent") and h_res.trace.parsed_intent:
+                        try:
+                            h_intent = json.loads(h_res.trace.parsed_intent)
+                        except Exception:
+                            h_intent = {"raw": h_res.trace.parsed_intent}
+
+                    h_in_tok = getattr(h_res.trace, "input_tokens", 0) if hasattr(h_res, "trace") else 0
+                    h_out_tok = getattr(h_res.trace, "output_tokens", 0) if hasattr(h_res, "trace") else 0
+                    h_cost = getattr(h_res.trace, "estimated_cost_usd", 0.0) if hasattr(h_res, "trace") else 0.0
+
+                    input_tokens += h_in_tok
+                    output_tokens += h_out_tok
+                    estimated_cost_usd += h_cost
+
+                    h_proposal = None
+                    if hasattr(h_res, "action_proposal") and h_res.action_proposal and h_res.action_proposal.product_id:
+                        h_proposal = {
+                            "action_type": h_res.action_proposal.action_type,
+                            "product_id": h_res.action_proposal.product_id,
+                            "product_name": h_res.action_proposal.product_name,
+                            "quantity": h_res.action_proposal.quantity,
+                        }
+
+                    turn_traces.append({
+                        "turn": turn_num,
+                        "query": prev_q,
+                        "parsed_intent": h_intent,
+                        "results": [p.id for p in h_res.results],
+                        "action_proposal": h_proposal,
+                        "input_tokens": h_in_tok,
+                        "output_tokens": h_out_tok,
+                        "estimated_cost_usd": h_cost,
+                    })
+                    turn_num += 1
                     break
                 except Exception as exc:
                     if attempt == 1:
@@ -583,22 +673,58 @@ def main() -> None:
                     time.sleep(2.0)
 
             actual_product_ids = [p.id for p in res.results]
-            if not actual_product_ids and hasattr(res, "action_proposal") and res.action_proposal.product_id:
+            if not actual_product_ids and hasattr(res, "action_proposal") and res.action_proposal and res.action_proposal.product_id:
                 actual_product_ids = [res.action_proposal.product_id]
             actual_refused = res.trace.refused
 
-            if hasattr(res.trace, "input_tokens"):
-                input_tokens = res.trace.input_tokens
-            if hasattr(res.trace, "output_tokens"):
-                output_tokens = res.trace.output_tokens
-            if hasattr(res.trace, "estimated_cost_usd"):
-                estimated_cost_usd = res.trace.estimated_cost_usd
+            main_in_tok = getattr(res.trace, "input_tokens", 0) if hasattr(res, "trace") else 0
+            main_out_tok = getattr(res.trace, "output_tokens", 0) if hasattr(res, "trace") else 0
+            main_cost = getattr(res.trace, "estimated_cost_usd", 0.0) if hasattr(res, "trace") else 0.0
+
+            input_tokens += main_in_tok
+            output_tokens += main_out_tok
+            estimated_cost_usd += main_cost
 
             total_input_tokens += input_tokens
             total_output_tokens += output_tokens
             total_estimated_cost_usd += estimated_cost_usd
 
-            # Evaluate
+            main_intent = {}
+            if hasattr(res, "trace") and hasattr(res.trace, "parsed_intent") and res.trace.parsed_intent:
+                try:
+                    main_intent = json.loads(res.trace.parsed_intent)
+                except Exception:
+                    main_intent = {"raw": res.trace.parsed_intent}
+
+            main_proposal = None
+            if hasattr(res, "action_proposal") and res.action_proposal and res.action_proposal.product_id:
+                main_proposal = {
+                    "action_type": res.action_proposal.action_type,
+                    "product_id": res.action_proposal.product_id,
+                    "product_name": res.action_proposal.product_name,
+                    "quantity": res.action_proposal.quantity,
+                }
+
+            turn_traces.append({
+                "turn": turn_num,
+                "query": query,
+                "parsed_intent": main_intent,
+                "results": actual_product_ids,
+                "action_proposal": main_proposal,
+                "input_tokens": main_in_tok,
+                "output_tokens": main_out_tok,
+                "estimated_cost_usd": main_cost,
+            })
+
+            actual_refusal_reason = ""
+            if res and hasattr(res, "trace"):
+                actual_refusal_reason = getattr(res.trace, "refusal_reason", "")
+                if not actual_refusal_reason and hasattr(res.trace, "filter_applied") and res.trace.filter_applied:
+                    try:
+                        f_data = json.loads(res.trace.filter_applied)
+                        actual_refusal_reason = f_data.get("refusal_reason", "")
+                    except Exception:
+                        pass
             eval_res = evaluate(tc, actual_product_ids, actual_refused, catalog_ids)
 
         except grpc.RpcError as exc:
@@ -613,6 +739,7 @@ def main() -> None:
             }
             actual_product_ids = []
             actual_refused = False
+            actual_refusal_reason = "grpc_error"
         except Exception as exc:
             eval_res = {
                 "passed": False,
@@ -621,6 +748,7 @@ def main() -> None:
             }
             actual_product_ids = []
             actual_refused = False
+            actual_refusal_reason = "runner_error"
 
         status_str = "PASS" if eval_res["passed"] else "FAIL"
         print(f"{status_str} ({eval_res['reason']}) [Tokens: in={input_tokens}, out={output_tokens}, cost=${estimated_cost_usd:.6f}]")
@@ -634,10 +762,13 @@ def main() -> None:
             "test_id": tc["test_id"],
             "group": tc["group"],
             "query": query,
+            "history_queries": tc.get("history_queries", []),
+            "turn_history_details": turn_traces,
             "expected_product_ids": tc["expected_product_ids"],
             "expected_behavior": tc["expected_behavior"],
             "actual_product_ids": actual_product_ids,
             "actual_refused": actual_refused,
+            "refusal_reason": actual_refusal_reason,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "estimated_cost_usd": estimated_cost_usd,
@@ -715,7 +846,10 @@ def main() -> None:
     print(f"Results JSON saved to {results_file_path}")
 
     # Build exact rerun command string
-    rerun_cmd = f"python3 tests/eval_natural_language_product_search_mvp/run_eval.py --port {args.port} --runtime-env {args.runtime_env}"
+    rerun_cmd = (
+        "python3 tests/eval_copilot/run_eval.py "
+        f"--port {args.port} --runtime-env {args.runtime_env}"
+    )
     if args.delay > 0:
         rerun_cmd += f" --delay {args.delay}"
 
