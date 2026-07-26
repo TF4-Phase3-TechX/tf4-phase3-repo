@@ -16,6 +16,6 @@ make docker-generate-protobuf
 From the root directory, run:
 
 ```sh
-docker compose build recommendation
+docker compose build recommendation 
 ```
 
