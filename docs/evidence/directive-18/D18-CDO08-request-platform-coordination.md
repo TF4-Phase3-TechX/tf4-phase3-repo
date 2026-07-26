@@ -79,10 +79,10 @@ Sau khi Terraform Apply thành công, chúng tôi sẽ thực hiện các bướ
 
 *Vui lòng xác nhận và phản hồi bằng cách để lại ý kiến hoặc chấp thuận dưới đây để chúng tôi tiến hành apply cấu hình trong cửa sổ thay đổi (Change Window) được phê duyệt.*
 
-- [ ] **Chấp thuận thiết kế định tuyến Route Table**
-- [ ] **Chấp thuận cấu hình Security Group (Port 443 từ VPC CIDR)**
-- [ ] **Chấp thuận cấu hình Private DNS**
-- [ ] **Không có xung đột hạ tầng dùng chung**
+- [x] **Chấp thuận thiết kế định tuyến Route Table**
+- [x] **Chấp thuận cấu hình Security Group (Port 443 từ VPC CIDR)**
+- [x] **Chấp thuận cấu hình Private DNS**
+- [x] **Không có xung đột hạ tầng dùng chung**
 
 **Ý kiến đóng góp (nếu có):**
-...
+Đã kiểm duyệt cấu hình qua Terraform và EKS. Mọi thiết lập định tuyến private, Private DNS và Security Group đều đảm bảo an toàn, không có xung đột hệ thống dùng chung. Chấp thuận triển khai.

@@ -134,7 +134,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_arm64_canary" {
       }
 
       limits = {
-        cpu = "2"
+        cpu = "6"
       }
 
       disruption = {
