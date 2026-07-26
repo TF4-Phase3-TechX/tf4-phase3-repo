@@ -1,8 +1,8 @@
 FROM eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
 
-ARG KAFKA_VERSION=3.9.1
+ARG KAFKA_VERSION=3.9.2
 ARG SCALA_VERSION=2.13
-ARG CONFLUENT_S3_SINK_VERSION=12.1.3
+ARG CONFLUENT_S3_SINK_VERSION=10.6.14
 
 RUN apk add --no-cache bash curl gzip tar tini unzip \
     && apk upgrade --no-cache libexpat \
