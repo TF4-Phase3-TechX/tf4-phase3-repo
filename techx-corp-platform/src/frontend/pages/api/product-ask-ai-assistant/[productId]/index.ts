@@ -5,8 +5,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import InstrumentationMiddleware from '../../../../utils/telemetry/InstrumentationMiddleware';
 import {Empty} from '../../../../protos/demo';
 import ProductReviewService from '../../../../services/ProductReview.service';
+import { projectAiResponse } from '../../../../utils/aiDebugMetadata';
 
-type TResponse = string | Empty;
+type TResponse = string | Empty | Record<string, unknown>;
 
 const handler = async ({ method, body, query }: NextApiRequest, res: NextApiResponse<TResponse>) => {
 
@@ -25,7 +26,7 @@ const handler = async ({ method, body, query }: NextApiRequest, res: NextApiResp
                 userId,
             );
 
-            return res.status(200).json(response);
+            return res.status(200).json(projectAiResponse(response));
         }
 
         default: {
