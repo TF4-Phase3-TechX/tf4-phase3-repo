@@ -85,7 +85,9 @@ Runtime audit query result:
 | `DeleteDBSnapshot` | CloudTrail event found: `0851b4de-96ae-4490-ac23-257b9e92d555` at `2026-07-26T06:58:09Z` |
 | `DeleteSnapshot` | CloudTrail event found: `22209e0d-5ec5-4449-82c4-4d4bbd8d81a7` at `2026-07-26T06:58:09Z` |
 | `DeleteCluster` | CloudTrail event found: `db06d1eb-1bc7-4d79-942d-5e2673ea5eb6` at `2026-07-26T06:58:11Z` |
-| `DeleteObject` | Runtime command returned `AccessDenied`; CloudWatch Logs query completed but returned 0 rows in the artifact window. Re-query S3 data events if mentor requires a CloudTrail data event ID for S3 specifically. |
+| `DeleteObject` | CloudTrail S3 data event found in trail S3 log object: `0bcdcb4e-4e18-41fc-a4e8-3c6774c9b9bd` at `2026-07-26T06:58:10Z` |
+
+S3 `DeleteObject` audit source: `s3://tf4-cloudtrail-logs-bucket-511825856493/AWSLogs/511825856493/CloudTrail/us-east-1/2026/07/26/511825856493_CloudTrail_us-east-1_20260726T0700Z_ihVD5Y1OUwIRj2jt.json.gz`.
 
 ## Policy Simulation Pre-Check
 
@@ -229,5 +231,5 @@ Record the following for each test:
 | --- | --- | --- | --- | --- | --- |
 | RDS snapshot delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `rds:DeleteDBSnapshot` | `rel24-negative-test-rds` | `AccessDenied` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | `0851b4de-96ae-4490-ac23-257b9e92d555` / `2026-07-26T06:58:09Z` |
 | ElastiCache snapshot delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `elasticache:DeleteSnapshot` | `rel24-negative-test-valkey` | `AccessDenied` explicit deny in identity-based policy | `22209e0d-5ec5-4449-82c4-4d4bbd8d81a7` / `2026-07-26T06:58:09Z` |
-| S3 archive object delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `s3:DeleteObject` | `rel15/rel24-negative-test-object` | `AccessDenied` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | CloudWatch Logs query completed with 0 rows in artifact window; command output retained in run artifact |
+| S3 archive object delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `s3:DeleteObject` | `rel15/rel24-negative-test-object` | `AccessDenied` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | `0bcdcb4e-4e18-41fc-a4e8-3c6774c9b9bd` / `2026-07-26T06:58:10Z` |
 | MSK delete | `arn:aws:sts::511825856493:assumed-role/tf4-github-actions-terraform-apply/GitHubActions` | `kafka:DeleteCluster` | disposable `rel24-negative-test-msk` ARN | `AccessDeniedException` explicit deny in `tf4-rel24-ci-protected-recovery-assets-deny` | `db06d1eb-1bc7-4d79-942d-5e2673ea5eb6` / `2026-07-26T06:58:11Z` |
