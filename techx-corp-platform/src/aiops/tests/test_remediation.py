@@ -7,10 +7,16 @@ from app.models import Evidence, Incident, IncidentStatus
 from app.remediation import PolicyDenied, RemediationController
 
 
-def incident(service="product-reviews", *, with_evidence=False):
+def incident(
+    service="product-reviews",
+    *,
+    with_evidence=False,
+    severity="high",
+    confidence=.9,
+):
     return Incident(
-        incident_type="service_latency_spike", severity="high", affected_service=service,
-        confidence=.9, suspected_root_cause="recent deploy", runbook_id="deployment-latency-rollback",
+        incident_type="service_latency_spike", severity=severity, affected_service=service,
+        confidence=confidence, suspected_root_cause="recent deploy", runbook_id="deployment-latency-rollback",
         recommended_action="rollback",
         evidence=[Evidence(source="prometheus", query="p95", window="5m", value=2000)]
         if with_evidence else [],
@@ -87,7 +93,8 @@ async def test_failed_slo_verification_restores_original_template():
     controller = RemediationController(
         replace(
             Settings(), remediation_mode="live", verification_polls=1,
-            rollback_verification_polls=1, verification_interval_seconds=0,
+            rollback_verification_polls=1, verification_settle_seconds=0,
+            verification_interval_seconds=0,
         ), adapter=adapter, verifier=unhealthy_then_recovered,
     )
     item = incident()
@@ -122,6 +129,48 @@ async def test_preauthorized_policy_needs_no_per_incident_button_in_dry_run():
 
 
 @pytest.mark.asyncio
+async def test_calibrated_gate_allows_observed_high_severity_acute_incident():
+    controller = RemediationController(
+        replace(
+            Settings(),
+            autonomous_remediation_enabled=True,
+            remediation_mode="dry-run",
+            allowed_deployments=("product-reviews",),
+        )
+    )
+    item = incident(with_evidence=True, confidence=.742)
+
+    await controller.handle_incident(item)
+
+    assert item.approval_status == "preauthorized_policy"
+    assert item.execution_attempts == 1
+    assert item.verification_result["mode"] == "dry-run"
+
+
+@pytest.mark.asyncio
+async def test_calibrated_gate_still_denies_medium_severity_at_same_confidence():
+    controller = RemediationController(
+        replace(
+            Settings(),
+            autonomous_remediation_enabled=True,
+            remediation_mode="dry-run",
+            allowed_deployments=("product-reviews",),
+        )
+    )
+    item = incident(
+        with_evidence=True,
+        severity="medium",
+        confidence=.743,
+    )
+
+    await controller.handle_incident(item)
+
+    assert item.status == IncidentStatus.ESCALATED
+    assert item.execution_attempts == 0
+    assert "severity_high" in item.escalation_reason
+
+
+@pytest.mark.asyncio
 async def test_autonomous_policy_fails_closed_without_evidence():
     controller = RemediationController(
         replace(Settings(), autonomous_remediation_enabled=True)
@@ -145,7 +194,8 @@ async def test_unverified_rollback_escalates_and_blocks_mutation():
     controller = RemediationController(
         replace(
             Settings(), remediation_mode="live", verification_polls=1,
-            rollback_verification_polls=1, verification_interval_seconds=0,
+            rollback_verification_polls=1, verification_settle_seconds=0,
+            verification_interval_seconds=0,
         ), adapter=adapter, verifier=always_unhealthy,
     )
     item = incident()
@@ -178,3 +228,35 @@ async def test_held_target_lease_denies_action_before_mutation():
         await controller.execute(item)
 
     assert adapter.patches == []
+
+
+@pytest.mark.asyncio
+async def test_verification_waits_for_post_action_metric_window(monkeypatch):
+    adapter = FakeAdapter()
+    sleeps = []
+
+    async def record_sleep(seconds):
+        sleeps.append(seconds)
+
+    async def healthy(_):
+        return {"healthy": True, "p95_latency_ms": 300}
+
+    monkeypatch.setattr("app.remediation.asyncio.sleep", record_sleep)
+    controller = RemediationController(
+        replace(
+            Settings(),
+            verification_settle_seconds=30,
+            verification_interval_seconds=0,
+        ),
+        adapter=adapter,
+        verifier=healthy,
+    )
+
+    result = await controller._verification_window(
+        adapter,
+        "product-reviews",
+        polls=1,
+    )
+
+    assert result["healthy"] is True
+    assert sleeps == [30]

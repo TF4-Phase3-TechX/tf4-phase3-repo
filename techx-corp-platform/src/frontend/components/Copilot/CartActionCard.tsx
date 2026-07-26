@@ -26,9 +26,10 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [isCancelled, setIsCancelled] = useState(false);
+    const [failureOutcome, setFailureOutcome] = useState<string | null>(null);
 
     const handleConfirm = async () => {
-        if (isSubmitting || isConfirmed || isCancelled) return;
+        if (isSubmitting || isConfirmed || isCancelled || failureOutcome) return;
         setIsSubmitting(true);
         try {
             const response = await fetch('/api/copilot-cart-confirm', {
@@ -40,12 +41,18 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
                     confirmationToken: proposal.idempotencyKey,
                 }),
             });
-            if (!response.ok) throw new Error('Proposal is invalid, expired, or already used');
+            const result = await response.json() as { applied?: boolean; outcome?: string };
+            if (!response.ok || !result.applied) {
+                throw new Error(result.outcome || 'confirmation_failed');
+            }
             setIsConfirmed(true);
-            await queryClient.invalidateQueries({ queryKey: ['cart'] });
+            queryClient.invalidateQueries({ queryKey: ['cart'] }).catch((error) => {
+                console.error('Cart refresh failed after Copilot confirmation:', error);
+            });
             if (onConfirmed) onConfirmed();
         } catch (error) {
             console.error('Failed to add item to cart via Copilot proposal:', error);
+            setFailureOutcome(error instanceof Error ? error.message : 'confirmation_failed');
         } finally {
             setIsSubmitting(false);
         }
@@ -72,6 +79,14 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
         );
     }
 
+    const failureMessage = failureOutcome === 'downstream_failed'
+        ? 'Không thể thêm sản phẩm do dịch vụ giỏ hàng đang gặp sự cố. Gợi ý này đã hết hiệu lực; hãy yêu cầu Copilot tạo gợi ý mới.'
+        : failureOutcome === 'invalid_or_expired'
+            ? 'Gợi ý này đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu Copilot tạo gợi ý mới.'
+            : failureOutcome
+                ? 'Không thể thêm sản phẩm vào giỏ hàng. Gợi ý này không thể thử lại; hãy yêu cầu Copilot tạo gợi ý mới.'
+                : '';
+
     return (
         <div style={{ padding: '14px', margin: '8px 0', fontSize: '13px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #bfdbfe', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#1d4ed8', fontWeight: 600 }}>
@@ -80,22 +95,27 @@ export const CartActionCard: React.FC<CartActionCardProps> = ({ proposal, userId
             <div style={{ marginBottom: '12px', color: '#374151' }}>
                 Bạn có muốn thêm <strong>{proposal.productName}</strong> (Số lượng: {proposal.quantity || 1}) vào giỏ hàng không?
             </div>
+            {failureMessage && (
+                <div role="alert" style={{ marginBottom: '12px', padding: '10px', color: '#b91c1c', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
+                    ⚠️ {failureMessage}
+                </div>
+            )}
             <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                     onClick={handleConfirm}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || Boolean(failureOutcome)}
                     style={{
                         padding: '8px 14px',
                         fontSize: '12px',
                         fontWeight: 600,
                         color: '#ffffff',
-                        backgroundColor: isSubmitting ? '#93c5fd' : '#2563eb',
+                        backgroundColor: isSubmitting || failureOutcome ? '#93c5fd' : '#2563eb',
                         border: 'none',
                         borderRadius: '6px',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        cursor: isSubmitting || failureOutcome ? 'not-allowed' : 'pointer',
                     }}
                 >
-                    {isSubmitting ? 'Đang xử lý...' : 'Thêm vào giỏ hàng'}
+                    {isSubmitting ? 'Đang xử lý...' : failureOutcome ? 'Gợi ý đã hết hiệu lực' : 'Thêm vào giỏ hàng'}
                 </button>
                 <button
                     onClick={handleCancel}

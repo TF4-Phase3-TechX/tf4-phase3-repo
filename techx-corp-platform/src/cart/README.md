@@ -11,5 +11,6 @@ Run `dotnet restore` and `dotnet build`.
 From the root directory of this repository, run:
 
 ```sh
-docker compose build cart
+docker compose build cart 
 ```
+

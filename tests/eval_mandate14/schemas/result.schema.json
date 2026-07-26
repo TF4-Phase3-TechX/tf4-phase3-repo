@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techx.example/schemas/mandate14-report-v2.json",
+  "title": "Mandate 14 evaluation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "dataset_sha256",
+    "git",
+    "per_case",
+    "aggregate"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "mandate14-report-v2"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dataset_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "dirty"],
+      "properties": {
+        "sha": {
+          "type": "string"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      }
+    },
+    "per_case": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id",
+          "surface",
+          "status",
+          "task_success",
+          "grounding",
+          "abstention",
+          "safety",
+          "agency",
+          "performance",
+          "failures"
+        ]
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "required": [
+        "cases",
+        "task_success",
+        "claim_faithfulness",
+        "hallucination",
+        "abstention_accuracy",
+        "injection_block",
+        "false_block",
+        "pii_leak_count",
+        "system_prompt_leak_count",
+        "unauthorized_write_count",
+        "performance",
+        "hard_bars",
+        "scorer_human"
+      ]
+    }
+  }
+}

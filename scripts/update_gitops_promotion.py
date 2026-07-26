@@ -11,14 +11,44 @@ from pathlib import Path
 IMAGE_REVISIONS = Path("environments/production/image-revisions.yaml")
 APPLICATIONS = Path("argocd/root-resources/applications.yaml")
 CHART_REPOSITORY = "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo.git"
+KAFKA_CONNECT_SERVICE = "kafka-connect"
+KAFKA_CONNECT_IRSA_ROLE_ARN = "arn:aws:iam::511825856493:role/techx-tf4-orders-kafka-connect-archive"
 
+
+
+def update_kafka_connect_archive(path, tag, digest):
+    text = path.read_text()
+    block = (
+        "kafkaConnectArchive:\n"
+        "  enabled: true\n"
+        "  image:\n"
+        f'    tag: "{tag}"\n'
+        f'    digest: "{digest}"\n'
+        "  serviceAccount:\n"
+        "    annotations:\n"
+        f'      eks.amazonaws.com/role-arn: "{KAFKA_CONNECT_IRSA_ROLE_ARN}"\n'
+    )
+    pattern = r"(?ms)^kafkaConnectArchive:\n(?:  .*\n)*"
+    text, count = re.subn(pattern, block, text)
+    if count == 0:
+        text = text.rstrip() + "\n" + block
+    elif count != 1:
+        raise SystemExit(f"expected at most one kafkaConnectArchive block, found {count}")
+    path.write_text(text)
 
 def update_revisions(gitops_dir, services, digests, image_tag, source_sha, chart_changed):
     gitops_dir = Path(gitops_dir)
     if services:
         path = gitops_dir / IMAGE_REVISIONS
+        component_services = []
+        if KAFKA_CONNECT_SERVICE in services:
+            digest = digests.get(KAFKA_CONNECT_SERVICE)
+            if not digest:
+                raise SystemExit(f"missing digest for promoted service {KAFKA_CONNECT_SERVICE}")
+            update_kafka_connect_archive(path, f"{image_tag}-{KAFKA_CONNECT_SERVICE}", digest)
+        component_services = [service for service in services if service != KAFKA_CONNECT_SERVICE]
         text = path.read_text()
-        for service in services:
+        for service in component_services:
             digest = digests.get(service)
             if not digest:
                 raise SystemExit(f"missing digest for promoted service {service}")
@@ -89,13 +119,18 @@ def self_test():
         (root / APPLICATIONS).write_text(applications)
 
         update_revisions(root, ["cart"], {"cart": new_digest}, "first", "e" * 40, False)
+        update_revisions(root, ["kafka-connect"], {"kafka-connect": new_digest}, "connect", "f" * 40, False)
         update_revisions(root, ["payment"], {"payment": new_digest}, "second", chart_sha, True)
 
         updated_images = (root / IMAGE_REVISIONS).read_text()
         updated_apps = (root / APPLICATIONS).read_text()
         assert 'tag: "first-cart"' in updated_images
         assert 'tag: "second-payment"' in updated_images
-        assert updated_images.count(new_digest) == 2
+        assert updated_images.count(new_digest) == 3
+        assert "kafkaConnectArchive:" in updated_images
+        assert "enabled: true" in updated_images
+        assert 'tag: "connect-kafka-connect"' in updated_images
+        assert KAFKA_CONNECT_IRSA_ROLE_ARN in updated_images
         assert updated_apps.count(chart_sha) == 2
 
 
@@ -112,13 +147,16 @@ if __name__ == "__main__":
     if args.self_test:
         self_test()
     else:
-        required = [args.gitops_dir, args.services_json, args.image_digests_json, args.image_tag, args.source_sha]
+        services = json.loads(args.services_json) if args.services_json else []
+        required = [args.gitops_dir, args.services_json, args.source_sha]
+        if services:
+            required.extend([args.image_digests_json, args.image_tag])
         if not all(required):
             parser.error("promotion arguments are required unless --self-test is used")
         update_revisions(
             args.gitops_dir,
-            json.loads(args.services_json),
-            json.loads(args.image_digests_json),
+            services,
+            json.loads(args.image_digests_json) if args.image_digests_json else {},
             args.image_tag,
             args.source_sha,
             args.chart_changed,

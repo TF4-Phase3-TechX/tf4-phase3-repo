@@ -81,11 +81,15 @@ class TelemetryClient:
         except (httpx.HTTPError, ValueError):
             return None
 
-    async def find_traces(self, service: str, lookback: str = "30m") -> list[dict[str, Any]] | None:
+    async def find_traces(self, service: str) -> list[dict[str, Any]] | None:
         try:
             response = await self.client.get(
                 f"{self.settings.jaeger_url.rstrip('/')}/api/traces",
-                params={"service": service, "lookback": lookback, "limit": 20},
+                params={
+                    "service": service,
+                    "lookback": self.settings.jaeger_trace_lookback,
+                    "limit": self.settings.jaeger_trace_limit,
+                },
             )
             response.raise_for_status()
             return response.json().get("data", [])
