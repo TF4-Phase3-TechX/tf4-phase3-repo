@@ -72,13 +72,18 @@ class IncidentStore:
             self._items[candidate.incident_id] = candidate
             self._active[candidate.dedup_key] = candidate.incident_id
             while len(self._items) > self.max_items:
-                oldest = min(self._items.values(), key=lambda i: i.detected_at)
-                # Never prune an active or mutation-blocked safety record.
-                if (
-                    self._active.get(oldest.dedup_key) == oldest.incident_id
-                    or oldest.mutation_blocked
-                ):
+                # Preserve active and mutation-blocked safety records, but do
+                # not let one old protected item prevent pruning unrelated
+                # terminal incidents.
+                eligible = [
+                    item
+                    for item in self._items.values()
+                    if self._active.get(item.dedup_key) != item.incident_id
+                    and not item.mutation_blocked
+                ]
+                if not eligible:
                     break
+                oldest = min(eligible, key=lambda i: i.detected_at)
                 self._items.pop(oldest.incident_id, None)
             return candidate, True
 

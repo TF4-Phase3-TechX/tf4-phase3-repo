@@ -4,9 +4,9 @@ from app.models import Incident, IncidentStatus
 from app.store import IncidentStore
 
 
-def incident():
+def incident(service: str = "checkout"):
     return Incident(
-        incident_type="service_latency_spike", severity="high", affected_service="checkout",
+        incident_type="service_latency_spike", severity="high", affected_service=service,
         confidence=.9, suspected_root_cause="latency", runbook_id="deployment-latency-rollback",
         recommended_action="rollback",
     )
@@ -124,3 +124,20 @@ async def test_target_quarantine_blocks_auto_resolve_and_survives_clear_cycle():
 
     assert await store.clear_target_block(active.affected_service) is True
     assert await store.is_target_blocked(active.affected_service) is False
+
+
+@pytest.mark.asyncio
+async def test_pruning_skips_protected_oldest_and_removes_terminal_record():
+    store = IncidentStore(cooldown_seconds=0, max_items=2)
+    protected, _ = await store.upsert(incident("checkout"))
+
+    terminal, _ = await store.upsert(incident("frontend"))
+    resolved = await store.observe_recovery(
+        terminal.incident_type, terminal.affected_service, 1
+    )
+    assert resolved is terminal
+
+    newest, _ = await store.upsert(incident("product-reviews"))
+
+    retained_ids = {item.incident_id for item in await store.list()}
+    assert retained_ids == {protected.incident_id, newest.incident_id}
