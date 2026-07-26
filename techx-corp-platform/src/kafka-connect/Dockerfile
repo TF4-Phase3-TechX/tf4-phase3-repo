@@ -1,10 +1,11 @@
 FROM eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
 
-ARG KAFKA_VERSION=3.9.0
+ARG KAFKA_VERSION=3.9.1
 ARG SCALA_VERSION=2.13
-ARG CONFLUENT_S3_SINK_VERSION=12.1.0
+ARG CONFLUENT_S3_SINK_VERSION=12.1.3
 
 RUN apk add --no-cache bash curl gzip tar tini unzip \
+    && apk upgrade --no-cache libexpat \
     && addgroup -S app \
     && adduser -S app -G app \
     && mkdir -p /opt/kafka /usr/share/confluent-hub-components /var/lib/kafka-connect \
