@@ -1,14 +1,13 @@
 FROM eclipse-temurin:21-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64
 
-ARG KAFKA_VERSION=3.9.2
+ARG KAFKA_VERSION=4.3.1
 ARG SCALA_VERSION=2.13
-ARG CONFLUENT_S3_SINK_VERSION=10.6.14
-ARG JACKSON_VERSION=2.18.8
+ARG CONFLUENT_S3_SINK_VERSION=12.1.8
+ARG JACKSON_VERSION=2.21.4
 ARG NETTY_VERSION=4.1.136.Final
 ARG ZOOKEEPER_VERSION=3.8.6
 ARG BOUNCYCASTLE_VERSION=1.84
 ARG PLEXUS_UTILS_VERSION=3.6.1
-ARG JLINE_VERSION=3.30.14
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl gzip tar tini unzip ca-certificates \
@@ -37,7 +36,6 @@ RUN apt-get update \
     && curl -fsSL "https://repo1.maven.org/maven2/org/apache/zookeeper/zookeeper/${ZOOKEEPER_VERSION}/zookeeper-${ZOOKEEPER_VERSION}.jar" -o /tmp/zookeeper.jar \
     && curl -fsSL "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/${BOUNCYCASTLE_VERSION}/bcprov-jdk18on-${BOUNCYCASTLE_VERSION}.jar" -o /tmp/bcprov-jdk18on.jar \
     && curl -fsSL "https://repo1.maven.org/maven2/org/codehaus/plexus/plexus-utils/${PLEXUS_UTILS_VERSION}/plexus-utils-${PLEXUS_UTILS_VERSION}.jar" -o /tmp/plexus-utils.jar \
-    && curl -fsSL "https://repo1.maven.org/maven2/org/jline/jline/${JLINE_VERSION}/jline-${JLINE_VERSION}.jar" -o /tmp/jline.jar \
     && for lib_dir in /opt/kafka/libs "$connector_lib_dir"; do \
         cp /tmp/jackson-core.jar "$lib_dir/jackson-core-${JACKSON_VERSION}.jar"; \
         cp /tmp/jackson-databind.jar "$lib_dir/jackson-databind-${JACKSON_VERSION}.jar"; \
@@ -46,7 +44,6 @@ RUN apt-get update \
         cp /tmp/zookeeper.jar "$lib_dir/zookeeper-${ZOOKEEPER_VERSION}.jar"; \
         cp /tmp/bcprov-jdk18on.jar "$lib_dir/bcprov-jdk18on-${BOUNCYCASTLE_VERSION}.jar"; \
         cp /tmp/plexus-utils.jar "$lib_dir/plexus-utils-${PLEXUS_UTILS_VERSION}.jar"; \
-        cp /tmp/jline.jar "$lib_dir/jline-${JLINE_VERSION}.jar"; \
     done \
     && rm -rf /tmp/kafka.tgz /tmp/kafka-connect-s3.zip /tmp/*.jar \
     && chown -R app:app /opt/kafka /usr/share/confluent-hub-components /var/lib/kafka-connect
