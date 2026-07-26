@@ -1981,7 +1981,7 @@ opentelemetry-collector:
         tls:
           insecure: true
         sending_queue:
-          num_consumers: 10
+          num_consumers: 5
           queue_size: 1000
           batch: {}
         retry_on_failure:
@@ -2156,6 +2156,13 @@ jaeger:
           opensearch_backend:
             elasticsearch:
               server_urls: ["http://opensearch:9200"]
+              indices:
+                spans:
+                  shards: 1
+                  replicas: 0
+                services:
+                  shards: 1
+                  replicas: 0
         metric_backends:
           metrics_backend:
             prometheus:
@@ -2443,7 +2450,7 @@ opensearch:
   nodeGroup: techx-corp
   singleNode: true
   protocol: http
-  opensearchJavaOpts: "-Xms800m -Xmx800m"
+  opensearchJavaOpts: "-Xms1g -Xmx1g"
   persistence:
     enabled: true
     enableInitChown: false
@@ -2470,7 +2477,7 @@ opensearch:
       cpu: 1000m
       memory: 1Gi
     limits:
-      cpu: 1000m
+      cpu: 2000m
       memory: 2Gi
 
   otelLogsLifecycle:
