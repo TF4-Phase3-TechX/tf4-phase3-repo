@@ -1,0 +1,134 @@
+{
+  "schema_version": "aio1-live-detection-set-v1",
+  "prepared_at_utc": "2026-07-25T05:16:07Z",
+  "label_authority": {
+    "type": "team_controlled_gitops_drill",
+    "owner": "TF4 AIO1",
+    "independent_btc_labels": false,
+    "boundary": "These labels come from reviewed fault/load changes and Kubernetes state. They are not organizer hidden-set labels."
+  },
+  "detector": {
+    "image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:c2560b9-aiops@sha256:c9e386038d1e75e28a8ef1627fdb35435db1d0a1343c0402dc2bc6749556f01d",
+    "poll_seconds": 45,
+    "remediation_mode": "dry-run"
+  },
+  "cases": [
+    {
+      "case_id": "live-availability-20260724",
+      "label": "incident",
+      "service": "llm",
+      "incident_type": "service_availability",
+      "injection": {
+        "gitops_fault_pr": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/164",
+        "gitops_restore_pr": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/165",
+        "down_observed_utc": "2026-07-24T06:41:07Z",
+        "desired_replicas": 1,
+        "ready_replicas": 0,
+        "available_replicas": 0
+      },
+      "observation": {
+        "incident_created_utc": "2026-07-24T06:42:07.896875Z",
+        "prometheus_alert_started_utc": "2026-07-24T06:43:00Z",
+        "detector_fired": true,
+        "slack_firing_observed": true,
+        "slack_resolved_observed": true,
+        "execution_attempts": 0
+      },
+      "classification": "TP",
+      "detector_lead_time_seconds": 60.896875,
+      "alert_start_lead_time_seconds": 113
+    },
+    {
+      "case_id": "live-busy-healthy-20260725",
+      "label": "normal",
+      "service": "frontend,cart",
+      "scenario_kind": "healthy_busy",
+      "injection": {
+        "gitops_load_pr": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/171",
+        "gitops_restore_pr": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/174",
+        "users": 150,
+        "spawn_rate": 10,
+        "live_config_observed_utc": "2026-07-25T04:09:03Z",
+        "restore_merged_utc": "2026-07-25T04:32:27Z",
+        "baseline_config_restored_utc": "2026-07-25T04:33:24Z",
+        "restored_users": 10,
+        "restored_spawn_rate": 1
+      },
+      "observations": [
+        {
+          "captured_at_utc": "2026-07-25T04:11:20Z",
+          "capture_mode": "historical_prometheus_instant_query",
+          "retrieved_at_utc": "2026-07-25T05:16:07Z",
+          "query_evidence": "historical-prometheus-20260725T041120Z.json",
+          "prometheus_source": "http://prometheus.techx-observability.svc.cluster.local:9090",
+          "frontend_request_rate_per_second": 33.773329006579935,
+          "frontend_p95_milliseconds": 286.4643268540535,
+          "frontend_error_rate": 0,
+          "frontend_burn_rate_5m": 0,
+          "frontend_burn_rate_30m": 0,
+          "cart_request_rate_per_second": 14.625,
+          "cart_p95_milliseconds": 6.316455696202534,
+          "cart_error_rate": 0,
+          "cart_burn_rate_5m": 0,
+          "cart_burn_rate_30m": 0,
+          "frontend_state": "busy",
+          "cart_state": "busy",
+          "checkout_request_rate_per_second": 2.1873450630580336,
+          "checkout_p95_milliseconds": 199.0999999999999,
+          "checkout_error_rate": 0,
+          "checkout_burn_rate_5m": 0,
+          "checkout_burn_rate_30m": 0,
+          "checkout_state": "healthy",
+          "active_incident_count": 0,
+          "active_alert_count": 0,
+          "workload_health_observed": false
+        },
+        {
+          "captured_at_utc": "2026-07-25T04:12:32Z",
+          "capture_mode": "live_prometheus_query_and_kubectl_workload_snapshot",
+          "frontend_request_rate_per_second": 66.28677962132281,
+          "frontend_p95_milliseconds": 204.3124219545427,
+          "frontend_error_rate": 0,
+          "frontend_burn_rate_5m": 0,
+          "frontend_burn_rate_30m": 0,
+          "frontend_state": "busy",
+          "cart_request_rate_per_second": 22.1875,
+          "cart_p95_milliseconds": 6.2350427350427395,
+          "cart_error_rate": 0,
+          "cart_burn_rate_5m": 0,
+          "cart_burn_rate_30m": 0,
+          "cart_state": "busy",
+          "active_incident_count": 0,
+          "active_alert_count": 0,
+          "workload_ready": true,
+          "observed_pod_restarts": 0
+        }
+      ],
+      "classification": "TN",
+      "restore_observation": {
+        "captured_at_utc": "2026-07-25T04:33:48Z",
+        "load_generator_ready": true,
+        "load_generator_restarts": 0,
+        "active_incident_count": 0,
+        "active_alert_count": 0
+      }
+    }
+  ],
+  "aggregate": {
+    "events": 2,
+    "tp": 1,
+    "fp": 0,
+    "fn": 0,
+    "tn": 1,
+    "precision": 1.0,
+    "recall": 1.0,
+    "average_detector_lead_time_seconds_for_true_positives": 60.896875
+  },
+  "not_proven": [
+    "organizer hidden-set performance",
+    "live masking resistance",
+    "long-run production precision or false-positive rate",
+    "live high-burn escalation",
+    "Slack transport delivery latency"
+  ]
+}

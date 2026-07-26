@@ -35,7 +35,19 @@ module "eks" {
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns    = {}
+    coredns = {
+      configuration_values = jsonencode({
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "70Mi"
+          }
+          limits = {
+            memory = "170Mi"
+          }
+        }
+      })
+    }
     kube-proxy = {}
     vpc-cni    = {}
     aws-ebs-csi-driver = {

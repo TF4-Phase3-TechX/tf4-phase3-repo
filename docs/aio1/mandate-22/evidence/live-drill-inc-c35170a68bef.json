@@ -1,0 +1,159 @@
+{
+  "schema_version": "m22-runtime-evidence-v1",
+  "environment": "production",
+  "namespace": "techx-tf4",
+  "incident_id": "inc-c35170a68bef",
+  "incident_type": "service_latency_spike",
+  "target": "product-reviews",
+  "detected_at": "2026-07-25T14:44:28.966446Z",
+  "final_audit_at": "2026-07-25T14:50:00.005332Z",
+  "status": "escalated",
+  "confidence": 0.8426067661239435,
+  "trigger": {
+    "p95_latency_ms": 15000.0,
+    "ratio": 2.1304211768104206,
+    "zscore": 10.55721454098512,
+    "ewma": 3.7114282007886747,
+    "isolation": 0.8521353224788684,
+    "slow_drift": 1.0,
+    "prometheus_coverage": "available",
+    "jaeger_evidence": "unavailable"
+  },
+  "policy": {
+    "version": "m22-v1",
+    "approval_status": "preauthorized_policy",
+    "checks": {
+      "autonomous_enabled": true,
+      "runbook_authorized": true,
+      "target_allowlisted": true,
+      "severity_high": true,
+      "confidence_sufficient": true,
+      "evidence_present": true,
+      "mutation_not_blocked": true
+    }
+  },
+  "execution": {
+    "attempts": 1,
+    "action": "rollback_previous_replicaset",
+    "action_executed_at": "2026-07-25T14:44:39.429212Z",
+    "target_before": {
+      "cpu_request": "25m",
+      "cpu_limit": "50m"
+    },
+    "target_after_action": {
+      "cpu_request": "75m",
+      "cpu_limit": "300m"
+    },
+    "preflight_passed": true,
+    "kubernetes_server_dry_run_passed": true,
+    "target_lease_acquired": true
+  },
+  "post_action_verification": {
+    "settle_seconds": 120,
+    "metric_window": "2m",
+    "poll_interval_seconds": 20,
+    "healthy": false,
+    "target_latency_recovered": true,
+    "samples": [
+      {
+        "poll": 1,
+        "rollout_ready": true,
+        "p95_latency_ms": 1.9,
+        "legacy_checkout_storefront_error_rate": 0.047454659360080156
+      },
+      {
+        "poll": 2,
+        "rollout_ready": true,
+        "p95_latency_ms": 1.9,
+        "legacy_checkout_storefront_error_rate": 0.028729489808669035
+      },
+      {
+        "poll": 3,
+        "rollout_ready": true,
+        "p95_latency_ms": 1.9,
+        "legacy_checkout_storefront_error_rate": 0.03183095957162355
+      }
+    ],
+    "latency_threshold_ms": 1000.0,
+    "legacy_checkout_storefront_error_rate_threshold": 0.01,
+    "failure_reason": "The legacy verifier coupled every target to the aggregate frontend/checkout error-rate guard. Product-reviews latency recovered, but unrelated checkout/storefront errors vetoed success."
+  },
+  "automatic_safety_branch": {
+    "rollback_applied_at": "2026-07-25T14:47:19.706478Z",
+    "original_fault_template_restored": true,
+    "rollback_verification_healthy": false,
+    "samples": [
+      {
+        "poll": 1,
+        "rollout_ready": true,
+        "p95_latency_ms": 7097.826086956523,
+        "checkout_storefront_error_rate": 0.0,
+        "healthy": false
+      },
+      {
+        "poll": 2,
+        "rollout_ready": true,
+        "p95_latency_ms": 105.49999999999979,
+        "checkout_storefront_error_rate": 0.0,
+        "healthy": true
+      },
+      {
+        "poll": 3,
+        "rollout_ready": true,
+        "p95_latency_ms": 105.49999999999979,
+        "checkout_storefront_error_rate": 0.0,
+        "healthy": true
+      }
+    ],
+    "escalated_at": "2026-07-25T14:49:59.975736Z",
+    "mutation_blocked": true,
+    "target_lease_released_at": "2026-07-25T14:50:00.005332Z"
+  },
+  "timing": {
+    "detector_to_action_seconds": 10.463,
+    "detector_to_first_target_healthy_sample_seconds_approx": 130,
+    "detector_to_safety_escalation_seconds": 331.009,
+    "manual_baseline_seconds": null,
+    "manual_baseline_note": "No controlled manual-remediation baseline was run before the CDO freeze window; no improvement percentage is claimed."
+  },
+  "gitops": {
+    "promotion_pr": 199,
+    "activation_pr": 200,
+    "ramp_pr": 202,
+    "restore_pr": 201,
+    "restore_commit": "df6b9ca5dc479f7431e58226d359cbff563c2bf0"
+  },
+  "safe_final_state_observed_at": "2026-07-25T14:54:38Z",
+  "safe_final_state": {
+    "remediation_mode": "dry-run",
+    "autonomous_remediation_enabled": false,
+    "allowed_deployments": [],
+    "load_users": 10,
+    "load_spawn_rate": 1,
+    "product_reviews_cpu_request": "75m",
+    "product_reviews_cpu_limit": "300m",
+    "aiops_ready": true,
+    "product_reviews_ready": true,
+    "load_generator_ready": true,
+    "observed_restarts": 0
+  },
+  "claim_boundary": {
+    "runtime_proven": [
+      "detector-triggered incident",
+      "deterministic safety policy",
+      "autonomous bounded Kubernetes action",
+      "real post-action telemetry",
+      "automatic rollback",
+      "escalation",
+      "mutation block",
+      "target lease release",
+      "safe GitOps restoration"
+    ],
+    "not_proven": [
+      "successful end-to-end remediation accepted healthy by the deployed verifier",
+      "manual-versus-automatic MTTR improvement",
+      "durable OpenSearch persistence of the full in-memory incident record",
+      "formal ADR acceptance by a named on-call/SRE owner"
+    ]
+  }
+}

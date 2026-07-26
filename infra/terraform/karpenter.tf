@@ -55,7 +55,7 @@ resource "helm_release" "karpenter" {
 
   set {
     name  = "controller.resources.requests.cpu"
-    value = "500m"
+    value = "250m"
   }
 
   set {

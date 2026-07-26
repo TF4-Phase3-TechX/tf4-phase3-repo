@@ -1,10 +1,10 @@
 # CDO08-REL-24 Negative Deletion Test Evidence
 
-Status: Ready to execute after Terraform apply
+Status: Runtime evidence workflow added - pending GitHub Actions run on `main`
 
 ## Scope
 
-This test proves that normal CI/operator roles cannot delete protected recovery assets and that CloudTrail records the attempt. Do not run destructive commands against production recovery points. Use only disposable test snapshots/objects named with `rel24-negative-test-`.
+This test proves that normal CI/operator roles cannot delete protected recovery assets. IAM `SimulatePrincipalPolicy` is retained below as a pre-check only. Runtime evidence must come from the manual GitHub Actions workflow `.github/workflows/rel24-negative-deletion-tests.yaml`, run from `main`, because the protected CI apply role only trusts GitHub OIDC sessions from `refs/heads/main`.
 
 ## Preconditions
 
@@ -12,6 +12,8 @@ This test proves that normal CI/operator roles cannot delete protected recovery 
 - Infra Terraform has applied REL-24 roles and PostgreSQL migration backup bucket policy.
 - CloudTrail `tf4-general-cloudtrail` is logging management events and selected S3 data events.
 - Test resources are disposable and named with `rel24-negative-test-`.
+- PM/Platform confirmed the CI apply role policy simulator result after bootstrap guardrail application.
+- Runtime test workflow has been added and must be run on `main`: `rel24-negative-deletion-tests`.
 
 ## Role ARNs
 
@@ -30,6 +32,80 @@ terraform -chdir=infra/terraform output rel24_msk_orders_archive_bucket_name
 ## Negative Tests
 
 Run each delete attempt from the normal role path being tested. For CI, run from a temporary GitHub Actions job that assumes `tf4-github-actions-terraform-apply`; for a human normal operator, use the operator role session.
+
+## Runtime Evidence Workflow
+
+Workflow:
+
+```text
+.github/workflows/rel24-negative-deletion-tests.yaml
+```
+
+Why workflow is required:
+
+- The target actor is `tf4-github-actions-terraform-apply`.
+- That role trust policy allows GitHub OIDC only for `repo:TF4-Phase3-TechX/tf4-phase3-repo:ref:refs/heads/main`.
+- Running from local SSO credentials would prove the wrong actor.
+
+Workflow output artifact:
+
+```text
+rel24-negative-deletion-evidence
+```
+
+The artifact contains command outputs plus CloudTrail / CloudWatch Logs query results. Copy its final actor/action/result/event IDs into the table at the bottom of this file after the workflow run completes.
+
+## Policy Simulation Pre-Check
+
+Verification source: AWS CLI live verification on 2026-07-26T10:59:42+07:00, matching PM/Platform IAM `SimulatePrincipalPolicy` screenshot.
+
+Verifier caller identity:
+
+```json
+{
+  "Account": "511825856493",
+  "Arn": "arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-SecurityIAMSSOManager_7fec96c816beda10/thuy"
+}
+```
+
+Policy source:
+
+```text
+arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply
+```
+
+CI apply role guardrails observed:
+
+```text
+PermissionsBoundary: arn:aws:iam::511825856493:policy/tf4-rel24-protected-recovery-assets-guardrail
+Attached policy:     arn:aws:iam::511825856493:policy/tf4-rel24-ci-protected-recovery-assets-deny
+Compatibility allow: IAMFullAccess + PowerUserAccess still attached, constrained by the explicit deny and boundary.
+```
+
+Command:
+
+```bash
+aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::511825856493:role/tf4-github-actions-terraform-apply \
+  --action-names rds:DeleteDBSnapshot elasticache:DeleteSnapshot s3:DeleteObject kafka:DeleteCluster \
+  --resource-arns "*"
+```
+
+Simulation result:
+
+| Action | Decision |
+| --- | --- |
+| `rds:DeleteDBSnapshot` | `explicitDeny` |
+| `elasticache:DeleteSnapshot` | `explicitDeny` |
+| `s3:DeleteObject` | `explicitDeny` |
+| `kafka:DeleteCluster` | `explicitDeny` |
+
+Matched deny sources:
+
+- `tf4-rel24-ci-protected-recovery-assets-deny`
+- `tf4-rel24-protected-recovery-assets-guardrail` permissions boundary
+
+Conclusion: the normal CI apply role is expected to be blocked from deleting the protected recovery asset classes required by REL-24. This is a pre-check only; the runtime workflow above is required for CloudTrail-backed evidence.
 
 ### RDS Snapshot Delete
 
@@ -119,7 +195,7 @@ Record the following for each test:
 
 | Test | Actor ARN | Action | Target | Result | CloudTrail event ID/time |
 | --- | --- | --- | --- | --- | --- |
-| RDS snapshot delete | TBD | `DeleteDBSnapshot` | `rel24-negative-test-rds` | AccessDenied expected | TBD |
-| ElastiCache snapshot delete | TBD | `DeleteSnapshot` | `rel24-negative-test-valkey` | AccessDenied expected | TBD |
-| S3 archive object delete | TBD | `DeleteObject` | `rel15/rel24-negative-test-object` | AccessDenied expected | TBD |
-| MSK delete | TBD | `DeleteCluster` | disposable test ARN only | AccessDenied expected | TBD |
+| RDS snapshot delete | Pending workflow artifact | `rds:DeleteDBSnapshot` | `rel24-negative-test-rds` | Pending runtime `AccessDenied` | Pending CloudTrail event ID/time |
+| ElastiCache snapshot delete | Pending workflow artifact | `elasticache:DeleteSnapshot` | `rel24-negative-test-valkey` | Pending runtime `AccessDenied` | Pending CloudTrail event ID/time |
+| S3 archive object delete | Pending workflow artifact | `s3:DeleteObject` | `rel15/rel24-negative-test-object` | Pending runtime `AccessDenied` | Pending CloudWatch Logs/CloudTrail data event time |
+| MSK delete | Pending workflow artifact | `kafka:DeleteCluster` | disposable `rel24-negative-test-msk` ARN | Pending runtime `AccessDenied` | Pending CloudTrail event ID/time |
