@@ -24,6 +24,15 @@ Script:
 docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-accounting-pitr.sh
 ```
 
+Các module được entry point tự load:
+
+```text
+docs/cdo08/week3/mandate20/scripts/postgres/lib/rel25-common.sh
+docs/cdo08/week3/mandate20/scripts/postgres/rel25-accounting-recovery-remote.sh
+```
+
+Không gọi trực tiếp hai module này.
+
 ## Tài nguyên script tạo tạm
 
 Script tự tạo:
@@ -180,6 +189,12 @@ Kiểm tra cú pháp:
 ```bash
 bash -n \
   docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-accounting-pitr.sh
+
+bash -n \
+  docs/cdo08/week3/mandate20/scripts/postgres/lib/rel25-common.sh
+
+bash -n \
+  docs/cdo08/week3/mandate20/scripts/postgres/rel25-accounting-recovery-remote.sh
 
 echo "exit_code=$?"
 ```
@@ -368,7 +383,8 @@ khác production.
 
 ### 9.6 Accounting recovery
 
-Qua SSM, EC2 thực hiện:
+Entry point đọc remote recovery module, thêm environment runtime, encode payload
+và gửi qua SSM. Trên EC2, module thực hiện:
 
 ```text
 1. Đọc RDS master credential từ Secrets Manager.
@@ -538,6 +554,17 @@ Sequence count: 0
 RTO: 1572 seconds
 Exit code: 0
 Cleanup: PASS
+```
+
+Post-refactor live verification:
+
+```text
+Drill ID: rel25-20260726-refactor
+RTO: 1867 seconds
+Validation: PASS
+Exit code: 0
+Independent cleanup verification: PASS
+Production unchanged: PASS
 ```
 
 Evidence:

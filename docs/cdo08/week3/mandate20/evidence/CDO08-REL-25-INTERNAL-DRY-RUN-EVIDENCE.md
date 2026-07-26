@@ -287,6 +287,75 @@ Endpoint: không đổi
 Security group: sg-0fbc6edd9ae2742d1
 ```
 
+## Post-refactor modular verification
+
+Sau khi tách script thành entry point, common library và remote recovery module,
+workflow được chạy live lại để evidence vẫn chứng minh đúng code hiện tại.
+
+Files:
+
+```text
+scripts/postgres/rel25-restore-accounting-pitr.sh
+scripts/postgres/lib/rel25-common.sh
+scripts/postgres/rel25-accounting-recovery-remote.sh
+```
+
+Input:
+
+```text
+Drill ID: rel25-20260726-refactor
+Restore timestamp: 2026-07-26T07:25:00Z
+Target: techx-tf4-drill-rel25-20260726-refactor-accounting-restore
+```
+
+Phase result:
+
+```text
+Preflight start: 2026-07-26T07:38:55Z
+RTO start: 2026-07-26T07:41:03Z
+RDS available: 2026-07-26T08:11:32Z
+PITR wait: 1825 seconds
+Accounting validation complete: 2026-07-26T08:12:10Z
+RTO: 1867 seconds
+Exit code: 0
+```
+
+Remote module result:
+
+```text
+validation=PASS
+source_counts=205891,205891,377846
+target_counts=205891,205891,377846
+duplicates=0
+shipping_orphans=0
+item_orphans=0
+unexpected_schemas=0
+sequence_count=0
+```
+
+Cleanup:
+
+```text
+RDS deleted: 2026-07-26T08:16:02Z
+EC2 i-06171c36e94f3b34a terminated: 2026-07-26T08:16:54Z
+Restore SG sg-0f370586298cf7738 deleted: 2026-07-26T08:17:02Z
+Validation SG sg-0a65fc0529d8c170e deleted: 2026-07-26T08:17:04Z
+IAM instance profile deleted: 2026-07-26T08:17:10Z
+IAM role deleted: 2026-07-26T08:17:16Z
+Result: cleanup_complete_no_drill_resources_remaining
+```
+
+Independent AWS verification:
+
+```text
+Drill RDS: DBInstanceNotFound
+Active drill EC2: none
+Drill SG: none
+Validation IAM role: NoSuchEntity
+Validation instance profile: NoSuchEntity
+Production RDS: available, private, endpoint và SG không đổi
+```
+
 ## Các command chính đã chạy
 
 ```bash
@@ -334,7 +403,7 @@ iam delete-instance-profile/delete-role
 | Script không chứa secret thật | PASS | Secret scan không có match; runtime secret không in ra log. |
 | Không đụng production | PASS | Identifier/endpoint/SG production không bị modify. |
 | Accounting export/import/validation | PASS | Attempt 4 row counts khớp; duplicate/orphan/unexpected schema đều `0`. |
-| Tổng RTO | PASS | `rto_seconds=1572`, kết thúc sau validation. |
+| Tổng RTO | PASS | Modular run `rto_seconds=1867`, kết thúc sau validation. |
 | Cleanup | PASS | RDS, EC2, SG và IAM tạm đã xóa. |
 | Internal dry run hoàn chỉnh | PASS | Attempt 4 exit code `0`, validation và cleanup pass. |
 
@@ -344,7 +413,7 @@ Internal dry run đã có đủ:
 
 ```text
 validation=PASS
-rto_end rto_seconds=1572
+rto_end rto_seconds=1867
 accounting_recovery_completed_production_was_not_modified
 cleanup_complete_no_drill_resources_remaining
 ```

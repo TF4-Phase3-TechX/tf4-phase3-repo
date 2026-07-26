@@ -22,10 +22,13 @@ có `catalog` và `reviews`. Workflow chỉ export `accounting`; database đích
 
 ```text
 docs/cdo08/week3/mandate20/scripts/postgres/rel25-restore-accounting-pitr.sh
+docs/cdo08/week3/mandate20/scripts/postgres/lib/rel25-common.sh
+docs/cdo08/week3/mandate20/scripts/postgres/rel25-accounting-recovery-remote.sh
 ```
 
-Script dùng temporary private EC2 qua SSM, không dùng EKS Pod SG, EKS node SG,
-public IP hoặc SSH.
+Entry point dùng temporary private EC2 qua SSM, không dùng EKS Pod SG, EKS node
+SG, public IP hoặc SSH. Common library giữ AWS wait/SSM/cleanup functions;
+remote script giữ `pg_dump`, `pg_restore` và validation query.
 
 ## Input bắt buộc
 
@@ -138,6 +141,20 @@ Accounting source counts: 205891,205891,377846
 Accounting target counts: 205891,205891,377846
 Duplicate/orphan/unexpected schema: 0
 RTO: 1572 seconds
+Exit code: 0
+Cleanup: PASS
+```
+
+Sau khi tách module, live run `rel25-20260726-refactor` cũng PASS:
+
+```text
+Entry point: 357 lines
+Common AWS/SSM/cleanup library: 223 lines
+Remote accounting recovery: 82 lines
+Source counts: 205891,205891,377846
+Target counts: 205891,205891,377846
+Duplicate/orphan/unexpected schema: 0
+RTO: 1867 seconds
 Exit code: 0
 Cleanup: PASS
 ```
