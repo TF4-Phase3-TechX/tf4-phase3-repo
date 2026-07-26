@@ -1392,12 +1392,12 @@ components:
         valueFrom:
           secretKeyRef:
             name: ai-state-hmac-secret
-            key: hmac-secret
+            key: cache-hmac-secret
       - name: AI_MEMORY_HMAC_SECRET
         valueFrom:
           secretKeyRef:
             name: ai-state-hmac-secret
-            key: hmac-secret
+            key: memory-hmac-secret
       - name: AI_RESPONSE_CACHE_TTL_SECONDS
         value: "300"
       - name: MAX_HISTORY_EXCHANGES
