@@ -353,3 +353,42 @@ async def test_unavailable_prometheus_evidence_denies_autonomous_policy():
 
     assert item.status == IncidentStatus.ESCALATED
     assert "evidence_present" in (item.escalation_reason or "")
+
+
+@pytest.mark.asyncio
+async def test_live_patch_timeout_is_not_retried_and_blocks_unknown_outcome():
+    class AmbiguousTimeoutAdapter(FakeAdapter):
+        def __init__(self):
+            super().__init__()
+            self.patch_attempts = 0
+
+        def patch_template(self, deployment, template):
+            self.patch_attempts += 1
+            raise TimeoutError("response lost after possible server commit")
+
+    adapter = AmbiguousTimeoutAdapter()
+    controller = RemediationController(
+        replace(
+            Settings(),
+            remediation_mode="live",
+            known_good_revisions={"product-reviews": "1"},
+            verification_settle_seconds=0,
+            verification_interval_seconds=0,
+        ),
+        adapter=adapter,
+    )
+    item = incident()
+    controller.request_approval(item)
+    controller.approve(item)
+
+    await controller.execute(item)
+
+    assert adapter.patch_attempts == 1
+    assert item.status == IncidentStatus.ESCALATED
+    assert item.mutation_blocked is True
+    assert "outcome is unknown" in (item.escalation_reason or "")
+    assert any(
+        event.event == "action_outcome_unknown"
+        and event.detail["operator_reconciliation_required"] is True
+        for event in item.audit_events
+    )

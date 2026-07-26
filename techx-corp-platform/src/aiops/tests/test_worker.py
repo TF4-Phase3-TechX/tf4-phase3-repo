@@ -8,7 +8,7 @@ from prometheus_client import REGISTRY
 from app.availability import AvailabilitySnapshot
 from app.config import Settings
 from app.detection import Detector
-from app.models import Decision, IncidentStatus
+from app.models import AuditEvent, Decision, Incident, IncidentStatus
 from app.store import IncidentStore
 from app.worker import AIOpsWorker
 
@@ -369,3 +369,38 @@ async def test_worker_skips_remediation_when_target_quarantined():
     )
     # Remediation should never have been called.
     assert recorder.incident_ids == []
+
+
+@pytest.mark.asyncio
+async def test_worker_quarantines_ambiguous_live_action_outcome():
+    store = IncidentStore(cooldown_seconds=0)
+
+    class AmbiguousController:
+        async def handle_incident(self, item):
+            item.status = IncidentStatus.ESCALATED
+            item.mutation_blocked = True
+            item.escalation_reason = "Live mutation outcome is unknown"
+            item.audit_events.append(AuditEvent(event="action_outcome_unknown"))
+
+    worker = AIOpsWorker(
+        Settings(),
+        EmptyTelemetry(),
+        RecordingDetector(),
+        store,
+        remediation=AmbiguousController(),
+    )
+    item = Incident(
+        incident_type="service_latency_spike",
+        severity="high",
+        affected_service="product-reviews",
+        confidence=.9,
+        suspected_root_cause="test",
+        runbook_id="deployment-latency-rollback",
+        recommended_action="rollback",
+    )
+
+    await worker._run_remediation(item)
+
+    assert await store.is_target_blocked("product-reviews") is True
+    detail = await store.target_block("product-reviews")
+    assert detail["incident_id"] == item.incident_id

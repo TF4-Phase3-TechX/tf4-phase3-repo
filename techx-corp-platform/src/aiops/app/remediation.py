@@ -448,6 +448,7 @@ class RemediationController:
         self._locks.add(target)
         adapter: KubernetesRollbackAdapter | None = None
         original: dict[str, Any] | None = None
+        mutation_attempted = False
         mutated = False
         external_lock = False
         try:
@@ -520,6 +521,7 @@ class RemediationController:
             #
             # Do not retry live mutation: a client timeout after server success
             # would otherwise re-patch a concurrent GitOps change.
+            mutation_attempted = True
             await self._retry(
                 adapter.patch_template, target, previous, allow_retry=False
             )
@@ -570,6 +572,26 @@ class RemediationController:
                     incident.audit_events.append(
                         AuditEvent(event="rollback_failed_escalation")
                     )
+            elif mutation_attempted:
+                # A transport error is ambiguous: the API server may have
+                # committed the patch even though the response was lost.
+                # Never retry or classify it as a pre-mutation failure.
+                incident.status = IncidentStatus.ESCALATED
+                incident.mutation_blocked = True
+                incident.escalation_reason = (
+                    "Live mutation outcome is unknown after client/API failure: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                incident.audit_events.append(
+                    AuditEvent(
+                        event="action_outcome_unknown",
+                        detail={
+                            "target": target,
+                            "error": f"{type(exc).__name__}: {exc}",
+                            "operator_reconciliation_required": True,
+                        },
+                    )
+                )
             else:
                 # Failure before any live patch is not a post-mutation safety
                 # lock; keep the incident escalated but re-attemptable.

@@ -109,6 +109,14 @@ JSONL without code changes and exercises the canonical runtime controller.
    immediately before the live patch. The bounded single-service window is
    seconds-long; a mid-flight telemetry loss after authorize is accepted under
    dry-run / freeze constraints and remains a follow-up for durable saga work.
+8. **Ambiguous live patch outcome.** A Kubernetes client timeout can occur after
+   the API server committed the patch. The controller therefore performs one
+   live patch attempt only. Any exception after the attempt is classified as
+   `action_outcome_unknown`, blocks further mutation and quarantines the target
+   for operator reconciliation; it is never treated as a safe pre-mutation
+   failure. This fail-closed response cannot determine the actual cluster state
+   by itself. Durable read-after-write reconciliation remains part of
+   TF4AIO-89.
 
 ## Activation gates
 
