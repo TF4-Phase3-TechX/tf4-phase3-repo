@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, Callable
 
 import demo_pb2
@@ -22,13 +23,146 @@ from bedrock_adapter import (
     STOP_WORDS,
 )
 from copilot_review_summary import summarize_copilot_reviews
-from safety import MAX_QUESTION_CHARS, contains_pii, is_attack, normalize_text
-from session_store import session_store
+from profile_store import ProfileStore, parse_memory_command
+from response_cache import (
+    COPILOT_REVIEW_PROMPT_VERSION,
+    RESPONSE_SCHEMA_VERSION,
+    ResponseCache,
+    normalize_exact_request,
+    source_fingerprint,
+)
+from safety import (
+    MAX_QUESTION_CHARS,
+    contains_pii,
+    is_attack,
+    normalize_text,
+    prepare_context,
+)
+from session_store import MAX_HISTORY_MESSAGES, session_store
 
 logger = logging.getLogger(__name__)
 
 INTENT_CONFIDENCE_THRESHOLD = float(os.environ.get("INTENT_CONFIDENCE_THRESHOLD", "0.6"))
-HISTORY_WINDOW_N = int(os.environ.get("HISTORY_WINDOW_N", "5"))
+HISTORY_WINDOW_N = int(os.environ.get("HISTORY_WINDOW_N", str(MAX_HISTORY_MESSAGES)))
+
+copilot_response_cache = ResponseCache(getattr(session_store, "_valkey_client", None))
+profile_store = ProfileStore(getattr(session_store, "_valkey_client", None))
+
+_REVIEW_MARKERS = (
+    "review",
+    "reviews",
+    "rating",
+    "ratings",
+    "feedback",
+    "pros and cons",
+    "đánh giá",
+    "nhận xét",
+    "ưu điểm",
+    "nhược điểm",
+)
+_CONTEXT_DEPENDENT_MARKERS = (
+    "compare",
+    "comparison",
+    "cheapest",
+    "most expensive",
+    "first",
+    "second",
+    "another product",
+    "similar",
+    "previous",
+    "that one",
+    "this one",
+    "rẻ nhất",
+    "đắt nhất",
+    "sản phẩm khác",
+    "tương tự",
+    "cái trước",
+    "cái đó",
+    "trong nhóm",
+    "trong số",
+    "so sánh",
+)
+
+
+def _has_review_marker(query: str) -> bool:
+    lowered = normalize_exact_request(query)
+    return any(marker in lowered for marker in _REVIEW_MARKERS)
+
+
+def _strict_explicit_product(query: str, products: list[Any]) -> Any | None:
+    """Resolve only a full canonical name or an exact catalog ID; never fuzzy."""
+    normalized = normalize_exact_request(query)
+    matches: dict[str, Any] = {}
+    for product in products:
+        product_id = str(getattr(product, "id", "") or "")
+        name = normalize_exact_request(getattr(product, "name", ""))
+        if product_id and re.search(
+            rf"(?<![A-Za-z0-9_-]){re.escape(product_id.casefold())}(?![A-Za-z0-9_-])",
+            normalized,
+        ):
+            matches[product_id] = product
+        if name and re.search(
+            rf"(?<!\w){re.escape(name)}(?!\w)",
+            normalized,
+        ):
+            matches[product_id] = product
+    return next(iter(matches.values())) if len(matches) == 1 else None
+
+
+def _copilot_cache_candidate(
+    query: str,
+    products: list[Any],
+    history: list[dict[str, str]],
+) -> tuple[Any | None, str]:
+    if not _has_review_marker(query):
+        return None, "not_review_qa"
+    lowered = normalize_exact_request(query)
+    if any(marker in lowered for marker in _CONTEXT_DEPENDENT_MARKERS):
+        return None, "context_dependent"
+    explicit_target = _strict_explicit_product(query, products)
+    if explicit_target is None:
+        return None, "no_unique_product"
+    empty_target = resolve_referenced_product(
+        [],
+        products,
+        keywords=explicit_target.name,
+        query=query,
+    )
+    current_target = resolve_referenced_product(
+        history,
+        products,
+        keywords=explicit_target.name,
+        query=query,
+    )
+    if (
+        empty_target is None
+        or current_target is None
+        or empty_target.id != current_target.id
+    ):
+        return None, "no_unique_product"
+    return empty_target, "cold"
+
+
+def _memory_response(
+    *,
+    response: str,
+    outcome: str,
+    status: str,
+) -> demo_pb2.SearchProductsAIAssistantResponse:
+    return demo_pb2.SearchProductsAIAssistantResponse(
+        response=response,
+        outcome=outcome,
+        trace=demo_pb2.SearchEvidenceTrace(
+            parsed_intent=json.dumps({"search_type": "memory"}, ensure_ascii=False),
+            filter_applied=json.dumps({"profile_fields": sorted(("preferred_category", "max_budget_usd_cents"))}),
+            refused=status in {"rejected", "error"},
+        ),
+        cache_status="miss",
+        cache_eligible=False,
+        cache_reason="profile_dependent",
+        model_calls=0,
+        memory_status=status,
+    )
 
 
 def _calculate_search_cost(input_tokens: int, output_tokens: int) -> float:
@@ -389,23 +523,71 @@ def route_search_products_ai(
     audit_callback: Callable[..., None] | None = None,
 ) -> demo_pb2.SearchProductsAIAssistantResponse:
     """Orchestrate per-turn dynamic intent classification and tool allow-list routing."""
+    request_started = time.monotonic()
+    model_calls = 0
+    default_cache_reason = "not_review_qa"
+    request_memory_status = "not_applicable"
+
+    def finalize(
+        response: demo_pb2.SearchProductsAIAssistantResponse,
+        *,
+        persist_history: bool = True,
+    ) -> demo_pb2.SearchProductsAIAssistantResponse:
+        if not response.cache_status:
+            response.cache_status = "miss"
+        if not response.cache_reason:
+            response.cache_reason = default_cache_reason
+        if not response.memory_status:
+            response.memory_status = request_memory_status
+        if response.model_calls == 0:
+            response.model_calls = model_calls
+        if response.HasField("trace"):
+            if response.input_tokens == 0:
+                response.input_tokens = response.trace.input_tokens
+            if response.output_tokens == 0:
+                response.output_tokens = response.trace.output_tokens
+            if response.estimated_cost_usd == 0:
+                response.estimated_cost_usd = response.trace.estimated_cost_usd
+        response.latency_ms = (time.monotonic() - request_started) * 1_000
+        if (
+            persist_history
+            and session_id
+            and query
+            and response.response
+            and not is_attack(query)
+            and not contains_pii(query)
+        ):
+            try:
+                session_store.append_exchange(
+                    user_id,
+                    session_id,
+                    query,
+                    response.response,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "copilot_history_append_failed",
+                    extra={"error_class": type(exc).__name__.lower()[:64]},
+                )
+        return response
+
     with tracer.start_as_current_span("search_products_ai") as span:
         span.set_attribute("app.caller.feature", "copilot_search")
         # --- 1. Input validation ---
         if not query or not query.strip():
             span.set_attribute("app.search.outcome", "empty_query")
-            return _refused_search_response(
+            return finalize(_refused_search_response(
                 refusal_reason="guardrail_blocked",
                 response="Vui lòng nhập câu hỏi hoặc yêu cầu tìm kiếm.",
                 outcome="blocked",
-            )
+            ), persist_history=False)
 
         query = normalize_text(query, MAX_QUESTION_CHARS)
 
         # --- 2. Guardrail Check (TF4AIO-26) runs FIRST ---
         if is_attack(query) or contains_pii(query):
             span.set_attribute("app.search.outcome", "blocked")
-            return _refused_search_response(
+            return finalize(_refused_search_response(
                 refusal_reason="guardrail_blocked",
                 response=_message(
                     query,
@@ -413,7 +595,7 @@ def route_search_products_ai(
                     "I cannot process that request. You can ask about products in the catalog.",
                 ),
                 outcome="blocked",
-            )
+            ), persist_history=False)
 
         try:
             # --- 3. Fetch & sanitize multi-turn conversation history ---
@@ -426,9 +608,361 @@ def route_search_products_ai(
                     continue
                 sanitized_history.append({"role": r, "content": c})
 
+            prefetched_catalog = None
+            applied_profile: dict[str, Any] | None = None
+            memory_command = parse_memory_command(query)
+            if memory_command is not None:
+                default_cache_reason = "profile_dependent"
+                if not user_id or user_id == "guest":
+                    return finalize(
+                        _memory_response(
+                            response=_message(
+                                query,
+                                "Bạn cần đăng nhập để lưu hoặc đọc sở thích xuyên phiên.",
+                                "You must sign in to store or read cross-session preferences.",
+                            ),
+                            outcome="memory_rejected",
+                            status="rejected",
+                        )
+                    )
+                if memory_command.action == "reject":
+                    return finalize(
+                        _memory_response(
+                            response=_message(
+                                query,
+                                "Tôi chỉ có thể lưu danh mục yêu thích hoặc ngân sách tối đa khi bạn yêu cầu rõ ràng; dữ liệu PII và trường tùy ý sẽ không được lưu.",
+                                "I can only store an explicitly requested preferred category or maximum budget; PII and arbitrary fields are not stored.",
+                            ),
+                            outcome="memory_rejected",
+                            status="rejected",
+                        )
+                    )
+                if memory_command.action == "forget":
+                    forgotten = profile_store.forget(user_id)
+                    message = (
+                        _message(
+                            query,
+                            "Tôi đã xóa các sở thích đã lưu của bạn.",
+                            "I deleted your stored preferences.",
+                        )
+                        if forgotten.status == "forgotten"
+                        else _message(
+                            query,
+                            "Tôi chưa thể xóa sở thích lúc này. Vui lòng thử lại.",
+                            "I could not delete your preferences. Please try again.",
+                        )
+                    )
+                    return finalize(
+                        _memory_response(
+                            response=message,
+                            outcome=(
+                                "memory_forgotten"
+                                if forgotten.status == "forgotten"
+                                else "memory_error"
+                            ),
+                            status=forgotten.status,
+                        )
+                    )
+                if memory_command.action == "show":
+                    recalled = profile_store.read(user_id)
+                    if recalled.status == "recalled" and recalled.profile:
+                        pieces = []
+                        if recalled.profile.get("preferred_category"):
+                            pieces.append(
+                                f"preferred_category={recalled.profile['preferred_category']}"
+                            )
+                        if recalled.profile.get("max_budget_usd_cents"):
+                            pieces.append(
+                                "max_budget_usd="
+                                f"{recalled.profile['max_budget_usd_cents'] / 100:.2f}"
+                            )
+                        message = _message(
+                            query,
+                            f"Sở thích đã lưu: {', '.join(pieces)}.",
+                            f"Stored preferences: {', '.join(pieces)}.",
+                        )
+                    elif recalled.status == "not_found":
+                        message = _message(
+                            query,
+                            "Tôi chưa lưu sở thích nào cho bạn.",
+                            "I do not have any stored preferences for you.",
+                        )
+                    else:
+                        message = _message(
+                            query,
+                            "Tôi chưa thể đọc sở thích lúc này; yêu cầu sẽ tiếp tục mà không cá nhân hóa.",
+                            "I could not read preferences; the request will continue without personalization.",
+                        )
+                    return finalize(
+                        _memory_response(
+                            response=message,
+                            outcome=(
+                                "memory_recalled"
+                                if recalled.status == "recalled"
+                                else "memory_not_found"
+                                if recalled.status == "not_found"
+                                else "memory_error"
+                            ),
+                            status=recalled.status,
+                        )
+                    )
+                if memory_command.action == "remember":
+                    values = dict(memory_command.values)
+                    category = values.get("preferred_category")
+                    if category:
+                        prefetched_catalog = product_catalog_stub.ListProducts(
+                            demo_pb2.Empty(), timeout=2.0
+                        )
+                        categories = {
+                            str(value).casefold()
+                            for product in prefetched_catalog.products
+                            for value in product.categories
+                        }
+                        if category not in categories:
+                            return finalize(
+                                _memory_response(
+                                    response=_message(
+                                        query,
+                                        "Danh mục đó không có trong catalog nên tôi chưa lưu.",
+                                        "That category is not in the catalog, so I did not store it.",
+                                    ),
+                                    outcome="memory_rejected",
+                                    status="rejected",
+                                )
+                            )
+                    stored = profile_store.write(user_id, values)
+                    message = (
+                        _message(
+                            query,
+                            "Tôi đã lưu sở thích bạn vừa yêu cầu.",
+                            "I stored the preference you explicitly requested.",
+                        )
+                        if stored.status == "stored"
+                        else _message(
+                            query,
+                            "Tôi chưa thể lưu sở thích lúc này. Vui lòng thử lại.",
+                            "I could not store that preference. Please try again.",
+                        )
+                    )
+                    return finalize(
+                        _memory_response(
+                            response=message,
+                            outcome=(
+                                "memory_stored"
+                                if stored.status == "stored"
+                                else "memory_error"
+                            ),
+                            status=stored.status,
+                        )
+                    )
+                if memory_command.action == "apply":
+                    recalled = profile_store.read(user_id)
+                    if recalled.status == "recalled" and recalled.profile:
+                        applied_profile = recalled.profile
+                        request_memory_status = "applied"
+                    else:
+                        return finalize(
+                            _memory_response(
+                                response=_message(
+                                    query,
+                                    "Tôi chưa có sở thích đã lưu để áp dụng.",
+                                    "I do not have stored preferences to apply.",
+                                ),
+                                outcome=(
+                                    "memory_not_found"
+                                    if recalled.status == "not_found"
+                                    else "memory_error"
+                                ),
+                                status=recalled.status,
+                            )
+                        )
+
+            if (
+                applied_profile is None
+                and _has_review_marker(query)
+                and user_id
+                and user_id != "guest"
+            ):
+                if prefetched_catalog is None:
+                    prefetched_catalog = product_catalog_stub.ListProducts(
+                        demo_pb2.Empty(), timeout=2.0
+                    )
+                early_product, default_cache_reason = _copilot_cache_candidate(
+                    query,
+                    list(prefetched_catalog.products),
+                    sanitized_history,
+                )
+                if early_product is not None:
+                    review_rows = fetch_reviews(early_product.id) if fetch_reviews else []
+                    prepared = prepare_context(
+                        query,
+                        {
+                            "id": early_product.id,
+                            "name": early_product.name,
+                            "description": early_product.description,
+                            "categories": list(early_product.categories),
+                        },
+                        review_rows,
+                    )
+                    fingerprint = source_fingerprint(
+                        prepared.product,
+                        prepared.reviews,
+                    )
+                    identity = copilot_response_cache.identity(
+                        surface="copilot_review",
+                        user_id=user_id,
+                        product_id=early_product.id,
+                        request=prepared.question,
+                        dependency_class="explicit_product_review_v1",
+                        model_id="deterministic",
+                        prompt_version=COPILOT_REVIEW_PROMPT_VERSION,
+                        guardrail_version="application-safety-v1",
+                        response_schema_version=RESPONSE_SCHEMA_VERSION,
+                        fingerprint=fingerprint,
+                    )
+                    lookup = copilot_response_cache.lookup(identity)
+                    if lookup.status == "hit" and lookup.value:
+                        cached = lookup.value
+                        return finalize(
+                            demo_pb2.SearchProductsAIAssistantResponse(
+                                results=[early_product],
+                                response=str(cached["response"]),
+                                outcome=str(cached["outcome"]),
+                                trace=demo_pb2.SearchEvidenceTrace(
+                                    parsed_intent=json.dumps(
+                                        {
+                                            "search_type": "reviews",
+                                            "dependency_class": "explicit_product_review_v1",
+                                        }
+                                    ),
+                                    filter_applied=json.dumps(
+                                        {"review_qa_product_id": early_product.id}
+                                    ),
+                                    candidate_count_before=len(
+                                        prefetched_catalog.products
+                                    ),
+                                    candidate_count_after=1,
+                                ),
+                                cache_status="hit",
+                                cache_eligible=True,
+                                cache_reason="hit",
+                                model_calls=0,
+                                memory_status="not_applicable",
+                            )
+                        )
+
+                    cache_lock = copilot_response_cache.acquire_lock(identity)
+                    try:
+                        if cache_lock is None and lookup.reason != "cache_error":
+                            waited = copilot_response_cache.wait_for_fill(identity)
+                            if waited.status == "hit" and waited.value:
+                                return finalize(
+                                    demo_pb2.SearchProductsAIAssistantResponse(
+                                        results=[early_product],
+                                        response=str(waited.value["response"]),
+                                        outcome=str(waited.value["outcome"]),
+                                        trace=demo_pb2.SearchEvidenceTrace(
+                                            parsed_intent=json.dumps(
+                                                {
+                                                    "search_type": "reviews",
+                                                    "dependency_class": "explicit_product_review_v1",
+                                                }
+                                            ),
+                                            filter_applied=json.dumps(
+                                                {
+                                                    "review_qa_product_id": early_product.id
+                                                }
+                                            ),
+                                            candidate_count_before=len(
+                                                prefetched_catalog.products
+                                            ),
+                                            candidate_count_after=1,
+                                        ),
+                                        cache_status="hit",
+                                        cache_eligible=True,
+                                        cache_reason="hit_after_wait",
+                                        model_calls=0,
+                                    )
+                                )
+                            if waited.reason == "cache_error":
+                                default_cache_reason = "cache_error"
+                            else:
+                                default_cache_reason = "lock_timeout"
+                        else:
+                            default_cache_reason = lookup.reason
+
+                        answer_text, review_outcome, _ = summarize_copilot_reviews(
+                            query,
+                            early_product,
+                            review_rows,
+                        )
+                        if review_outcome == "answered":
+                            if not copilot_response_cache.write(
+                                identity,
+                                {
+                                    "response": answer_text,
+                                    "outcome": review_outcome,
+                                },
+                            ):
+                                default_cache_reason = "cache_error"
+                        if session_id:
+                            session_store.set_last_search_products(
+                                user_id,
+                                session_id,
+                                [
+                                    {
+                                        "id": early_product.id,
+                                        "name": early_product.name,
+                                        "description": early_product.description,
+                                        "categories": list(early_product.categories),
+                                    }
+                                ],
+                            )
+                        return finalize(
+                            demo_pb2.SearchProductsAIAssistantResponse(
+                                results=[early_product],
+                                response=answer_text,
+                                outcome=review_outcome,
+                                trace=demo_pb2.SearchEvidenceTrace(
+                                    parsed_intent=json.dumps(
+                                        {
+                                            "search_type": "reviews",
+                                            "dependency_class": "explicit_product_review_v1",
+                                        }
+                                    ),
+                                    filter_applied=json.dumps(
+                                        {"review_qa_product_id": early_product.id}
+                                    ),
+                                    candidate_count_before=len(
+                                        prefetched_catalog.products
+                                    ),
+                                    candidate_count_after=1,
+                                ),
+                                cache_status="miss",
+                                cache_eligible=True,
+                                cache_reason=default_cache_reason,
+                                model_calls=0,
+                            )
+                        )
+                    finally:
+                        copilot_response_cache.release_lock(identity, cache_lock)
+            elif _has_review_marker(query) and (not user_id or user_id == "guest"):
+                default_cache_reason = "missing_user_identity"
+
             # --- 4. Fast-path chitchat check vs. LLM per-turn intent classification ---
             provider_attempted = False
-            if _is_fastpath_chitchat(query):
+            if applied_profile is not None:
+                intent = {
+                    "search_type": "search",
+                    "confidence_score": 1.0,
+                }
+                if applied_profile.get("preferred_category"):
+                    intent["category"] = applied_profile["preferred_category"]
+                if applied_profile.get("max_budget_usd_cents"):
+                    intent["price_max"] = (
+                        int(applied_profile["max_budget_usd_cents"]) / 100
+                    )
+            elif _is_fastpath_chitchat(query):
                 intent = {
                     "search_type": "chitchat",
                     "confidence_score": 1.0,
@@ -437,6 +971,7 @@ def route_search_products_ai(
                 intent = deterministic_intent
             else:
                 provider_attempted = True
+                model_calls += 1
                 intent = assistant.provider.parse_search_intent(query, history=sanitized_history)
 
             _metadata = intent.get("_metadata") or {}
@@ -553,26 +1088,20 @@ def route_search_products_ai(
                         "Hello! I can help you find, compare, or review products.",
                     )
                     outcome = "chitchat"
-                if session_id:
-                    session_store.append_turn(user_id, session_id, "user", query)
-                    session_store.append_turn(user_id, session_id, "assistant", msg)
-                return _refused_search_response(
+                return finalize(_refused_search_response(
                     parsed_intent=parsed_intent_json,
                     input_tokens=_in_tok,
                     output_tokens=_out_tok,
                     refusal_reason="llm_classified_out_of_scope",
                     response=msg,
                     outcome=outcome,
-                )
+                ))
 
             # B. UNCLEAR Intent -> No tools allowed, ask for clarification
             if intent_label == IntentLabel.UNCLEAR:
                 span.set_attribute("app.search.outcome", "unclear")
                 clarify_q = intent.get("clarify_question") or "Tôi chưa hiểu rõ ý định của bạn. Bạn muốn tìm kiếm sản phẩm hay xem đánh giá/review?"
-                if session_id:
-                    session_store.append_turn(user_id, session_id, "user", query)
-                    session_store.append_turn(user_id, session_id, "assistant", clarify_q)
-                return demo_pb2.SearchProductsAIAssistantResponse(
+                return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                     results=[],
                     response=clarify_q,
                     outcome="clarification_required",
@@ -585,10 +1114,10 @@ def route_search_products_ai(
                         output_tokens=_out_tok,
                         refusal_reason="llm_classified_out_of_scope",
                     ),
-                )
+                ))
 
             # Fetch catalog products (via catalog_search tool)
-            catalog_response = call_tool(
+            catalog_response = prefetched_catalog or call_tool(
                 intent_label,
                 "catalog_search",
                 lambda: product_catalog_stub.ListProducts(demo_pb2.Empty(), timeout=2.0),
@@ -618,7 +1147,7 @@ def route_search_products_ai(
                     intent["search_type"] = "unclear"
                     intent["clarify_question"] = clarify_q
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
-                    return _refused_search_response(
+                    return finalize(_refused_search_response(
                         parsed_intent=parsed_intent_json,
                         filter_applied=json.dumps({
                             "comparison_targets": intent.get("comparison_targets", []),
@@ -632,13 +1161,14 @@ def route_search_products_ai(
                         refusal_reason="comparison_resolution_failed",
                         response=clarify_q,
                         outcome="clarification_required",
-                    )
+                    ))
 
                 comparison_outcome = call_tool(
                     IntentLabel.COMPARE,
                     "bedrock_compare",
                     lambda: assistant.compare_products(compared, query, session_id, user_id),
                 )
+                model_calls += comparison_outcome.model_calls
                 if comparison_outcome.provider_attempted and audit_callback:
                     audit_callback(
                         surface="copilot_search",
@@ -674,7 +1204,7 @@ def route_search_products_ai(
                         session_id,
                         [{"id": p.id, "name": p.name, "description": p.description, "categories": list(p.categories)} for p in compared],
                     )
-                return demo_pb2.SearchProductsAIAssistantResponse(
+                return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                     results=compared,
                     response=answer_text,
                     outcome=comparison_outcome.outcome,
@@ -694,7 +1224,7 @@ def route_search_products_ai(
                         output_tokens=total_output,
                         estimated_cost_usd=_calculate_search_cost(total_input, total_output),
                     ),
-                )
+                ))
 
             # D. PURCHASE (Cart Action) Intent -> Allowed tool: "cart_action"
             if intent_label == IntentLabel.PURCHASE:
@@ -729,7 +1259,7 @@ def route_search_products_ai(
                         "Mỗi lần chỉ có thể thêm tối đa 10 sản phẩm vào giỏ hàng. Bạn muốn thêm 10 sản phẩm chứ?",
                         "You can add at most 10 items to the cart at a time. Would you like to add 10 items?",
                     )
-                    return _refused_search_response(
+                    return finalize(_refused_search_response(
                         parsed_intent=json.dumps(intent, ensure_ascii=False),
                         filter_applied=json.dumps({"quantity": qty, "maximum_quantity": 10}, ensure_ascii=False),
                         before=candidate_count_before,
@@ -739,7 +1269,7 @@ def route_search_products_ai(
                         refusal_reason="quantity_limit_exceeded",
                         response=limit_msg,
                         outcome="quantity_limit_exceeded",
-                    )
+                    ))
                 qty = max(1, qty)
 
                 if target:
@@ -761,10 +1291,7 @@ def route_search_products_ai(
                     confirmation_msg = f"Tôi tìm thấy sản phẩm **{target.name}**. Bạn muốn thêm {qty} sản phẩm này vào giỏ hàng chứ?"
                     intent["response_message"] = confirmation_msg
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
-                    if session_id:
-                        session_store.append_turn(user_id, session_id, "user", query)
-                        session_store.append_turn(user_id, session_id, "assistant", confirmation_msg)
-                    return demo_pb2.SearchProductsAIAssistantResponse(
+                    return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target],
                         response=confirmation_msg,
                         outcome="action_confirmation_required",
@@ -779,7 +1306,7 @@ def route_search_products_ai(
                             estimated_cost_usd=_calculate_search_cost(_in_tok, _out_tok),
                         ),
                         action_proposal=proposal,
-                    )
+                    ))
                 else:
                     # Bug #20 fix: Include clarify_question for PURCHASE miss
                     clarify_q = "Tôi chưa tìm thấy sản phẩm bạn muốn thêm vào giỏ hàng. Bạn có thể cho biết tên sản phẩm cụ thể không?"
@@ -787,10 +1314,7 @@ def route_search_products_ai(
                     intent["clarify_question"] = clarify_q
                     intent["response_message"] = clarify_q
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
-                    if session_id:
-                        session_store.append_turn(user_id, session_id, "user", query)
-                        session_store.append_turn(user_id, session_id, "assistant", clarify_q)
-                    return demo_pb2.SearchProductsAIAssistantResponse(
+                    return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                         results=[],
                         response=clarify_q,
                         outcome="clarification_required",
@@ -803,7 +1327,7 @@ def route_search_products_ai(
                             output_tokens=_out_tok,
                             refusal_reason="no_match_after_filter",
                         ),
-                    )
+                    ))
 
             # E. REVIEW_QA Intent -> Allowed tool: "get_product_reviews".
             # Copilot deliberately does not invoke the model-backed review Q&A.
@@ -860,10 +1384,7 @@ def route_search_products_ai(
                                 }
                             ],
                         )
-                        session_store.append_turn(user_id, session_id, "user", query)
-                        session_store.append_turn(user_id, session_id, "assistant", answer_text)
-
-                    return demo_pb2.SearchProductsAIAssistantResponse(
+                    return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                         results=[target_product],
                         response=answer_text,
                         outcome=review_outcome,
@@ -877,17 +1398,14 @@ def route_search_products_ai(
                             output_tokens=_out_tok,
                             estimated_cost_usd=_calculate_search_cost(_in_tok, _out_tok),
                         ),
-                    )
+                    ))
                 else:
                     clarify_q = "Bạn muốn xem đánh giá của sản phẩm nào? Bạn có thể cho biết tên sản phẩm cụ thể không?"
                     intent["search_type"] = "unclear"
                     intent["clarify_question"] = clarify_q
                     intent["response_message"] = clarify_q
                     parsed_intent_json = json.dumps(intent, ensure_ascii=False)
-                    if session_id:
-                        session_store.append_turn(user_id, session_id, "user", query)
-                        session_store.append_turn(user_id, session_id, "assistant", clarify_q)
-                    return demo_pb2.SearchProductsAIAssistantResponse(
+                    return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                         results=[],
                         response=clarify_q,
                         outcome="clarification_required",
@@ -900,7 +1418,7 @@ def route_search_products_ai(
                             output_tokens=_out_tok,
                             refusal_reason="no_match_after_filter",
                         ),
-                    )
+                    ))
 
             # F. PRODUCT_SEARCH Intent -> Allowed tool: "catalog_search"
             valid_ids = {p.id for p in all_products}
@@ -1002,15 +1520,12 @@ def route_search_products_ai(
                         for p in filtered
                     ]
                     session_store.set_last_search_products(user_id, session_id, prod_dicts)
-                session_store.append_turn(user_id, session_id, "user", query)
-                session_store.append_turn(user_id, session_id, "assistant", summary_text)
-
-            return demo_pb2.SearchProductsAIAssistantResponse(
+            return finalize(demo_pb2.SearchProductsAIAssistantResponse(
                 results=filtered,
                 response=summary_text,
                 outcome="success" if filtered else "no_match",
                 trace=trace_msg,
-            )
+            ))
         except ProviderFailure as exc:
             span.set_attribute("app.search.outcome", "provider_failure")
             span.set_attribute("error.class", exc.error_class)
@@ -1041,7 +1556,7 @@ def route_search_products_ai(
             ref_reason = "schema_validation_failed" if exc.error_class == "invalid_response" else (
                 "guardrail_blocked" if exc.error_class == "guardrail_intervened" else "provider_failure"
             )
-            return _refused_search_response(
+            return finalize(_refused_search_response(
                 input_tokens=getattr(exc, "input_tokens", 0),
                 output_tokens=getattr(exc, "output_tokens", 0),
                 refusal_reason=ref_reason,
@@ -1051,12 +1566,12 @@ def route_search_products_ai(
                     "Copilot is temporarily unavailable. Please try again later.",
                 ),
                 outcome="provider_unavailable",
-            )
+            ))
         except Exception as exc:
             span.set_attribute("app.search.outcome", "error")
             span.set_attribute("error.class", type(exc).__name__.lower()[:64])
             logger.error("search_products_ai_failed", exc_info=exc)
-            return _refused_search_response(
+            return finalize(_refused_search_response(
                 refusal_reason="provider_failure",
                 response=_message(
                     query,
@@ -1064,4 +1579,4 @@ def route_search_products_ai(
                     "Copilot is temporarily unavailable. Please try again later.",
                 ),
                 outcome="provider_unavailable",
-            )
+            ))
