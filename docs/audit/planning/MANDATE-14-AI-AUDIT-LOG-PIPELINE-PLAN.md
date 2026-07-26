@@ -11,7 +11,7 @@
 | Data producer | AIO — `product-reviews` |
 | Evidence location | `docs/audit/evidence/mandate-14-ai-audit/` |
 | Ngày lập | 2026-07-23 |
-| Ngày cập nhật | 2026-07-25 (Đã tinh gọn theo /ponytail) |
+| Ngày cập nhật | 2026-07-26 (Đã đối soát unit price live AWS Pricing API) |
 | Ticket triển khai | [AUDIT-018](../tickets/AUDIT-018-MANDATE14-AI-AUDIT-LOG-PIPELINE.md) |
 
 ---
@@ -33,25 +33,25 @@ Pipeline AI Audit Log tập trung được thiết kế nhằm đáp ứng yêu 
 
 Tài liệu đưa phần **Tối ưu Chi phí** lên trước để các team (CDO-04, CDO-07, CDO-08) đánh giá ngay hiệu quả đầu tư (ROI) của kiến trúc.
 
-### 2.1. Bảng dự toán chi phí chi tiết (AWS us-east-1 — T7/2026)
+### 2.1. Bảng dự toán chi phí chi tiết (AWS us-east-1 — Đã đối soát AWS Pricing API T7/2026)
 
-| Thành phần AWS | Đơn giá AWS | Kịch bản A (10k calls/ngày) | Kịch bản B (100k calls/ngày) | Kịch bản C (1M calls/ngày - Peak) |
+| Thành phần AWS | Đơn giá AWS (us-east-1) | Kịch bản A (10k calls/ngày) | Kịch bản B (100k calls/ngày) | Kịch bản C (1M calls/ngày - Peak) |
 |---|---|---|---|---|
 | **CloudWatch Logs Ingestion** | $0.50 / GB ingested | $0.08 / tháng | $0.75 / tháng | $7.50 / tháng |
-| **CloudWatch Logs Storage** | $0.03 / GB / tháng (retention 7d) | < $0.01 / tháng | $0.01 / tháng | $0.10 / tháng |
+| **CloudWatch Logs Retention (7d)** | **$0.00** (Đã bao gồm trong Ingestion) | $0.00 / tháng | $0.00 / tháng | $0.00 / tháng |
 | **Amazon Data Firehose Ingestion** | $0.029 / GB ingested | < $0.01 / tháng | $0.04 / tháng | $0.44 / tháng |
 | **S3 Storage (COMPLIANCE 90d)** | $0.023 / GB / tháng (GZIP nén 4x) | $0.01 / tháng | $0.03 / tháng | $0.26 / tháng |
 | **S3 PUT Requests** | $0.005 / 1k requests (buffer 60s) | $0.22 / tháng | $0.22 / tháng | $0.22 / tháng |
-| **OpenSearch Storage (gp3)** | $0.08 / GB / tháng (retention 7d) | $0.02 / tháng | $0.16 / tháng | $1.60 / tháng |
+| **OpenSearch Storage (gp3)** | **$0.122 / GB / tháng** (retention 7d) | $0.03 / tháng | $0.24 / tháng | $2.44 / tháng |
 | **KMS CMK Fee** | **$0.00** (Dùng SSE-S3 & AWS Key) | **$0.00** | **$0.00** | **$0.00** |
-| **TỔNG CHI PHÍ HẰNG THÁNG** | | **~ $0.34 / tháng** | **~ $1.21 / tháng** | **~ $10.12 / tháng** |
+| **TỔNG CHI PHÍ HẰNG THÁNG** | | **~ $0.35 / tháng** | **~ $1.29 / tháng** | **~ $10.96 / tháng** |
 
 ---
 
 ### 2.2. Vì sao kiến trúc này triệt tiêu rủi ro bùng nổ chi phí CloudWatch Logs?
 
 > [!TIP]
-> **Giải mã 4 lý do giúp pipeline vận hành với chi phí siêu rẻ (~$1.21/tháng ở tải 100k events/ngày):**
+> **Giải mã 4 lý do giúp pipeline vận hành với chi phí siêu rẻ (~$1.29/tháng ở tải 100k events/ngày):**
 > 
 > 1. **Loại bỏ Raw Content ở ứng dụng**: Một lượt gọi LLM chứa history có thể tốn 50 KB. Nhờ schema 8 trường (~0.5 KB), kích thước Log Ingestion giảm **100 lần**, tránh bẫy chi phí CloudWatch Ingestion hàng trăm USD/tháng.
 > 2. **Chỉ giữ 7 ngày tại CloudWatch Logs**: Thay vì để `Never Expire` (tốn $0.03/GB-tháng tích lũy), CloudWatch chỉ lưu 7 ngày để query/alarm. Toàn bộ log cũ hơn được Firehose nén GZIP và chuyển sang S3 Standard ($0.023/GB-tháng, nén 4x $\rightarrow$ tổng rẻ hơn ~70%).
