@@ -342,7 +342,7 @@ class RemediationController:
                 if ready and self.verifier
                 else {"healthy": False, "reason": "rollout_not_ready_or_verifier_missing"}
             )
-            samples.append({"poll": index + 1, "rollout_ready": ready, "slo": slo})
+            samples.append({"poll": index + 1, "sampled_at": utcnow().isoformat(), "rollout_ready": ready, "slo": slo})
             if index + 1 < required and self.settings.verification_interval_seconds > 0:
                 await asyncio.sleep(self.settings.verification_interval_seconds)
         poll_healthy = [

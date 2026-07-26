@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import json
 import logging
 from contextlib import asynccontextmanager
 
@@ -176,9 +177,19 @@ async def get_mutation_block(service: str):
 async def clear_mutation_block(service: str):
     """Operator unlock after reviewing an escalated post-mutation quarantine."""
 
+    detail = await store.target_block(service)
     cleared = await store.clear_target_block(service)
     if not cleared:
         raise HTTPException(404, "Target is not under mutation quarantine")
+    logging.getLogger("aiops.operator").warning(
+        json.dumps(
+            {
+                "event": "target_quarantine_cleared",
+                "service": service,
+                "previous_block": detail,
+            }
+        )
+    )
     return {"service": service, "cleared": True}
 
 

@@ -85,6 +85,20 @@ JSONL without code changes and exercises the canonical runtime controller.
    (`AIOPS_KNOWN_GOOD_REVISIONS`), the controller assumes `owned[1]` is the
    rollback target. This is not guaranteed to be fault-free. CDO must set a pin
    for every target before enabling live autonomous mode.
+4. **Orphan mutation on pod crash.** If the AIOps pod crashes after
+   `action_executed` but before verification completes, the in-memory incident,
+   quarantine and lock state are lost. The Kubernetes Lease expires after its
+   TTL, but no automatic rollback or escalation occurs for the orphaned
+   mutation. Argo CD / GitOps eventual sync is the only recovery. This is
+   acceptable only while autonomous live mode is disabled; a durable
+   checkpoint/saga is required before sustained operation.
+5. **No Argo CD self-heal coordination.** During the post-action verification
+   window, Argo CD self-heal may detect the live-state drift and sync the
+   Deployment back to its Git-declared spec, overwriting the AIOps mutation or
+   rollback. The Kubernetes Lease prevents only AIOps-vs-AIOps conflicts, not
+   Argo overwrites. CDO must either disable self-heal for target Deployments
+   during autonomous windows or add an Argo sync-ignore annotation before
+   enabling live autonomous mode.
 
 ## Activation gates
 
