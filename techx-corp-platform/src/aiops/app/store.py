@@ -113,24 +113,32 @@ class IncidentStore:
                 return None
             if incident.mutation_blocked:
                 self._recovery_streaks.pop(key, None)
-                incident.audit_events.append(
-                    AuditEvent(
-                        event="auto_resolve_suppressed_mutation_blocked",
-                        detail={
-                            "status": incident.status.value,
-                            "escalation_reason": incident.escalation_reason,
-                        },
+                # Rate-limit audit spam: one suppress event per continuous
+                # recovery observation streak, not every detector poll.
+                if not incident.audit_events or incident.audit_events[-1].event != (
+                    "auto_resolve_suppressed_mutation_blocked"
+                ):
+                    incident.audit_events.append(
+                        AuditEvent(
+                            event="auto_resolve_suppressed_mutation_blocked",
+                            detail={
+                                "status": incident.status.value,
+                                "escalation_reason": incident.escalation_reason,
+                            },
+                        )
                     )
-                )
                 return None
             if service in self._blocked_targets:
                 self._recovery_streaks.pop(key, None)
-                incident.audit_events.append(
-                    AuditEvent(
-                        event="auto_resolve_suppressed_target_quarantine",
-                        detail=self._blocked_targets[service],
+                if not incident.audit_events or incident.audit_events[-1].event != (
+                    "auto_resolve_suppressed_target_quarantine"
+                ):
+                    incident.audit_events.append(
+                        AuditEvent(
+                            event="auto_resolve_suppressed_target_quarantine",
+                            detail=self._blocked_targets[service],
+                        )
                     )
-                )
                 return None
 
             streak = self._recovery_streaks.get(key, 0) + 1

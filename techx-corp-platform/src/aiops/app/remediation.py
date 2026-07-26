@@ -318,11 +318,17 @@ class RemediationController:
             self.authorize_by_policy(incident)
             await self.execute(incident)
         except PolicyDenied as exc:
+            # Pre-mutation policy denials must NOT set mutation_blocked.
+            # That flag is reserved for post-mutation safety failures so a
+            # temporary deny (missing evidence, lease held, low confidence)
+            # can still auto-resolve and re-attempt on a later incident cycle.
             incident.status = IncidentStatus.ESCALATED
             incident.escalation_reason = str(exc)
-            incident.mutation_blocked = True
             incident.audit_events.append(
-                AuditEvent(event="autonomous_policy_denied_escalation", detail={"reason": str(exc)})
+                AuditEvent(
+                    event="autonomous_policy_denied_escalation",
+                    detail={"reason": str(exc)},
+                )
             )
 
     async def _verification_window(
@@ -429,6 +435,15 @@ class RemediationController:
             raise PolicyDenied("Only one mutation attempt is allowed per incident")
         if target in self._locks:
             raise PolicyDenied("Another action is already running for this target")
+        # Live mutation requires an explicit CDO pin. owned[1] alone is not
+        # known-good and must not be the only rollback target in live mode.
+        if (
+            self.settings.remediation_mode == "live"
+            and target not in self.settings.known_good_revisions
+        ):
+            raise PolicyDenied(
+                f"Live mutation requires AIOPS_KNOWN_GOOD_REVISIONS pin for {target}"
+            )
 
         self._locks.add(target)
         adapter: KubernetesRollbackAdapter | None = None
@@ -525,8 +540,10 @@ class RemediationController:
             )
         except PolicyDenied as exc:
             if not mutated:
+                # Pre-mutation denials (lease held, missing previous RS, pin
+                # missing after race) escalate without permanent mutation block
+                # so operators are not forced to unlock a never-mutated target.
                 incident.status = IncidentStatus.ESCALATED
-                incident.mutation_blocked = True
                 incident.escalation_reason = str(exc)
                 incident.audit_events.append(
                     AuditEvent(
@@ -554,8 +571,9 @@ class RemediationController:
                         AuditEvent(event="rollback_failed_escalation")
                     )
             else:
+                # Failure before any live patch is not a post-mutation safety
+                # lock; keep the incident escalated but re-attemptable.
                 incident.status = IncidentStatus.ESCALATED
-                incident.mutation_blocked = True
                 incident.audit_events.append(
                     AuditEvent(event="execution_failed_before_mutation")
                 )

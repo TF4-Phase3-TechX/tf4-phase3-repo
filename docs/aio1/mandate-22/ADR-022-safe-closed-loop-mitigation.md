@@ -81,10 +81,10 @@ JSONL without code changes and exercises the canonical runtime controller.
    mutated service only. Cross-service or end-to-end dependency guards (e.g.
    checkout/storefront error rate) are not silently applied; they require an
    explicit approved dependency mapping in action policy configuration.
-3. **Previous ReplicaSet fallback.** Without a CDO-pinned known-good revision
-   (`AIOPS_KNOWN_GOOD_REVISIONS`), the controller assumes `owned[1]` is the
-   rollback target. This is not guaranteed to be fault-free. CDO must set a pin
-   for every target before enabling live autonomous mode.
+3. **Known-good pin is mandatory for live mutation.** Live mode refuses to patch
+   unless `AIOPS_KNOWN_GOOD_REVISIONS` includes the target. Dry-run may still
+   resolve `owned[1]` as a candidate for operator review; that candidate is not
+   treated as proven known-good.
 4. **Orphan mutation on pod crash.** If the AIOps pod crashes after
    `action_executed` but before verification completes, the in-memory incident,
    quarantine and lock state are lost. The Kubernetes Lease expires after its
@@ -99,6 +99,16 @@ JSONL without code changes and exercises the canonical runtime controller.
    Argo overwrites. CDO must either disable self-heal for target Deployments
    during autonomous windows or add an Argo sync-ignore annotation before
    enabling live autonomous mode.
+6. **`mutation_blocked` is post-mutation only.** Pre-mutation policy denials
+   (missing evidence, lease held, low confidence, missing pin) escalate without
+   setting `mutation_blocked` so recovery can clear the incident and a later
+   cycle can re-attempt. Permanent process-local quarantine is applied only
+   after a live patch / rollback safety failure.
+7. **Evidence freshness between authorize and patch.** Policy evaluates
+   Prometheus evidence once before preflight; the controller does not re-query
+   immediately before the live patch. The bounded single-service window is
+   seconds-long; a mid-flight telemetry loss after authorize is accepted under
+   dry-run / freeze constraints and remains a follow-up for durable saga work.
 
 ## Activation gates
 

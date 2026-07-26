@@ -84,6 +84,8 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         autonomous_remediation_enabled=True,
         remediation_mode="live",
         allowed_deployments=(str(case["service"]),),
+        # Replay uses a synthetic pin so live-mode known-good gate is exercised.
+        known_good_revisions={str(case["service"]): "replay-known-good"},
         verification_polls=len(action_health),
         rollback_verification_polls=max(len(rollback_health), 1),
         verification_consecutive_healthy_polls=len(action_health),

@@ -96,6 +96,7 @@ async def test_failed_slo_verification_restores_original_template():
             rollback_verification_polls=1, verification_settle_seconds=0,
             verification_interval_seconds=0,
             verification_consecutive_healthy_polls=1,
+            known_good_revisions={"product-reviews": "1"},
         ), adapter=adapter, verifier=unhealthy_then_recovered,
     )
     item = incident()
@@ -181,7 +182,8 @@ async def test_autonomous_policy_fails_closed_without_evidence():
     await controller.handle_incident(item)
 
     assert item.status == IncidentStatus.ESCALATED
-    assert item.mutation_blocked is True
+    # Pre-mutation deny must remain re-attemptable after recovery.
+    assert item.mutation_blocked is False
     assert "evidence_present" in item.escalation_reason
 
 
@@ -198,6 +200,7 @@ async def test_unverified_rollback_escalates_and_blocks_mutation():
             rollback_verification_polls=1, verification_settle_seconds=0,
             verification_interval_seconds=0,
             verification_consecutive_healthy_polls=1,
+            known_good_revisions={"product-reviews": "1"},
         ), adapter=adapter, verifier=always_unhealthy,
     )
     item = incident()
@@ -220,7 +223,12 @@ async def test_held_target_lease_denies_action_before_mutation():
 
     adapter = HeldAdapter()
     controller = RemediationController(
-        replace(Settings(), remediation_mode="live"), adapter=adapter,
+        replace(
+            Settings(),
+            remediation_mode="live",
+            known_good_revisions={"product-reviews": "1"},
+        ),
+        adapter=adapter,
     )
     item = incident()
     controller.request_approval(item)
@@ -230,6 +238,26 @@ async def test_held_target_lease_denies_action_before_mutation():
         await controller.execute(item)
 
     assert adapter.patches == []
+    # Lease contention must not permanently block re-mutation.
+    assert item.mutation_blocked is False
+
+
+@pytest.mark.asyncio
+async def test_live_mutation_requires_known_good_revision_pin():
+    adapter = FakeAdapter()
+    controller = RemediationController(
+        replace(Settings(), remediation_mode="live"),
+        adapter=adapter,
+    )
+    item = incident()
+    controller.request_approval(item)
+    controller.approve(item)
+
+    with pytest.raises(PolicyDenied, match="KNOWN_GOOD_REVISIONS"):
+        await controller.execute(item)
+
+    assert adapter.patches == []
+    assert item.mutation_blocked is False
 
 
 @pytest.mark.asyncio

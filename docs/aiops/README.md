@@ -148,6 +148,12 @@ For a controlled live drill, CDO must first confirm the namespace, Deployment al
 | GET | `/v1/incidents/{id}/summary` | Operator Markdown with exact queries and encoded Grafana Explore link |
 | POST | `/v1/incidents/{id}/approve` | Approve and execute the bound action |
 | POST | `/v1/incidents/{id}/reject` | Reject the action |
+| GET | `/v1/targets/{service}/mutation-block` | Read process-local post-mutation quarantine |
+| DELETE | `/v1/targets/{service}/mutation-block` | Operator unlock (Bearer approval token required) |
+
+Live mutation also requires `AIOPS_KNOWN_GOOD_REVISIONS=service=revision` for
+each allowlisted target. Process-local quarantine is applied only after a
+post-mutation safety failure, not after pre-mutation policy denials.
 
 The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incident_active`, while `aiops_incidents_created_total` remains the audit counter; persistent state and automatic Jira creation remain follow-up work.
 

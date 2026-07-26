@@ -80,10 +80,31 @@ async def test_mutation_blocked_incident_never_auto_resolves():
     assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
     assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
     assert active.status == IncidentStatus.ESCALATED
-    assert any(
-        event.event == "auto_resolve_suppressed_mutation_blocked"
+    suppress_events = [
+        event
         for event in active.audit_events
+        if event.event == "auto_resolve_suppressed_mutation_blocked"
+    ]
+    # Continuous recovery polls must not flood the audit trail.
+    assert len(suppress_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_pre_mutation_escalation_without_block_can_auto_resolve():
+    """Policy deny without mutation_blocked must remain recoverable."""
+
+    store = IncidentStore(cooldown_seconds=0)
+    active, _ = await store.upsert(incident())
+    active.status = IncidentStatus.ESCALATED
+    active.mutation_blocked = False
+    active.escalation_reason = "Autonomous policy denied: evidence_present"
+
+    assert await store.observe_recovery(active.incident_type, active.affected_service, 2) is None
+    resolved = await store.observe_recovery(
+        active.incident_type, active.affected_service, 2
     )
+    assert resolved is not None
+    assert resolved.status == IncidentStatus.RESOLVED
 
 
 @pytest.mark.asyncio

@@ -240,9 +240,9 @@ class Settings:
     verification_minimum_request_count: int = int(
         os.getenv("AIOPS_VERIFICATION_MINIMUM_REQUEST_COUNT", "5")
     )
-    # Optional CDO-pinned known-good Deployment revision numbers
-    # (deployment.kubernetes.io/revision). When set for a target, the controller
-    # rolls back only to that revision instead of assuming owned[1] is good.
+    # CDO-pinned known-good Deployment revision numbers
+    # (deployment.kubernetes.io/revision). Required for every live mutation
+    # target; dry-run may still inspect owned[1] without treating it as proven.
     known_good_revisions: dict[str, str] = field(
         default_factory=lambda: _string_map("AIOPS_KNOWN_GOOD_REVISIONS", "")
     )
