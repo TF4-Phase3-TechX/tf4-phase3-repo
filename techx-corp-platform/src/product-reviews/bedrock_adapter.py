@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 import boto3
 from botocore.config import Config
+from llm_observability import tool_span, trace_model_call
 from session_store import session_store
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,8 @@ def call_tool(intent: IntentLabel, tool_name: str, fn: Callable, *args, **kwargs
             "tool_name": tool_name,
         },
     )
-    return fn(*args, **kwargs)
+    with tool_span(intent, tool_name):
+        return fn(*args, **kwargs)
 
 
 def _map_search_type_to_intent(search_type: str) -> IntentLabel:
@@ -666,6 +668,7 @@ class BedrockAdapter:
             }
         return request
 
+    @trace_model_call("product_review_qa", "emit_grounded_answer")
     def converse(self, question: str, product: dict[str, Any], reviews: list[dict[str, Any]]) -> BedrockResult:
         started = self.clock()
         self.breaker.before_call(started)
@@ -829,6 +832,7 @@ class BedrockAdapter:
                 error_name = "timeout"
             raise ProviderFailure(error_name[:64]) from exc
 
+    @trace_model_call("product_comparison", "emit_grounded_comparison")
     def compare_products(self, question: str, evidence: dict[str, Any]) -> BedrockResult:
         """Create a grounded natural-language comparison from resolved catalog evidence."""
         started = self.clock()
@@ -940,6 +944,7 @@ class BedrockAdapter:
                 self.breaker.failure(self.clock())
             raise ProviderFailure(error_name[:64]) from exc
 
+    @trace_model_call("search_intent", "emit_search_intent")
     def parse_search_intent(self, query: str, history: list[dict[str, str]] = None) -> dict[str, Any]:
         """Parse a natural-language product search query into structured filters.
 

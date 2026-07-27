@@ -25,6 +25,11 @@ components:
           secretKeyRef:
             name: product-reviews-bedrock-canary
             key: marker
+      - name: LLM_OBSERVABILITY_HASH_SALT
+        valueFrom:
+          secretKeyRef:
+            name: product-reviews-llm-observability
+            key: hash-salt
       - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
         value: "false"
     securityContext:

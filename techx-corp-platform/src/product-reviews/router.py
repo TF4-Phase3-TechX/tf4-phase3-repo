@@ -22,6 +22,7 @@ from bedrock_adapter import (
     STOP_WORDS,
 )
 from copilot_review_summary import summarize_copilot_reviews
+from llm_observability import current_trace_id
 from safety import MAX_QUESTION_CHARS, contains_pii, is_attack, normalize_text
 from session_store import session_store
 
@@ -38,6 +39,11 @@ def _calculate_search_cost(input_tokens: int, output_tokens: int) -> float:
     ) / 1_000_000
 
 
+def _evidence_trace(**kwargs: Any) -> demo_pb2.SearchEvidenceTrace:
+    """Return replay-safe evidence correlated to the active W3C trace."""
+    return demo_pb2.SearchEvidenceTrace(trace_id=current_trace_id(), **kwargs)
+
+
 def _make_refused_trace(parsed_intent="", filter_applied="", before=0, after=0, input_tokens=0, output_tokens=0, refusal_reason=""):
     cost = _calculate_search_cost(input_tokens, output_tokens)
     if refusal_reason:
@@ -48,7 +54,7 @@ def _make_refused_trace(parsed_intent="", filter_applied="", before=0, after=0, 
         except Exception:
             filter_applied = json.dumps({"refusal_reason": refusal_reason}, ensure_ascii=False)
 
-    trace = demo_pb2.SearchEvidenceTrace(
+    trace = _evidence_trace(
         parsed_intent=parsed_intent,
         filter_applied=filter_applied,
         candidate_count_before=before,
@@ -678,7 +684,7 @@ def route_search_products_ai(
                     results=compared,
                     response=answer_text,
                     outcome=comparison_outcome.outcome,
-                    trace=demo_pb2.SearchEvidenceTrace(
+                    trace=_evidence_trace(
                         parsed_intent=parsed_intent_json,
                         filter_applied=json.dumps({
                             "comparison_product_ids": [p.id for p in compared],
@@ -768,7 +774,7 @@ def route_search_products_ai(
                         results=[target],
                         response=confirmation_msg,
                         outcome="action_confirmation_required",
-                        trace=demo_pb2.SearchEvidenceTrace(
+                        trace=_evidence_trace(
                             parsed_intent=parsed_intent_json,
                             filter_applied="cart_action",
                             candidate_count_before=candidate_count_before,
@@ -867,7 +873,7 @@ def route_search_products_ai(
                         results=[target_product],
                         response=answer_text,
                         outcome=review_outcome,
-                        trace=demo_pb2.SearchEvidenceTrace(
+                        trace=_evidence_trace(
                             parsed_intent=parsed_intent_json,
                             filter_applied=json.dumps({"review_qa_product_id": target_product.id}, ensure_ascii=False),
                             candidate_count_before=candidate_count_before,
@@ -965,7 +971,7 @@ def route_search_products_ai(
             span.set_attribute("app.search.candidate_count_after", candidate_count_after)
             span.set_attribute("app.search.outcome", route_outcome)
 
-            trace_msg = demo_pb2.SearchEvidenceTrace(
+            trace_msg = _evidence_trace(
                 parsed_intent=parsed_intent_json,
                 filter_applied=filter_applied_json,
                 candidate_count_before=candidate_count_before,

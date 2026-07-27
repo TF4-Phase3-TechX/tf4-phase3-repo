@@ -179,6 +179,7 @@ message SearchEvidenceTrace {
     int32 output_tokens = 7;
     double estimated_cost_usd = 8;
     string refusal_reason = 9;
+    string trace_id = 10;
 }
 
 message ConfirmCartActionRequest {
