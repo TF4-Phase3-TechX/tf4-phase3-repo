@@ -15,6 +15,7 @@ import app.main as main_mod
 from app.config import Settings
 from app.models import AuditEvent, Incident, IncidentStatus
 from app.remediation import PolicyDenied, RemediationController
+from app.saga import MemorySagaStore
 from app.store import IncidentStore
 
 
@@ -60,6 +61,7 @@ def _pending_incident(service: str = "product-reviews", incident_type: str = "se
 @pytest.fixture
 def api_path(monkeypatch):
     store = IncidentStore(cooldown_seconds=0)
+    saga_store = MemorySagaStore()
     controller = RemediationController(
         replace(
             Settings(),
@@ -70,8 +72,10 @@ def api_path(monkeypatch):
             approval_token="test-token",
         ),
         adapter=AmbiguousTimeoutAdapter(),
+        saga_store=saga_store,
     )
     monkeypatch.setattr(main_mod, "store", store)
+    monkeypatch.setattr(main_mod, "saga_store", saga_store)
     monkeypatch.setattr(main_mod, "remediation", controller)
     monkeypatch.setattr(
         main_mod,
@@ -138,6 +142,8 @@ async def test_clear_quarantine_unlocks_incident_for_recovery(api_path):
 
     cleared = await main_mod.clear_mutation_block("product-reviews")
     assert cleared["cleared"] is True
+    assert len(cleared["cleared_saga_ids"]) == 1
+    assert await controller.saga_store.list_open_for_target("product-reviews") == []
     assert await store.is_target_blocked("product-reviews") is False
     assert active.mutation_blocked is False
     assert any(

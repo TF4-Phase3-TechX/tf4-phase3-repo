@@ -284,6 +284,12 @@ class Settings:
     remediation_lock_ttl_seconds: int = int(
         os.getenv("AIOPS_REMEDIATION_LOCK_TTL_SECONDS", "900")
     )
+    # Durable remediation saga (TF4AIO-89). memory = process-local tests;
+    # file = JSON under AIOPS_SAGA_PATH on an operator-provided durable volume.
+    saga_backend: str = os.getenv("AIOPS_SAGA_BACKEND", "memory")
+    saga_path: str = os.getenv("AIOPS_SAGA_PATH", "")
+    saga_retention_hours: int = int(os.getenv("AIOPS_SAGA_RETENTION_HOURS", "72"))
+    argo_window_enabled: bool = _bool("AIOPS_ARGO_WINDOW_ENABLED", "true")
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
     deployment_recency_hours: int = int(
@@ -347,6 +353,24 @@ class Settings:
         if self.verification_minimum_request_count < 0:
             raise ValueError(
                 "verification minimum request count cannot be negative"
+            )
+        if self.saga_retention_hours <= 0:
+            raise ValueError("saga retention hours must be positive")
+        if self.saga_backend.strip().lower() in {"file", "fs", "json"}:
+            if not self.saga_path.strip():
+                raise ValueError(
+                    "AIOPS_SAGA_PATH is required when AIOPS_SAGA_BACKEND is file"
+                )
+        if self.saga_backend.strip().lower() == "configmap":
+            raise ValueError("configmap saga backend is not implemented")
+        if (
+            self.remediation_mode == "live"
+            and self.autonomous_remediation_enabled
+            and self.saga_backend.strip().lower()
+            in {"", "memory", "mem", "none", "off"}
+        ):
+            raise ValueError(
+                "live autonomous remediation requires a durable saga backend"
             )
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
