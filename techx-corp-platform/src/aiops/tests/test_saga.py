@@ -99,7 +99,10 @@ def make_controller(adapter, saga_store=None, healthy=True, **settings_kwargs):
         rollback_verification_polls=1,
         verification_settle_seconds=0,
         verification_interval_seconds=0,
+        verification_consecutive_healthy_polls=1,
         argo_window_enabled=True,
+        # Required by #669 live pin (AIOPS_KNOWN_GOOD_REVISIONS).
+        known_good_revisions={"product-reviews": "1"},
         **settings_kwargs,
     )
     return RemediationController(
@@ -318,7 +321,9 @@ async def test_restart_during_verification_restores_when_unhealthy(tmp_path: Pat
         rollback_verification_polls=1,
         verification_settle_seconds=0,
         verification_interval_seconds=0,
+        verification_consecutive_healthy_polls=1,
         argo_window_enabled=True,
+        known_good_revisions={"product-reviews": "1"},
     )
     controller = RemediationController(
         settings, adapter=adapter, verifier=verifier, saga_store=store
