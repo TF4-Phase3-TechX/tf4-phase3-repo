@@ -479,6 +479,97 @@ EOF
 }
 
 # ─────────────────────────────────────────────────────────────
+# 6c. Glue Table — AI Tool Audit Events
+# ─────────────────────────────────────────────────────────────
+resource "aws_glue_catalog_table" "ai_tool_audit_events" {
+  database_name = aws_glue_catalog_database.audit_forensics.name
+  name          = "ai_tool_audit_events"
+  description   = "AI Tool Audit events - Mandate 14 AI Eval Standard & CDO-07 Auditability"
+  table_type    = "EXTERNAL_TABLE"
+
+  parameters = {
+    classification              = "json"
+    compressionType             = "gzip"
+    "projection.day.digits"     = "2"
+    "projection.day.range"      = "1,31"
+    "projection.day.type"       = "integer"
+    "projection.enabled"        = "true"
+    "projection.hour.digits"    = "2"
+    "projection.hour.range"     = "0,23"
+    "projection.hour.type"      = "integer"
+    "projection.month.digits"   = "2"
+    "projection.month.range"    = "1,12"
+    "projection.month.type"     = "integer"
+    "projection.year.range"     = "2026,2030"
+    "projection.year.type"      = "integer"
+    "storage.location.template" = "s3://${aws_s3_bucket.ai_audit.id}/mandate-14/ai-tool-audit/year=$${year}/month=$${month}/day=$${day}/hour=$${hour}"
+  }
+
+  partition_keys {
+    name = "year"
+    type = "string"
+  }
+  partition_keys {
+    name = "month"
+    type = "string"
+  }
+  partition_keys {
+    name = "day"
+    type = "string"
+  }
+  partition_keys {
+    name = "hour"
+    type = "string"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.ai_audit.id}/mandate-14/ai-tool-audit/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      parameters = {
+        "ignore.malformed.json" = "true"
+      }
+    }
+
+    columns {
+      name = "log_type"
+      type = "string"
+    }
+    columns {
+      name = "trace_id"
+      type = "string"
+    }
+    columns {
+      name = "surface"
+      type = "string"
+    }
+    columns {
+      name = "model_id"
+      type = "string"
+    }
+    columns {
+      name = "tool_name"
+      type = "string"
+    }
+    columns {
+      name = "tool_input_redacted"
+      type = "struct<redacted:boolean,content_logged:boolean>"
+    }
+    columns {
+      name = "safety_decision"
+      type = "string"
+    }
+    columns {
+      name = "confirmation_status"
+      type = "string"
+    }
+  }
+}
+
+# ─────────────────────────────────────────────────────────────
 # 7. IAM Policy — Quyền truy vấn Athena cho Audit Analysts
 # Nguyên tắc Least Privilege: chỉ cho phép đọc dữ liệu audit,
 # không cho phép sửa/xóa source data trên S3 WORM buckets
@@ -547,7 +638,9 @@ resource "aws_iam_policy" "athena_audit_analyst" {
           aws_s3_bucket.config_staging.arn,
           "${aws_s3_bucket.config_staging.arn}/*",
           aws_s3_bucket.eks_audit_logs.arn,
-          "${aws_s3_bucket.eks_audit_logs.arn}/*"
+          "${aws_s3_bucket.eks_audit_logs.arn}/*",
+          aws_s3_bucket.ai_audit.arn,
+          "${aws_s3_bucket.ai_audit.arn}/*"
         ]
       },
       {
