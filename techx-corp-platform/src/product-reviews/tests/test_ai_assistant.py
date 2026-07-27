@@ -416,8 +416,19 @@ def test_slow_fill_never_falls_through_to_duplicate_provider_calls():
         )
 
     assert len(provider.calls) == 1
-    assert sum(outcome.outcome == "answered" for outcome in outcomes) == 1
-    assert sum(outcome.error_class == "cache_fill_in_progress" for outcome in outcomes) == 4
+    # Scheduling may let a late waiter observe the completed fill.  Both a
+    # cache hit and a controlled unavailable response are safe; the invariant
+    # is that no waiter falls through to a second paid provider call.
+    assert sum(outcome.model_calls for outcome in outcomes) == 1
+    assert all(
+        outcome.cache_status == "hit"
+        or outcome.error_class == "cache_fill_in_progress"
+        or outcome.model_calls == 1
+        for outcome in outcomes
+    )
+    assert any(
+        outcome.error_class == "cache_fill_in_progress" for outcome in outcomes
+    )
     assert all(
         outcome.model_calls == 0
         for outcome in outcomes
