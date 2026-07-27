@@ -32,6 +32,8 @@ COPY ./src/product-reviews/audit_logging.py audit_logging.py
 COPY ./src/product-reviews/bedrock_adapter.py bedrock_adapter.py
 COPY ./src/product-reviews/safety.py safety.py
 COPY ./src/product-reviews/session_store.py session_store.py
+COPY ./src/product-reviews/router.py router.py
+COPY ./src/product-reviews/copilot_review_summary.py copilot_review_summary.py
 
 
 EXPOSE ${PRODUCT_REVIEWS_PORT}
