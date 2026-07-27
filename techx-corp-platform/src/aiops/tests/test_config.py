@@ -74,3 +74,14 @@ def test_generic_signal_services_are_configured_separately(monkeypatch):
         "checkout",
     )
     assert "llm" not in settings.generic_signal_services
+
+
+def test_live_autonomous_mode_requires_durable_saga_backend():
+    values = Settings().__dict__ | {
+        "remediation_mode": "live",
+        "autonomous_remediation_enabled": True,
+        "saga_backend": "memory",
+    }
+
+    with pytest.raises(ValueError, match="requires a durable saga backend"):
+        Settings(**values)
