@@ -1,0 +1,39 @@
+{
+  "groups": {
+    "copilot": {
+      "cache_hits": 0,
+      "cache_misses": 9,
+      "cases": 9,
+      "estimated_cost_usd": 0.0096438,
+      "hit_rate": 0.0,
+      "input_tokens": 27096,
+      "latency_ms": {
+        "hit_mean": 0.0,
+        "miss_mean": 1114.8620263332607,
+        "p50": 1103.4802869999112,
+        "p95": 1332.0302459997038
+      },
+      "model_calls": 9,
+      "output_tokens": 606,
+      "successful_cases": 9
+    },
+    "total": {
+      "cache_hits": 0,
+      "cache_misses": 9,
+      "cases": 9,
+      "estimated_cost_usd": 0.0096438,
+      "hit_rate": 0.0,
+      "input_tokens": 27096,
+      "latency_ms": {
+        "hit_mean": 0.0,
+        "miss_mean": 1114.8620263332607,
+        "p50": 1103.4802869999112,
+        "p95": 1332.0302459997038
+      },
+      "model_calls": 9,
+      "output_tokens": 606,
+      "successful_cases": 9
+    }
+  },
+  "schema_version": "mandate23-replay-v1"
+}

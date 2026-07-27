@@ -125,6 +125,7 @@ def fetch_product_info(product_id: str) -> dict:
 
 
 def get_ai_assistant_response(request_product_id: str, question: str, session_id: str = "", user_id: str = "guest"):
+    request_started = time.monotonic()
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
         span.set_attribute("app.product.id", request_product_id)
         span.set_attribute("app.caller.feature", "product_qa")
@@ -137,6 +138,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                 response=UNAVAILABLE_RESPONSE,
                 outcome="unavailable",
                 error_class="injected_rate_limit",
+                cache_reason="feature_flag_injection",
             )
         else:
             outcome = assistant.answer(request_product_id, question, session_id, user_id)
@@ -150,6 +152,12 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                     error_class="injected_inaccurate_response_blocked",
                     quarantined_reviews=outcome.quarantined_reviews,
                     provider_attempted=outcome.provider_attempted,
+                    cache_status=outcome.cache_status,
+                    cache_eligible=outcome.cache_eligible,
+                    cache_reason=outcome.cache_reason,
+                    model_calls=outcome.model_calls,
+                    memory_status=outcome.memory_status,
+                    cache_lookup_latency_ms=outcome.cache_lookup_latency_ms,
                 )
         attributes = llm_metric_identity(
             os.environ.get("OTEL_SERVICE_NAME", "product-reviews")
@@ -165,6 +173,8 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
             "response.stop_reason": outcome.provider_stop_reason,
             "response.contract_stage": outcome.response_contract_stage,
             "ai.surface": "product_qa",
+            "cache.status": outcome.cache_status,
+            "cache.reason": outcome.cache_reason,
         }
         span.set_attribute("gen_ai.request.model", assistant.provider.model_id)
         span.set_attribute("app.ai.outcome", outcome.outcome)
@@ -180,6 +190,60 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
             + outcome.output_tokens * float(os.environ.get("BEDROCK_OUTPUT_USD_PER_MILLION", "5"))
         ) / 1_000_000
         product_review_svc_metrics["app_llm_estimated_cost_counter"].add(estimated_cost, attributes)
+        cache_attributes = {
+            "ai.surface": "product_qa",
+            "cache.status": outcome.cache_status,
+            "cache.reason": outcome.cache_reason,
+        }
+        cache_counter = product_review_svc_metrics.get("app_ai_cache_request_counter")
+        if cache_counter:
+            cache_counter.add(1, cache_attributes)
+        lookup_histogram = product_review_svc_metrics.get(
+            "app_ai_cache_lookup_latency_histogram"
+        )
+        if lookup_histogram and outcome.cache_lookup_latency_ms > 0:
+            lookup_histogram.record(
+                outcome.cache_lookup_latency_ms / 1_000,
+                cache_attributes,
+            )
+        saved_calls = product_review_svc_metrics.get(
+            "app_ai_cache_saved_model_calls_counter"
+        )
+        if saved_calls and outcome.saved_model_calls:
+            saved_calls.add(outcome.saved_model_calls, cache_attributes)
+        saved_tokens = outcome.saved_input_tokens + outcome.saved_output_tokens
+        saved_token_counter = product_review_svc_metrics.get(
+            "app_ai_cache_saved_tokens_counter"
+        )
+        if saved_token_counter and saved_tokens:
+            saved_token_counter.add(saved_tokens, cache_attributes)
+        saved_cost = (
+            outcome.saved_input_tokens
+            * float(os.environ.get("BEDROCK_INPUT_USD_PER_MILLION", "1"))
+            + outcome.saved_output_tokens
+            * float(os.environ.get("BEDROCK_OUTPUT_USD_PER_MILLION", "5"))
+        ) / 1_000_000
+        saved_cost_counter = product_review_svc_metrics.get(
+            "app_ai_cache_saved_cost_counter"
+        )
+        if saved_cost_counter and saved_cost:
+            saved_cost_counter.add(saved_cost, cache_attributes)
+        cache_event_counter = product_review_svc_metrics.get(
+            "app_ai_cache_event_counter"
+        )
+        if cache_event_counter and outcome.cache_status == "miss":
+            if outcome.cache_reason == "cache_error":
+                cache_event = "error"
+            elif outcome.cache_eligible and outcome.outcome == "answered":
+                cache_event = "write"
+            elif outcome.cache_eligible:
+                cache_event = "rejection"
+            else:
+                cache_event = "bypass"
+            cache_event_counter.add(
+                1,
+                cache_attributes | {"cache.event": cache_event},
+            )
         if outcome.outcome in ("unavailable", "blocked"):
             product_review_svc_metrics["app_ai_fallback_counter"].add(1, attributes)
         if outcome.outcome == "unavailable":
@@ -198,6 +262,10 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                 "provider_stop_reason": outcome.provider_stop_reason,
                 "response_contract_stage": outcome.response_contract_stage,
                 "quarantined_reviews": outcome.quarantined_reviews,
+                "cache_status": outcome.cache_status,
+                "cache_eligible": outcome.cache_eligible,
+                "cache_reason": outcome.cache_reason,
+                "model_calls": outcome.model_calls,
             },
         )
         if outcome.provider_attempted:
@@ -209,9 +277,40 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
                 safety_decision=safety_decision_for_outcome(outcome.outcome),
                 confirmation_status="not_required",
             )
+        request_latency_ms = (time.monotonic() - request_started) * 1_000
+        if (
+            session_id
+            and question
+            and outcome.response
+            and not is_attack(question)
+            and not contains_pii(question)
+        ):
+            try:
+                session_store.append_exchange(
+                    user_id,
+                    session_id,
+                    question,
+                    outcome.response,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "product_qa_history_append_failed",
+                    extra={"error_class": type(exc).__name__.lower()[:64]},
+                )
         return demo_pb2.AskProductAIAssistantResponse(
             response=outcome.response,
             action_proposal=outcome.action_proposal,
+            cache_status=(
+                outcome.cache_status if outcome.cache_status in {"hit", "miss"} else "miss"
+            ),
+            cache_eligible=outcome.cache_eligible,
+            cache_reason=outcome.cache_reason,
+            model_calls=outcome.model_calls,
+            input_tokens=outcome.input_tokens,
+            output_tokens=outcome.output_tokens,
+            estimated_cost_usd=estimated_cost,
+            latency_ms=request_latency_ms,
+            memory_status=outcome.memory_status,
         )
 
 
@@ -224,7 +323,7 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
         # transports can replace the emitter without patching router imports.
         emit_ai_tool_audit(logger, **event)
 
-    return route_search_products_ai(
+    response = route_search_products_ai(
         query=query,
         session_id=session_id,
         user_id=user_id,
@@ -235,6 +334,44 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
         fetch_reviews=fetch_product_reviews_from_db,
         audit_callback=audit_callback,
     )
+    if product_review_svc_metrics:
+        cache_attributes = {
+            "ai.surface": "copilot_review",
+            "cache.status": response.cache_status or "miss",
+            "cache.reason": response.cache_reason or "not_eligible",
+        }
+        cache_counter = product_review_svc_metrics.get("app_ai_cache_request_counter")
+        if cache_counter:
+            cache_counter.add(1, cache_attributes)
+        cache_event_counter = product_review_svc_metrics.get(
+            "app_ai_cache_event_counter"
+        )
+        if cache_event_counter and response.cache_status != "hit":
+            if response.cache_reason == "cache_error":
+                cache_event = "error"
+            elif response.cache_eligible and response.outcome == "answered":
+                cache_event = "write"
+            elif response.cache_eligible:
+                cache_event = "rejection"
+            else:
+                cache_event = "bypass"
+            cache_event_counter.add(
+                1,
+                cache_attributes | {"cache.event": cache_event},
+            )
+        if response.memory_status and response.memory_status != "not_applicable":
+            profile_counter = product_review_svc_metrics.get(
+                "app_ai_profile_operation_counter"
+            )
+            if profile_counter:
+                profile_counter.add(
+                    1,
+                    {
+                        "memory.status": response.memory_status,
+                        "memory.operation": response.outcome or "unknown",
+                    },
+                )
+    return response
 
 
 def confirm_cart_action(user_id: str, session_id: str, confirmation_token: str):

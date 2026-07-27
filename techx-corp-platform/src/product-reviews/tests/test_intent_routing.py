@@ -997,3 +997,500 @@ def test_literal_category_price_route_does_not_depend_on_provider_latency():
     assert response.trace.input_tokens == 0
     assert response.trace.output_tokens == 0
     assert metrics_calls == []
+
+
+class _NoopTracer:
+    class Span:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def set_attribute(self, key, value):
+            pass
+
+    def start_as_current_span(self, name):
+        return self.Span()
+
+
+class _SingleProductCatalog:
+    def __init__(self):
+        self.calls = 0
+
+    def ListProducts(self, request, timeout):
+        self.calls += 1
+        return demo_pb2.ListProductsResponse(
+            products=[
+                demo_pb2.Product(
+                    id="scope-1",
+                    name="Starsense Scope",
+                    description="A catalog scope",
+                    categories=["telescopes"],
+                    price_usd=demo_pb2.Money(units=100),
+                )
+            ]
+        )
+
+
+def test_copilot_exact_review_cold_then_hit_without_model_classifier(monkeypatch):
+    import router
+    from response_cache import ResponseCache
+
+    monkeypatch.setattr(
+        router,
+        "copilot_response_cache",
+        ResponseCache(secret="test-secret"),
+    )
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise AssertionError("eligible early-cache path must not call classifier")
+
+    catalog = _SingleProductCatalog()
+    assistant = type("Assistant", (), {"provider": Provider()})()
+    reviews = lambda _: [(1, "alice", "Clear views.", 5)]
+
+    cold = router.route_search_products_ai(
+        "Reviews for Starsense Scope",
+        "cache-session",
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id="cache-user",
+        fetch_reviews=reviews,
+    )
+    warm = router.route_search_products_ai(
+        "Reviews for Starsense Scope",
+        "cache-session",
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id="cache-user",
+        fetch_reviews=reviews,
+    )
+
+    assert cold.cache_status == "miss"
+    assert cold.cache_eligible is True
+    assert cold.model_calls == 0
+    assert warm.cache_status == "hit"
+    assert warm.model_calls == 0
+    history = session_store.get_history("cache-user", "cache-session")
+    assert history[-2:] == [
+        {"role": "user", "content": "Reviews for Starsense Scope"},
+        {"role": "assistant", "content": warm.response},
+    ]
+
+
+def test_copilot_cache_is_cross_user_isolated(monkeypatch):
+    import router
+    from response_cache import ResponseCache
+
+    monkeypatch.setattr(
+        router,
+        "copilot_response_cache",
+        ResponseCache(secret="test-secret"),
+    )
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise AssertionError("eligible path must not call classifier")
+
+    args = (
+        "Reviews for Starsense Scope",
+        "shared-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        _SingleProductCatalog(),
+        _NoopTracer(),
+        None,
+    )
+    reviews = lambda _: [(1, "alice", "Clear views.", 5)]
+    first = router.route_search_products_ai(
+        *args,
+        user_id="cache-user-a",
+        fetch_reviews=reviews,
+    )
+    other = router.route_search_products_ai(
+        *args,
+        user_id="cache-user-b",
+        fetch_reviews=reviews,
+    )
+    assert first.cache_status == other.cache_status == "miss"
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_reason"),
+    [
+        ("Reviews for a telescope", "no_unique_product"),
+        ("Reviews for a similar Starsense Scope", "context_dependent"),
+        ("Compare reviews for Starsense Scope", "context_dependent"),
+    ],
+)
+def test_copilot_context_dependent_review_queries_bypass_early_cache(
+    monkeypatch, query, expected_reason
+):
+    import router
+    from response_cache import ResponseCache
+
+    monkeypatch.setattr(
+        router,
+        "copilot_response_cache",
+        ResponseCache(secret="test-secret"),
+    )
+    calls = []
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, query, history=None):
+            calls.append(query)
+            return {
+                "search_type": "reviews",
+                "confidence_score": 0.99,
+                "keywords": "Starsense Scope",
+            }
+
+    response = router.route_search_products_ai(
+        query,
+        f"bypass-{expected_reason}",
+        type("Assistant", (), {"provider": Provider()})(),
+        _SingleProductCatalog(),
+        _NoopTracer(),
+        None,
+        user_id="bypass-user",
+        fetch_reviews=lambda _: [(1, "alice", "Clear views.", 5)],
+    )
+
+    assert calls == [query]
+    assert response.cache_status == "miss"
+    assert response.cache_eligible is False
+    assert response.cache_reason == expected_reason
+
+
+def test_profile_remember_recall_new_session_and_cross_user_isolation(monkeypatch):
+    import router
+    from profile_store import ProfileStore
+
+    monkeypatch.setattr(
+        router,
+        "profile_store",
+        ProfileStore(secret="test-secret"),
+    )
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise AssertionError("memory commands must be deterministic")
+
+    assistant = type("Assistant", (), {"provider": Provider()})()
+    catalog = _SingleProductCatalog()
+    remembered = router.route_search_products_ai(
+        "Please remember my preferred category is telescopes",
+        "memory-session-a",
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id="memory-user-a",
+    )
+    recalled = router.route_search_products_ai(
+        "Show what you remember",
+        "memory-session-b",
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id="memory-user-a",
+    )
+    other_user = router.route_search_products_ai(
+        "Show what you remember",
+        "memory-session-c",
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id="memory-user-b",
+    )
+
+    assert remembered.memory_status == "stored"
+    assert remembered.cache_reason == "profile_dependent"
+    assert recalled.memory_status == "recalled"
+    assert "telescopes" in recalled.response
+    assert other_user.memory_status == "not_found"
+    assert "telescopes" not in other_user.response
+
+
+def test_profile_apply_filters_catalog_without_model(monkeypatch):
+    import router
+    from profile_store import ProfileStore
+
+    store = ProfileStore(secret="test-secret")
+    store.write(
+        "apply-user",
+        {
+            "preferred_category": "telescopes",
+            "max_budget_usd_cents": 15_000,
+        },
+    )
+    monkeypatch.setattr(router, "profile_store", store)
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise AssertionError("profile apply must not call classifier")
+
+    class Catalog:
+        def ListProducts(self, request, timeout):
+            return demo_pb2.ListProductsResponse(
+                products=[
+                    demo_pb2.Product(
+                        id="within",
+                        name="Budget Scope",
+                        categories=["telescopes"],
+                        price_usd=demo_pb2.Money(units=100),
+                    ),
+                    demo_pb2.Product(
+                        id="over",
+                        name="Premium Scope",
+                        categories=["telescopes"],
+                        price_usd=demo_pb2.Money(units=500),
+                    ),
+                    demo_pb2.Product(
+                        id="book",
+                        name="Comet Book",
+                        categories=["books"],
+                        price_usd=demo_pb2.Money(units=10),
+                    ),
+                ]
+            )
+
+    response = router.route_search_products_ai(
+        "Use my preferences",
+        "apply-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        Catalog(),
+        _NoopTracer(),
+        None,
+        user_id="apply-user",
+    )
+
+    assert response.memory_status == "applied"
+    assert response.cache_reason == "profile_dependent"
+    assert [product.id for product in response.results] == ["within"]
+
+
+def test_guest_profile_commands_fail_closed(monkeypatch):
+    import router
+    from profile_store import ProfileStore
+
+    store = ProfileStore(secret="test-secret")
+    monkeypatch.setattr(router, "profile_store", store)
+    response = router.route_search_products_ai(
+        "Please remember my preferred category is telescopes",
+        "guest-memory-session",
+        type(
+            "Assistant",
+            (),
+            {
+                "provider": type(
+                    "Provider",
+                    (),
+                    {"model_id": "test", "guardrail_version": "1"},
+                )()
+            },
+        )(),
+        _SingleProductCatalog(),
+        _NoopTracer(),
+        None,
+        user_id="guest",
+    )
+
+    assert response.memory_status == "rejected"
+    assert store.read("guest").status == "not_found"
+
+
+def test_router_reads_five_complete_exchanges(monkeypatch):
+    import router
+
+    session_id = "five-exchange-router-session"
+    user_id = "five-exchange-router-user"
+    for index in range(5):
+        session_store.append_exchange(
+            user_id,
+            session_id,
+            f"user-{index}",
+            f"assistant-{index}",
+        )
+    captured = []
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, query, history=None):
+            captured.extend(history or [])
+            return {"search_type": "chitchat", "confidence_score": 1.0}
+
+    router.route_search_products_ai(
+        "Can you help with something suitable?",
+        session_id,
+        type("Assistant", (), {"provider": Provider()})(),
+        _SingleProductCatalog(),
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+    )
+
+    assert len(captured) == 10
+    assert [turn["role"] for turn in captured] == ["user", "assistant"] * 5
+
+
+def test_contextual_price_reference_and_product_purpose_are_deterministic():
+    import router
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise AssertionError("grounded contextual turns must not call the provider")
+
+    class Catalog:
+        def ListProducts(self, request, timeout):
+            return demo_pb2.ListProductsResponse(
+                products=[
+                    demo_pb2.Product(
+                        id="imager",
+                        name="Solar System Color Imager",
+                        description=(
+                            "Use it with a telescope to image Saturn, Jupiter, "
+                            "and other Solar System objects."
+                        ),
+                        categories=["accessories", "telescopes"],
+                        price_usd=demo_pb2.Money(units=175),
+                    ),
+                    demo_pb2.Product(
+                        id="scope",
+                        name="Starsense Explorer Refractor Telescope",
+                        description="A beginner telescope.",
+                        categories=["telescopes"],
+                        price_usd=demo_pb2.Money(units=349, nanos=950000000),
+                    ),
+                ]
+            )
+
+    session_id = "contextual-price-purpose-session"
+    user_id = "contextual-price-purpose-user"
+    session_store.set_last_search_products(
+        user_id,
+        session_id,
+        [{"id": "imager"}, {"id": "scope"}],
+    )
+    assistant = type("Assistant", (), {"provider": Provider()})()
+    catalog = Catalog()
+
+    first_price_reference = router.route_search_products_ai(
+        "cái 175 đô la là gì thế",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+    )
+    second_price_reference = router.route_search_products_ai(
+        "cái có giá 175 dollar ấy",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+    )
+    purpose = router.route_search_products_ai(
+        "nó dùng để làm gì",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+        fetch_reviews=lambda _product_id: pytest.fail(
+            "product-purpose answers must not read reviews"
+        ),
+    )
+    repeated_purpose = router.route_search_products_ai(
+        "nó dùng để làm gì",
+        session_id,
+        assistant,
+        catalog,
+        _NoopTracer(),
+        None,
+        user_id=user_id,
+        fetch_reviews=lambda _product_id: pytest.fail(
+            "product-purpose answers must not read reviews"
+        ),
+    )
+
+    assert [product.id for product in first_price_reference.results] == ["imager"]
+    assert [product.id for product in second_price_reference.results] == ["imager"]
+    assert first_price_reference.model_calls == 0
+    assert second_price_reference.model_calls == 0
+    assert first_price_reference.cache_reason == "context_dependent"
+    assert purpose.outcome == "answered"
+    assert purpose.model_calls == 0
+    assert purpose.cache_reason == "context_dependent"
+    assert "Công dụng của Solar System Color Imager" in purpose.response
+    assert "Use it with a telescope" in purpose.response
+    assert "đánh giá" not in purpose.response.lower()
+    assert repeated_purpose.response == purpose.response
+    assert repeated_purpose.model_calls == 0
+
+
+def test_contextual_exact_price_does_not_treat_budget_as_a_reference():
+    import router
+
+    assert router._exact_referenced_price("kính thiên văn dưới 175 dollar") is None
+    assert router._exact_referenced_price("products over $175") is None
+    assert router._exact_referenced_price("product under $175") is None
+    assert router._exact_referenced_price("the one at most $175") is None
+    assert router._exact_referenced_price("the $175 one") == 175.0
+
+
+def test_invalid_classifier_response_requests_clarification():
+    import router
+    from bedrock_adapter import ProviderFailure
+
+    class Provider:
+        model_id = "test-model"
+        guardrail_version = "1"
+
+        def parse_search_intent(self, *_args, **_kwargs):
+            raise ProviderFailure("invalid_response")
+
+    response = router.route_search_products_ai(
+        "show me something suitable",
+        "invalid-provider-response-session",
+        type("Assistant", (), {"provider": Provider()})(),
+        _SingleProductCatalog(),
+        _NoopTracer(),
+        None,
+        user_id="invalid-provider-response-user",
+    )
+
+    assert response.outcome == "clarification_required"
+    assert response.trace.refused is True
+    assert "temporarily unavailable" not in response.response

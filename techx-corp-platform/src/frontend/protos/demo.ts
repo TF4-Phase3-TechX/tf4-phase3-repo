@@ -128,6 +128,15 @@ export interface AskProductAIAssistantRequest {
 export interface AskProductAIAssistantResponse {
   response: string;
   actionProposal: CartActionProposal | undefined;
+  cacheStatus: string;
+  cacheEligible: boolean;
+  cacheReason: string;
+  modelCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostUsd: number;
+  latencyMs: number;
+  memoryStatus: string;
 }
 
 export interface SearchProductsAIAssistantRequest {
@@ -142,6 +151,15 @@ export interface SearchProductsAIAssistantResponse {
   actionProposal: CartActionProposal | undefined;
   response: string;
   outcome: string;
+  cacheStatus: string;
+  cacheEligible: boolean;
+  cacheReason: string;
+  modelCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostUsd: number;
+  latencyMs: number;
+  memoryStatus: string;
 }
 
 export interface SearchEvidenceTrace {
@@ -1852,7 +1870,19 @@ export const AskProductAIAssistantRequest: MessageFns<AskProductAIAssistantReque
 };
 
 function createBaseAskProductAIAssistantResponse(): AskProductAIAssistantResponse {
-  return { response: "", actionProposal: undefined };
+  return {
+    response: "",
+    actionProposal: undefined,
+    cacheStatus: "",
+    cacheEligible: false,
+    cacheReason: "",
+    modelCalls: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    estimatedCostUsd: 0,
+    latencyMs: 0,
+    memoryStatus: "",
+  };
 }
 
 export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResponse> = {
@@ -1862,6 +1892,33 @@ export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResp
     }
     if (message.actionProposal !== undefined) {
       CartActionProposal.encode(message.actionProposal, writer.uint32(18).fork()).join();
+    }
+    if (message.cacheStatus !== "") {
+      writer.uint32(26).string(message.cacheStatus);
+    }
+    if (message.cacheEligible === true) {
+      writer.uint32(32).bool(message.cacheEligible);
+    }
+    if (message.cacheReason !== "") {
+      writer.uint32(42).string(message.cacheReason);
+    }
+    if (message.modelCalls !== 0) {
+      writer.uint32(48).int32(message.modelCalls);
+    }
+    if (message.inputTokens !== 0) {
+      writer.uint32(56).int32(message.inputTokens);
+    }
+    if (message.outputTokens !== 0) {
+      writer.uint32(64).int32(message.outputTokens);
+    }
+    if (message.estimatedCostUsd !== 0) {
+      writer.uint32(73).double(message.estimatedCostUsd);
+    }
+    if (message.latencyMs !== 0) {
+      writer.uint32(81).double(message.latencyMs);
+    }
+    if (message.memoryStatus !== "") {
+      writer.uint32(90).string(message.memoryStatus);
     }
     return writer;
   },
@@ -1889,6 +1946,69 @@ export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResp
           message.actionProposal = CartActionProposal.decode(reader, reader.uint32());
           continue;
         }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+          message.cacheStatus = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+          message.cacheEligible = reader.bool();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+          message.cacheReason = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+          message.modelCalls = reader.int32();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+          message.inputTokens = reader.int32();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+          message.outputTokens = reader.int32();
+          continue;
+        }
+        case 9: {
+          if (tag !== 73) {
+            break;
+          }
+          message.estimatedCostUsd = reader.double();
+          continue;
+        }
+        case 10: {
+          if (tag !== 81) {
+            break;
+          }
+          message.latencyMs = reader.double();
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+          message.memoryStatus = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1902,6 +2022,15 @@ export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResp
     return {
       response: isSet(object.response) ? globalThis.String(object.response) : "",
       actionProposal: isSet(object.actionProposal) ? CartActionProposal.fromJSON(object.actionProposal) : undefined,
+      cacheStatus: isSet(object.cacheStatus) ? globalThis.String(object.cacheStatus) : "",
+      cacheEligible: isSet(object.cacheEligible) ? globalThis.Boolean(object.cacheEligible) : false,
+      cacheReason: isSet(object.cacheReason) ? globalThis.String(object.cacheReason) : "",
+      modelCalls: isSet(object.modelCalls) ? globalThis.Number(object.modelCalls) : 0,
+      inputTokens: isSet(object.inputTokens) ? globalThis.Number(object.inputTokens) : 0,
+      outputTokens: isSet(object.outputTokens) ? globalThis.Number(object.outputTokens) : 0,
+      estimatedCostUsd: isSet(object.estimatedCostUsd) ? globalThis.Number(object.estimatedCostUsd) : 0,
+      latencyMs: isSet(object.latencyMs) ? globalThis.Number(object.latencyMs) : 0,
+      memoryStatus: isSet(object.memoryStatus) ? globalThis.String(object.memoryStatus) : "",
     };
   },
 
@@ -1912,6 +2041,33 @@ export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResp
     }
     if (message.actionProposal !== undefined) {
       obj.actionProposal = CartActionProposal.toJSON(message.actionProposal);
+    }
+    if (message.cacheStatus !== "") {
+      obj.cacheStatus = message.cacheStatus;
+    }
+    if (message.cacheEligible === true) {
+      obj.cacheEligible = message.cacheEligible;
+    }
+    if (message.cacheReason !== "") {
+      obj.cacheReason = message.cacheReason;
+    }
+    if (message.modelCalls !== 0) {
+      obj.modelCalls = Math.round(message.modelCalls);
+    }
+    if (message.inputTokens !== 0) {
+      obj.inputTokens = Math.round(message.inputTokens);
+    }
+    if (message.outputTokens !== 0) {
+      obj.outputTokens = Math.round(message.outputTokens);
+    }
+    if (message.estimatedCostUsd !== 0) {
+      obj.estimatedCostUsd = message.estimatedCostUsd;
+    }
+    if (message.latencyMs !== 0) {
+      obj.latencyMs = message.latencyMs;
+    }
+    if (message.memoryStatus !== "") {
+      obj.memoryStatus = message.memoryStatus;
     }
     return obj;
   },
@@ -1927,6 +2083,15 @@ export const AskProductAIAssistantResponse: MessageFns<AskProductAIAssistantResp
     message.actionProposal = (object.actionProposal !== undefined && object.actionProposal !== null)
       ? CartActionProposal.fromPartial(object.actionProposal)
       : undefined;
+    message.cacheStatus = object.cacheStatus ?? "";
+    message.cacheEligible = object.cacheEligible ?? false;
+    message.cacheReason = object.cacheReason ?? "";
+    message.modelCalls = object.modelCalls ?? 0;
+    message.inputTokens = object.inputTokens ?? 0;
+    message.outputTokens = object.outputTokens ?? 0;
+    message.estimatedCostUsd = object.estimatedCostUsd ?? 0;
+    message.latencyMs = object.latencyMs ?? 0;
+    message.memoryStatus = object.memoryStatus ?? "";
     return message;
   },
 };
@@ -2028,7 +2193,22 @@ export const SearchProductsAIAssistantRequest: MessageFns<SearchProductsAIAssist
 };
 
 function createBaseSearchProductsAIAssistantResponse(): SearchProductsAIAssistantResponse {
-  return { results: [], trace: undefined, actionProposal: undefined, response: "", outcome: "" };
+  return {
+    results: [],
+    trace: undefined,
+    actionProposal: undefined,
+    response: "",
+    outcome: "",
+    cacheStatus: "",
+    cacheEligible: false,
+    cacheReason: "",
+    modelCalls: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    estimatedCostUsd: 0,
+    latencyMs: 0,
+    memoryStatus: "",
+  };
 }
 
 export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssistantResponse> = {
@@ -2047,6 +2227,33 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
     }
     if (message.outcome !== "") {
       writer.uint32(42).string(message.outcome);
+    }
+    if (message.cacheStatus !== "") {
+      writer.uint32(50).string(message.cacheStatus);
+    }
+    if (message.cacheEligible === true) {
+      writer.uint32(56).bool(message.cacheEligible);
+    }
+    if (message.cacheReason !== "") {
+      writer.uint32(66).string(message.cacheReason);
+    }
+    if (message.modelCalls !== 0) {
+      writer.uint32(72).int32(message.modelCalls);
+    }
+    if (message.inputTokens !== 0) {
+      writer.uint32(80).int32(message.inputTokens);
+    }
+    if (message.outputTokens !== 0) {
+      writer.uint32(88).int32(message.outputTokens);
+    }
+    if (message.estimatedCostUsd !== 0) {
+      writer.uint32(97).double(message.estimatedCostUsd);
+    }
+    if (message.latencyMs !== 0) {
+      writer.uint32(105).double(message.latencyMs);
+    }
+    if (message.memoryStatus !== "") {
+      writer.uint32(114).string(message.memoryStatus);
     }
     return writer;
   },
@@ -2098,6 +2305,69 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
           message.outcome = reader.string();
           continue;
         }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+          message.cacheStatus = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+          message.cacheEligible = reader.bool();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+          message.cacheReason = reader.string();
+          continue;
+        }
+        case 9: {
+          if (tag !== 72) {
+            break;
+          }
+          message.modelCalls = reader.int32();
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+          message.inputTokens = reader.int32();
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+          message.outputTokens = reader.int32();
+          continue;
+        }
+        case 12: {
+          if (tag !== 97) {
+            break;
+          }
+          message.estimatedCostUsd = reader.double();
+          continue;
+        }
+        case 13: {
+          if (tag !== 105) {
+            break;
+          }
+          message.latencyMs = reader.double();
+          continue;
+        }
+        case 14: {
+          if (tag !== 114) {
+            break;
+          }
+          message.memoryStatus = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2114,6 +2384,15 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
       actionProposal: isSet(object.actionProposal) ? CartActionProposal.fromJSON(object.actionProposal) : undefined,
       response: isSet(object.response) ? globalThis.String(object.response) : "",
       outcome: isSet(object.outcome) ? globalThis.String(object.outcome) : "",
+      cacheStatus: isSet(object.cacheStatus) ? globalThis.String(object.cacheStatus) : "",
+      cacheEligible: isSet(object.cacheEligible) ? globalThis.Boolean(object.cacheEligible) : false,
+      cacheReason: isSet(object.cacheReason) ? globalThis.String(object.cacheReason) : "",
+      modelCalls: isSet(object.modelCalls) ? globalThis.Number(object.modelCalls) : 0,
+      inputTokens: isSet(object.inputTokens) ? globalThis.Number(object.inputTokens) : 0,
+      outputTokens: isSet(object.outputTokens) ? globalThis.Number(object.outputTokens) : 0,
+      estimatedCostUsd: isSet(object.estimatedCostUsd) ? globalThis.Number(object.estimatedCostUsd) : 0,
+      latencyMs: isSet(object.latencyMs) ? globalThis.Number(object.latencyMs) : 0,
+      memoryStatus: isSet(object.memoryStatus) ? globalThis.String(object.memoryStatus) : "",
     };
   },
 
@@ -2133,6 +2412,33 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
     }
     if (message.outcome !== "") {
       obj.outcome = message.outcome;
+    }
+    if (message.cacheStatus !== "") {
+      obj.cacheStatus = message.cacheStatus;
+    }
+    if (message.cacheEligible === true) {
+      obj.cacheEligible = message.cacheEligible;
+    }
+    if (message.cacheReason !== "") {
+      obj.cacheReason = message.cacheReason;
+    }
+    if (message.modelCalls !== 0) {
+      obj.modelCalls = Math.round(message.modelCalls);
+    }
+    if (message.inputTokens !== 0) {
+      obj.inputTokens = Math.round(message.inputTokens);
+    }
+    if (message.outputTokens !== 0) {
+      obj.outputTokens = Math.round(message.outputTokens);
+    }
+    if (message.estimatedCostUsd !== 0) {
+      obj.estimatedCostUsd = message.estimatedCostUsd;
+    }
+    if (message.latencyMs !== 0) {
+      obj.latencyMs = message.latencyMs;
+    }
+    if (message.memoryStatus !== "") {
+      obj.memoryStatus = message.memoryStatus;
     }
     return obj;
   },
@@ -2155,6 +2461,15 @@ export const SearchProductsAIAssistantResponse: MessageFns<SearchProductsAIAssis
       : undefined;
     message.response = object.response ?? "";
     message.outcome = object.outcome ?? "";
+    message.cacheStatus = object.cacheStatus ?? "";
+    message.cacheEligible = object.cacheEligible ?? false;
+    message.cacheReason = object.cacheReason ?? "";
+    message.modelCalls = object.modelCalls ?? 0;
+    message.inputTokens = object.inputTokens ?? 0;
+    message.outputTokens = object.outputTokens ?? 0;
+    message.estimatedCostUsd = object.estimatedCostUsd ?? 0;
+    message.latencyMs = object.latencyMs ?? 0;
+    message.memoryStatus = object.memoryStatus ?? "";
     return message;
   },
 };
