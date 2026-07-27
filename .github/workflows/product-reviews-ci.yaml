@@ -1,0 +1,33 @@
+name: Product reviews CI
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "techx-corp-platform/src/product-reviews/**"
+      - ".github/workflows/product-reviews-ci.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-reviews-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Product reviews Python suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install pinned test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            -r techx-corp-platform/src/product-reviews/requirements-test.txt
+
+      - name: Run product-reviews suite
+        env:
+          DB_CONNECTION_STRING: postgresql://unused:unused@127.0.0.1:1/unused
+        run: python -m pytest techx-corp-platform/src/product-reviews/tests -q

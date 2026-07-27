@@ -764,6 +764,24 @@ services:
       retries: 10
     logging: *logging
 
+  # Kafka Connect worker image for REL-22 self-managed orders archive fallback
+  kafka-connect:
+    image: ${IMAGE_NAME}:${DEMO_VERSION}-kafka-connect
+    container_name: kafka-connect
+    build:
+      context: ./
+      dockerfile: ${KAFKA_CONNECT_DOCKERFILE}
+      cache_from:
+        - ${IMAGE_NAME}:${IMAGE_VERSION}-kafka-connect
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    restart: unless-stopped
+    ports:
+      - "8083"
+    logging: *logging
+
   # AIOps detector, RCA, and guarded remediation controller
   aiops:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-aiops

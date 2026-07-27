@@ -27,6 +27,21 @@ def test_burn_rate_windows_must_be_ordered():
         Settings(**values)
 
 
+@pytest.mark.parametrize("window", ["", "0s", "30", "30 seconds", "5m30s"])
+def test_invalid_verification_metric_window_fails_closed(window):
+    values = Settings().__dict__ | {"verification_metric_window": window}
+
+    with pytest.raises(ValueError):
+        Settings(**values)
+
+
+def test_negative_verification_settle_time_fails_closed():
+    values = Settings().__dict__ | {"verification_settle_seconds": -1}
+
+    with pytest.raises(ValueError):
+        Settings(**values)
+
+
 def test_generic_signal_services_are_configured_separately(monkeypatch):
     monkeypatch.setenv(
         "AIOPS_GENERIC_SIGNAL_SERVICES",

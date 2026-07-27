@@ -86,6 +86,9 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         allowed_deployments=(str(case["service"]),),
         verification_polls=len(action_health),
         rollback_verification_polls=max(len(rollback_health), 1),
+        # The replay supplies deterministic post-action samples directly; only
+        # runtime Prometheus verification needs the real settle delay.
+        verification_settle_seconds=0,
         verification_interval_seconds=0,
     )
     adapter = ReplayAdapter()

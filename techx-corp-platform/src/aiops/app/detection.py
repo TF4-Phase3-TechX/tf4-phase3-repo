@@ -677,10 +677,12 @@ class Detector:
         )
 
 
-def latency_query(service: str, namespace: str | None = None) -> str:
+def latency_query(
+    service: str, namespace: str | None = None, window: str = "5m"
+) -> str:
     return (
         "histogram_quantile(0.95, sum by (le) "
-        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[5m])))"
+        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[{window}])))"
     )
 
 

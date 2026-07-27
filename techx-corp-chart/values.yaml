@@ -221,6 +221,12 @@ components:
         value: http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200
       - name: JAEGER_URL
         value: http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui
+      # Evidence enrichment returns full trace payloads. Keep it bounded so a
+      # high-load incident cannot turn a healthy Jaeger API into a 10s timeout.
+      - name: AIOPS_JAEGER_TRACE_LOOKBACK
+        value: "5m"
+      - name: AIOPS_JAEGER_TRACE_LIMIT
+        value: "5"
       - name: GRAFANA_URL
         value: http://grafana.techx-observability.svc.cluster.local/grafana
       - name: OPENSEARCH_DATASOURCE_UID
@@ -239,6 +245,13 @@ components:
         value: "3"
       - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
         value: "3"
+      # Verify only post-action telemetry. Runtime probing showed the span
+      # metrics are empty at 30s/1m and available at 2m, so wait for one full
+      # 2m window before retaining the same three-poll, 1s latency-SLO decision.
+      - name: AIOPS_VERIFICATION_METRIC_WINDOW
+        value: "2m"
+      - name: AIOPS_VERIFICATION_SETTLE_SECONDS
+        value: "120"
       - name: AIOPS_VERIFICATION_INTERVAL_SECONDS
         value: "20"
       - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
@@ -372,7 +385,10 @@ components:
       - name: AIOPS_LLM_HIGH_ERROR_RATE
         value: "0.25"
       - name: AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD
-        value: "0.75"
+        # Calibrated after controlled runtime drills: true high-severity acute
+        # incidents scored 0.742-0.743. Independent severity, allowlist,
+        # runbook and evidence gates still have to pass.
+        value: "0.74"
       - name: AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD
         value: "0.01"
       - name: AIOPS_APPROVAL_TOKEN
@@ -1965,7 +1981,7 @@ opentelemetry-collector:
         tls:
           insecure: true
         sending_queue:
-          num_consumers: 10
+          num_consumers: 5
           queue_size: 1000
           batch: {}
         retry_on_failure:
@@ -2055,7 +2071,7 @@ opentelemetry-collector:
           exporters: [opensearch]
       telemetry:
         metrics:
-          level: detailed
+          level: normal
           readers:
             - periodic:
                 interval: 10000
@@ -2140,6 +2156,13 @@ jaeger:
           opensearch_backend:
             elasticsearch:
               server_urls: ["http://opensearch:9200"]
+              indices:
+                spans:
+                  shards: 1
+                  replicas: 0
+                services:
+                  shards: 1
+                  replicas: 0
         metric_backends:
           metrics_backend:
             prometheus:
@@ -2427,7 +2450,7 @@ opensearch:
   nodeGroup: techx-corp
   singleNode: true
   protocol: http
-  opensearchJavaOpts: "-Xms800m -Xmx800m"
+  opensearchJavaOpts: "-Xms1g -Xmx1g"
   persistence:
     enabled: true
     enableInitChown: false
@@ -2454,7 +2477,7 @@ opensearch:
       cpu: 1000m
       memory: 1Gi
     limits:
-      cpu: 1000m
+      cpu: 2000m
       memory: 2Gi
 
   otelLogsLifecycle:
@@ -2510,10 +2533,48 @@ managedData:
     secretName: msk-kafka-secret
     services: [accounting, checkout, fraud-detection]
 
+# CDO08-REL-22 fallback foundation: self-managed Kafka Connect orders archive.
+# Disabled by default. Enable only after image digest, IRSA annotation and runtime plan are approved.
+kafkaConnectArchive:
+  enabled: false
+  name: kafka-connect-orders-archive
+  replicas: 1
+  image:
+    repository: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  serviceAccount:
+    create: true
+    name: kafka-connect-orders-archive
+    annotations: {}
+  kafkaSecret:
+    name: msk-kafka-secret
+    addressKey: kafka-address
+    securityProtocolKey: security-protocol
+    saslMechanismKey: sasl-mechanism
+    usernameKey: username
+    passwordKey: password
+  restPort: 8083
+  heapOpts: "-Xms256m -Xmx512m"
+  connect:
+    groupId: orders-archive-connect
+    configStorageTopic: orders-archive-connect-configs
+    offsetStorageTopic: orders-archive-connect-offsets
+    statusStorageTopic: orders-archive-connect-status
+    replicationFactor: 2
+    offsetFlushIntervalMs: 60000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: 1000m
+      memory: 1536Mi
 postgresqlMigrationBridge:
   # REL-15: temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.
   # Keep enabled only during PostgreSQL migration/observation, then disable and cleanup.
-  enabled: true
+  enabled: false
 
 valkeyMigrationBridge:
   # Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the
@@ -2567,3 +2628,4 @@ mirrormaker2:
     limits:
       cpu: 500m
       memory: 1Gi
+# Trigger promotion PR

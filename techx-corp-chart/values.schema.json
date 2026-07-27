@@ -134,6 +134,11 @@
         "metrics"
       ]
     },
+    "kafkaConnectArchive": {
+      "description": "CDO08-REL-22 disabled-by-default foundation for self-managed Kafka Connect orders archive fallback.",
+      "type": "object",
+      "additionalProperties": true
+    },
     "components": {
       "$ref": "#/definitions/Components"
     },
