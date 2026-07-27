@@ -175,7 +175,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_arm64_protected" {
             { key = "kubernetes.io/arch", operator = "In", values = ["arm64"] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-            { key = "node.kubernetes.io/instance-type", operator = "In", values = ["m7g.xlarge"] },
+            { key = "node.kubernetes.io/instance-type", operator = "In", values = ["t4g.large"] },
             { key = "topology.kubernetes.io/zone", operator = "In", values = ["${var.aws_region}b"] },
           ]
           taints = [
