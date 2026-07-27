@@ -85,10 +85,13 @@ resource "aws_kms_key" "cloudtrail" {
         }
       },
       {
-        Sid    = "AllowEventBridgeEncryptSNS"
+        Sid    = "AllowEventBridgeAndCloudWatchEncryptSNS"
         Effect = "Allow"
         Principal = {
-          Service = "events.amazonaws.com"
+          Service = [
+            "events.amazonaws.com",
+            "cloudwatch.amazonaws.com"
+          ]
         }
         Action = [
           "kms:GenerateDataKey*",
