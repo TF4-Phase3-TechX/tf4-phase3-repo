@@ -75,7 +75,7 @@ flowchart TD
     C -->|"Có + Hợp lệ"| E["AI Audit Pipeline<br/>(redaction check + batch + retry)"]
     
     E --> F["OpenSearch<br/>ai-tool-audit-*<br/>(Hot Search 7d)"]
-    E --> G["CloudWatch Logs<br/>/tf4/mandate-14/ai-tool-audit<br/>(Operational 7d)"]
+    E --> G["CloudWatch Logs<br/>/aws/eks/techx-tf4/ai-audit<br/>(Operational 7d)"]
     
     F -. "trace_id" .-> K["Jaeger"]
     G -. "metric filter" .-> L["CloudWatch Alarm"]
@@ -151,7 +151,7 @@ exporters:
 
   awscloudwatchlogs/ai_tool_audit:
     region: us-east-1
-    log_group_name: /tf4/mandate-14/ai-tool-audit
+    log_group_name: /aws/eks/techx-tf4/ai-audit
     log_stream_name: "otel-{ServiceName}-{InstanceId}"
     raw_log: false # Giữ nguyên thuộc tính metadata
     sending_queue:
@@ -175,7 +175,7 @@ service:
 
 ### 4.3. Pipeline CloudWatch -> Firehose -> S3
 
-1. **CloudWatch Log Group**: `/tf4/mandate-14/ai-tool-audit` (Retention: 7 ngày).
+1. **CloudWatch Log Group**: `/aws/eks/techx-tf4/ai-audit` (Retention: 7 ngày).
 2. **Subscription Filter**: Dùng `filter_pattern = ""` (gửi 100% log của group sang Firehose vì group này chỉ chứa log AI audit đã qua OTel filter).
 3. **Data Firehose**:
    - Buffer: 1–5 MB hoặc 60 giây.
@@ -195,7 +195,7 @@ service:
 | **OTel Collector IAM Role** | `logs:CreateLogStream`, `logs:DescribeLogStreams`, `logs:PutLogEvents` trên đúng Log Group | Không `CreateLogGroup`, không đọc log, không S3/Firehose access |
 | **CWL to Firehose Role** | `firehose:PutRecord`, `firehose:PutRecordBatch` trên đúng Firehose Stream | Không stream khác; trust policy bắt buộc `aws:SourceArn` |
 | **Firehose to S3 Role** | `s3:PutObject`, multipart upload trên đúng S3 Bucket/Prefix | Không đọc/xóa log; không KMS; không sửa retention/versioning |
-| **CDO-07 SSO Audit Role** | CloudWatch Logs Read/Query (`/tf4/mandate-14/ai-tool-audit`); S3 Read (`mandate-14/ai-tool-audit/*`); OpenSearch Read | Không ghi/xóa log; không KMS; không đổi retention/lifecycle |
+| **CDO-07 SSO Audit Role** | CloudWatch Logs Read/Query (`/aws/eks/techx-tf4/ai-audit`); S3 Read (`mandate-14/ai-tool-audit/*`); OpenSearch Read | Không ghi/xóa log; không KMS; không đổi retention/lifecycle |
 
 ---
 
@@ -213,7 +213,7 @@ service:
 | Storage Sink | Target Resource | Retention Policy | Ghi chú & Controls |
 |---|---|---|---|
 | **S3 Bucket** | `tf4-ai-audit-logs-<account-id>` | **90 ngày** | S3 Object Lock `COMPLIANCE` 90d, SSE-S3 `AES256`, Versioning `Enabled`, Block Public Access `All` |
-| **CloudWatch Logs** | `/tf4/mandate-14/ai-tool-audit` | **7 ngày** | Retention tự động xóa sau 7d, AWS-managed key encryption |
+| **CloudWatch Logs** | `/aws/eks/techx-tf4/ai-audit` | **7 ngày** | Retention tự động xóa sau 7d, AWS-managed key encryption |
 | **OpenSearch** | `ai-tool-audit-yyyy-MM-dd` | **7 ngày** | OpenSearch ISM xóa index sau 7d, Read-only access alias |
 | **Firehose Errors** | `/aws/firehose/tf4-ai-audit-errors` | **7 ngày** | Phục vụ điều tra lỗi delivery |
 
