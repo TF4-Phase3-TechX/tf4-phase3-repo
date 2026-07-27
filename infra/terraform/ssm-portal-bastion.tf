@@ -110,6 +110,11 @@ resource "aws_instance" "portal_bastion" {
   subnet_id                   = module.vpc.private_subnets[0]
   associate_public_ip_address = false
 
+  # ponytail: Keep routine applies from replacing the bastion; use an explicit replacement for AMI upgrades.
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   vpc_security_group_ids = [aws_security_group.portal_bastion.id]
 
   user_data = templatefile("${path.module}/portal-bastion-user-data.sh.tftpl", {
