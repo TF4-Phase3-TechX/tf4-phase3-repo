@@ -136,7 +136,9 @@ python -m benchmark.replay \
 
 ## Submission readiness
 
-- The evidence documents are currently in [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633), not yet on `main`.
+- [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633)
+  passed refreshed CI and named review, then merged to `main` as
+  `9c7b271a9639629ecc264d1e13df34e357df98a4`.
 - The event-level `1.0/1.0` result is a team-controlled two-event set, not the
   mentor-injected labeled set named in the mandate.
 - Live high-burn escalation is not yet observed; only implementation/CI plus
