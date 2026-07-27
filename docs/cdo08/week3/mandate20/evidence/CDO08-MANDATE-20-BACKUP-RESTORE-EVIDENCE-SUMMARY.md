@@ -18,16 +18,6 @@ Evidence chính dùng để nộp Mandate 20:
 
 - [CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md](CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md)
 
-Lý do chọn file này làm evidence chính:
-
-- Có link video quay drill.
-- Có mô phỏng mất dữ liệu có kiểm soát.
-- Có restore thật bằng PITR vào môi trường tách biệt.
-- Có chứng minh dữ liệu bị xoá đã quay lại.
-- Có đo RTO thực tế.
-- Có cleanup evidence.
-- Không đụng production.
-
 Các file khác trong thư mục này là evidence tham khảo thêm để chứng minh các phần hỗ trợ: MSK replay, backup baseline, retention, deletion guardrail, inventory và config reconstructability.
 
 ## 1. Requirement mapping
