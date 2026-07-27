@@ -10,7 +10,7 @@ import { serverAiPrincipal } from '../../../../utils/serverAiPrincipal';
 
 type TResponse = string | Empty | Record<string, unknown>;
 
-const handler = async (req: NextApiRequest, res: NextApiResponse<TResponse>) => {
+export const handler = async (req: NextApiRequest, res: NextApiResponse<TResponse>) => {
     const { method, body, query } = req;
 
     switch (method) {
