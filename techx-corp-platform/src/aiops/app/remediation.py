@@ -311,6 +311,68 @@ class RemediationController:
         except Exception as exc:
             raise SagaPersistenceError(str(exc)) from exc
 
+    def _get_adapter(self) -> KubernetesRollbackAdapter | None:
+        """Return a Kubernetes adapter for live execute / startup resume.
+
+        Prefer the controller-wired adapter (production lifespan). Lazily
+        construct one when absent so offline unit tests that inject fakes still
+        work, and so resume does not silently take the ``adapter is None`` path
+        after a real process restart.
+        """
+
+        if self.adapter is not None:
+            return self.adapter
+        try:
+            self.adapter = KubernetesRollbackAdapter(
+                self.settings.namespace,
+                self.settings.deployment_recency_hours,
+                known_good_revisions=getattr(
+                    self.settings, "known_good_revisions", None
+                )
+                or {},
+            )
+        except Exception:
+            log.exception("failed to construct Kubernetes adapter for saga resume")
+            return None
+        return self.adapter
+
+    async def _cleanup_external_ownership(
+        self,
+        saga: RemediationSaga,
+        adapter: KubernetesRollbackAdapter | Any | None,
+    ) -> None:
+        """Release Argo window / Lease so a terminal saga leaves ``is_open`` false.
+
+        Terminal sagas that still hold external ownership remain open for
+        restart cleanup. Callers that abandon/fail-closed must clean ownership
+        before checkpointing, or the target stays permanently blocked.
+        """
+
+        if not (saga.argo_window_active or saga.lease_held):
+            return
+        if adapter is None:
+            raise SagaPersistenceError(
+                "saga retains external ownership but no Kubernetes adapter is available"
+            )
+        if saga.argo_window_active:
+            end = getattr(adapter, "end_argo_window", None)
+            if not end:
+                raise SagaPersistenceError(
+                    "saga retains Argo window but adapter cannot close it"
+                )
+            await self._retry(end, saga.target, saga.incident_id)
+            saga.argo_window_active = False
+            saga.note("startup_argo_window_closed")
+        if saga.lease_held:
+            release_lock = getattr(adapter, "release_lock", None)
+            if not release_lock:
+                raise SagaPersistenceError(
+                    "saga retains Lease but adapter cannot release it"
+                )
+            await self._retry(release_lock, saga.target, saga.incident_id)
+            saga.lease_held = False
+            saga.note("startup_target_lease_released")
+
     def request_approval(self, incident: Incident) -> None:
         incident.status = IncidentStatus.AWAITING_APPROVAL
         incident.approval_status = "pending"
@@ -882,42 +944,43 @@ class RemediationController:
             "phase": saga.phase.value,
             "action": action,
         }
-        adapter = self.adapter
+        # Prefer lifespan-wired adapter; lazy-construct as a resume fallback so a
+        # process restart never silently skips verify/restore/cleanup.
+        adapter = self._get_adapter()
         if action == "noop_terminal":
-            if (saga.argo_window_active or saga.lease_held) and adapter is None:
-                raise SagaPersistenceError(
-                    "terminal saga retains external ownership but no adapter is available"
-                )
-            if saga.argo_window_active:
-                end = getattr(adapter, "end_argo_window", None)
-                if not end:
-                    raise SagaPersistenceError(
-                        "terminal saga retains Argo window but adapter cannot close it"
-                    )
-                await self._retry(end, saga.target, saga.incident_id)
-                saga.argo_window_active = False
-                saga.note("startup_argo_window_closed")
-            if saga.lease_held:
-                release_lock = getattr(adapter, "release_lock", None)
-                if not release_lock:
-                    raise SagaPersistenceError(
-                        "terminal saga retains Lease but adapter cannot release it"
-                    )
-                await self._retry(release_lock, saga.target, saga.incident_id)
-                saga.lease_held = False
-                saga.note("startup_target_lease_released")
+            await self._cleanup_external_ownership(saga, adapter)
             await self._checkpoint(saga)
             detail["cleanup"] = "complete"
             return detail
         if action == "abandon_pre_mutation":
+            # Crash after LEASE_ACQUIRED / ARGO_WINDOW_OPEN still holds external
+            # markers. Clean them before terminal checkpoint or is_open stays
+            # true and list_open_for_target permanently denies the target.
+            await self._cleanup_external_ownership(saga, adapter)
             saga.terminate(
                 SagaOutcome.ABANDONED_PRE_MUTATION,
                 "restart before live mutation; abandoned without re-mutating",
             )
             await self._checkpoint(saga)
             detail["outcome"] = saga.outcome.value
+            detail["still_open"] = saga.is_open
             return detail
         if action == "fail_closed_escalate":
+            try:
+                await self._cleanup_external_ownership(saga, adapter)
+            except SagaPersistenceError as cleanup_exc:
+                # Keep ownership flags so restart retries cleanup; do not free
+                # the target while external markers may still be active.
+                saga.mutation_blocked = True
+                saga.terminate(
+                    SagaOutcome.ESCALATED,
+                    "restart reconcile fail-closed: incomplete durable state",
+                )
+                await self._checkpoint(saga)
+                detail["outcome"] = saga.outcome.value
+                detail["cleanup_error"] = str(cleanup_exc)
+                detail["still_open"] = saga.is_open
+                return detail
             saga.mutation_blocked = True
             saga.terminate(
                 SagaOutcome.ESCALATED,
@@ -925,9 +988,12 @@ class RemediationController:
             )
             await self._checkpoint(saga)
             detail["outcome"] = saga.outcome.value
+            detail["still_open"] = saga.is_open
             return detail
 
         if adapter is None:
+            # Post-mutation resume cannot proceed without cluster access. Leave
+            # ownership flags set so is_open remains true for a later restart.
             saga.mutation_blocked = True
             saga.terminate(
                 SagaOutcome.ESCALATED,
@@ -935,6 +1001,7 @@ class RemediationController:
             )
             await self._checkpoint(saga)
             detail["outcome"] = saga.outcome.value
+            detail["still_open"] = saga.is_open
             return detail
 
         target = saga.target

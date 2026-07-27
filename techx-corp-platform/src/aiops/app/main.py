@@ -16,7 +16,7 @@ from .availability import KubernetesAvailabilityClient
 from .config import Settings
 from .detection import Detector, latency_query, values
 from .models import utcnow
-from .remediation import PolicyDenied, RemediationController
+from .remediation import KubernetesRollbackAdapter, PolicyDenied, RemediationController
 from .saga import build_saga_store
 from .store import IncidentStore
 from .summary import IncidentSummaryGenerator
@@ -33,6 +33,9 @@ settings = Settings()
 store = IncidentStore(settings.cooldown_seconds)
 telemetry = TelemetryClient(settings)
 saga_store = build_saga_store(settings.saga_backend, settings.saga_path or None)
+# Constructed in lifespan (not import-time) so unit tests can import main without
+# a kubeconfig, while production startup always has an adapter for saga resume.
+_remediation_adapter: KubernetesRollbackAdapter | None = None
 
 
 async def verify_service_slo(service: str) -> dict[str, object]:
@@ -82,11 +85,37 @@ summary_generator = IncidentSummaryGenerator(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # TF4AIO-89: finish or fail-closed any durable sagas before accepting work.
+    # TF4AIO-89: durable resume needs a real Kubernetes adapter. Construct here
+    # (not at import) so offline unit imports of main stay kubeconfig-free, but
+    # production startup always wires the adapter before reconcile_open_sagas.
+    global _remediation_adapter
+    saga_log = logging.getLogger("aiops.saga")
+    if remediation.adapter is None:
+        try:
+            _remediation_adapter = KubernetesRollbackAdapter(
+                settings.namespace,
+                settings.deployment_recency_hours,
+                known_good_revisions=settings.known_good_revisions,
+            )
+            remediation.adapter = _remediation_adapter
+        except Exception as exc:
+            open_sagas = await saga_store.list_open()
+            if open_sagas:
+                saga_log.exception(
+                    "startup aborted: open durable sagas require a Kubernetes adapter"
+                )
+                raise RuntimeError(
+                    "startup aborted: open durable sagas require a Kubernetes adapter"
+                ) from exc
+            saga_log.exception(
+                "Kubernetes adapter unavailable; continuing without live remediation adapter"
+            )
+
+    # Finish or fail-closed any durable sagas before accepting work.
     try:
         reconcile_results = await remediation.reconcile_open_sagas()
         if reconcile_results:
-            logging.getLogger("aiops.saga").warning(
+            saga_log.warning(
                 json.dumps(
                     {
                         "event": "startup_saga_reconcile",

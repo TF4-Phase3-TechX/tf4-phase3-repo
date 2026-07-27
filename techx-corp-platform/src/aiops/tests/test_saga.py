@@ -287,6 +287,73 @@ async def test_restart_after_preflight_abandons_without_mutation(tmp_path: Path)
     reloaded = await store.get(saga.saga_id)
     assert reloaded.outcome == SagaOutcome.ABANDONED_PRE_MUTATION
     assert adapter.patches == []
+    assert reloaded.is_open is False
+
+
+@pytest.mark.asyncio
+async def test_restart_after_lease_or_argo_window_clears_ownership(tmp_path: Path):
+    """P1 (HuyVu12): abandon_pre_mutation must release Lease/Argo markers.
+
+    Otherwise is_open stays true and list_open_for_target permanently blocks
+    the target after a crash between LEASE_ACQUIRED / ARGO_WINDOW_OPEN and
+    the live patch.
+    """
+
+    store = FileSagaStore(tmp_path)
+    saga = RemediationSaga(
+        incident_id="inc-lease-argo",
+        target="product-reviews",
+        phase=SagaPhase.ARGO_WINDOW_OPEN,
+        lease_held=True,
+        argo_window_active=True,
+        mutation_attempted=False,
+    )
+    await store.save(saga)
+
+    adapter = TrackingAdapter()
+    controller = make_controller(adapter, store)
+    results = await controller.reconcile_open_sagas()
+    assert results[0]["action"] == "abandon_pre_mutation"
+    assert results[0]["still_open"] is False
+    reloaded = await store.get(saga.saga_id)
+    assert reloaded.outcome == SagaOutcome.ABANDONED_PRE_MUTATION
+    assert reloaded.lease_held is False
+    assert reloaded.argo_window_active is False
+    assert reloaded.is_open is False
+    assert adapter.argo_closed == ["inc-lease-argo"]
+    # Target must be free for a later remediation cycle.
+    assert await store.list_open_for_target("product-reviews") == []
+
+
+@pytest.mark.asyncio
+async def test_resume_uses_controller_adapter_not_none():
+    """P1 (HuyVu12): resume_saga must not take adapter-is-None when wired."""
+
+    store = MemorySagaStore()
+    adapter = TrackingAdapter()
+    adapter.current = adapter.previous
+    saga = RemediationSaga(
+        incident_id="inc-resume-adapter",
+        target="product-reviews",
+        phase=SagaPhase.VERIFYING,
+        mutation_attempted=True,
+        original_template={
+            "metadata": {"labels": {"version": "current"}},
+            "spec": {"containers": [{"name": "app", "image": "bad:1"}]},
+        },
+        selected_template=adapter.previous,
+        expected_template_after_action=adapter.previous,
+        argo_window_active=True,
+    )
+    await store.save(saga)
+    controller = make_controller(adapter, store, healthy=True)
+    assert controller.adapter is adapter
+    results = await controller.reconcile_open_sagas()
+    assert results[0]["action"] == "continue_verification"
+    assert results[0]["outcome"] == SagaOutcome.RESOLVED.value
+    reloaded = await store.get(saga.saga_id)
+    assert reloaded.outcome == SagaOutcome.RESOLVED
+    assert reloaded.is_open is False
 
 
 @pytest.mark.asyncio
