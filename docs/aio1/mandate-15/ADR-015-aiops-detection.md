@@ -71,7 +71,7 @@ breached = trend ≥ 25% relative change AND consistency ≥ 75% monotone AND cu
 
 The safety floors (latency: 1 000 ms, error rate: 5%) prevent a signal from being anomalous at an absolutely negligible value (e.g., z-score = 4 on a 0.01 ms baseline). The `trend_min_floor_ratio = 0.7` guard ensures a memory-drain or queue-growth drift on a very-low-baseline service does not page until the absolute value is non-trivial, while still firing ahead of the full floor for gradual symptoms.
 
-**How it avoids masking:** A noise spike inside the target signal's own history that would inflate `baseline_mean` is stripped by the MAD filter. The committed masking scenario places a 20% error-rate outlier in the same checkout history used to detect a sustained 6.2-6.4% incident against that service's 4% normal. Service/signal-specific detector state additionally prevents unrelated services from sharing streak state.
+**How it avoids masking:** A noise spike inside the target signal's own history that would inflate `baseline_mean` is stripped by the MAD filter. The first committed masking scenario places a 20% error-rate outlier in the same checkout history used to detect a sustained 6.2-6.4% incident against that service's 4% normal. The second case adds a separate large frontend latency spike while the subtle checkout incident fires simultaneously. Service/signal-specific detector state prevents unrelated services from sharing streak state. Both are offline fixtures; a live simultaneous masking incident remains unproven.
 
 ### 5. Sustained-breach requirement
 
@@ -101,7 +101,7 @@ A single worker poll may produce an incident when `AIOPS_SUSTAINED_POLLS=1`, but
 > latency is not claimed because the screenshot does not preserve an
 > independent receipt timestamp.
 
-On the labeled dataset, **offline simulated MTTD-after is 45s (1 detector cycle)** for all real_incident cases (TP=3, avg_lead_time_seconds=45.0).
+On the labeled dataset, **offline simulated MTTD-after is 45s (1 detector cycle)** for all detected incident events (TP=4, avg_lead_time_seconds=45.0).
 
 The bounded live chronology and its exact claim boundary are recorded in
 [`MANDATE-15-EVIDENCE-INDEX.md`](MANDATE-15-EVIDENCE-INDEX.md).

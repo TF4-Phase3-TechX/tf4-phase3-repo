@@ -8,7 +8,7 @@ From the platform root:
 
 ```sh
 docker compose build product-reviews
-python -m pytest src/product-reviews/tests -q
+python -m pytest src/product-reviews/tests -q 
 ```
 
 ## Runtime configuration

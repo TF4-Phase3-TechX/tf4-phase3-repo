@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          all=(accounting ad aiops cart checkout currency email fraud-detection frontend frontend-proxy image-provider kafka llm load-generator payment product-catalog product-reviews quote recommendation shipping)
+          all=(accounting ad aiops cart checkout currency email fraud-detection frontend frontend-proxy image-provider kafka kafka-connect llm load-generator payment product-catalog product-reviews quote recommendation shipping)
           input='${{ inputs.services }}'
 
           chart_changed=false
