@@ -1,0 +1,5233 @@
+{
+  "schema_name": "techx.aiops.rca.report",
+  "schema_version": 1,
+  "generated_at": "2026-07-27T16:44:36.813197+00:00",
+  "git_revision": "f135035eabb9200b20fe8978e02000f390bf1633",
+  "model_version": "m26-v1",
+  "input_path": "docs/aio1/mandate-26/rca-labeled-scenarios-v1.jsonl",
+  "input_sha256": "c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667",
+  "config": {
+    "trace_weight": 0.35,
+    "topology_weight": 0.3,
+    "temporal_weight": 0.2,
+    "anomaly_weight": 0.15,
+    "contradiction_penalty": 0.2,
+    "parallel_anomaly_penalty": 0.25,
+    "temporal_tolerance_seconds": 45.0,
+    "max_services": 32,
+    "max_traces": 50,
+    "max_spans": 5000
+  },
+  "aggregate": {
+    "cases_total": 8,
+    "labeled_total": 8,
+    "labeled_passed": 8,
+    "labeled_failed": 0,
+    "root_at_1": 1.0,
+    "root_at_3": 1.0,
+    "mrr": 1.0,
+    "noise_f1_mean": 0.875,
+    "attribution_coverage": 0.875,
+    "abstention_rate": 0.125,
+    "processing_ms_p50": 1.855,
+    "processing_ms_p95": 3.170949999999999,
+    "processing_ms_mean": 1.808
+  },
+  "cases": [
+    {
+      "id": "payment-cascade-with-ad-noise",
+      "description": "Payment root with checkout/frontend victims and simultaneous ad noise anomaly",
+      "attribution_status": "attributed",
+      "suspected_root_service": "payment",
+      "confidence": 0.738,
+      "score_margin": 0.253,
+      "explanation": "Suspected root `payment` ranks first with score 0.738 (margin=0.253). Explains affected services ['checkout', 'frontend', 'payment']. Evidence: error boundary at payment with no earlier failed callee in trace trace-pay-001; payment can explain affected callers ['checkout', 'frontend', 'payment'] (caller->callee graph); temporal consistency 2/2 within 45.0s; max anomalous confidence=0.920 across 1 signal(s)",
+      "candidates": [
+        {
+          "service": "payment",
+          "score": 0.738,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.35,
+              "weighted_value": 0.175,
+              "reason": "root_like=0.500 victim_like=0.000 server_errors=1 client_errors=0"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.75,
+              "weight": 0.3,
+              "weighted_value": 0.225,
+              "reason": "explains 3/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.92,
+              "weight": 0.15,
+              "weighted_value": 0.138,
+              "reason": "max anomalous confidence=0.920 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend",
+            "payment"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at payment with no earlier failed callee in trace trace-pay-001",
+              "support": 0.5,
+              "available": true,
+              "trace_id": "trace-pay-001",
+              "span_ids": [
+                "s5"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "payment can explain affected callers ['checkout', 'frontend', 'payment'] (caller->callee graph)",
+              "support": 0.75,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T10:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.920 across 1 signal(s)",
+              "support": 0.92,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "ad",
+          "score": 0.485,
+          "rank": 2,
+          "classification": "unexplained_parallel_anomaly",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "ad",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "ad can explain affected callers ['ad', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T10:00:02Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 1 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "checkout",
+          "score": 0.357,
+          "rank": 3,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.75,
+              "weight": 0.3,
+              "weighted_value": 0.225,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.88,
+              "weight": 0.15,
+              "weighted_value": 0.132,
+              "reason": "max anomalous confidence=0.880 across 2 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for checkout"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at checkout with no earlier failed callee in trace trace-pay-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-pay-001",
+              "span_ids": [
+                "s3",
+                "s4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on checkout explained by callee payment in trace trace-pay-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-pay-001",
+              "span_ids": [
+                "s3",
+                "s4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "checkout can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.75,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T10:00:15Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.880 across 2 signal(s)",
+              "support": 0.88,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "frontend",
+          "score": 0.3185,
+          "rank": 4,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.79,
+              "weight": 0.15,
+              "weighted_value": 0.1185,
+              "reason": "max anomalous confidence=0.790 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for frontend"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at frontend with no earlier failed callee in trace trace-pay-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-pay-001",
+              "span_ids": [
+                "s1",
+                "s2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on frontend explained by callee checkout in trace trace-pay-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-pay-001",
+              "span_ids": [
+                "s1",
+                "s2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "frontend can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T10:00:25Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.790 across 1 signal(s)",
+              "support": 0.79,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "cart",
+          "score": 0.1875,
+          "rank": 5,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "cart can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "currency",
+          "score": 0.1875,
+          "rank": 6,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "currency can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "email",
+          "score": 0.1875,
+          "rank": 7,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "email can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-catalog",
+          "score": 0.1875,
+          "rank": 8,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-catalog can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "quote",
+          "score": 0.1875,
+          "rank": 9,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "quote can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "shipping",
+          "score": 0.1875,
+          "rank": 10,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "shipping can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "external-llm-provider",
+          "score": 0.09375,
+          "rank": 11,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "external-llm-provider can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-reviews",
+          "score": 0.09375,
+          "rank": 12,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-reviews can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "recommendation",
+          "score": 0.09375,
+          "rank": 13,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "recommendation can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "static:techx-verified",
+        "trace-client-peer:trace-pay-001",
+        "trace-parent:trace-pay-001"
+      ],
+      "processing_ms": 2.363,
+      "trace_count": 1,
+      "span_count": 5,
+      "evaluation": {
+        "expected_root_service": "payment",
+        "expected_attribution_status": null,
+        "expected_noise_services": [
+          "ad"
+        ],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [
+          "ad"
+        ],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "product-catalog-multi-branch",
+      "description": "product-catalog explains frontend and recommendation branches (cart is not a direct caller in verified topology)",
+      "attribution_status": "attributed",
+      "suspected_root_service": "product-catalog",
+      "confidence": 0.95,
+      "score_margin": 0.6355,
+      "explanation": "Suspected root `product-catalog` ranks first with score 0.987 (margin=0.635). Explains affected services ['checkout', 'frontend', 'product-catalog', 'recommendation']. Evidence: error boundary at product-catalog with no earlier failed callee in trace t-cat-1; error boundary at product-catalog with no earlier failed callee in trace t-cat-2; error boundary at product-catalog with no earlier failed callee in trace t-cat-3; product-catalog can explain affected callers ['checkout', 'frontend', 'product-catalog', 'recommendation'] (caller->callee graph)",
+      "candidates": [
+        {
+          "service": "product-catalog",
+          "score": 0.9865,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.35,
+              "weighted_value": 0.35,
+              "reason": "root_like=1.000 victim_like=0.000 server_errors=3 client_errors=0"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 4/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 3/3 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.91,
+              "weight": 0.15,
+              "weighted_value": 0.1365,
+              "reason": "max anomalous confidence=0.910 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend",
+            "product-catalog",
+            "recommendation"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at product-catalog with no earlier failed callee in trace t-cat-1",
+              "support": 1.0,
+              "available": true,
+              "trace_id": "t-cat-1",
+              "span_ids": [
+                "a3",
+                "b3",
+                "c3"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "error boundary at product-catalog with no earlier failed callee in trace t-cat-2",
+              "support": 1.0,
+              "available": true,
+              "trace_id": "t-cat-1",
+              "span_ids": [
+                "a3",
+                "b3",
+                "c3"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "error boundary at product-catalog with no earlier failed callee in trace t-cat-3",
+              "support": 1.0,
+              "available": true,
+              "trace_id": "t-cat-1",
+              "span_ids": [
+                "a3",
+                "b3",
+                "c3"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "product-catalog can explain affected callers ['checkout', 'frontend', 'product-catalog', 'recommendation'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 3/3 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T11:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.910 across 1 signal(s)",
+              "support": 0.91,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "recommendation",
+          "score": 0.351,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.75,
+              "weight": 0.3,
+              "weighted_value": 0.225,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.84,
+              "weight": 0.15,
+              "weighted_value": 0.126,
+              "reason": "max anomalous confidence=0.840 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend",
+            "recommendation"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for recommendation"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at recommendation with no earlier failed callee in trace t-cat-2",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-cat-2",
+              "span_ids": [
+                "b1",
+                "b2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on recommendation explained by callee product-catalog in trace t-cat-2",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-cat-2",
+              "span_ids": [
+                "b1",
+                "b2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "recommendation can explain affected callers ['frontend', 'recommendation'] (caller->callee graph)",
+              "support": 0.75,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T11:00:12Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.840 across 1 signal(s)",
+              "support": 0.84,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "checkout",
+          "score": 0.3405,
+          "rank": 3,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.75,
+              "weight": 0.3,
+              "weighted_value": 0.225,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.77,
+              "weight": 0.15,
+              "weighted_value": 0.1155,
+              "reason": "max anomalous confidence=0.770 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for checkout"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at checkout with no earlier failed callee in trace t-cat-3",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-cat-3",
+              "span_ids": [
+                "c1",
+                "c2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on checkout explained by callee product-catalog in trace t-cat-3",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-cat-3",
+              "span_ids": [
+                "c1",
+                "c2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "checkout can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.75,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T11:00:14Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.770 across 1 signal(s)",
+              "support": 0.77,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "frontend",
+          "score": 0.32,
+          "rank": 4,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.8,
+              "weight": 0.15,
+              "weighted_value": 0.12,
+              "reason": "max anomalous confidence=0.800 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for frontend"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at frontend with no earlier failed callee in trace t-cat-1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-cat-1",
+              "span_ids": [
+                "a1",
+                "a2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on frontend explained by callee product-catalog in trace t-cat-1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-cat-1",
+              "span_ids": [
+                "a1",
+                "a2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "frontend can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T11:00:10Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.800 across 1 signal(s)",
+              "support": 0.8,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "cart",
+          "score": 0.1875,
+          "rank": 5,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "cart can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "currency",
+          "score": 0.1875,
+          "rank": 6,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "currency can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "email",
+          "score": 0.1875,
+          "rank": 7,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "email can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "payment",
+          "score": 0.1875,
+          "rank": 8,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "payment can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-reviews",
+          "score": 0.1875,
+          "rank": 9,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-reviews can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "quote",
+          "score": 0.1875,
+          "rank": 10,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "quote can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "shipping",
+          "score": 0.1875,
+          "rank": 11,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "shipping can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "ad",
+          "score": 0.09375,
+          "rank": 12,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "ad can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "external-llm-provider",
+          "score": 0.09375,
+          "rank": 13,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "external-llm-provider can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "static:techx-verified",
+        "trace-client-peer:t-cat-1",
+        "trace-parent:t-cat-1",
+        "trace-client-peer:t-cat-2",
+        "trace-parent:t-cat-2",
+        "trace-client-peer:t-cat-3",
+        "trace-parent:t-cat-3"
+      ],
+      "processing_ms": 2.124,
+      "trace_count": 3,
+      "span_count": 9,
+      "evaluation": {
+        "expected_root_service": "product-catalog",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "external-provider-boundary",
+      "description": "External LLM provider failure owned at product-reviews boundary or external-llm-provider",
+      "attribution_status": "attributed",
+      "suspected_root_service": "external-llm-provider",
+      "confidence": 0.8145,
+      "score_margin": 0.3795,
+      "explanation": "Suspected root `external-llm-provider` ranks first with score 0.815 (margin=0.380). Explains affected services ['external-llm-provider', 'frontend', 'product-reviews']. Evidence: error boundary at external-llm-provider with no earlier failed callee in trace t-llm-1; external-llm-provider can explain affected callers ['external-llm-provider', 'frontend', 'product-reviews'] (caller->callee graph); temporal consistency 2/2 within 45.0s; max anomalous confidence=0.930 across 1 signal(s)",
+      "candidates": [
+        {
+          "service": "external-llm-provider",
+          "score": 0.8145,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.35,
+              "weighted_value": 0.175,
+              "reason": "root_like=0.500 victim_like=0.000 server_errors=1 client_errors=0"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 3/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.93,
+              "weight": 0.15,
+              "weighted_value": 0.1395,
+              "reason": "max anomalous confidence=0.930 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "external-llm-provider",
+            "frontend",
+            "product-reviews"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at external-llm-provider with no earlier failed callee in trace t-llm-1",
+              "support": 0.5,
+              "available": true,
+              "trace_id": "t-llm-1",
+              "span_ids": [
+                "l5"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "external-llm-provider can explain affected callers ['external-llm-provider', 'frontend', 'product-reviews'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T12:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.930 across 1 signal(s)",
+              "support": 0.93,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "product-reviews",
+          "score": 0.435,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 2 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend",
+            "product-reviews"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for product-reviews"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at product-reviews with no earlier failed callee in trace t-llm-1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-llm-1",
+              "span_ids": [
+                "l3",
+                "l4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on product-reviews explained by callee external-llm-provider in trace t-llm-1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-llm-1",
+              "span_ids": [
+                "l3",
+                "l4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "product-reviews can explain affected callers ['frontend', 'product-reviews'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T12:00:08Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 2 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "frontend",
+          "score": 0.308,
+          "rank": 3,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.72,
+              "weight": 0.15,
+              "weighted_value": 0.108,
+              "reason": "max anomalous confidence=0.720 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for frontend"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at frontend with no earlier failed callee in trace t-llm-1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-llm-1",
+              "span_ids": [
+                "l1",
+                "l2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on frontend explained by callee product-reviews in trace t-llm-1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "t-llm-1",
+              "span_ids": [
+                "l1",
+                "l2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "frontend can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T12:00:18Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.720 across 1 signal(s)",
+              "support": 0.72,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "product-catalog",
+          "score": 0.25,
+          "rank": 4,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend",
+            "product-reviews"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-catalog can explain affected callers ['frontend', 'product-reviews'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "ad",
+          "score": 0.125,
+          "rank": 5,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "ad can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "cart",
+          "score": 0.125,
+          "rank": 6,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "cart can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "checkout",
+          "score": 0.125,
+          "rank": 7,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "checkout can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "currency",
+          "score": 0.125,
+          "rank": 8,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "currency can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "email",
+          "score": 0.125,
+          "rank": 9,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "email can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "payment",
+          "score": 0.125,
+          "rank": 10,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "payment can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "quote",
+          "score": 0.125,
+          "rank": 11,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "quote can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "recommendation",
+          "score": 0.125,
+          "rank": 12,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "recommendation can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "shipping",
+          "score": 0.125,
+          "rank": 13,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "shipping can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "static:techx-verified",
+        "trace-client-peer:t-llm-1",
+        "trace-parent:t-llm-1"
+      ],
+      "processing_ms": 1.956,
+      "trace_count": 1,
+      "span_count": 5,
+      "evaluation": {
+        "expected_root_service": "external-llm-provider",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "trace-only-root",
+      "description": "Root payment has no local anomalous Decision; discovered only via traces/topology",
+      "attribution_status": "attributed",
+      "suspected_root_service": "payment",
+      "confidence": 0.59375,
+      "score_margin": 0.16475,
+      "explanation": "Suspected root `payment` ranks first with score 0.594 (margin=0.165). Explains affected services ['checkout', 'frontend']. Evidence: error boundary at payment with no earlier failed callee in trace trace-only-001; payment can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+      "candidates": [
+        {
+          "service": "payment",
+          "score": 0.59375,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.35,
+              "weighted_value": 0.175,
+              "reason": "root_like=0.500 victim_like=0.000 server_errors=1 client_errors=0"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at payment with no earlier failed callee in trace trace-only-001",
+              "support": 0.5,
+              "available": true,
+              "trace_id": "trace-only-001",
+              "span_ids": [
+                "x5"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "payment can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "checkout",
+          "score": 0.429,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.86,
+              "weight": 0.15,
+              "weighted_value": 0.129,
+              "reason": "max anomalous confidence=0.860 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for checkout"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at checkout with no earlier failed callee in trace trace-only-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-only-001",
+              "span_ids": [
+                "x3",
+                "x4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on checkout explained by callee payment in trace trace-only-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-only-001",
+              "span_ids": [
+                "x3",
+                "x4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "checkout can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T13:00:10Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.860 across 1 signal(s)",
+              "support": 0.86,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "cart",
+          "score": 0.375,
+          "rank": 3,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "cart can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "currency",
+          "score": 0.375,
+          "rank": 4,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "currency can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "email",
+          "score": 0.375,
+          "rank": 5,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "email can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-catalog",
+          "score": 0.375,
+          "rank": 6,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-catalog can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "quote",
+          "score": 0.375,
+          "rank": 7,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "quote can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "shipping",
+          "score": 0.375,
+          "rank": 8,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "shipping can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "frontend",
+          "score": 0.32,
+          "rank": 9,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 1/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.8,
+              "weight": 0.15,
+              "weighted_value": 0.12,
+              "reason": "max anomalous confidence=0.800 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for frontend"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at frontend with no earlier failed callee in trace trace-only-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-only-001",
+              "span_ids": [
+                "x1",
+                "x2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on frontend explained by callee checkout in trace trace-only-001",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "trace-only-001",
+              "span_ids": [
+                "x1",
+                "x2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "frontend can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T13:00:20Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.800 across 1 signal(s)",
+              "support": 0.8,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "ad",
+          "score": 0.1875,
+          "rank": 10,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 1/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "ad can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "external-llm-provider",
+          "score": 0.1875,
+          "rank": 11,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 1/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "external-llm-provider can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-reviews",
+          "score": 0.1875,
+          "rank": 12,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 1/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-reviews can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "recommendation",
+          "score": 0.1875,
+          "rank": 13,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 1/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "recommendation can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "static:techx-verified",
+        "trace-client-peer:trace-only-001",
+        "trace-parent:trace-only-001"
+      ],
+      "processing_ms": 1.754,
+      "trace_count": 1,
+      "span_count": 5,
+      "evaluation": {
+        "expected_root_service": "payment",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "unseen-renamed-topology",
+      "description": "Service names and topology absent from static TechX graph",
+      "attribution_status": "attributed",
+      "suspected_root_service": "billing-core",
+      "confidence": 0.81,
+      "score_margin": 0.3825,
+      "explanation": "Suspected root `billing-core` ranks first with score 0.810 (margin=0.383). Explains affected services ['billing-core', 'edge-portal', 'order-orchestrator']. Evidence: error boundary at billing-core with no earlier failed callee in trace u1; billing-core can explain affected callers ['billing-core', 'edge-portal', 'order-orchestrator'] (caller->callee graph); temporal consistency 2/2 within 45.0s; max anomalous confidence=0.900 across 1 signal(s)",
+      "candidates": [
+        {
+          "service": "billing-core",
+          "score": 0.81,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.35,
+              "weighted_value": 0.175,
+              "reason": "root_like=0.500 victim_like=0.000 server_errors=1 client_errors=0"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 3/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "billing-core",
+            "edge-portal",
+            "order-orchestrator"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at billing-core with no earlier failed callee in trace u1",
+              "support": 0.5,
+              "available": true,
+              "trace_id": "u1",
+              "span_ids": [
+                "5"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "billing-core can explain affected callers ['billing-core', 'edge-portal', 'order-orchestrator'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T14:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 1 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "order-orchestrator",
+          "score": 0.4275,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.85,
+              "weight": 0.15,
+              "weighted_value": 0.1275,
+              "reason": "max anomalous confidence=0.850 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "edge-portal",
+            "order-orchestrator"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for order-orchestrator"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at order-orchestrator with no earlier failed callee in trace u1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "u1",
+              "span_ids": [
+                "3",
+                "4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on order-orchestrator explained by callee billing-core in trace u1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "u1",
+              "span_ids": [
+                "3",
+                "4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "order-orchestrator can explain affected callers ['edge-portal', 'order-orchestrator'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T14:00:10Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.850 across 1 signal(s)",
+              "support": 0.85,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "edge-portal",
+          "score": 0.317,
+          "rank": 3,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.083 victim_like=0.333 server_errors=1 client_errors=1"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.78,
+              "weight": 0.15,
+              "weighted_value": 0.117,
+              "reason": "max anomalous confidence=0.780 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "edge-portal"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for edge-portal"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at edge-portal with no earlier failed callee in trace u1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "u1",
+              "span_ids": [
+                "1",
+                "2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on edge-portal explained by callee order-orchestrator in trace u1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "u1",
+              "span_ids": [
+                "1",
+                "2"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "edge-portal can explain affected callers ['edge-portal'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T14:00:20Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.780 across 1 signal(s)",
+              "support": 0.78,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "scenario:replace_static",
+        "trace-client-peer:u1",
+        "trace-parent:u1"
+      ],
+      "processing_ms": 0.68,
+      "trace_count": 1,
+      "span_count": 5,
+      "evaluation": {
+        "expected_root_service": "billing-core",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "missing-trace-topology-temporal-fallback",
+      "description": "Trace source unavailable; fall back to topology and temporal ordering",
+      "attribution_status": "attributed",
+      "suspected_root_service": "payment",
+      "confidence": 0.95,
+      "score_margin": 0.009231,
+      "explanation": "Suspected root `payment` ranks first with score 0.977 (margin=0.009). Explains affected services ['checkout', 'frontend', 'payment']. Evidence: payment can explain affected callers ['checkout', 'frontend', 'payment'] (caller->callee graph); temporal consistency 2/2 within 45.0s; max anomalous confidence=0.900 across 1 signal(s)",
+      "candidates": [
+        {
+          "service": "payment",
+          "score": 0.976923,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 3/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend",
+            "payment"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "payment can explain affected callers ['checkout', 'frontend', 'payment'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T15:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 1 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "checkout",
+          "score": 0.967692,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.86,
+              "weight": 0.15,
+              "weighted_value": 0.129,
+              "reason": "max anomalous confidence=0.860 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "checkout can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T15:00:20Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.860 across 1 signal(s)",
+              "support": 0.86,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "frontend",
+          "score": 0.8,
+          "rank": 3,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.8,
+              "weight": 0.15,
+              "weighted_value": 0.12,
+              "reason": "max anomalous confidence=0.800 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "frontend can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T15:00:35Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.800 across 1 signal(s)",
+              "support": 0.8,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "cart",
+          "score": 0.444445,
+          "rank": 4,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "cart can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "currency",
+          "score": 0.444445,
+          "rank": 5,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "currency can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "email",
+          "score": 0.444445,
+          "rank": 6,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "email can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-catalog",
+          "score": 0.444445,
+          "rank": 7,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-catalog can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "quote",
+          "score": 0.444445,
+          "rank": 8,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "quote can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "shipping",
+          "score": 0.444445,
+          "rank": 9,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "shipping can explain affected callers ['checkout', 'frontend'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "ad",
+          "score": 0.222222,
+          "rank": 10,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "ad can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "external-llm-provider",
+          "score": 0.222222,
+          "rank": 11,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "external-llm-provider can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "product-reviews",
+          "score": 0.222222,
+          "rank": 12,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "product-reviews can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        },
+        {
+          "service": "recommendation",
+          "score": 0.222222,
+          "rank": 13,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "frontend"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "recommendation can explain affected callers ['frontend'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [
+        "trace"
+      ],
+      "topology_provenance": [
+        "static:techx-verified"
+      ],
+      "processing_ms": 3.606,
+      "trace_count": 0,
+      "span_count": 0,
+      "evaluation": {
+        "expected_root_service": "payment",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "multiple-independent-clusters",
+      "description": "Two independent anomalous clusters without cross edges",
+      "attribution_status": "multiple_independent_clusters",
+      "suspected_root_service": null,
+      "confidence": 0.0,
+      "score_margin": 0.165385,
+      "explanation": "Multiple independent anomalous clusters without a single supported cascade root across clusters.",
+      "candidates": [
+        {
+          "service": "payment",
+          "score": 0.823077,
+          "rank": 1,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "no spans in analysis window"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 2/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout",
+            "payment"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "payment can explain affected callers ['checkout', 'payment'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T16:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 1 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "checkout",
+          "score": 0.657692,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "no spans in analysis window"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.666667,
+              "weight": 0.3,
+              "weighted_value": 0.2,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.85,
+              "weight": 0.15,
+              "weighted_value": 0.1275,
+              "reason": "max anomalous confidence=0.850 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "checkout"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "checkout can explain affected callers ['checkout'] (caller->callee graph)",
+              "support": 0.6666666666666666,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T16:00:10Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.850 across 1 signal(s)",
+              "support": 0.85,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "ad",
+          "score": 0.260769,
+          "rank": 3,
+          "classification": "unexplained_parallel_anomaly",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "no spans in analysis window"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.2,
+              "weighted_value": 0.1,
+              "reason": "insufficient pairwise onset pairs; neutral temporal score"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.88,
+              "weight": 0.15,
+              "weighted_value": 0.132,
+              "reason": "max anomalous confidence=0.880 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "ad"
+          ],
+          "contradictions": [
+            "ad is disconnected from primary affected cluster"
+          ],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "ad can explain affected callers ['ad'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "insufficient pairwise onset pairs; neutral temporal score",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T16:00:05Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.880 across 1 signal(s)",
+              "support": 0.88,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "currency",
+          "score": 0.222222,
+          "rank": 4,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "no spans in analysis window"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.333333,
+              "weight": 0.3,
+              "weighted_value": 0.1,
+              "reason": "explains 1/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.15,
+              "weighted_value": 0.0,
+              "reason": "no local detector observation (allowed for trace-only root)"
+            }
+          },
+          "explained_affected_services": [
+            "ad"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "currency can explain affected callers ['ad'] (caller->callee graph)",
+              "support": 0.3333333333333333,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "scenario:replace_static"
+      ],
+      "processing_ms": 1.351,
+      "trace_count": 0,
+      "span_count": 0,
+      "evaluation": {
+        "expected_root_service": null,
+        "expected_attribution_status": "multiple_independent_clusters",
+        "expected_noise_services": [],
+        "root_at_1": null,
+        "root_at_3": null,
+        "reciprocal_rank": null,
+        "noise_precision": 0.0,
+        "noise_recall": 1.0,
+        "noise_f1": 0.0,
+        "predicted_noise_services": [
+          "ad"
+        ],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "cycle-and-retry",
+      "description": "Cyclic call edges and retry spans terminate and remain deterministic",
+      "attribution_status": "attributed",
+      "suspected_root_service": "svc-b",
+      "confidence": 0.926667,
+      "score_margin": 0.314167,
+      "explanation": "Suspected root `svc-b` ranks first with score 0.927 (margin=0.314). Explains affected services ['svc-a', 'svc-b', 'svc-c']. Evidence: error boundary at svc-b with no earlier failed callee in trace cyc1; error boundary at svc-b with no earlier failed callee in trace cyc1; svc-b can explain affected callers ['svc-a', 'svc-b', 'svc-c'] (caller->callee graph); temporal consistency 2/2 within 45.0s",
+      "candidates": [
+        {
+          "service": "svc-b",
+          "score": 0.926667,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.833333,
+              "weight": 0.35,
+              "weighted_value": 0.291667,
+              "reason": "root_like=0.833 victim_like=0.000 server_errors=2 client_errors=0"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 3/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "svc-a",
+            "svc-b",
+            "svc-c"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "error boundary at svc-b with no earlier failed callee in trace cyc1",
+              "support": 0.8333333333333334,
+              "available": true,
+              "trace_id": "cyc1",
+              "span_ids": [
+                "r2",
+                "r4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "error boundary at svc-b with no earlier failed callee in trace cyc1",
+              "support": 0.8333333333333334,
+              "available": true,
+              "trace_id": "cyc1",
+              "span_ids": [
+                "r2",
+                "r4"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "svc-b can explain affected callers ['svc-a', 'svc-b', 'svc-c'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T17:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 1 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "svc-c",
+          "score": 0.6125,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "service absent from error spans"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 3/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.75,
+              "weight": 0.15,
+              "weighted_value": 0.1125,
+              "reason": "max anomalous confidence=0.750 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "svc-a",
+            "svc-b",
+            "svc-c"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "svc-c can explain affected callers ['svc-a', 'svc-b', 'svc-c'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T17:00:08Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.750 across 1 signal(s)",
+              "support": 0.75,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "svc-a",
+          "score": 0.42,
+          "rank": 3,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": true,
+              "raw_value": 0.0,
+              "weight": 0.35,
+              "weighted_value": 0.0,
+              "reason": "root_like=0.000 victim_like=0.667 server_errors=0 client_errors=2"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 3/3 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.8,
+              "weight": 0.15,
+              "weighted_value": 0.12,
+              "reason": "max anomalous confidence=0.800 across 1 signal(s)"
+            }
+          },
+          "explained_affected_services": [
+            "svc-a",
+            "svc-b",
+            "svc-c"
+          ],
+          "contradictions": [
+            "trace shows dependency-victim pattern for svc-a"
+          ],
+          "evidence": [
+            {
+              "source": "trace",
+              "fact": "client error on svc-a explained by callee svc-b in trace cyc1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "cyc1",
+              "span_ids": [
+                "r1",
+                "r3"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "trace",
+              "fact": "client error on svc-a explained by callee svc-b in trace cyc1",
+              "support": 0.0,
+              "available": true,
+              "trace_id": "cyc1",
+              "span_ids": [
+                "r1",
+                "r3"
+              ],
+              "observed_at": null,
+              "provenance": null
+            },
+            {
+              "source": "topology",
+              "fact": "svc-a can explain affected callers ['svc-a', 'svc-b', 'svc-c'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-20T17:00:05Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.800 across 1 signal(s)",
+              "support": 0.8,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [],
+      "topology_provenance": [
+        "scenario:replace_static",
+        "trace-client-peer:cyc1",
+        "trace-parent:cyc1"
+      ],
+      "processing_ms": 0.63,
+      "trace_count": 1,
+      "span_count": 4,
+      "evaluation": {
+        "expected_root_service": "svc-b",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Seed feature weights are deterministic design seeds, not production-calibrated coefficients.",
+    "Labeled suite is small and does not prove production causal accuracy.",
+    "Absence of a graph edge is not proof of absence of causality.",
+    "Episode state is process-local and lost on restart in the runtime worker.",
+    "RCA is informational and does not retarget Mandate-22 remediation.",
+    "Labeled sample size for Root@1: 8"
+  ]
+}

@@ -53,6 +53,9 @@ class Incident(BaseModel):
     impact: dict[str, Any] = Field(default_factory=dict)
     evidence: list[Evidence] = Field(default_factory=list)
     rca_candidates: list[dict[str, Any]] = Field(default_factory=list)
+    # Mandate-26 informational RCA enrichment. Does not retarget remediation.
+    suspected_root_service: str | None = None
+    rca_result: dict[str, Any] | None = None
     runbook_id: str
     recommended_action: str
     approval_status: str = "not_requested"
