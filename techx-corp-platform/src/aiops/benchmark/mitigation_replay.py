@@ -84,8 +84,11 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         autonomous_remediation_enabled=True,
         remediation_mode="live",
         allowed_deployments=(str(case["service"]),),
+        # Replay uses a synthetic pin so live-mode known-good gate is exercised.
+        known_good_revisions={str(case["service"]): "replay-known-good"},
         verification_polls=len(action_health),
         rollback_verification_polls=max(len(rollback_health), 1),
+        verification_consecutive_healthy_polls=len(action_health),
         # The replay supplies deterministic post-action samples directly; only
         # runtime Prometheus verification needs the real settle delay.
         verification_settle_seconds=0,
@@ -103,7 +106,7 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         suspected_root_cause="external replay scenario",
         evidence=[
             Evidence(
-                source="external_replay",
+                source="prometheus",
                 query=f"scenario:{case['id']}",
                 window="scenario",
                 value="breached",
