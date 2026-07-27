@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
@@ -14,7 +15,9 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from .availability import KubernetesAvailabilityClient
 from .config import Settings
 from .detection import Detector, latency_query, values
-from .remediation import PolicyDenied, RemediationController
+from .models import utcnow
+from .remediation import KubernetesRollbackAdapter, PolicyDenied, RemediationController
+from .saga import build_saga_store
 from .store import IncidentStore
 from .summary import IncidentSummaryGenerator
 from .telemetry import TelemetryClient
@@ -29,6 +32,10 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 settings = Settings()
 store = IncidentStore(settings.cooldown_seconds)
 telemetry = TelemetryClient(settings)
+saga_store = build_saga_store(settings.saga_backend, settings.saga_path or None)
+# Constructed in lifespan (not import-time) so unit tests can import main without
+# a kubeconfig, while production startup always has an adapter for saga resume.
+_remediation_adapter: KubernetesRollbackAdapter | None = None
 
 
 async def verify_service_slo(service: str) -> dict[str, object]:
@@ -59,7 +66,9 @@ async def verify_service_slo(service: str) -> dict[str, object]:
     )
 
 
-remediation = RemediationController(settings, verifier=verify_service_slo)
+remediation = RemediationController(
+    settings, verifier=verify_service_slo, saga_store=saga_store
+)
 worker = AIOpsWorker(
     settings,
     telemetry,
@@ -76,6 +85,61 @@ summary_generator = IncidentSummaryGenerator(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # TF4AIO-89: durable resume needs a real Kubernetes adapter. Construct here
+    # (not at import) so offline unit imports of main stay kubeconfig-free, but
+    # production startup always wires the adapter before reconcile_open_sagas.
+    global _remediation_adapter
+    saga_log = logging.getLogger("aiops.saga")
+    if remediation.adapter is None:
+        try:
+            _remediation_adapter = KubernetesRollbackAdapter(
+                settings.namespace,
+                settings.deployment_recency_hours,
+                known_good_revisions=settings.known_good_revisions,
+            )
+            remediation.adapter = _remediation_adapter
+        except Exception as exc:
+            open_sagas = await saga_store.list_open()
+            if open_sagas:
+                saga_log.exception(
+                    "startup aborted: open durable sagas require a Kubernetes adapter"
+                )
+                raise RuntimeError(
+                    "startup aborted: open durable sagas require a Kubernetes adapter"
+                ) from exc
+            saga_log.exception(
+                "Kubernetes adapter unavailable; continuing without live remediation adapter"
+            )
+
+    # Finish or fail-closed any durable sagas before accepting work.
+    try:
+        reconcile_results = await remediation.reconcile_open_sagas()
+        if reconcile_results:
+            saga_log.warning(
+                json.dumps(
+                    {
+                        "event": "startup_saga_reconcile",
+                        "results": reconcile_results,
+                    }
+                )
+            )
+        pruned_sagas = await saga_store.prune_terminal_before(
+            utcnow() - timedelta(hours=settings.saga_retention_hours)
+        )
+        if pruned_sagas:
+            logging.getLogger("aiops.saga").info(
+                json.dumps(
+                    {
+                        "event": "startup_saga_retention_pruned",
+                        "saga_ids": pruned_sagas,
+                    }
+                )
+            )
+    except Exception:
+        logging.getLogger("aiops.saga").exception(
+            "startup saga reconcile or retention failed"
+        )
+        raise
     task = asyncio.create_task(worker.run())
     yield
     worker.stop()
@@ -198,7 +262,17 @@ async def reject(incident_id: str):
 @app.get("/v1/targets/{service}/mutation-block")
 async def get_mutation_block(service: str):
     detail = await store.target_block(service)
-    return {"service": service, "blocked": detail is not None, "detail": detail}
+    durable = [
+        saga.saga_id
+        for saga in await saga_store.list_open_for_target(service)
+        if saga.mutation_blocked
+    ]
+    return {
+        "service": service,
+        "blocked": detail is not None or bool(durable),
+        "detail": detail,
+        "durable_saga_ids": durable,
+    }
 
 
 @app.delete(
@@ -208,24 +282,36 @@ async def get_mutation_block(service: str):
 async def clear_mutation_block(service: str):
     """Operator unlock after reviewing an escalated post-mutation quarantine.
 
-    Clears the process-local target block and unlocks related
-    ``mutation_blocked`` incidents so recovery / a new cycle can proceed.
+    Clears both the durable saga quarantine and the process-local target block,
+    then unlocks related incidents so recovery / a new cycle can proceed.
     """
 
     detail = await store.target_block(service)
-    cleared = await store.clear_target_block(service)
-    if not cleared:
+    durable = [
+        saga.saga_id
+        for saga in await saga_store.list_open_for_target(service)
+        if saga.mutation_blocked
+    ]
+    if detail is None and not durable:
         raise HTTPException(404, "Target is not under mutation quarantine")
+    cleared_sagas = await saga_store.clear_mutation_block_for_target(service)
+    cleared = await store.clear_target_block(service)
     logging.getLogger("aiops.operator").warning(
         json.dumps(
             {
                 "event": "target_quarantine_cleared",
                 "service": service,
                 "previous_block": detail,
+                "cleared_saga_ids": cleared_sagas,
             }
         )
     )
-    return {"service": service, "cleared": True, "previous_block": detail}
+    return {
+        "service": service,
+        "cleared": cleared or bool(cleared_sagas),
+        "previous_block": detail,
+        "cleared_saga_ids": cleared_sagas,
+    }
 
 
 if __name__ == "__main__":

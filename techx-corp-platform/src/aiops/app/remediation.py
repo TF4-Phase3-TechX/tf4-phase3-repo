@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from datetime import timedelta
 from typing import Any, Awaitable, Callable
@@ -8,6 +9,19 @@ from typing import Any, Awaitable, Callable
 from .config import Settings
 from .models import AuditEvent, Incident, IncidentStatus, utcnow
 from .runbooks import RunbookCatalog
+from .saga import (
+    RemediationSaga,
+    SagaOutcome,
+    SagaPersistenceError,
+    SagaPhase,
+    SagaStore,
+    argo_window_annotations,
+    build_saga_store,
+    decide_restart_action,
+    templates_equivalent,
+)
+
+log = logging.getLogger("aiops.remediation")
 
 
 class PolicyDenied(RuntimeError):
@@ -199,6 +213,53 @@ class KubernetesRollbackAdapter:
         lease.spec.renew_time = utcnow()
         self.coordination_api.replace_namespaced_lease(name, self.namespace, lease)
 
+    def read_template(self, deployment: str) -> dict[str, Any]:
+        current = self.api.read_namespaced_deployment(deployment, self.namespace)
+        serializer = self.kube_client.ApiClient()
+        return serializer.sanitize_for_serialization(current.spec.template)
+
+    def begin_argo_window(self, deployment: str, incident_id: str, ttl: int) -> dict[str, str]:
+        """Mark Deployment ownership for the bounded mutation/verification window.
+
+        Application-level ignoreDifferences for /spec/template remain a CDO
+        GitOps contract; these annotations let AIOps detect Argo overwrite.
+        """
+
+        until = (utcnow() + timedelta(seconds=ttl)).isoformat()
+        annotations = argo_window_annotations(incident_id, until)
+        self.api.patch_namespaced_deployment(
+            deployment,
+            self.namespace,
+            {"metadata": {"annotations": annotations}},
+        )
+        return annotations
+
+    def end_argo_window(self, deployment: str, incident_id: str) -> None:
+        """Clear AIOps ownership annotations when we still own the window."""
+
+        from .saga import (
+            ARGO_OWNER_ANNOTATION,
+            ARGO_WINDOW_ANNOTATION,
+            ARGO_WINDOW_UNTIL_ANNOTATION,
+        )
+
+        current = self.api.read_namespaced_deployment(deployment, self.namespace)
+        annotations = dict(current.metadata.annotations or {})
+        owner = annotations.get(ARGO_WINDOW_ANNOTATION)
+        if owner not in {None, incident_id}:
+            return
+        for key in (
+            ARGO_WINDOW_ANNOTATION,
+            ARGO_WINDOW_UNTIL_ANNOTATION,
+            ARGO_OWNER_ANNOTATION,
+        ):
+            annotations[key] = None
+        self.api.patch_namespaced_deployment(
+            deployment,
+            self.namespace,
+            {"metadata": {"annotations": annotations}},
+        )
+
 
 class RemediationController:
     """Policy-gated detect -> act -> verify -> rollback/escalate controller."""
@@ -209,11 +270,16 @@ class RemediationController:
         adapter: KubernetesRollbackAdapter | None = None,
         verifier: Callable[[str], Awaitable[dict[str, Any]]] | None = None,
         catalog: RunbookCatalog | None = None,
+        saga_store: SagaStore | None = None,
     ):
         self.settings = settings
         self.adapter = adapter
         self.verifier = verifier
         self.catalog = catalog or RunbookCatalog()
+        self.saga_store: SagaStore = saga_store or build_saga_store(
+            getattr(settings, "saga_backend", "memory"),
+            getattr(settings, "saga_path", "") or None,
+        )
         self._locks: set[str] = set()
 
     async def _retry(
@@ -236,6 +302,76 @@ class RemediationController:
         raise RuntimeError(
             f"Kubernetes action failed after {attempts} attempt(s): {last_error}"
         ) from last_error
+
+    async def _checkpoint(self, saga: RemediationSaga) -> RemediationSaga:
+        try:
+            return await self.saga_store.save(saga)
+        except SagaPersistenceError:
+            raise
+        except Exception as exc:
+            raise SagaPersistenceError(str(exc)) from exc
+
+    def _get_adapter(self) -> KubernetesRollbackAdapter | None:
+        """Return a Kubernetes adapter for live execute / startup resume.
+
+        Prefer the controller-wired adapter (production lifespan). Lazily
+        construct one when absent so offline unit tests that inject fakes still
+        work, and so resume does not silently take the ``adapter is None`` path
+        after a real process restart.
+        """
+
+        if self.adapter is not None:
+            return self.adapter
+        try:
+            self.adapter = KubernetesRollbackAdapter(
+                self.settings.namespace,
+                self.settings.deployment_recency_hours,
+                known_good_revisions=getattr(
+                    self.settings, "known_good_revisions", None
+                )
+                or {},
+            )
+        except Exception:
+            log.exception("failed to construct Kubernetes adapter for saga resume")
+            return None
+        return self.adapter
+
+    async def _cleanup_external_ownership(
+        self,
+        saga: RemediationSaga,
+        adapter: KubernetesRollbackAdapter | Any | None,
+    ) -> None:
+        """Release Argo window / Lease so a terminal saga leaves ``is_open`` false.
+
+        Terminal sagas that still hold external ownership remain open for
+        restart cleanup. Callers that abandon/fail-closed must clean ownership
+        before checkpointing, or the target stays permanently blocked.
+        """
+
+        if not (saga.argo_window_active or saga.lease_held):
+            return
+        if adapter is None:
+            raise SagaPersistenceError(
+                "saga retains external ownership but no Kubernetes adapter is available"
+            )
+        if saga.argo_window_active:
+            end = getattr(adapter, "end_argo_window", None)
+            if not end:
+                raise SagaPersistenceError(
+                    "saga retains Argo window but adapter cannot close it"
+                )
+            await self._retry(end, saga.target, saga.incident_id)
+            saga.argo_window_active = False
+            saga.note("startup_argo_window_closed")
+        if saga.lease_held:
+            release_lock = getattr(adapter, "release_lock", None)
+            if not release_lock:
+                raise SagaPersistenceError(
+                    "saga retains Lease but adapter cannot release it"
+                )
+            await self._retry(release_lock, saga.target, saga.incident_id)
+            saga.lease_held = False
+            saga.note("startup_target_lease_released")
 
     def request_approval(self, incident: Incident) -> None:
         incident.status = IncidentStatus.AWAITING_APPROVAL
@@ -435,6 +571,12 @@ class RemediationController:
             raise PolicyDenied("Only one mutation attempt is allowed per incident")
         if target in self._locks:
             raise PolicyDenied("Another action is already running for this target")
+        open_for_target = await self.saga_store.list_open_for_target(target)
+        if open_for_target:
+            raise PolicyDenied(
+                f"Open remediation saga already exists for {target}; "
+                "never start a second mutation while a saga is non-terminal"
+            )
         # Live mutation requires an explicit CDO pin. owned[1] alone is not
         # known-good and must not be the only rollback target in live mode.
         if (
@@ -448,16 +590,26 @@ class RemediationController:
         self._locks.add(target)
         adapter: KubernetesRollbackAdapter | None = None
         original: dict[str, Any] | None = None
+        previous: dict[str, Any] | None = None
         mutation_attempted = False
         mutated = False
         external_lock = False
+        argo_window = False
+        saga = RemediationSaga(incident_id=incident.incident_id, target=target)
         try:
+            saga.advance(SagaPhase.PREFLIGHT)
+            await self._checkpoint(saga)
+
             incident.execution_attempts += 1
             incident.status = IncidentStatus.EXECUTING
             incident.audit_events.append(
                 AuditEvent(
                     event="action_preflight_started",
-                    detail={"target": target, "mode": self.settings.remediation_mode},
+                    detail={
+                        "target": target,
+                        "mode": self.settings.remediation_mode,
+                        "saga_id": saga.saga_id,
+                    },
                 )
             )
             if self.settings.remediation_mode != "live":
@@ -466,10 +618,16 @@ class RemediationController:
                     "eligible": True,
                     "target": target,
                     "policy_version": incident.policy_version,
+                    "saga_id": saga.saga_id,
                 }
                 incident.status = IncidentStatus.ESCALATED
                 incident.escalation_reason = "Dry-run completed; no mutation performed"
                 incident.audit_events.append(AuditEvent(event="dry_run_completed"))
+                saga.terminate(
+                    SagaOutcome.ABANDONED_PRE_MUTATION,
+                    "dry-run completed; no mutation performed",
+                )
+                await self._checkpoint(saga)
                 return
 
             adapter = self.adapter or KubernetesRollbackAdapter(
@@ -489,8 +647,16 @@ class RemediationController:
                 )
                 if not external_lock:
                     raise PolicyDenied("A Kubernetes target Lease is already held")
+                saga.lease_held = True
+                saga.advance(SagaPhase.LEASE_ACQUIRED)
+                await self._checkpoint(saga)
                 incident.audit_events.append(AuditEvent(event="target_lease_acquired"))
             original, previous = await self._retry(adapter.previous_template, target)
+            saga.original_template = original
+            saga.selected_template = previous
+            known_good = getattr(self.settings, "known_good_revisions", None) or {}
+            if isinstance(known_good, dict):
+                saga.known_good_revision = known_good.get(target)
             incident.before_snapshot = (
                 await self.verifier(target)
                 if self.verifier
@@ -501,6 +667,7 @@ class RemediationController:
                     event="action_preflight_passed",
                     detail={
                         "target": target,
+                        "saga_id": saga.saga_id,
                         "known_good_revision": self.settings.known_good_revisions.get(
                             target
                         ),
@@ -513,33 +680,106 @@ class RemediationController:
                 incident.audit_events.append(
                     AuditEvent(event="kubernetes_server_dry_run_passed")
                 )
+
+            if getattr(self.settings, "argo_window_enabled", True):
+                begin = getattr(adapter, "begin_argo_window", None)
+                if begin:
+                    await self._retry(
+                        begin,
+                        target,
+                        incident.incident_id,
+                        self.settings.remediation_lock_ttl_seconds,
+                    )
+                    argo_window = True
+                    saga.argo_window_active = True
+                    saga.advance(SagaPhase.ARGO_WINDOW_OPEN)
+                    await self._checkpoint(saga)
+                    incident.audit_events.append(
+                        AuditEvent(event="argo_mutation_window_opened")
+                    )
+
             # Evidence freshness trade-off: authorize_by_policy checked
             # Prometheus evidence earlier in this call; we do not re-query here
             # because the bounded single-service action scope limits the window
             # to seconds, and a re-query failure should not leave us half-way
             # through mutation.  Documented as accepted in ADR-022 trade-offs.
             #
+            # Persist intent before the live patch so a crash after this point
+            # is treated as post-mutation risk even if the ack is lost.
             # Do not retry live mutation: a client timeout after server success
             # would otherwise re-patch a concurrent GitOps change.
             mutation_attempted = True
+            saga.mutation_attempted = True
+            saga.expected_template_after_action = previous
+            saga.advance(SagaPhase.ACTION_ACKNOWLEDGED, pending_patch=True)
+            await self._checkpoint(saga)
+
             await self._retry(
                 adapter.patch_template, target, previous, allow_retry=False
             )
             mutated = True
-            incident.audit_events.append(AuditEvent(event="action_executed"))
+            incident.audit_events.append(
+                AuditEvent(
+                    event="action_executed",
+                    detail={"saga_id": saga.saga_id},
+                )
+            )
             incident.status = IncidentStatus.VERIFYING
+            saga.advance(SagaPhase.VERIFYING)
+            await self._checkpoint(saga)
+
+            # Detect Argo/GitOps overwrite of the intended post-action template.
+            read_template = getattr(adapter, "read_template", None)
+            if read_template and previous is not None:
+                current = await self._retry(read_template, target)
+                if not templates_equivalent(current, previous):
+                    incident.status = IncidentStatus.ESCALATED
+                    incident.mutation_blocked = True
+                    incident.escalation_reason = (
+                        "Argo/GitOps or external actor overwrote the remediation "
+                        "mutation during the ownership window"
+                    )
+                    incident.audit_events.append(
+                        AuditEvent(event="argo_overwrite_detected")
+                    )
+                    saga.mutation_blocked = True
+                    saga.terminate(
+                        SagaOutcome.ARGO_OVERWRITE,
+                        incident.escalation_reason,
+                    )
+                    await self._checkpoint(saga)
+                    return
+
             verification = await self._verification_window(
                 adapter, target, self.settings.verification_polls
             )
             incident.verification_result = verification
+            saga.verification_samples = list(verification.get("samples") or [])
+            await self._checkpoint(saga)
             if verification["healthy"]:
                 incident.status = IncidentStatus.RESOLVED
                 incident.audit_events.append(AuditEvent(event="remediation_verified"))
+                saga.terminate(SagaOutcome.RESOLVED, "remediation verified")
+                await self._checkpoint(saga)
                 return
-            incident.escalation_reason = "Remediation did not recover during the stabilization window"
-            await self._rollback_and_verify(
+            incident.escalation_reason = (
+                "Remediation did not recover during the stabilization window"
+            )
+            saga.advance(SagaPhase.ROLLING_BACK, reason=incident.escalation_reason)
+            saga.rollback_phase = "started"
+            await self._checkpoint(saga)
+            ok = await self._rollback_and_verify(
                 incident, adapter, target, original, incident.escalation_reason
             )
+            saga.rollback_verification_samples = list(
+                (incident.rollback_verification_result or {}).get("samples") or []
+            )
+            if ok:
+                saga.terminate(SagaOutcome.ROLLED_BACK, incident.escalation_reason)
+            else:
+                saga.mutation_blocked = True
+                saga.terminate(SagaOutcome.ESCALATED, incident.escalation_reason)
+            await self._checkpoint(saga)
         except PolicyDenied as exc:
             if not mutated:
                 # Pre-mutation denials (lease held, missing previous RS, pin
@@ -553,14 +793,45 @@ class RemediationController:
                         detail={"reason": str(exc)},
                     )
                 )
+                if saga.phase != SagaPhase.TERMINAL:
+                    saga.terminate(SagaOutcome.ABANDONED_PRE_MUTATION, str(exc))
+                    try:
+                        await self._checkpoint(saga)
+                    except SagaPersistenceError:
+                        pass
             raise
+        except SagaPersistenceError as exc:
+            incident.status = IncidentStatus.ESCALATED
+            incident.mutation_blocked = True
+            incident.escalation_reason = f"Saga persistence failed: {exc}"
+            incident.audit_events.append(
+                AuditEvent(
+                    event="saga_persistence_failed",
+                    detail={"error": str(exc)},
+                )
+            )
+            # Best-effort terminal marker when store may be partially available.
+            try:
+                saga.mutation_blocked = True
+                saga.terminate(SagaOutcome.PERSISTENCE_FAILED, str(exc))
+                await self.saga_store.save(saga)
+            except Exception:
+                pass
         except Exception as exc:
             incident.escalation_reason = f"Remediation failed: {type(exc).__name__}: {exc}"
             if mutated and adapter and original:
                 try:
-                    await self._rollback_and_verify(
+                    saga.advance(SagaPhase.ROLLING_BACK, reason=str(exc))
+                    await self._checkpoint(saga)
+                    ok = await self._rollback_and_verify(
                         incident, adapter, target, original, incident.escalation_reason
                     )
+                    if ok:
+                        saga.terminate(SagaOutcome.ROLLED_BACK, incident.escalation_reason)
+                    else:
+                        saga.mutation_blocked = True
+                        saga.terminate(SagaOutcome.ESCALATED, incident.escalation_reason)
+                    await self._checkpoint(saga)
                 except Exception as rollback_exc:
                     incident.status = IncidentStatus.ESCALATED
                     incident.mutation_blocked = True
@@ -572,7 +843,13 @@ class RemediationController:
                     incident.audit_events.append(
                         AuditEvent(event="rollback_failed_escalation")
                     )
-            elif mutation_attempted:
+                    saga.mutation_blocked = True
+                    saga.terminate(SagaOutcome.ESCALATED, str(rollback_exc))
+                    try:
+                        await self._checkpoint(saga)
+                    except SagaPersistenceError:
+                        pass
+            elif mutation_attempted or saga.mutation_attempted:
                 # A transport error is ambiguous: the API server may have
                 # committed the patch even though the response was lost.
                 # Never retry or classify it as a pre-mutation failure.
@@ -592,6 +869,12 @@ class RemediationController:
                         },
                     )
                 )
+                saga.mutation_blocked = True
+                saga.terminate(SagaOutcome.MUTATION_UNKNOWN, str(exc))
+                try:
+                    await self._checkpoint(saga)
+                except SagaPersistenceError:
+                    pass
             else:
                 # Failure before any live patch is not a post-mutation safety
                 # lock; keep the incident escalated but re-attemptable.
@@ -599,12 +882,38 @@ class RemediationController:
                 incident.audit_events.append(
                     AuditEvent(event="execution_failed_before_mutation")
                 )
+                saga.terminate(SagaOutcome.ABANDONED_PRE_MUTATION, str(exc))
+                try:
+                    await self._checkpoint(saga)
+                except SagaPersistenceError:
+                    pass
         finally:
+            if argo_window and adapter:
+                end = getattr(adapter, "end_argo_window", None)
+                if end:
+                    try:
+                        await self._retry(end, target, incident.incident_id)
+                        saga.argo_window_active = False
+                        saga.note("argo_mutation_window_closed")
+                        await self._checkpoint(saga)
+                        incident.audit_events.append(
+                            AuditEvent(event="argo_mutation_window_closed")
+                        )
+                    except Exception as exc:
+                        incident.audit_events.append(
+                            AuditEvent(
+                                event="argo_mutation_window_close_failed",
+                                detail={"error": str(exc)},
+                            )
+                        )
             if external_lock and adapter:
                 release_lock = getattr(adapter, "release_lock", None)
                 if release_lock:
                     try:
                         await self._retry(release_lock, target, incident.incident_id)
+                        saga.lease_held = False
+                        saga.note("target_lease_released")
+                        await self._checkpoint(saga)
                         incident.audit_events.append(AuditEvent(event="target_lease_released"))
                     except Exception as exc:
                         incident.audit_events.append(
@@ -614,3 +923,238 @@ class RemediationController:
                             )
                         )
             self._locks.discard(target)
+
+    async def reconcile_open_sagas(self) -> list[dict[str, Any]]:
+        """Startup recovery: deterministically finish or fail closed open sagas."""
+
+        results: list[dict[str, Any]] = []
+        for saga in await self.saga_store.list_open():
+            result = await self.resume_saga(saga)
+            results.append(result)
+        return results
+
+    async def resume_saga(self, saga: RemediationSaga) -> dict[str, Any]:
+        """Continue a durable saga after process restart (never re-mutate)."""
+
+        action = decide_restart_action(saga)
+        detail: dict[str, Any] = {
+            "saga_id": saga.saga_id,
+            "incident_id": saga.incident_id,
+            "target": saga.target,
+            "phase": saga.phase.value,
+            "action": action,
+        }
+        # Prefer lifespan-wired adapter; lazy-construct as a resume fallback so a
+        # process restart never silently skips verify/restore/cleanup.
+        adapter = self._get_adapter()
+        if action == "noop_terminal":
+            await self._cleanup_external_ownership(saga, adapter)
+            await self._checkpoint(saga)
+            detail["cleanup"] = "complete"
+            return detail
+        if action == "abandon_pre_mutation":
+            # Crash after LEASE_ACQUIRED / ARGO_WINDOW_OPEN still holds external
+            # markers. Clean them before terminal checkpoint or is_open stays
+            # true and list_open_for_target permanently denies the target.
+            await self._cleanup_external_ownership(saga, adapter)
+            saga.terminate(
+                SagaOutcome.ABANDONED_PRE_MUTATION,
+                "restart before live mutation; abandoned without re-mutating",
+            )
+            await self._checkpoint(saga)
+            detail["outcome"] = saga.outcome.value
+            detail["still_open"] = saga.is_open
+            return detail
+        if action == "fail_closed_escalate":
+            try:
+                await self._cleanup_external_ownership(saga, adapter)
+            except SagaPersistenceError as cleanup_exc:
+                # Keep ownership flags so restart retries cleanup; do not free
+                # the target while external markers may still be active.
+                saga.mutation_blocked = True
+                saga.terminate(
+                    SagaOutcome.ESCALATED,
+                    "restart reconcile fail-closed: incomplete durable state",
+                )
+                await self._checkpoint(saga)
+                detail["outcome"] = saga.outcome.value
+                detail["cleanup_error"] = str(cleanup_exc)
+                detail["still_open"] = saga.is_open
+                return detail
+            saga.mutation_blocked = True
+            saga.terminate(
+                SagaOutcome.ESCALATED,
+                "restart reconcile fail-closed: incomplete durable state",
+            )
+            await self._checkpoint(saga)
+            detail["outcome"] = saga.outcome.value
+            detail["still_open"] = saga.is_open
+            return detail
+
+        if adapter is None:
+            # Post-mutation resume cannot proceed without cluster access. Leave
+            # ownership flags set so is_open remains true for a later restart.
+            saga.mutation_blocked = True
+            saga.terminate(
+                SagaOutcome.ESCALATED,
+                "restart reconcile requires a Kubernetes adapter",
+            )
+            await self._checkpoint(saga)
+            detail["outcome"] = saga.outcome.value
+            detail["still_open"] = saga.is_open
+            return detail
+
+        target = saga.target
+        # Re-acquire Lease under the same incident identity when possible.
+        acquire_lock = getattr(adapter, "acquire_lock", None)
+        lease_ok = True
+        if acquire_lock:
+            lease_ok = bool(
+                await self._retry(
+                    acquire_lock,
+                    target,
+                    saga.incident_id,
+                    self.settings.remediation_lock_ttl_seconds,
+                )
+            )
+            if not lease_ok:
+                saga.mutation_blocked = True
+                saga.terminate(
+                    SagaOutcome.ESCALATED,
+                    "lost Lease on restart; refuse second mutation and escalate",
+                )
+                await self._checkpoint(saga)
+                detail["outcome"] = saga.outcome.value
+                detail["lease"] = "lost"
+                return detail
+            saga.lease_held = True
+
+        try:
+            if action == "continue_verification":
+                expected = (
+                    saga.expected_template_after_action or saga.selected_template
+                )
+                read_template = getattr(adapter, "read_template", None)
+                if read_template and expected is not None:
+                    current = await self._retry(read_template, target)
+                    if not templates_equivalent(current, expected):
+                        # Desired state conflict: Argo or operator changed template.
+                        if saga.original_template is not None:
+                            # Persist rollback intent before touching the cluster.
+                            # A crash after the patch acknowledgement can then
+                            # deterministically retry the idempotent restore.
+                            saga.advance(
+                                SagaPhase.ROLLING_BACK,
+                                reason="conflicting desired state",
+                            )
+                            saga.rollback_phase = "conflict_restore_pending"
+                            await self._checkpoint(saga)
+                            await self._retry(
+                                adapter.patch_template, target, saga.original_template
+                            )
+                            saga.rollback_phase = "conflict_restore"
+                            saga.mutation_blocked = True
+                            saga.terminate(
+                                SagaOutcome.CONFLICTING_DESIRED_STATE,
+                                "cluster template != saga expected; restored original",
+                            )
+                        else:
+                            saga.mutation_blocked = True
+                            saga.terminate(
+                                SagaOutcome.CONFLICTING_DESIRED_STATE,
+                                "cluster template != saga expected; no original to restore",
+                            )
+                        await self._checkpoint(saga)
+                        detail["outcome"] = saga.outcome.value
+                        return detail
+                verification = await self._verification_window(
+                    adapter, target, self.settings.verification_polls
+                )
+                saga.verification_samples = list(verification.get("samples") or [])
+                if verification["healthy"]:
+                    saga.terminate(SagaOutcome.RESOLVED, "restart continued verification healthy")
+                elif saga.original_template is not None:
+                    saga.advance(
+                        SagaPhase.ROLLING_BACK,
+                        reason="restart verification unhealthy",
+                    )
+                    saga.rollback_phase = "restart_restore_pending"
+                    await self._checkpoint(saga)
+                    await self._retry(
+                        adapter.patch_template, target, saga.original_template
+                    )
+                    saga.rollback_phase = "restart_restore"
+                    rb = await self._verification_window(
+                        adapter, target, self.settings.rollback_verification_polls
+                    )
+                    saga.rollback_verification_samples = list(rb.get("samples") or [])
+                    if rb["healthy"]:
+                        saga.terminate(
+                            SagaOutcome.ROLLED_BACK,
+                            "restart restored original after failed verification",
+                        )
+                    else:
+                        saga.mutation_blocked = True
+                        saga.terminate(
+                            SagaOutcome.ESCALATED,
+                            "restart restore unverified",
+                        )
+                else:
+                    saga.mutation_blocked = True
+                    saga.terminate(
+                        SagaOutcome.ESCALATED,
+                        "restart verification failed without original template",
+                    )
+                await self._checkpoint(saga)
+                detail["outcome"] = saga.outcome.value
+                return detail
+
+            if action == "restore_original":
+                await self._retry(adapter.patch_template, target, saga.original_template)
+                saga.rollback_phase = "restart_restore"
+                rb = await self._verification_window(
+                    adapter, target, self.settings.rollback_verification_polls
+                )
+                saga.rollback_verification_samples = list(rb.get("samples") or [])
+                if rb["healthy"]:
+                    saga.terminate(
+                        SagaOutcome.ROLLED_BACK,
+                        "restart restore original verified",
+                    )
+                else:
+                    saga.mutation_blocked = True
+                    saga.terminate(
+                        SagaOutcome.ESCALATED,
+                        "restart restore original unverified",
+                    )
+                await self._checkpoint(saga)
+                detail["outcome"] = saga.outcome.value
+                return detail
+
+            saga.mutation_blocked = True
+            saga.terminate(SagaOutcome.ESCALATED, f"unhandled restart action {action}")
+            await self._checkpoint(saga)
+            detail["outcome"] = saga.outcome.value
+            return detail
+        finally:
+            end = getattr(adapter, "end_argo_window", None)
+            if end and saga.argo_window_active:
+                try:
+                    await self._retry(end, target, saga.incident_id)
+                    saga.argo_window_active = False
+                    saga.note("startup_argo_window_closed")
+                    await self._checkpoint(saga)
+                except Exception:
+                    log.exception("failed to close argo window on resume")
+                    raise
+            release_lock = getattr(adapter, "release_lock", None)
+            if release_lock and lease_ok:
+                try:
+                    await self._retry(release_lock, target, saga.incident_id)
+                    saga.lease_held = False
+                    saga.note("startup_target_lease_released")
+                    await self._checkpoint(saga)
+                except Exception:
+                    log.exception("failed to release lease on resume")
+                    raise
+
