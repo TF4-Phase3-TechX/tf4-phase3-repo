@@ -40,22 +40,26 @@ and degraded; traffic does not mask the health breach.
 
 ## Offline reproducible scenario set
 
-Reproduced from current `main` on 2026-07-25:
+Reproduced on PR #669 head on 2026-07-26:
 
 ```text
-Total cases: 5
-Passed: 5/5
-Events: 6
-TP/FP/FN/TN: 3/0/0/3
+Total cases: 6
+Passed: 6/6
+Events: 8
+TP/FP/FN/TN: 4/0/0/4
 Precision: 1.0
 Recall: 1.0
 Average simulated MTTD: 45 seconds
 ```
 
-The focused replay tests also pass `19/19`.
+The focused replay tests also pass `19/19`. The added
+`m15-cross-service-masking-02` case keeps a large isolated frontend latency
+spike non-pageable while a simultaneous subtle checkout error-rate incident
+still fires from checkout's own baseline within one detector cycle.
 
 This is evidence level 3. It proves deterministic behavior on the committed
-fixture, not production accuracy or hidden-set acceptance.
+fixture, not the still-missing live masking incident, production accuracy or
+hidden-set acceptance.
 
 The same external-input command is the replay `repro`; replace the committed
 fixture path with a mentor/BTC-supplied schema-v1 JSONL file without changing
@@ -156,11 +160,14 @@ The exact observations and bounded confusion matrix are preserved in
 
 ## Submission readiness
 
-- The evidence documents are currently in [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633), not yet on `main`.
+- [PR #633](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/633)
+  passed refreshed CI and named review, then merged to `main` as
+  `9c7b271a9639629ecc264d1e13df34e357df98a4`.
 - ADR-015 has named AIOps Lead and Tech Lead acceptance.
 - The PR/commit, replay command, runtime proof, labeled set, MTTD boundary,
-  screenshots and signed ADR must be posted together on `TF4AIO-80`; repository
-  files alone do not satisfy Jira-based submission.
+  screenshots and signed ADR are linked from canonical Jira ticket
+  `TF4AIO-80`. The ticket remains `In Progress`; merged evidence is not mentor
+  or organizer acceptance.
 - Organizer hidden-set outputs remain grading-day evidence.
 
 ## Claim boundary

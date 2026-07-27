@@ -58,10 +58,39 @@ class TelemetryClient:
         payload = {
             "size": 20,
             "sort": [{"@timestamp": "desc"}],
-            "query": {"bool": {"must": [
-                {"query_string": {"query": query, "fields": ["body", "message", "log"]}},
-                {"query_string": {"query": service_query, "fields": ["resource.service.name", "service.name"]}},
-            ]}},
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "query_string": {
+                                "query": query,
+                                "fields": ["body", "message", "log"],
+                            }
+                        },
+                        {
+                            "query_string": {
+                                "query": service_query,
+                                "fields": [
+                                    "resource.service.name",
+                                    "service.name",
+                                ],
+                            }
+                        },
+                    ],
+                    # Bound correlation to the detector lookback so ancient logs
+                    # cannot inflate RCA confidence.
+                    "filter": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": f"now-{self.settings.lookback_minutes}m",
+                                    "lte": "now",
+                                }
+                            }
+                        }
+                    ],
+                }
+            },
             "_source": [
                 "@timestamp",
                 "body",

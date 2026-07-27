@@ -14,10 +14,29 @@ class PolicyDenied(RuntimeError):
     pass
 
 
+def usable_prometheus_evidence(evidence: list[Any]) -> bool:
+    """Autonomous action requires at least one concrete Prometheus observation."""
+
+    for item in evidence:
+        source = getattr(item, "source", None)
+        value = getattr(item, "value", None)
+        if source != "prometheus":
+            continue
+        if value in {None, "unavailable", ""}:
+            continue
+        return True
+    return False
+
+
 class KubernetesRollbackAdapter:
     """Bounded adapter: Deployment template rollback only, never free-form commands."""
 
-    def __init__(self, namespace: str, deployment_recency_hours: int = 24):
+    def __init__(
+        self,
+        namespace: str,
+        deployment_recency_hours: int = 24,
+        known_good_revisions: dict[str, str] | None = None,
+    ):
         from kubernetes import client as kube_client, config as kube_config
 
         try:
@@ -29,6 +48,7 @@ class KubernetesRollbackAdapter:
         self.coordination_api = kube_client.CoordinationV1Api()
         self.namespace = namespace
         self.deployment_recency_hours = deployment_recency_hours
+        self.known_good_revisions = known_good_revisions or {}
 
     def previous_template(
         self, deployment: str
@@ -66,10 +86,34 @@ class KubernetesRollbackAdapter:
             raise PolicyDenied(
                 "No sufficiently recent Deployment revision is correlated with the incident"
             )
+
+        pinned = self.known_good_revisions.get(deployment)
+        if pinned:
+            selected = next(
+                (
+                    rs
+                    for rs in owned[1:]
+                    if (rs.metadata.annotations or {}).get(
+                        "deployment.kubernetes.io/revision"
+                    )
+                    == pinned
+                ),
+                None,
+            )
+            if selected is None:
+                raise PolicyDenied(
+                    f"Pinned known-good revision {pinned!r} for {deployment} "
+                    "is not retained among previous ReplicaSets"
+                )
+            previous_rs = selected
+        else:
+            # Without a CDO pin, owned[1] is only "previous", not proven known-good.
+            previous_rs = owned[1]
+
         serializer = self.kube_client.ApiClient()
         return (
             serializer.sanitize_for_serialization(current.spec.template),
-            serializer.sanitize_for_serialization(owned[1].spec.template),
+            serializer.sanitize_for_serialization(previous_rs.spec.template),
         )
 
     def patch_template(self, deployment: str, template: dict[str, Any]) -> None:
@@ -172,19 +216,25 @@ class RemediationController:
         self.catalog = catalog or RunbookCatalog()
         self._locks: set[str] = set()
 
-    async def _retry(self, function: Callable[..., Any], *args: Any) -> Any:
+    async def _retry(
+        self,
+        function: Callable[..., Any],
+        *args: Any,
+        allow_retry: bool = True,
+    ) -> Any:
         last_error: Exception | None = None
-        for attempt in range(2):
+        attempts = 2 if allow_retry else 1
+        for attempt in range(attempts):
             try:
                 return await asyncio.to_thread(function, *args)
             except PolicyDenied:
                 raise
             except Exception as exc:
                 last_error = exc
-                if attempt == 0:
+                if attempt + 1 < attempts:
                     await asyncio.sleep(1.0)
         raise RuntimeError(
-            f"Kubernetes action failed after two attempts: {last_error}"
+            f"Kubernetes action failed after {attempts} attempt(s): {last_error}"
         ) from last_error
 
     def request_approval(self, incident: Incident) -> None:
@@ -226,7 +276,8 @@ class RemediationController:
             "severity_high": incident.severity == "high",
             "confidence_sufficient": incident.confidence
             >= self.settings.remediation_confidence_threshold,
-            "evidence_present": bool(incident.evidence),
+            # Presence of empty/unavailable evidence must not authorize mutation.
+            "evidence_present": usable_prometheus_evidence(incident.evidence),
             "mutation_not_blocked": not incident.mutation_blocked,
         }
         incident.audit_events.append(
@@ -267,11 +318,17 @@ class RemediationController:
             self.authorize_by_policy(incident)
             await self.execute(incident)
         except PolicyDenied as exc:
+            # Pre-mutation policy denials must NOT set mutation_blocked.
+            # That flag is reserved for post-mutation safety failures so a
+            # temporary deny (missing evidence, lease held, low confidence)
+            # can still auto-resolve and re-attempt on a later incident cycle.
             incident.status = IncidentStatus.ESCALATED
             incident.escalation_reason = str(exc)
-            incident.mutation_blocked = True
             incident.audit_events.append(
-                AuditEvent(event="autonomous_policy_denied_escalation", detail={"reason": str(exc)})
+                AuditEvent(
+                    event="autonomous_policy_denied_escalation",
+                    detail={"reason": str(exc)},
+                )
             )
 
     async def _verification_window(
@@ -291,14 +348,25 @@ class RemediationController:
                 if ready and self.verifier
                 else {"healthy": False, "reason": "rollout_not_ready_or_verifier_missing"}
             )
-            samples.append({"poll": index + 1, "rollout_ready": ready, "slo": slo})
+            samples.append({"poll": index + 1, "sampled_at": utcnow().isoformat(), "rollout_ready": ready, "slo": slo})
             if index + 1 < required and self.settings.verification_interval_seconds > 0:
                 await asyncio.sleep(self.settings.verification_interval_seconds)
+        poll_healthy = [
+            bool(sample["rollout_ready"] and sample["slo"].get("healthy", False))
+            for sample in samples
+        ]
+        consecutive = min(
+            max(self.settings.verification_consecutive_healthy_polls, 1),
+            required,
+        )
+        # Require the trailing consecutive polls only. A single stale first
+        # sample after settle (observed in the 2026-07-25 live drill) must not
+        # veto an otherwise recovered window.
+        trailing = poll_healthy[-consecutive:]
         return {
-            "healthy": all(
-                sample["rollout_ready"] and sample["slo"].get("healthy", False)
-                for sample in samples
-            ),
+            "healthy": len(trailing) == consecutive and all(trailing),
+            "consecutive_required": consecutive,
+            "poll_healthy": poll_healthy,
             "observed_entire_window": len(samples) == required,
             "samples": samples,
             "target": target,
@@ -312,7 +380,9 @@ class RemediationController:
         original: dict[str, Any],
         reason: str,
     ) -> bool:
-        await self._retry(adapter.patch_template, target, original)
+        await self._retry(
+            adapter.patch_template, target, original, allow_retry=False
+        )
         incident.audit_events.append(
             AuditEvent(event="rollback_applied", detail={"reason": reason})
         )
@@ -365,10 +435,20 @@ class RemediationController:
             raise PolicyDenied("Only one mutation attempt is allowed per incident")
         if target in self._locks:
             raise PolicyDenied("Another action is already running for this target")
+        # Live mutation requires an explicit CDO pin. owned[1] alone is not
+        # known-good and must not be the only rollback target in live mode.
+        if (
+            self.settings.remediation_mode == "live"
+            and target not in self.settings.known_good_revisions
+        ):
+            raise PolicyDenied(
+                f"Live mutation requires AIOPS_KNOWN_GOOD_REVISIONS pin for {target}"
+            )
 
         self._locks.add(target)
         adapter: KubernetesRollbackAdapter | None = None
         original: dict[str, Any] | None = None
+        mutation_attempted = False
         mutated = False
         external_lock = False
         try:
@@ -393,7 +473,9 @@ class RemediationController:
                 return
 
             adapter = self.adapter or KubernetesRollbackAdapter(
-                self.settings.namespace, self.settings.deployment_recency_hours
+                self.settings.namespace,
+                self.settings.deployment_recency_hours,
+                known_good_revisions=self.settings.known_good_revisions,
             )
             acquire_lock = getattr(adapter, "acquire_lock", None)
             if acquire_lock:
@@ -415,7 +497,15 @@ class RemediationController:
                 else {"healthy": False, "reason": "verifier_missing"}
             )
             incident.audit_events.append(
-                AuditEvent(event="action_preflight_passed", detail={"target": target})
+                AuditEvent(
+                    event="action_preflight_passed",
+                    detail={
+                        "target": target,
+                        "known_good_revision": self.settings.known_good_revisions.get(
+                            target
+                        ),
+                    },
+                )
             )
             dry_run = getattr(adapter, "dry_run_patch_template", None)
             if dry_run:
@@ -423,7 +513,18 @@ class RemediationController:
                 incident.audit_events.append(
                     AuditEvent(event="kubernetes_server_dry_run_passed")
                 )
-            await self._retry(adapter.patch_template, target, previous)
+            # Evidence freshness trade-off: authorize_by_policy checked
+            # Prometheus evidence earlier in this call; we do not re-query here
+            # because the bounded single-service action scope limits the window
+            # to seconds, and a re-query failure should not leave us half-way
+            # through mutation.  Documented as accepted in ADR-022 trade-offs.
+            #
+            # Do not retry live mutation: a client timeout after server success
+            # would otherwise re-patch a concurrent GitOps change.
+            mutation_attempted = True
+            await self._retry(
+                adapter.patch_template, target, previous, allow_retry=False
+            )
             mutated = True
             incident.audit_events.append(AuditEvent(event="action_executed"))
             incident.status = IncidentStatus.VERIFYING
@@ -441,8 +542,10 @@ class RemediationController:
             )
         except PolicyDenied as exc:
             if not mutated:
+                # Pre-mutation denials (lease held, missing previous RS, pin
+                # missing after race) escalate without permanent mutation block
+                # so operators are not forced to unlock a never-mutated target.
                 incident.status = IncidentStatus.ESCALATED
-                incident.mutation_blocked = True
                 incident.escalation_reason = str(exc)
                 incident.audit_events.append(
                     AuditEvent(
@@ -469,9 +572,30 @@ class RemediationController:
                     incident.audit_events.append(
                         AuditEvent(event="rollback_failed_escalation")
                     )
-            else:
+            elif mutation_attempted:
+                # A transport error is ambiguous: the API server may have
+                # committed the patch even though the response was lost.
+                # Never retry or classify it as a pre-mutation failure.
                 incident.status = IncidentStatus.ESCALATED
                 incident.mutation_blocked = True
+                incident.escalation_reason = (
+                    "Live mutation outcome is unknown after client/API failure: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                incident.audit_events.append(
+                    AuditEvent(
+                        event="action_outcome_unknown",
+                        detail={
+                            "target": target,
+                            "error": f"{type(exc).__name__}: {exc}",
+                            "operator_reconciliation_required": True,
+                        },
+                    )
+                )
+            else:
+                # Failure before any live patch is not a post-mutation safety
+                # lock; keep the incident escalated but re-attemptable.
+                incident.status = IncidentStatus.ESCALATED
                 incident.audit_events.append(
                     AuditEvent(event="execution_failed_before_mutation")
                 )

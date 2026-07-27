@@ -42,6 +42,23 @@ def test_negative_verification_settle_time_fails_closed():
         Settings(**values)
 
 
+def test_settle_shorter_than_metric_window_fails_closed():
+    values = Settings().__dict__ | {
+        "verification_metric_window": "2m",
+        "verification_settle_seconds": 60,
+    }
+
+    with pytest.raises(ValueError, match="settle seconds must be >="):
+        Settings(**values)
+
+
+def test_zero_settle_allowed_for_offline_replay():
+    settings = Settings(
+        **(Settings().__dict__ | {"verification_settle_seconds": 0})
+    )
+    assert settings.verification_settle_seconds == 0
+
+
 def test_generic_signal_services_are_configured_separately(monkeypatch):
     monkeypatch.setenv(
         "AIOPS_GENERIC_SIGNAL_SERVICES",
