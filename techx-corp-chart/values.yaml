@@ -1929,8 +1929,13 @@ opentelemetry-collector:
   enabled: true
   image:
     repository: "otel/opentelemetry-collector-contrib"
+    tag: "0.151.0"
+    digest: "sha256:d57bfe8eee2378f31cb1193239fbcac521d54a5a071fca2bfc106916a32b892d"
   fullnameOverride: otel-collector
   mode: daemonset
+  serviceAccount:
+    create: true
+    name: otel-collector
   securityContext:
     runAsUser: 10001
     runAsGroup: 10001
@@ -2018,6 +2023,38 @@ opentelemetry-collector:
           initial_interval: 5s
           max_interval: 30s
           max_elapsed_time: 300s
+      awscloudwatchlogs/ai_audit:
+        region: us-east-1
+        log_group_name: /aws/eks/techx-tf4/ai-audit
+        log_stream_name: "otel-{ServiceName}-{InstanceId}"
+        # Preserve the OTLP envelope and record attributes, including log_type
+        # and the remaining canonical AI audit fields.
+        raw_log: false
+        sending_queue:
+          num_consumers: 2
+          queue_size: 2000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      opensearch/ai_tool_audit:
+        logs_index: ai-tool-audit
+        logs_index_time_format: "yyyy-MM-dd"
+        http:
+          endpoint: http://opensearch:9200
+          tls:
+            insecure: true
+        sending_queue:
+          num_consumers: 4
+          queue_size: 2000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
 
     processors:
       memory_limiter:
@@ -2053,6 +2090,18 @@ opentelemetry-collector:
         - key: service.instance.id
           from_attribute: k8s.pod.uid
           action: insert
+      # Filter processors drop matching records. This condition therefore keeps
+      # only records explicitly marked as canonical AI/tool audit events.
+      filter/ai_tool_audit:
+        error_mode: propagate
+        log_conditions:
+          - 'log.attributes["log_type"] != "ai_tool_audit"'
+      # Drop AI audit logs from the general application log pipeline to avoid
+      # duplicate storage in otel-logs-* after shadow routing is complete.
+      filter/drop_ai_tool_audit:
+        error_mode: propagate
+        log_conditions:
+          - 'log.attributes["log_type"] == "ai_tool_audit"'
 
     connectors:
       spanmetrics: {}
@@ -2067,8 +2116,12 @@ opentelemetry-collector:
           processors: [memory_limiter, resourcedetection, resource, batch]
           exporters: [otlphttp/prometheus]
         logs:
-          processors: [memory_limiter, resourcedetection, resource, batch]
+          processors: [memory_limiter, resourcedetection, resource, filter/drop_ai_tool_audit, batch]
           exporters: [opensearch]
+        logs/ai-audit:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, resourcedetection, resource, filter/ai_tool_audit, batch]
+          exporters: [opensearch/ai_tool_audit, awscloudwatchlogs/ai_audit]
       telemetry:
         metrics:
           level: normal
@@ -2487,6 +2540,8 @@ opensearch:
     endpoint: http://opensearch:9200
     policyId: otel-logs-retention
     retention: 3d
+    aiAuditPolicyId: ai-tool-audit-retention
+    aiAuditRetention: 7d
     resources:
       requests:
         cpu: 10m
