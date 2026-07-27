@@ -4,7 +4,7 @@ The load generator creates simulated traffic to the demo.
 
 ## Accessing the Load Generator
 
-You can access the web interface to Locust at `http://localhost:8080/loadgen/`.
+You can access the web interface to Locust at `http://localhost:8080/loadgen/`. 
 
 ## Modifying the Load Generator
 

@@ -1,0 +1,182 @@
+name: rel24-negative-deletion-tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  negative-deletion-tests:
+    name: REL-24 negative deletion runtime evidence
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Configure AWS credentials as Terraform apply role
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run protected delete attempts
+        id: attempts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p rel24-evidence
+          echo "# CDO08-REL-24 Runtime Negative Deletion Evidence" > rel24-evidence/summary.md
+          echo "" >> rel24-evidence/summary.md
+          echo "Run time UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> rel24-evidence/summary.md
+          echo "Region: ${AWS_REGION}" >> rel24-evidence/summary.md
+
+          caller_json="$(aws sts get-caller-identity)"
+          account_id="$(printf '%s' "${caller_json}" | jq -r .Account)"
+          actor_arn="$(printf '%s' "${caller_json}" | jq -r .Arn)"
+          echo "Actor ARN: ${actor_arn}" >> rel24-evidence/summary.md
+          echo "" >> rel24-evidence/summary.md
+
+          start_epoch="$(date -u +%s)"
+          echo "${start_epoch}" > rel24-evidence/start-epoch.txt
+          echo "${actor_arn}" > rel24-evidence/actor-arn.txt
+
+          run_denied_test() {
+            local name="$1"
+            local action="$2"
+            shift 2
+
+            local output_file="rel24-evidence/${name}.txt"
+            set +e
+            "$@" >"${output_file}" 2>&1
+            local status=$?
+            set -e
+
+            echo "## ${name}" >> rel24-evidence/summary.md
+            echo "" >> rel24-evidence/summary.md
+            echo "Action: \`${action}\`" >> rel24-evidence/summary.md
+            echo "Exit code: \`${status}\`" >> rel24-evidence/summary.md
+            echo "" >> rel24-evidence/summary.md
+            echo '```text' >> rel24-evidence/summary.md
+            cat "${output_file}" >> rel24-evidence/summary.md
+            echo '```' >> rel24-evidence/summary.md
+            echo "" >> rel24-evidence/summary.md
+
+            if [[ "${status}" -eq 0 ]]; then
+              echo "::error::${name} unexpectedly succeeded; expected AccessDenied or explicit deny."
+              exit 1
+            fi
+
+            if ! grep -Eqi 'AccessDenied|explicit deny|explicitDeny|not authorized' "${output_file}"; then
+              echo "::error::${name} failed, but not with AccessDenied/explicit deny."
+              exit 1
+            fi
+          }
+
+          run_denied_test \
+            rds-delete-db-snapshot \
+            rds:DeleteDBSnapshot \
+            aws rds delete-db-snapshot \
+              --db-snapshot-identifier rel24-negative-test-rds \
+              --region "${AWS_REGION}"
+
+          run_denied_test \
+            elasticache-delete-snapshot \
+            elasticache:DeleteSnapshot \
+            aws elasticache delete-snapshot \
+              --snapshot-name rel24-negative-test-valkey \
+              --region "${AWS_REGION}"
+
+          run_denied_test \
+            s3-delete-object \
+            s3:DeleteObject \
+            aws s3api delete-object \
+              --bucket "tf4-postgresql-migration-backups-${account_id}-${AWS_REGION}" \
+              --key "rel15/rel24-negative-test-object" \
+              --region "${AWS_REGION}"
+
+          run_denied_test \
+            kafka-delete-cluster \
+            kafka:DeleteCluster \
+            aws kafka delete-cluster \
+              --cluster-arn "arn:aws:kafka:${AWS_REGION}:${account_id}:cluster/rel24-negative-test-msk/00000000-0000-0000-0000-000000000000-1" \
+              --region "${AWS_REGION}"
+
+          end_epoch="$(date -u +%s)"
+          echo "${end_epoch}" > rel24-evidence/end-epoch.txt
+
+      - name: Query CloudTrail evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          start_epoch="$(cat rel24-evidence/start-epoch.txt)"
+          end_epoch="$(date -u +%s)"
+          start_time="$(date -u -d "@${start_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+          end_time="$(date -u -d "@${end_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+
+          echo "## CloudTrail queries" >> rel24-evidence/summary.md
+          echo "" >> rel24-evidence/summary.md
+
+          # CloudTrail delivery can lag. Give management/data events a short window to arrive.
+          sleep 120
+
+          query_management_event() {
+            local event_name="$1"
+            local output_file="rel24-evidence/cloudtrail-${event_name}.json"
+            aws cloudtrail lookup-events \
+              --lookup-attributes AttributeKey=EventName,AttributeValue="${event_name}" \
+              --start-time "${start_time}" \
+              --end-time "${end_time}" \
+              --region "${AWS_REGION}" \
+              > "${output_file}" || true
+
+            echo "### ${event_name}" >> rel24-evidence/summary.md
+            echo "" >> rel24-evidence/summary.md
+            echo '```json' >> rel24-evidence/summary.md
+            jq '.Events[0:5] | map({EventId, EventTime, Username, EventName, CloudTrailEvent})' "${output_file}" >> rel24-evidence/summary.md
+            echo '```' >> rel24-evidence/summary.md
+            echo "" >> rel24-evidence/summary.md
+          }
+
+          query_management_event DeleteDBSnapshot
+          query_management_event DeleteSnapshot
+          query_management_event DeleteCluster
+
+          query_id="$(aws logs start-query \
+            --log-group-name /aws/cloudtrail/tf4-general-cloudtrail \
+            --start-time "${start_epoch}" \
+            --end-time "${end_epoch}" \
+            --query-string "fields @timestamp, userIdentity.arn, eventName, errorCode, requestParameters.bucketName, requestParameters.key | filter eventName like /DeleteObject/ and errorCode like /AccessDenied/ | sort @timestamp desc" \
+            --region "${AWS_REGION}" \
+            --query 'queryId' \
+            --output text || true)"
+
+          if [[ -n "${query_id:-}" && "${query_id}" != "None" ]]; then
+            for _ in {1..20}; do
+              status="$(aws logs get-query-results --query-id "${query_id}" --region "${AWS_REGION}" --query status --output text)"
+              [[ "${status}" == "Complete" || "${status}" == "Failed" || "${status}" == "Cancelled" ]] && break
+              sleep 6
+            done
+            aws logs get-query-results --query-id "${query_id}" --region "${AWS_REGION}" > rel24-evidence/cloudwatch-s3-delete-object.json || true
+          fi
+
+          echo "### S3 DeleteObject CloudWatch Logs query" >> rel24-evidence/summary.md
+          echo "" >> rel24-evidence/summary.md
+          echo '```json' >> rel24-evidence/summary.md
+          if [[ -f rel24-evidence/cloudwatch-s3-delete-object.json ]]; then
+            cat rel24-evidence/cloudwatch-s3-delete-object.json >> rel24-evidence/summary.md
+          else
+            echo '{"note":"CloudWatch Logs query did not start or did not return before workflow timeout window."}' >> rel24-evidence/summary.md
+          fi
+          echo '```' >> rel24-evidence/summary.md
+
+      - name: Upload REL-24 evidence artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rel24-negative-deletion-evidence
+          path: rel24-evidence/

@@ -282,6 +282,8 @@ class RemediationController:
     ) -> dict[str, Any]:
         samples: list[dict[str, Any]] = []
         required = max(polls, 1)
+        if self.settings.verification_settle_seconds > 0:
+            await asyncio.sleep(self.settings.verification_settle_seconds)
         for index in range(required):
             ready = bool(await self._retry(adapter.rollout_ready, target))
             slo = (

@@ -34,6 +34,22 @@ class TelemetryClient:
         except (httpx.HTTPError, ValueError) as exc:
             raise TelemetryError(f"Prometheus query failed: {exc}") from exc
 
+    async def query(self, query: str) -> list[dict[str, Any]]:
+        """Run an instant Prometheus query for exact current-window ratios."""
+
+        try:
+            response = await self.client.get(
+                f"{self.settings.prometheus_url.rstrip('/')}/api/v1/query",
+                params={"query": query},
+            )
+            response.raise_for_status()
+            body = response.json()
+            if body.get("status") != "success":
+                raise TelemetryError(str(body))
+            return body.get("data", {}).get("result", [])
+        except (httpx.HTTPError, ValueError) as exc:
+            raise TelemetryError(f"Prometheus query failed: {exc}") from exc
+
     async def search_logs(
         self, services: tuple[str, ...], terms: tuple[str, ...]
     ) -> list[dict[str, Any]] | None:
@@ -65,11 +81,15 @@ class TelemetryClient:
         except (httpx.HTTPError, ValueError):
             return None
 
-    async def find_traces(self, service: str, lookback: str = "30m") -> list[dict[str, Any]] | None:
+    async def find_traces(self, service: str) -> list[dict[str, Any]] | None:
         try:
             response = await self.client.get(
                 f"{self.settings.jaeger_url.rstrip('/')}/api/traces",
-                params={"service": service, "lookback": lookback, "limit": 20},
+                params={
+                    "service": service,
+                    "lookback": self.settings.jaeger_trace_lookback,
+                    "limit": self.settings.jaeger_trace_limit,
+                },
             )
             response.raise_for_status()
             return response.json().get("data", [])

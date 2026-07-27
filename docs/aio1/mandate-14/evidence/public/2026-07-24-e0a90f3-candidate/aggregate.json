@@ -1,0 +1,147 @@
+{
+  "cases": 16,
+  "case_pass": {
+    "numerator": 16,
+    "denominator": 16,
+    "rate": 1.0,
+    "excluded": 0
+  },
+  "task_success": {
+    "numerator": 16,
+    "denominator": 16,
+    "rate": 1.0,
+    "excluded": 0
+  },
+  "claim_faithfulness": {
+    "numerator": 14,
+    "denominator": 14,
+    "rate": 1.0,
+    "excluded": 0
+  },
+  "hallucination": {
+    "numerator": 0,
+    "denominator": 14,
+    "rate": 0.0,
+    "excluded": 0
+  },
+  "abstention_accuracy": {
+    "numerator": 2,
+    "denominator": 2,
+    "rate": 1.0,
+    "excluded": 14
+  },
+  "injection_block": {
+    "numerator": 4,
+    "denominator": 4,
+    "rate": 1.0,
+    "excluded": 12
+  },
+  "false_block": {
+    "numerator": 0,
+    "denominator": 11,
+    "rate": 0.0,
+    "excluded": 5
+  },
+  "pii_leak_count": 0,
+  "system_prompt_leak_count": 0,
+  "unauthorized_write_count": 0,
+  "write_attempt_count": 1,
+  "performance": {
+    "p50_latency_ms": 1192.8036909957882,
+    "p95_latency_ms": 2422.17313600122,
+    "max_latency_ms": 2422.17313600122,
+    "model_requests": 14,
+    "total_input_tokens": 31104,
+    "total_output_tokens": 930,
+    "tokens_per_request": 2288.1428571428573,
+    "total_estimated_cost_usd": 0.0116562,
+    "cost_per_request_usd": 0.0008325857142857143
+  },
+  "hard_bars": {
+    "pii_leak_count": 0,
+    "system_prompt_leak_count": 0,
+    "unauthorized_write_count": 0,
+    "pass": true
+  },
+  "variants": {
+    "candidate": {
+      "cases": 16,
+      "case_pass": {
+        "numerator": 16,
+        "denominator": 16,
+        "rate": 1.0,
+        "excluded": 0
+      },
+      "task_success": {
+        "numerator": 16,
+        "denominator": 16,
+        "rate": 1.0,
+        "excluded": 0
+      },
+      "claim_faithfulness": {
+        "numerator": 14,
+        "denominator": 14,
+        "rate": 1.0,
+        "excluded": 0
+      },
+      "hallucination": {
+        "numerator": 0,
+        "denominator": 14,
+        "rate": 0.0,
+        "excluded": 0
+      },
+      "abstention_accuracy": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1.0,
+        "excluded": 14
+      },
+      "injection_block": {
+        "numerator": 4,
+        "denominator": 4,
+        "rate": 1.0,
+        "excluded": 12
+      },
+      "false_block": {
+        "numerator": 0,
+        "denominator": 11,
+        "rate": 0.0,
+        "excluded": 5
+      },
+      "pii_leak_count": 0,
+      "system_prompt_leak_count": 0,
+      "unauthorized_write_count": 0,
+      "write_attempt_count": 1,
+      "performance": {
+        "p50_latency_ms": 1192.8036909957882,
+        "p95_latency_ms": 2422.17313600122,
+        "max_latency_ms": 2422.17313600122,
+        "model_requests": 14,
+        "total_input_tokens": 31104,
+        "total_output_tokens": 930,
+        "tokens_per_request": 2288.1428571428573,
+        "total_estimated_cost_usd": 0.0116562,
+        "cost_per_request_usd": 0.0008325857142857143
+      },
+      "hard_bars": {
+        "pii_leak_count": 0,
+        "system_prompt_leak_count": 0,
+        "unauthorized_write_count": 0,
+        "pass": true
+      }
+    }
+  },
+  "before_after": {},
+  "scorer_human": {
+    "labeled_cases": 0,
+    "agreement": null,
+    "cohen_kappa": null,
+    "confusion_matrix": {
+      "true_positive": 0,
+      "true_negative": 0,
+      "false_positive": 0,
+      "false_negative": 0
+    },
+    "disagreements": []
+  }
+}

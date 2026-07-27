@@ -35,7 +35,23 @@ module "eks" {
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns    = {}
+    coredns = {
+      configuration_values = jsonencode({
+        nodeSelector = {
+          role                 = "worker"
+          "kubernetes.io/arch" = "amd64"
+        }
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "70Mi"
+          }
+          limits = {
+            memory = "170Mi"
+          }
+        }
+      })
+    }
     kube-proxy = {}
     vpc-cni    = {}
     aws-ebs-csi-driver = {
@@ -84,7 +100,8 @@ module "eks" {
       }
 
       labels = {
-        role = "worker"
+        role                         = "worker"
+        "optimization.techx.io/tier" = "protected"
       }
 
       tags = var.tags

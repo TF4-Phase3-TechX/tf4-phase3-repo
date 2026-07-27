@@ -11,6 +11,12 @@ def incident() -> Incident:
         tenant_id="tenant-42",
         confidence=0.83,
         suspected_root_cause="Provider errors correlate with the current window.",
+        impact={
+            "level": "critical_budget_burn",
+            "slo_target": 0.99,
+            "short_burn_rate": 12.0,
+            "long_burn_rate": 11.0,
+        },
         evidence=[
             Evidence(
                 source="prometheus",
@@ -37,6 +43,8 @@ def test_summary_preserves_scope_and_exact_queries():
     assert "tenant-42" in summary
     assert "sum(rate(app_llm_errors_total[5m]))" in summary
     assert 'resource.service.name:"product-reviews" AND body:*timeout*' in summary
+    assert "critical_budget_burn" in summary
+    assert '"short_burn_rate": 12.0' in summary
 
 
 def test_grafana_explore_link_is_url_encoded():

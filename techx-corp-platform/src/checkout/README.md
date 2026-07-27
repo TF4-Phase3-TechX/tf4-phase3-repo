@@ -7,7 +7,7 @@ This service provides checkout services for the application.
 To build the service binary, run:
 
 ```sh
-go build -o /go/bin/checkout/
+go build -o /go/bin/checkout/ 
 ```
 
 ## Docker Build
@@ -34,3 +34,4 @@ To bump all dependencies run:
 go get -u -t ./...
 go mod tidy
 ```
+

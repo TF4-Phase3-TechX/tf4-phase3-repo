@@ -1,4 +1,7 @@
 # Observability dùng chung: bật 5 subchart, tắt TẤT CẢ app component.
+gp3StorageClasses:
+  enabled: true
+
 opentelemetry-collector: { enabled: true }
 jaeger: { enabled: true }
 prometheus: { enabled: true }
@@ -7,6 +10,8 @@ opensearch:
   enabled: true
   otelLogsLifecycle:
     enabled: true
+postgresqlMigrationBridge:
+  enabled: false
 metrics-server:
   enabled: true
   fullnameOverride: metrics-server
