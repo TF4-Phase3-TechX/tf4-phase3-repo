@@ -144,6 +144,12 @@ export const CopilotChatModal: React.FC = () => {
                 }
             }
 
+            if (outcome === 'provider_unavailable') {
+                setHealthStatus('unhealthy');
+            } else {
+                setHealthStatus('healthy');
+            }
+
             const shouldShowResults = outcome !== 'provider_unavailable'
                 && parsedType !== 'reviews'
                 && parsedType !== 'chitchat'
