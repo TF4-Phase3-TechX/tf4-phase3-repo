@@ -88,6 +88,7 @@ export const CopilotChatModal: React.FC = () => {
         setMessages((prev) => [...prev, userMsg]);
         setInput('');
         setLoading(true);
+        setHealthStatus('intermittent');
 
         try {
             const response = await fetch('/api/product-search-ai', {
@@ -144,7 +145,10 @@ export const CopilotChatModal: React.FC = () => {
                 }
             }
 
-            if (outcome === 'provider_unavailable') {
+            const criticalErrors = ['provider_unavailable', 'circuit_open', 'timeout', 'invalid_response', '503', '504', 'degraded'];
+            const isError = criticalErrors.includes(outcome) || criticalErrors.includes(rawIntent);
+
+            if (isError) {
                 setHealthStatus('unhealthy');
             } else {
                 setHealthStatus('healthy');
