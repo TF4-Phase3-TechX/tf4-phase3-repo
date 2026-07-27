@@ -64,7 +64,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_general" {
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-            { key = "node.kubernetes.io/instance-type", operator = "In", values = ["t3.large", "t3a.large"] },
+            { key = "node.kubernetes.io/instance-type", operator = "In", values = ["t3a.large"] },
             { key = "topology.kubernetes.io/zone", operator = "In", values = ["${var.aws_region}a", "${var.aws_region}b"] },
           ]
 
