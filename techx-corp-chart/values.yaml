@@ -1191,6 +1191,8 @@ components:
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: "false"
+      - name: LOCUST_PAID_AI_ENABLED
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
