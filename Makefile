@@ -1,0 +1,25 @@
+SHELL := /bin/bash
+
+REL26_SCRIPT := docs/cdo08/week3/mandate20/scripts/postgres/rel26-accounting-controlled-delete-restore.sh
+REL26_AWS_PROFILE ?= default
+REL26_AWS_ACCOUNT_ID ?= 511825856493
+REL26_DRILL_ID ?= rel26-$(shell date -u +"%Y%m%d")
+REL26_SOURCE_RESTORE_TIMESTAMP ?= $(shell date -u -v-30M +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "-30 minutes" +"%Y-%m-%dT%H:%M:%SZ")
+
+.PHONY: rel26-preflight rel26-drill
+
+rel26-preflight:
+	PREFLIGHT_ONLY=true \
+	AWS_PROFILE="$(REL26_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL26_AWS_ACCOUNT_ID)" \
+	REL26_DRILL_ID="$(REL26_DRILL_ID)" \
+	SOURCE_RESTORE_TIMESTAMP="$(REL26_SOURCE_RESTORE_TIMESTAMP)" \
+	"$(REL26_SCRIPT)"
+
+rel26-drill:
+	CONFIRM_REL26_DRILL=YES \
+	AWS_PROFILE="$(REL26_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL26_AWS_ACCOUNT_ID)" \
+	REL26_DRILL_ID="$(REL26_DRILL_ID)" \
+	SOURCE_RESTORE_TIMESTAMP="$(REL26_SOURCE_RESTORE_TIMESTAMP)" \
+	"$(REL26_SCRIPT)"
