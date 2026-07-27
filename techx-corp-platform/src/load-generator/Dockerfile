@@ -15,5 +15,6 @@ FROM base
 WORKDIR /usr/src/app/
 COPY --from=builder /reqs /usr/local
 COPY ./src/load-generator/locustfile.py .
+COPY ./src/load-generator/paid_ai_control.py .
 COPY ./src/load-generator/people.json .
 ENTRYPOINT ["locust", "--skip-log-setup"]
