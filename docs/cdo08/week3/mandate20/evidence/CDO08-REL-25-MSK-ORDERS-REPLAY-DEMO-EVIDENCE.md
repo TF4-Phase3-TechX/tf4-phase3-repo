@@ -1,6 +1,6 @@
 # CDO08-REL-25 - Evidence drill replay MSK orders archive
 
-Video evidence: <TODO: dán link video quay màn hình drill tại đây>
+Video evidence: <https://drive.google.com/file/d/1Y128WqLHrLTd4oXJ1JCCOZVcLfD2YYBN/view?usp=sharing>
 
 ## Phạm vi an toàn của drill
 
