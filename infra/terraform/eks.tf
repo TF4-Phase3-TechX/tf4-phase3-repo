@@ -37,6 +37,10 @@ module "eks" {
   cluster_addons = {
     coredns = {
       configuration_values = jsonencode({
+        nodeSelector = {
+          role                 = "worker"
+          "kubernetes.io/arch" = "amd64"
+        }
         resources = {
           requests = {
             cpu    = "50m"
