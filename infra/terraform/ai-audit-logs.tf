@@ -40,20 +40,12 @@ resource "aws_cloudwatch_log_stream" "ai_audit_firehose_s3_delivery" {
   log_group_name = aws_cloudwatch_log_group.ai_audit_firehose_errors.name
 }
 
-# S3 is the long-lived audit archive. Object Lock retention can be enabled manually out-of-band via Break-Glass role.
+# S3 is the long-lived audit archive. Object Lock, Versioning, and Lifecycle retention can be enabled manually out-of-band via Break-Glass role.
 resource "aws_s3_bucket" "ai_audit" {
   bucket        = "tf4-ai-audit-logs-${data.aws_caller_identity.current.account_id}"
   force_destroy = false
 
   tags = local.ai_audit_tags
-}
-
-resource "aws_s3_bucket_versioning" "ai_audit" {
-  bucket = aws_s3_bucket.ai_audit.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "ai_audit" {
@@ -73,37 +65,6 @@ resource "aws_s3_bucket_public_access_block" "ai_audit" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "ai_audit" {
-  bucket = aws_s3_bucket.ai_audit.id
-
-  rule {
-    id     = "expire-ai-audit-after-object-lock"
-    status = "Enabled"
-
-    filter {
-      prefix = local.ai_audit_s3_root_prefix
-    }
-
-    expiration {
-      days = 90
-    }
-
-    # Versioned expiration first creates a delete marker. Remove the resulting
-    # noncurrent version as soon as the 90-day retention permits.
-    noncurrent_version_expiration {
-      noncurrent_days = 1
-    }
-
-    abort_incomplete_multipart_upload {
-      days_after_initiation = 7
-    }
-  }
-
-  depends_on = [
-    aws_s3_bucket_versioning.ai_audit,
-  ]
 }
 
 resource "aws_s3_bucket_policy" "ai_audit" {
@@ -261,7 +222,6 @@ resource "aws_kinesis_firehose_delivery_stream" "ai_audit" {
 
   depends_on = [
     aws_iam_role_policy.ai_audit_firehose_to_s3,
-    aws_s3_bucket_lifecycle_configuration.ai_audit,
     aws_s3_bucket_policy.ai_audit,
   ]
 }
@@ -284,7 +244,7 @@ resource "aws_iam_role" "ai_audit_cwl_to_firehose" {
           "aws:SourceAccount" = data.aws_caller_identity.current.account_id
         }
         ArnLike = {
-          "aws:SourceArn" = local.ai_audit_log_group_arn
+          "aws:SourceArn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${local.ai_audit_log_group_name}*"
         }
       }
     }]
