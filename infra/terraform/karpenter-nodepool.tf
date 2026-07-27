@@ -150,6 +150,63 @@ resource "kubernetes_manifest" "karpenter_nodepool_arm64_canary" {
   depends_on = [kubernetes_manifest.karpenter_ec2nodeclass_general]
 }
 
+resource "kubernetes_manifest" "karpenter_nodepool_arm64_protected" {
+  manifest = {
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "techx-arm64-protected"
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = {
+            "optimization.techx.io/tier" = "arm64-protected"
+          }
+        }
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "techx-general"
+          }
+
+          requirements = [
+            { key = "kubernetes.io/arch", operator = "In", values = ["arm64"] },
+            { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+            { key = "node.kubernetes.io/instance-type", operator = "In", values = ["m7g.xlarge"] },
+            { key = "topology.kubernetes.io/zone", operator = "In", values = ["${var.aws_region}b"] },
+          ]
+          taints = [
+            {
+              key    = "optimization.techx.io/tier"
+              value  = "arm64-protected"
+              effect = "NoSchedule"
+            }
+          ]
+
+          expireAfter = "720h"
+        }
+      }
+
+      limits = {
+        cpu = "4"
+      }
+
+      disruption = {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "5m"
+        budgets = [
+          { nodes = "1" }
+        ]
+      }
+    }
+  }
+
+  depends_on = [kubernetes_manifest.karpenter_ec2nodeclass_general]
+}
+
 resource "kubernetes_manifest" "karpenter_nodepool_arm64_spot" {
   manifest = {
     apiVersion = "karpenter.sh/v1"
