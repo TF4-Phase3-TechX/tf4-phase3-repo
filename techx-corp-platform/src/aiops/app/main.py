@@ -94,6 +94,7 @@ async def lifespan(_: FastAPI):
             )
     except Exception:
         logging.getLogger("aiops.saga").exception("startup saga reconcile failed")
+        raise
     task = asyncio.create_task(worker.run())
     yield
     worker.stop()

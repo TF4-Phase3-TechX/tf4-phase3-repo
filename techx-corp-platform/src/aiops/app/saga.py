@@ -124,14 +124,14 @@ class RemediationSaga(BaseModel):
         self.phase = SagaPhase.TERMINAL
         self.outcome = outcome
         self.terminal_reason = reason
-        self.argo_window_active = False
-        self.lease_held = False
         self.generation += 1
         self.note("saga_terminal", outcome=outcome.value, reason=reason)
 
     @property
     def is_open(self) -> bool:
-        return self.phase in OPEN_PHASES
+        # Terminal business state is not fully reconciled while external
+        # ownership markers remain. Keeping it open makes restart cleanup retry.
+        return self.phase in OPEN_PHASES or self.argo_window_active or self.lease_held
 
     @property
     def may_have_mutated(self) -> bool:
@@ -271,6 +271,9 @@ class FileSagaStore:
                             }
                         )
                     )
+                    raise SagaPersistenceError(
+                        f"unreadable saga record {path}: {exc}"
+                    ) from exc
             return items
 
 
@@ -288,14 +291,10 @@ def build_saga_store(
             raise ValueError("AIOPS_SAGA_PATH is required when saga backend is file")
         return FileSagaStore(path)
     if kind == "configmap":
-        # ConfigMap backend is implemented via FileSagaStore-compatible tests
-        # until cluster RBAC is promoted; operators may mount an emptyDir at
-        # AIOPS_SAGA_PATH as the durable medium for offline evidence level 3.
-        if not path:
-            raise ValueError(
-                "configmap backend requires AIOPS_SAGA_PATH emptyDir mirror for offline"
-            )
-        return FileSagaStore(path)
+        raise ValueError(
+            "configmap saga backend is not implemented; use file with a durable "
+            "mounted volume or memory for tests"
+        )
     raise ValueError(f"unsupported AIOPS_SAGA_BACKEND: {backend!r}")
 
 

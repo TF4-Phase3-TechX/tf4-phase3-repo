@@ -26,13 +26,6 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "create", "update", "patch"]
-{{- if .Values.aiopsRemediation.liveEnabled }}
-  # Durable remediation saga records (TF4AIO-89). Prefer emptyDir+file backend
-  # offline; ConfigMap verbs enable a future in-cluster store without a CRD.
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "watch", "create", "update", "patch"]
-{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

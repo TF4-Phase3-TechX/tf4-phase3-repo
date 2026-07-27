@@ -15,7 +15,9 @@ from app.saga import (
     MemorySagaStore,
     RemediationSaga,
     SagaOutcome,
+    SagaPersistenceError,
     SagaPhase,
+    build_saga_store,
     decide_restart_action,
     templates_equivalent,
 )
@@ -143,6 +145,46 @@ def test_decide_restart_action_table():
 def test_templates_equivalent():
     assert templates_equivalent({"x": 1}, {"x": 1})
     assert not templates_equivalent({"x": 1}, {"x": 2})
+
+
+def test_configmap_backend_is_rejected_until_implemented(tmp_path: Path):
+    with pytest.raises(ValueError, match="not implemented"):
+        build_saga_store("configmap", str(tmp_path))
+
+
+@pytest.mark.asyncio
+async def test_unreadable_record_fails_closed(tmp_path: Path):
+    (tmp_path / "corrupt.json").write_text("{not-json", encoding="utf-8")
+    store = FileSagaStore(tmp_path)
+
+    with pytest.raises(SagaPersistenceError, match="unreadable saga record"):
+        await store.list_open()
+
+
+@pytest.mark.asyncio
+async def test_terminal_saga_retries_external_ownership_cleanup():
+    store = MemorySagaStore()
+    saga = RemediationSaga(
+        incident_id="inc-cleanup",
+        target="product-reviews",
+        argo_window_active=True,
+        lease_held=True,
+    )
+    saga.terminate(SagaOutcome.RESOLVED, "business outcome complete")
+    assert saga.is_open is True
+    await store.save(saga)
+
+    adapter = TrackingAdapter()
+    controller = make_controller(adapter, store)
+    results = await controller.reconcile_open_sagas()
+
+    reloaded = await store.get(saga.saga_id)
+    assert results[0]["action"] == "noop_terminal"
+    assert results[0]["cleanup"] == "complete"
+    assert adapter.argo_closed == ["inc-cleanup"]
+    assert reloaded.argo_window_active is False
+    assert reloaded.lease_held is False
+    assert reloaded.is_open is False
 
 
 @pytest.mark.asyncio
