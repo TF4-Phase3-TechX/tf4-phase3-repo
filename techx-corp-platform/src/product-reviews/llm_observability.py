@@ -88,12 +88,23 @@ def _record_model_result(span: Any, value: Any, outcome: str) -> None:
     span.set_attribute("app.ai.outcome", outcome)
 
 
-def trace_model_call(operation: str, output_tool: str) -> Callable:
+def trace_model_call(
+    operation: str,
+    output_tool: str,
+    circuit_breaker_attr: str | None = None,
+) -> Callable:
     """Trace one real provider attempt without accepting prompt/response content."""
 
     def decorator(function: Callable) -> Callable:
         @functools.wraps(function)
         def wrapped(self: Any, *args: Any, **kwargs: Any) -> Any:
+            # A local circuit-open rejection is not a provider attempt and must
+            # not create a Bedrock CLIENT span or cost/error attribution.
+            if circuit_breaker_attr:
+                breaker = getattr(self, circuit_breaker_attr)
+                provider_started_at = self.clock()
+                breaker.before_call(provider_started_at)
+                kwargs["_provider_started_at"] = provider_started_at
             with _TRACER.start_as_current_span(
                 "bedrock.converse",
                 kind=SpanKind.CLIENT,

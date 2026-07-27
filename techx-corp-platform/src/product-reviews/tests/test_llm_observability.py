@@ -115,6 +115,33 @@ def test_model_failure_span_preserves_billed_metadata(spans):
     assert span.attributes["gen_ai.usage.output_tokens"] == 21
 
 
+def test_circuit_open_rejection_creates_no_provider_span(spans):
+    _, exporter = spans
+
+    class OpenBreaker:
+        def before_call(self, _now):
+            raise RuntimeError("circuit_open")
+
+    class Provider:
+        model_id = "model-v1"
+        guardrail_version = "3"
+        breaker = OpenBreaker()
+        clock = staticmethod(lambda: 10.0)
+
+        @llm_observability.trace_model_call(
+            "product_review_qa",
+            "emit_grounded_answer",
+            "breaker",
+        )
+        def invoke(self):
+            raise AssertionError("provider function must not run")
+
+    with pytest.raises(RuntimeError, match="circuit_open"):
+        Provider().invoke()
+
+    assert exporter.get_finished_spans() == ()
+
+
 def test_tool_span_records_name_and_outcome_without_arguments(spans):
     _, exporter = spans
 

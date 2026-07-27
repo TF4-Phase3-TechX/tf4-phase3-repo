@@ -668,10 +668,18 @@ class BedrockAdapter:
             }
         return request
 
-    @trace_model_call("product_review_qa", "emit_grounded_answer")
-    def converse(self, question: str, product: dict[str, Any], reviews: list[dict[str, Any]]) -> BedrockResult:
-        started = self.clock()
-        self.breaker.before_call(started)
+    @trace_model_call("product_review_qa", "emit_grounded_answer", "breaker")
+    def converse(
+        self,
+        question: str,
+        product: dict[str, Any],
+        reviews: list[dict[str, Any]],
+        *,
+        _provider_started_at: float | None = None,
+    ) -> BedrockResult:
+        started = (
+            self.clock() if _provider_started_at is None else _provider_started_at
+        )
         try:
             response = self.client.converse(**self._request(question, product, reviews))
             elapsed = self.clock() - started
@@ -832,11 +840,18 @@ class BedrockAdapter:
                 error_name = "timeout"
             raise ProviderFailure(error_name[:64]) from exc
 
-    @trace_model_call("product_comparison", "emit_grounded_comparison")
-    def compare_products(self, question: str, evidence: dict[str, Any]) -> BedrockResult:
+    @trace_model_call("product_comparison", "emit_grounded_comparison", "breaker")
+    def compare_products(
+        self,
+        question: str,
+        evidence: dict[str, Any],
+        *,
+        _provider_started_at: float | None = None,
+    ) -> BedrockResult:
         """Create a grounded natural-language comparison from resolved catalog evidence."""
-        started = self.clock()
-        self.breaker.before_call(started)
+        started = (
+            self.clock() if _provider_started_at is None else _provider_started_at
+        )
         context = json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
         content = [{"text": context}, {"text": question}]
         if self.guardrail_id != "disabled":
@@ -944,15 +959,22 @@ class BedrockAdapter:
                 self.breaker.failure(self.clock())
             raise ProviderFailure(error_name[:64]) from exc
 
-    @trace_model_call("search_intent", "emit_search_intent")
-    def parse_search_intent(self, query: str, history: list[dict[str, str]] = None) -> dict[str, Any]:
+    @trace_model_call("search_intent", "emit_search_intent", "intent_breaker")
+    def parse_search_intent(
+        self,
+        query: str,
+        history: list[dict[str, str]] = None,
+        *,
+        _provider_started_at: float | None = None,
+    ) -> dict[str, Any]:
         """Parse a natural-language product search query into structured filters.
 
         Returns validated intent dict with _metadata (latency_ms, input_tokens, output_tokens).
         Raises ProviderFailure on any contract violation so the caller can fail closed.
         """
-        started = self.clock()
-        self.intent_breaker.before_call(started)
+        started = (
+            self.clock() if _provider_started_at is None else _provider_started_at
+        )
         try:
             messages = []
             if history:
