@@ -294,55 +294,7 @@ Kết luận:
 - CloudTrail có event ID cho các hành vi bị deny.
 - Backup safety requirement đã có runtime evidence.
 
-## 10. Các exception đã được PM/owner chốt
-
-### Exception 1 - ADR file còn ghi draft nhưng quyết định đã ký/chốt
-
-Các file ADR hiện tại vẫn còn metadata cũ:
-
-```text
-TRẠNG THÁI: DRAFT - CHƯA KÝ
-```
-
-File liên quan:
-
-- [CDO08-REL-21-adr-draft.md](../adr/CDO08-REL-21-adr-draft.md)
-- [CDO08-REL-21-summary.md](../adr/CDO08-REL-21-summary.md)
-- [CDO08-REL-21-rpo-rto-matrix.md](../adr/CDO08-REL-21-rpo-rto-matrix.md)
-
-Theo xác nhận PM/owner ngày 2026-07-27, quyết định RPO/RTO đã được chốt/ký về mặt nội dung. Metadata trong file ADR là nợ chỉnh tài liệu, không phải blocker kỹ thuật của Mandate 20.
-
-Số đo thật sau drill:
-
-- RDS `accounting`: measured recovery RTO `789s / 13m09s`.
-- MSK replay: measured live replay tới report PASS `77s`, tổng live drill gồm cleanup `105s`.
-
-### Exception 2 - Argo CD còn OutOfSync nhưng không blocker Mandate 20
-
-Live Argo CD còn:
-
-```text
-kyverno             OutOfSync Healthy
-techx-observability OutOfSync Progressing
-techx-raw           OutOfSync Healthy
-```
-
-Các trạng thái này không được tính là blocker vì:
-
-- runtime app chính `techx-corp`, `platform-secrets`, `external-secrets`, `root-bootstrap` đã đủ healthy/synced cho evidence dữ liệu;
-- Mandate 20 chấm backup/restore, RPO/RTO và recovery evidence, không chấm Argo sync hygiene;
-- GitOps/IaC source vẫn là nguồn reconstructability.
-
-### Exception 3 - Valkey/cart là reconstructable
-
-Valkey/cart được PM/owner chốt là dữ liệu tạm:
-
-- mất cart không làm mất sổ cái order hoặc audit trail;
-- khách có thể thêm lại sản phẩm vào cart;
-- hệ chỉ cần cart service phục hồi đọc/ghi, không cần restore từng key cũ;
-- snapshot retention 7 ngày vẫn đang bật như baseline an toàn.
-
-## 11. Kết luận evidence
+## 10. Kết luận evidence
 
 CDO08 đủ evidence để đóng Mandate 20 cho phạm vi team:
 
