@@ -36,6 +36,8 @@ _UNSUPPORTED_MEMORY_MARKERS = (
 )
 _NEGATED_MEMORY_PATTERNS = (
     r"\b(?:do not|don't|dont|never)\s+(?:remember|save|store)\b",
+    r"\b(?:do not|don't|dont|never|not|no)\b"
+    r"(?:\s+[\w'-]+){0,6}\s+(?:remember|save|store)\b",
     r"\b(?:not|no)\s+(?:remember|save|store)\b",
     r"(?:đừng|không)\s+(?:nhớ|lưu)\b",
     r"(?:không\s+muốn|đừng\s+có)\s+(?:bạn\s+)?(?:nhớ|lưu)\b",
@@ -108,14 +110,18 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
     ):
         return MemoryCommand("apply", {})
 
+    # Persist only when the request itself starts with an allow-listed,
+    # affirmative command. A loose substring check is unsafe here because
+    # refusals such as "I don't want you to remember ..." also contain the
+    # word "remember".
     explicit_consent = any(
-        marker in lowered
-        for marker in (
-            "remember ",
-            "please remember",
-            "hãy nhớ",
-            "nhớ rằng",
-            "lưu sở thích",
+        re.match(pattern, lowered)
+        for pattern in (
+            r"^(?:please\s+)?(?:remember|save|store)\b",
+            r"^(?:can|could|would)\s+you\s+(?:please\s+)?"
+            r"(?:remember|save|store)\b",
+            r"^(?:hãy\s+)?nhớ\b",
+            r"^lưu\s+sở\s+thích\b",
         )
     )
     if not explicit_consent:

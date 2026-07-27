@@ -13,6 +13,8 @@ def test_profile_requires_explicit_consent():
 def test_negated_memory_consent_is_rejected_before_positive_matching():
     for query in (
         "Don't remember my preferred category is electronics",
+        "I don't want you to remember my preferred category is electronics",
+        "Please don't ever remember my preferred category is electronics",
         "Do not save my maximum budget is $100",
         "Đừng nhớ danh mục yêu thích là electronics",
         "Không lưu ngân sách tối đa là $100",
