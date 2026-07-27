@@ -667,10 +667,32 @@ class BedrockAdapter:
         return request
 
     def converse(self, question: str, product: dict[str, Any], reviews: list[dict[str, Any]]) -> BedrockResult:
+        import openfeature.api
+        from botocore.exceptions import ClientError
+        client = openfeature.api.get_client()
+        is_rate_limit = client.get_boolean_value("llmRateLimitError", False)
+        is_inaccurate = client.get_boolean_value("llmInaccurateResponse", False)
+
+        if is_rate_limit:
+            error_response = {'Error': {'Code': 'ThrottlingException', 'Message': 'Rate exceeded'}}
+            raise ClientError(error_response, 'Converse')
+
         started = self.clock()
         self.breaker.before_call(started)
         try:
-            response = self.client.converse(**self._request(question, product, reviews))
+            if is_inaccurate:
+                response = {
+                    "stopReason": "end_turn",
+                    "usage": {"inputTokens": 10, "outputTokens": 10},
+                    "output": {
+                        "message": {
+                            "content": [{"text": '{"bad_json": "missing_bracket"'}]
+                        }
+                    }
+                }
+            else:
+                response = self.client.converse(**self._request(question, product, reviews))
+            
             elapsed = self.clock() - started
             if not isinstance(response, dict):
                 raise ProviderFailure(
