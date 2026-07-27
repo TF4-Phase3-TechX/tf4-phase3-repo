@@ -207,6 +207,32 @@ def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
     breaker.before_call(65)
 
 
+def test_rate_limit_fault_injection_trips_the_real_circuit(monkeypatch):
+    class Flags:
+        def get_boolean_value(self, name, default):
+            return name == "llmRateLimitError"
+
+    monkeypatch.setattr("openfeature.api.get_client", lambda: Flags())
+    client = FakeClient(tool_response_with({"decision": "insufficient", "answer": "", "citations": []}))
+    breaker = CircuitBreaker(threshold=2, window_seconds=30, cooldown_seconds=60)
+    clock_values = iter((0.0, 0.0, 1.0, 1.0, 2.0))
+    subject = adapter(
+        client,
+        output_mode="tool",
+        circuit_breaker=breaker,
+        clock=lambda: next(clock_values),
+    )
+
+    with pytest.raises(ProviderFailure):
+        subject.converse("q", {}, [{}])
+    with pytest.raises(ProviderFailure):
+        subject.converse("q", {}, [{}])
+    with pytest.raises(CircuitOpen):
+        subject.converse("q", {}, [{}])
+
+    assert client.request is None
+
+
 def test_rejects_draft_guardrail():
     with pytest.raises(ValueError, match="numeric"):
         BedrockAdapter("model", "guardrail", "DRAFT", client=FakeClient())

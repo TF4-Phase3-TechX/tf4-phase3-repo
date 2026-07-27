@@ -673,14 +673,18 @@ class BedrockAdapter:
         is_rate_limit = client.get_boolean_value("llmRateLimitError", False)
         is_inaccurate = client.get_boolean_value("llmInaccurateResponse", False)
 
-        if is_rate_limit:
-            error_response = {'Error': {'Code': 'ThrottlingException', 'Message': 'Rate exceeded'}}
-            raise ClientError(error_response, 'Converse')
-
         started = self.clock()
         self.breaker.before_call(started)
         try:
-            if is_inaccurate:
+            if is_rate_limit:
+                error_response = {
+                    "Error": {
+                        "Code": "ThrottlingException",
+                        "Message": "Rate exceeded",
+                    }
+                }
+                raise ClientError(error_response, "Converse")
+            elif is_inaccurate:
                 response = {
                     "stopReason": "end_turn",
                     "usage": {"inputTokens": 10, "outputTokens": 10},

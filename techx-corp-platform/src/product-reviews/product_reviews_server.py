@@ -9,7 +9,6 @@ from concurrent import futures
 import json
 import logging
 import os
-import random
 import time
 
 import grpc
@@ -121,29 +120,9 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
     with tracer.start_as_current_span("get_ai_assistant_response") as span:
         span.set_attribute("app.product.id", request_product_id)
         span.set_attribute("app.caller.feature", "product_qa")
-        # Preserve the BTC-owned incident flags at the application boundary.
-        # They exercise safe degradation and output blocking without selecting
-        # a mock provider or allowing intentionally inaccurate content through.
-        inject_rate_limit = check_feature_flag("llmRateLimitError") and random.random() < 0.5
-        if inject_rate_limit:
-            outcome = AssistantOutcome(
-                response=UNAVAILABLE_RESPONSE,
-                outcome="unavailable",
-                error_class="injected_rate_limit",
-            )
-        else:
-            outcome = assistant.answer(request_product_id, question, session_id, user_id)
-            if check_feature_flag("llmInaccurateResponse") and request_product_id == "L9ECAV7KIM":
-                outcome = AssistantOutcome(
-                    response=INSUFFICIENT_RESPONSE,
-                    outcome="insufficient",
-                    latency_ms=outcome.latency_ms,
-                    input_tokens=outcome.input_tokens,
-                    output_tokens=outcome.output_tokens,
-                    error_class="injected_inaccurate_response_blocked",
-                    quarantined_reviews=outcome.quarantined_reviews,
-                    provider_attempted=outcome.provider_attempted,
-                )
+        # Fault injection lives inside the adapter's provider boundary so the
+        # same circuit-breaker and fallback path is exercised as a real failure.
+        outcome = assistant.answer(request_product_id, question, session_id, user_id)
         attributes = llm_metric_identity(
             os.environ.get("OTEL_SERVICE_NAME", "product-reviews")
         ) | {
