@@ -1,0 +1,23 @@
+Count,Message,Traceback,Nodes
+1,cannot access local variable 'flag_evaluation' where it is not associated with a value,"  File ""/usr/local/lib/python3.12/site-packages/locust/user/task.py"", line 363, in run
+    self.execute_next_task()
+  File ""/usr/local/lib/python3.12/site-packages/locust/user/task.py"", line 396, in execute_next_task
+    self.execute_task(self._task_queue.popleft())
+  File ""/usr/local/lib/python3.12/site-packages/locust/user/task.py"", line 513, in execute_task
+    task(self.user)
+  File ""/tmp/locustfile_mandate13.py"", line 225, in flood_home
+    flood_count = get_flagd_value(""loadGeneratorFloodHomepage"")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/tmp/locustfile_mandate13.py"", line 82, in get_flagd_value
+    return client.get_integer_value(FlagName, 0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/usr/local/lib/python3.12/site-packages/openfeature/client.py"", line 228, in get_integer_value
+    return self.get_integer_details(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/usr/local/lib/python3.12/site-packages/openfeature/client.py"", line 257, in get_integer_details
+    return self.evaluate_flag_details(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/usr/local/lib/python3.12/site-packages/openfeature/client.py"", line 847, in evaluate_flag_details
+    flag_evaluation,
+    ^^^^^^^^^^^^^^^
+",local
