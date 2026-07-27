@@ -12,6 +12,24 @@ Mandate 20 đã có evidence mạnh cho phần trọng tâm: RDS PITR restore dr
 2. Các app Argo CD `OutOfSync` không được tính là blocker cho Mandate 20 vì không làm thay đổi evidence backup/restore dữ liệu.
 3. Valkey/cart được chốt là `Reconstructable`; dữ liệu cart có thể mất, không cần restore drill riêng.
 
+## 0. Evidence chính
+
+Evidence chính dùng để nộp Mandate 20:
+
+- [CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md](CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md)
+
+Lý do chọn file này làm evidence chính:
+
+- Có link video quay drill.
+- Có mô phỏng mất dữ liệu có kiểm soát.
+- Có restore thật bằng PITR vào môi trường tách biệt.
+- Có chứng minh dữ liệu bị xoá đã quay lại.
+- Có đo RTO thực tế.
+- Có cleanup evidence.
+- Không đụng production.
+
+Các file khác trong thư mục này là evidence tham khảo thêm để chứng minh các phần hỗ trợ: MSK replay, backup baseline, retention, deletion guardrail, inventory và config reconstructability.
+
 ## 1. Requirement mapping
 
 | Mandate 20 requirement | Evidence hiện có | Trạng thái |
@@ -40,10 +58,13 @@ Mandate 20 đã có evidence mạnh cho phần trọng tâm: RDS PITR restore dr
 
 Evidence chính:
 
+- [CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md](CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md)
+
+Tham khảo thêm:
+
 - [CDO08-REL-22-rds-pitr-retention-evidence.md](CDO08-REL-22-rds-pitr-retention-evidence.md)
 - [CDO08-REL-23-object-inventory-evidence.md](CDO08-REL-23-object-inventory-evidence.md)
 - [CDO08-REL-25-INTERNAL-DRY-RUN-EVIDENCE.md](CDO08-REL-25-INTERNAL-DRY-RUN-EVIDENCE.md)
-- [CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md](CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md)
 
 Live check ngày 2026-07-27:
 
@@ -86,7 +107,7 @@ Interpretation:
 
 ## 4. MSK orders archive/replay evidence
 
-Evidence chính:
+Tham khảo thêm:
 
 - [CDO08-REL-22-msk-orders-s3-archive-evidence.md](CDO08-REL-22-msk-orders-s3-archive-evidence.md)
 - [CDO08-REL-22-msk-orders-s3-sink-runtime-evidence.md](CDO08-REL-22-msk-orders-s3-sink-runtime-evidence.md)
