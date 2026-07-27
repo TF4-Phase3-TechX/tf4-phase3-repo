@@ -13,6 +13,7 @@ level-5 runtime observation, or level-6 acceptance is claimed.
 - normalized provider error and circuit state contract;
 - `resilience_control.py` token/TTL/readback/auto-expiry control;
 - `inject_mandate25_faults.sh` bounded external drill wrapper;
+- `tests/eval_mandate25/replay.py` standalone external request/status replay;
 - provider/circuit-aware frontend health route;
 - offline tests for retry cap, ClientError normalization, open/fast-fail,
   cooldown recovery, malformed-output no-action, authorization, TTL expiry,

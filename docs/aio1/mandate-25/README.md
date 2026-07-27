@@ -39,9 +39,10 @@ Run one bounded fault window around an external replay command:
 
 ```bash
 ./scripts/inject_mandate25_faults.sh throttling -- \
-  python -m tests.eval_mandate24.replay \
-  tests/eval_mandate24/sample-requests.jsonl \
+  python -m tests.eval_mandate25.replay \
+  tests/eval_mandate25/cases.example.jsonl \
   --target 127.0.0.1:3551 \
+  --repeat 6 \
   --output /tmp/m25-throttling.jsonl
 ```
 
