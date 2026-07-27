@@ -12,13 +12,17 @@ Mandate 20 đã có evidence mạnh cho phần trọng tâm: RDS PITR restore dr
 2. Các app Argo CD `OutOfSync` không được tính là blocker cho Mandate 20 vì không làm thay đổi evidence backup/restore dữ liệu.
 3. Valkey/cart được chốt là `Reconstructable`; dữ liệu cart có thể mất, không cần restore drill riêng.
 
-## 0. Evidence chính
+## 0. Evidence chính theo từng phần
 
-Evidence chính dùng để nộp Mandate 20:
+| Phần | Evidence chính | Ghi chú |
+|---|---|---|
+| RDS / PostgreSQL accounting restore | [CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md](CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md) | Có video drill, PITR restore, RTO và cleanup |
+| MSK orders archive replay | [CDO08-REL-25-MSK-ORDERS-REPLAY-DEMO-EVIDENCE.md](CDO08-REL-25-MSK-ORDERS-REPLAY-DEMO-EVIDENCE.md) | Có video drill, replay vào topic cô lập và cleanup |
+| Valkey/cart | Mục [5. ElastiCache Valkey evidence](#5-elasticache-valkey-evidence) trong file này | Cart được chốt là `Reconstructable`, không cần restore từng key |
+| Backup safety / separation of duties | [CDO08-REL-24-negative-deletion-tests.md](CDO08-REL-24-negative-deletion-tests.md) | Negative delete tests cho protected recovery assets |
+| Config/secret reconstructability | Mục [7. Secret/config reconstructability evidence](#7-secretconfig-reconstructability-evidence) và [8. GitOps/IaC reconstructability evidence](#8-gitopsiac-reconstructability-evidence) trong file này | Terraform + GitOps + ExternalSecrets/ASM |
 
-- [CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md](CDO08-REL-26-RDS-ACCOUNTING-CONTROLLED-RESTORE-DRILL-EVIDENCE.md)
-
-Các file khác trong thư mục này là evidence tham khảo thêm để chứng minh các phần hỗ trợ: MSK replay, backup baseline, retention, deletion guardrail, inventory và config reconstructability.
+Các file còn lại trong thư mục này là evidence tham khảo thêm cho backup baseline, retention, inventory và implementation detail.
 
 ## 1. Requirement mapping
 
@@ -97,12 +101,15 @@ Interpretation:
 
 ## 4. MSK orders archive/replay evidence
 
+Evidence chính:
+
+- [CDO08-REL-25-MSK-ORDERS-REPLAY-DEMO-EVIDENCE.md](CDO08-REL-25-MSK-ORDERS-REPLAY-DEMO-EVIDENCE.md)
+
 Tham khảo thêm:
 
 - [CDO08-REL-22-msk-orders-s3-archive-evidence.md](CDO08-REL-22-msk-orders-s3-archive-evidence.md)
 - [CDO08-REL-22-msk-orders-s3-sink-runtime-evidence.md](CDO08-REL-22-msk-orders-s3-sink-runtime-evidence.md)
 - [CDO08-REL-22-msk-archive-readability-evidence.md](CDO08-REL-22-msk-archive-readability-evidence.md)
-- [CDO08-REL-25-MSK-ORDERS-REPLAY-DEMO-EVIDENCE.md](CDO08-REL-25-MSK-ORDERS-REPLAY-DEMO-EVIDENCE.md)
 
 Live S3 archive check ngày 2026-07-27:
 
