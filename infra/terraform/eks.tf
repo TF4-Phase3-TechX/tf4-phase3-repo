@@ -38,8 +38,7 @@ module "eks" {
     coredns = {
       configuration_values = jsonencode({
         nodeSelector = {
-          role                 = "worker"
-          "kubernetes.io/arch" = "amd64"
+          role = "worker"
         }
         resources = {
           requests = {
@@ -93,6 +92,82 @@ module "eks" {
       }
 
       # Gắn thêm các IAM policy phổ biến cho worker nodes
+      iam_role_additional_policies = {
+        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      }
+
+      labels = {
+        role                         = "worker"
+        "optimization.techx.io/tier" = "protected"
+      }
+
+      tags = var.tags
+    }
+
+    general_arm64_1a = {
+      name         = "techx-general-arm64-1a"
+      subnet_ids   = [module.vpc.private_subnets[0]]
+      min_size     = 1
+      max_size     = 2
+      desired_size = 1
+
+      instance_types = ["t4g.large"]
+      ami_type       = "AL2023_ARM_64_STANDARD"
+      capacity_type  = "ON_DEMAND"
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 20
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 125
+            delete_on_termination = true
+          }
+        }
+      }
+
+      iam_role_additional_policies = {
+        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      }
+
+      labels = {
+        role                         = "worker"
+        "optimization.techx.io/tier" = "protected"
+      }
+
+      tags = var.tags
+    }
+
+    general_arm64_1b = {
+      name         = "techx-general-arm64-1b"
+      subnet_ids   = [module.vpc.private_subnets[1]]
+      min_size     = 1
+      max_size     = 2
+      desired_size = 1
+
+      instance_types = ["t4g.large"]
+      ami_type       = "AL2023_ARM_64_STANDARD"
+      capacity_type  = "ON_DEMAND"
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 20
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 125
+            delete_on_termination = true
+          }
+        }
+      }
+
       iam_role_additional_policies = {
         AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
         CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
