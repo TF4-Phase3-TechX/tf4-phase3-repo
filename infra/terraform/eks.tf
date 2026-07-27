@@ -69,43 +69,6 @@ module "eks" {
 
   # Định nghĩa Managed Node Group chạy trong Private Subnets
   eks_managed_node_groups = {
-    general = {
-      name         = "techx-general-ng"
-      min_size     = 2
-      max_size     = 4
-      desired_size = 2
-
-      instance_types = ["t3.large"]
-      capacity_type  = "ON_DEMAND"
-
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size           = 20
-            volume_type           = "gp3"
-            iops                  = 3000
-            throughput            = 125
-            delete_on_termination = true
-          }
-        }
-      }
-
-      # Gắn thêm các IAM policy phổ biến cho worker nodes
-      iam_role_additional_policies = {
-        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-        CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-      }
-
-      labels = {
-        role                         = "worker"
-        "optimization.techx.io/tier" = "protected"
-      }
-
-      tags = var.tags
-    }
-
     general_arm64_1a = {
       name         = "techx-general-arm64-1a"
       subnet_ids   = [module.vpc.private_subnets[0]]
