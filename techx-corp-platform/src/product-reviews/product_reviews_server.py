@@ -32,6 +32,10 @@ from database import fetch_avg_product_review_score_from_db, fetch_product_revie
 import demo_pb2
 import demo_pb2_grpc
 from metrics import init_metrics, llm_metric_identity
+from llm_observability import (
+    annotate_request,
+    validate_observability_configuration,
+)
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
 from session_store import session_store
 
@@ -71,15 +75,18 @@ class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
         logger.info("ai_assistant_request", extra={"product_id": request.product_id})
         session_id = getattr(request, "session_id", "")
         user_id = getattr(request, "user_id", "guest") or "guest"
+        annotate_request("product_qa", user_id, session_id)
         return get_ai_assistant_response(request.product_id, request.question, session_id, user_id)
 
     def SearchProductsAIAssistant(self, request, context):
         logger.info("nl_search_request")
         session_id = getattr(request, "session_id", "")
         user_id = getattr(request, "user_id", "guest") or "guest"
+        annotate_request("shopping_copilot", user_id, session_id)
         return search_products_ai(request.query, session_id, user_id)
 
     def ConfirmCartAction(self, request, context):
+        annotate_request("copilot_cart_confirmation", request.user_id, request.session_id)
         return confirm_cart_action(request.user_id, request.session_id, request.confirmation_token)
 
     def Check(self, request, context):
@@ -165,6 +172,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
             "error.class": outcome.error_class or "none",
             "response.stop_reason": outcome.provider_stop_reason,
             "response.contract_stage": outcome.response_contract_stage,
+            "ai.surface": "product_qa",
             "cache.status": outcome.cache_status,
             "cache.reason": outcome.cache_reason,
         }
@@ -448,6 +456,11 @@ def _record_search_metrics(
         "llm.outcome": outcome,
         "guardrail.version": guardrail_version,
         "error.class": error_class or "none",
+        "ai.surface": (
+            "copilot_compare"
+            if operation == "compare_products"
+            else "copilot_search"
+        ),
     }
     product_review_svc_metrics["app_ai_assistant_counter"].add(1, attributes)
     # Always count the Bedrock call and record latency/tokens — even on failure —
@@ -477,6 +490,7 @@ def configure_logging(service_name: str) -> None:
 
 def main() -> None:
     global tracer, product_review_svc_metrics, product_catalog_stub, cart_stub, assistant
+    validate_observability_configuration()
     service_name = must_map_env("OTEL_SERVICE_NAME")
     api.set_provider(
         FlagdProvider(host=os.environ.get("FLAGD_HOST", "flagd"), port=int(os.environ.get("FLAGD_PORT", "8013")))
