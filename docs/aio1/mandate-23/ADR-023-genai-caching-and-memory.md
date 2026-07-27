@@ -1,11 +1,12 @@
 # ADR-023: Exact AI response caching and explicit-consent memory
 
-- Status: Proposed — named approval pending
+- Status: Accepted
 - Date: 2026-07-26
+- Accepted: 2026-07-27
 - Deadline: 2026-07-28
 - Decision owner: Nguyễn Trần Huy Vũ
 - Implementer: Nguyễn Trần Huy Vũ
-- Named reviewers: pending PR assignment
+- Named reviewers: Cái Xuân Hòa (`@XUanhoa04`), Lê Ngọc Thành Tâm (`@H1eu232`)
 
 ## Context
 
@@ -105,9 +106,12 @@ No predicted number is accepted as evidence.
 
 ## Approval record
 
-This ADR must remain `Proposed` until a named reviewer records approval on the implementation PR. Do not close the Jira ticket based on this draft.
+This ADR was accepted after two named independent reviewers approved the final
+implementation head `8a279eb`. PR #692 was subsequently squash-merged as
+`e6f571e`.
 
 | Role | Full name | Decision | Date | Approval evidence |
 |---|---|---|---|---|
-| AIO1 / decision owner | Nguyễn Trần Huy Vũ | Proposed | 2026-07-26 | Current implementation branch |
-| Independent reviewer | Pending | Pending | — | Must be added from PR review/comment |
+| AIO1 / decision owner | Nguyễn Trần Huy Vũ | Accepted | 2026-07-27 | ADR acceptance recorded in this document; [merged implementation](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/e6f571ec7a5c746f06e686b0df5ccfc9a440c5ed) |
+| Independent reviewer | Cái Xuân Hòa (`@XUanhoa04`) | Approved | 2026-07-27 | [PR approval at `8a279eb`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/692#pullrequestreview-4788865475) |
+| Independent reviewer | Lê Ngọc Thành Tâm (`@H1eu232`) | Approved | 2026-07-27 | [PR approval at `8a279eb`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/692#pullrequestreview-4788809074) |

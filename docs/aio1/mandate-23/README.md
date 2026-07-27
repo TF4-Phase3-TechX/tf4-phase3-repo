@@ -4,8 +4,8 @@
 
 The code path, unit/regression tests, additive protobuf contract, container
 closure, metrics, semantic replay harness, runtime replay, and safe
-invalidation drill are implemented on a clean `origin/main`-based branch. A
-PR/Jira link and named ADR approval are intentionally still pending.
+invalidation drill were merged to `main` in PR #692. ADR-023 has named
+approval. Jira linkage and final evidence submission remain pending.
 
 Do not close `AI MANDATE #23` until those external artifacts exist.
 
@@ -194,7 +194,7 @@ The drill records the exact row ID and original description/score, checks miss â
 
 ## Acceptance checklist
 
-- [x] Existing 173 product-review tests remain green on the clean main-based branch.
+- [x] Product-review and Mandate 23 replay suites remain green (185 tests).
 - [x] Cold miss â†’ hit with no second provider call.
 - [x] Cross-user repeat misses.
 - [x] Source/model/prompt/Guardrail/schema identity participates in keys.
@@ -214,5 +214,5 @@ The drill records the exact row ID and original description/score, checks miss â
 - [x] Frontend AI diagnostics tests (5 / 5) and Next.js production build pass.
 - [x] Helm 3.17.3 template render and Docker Compose configuration pass.
 - [ ] PR/commit linked to Jira.
-- [ ] ADR-023 has named approval.
+- [x] ADR-023 has named approval.
 - [ ] Jira ticket has the four required evidence items.

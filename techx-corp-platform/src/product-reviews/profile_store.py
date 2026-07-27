@@ -35,12 +35,17 @@ _UNSUPPORTED_MEMORY_MARKERS = (
     "địa chỉ của tôi",
 )
 _NEGATED_MEMORY_PATTERNS = (
-    r"\b(?:do not|don't|dont|never)\s+(?:remember|save|store)\b",
-    r"\b(?:do not|don't|dont|never|not|no)\b"
+    r"\b(?:do not|don['’]?t|never)\s+(?:remember|save|store|forget)\b",
+    r"\b(?:do not|don['’]?t|never|not|no)\b"
     r"(?:\s+[\w'-]+){0,6}\s+(?:remember|save|store)\b",
     r"\b(?:not|no)\s+(?:remember|save|store)\b",
-    r"(?:đừng|không)\s+(?:nhớ|lưu)\b",
-    r"(?:không\s+muốn|đừng\s+có)\s+(?:bạn\s+)?(?:nhớ|lưu)\b",
+    r"\b(?:đừng|không|chớ)\b(?:\s+[\w'-]+){0,6}\s+(?:nhớ|lưu|quên)\b",
+    r"(?:không\s+muốn|đừng\s+có)\s+(?:bạn\s+)?(?:nhớ|lưu|quên)\b",
+)
+_FORGET_MEMORY_PATTERNS = (
+    r"\bforget\s+(?:my\s+preferences|what\s+you\s+remember|it|that)\b",
+    r"\bdelete\s+my\s+preferences\b",
+    r"\b(?:quên|xóa|xoá)\s+(?:điều\s+bạn\s+nhớ|sở\s+thích\s+của\s+tôi|sở\s+thích|nó|đi)\b",
 )
 
 
@@ -69,19 +74,7 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
     if any(re.search(pattern, lowered) for pattern in _NEGATED_MEMORY_PATTERNS):
         return MemoryCommand("reject", {})
 
-    if any(
-        marker in lowered
-        for marker in (
-            "forget my preferences",
-            "forget what you remember",
-            "delete my preferences",
-            "quên sở thích của tôi",
-            "xóa điều bạn nhớ",
-            "xoá điều bạn nhớ",
-            "xóa sở thích",
-            "xoá sở thích",
-        )
-    ):
+    if any(re.search(pattern, lowered) for pattern in _FORGET_MEMORY_PATTERNS):
         return MemoryCommand("forget", {})
 
     if any(
@@ -120,8 +113,8 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
             r"^(?:please\s+)?(?:remember|save|store)\b",
             r"^(?:can|could|would)\s+you\s+(?:please\s+)?"
             r"(?:remember|save|store)\b",
-            r"^(?:hãy\s+)?nhớ\b",
-            r"^lưu\s+sở\s+thích\b",
+            r"^(?:bạn\s+)?(?:có\s+thể\s+)?(?:(?:xin\s+)?hãy\s+)?"
+            r"(?:nhớ|lưu)\b",
         )
     )
     if not explicit_consent:
@@ -131,8 +124,14 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
 
     values: dict[str, Any] = {}
     category_patterns = (
-        r"(?:preferred category|favorite category)\s*(?:is|=|:)?\s*([\w-]+)",
+        r"(?:preferred category|favou?rite category)\s*(?:is|=|:)?\s*([\w-]+)",
+        r"(?:that\s+)?i\s+(?:prefer|like|love)\s+(?:the\s+)?"
+        r"(?:category\s+)?([\w-]+)",
+        r"my\s+(?:preference|favou?rite)\s*(?:category)?\s*"
+        r"(?:is|=|:)?\s*([\w-]+)",
         r"(?:danh mục|loại sản phẩm)\s*(?:yêu thích|ưa thích)?\s*(?:là|=|:)?\s*([\w-]+)",
+        r"(?:tôi\s+(?:thích|ưa thích|ưu tiên)|sở thích của tôi\s*(?:là|=|:)?)\s+"
+        r"(?:(?:danh mục|loại sản phẩm)\s+)?([\w-]+)",
     )
     for pattern in category_patterns:
         matched = re.search(pattern, lowered, re.IGNORECASE)
@@ -142,7 +141,11 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
 
     budget_patterns = (
         r"(?:max(?:imum)? budget|budget limit)\s*(?:is|=|:)?\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+        r"(?:my\s+budget|i\s+can\s+spend)\s*(?:is|=|:|up\s+to)?\s*"
+        r"\$?\s*(\d+(?:\.\d{1,2})?)",
         r"(?:ngân sách tối đa|mức chi tối đa)\s*(?:là|=|:)?\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+        r"(?:ngân sách của tôi|tôi có thể chi)\s*(?:là|=|:|tối đa)?\s*"
+        r"\$?\s*(\d+(?:\.\d{1,2})?)",
     )
     for pattern in budget_patterns:
         matched = re.search(pattern, lowered, re.IGNORECASE)

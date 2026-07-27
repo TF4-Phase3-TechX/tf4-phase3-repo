@@ -10,18 +10,56 @@ def test_profile_requires_explicit_consent():
     assert command.values == {"preferred_category": "telescopes"}
 
 
+def test_natural_affirmative_memory_commands_are_supported():
+    for query in (
+        "Remember that I prefer telescopes",
+        "Please remember I like telescopes",
+        "Please remember my favourite category is telescopes",
+        "Can you remember that my preferred category is telescopes?",
+        "Hãy lưu danh mục yêu thích là telescopes",
+        "Lưu danh mục yêu thích là telescopes",
+        "Nhớ rằng tôi thích telescopes",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "remember", query
+        assert command.values == {"preferred_category": "telescopes"}, query
+
+
+def test_natural_budget_memory_commands_are_supported():
+    for query in (
+        "Remember my budget is $123.45",
+        "Please remember I can spend up to $123.45",
+        "Hãy lưu ngân sách của tôi là $123.45",
+        "Nhớ tôi có thể chi tối đa $123.45",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "remember", query
+        assert command.values == {"max_budget_usd_cents": 12_345}, query
+
+
 def test_negated_memory_consent_is_rejected_before_positive_matching():
     for query in (
         "Don't remember my preferred category is electronics",
+        "Don’t remember my preferred category is electronics",
         "I don't want you to remember my preferred category is electronics",
         "Please don't ever remember my preferred category is electronics",
+        "Don't forget my preferences",
         "Do not save my maximum budget is $100",
         "Đừng nhớ danh mục yêu thích là electronics",
+        "Đừng quên sở thích của tôi",
         "Không lưu ngân sách tối đa là $100",
     ):
         command = parse_memory_command(query)
         assert command.action == "reject"
         assert command.values == {}
+
+
+def test_explicit_final_forget_wins_over_earlier_remember_clause():
+    command = parse_memory_command(
+        "Remember my preferred category is telescopes, then forget it"
+    )
+    assert command.action == "forget"
+    assert command.values == {}
 
 
 def test_budget_is_stored_as_integer_cents():
