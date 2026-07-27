@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import ProductReviewService from '../../../../../services/ProductReview.service';
-import { handler } from './index';
+import ProductReviewService from '../services/ProductReview.service';
+import { handler } from '../pages/api/product-ask-ai-assistant/[productId]';
 
 type ResponseDouble = NextApiResponse & {
   cookie?: string;
@@ -10,7 +10,7 @@ type ResponseDouble = NextApiResponse & {
 };
 
 const responseDouble = (): ResponseDouble => {
-  const response = {
+  const response: any = {
     statusCode: 200,
     setHeader: (name: string, value: string) => {
       if (name === 'Set-Cookie') response.cookie = value;
@@ -25,7 +25,7 @@ const responseDouble = (): ResponseDouble => {
     },
     send: () => response,
   };
-  return response as unknown as ResponseDouble;
+  return response as ResponseDouble;
 };
 
 test('product AI route ignores a spoofed body userId and preserves the signed principal', async () => {
