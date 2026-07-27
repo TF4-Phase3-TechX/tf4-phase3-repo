@@ -49,7 +49,7 @@ BATCH_ID="${RESTORE_DRILL_ID:-unset}"
 
 trap on_exit EXIT
 
-for command in aws date jq kubectl python3 sha256sum; do
+for command in aws date jq kubectl python3; do
   command -v "$command" >/dev/null 2>&1 || fail "Missing command $command."
 done
 for variable in AWS_PROFILE EXPECTED_AWS_ACCOUNT_ID EXPECTED_KUBE_CONTEXT \
@@ -105,7 +105,10 @@ log INFO "target_guardrail_passed production_topic=orders target_topic=$TARGET_T
 phase_done
 
 phase discover_archive_window
-mapfile -t prefixes < <(
+prefixes=()
+while IFS= read -r prefix; do
+  [[ -n "$prefix" ]] && prefixes+=("$prefix")
+done < <(
   python3 "$ARCHIVE_TOOL" prefixes \
     --start-time "$START_TIME" \
     --end-time "$END_TIME" \
@@ -122,7 +125,7 @@ for prefix in "${prefixes[@]}"; do
       --bucket "$ARCHIVE_BUCKET" \
       --prefix "$prefix" \
       --query 'Contents[].Key' \
-      --output json | jq -r '.[]' | tr -d '\r'
+      --output json | jq -r '.[]? | select(test("\\.(bin|json)$"))' | tr -d '\r'
   )
 done
 (( ${#object_keys[@]} > 0 )) || fail "No archive objects found in the requested window."
