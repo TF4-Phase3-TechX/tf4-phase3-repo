@@ -244,7 +244,7 @@ resource "aws_iam_role" "ai_audit_cwl_to_firehose" {
           "aws:SourceAccount" = data.aws_caller_identity.current.account_id
         }
         ArnLike = {
-          "aws:SourceArn" = local.ai_audit_log_group_arn
+          "aws:SourceArn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${local.ai_audit_log_group_name}*"
         }
       }
     }]
