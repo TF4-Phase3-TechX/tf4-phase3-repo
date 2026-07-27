@@ -40,11 +40,10 @@ resource "aws_cloudwatch_log_stream" "ai_audit_firehose_s3_delivery" {
   log_group_name = aws_cloudwatch_log_group.ai_audit_firehose_errors.name
 }
 
-# S3 is the long-lived WORM audit archive.
+# S3 is the long-lived audit archive. Object Lock retention can be enabled manually out-of-band via Break-Glass role.
 resource "aws_s3_bucket" "ai_audit" {
-  bucket              = "tf4-ai-audit-logs-${data.aws_caller_identity.current.account_id}"
-  force_destroy       = false
-  object_lock_enabled = true
+  bucket        = "tf4-ai-audit-logs-${data.aws_caller_identity.current.account_id}"
+  force_destroy = false
 
   tags = local.ai_audit_tags
 }
@@ -55,19 +54,6 @@ resource "aws_s3_bucket_versioning" "ai_audit" {
   versioning_configuration {
     status = "Enabled"
   }
-}
-
-resource "aws_s3_bucket_object_lock_configuration" "ai_audit" {
-  bucket = aws_s3_bucket.ai_audit.id
-
-  rule {
-    default_retention {
-      mode = "COMPLIANCE"
-      days = 90
-    }
-  }
-
-  depends_on = [aws_s3_bucket_versioning.ai_audit]
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "ai_audit" {
@@ -105,7 +91,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "ai_audit" {
     }
 
     # Versioned expiration first creates a delete marker. Remove the resulting
-    # noncurrent version as soon as the 90-day COMPLIANCE retention permits.
+    # noncurrent version as soon as the 90-day retention permits.
     noncurrent_version_expiration {
       noncurrent_days = 1
     }
@@ -116,7 +102,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "ai_audit" {
   }
 
   depends_on = [
-    aws_s3_bucket_object_lock_configuration.ai_audit,
     aws_s3_bucket_versioning.ai_audit,
   ]
 }
