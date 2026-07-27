@@ -2,6 +2,17 @@
 
 Video evidence: `<DAN_LINK_VIDEO_DEMO_REL26_O_DAY>`
 
+## Phạm vi an toàn của drill
+
+Đây là restore drill ở môi trường dry-run có kiểm soát, không thực hiện xóa dữ liệu hoặc restore trực tiếp trên RDS production.
+
+Trong quá trình drill, script tạo thêm 2 RDS tạm:
+
+1. `techx-tf4-drill-rel26-20260727-accounting-source`: RDS temp source được restore từ production PITR. Đây là bản sao dùng để mô phỏng xóa nhầm.
+2. `techx-tf4-drill-rel26-20260727-accounting-restore`: RDS drill restore được restore từ PITR của RDS temp source tại thời điểm trước khi marker bị xóa.
+
+RDS production `techx-tf4-postgresql` chỉ được dùng làm nguồn PITR để tạo RDS temp source. Production không bị ghi, không bị xóa data, không bị restore đè và không bị thay đổi endpoint.
+
 ## Kết luận
 
 REL-26 restore drill đã PASS.
@@ -310,4 +321,3 @@ REL-26 đạt yêu cầu drill khôi phục dữ liệu RDS theo hướng an to�
 - Có final validation marker restored.
 - Có cleanup toàn bộ tài nguyên tạm.
 - Recovery RTO đo được: `789s`.
-
