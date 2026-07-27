@@ -21,7 +21,7 @@ dotnet build
 From the root directory, run:
 
 ```sh
-docker compose build accounting
+docker compose build accounting 
 ```
 
 ## Bump dependencies
@@ -31,3 +31,4 @@ To bump all dependencies run in Package manager:
 ```sh
 Update-Package -ProjectName Accounting
 ```
+

@@ -544,3 +544,24 @@ output "rel24_normal_operator_role_arns" {
   description = "Normal CI/operator roles denied from protected backup/archive deletion by CDO08-REL-24 controls"
   value       = local.rel24_normal_operator_role_arns
 }
+
+# Task 62 / Mandate 14 AI audit pipeline
+output "ai_audit_cloudwatch_log_group_name" {
+  description = "Dedicated CloudWatch Log Group receiving canonical ai_tool_audit records"
+  value       = aws_cloudwatch_log_group.ai_audit.name
+}
+
+output "ai_audit_firehose_delivery_stream_arn" {
+  description = "Firehose stream delivering AI audit records from CloudWatch Logs to S3"
+  value       = aws_kinesis_firehose_delivery_stream.ai_audit.arn
+}
+
+output "ai_audit_s3_bucket_name" {
+  description = "S3 Object Lock bucket holding the retained Mandate 14 AI audit copy"
+  value       = aws_s3_bucket.ai_audit.id
+}
+
+output "otel_collector_ai_audit_role_arn" {
+  description = "EKS Pod Identity role used by the OTel Collector to write the dedicated CloudWatch Log Group"
+  value       = aws_iam_role.otel_collector_ai_audit.arn
+}
