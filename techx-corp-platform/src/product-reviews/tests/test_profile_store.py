@@ -10,6 +10,18 @@ def test_profile_requires_explicit_consent():
     assert command.values == {"preferred_category": "telescopes"}
 
 
+def test_negated_memory_consent_is_rejected_before_positive_matching():
+    for query in (
+        "Don't remember my preferred category is electronics",
+        "Do not save my maximum budget is $100",
+        "Đừng nhớ danh mục yêu thích là electronics",
+        "Không lưu ngân sách tối đa là $100",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "reject"
+        assert command.values == {}
+
+
 def test_budget_is_stored_as_integer_cents():
     command = parse_memory_command("Hãy nhớ ngân sách tối đa là $123.45")
     assert command.action == "remember"

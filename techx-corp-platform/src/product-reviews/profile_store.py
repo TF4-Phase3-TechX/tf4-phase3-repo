@@ -34,6 +34,12 @@ _UNSUPPORTED_MEMORY_MARKERS = (
     "số điện thoại",
     "địa chỉ của tôi",
 )
+_NEGATED_MEMORY_PATTERNS = (
+    r"\b(?:do not|don't|dont|never)\s+(?:remember|save|store)\b",
+    r"\b(?:not|no)\s+(?:remember|save|store)\b",
+    r"(?:đừng|không)\s+(?:nhớ|lưu)\b",
+    r"(?:không\s+muốn|đừng\s+có)\s+(?:bạn\s+)?(?:nhớ|lưu)\b",
+)
 
 
 @dataclass(frozen=True)
@@ -55,6 +61,11 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
         if any(marker in lowered for marker in ("remember", "nhớ", "lưu")):
             return MemoryCommand("reject", {})
         return None
+
+    # Consent must be affirmative. Check refusals before the positive command
+    # grammar so phrases such as "don't remember ..." can never persist data.
+    if any(re.search(pattern, lowered) for pattern in _NEGATED_MEMORY_PATTERNS):
+        return MemoryCommand("reject", {})
 
     if any(
         marker in lowered
