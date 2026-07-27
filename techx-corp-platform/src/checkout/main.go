@@ -939,6 +939,8 @@ func (cs *checkout) shipOrder(ctx context.Context, address *pb.Address, items []
 	return shipResp.TrackingID, nil
 }
 
+const kafkaPublishAckTimeout = 250 * time.Millisecond
+
 func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderResult) {
 	producer := cs.getKafkaProducer()
 	if producer == nil {
@@ -963,6 +965,9 @@ func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderRes
 
 	// Send message and handle response
 	startTime := time.Now()
+	publishCtx, cancel := context.WithTimeout(ctx, kafkaPublishAckTimeout)
+	defer cancel()
+
 	select {
 	case producer.Input() <- &msg:
 		select {
@@ -980,21 +985,21 @@ func (cs *checkout) sendToPostProcessor(ctx context.Context, result *pb.OrderRes
 			)
 			span.SetStatus(otelcodes.Error, errMsg.Err.Error())
 			logger.Error(fmt.Sprintf("Failed to write message: %v", errMsg.Err))
-		case <-ctx.Done():
+		case <-publishCtx.Done():
 			span.SetAttributes(
 				attribute.Bool("messaging.kafka.producer.success", false),
 				attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
 			)
-			span.SetStatus(otelcodes.Error, "Context cancelled: "+ctx.Err().Error())
-			logger.Warn(fmt.Sprintf("Context canceled before success message received: %v", ctx.Err()))
+			span.SetStatus(otelcodes.Error, "Kafka publish ack timeout: "+publishCtx.Err().Error())
+			logger.Warn(fmt.Sprintf("Kafka publish ack not observed within %v: %v", kafkaPublishAckTimeout, publishCtx.Err()))
 		}
-	case <-ctx.Done():
+	case <-publishCtx.Done():
 		span.SetAttributes(
 			attribute.Bool("messaging.kafka.producer.success", false),
 			attribute.Int("messaging.kafka.producer.duration_ms", int(time.Since(startTime).Milliseconds())),
 		)
-		span.SetStatus(otelcodes.Error, "Failed to send: "+ctx.Err().Error())
-		logger.Error(fmt.Sprintf("Failed to send message to Kafka within context deadline: %v", ctx.Err()))
+		span.SetStatus(otelcodes.Error, "Kafka publish queue timeout: "+publishCtx.Err().Error())
+		logger.Error(fmt.Sprintf("Failed to queue Kafka message within %v: %v", kafkaPublishAckTimeout, publishCtx.Err()))
 		return
 	}
 
