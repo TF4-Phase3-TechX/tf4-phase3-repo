@@ -222,7 +222,6 @@ resource "aws_kinesis_firehose_delivery_stream" "ai_audit" {
 
   depends_on = [
     aws_iam_role_policy.ai_audit_firehose_to_s3,
-    aws_s3_bucket_lifecycle_configuration.ai_audit,
     aws_s3_bucket_policy.ai_audit,
   ]
 }
