@@ -1,6 +1,6 @@
 # CDO08-REL-26 - Evidence drill khôi phục dữ liệu accounting trên RDS
 
-Video evidence: `<DAN_LINK_VIDEO_DEMO_REL26_O_DAY>`
+Video evidence: <https://drive.google.com/file/d/1RiUMXy2-k2U8nOkDc5mLttjsxrvAQqDp/view?usp=sharing>
 
 ## Phạm vi an toàn của drill
 
