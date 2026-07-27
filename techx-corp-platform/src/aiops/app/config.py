@@ -363,6 +363,15 @@ class Settings:
                 )
         if self.saga_backend.strip().lower() == "configmap":
             raise ValueError("configmap saga backend is not implemented")
+        if (
+            self.remediation_mode == "live"
+            and self.autonomous_remediation_enabled
+            and self.saga_backend.strip().lower()
+            in {"", "memory", "mem", "none", "off"}
+        ):
+            raise ValueError(
+                "live autonomous remediation requires a durable saga backend"
+            )
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
         if (

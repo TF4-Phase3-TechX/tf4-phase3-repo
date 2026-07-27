@@ -116,7 +116,10 @@ JSONL without code changes and exercises the canonical runtime controller.
 ### Decision
 
 Persist each live remediation attempt as a durable **saga record** outside
-process memory (default offline backend: JSON files under `AIOPS_SAGA_PATH`).
+process memory (offline durable backend: JSON files under `AIOPS_SAGA_PATH` on
+an operator-provided persistent volume). The chart remains fail-safe with a
+`memory` default for dry-run; startup rejects the combination of live +
+autonomous remediation + memory saga backend.
 On AIOps startup the controller loads every non-terminal saga and applies a
 fixed decision table:
 
@@ -136,27 +139,32 @@ saga remains non-terminal.
 During the mutation/verification window AIOps annotates the target Deployment:
 
 - `aiops.techx/mutation-window` / `owned-by-incident` / window expiry
-- `argocd.argoproj.io/compare-options: IgnoreExtraneous` as an ownership marker
 
 **Application-level `ignoreDifferences` for `/spec/template` remains a CDO
 GitOps requirement** for the bounded drill window. Annotations alone do not
 pause Argo. After the live patch, AIOps compares the live template to the saga
 expected template; drift is classified as `argo_overwrite` or
 `conflicting_desired_state` and fails closed (restore original when available).
+The controller deliberately does not write Argo's reserved
+`argocd.argoproj.io/compare-options` annotation because doing so could overwrite
+an operator-owned value and does not pause self-heal.
 
 ### Cleanup / retention
 
 Terminal sagas are retained for `AIOPS_SAGA_RETENTION_HOURS` (default 72h) for
-audit; operators may prune older JSON records. Lease and Argo window
-annotations are cleared in the `finally` / resume path.
+audit. Startup automatically prunes only fully-cleaned terminal records older
+than the cutoff; non-terminal records and terminal records that still own a
+Lease/Argo window are never retention-pruned. Lease and Argo window annotations
+are cleared in the `finally` / resume path.
 
 ### Rejected alternative
 
 Embedding full saga state only in the Kubernetes Lease annotation was rejected:
 Lease TTL expiry would drop intent, payload size is limited, and verification
 samples/templates do not fit a safe Lease-only design. A full CRD reconciler is
-deferred; file/emptyDir + startup reconcile meets offline evidence level 3
-without cluster CRD promotion under freeze.
+deferred; file + persistent-volume startup reconcile meets offline evidence
+level 3 without cluster CRD promotion under freeze. `emptyDir` is explicitly
+not a durable option because it is lost on pod replacement.
 
 ### Offline evidence
 
@@ -176,6 +184,8 @@ live autonomy from TF4AIO-89 alone.
 1. Review and merge implementation.
 2. CDO names one Deployment and confirms the retained known-good ReplicaSet.
 3. Sign this ADR with full names.
-4. Promote the exact image with autonomous mode first dry-run, then live RBAC.
+4. Provision the reviewed persistent volume, set `AIOPS_SAGA_BACKEND=file` and
+   `AIOPS_SAGA_PATH`, then promote the exact image with autonomous mode first
+   dry-run, then live RBAC.
 5. Run one successful mitigation and one forced-wrong verified rollback.
 6. Attach real telemetry, audit logs and measured MTTR to TF4AIO-83.

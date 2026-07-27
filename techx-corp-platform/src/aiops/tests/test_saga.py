@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 
 from app.config import Settings
-from app.models import Incident, IncidentStatus
+from app.models import Incident, IncidentStatus, utcnow
 from app.remediation import PolicyDenied, RemediationController
 from app.saga import (
     FileSagaStore,
@@ -17,6 +18,7 @@ from app.saga import (
     SagaOutcome,
     SagaPersistenceError,
     SagaPhase,
+    argo_window_annotations,
     build_saga_store,
     decide_restart_action,
     templates_equivalent,
@@ -150,6 +152,13 @@ def test_templates_equivalent():
     assert not templates_equivalent({"x": 1}, {"x": 2})
 
 
+def test_argo_window_does_not_overwrite_reserved_argo_annotations():
+    annotations = argo_window_annotations("inc-1", utcnow().isoformat())
+
+    assert "argocd.argoproj.io/compare-options" not in annotations
+    assert annotations["aiops.techx/mutation-window"] == "inc-1"
+
+
 def test_configmap_backend_is_rejected_until_implemented(tmp_path: Path):
     with pytest.raises(ValueError, match="not implemented"):
         build_saga_store("configmap", str(tmp_path))
@@ -188,6 +197,34 @@ async def test_terminal_saga_retries_external_ownership_cleanup():
     assert reloaded.argo_window_active is False
     assert reloaded.lease_held is False
     assert reloaded.is_open is False
+
+
+@pytest.mark.asyncio
+async def test_retention_prunes_only_old_fully_cleaned_terminal_sagas(tmp_path: Path):
+    store = FileSagaStore(tmp_path)
+    old = RemediationSaga(incident_id="old", target="product-reviews")
+    old.terminate(SagaOutcome.RESOLVED)
+    old.updated_at = (utcnow() - timedelta(hours=73)).isoformat()
+    fresh = RemediationSaga(incident_id="fresh", target="product-reviews")
+    fresh.terminate(SagaOutcome.RESOLVED)
+    old_with_cleanup = RemediationSaga(
+        incident_id="old-open",
+        target="product-reviews",
+        argo_window_active=True,
+    )
+    old_with_cleanup.terminate(SagaOutcome.RESOLVED)
+    old_with_cleanup.updated_at = (utcnow() - timedelta(hours=73)).isoformat()
+    for saga in (old, fresh, old_with_cleanup):
+        await store.save(saga)
+
+    removed = await store.prune_terminal_before(
+        utcnow() - timedelta(hours=72)
+    )
+
+    assert removed == [old.saga_id]
+    assert await store.get(old.saga_id) is None
+    assert await store.get(fresh.saga_id) is not None
+    assert await store.get(old_with_cleanup.saga_id) is not None
 
 
 @pytest.mark.asyncio
@@ -333,6 +370,34 @@ async def test_restart_during_verification_restores_when_unhealthy(tmp_path: Pat
     reloaded = await store.get(saga.saga_id)
     assert reloaded.outcome == SagaOutcome.ROLLED_BACK
     assert adapter.patches[-1] == original
+
+
+@pytest.mark.asyncio
+async def test_restart_checkpoints_rollback_intent_before_restore():
+    store = MemorySagaStore()
+    adapter = TrackingAdapter()
+    adapter.current = adapter.previous
+    saga = RemediationSaga(
+        incident_id="inc-checkpoint",
+        target="product-reviews",
+        phase=SagaPhase.VERIFYING,
+        mutation_attempted=True,
+        original_template={
+            "metadata": {"labels": {"version": "current"}},
+            "spec": {"containers": [{"name": "app", "image": "bad:1"}]},
+        },
+        selected_template=adapter.previous,
+        expected_template_after_action=adapter.previous,
+    )
+    await store.save(saga)
+    store.fail_next_save = True
+    controller = make_controller(adapter, store, healthy=False)
+
+    with pytest.raises(SagaPersistenceError, match="injected save failure"):
+        await controller.reconcile_open_sagas()
+
+    # The durable rollback checkpoint failed, so recovery must not mutate.
+    assert adapter.patches == []
 
 
 @pytest.mark.asyncio

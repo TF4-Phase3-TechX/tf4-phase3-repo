@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Protocol
@@ -30,7 +31,6 @@ ARGO_OWNER_ANNOTATION = "aiops.techx/owned-by-incident"
 # Documented contract: Application-level ignoreDifferences must also cover
 # /spec/template during the window. Deployment annotations alone do not pause
 # Argo; they give AIOps an ownership marker and enable overwrite detection.
-ARGO_COMPARE_OPTIONS_ANNOTATION = "argocd.argoproj.io/compare-options"
 
 
 class SagaPhase(str, Enum):
@@ -151,6 +151,8 @@ class SagaStore(Protocol):
 
     async def list_all(self) -> list[RemediationSaga]: ...
 
+    async def prune_terminal_before(self, cutoff: datetime) -> list[str]: ...
+
 
 class SagaPersistenceError(RuntimeError):
     """Raised when durable state cannot be written; callers must fail closed."""
@@ -207,9 +209,21 @@ class MemorySagaStore:
                 for item in self._items.values()
             ]
 
+    async def prune_terminal_before(self, cutoff: datetime) -> list[str]:
+        async with self._lock:
+            removed = [
+                saga_id
+                for saga_id, item in self._items.items()
+                if not item.is_open
+                and datetime.fromisoformat(item.updated_at) < cutoff
+            ]
+            for saga_id in removed:
+                del self._items[saga_id]
+            return removed
+
 
 class FileSagaStore:
-    """JSON-file saga store (emptyDir / local path) for offline durability proofs."""
+    """JSON-file store; live use requires an operator-provided persistent volume."""
 
     def __init__(self, root: str | Path):
         self.root = Path(root)
@@ -276,6 +290,31 @@ class FileSagaStore:
                     ) from exc
             return items
 
+    async def prune_terminal_before(self, cutoff: datetime) -> list[str]:
+        """Delete only fully-cleaned terminal records older than the cutoff."""
+
+        async with self._lock:
+            removed: list[str] = []
+            for path in sorted(self.root.glob("*.json")):
+                try:
+                    saga = RemediationSaga.model_validate_json(
+                        path.read_text(encoding="utf-8")
+                    )
+                except Exception as exc:
+                    raise SagaPersistenceError(
+                        f"unreadable saga record {path}: {exc}"
+                    ) from exc
+                if saga.is_open or datetime.fromisoformat(saga.updated_at) >= cutoff:
+                    continue
+                try:
+                    path.unlink()
+                except OSError as exc:
+                    raise SagaPersistenceError(
+                        f"failed to prune saga record {path}: {exc}"
+                    ) from exc
+                removed.append(saga.saga_id)
+            return removed
+
 
 def build_saga_store(
     backend: str = "memory",
@@ -313,8 +352,6 @@ def argo_window_annotations(incident_id: str, until_iso: str) -> dict[str, str]:
         ARGO_WINDOW_ANNOTATION: incident_id,
         ARGO_WINDOW_UNTIL_ANNOTATION: until_iso,
         ARGO_OWNER_ANNOTATION: incident_id,
-        # Ownership marker only; Application ignoreDifferences is still required.
-        ARGO_COMPARE_OPTIONS_ANNOTATION: "IgnoreExtraneous",
     }
 
 

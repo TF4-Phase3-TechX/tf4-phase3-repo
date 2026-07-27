@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
@@ -14,6 +15,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from .availability import KubernetesAvailabilityClient
 from .config import Settings
 from .detection import Detector, latency_query, values
+from .models import utcnow
 from .remediation import PolicyDenied, RemediationController
 from .saga import build_saga_store
 from .store import IncidentStore
@@ -92,8 +94,22 @@ async def lifespan(_: FastAPI):
                     }
                 )
             )
+        pruned_sagas = await saga_store.prune_terminal_before(
+            utcnow() - timedelta(hours=settings.saga_retention_hours)
+        )
+        if pruned_sagas:
+            logging.getLogger("aiops.saga").info(
+                json.dumps(
+                    {
+                        "event": "startup_saga_retention_pruned",
+                        "saga_ids": pruned_sagas,
+                    }
+                )
+            )
     except Exception:
-        logging.getLogger("aiops.saga").exception("startup saga reconcile failed")
+        logging.getLogger("aiops.saga").exception(
+            "startup saga reconcile or retention failed"
+        )
         raise
     task = asyncio.create_task(worker.run())
     yield

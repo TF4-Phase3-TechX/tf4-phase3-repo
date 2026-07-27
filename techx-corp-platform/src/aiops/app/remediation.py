@@ -238,7 +238,6 @@ class KubernetesRollbackAdapter:
         """Clear AIOps ownership annotations when we still own the window."""
 
         from .saga import (
-            ARGO_COMPARE_OPTIONS_ANNOTATION,
             ARGO_OWNER_ANNOTATION,
             ARGO_WINDOW_ANNOTATION,
             ARGO_WINDOW_UNTIL_ANNOTATION,
@@ -253,7 +252,6 @@ class KubernetesRollbackAdapter:
             ARGO_WINDOW_ANNOTATION,
             ARGO_WINDOW_UNTIL_ANNOTATION,
             ARGO_OWNER_ANNOTATION,
-            ARGO_COMPARE_OPTIONS_ANNOTATION,
         ):
             annotations[key] = None
         self.api.patch_namespaced_deployment(
@@ -975,6 +973,15 @@ class RemediationController:
                     if not templates_equivalent(current, expected):
                         # Desired state conflict: Argo or operator changed template.
                         if saga.original_template is not None:
+                            # Persist rollback intent before touching the cluster.
+                            # A crash after the patch acknowledgement can then
+                            # deterministically retry the idempotent restore.
+                            saga.advance(
+                                SagaPhase.ROLLING_BACK,
+                                reason="conflicting desired state",
+                            )
+                            saga.rollback_phase = "conflict_restore_pending"
+                            await self._checkpoint(saga)
                             await self._retry(
                                 adapter.patch_template, target, saga.original_template
                             )
@@ -1000,6 +1007,12 @@ class RemediationController:
                 if verification["healthy"]:
                     saga.terminate(SagaOutcome.RESOLVED, "restart continued verification healthy")
                 elif saga.original_template is not None:
+                    saga.advance(
+                        SagaPhase.ROLLING_BACK,
+                        reason="restart verification unhealthy",
+                    )
+                    saga.rollback_phase = "restart_restore_pending"
+                    await self._checkpoint(saga)
                     await self._retry(
                         adapter.patch_template, target, saga.original_template
                     )

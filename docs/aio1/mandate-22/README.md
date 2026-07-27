@@ -29,6 +29,9 @@ python -m benchmark.saga_restart_replay \
 Proves offline restart after preflight, action ack, verification and rollback,
 plus lost Lease, conflicting desired state and incomplete records. Reviewer
 verdict is machine-readable in the report JSON. Does not enable live autonomy.
+The file backend must be mounted on persistent storage for cross-pod recovery;
+`emptyDir` and the process-local `memory` backend do not satisfy live autonomy.
+Live autonomous startup fails closed when configured with `memory`.
 
 ## Live activation
 

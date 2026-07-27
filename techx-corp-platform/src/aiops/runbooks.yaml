@@ -16,6 +16,7 @@ runbooks:
       - Latency degradation is sustained and user-facing.
       - Dry-run/preflight resolves both the current and previous templates before mutation.
       - No non-terminal durable remediation saga exists for the target (TF4AIO-89).
+      - Live autonomous mode uses a file saga backend on an operator-provided persistent volume; the memory backend is rejected.
       - Argo mutation window annotations can be applied; CDO Application ignoreDifferences covers /spec/template for the window.
     verification:
       - Deployment rollout becomes ready.
