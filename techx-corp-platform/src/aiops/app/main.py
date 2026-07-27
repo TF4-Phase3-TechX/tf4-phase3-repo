@@ -15,6 +15,7 @@ from .availability import KubernetesAvailabilityClient
 from .config import Settings
 from .detection import Detector, latency_query, values
 from .remediation import PolicyDenied, RemediationController
+from .saga import build_saga_store
 from .store import IncidentStore
 from .summary import IncidentSummaryGenerator
 from .telemetry import TelemetryClient
@@ -29,6 +30,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 settings = Settings()
 store = IncidentStore(settings.cooldown_seconds)
 telemetry = TelemetryClient(settings)
+saga_store = build_saga_store(settings.saga_backend, settings.saga_path or None)
 
 
 async def verify_service_slo(service: str) -> dict[str, object]:
@@ -59,7 +61,9 @@ async def verify_service_slo(service: str) -> dict[str, object]:
     )
 
 
-remediation = RemediationController(settings, verifier=verify_service_slo)
+remediation = RemediationController(
+    settings, verifier=verify_service_slo, saga_store=saga_store
+)
 worker = AIOpsWorker(
     settings,
     telemetry,
@@ -76,6 +80,20 @@ summary_generator = IncidentSummaryGenerator(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # TF4AIO-89: finish or fail-closed any durable sagas before accepting work.
+    try:
+        reconcile_results = await remediation.reconcile_open_sagas()
+        if reconcile_results:
+            logging.getLogger("aiops.saga").warning(
+                json.dumps(
+                    {
+                        "event": "startup_saga_reconcile",
+                        "results": reconcile_results,
+                    }
+                )
+            )
+    except Exception:
+        logging.getLogger("aiops.saga").exception("startup saga reconcile failed")
     task = asyncio.create_task(worker.run())
     yield
     worker.stop()

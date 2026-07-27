@@ -76,7 +76,7 @@ JSONL without code changes and exercises the canonical runtime controller.
 1. **Process-local quarantine.** Post-mutation safety quarantine survives incident
    auto-resolve but is lost on pod restart. This is acceptable only while
    autonomous live mode is disabled. A durable saga or CRD-backed quarantine is
-   required before sustained live autonomous operation.
+   required before sustained live autonomous operation (see TF4AIO-89 below).
 2. **Target-scoped verification.** Post-action SLO verification is scoped to the
    mutated service only. Cross-service or end-to-end dependency guards (e.g.
    checkout/storefront error rate) are not silently applied; they require an
@@ -85,20 +85,15 @@ JSONL without code changes and exercises the canonical runtime controller.
    unless `AIOPS_KNOWN_GOOD_REVISIONS` includes the target. Dry-run may still
    resolve `owned[1]` as a candidate for operator review; that candidate is not
    treated as proven known-good.
-4. **Orphan mutation on pod crash.** If the AIOps pod crashes after
-   `action_executed` but before verification completes, the in-memory incident,
-   quarantine and lock state are lost. The Kubernetes Lease expires after its
-   TTL, but no automatic rollback or escalation occurs for the orphaned
-   mutation. Argo CD / GitOps eventual sync is the only recovery. This is
-   acceptable only while autonomous live mode is disabled; a durable
-   checkpoint/saga is required before sustained operation.
-5. **No Argo CD self-heal coordination.** During the post-action verification
-   window, Argo CD self-heal may detect the live-state drift and sync the
-   Deployment back to its Git-declared spec, overwriting the AIOps mutation or
-   rollback. The Kubernetes Lease prevents only AIOps-vs-AIOps conflicts, not
-   Argo overwrites. CDO must either disable self-heal for target Deployments
-   during autonomous windows or add an Argo sync-ignore annotation before
-   enabling live autonomous mode.
+4. **Orphan mutation on pod crash (mitigated by TF4AIO-89).** Without a durable
+   saga, a crash after `action_executed` loses in-memory state. TF4AIO-89 adds
+   durable checkpoints and startup reconcile so verification/restore can continue
+   without a second mutation. Process-local quarantine alone remains insufficient
+   for sustained live autonomy.
+5. **Argo CD self-heal race (mitigated by TF4AIO-89 contract).** During the
+   verification window Argo may overwrite the mutation. TF4AIO-89 opens an
+   ownership annotation window and fail-closed on template drift; Application-level
+   `ignoreDifferences` for `/spec/template` remains a CDO GitOps requirement.
 6. **`mutation_blocked` is post-mutation only.** Pre-mutation policy denials
    (missing evidence, lease held, low confidence, missing pin) escalate without
    setting `mutation_blocked` so recovery can clear the incident and a later
@@ -108,15 +103,73 @@ JSONL without code changes and exercises the canonical runtime controller.
    Prometheus evidence once before preflight; the controller does not re-query
    immediately before the live patch. The bounded single-service window is
    seconds-long; a mid-flight telemetry loss after authorize is accepted under
-   dry-run / freeze constraints and remains a follow-up for durable saga work.
+   dry-run / freeze constraints.
 8. **Ambiguous live patch outcome.** A Kubernetes client timeout can occur after
    the API server committed the patch. The controller therefore performs one
    live patch attempt only. Any exception after the attempt is classified as
    `action_outcome_unknown`, blocks further mutation and quarantines the target
    for operator reconciliation; it is never treated as a safe pre-mutation
-   failure. This fail-closed response cannot determine the actual cluster state
-   by itself. Durable read-after-write reconciliation remains part of
-   TF4AIO-89.
+   failure. Durable read-after-write reconciliation is part of TF4AIO-89.
+
+## Durable saga and Argo coordination (TF4AIO-89)
+
+### Decision
+
+Persist each live remediation attempt as a durable **saga record** outside
+process memory (default offline backend: JSON files under `AIOPS_SAGA_PATH`).
+On AIOps startup the controller loads every non-terminal saga and applies a
+fixed decision table:
+
+| Crash phase | Restart action |
+|---|---|
+| preflight / lease / argo window (no mutation flag) | Abandon; never mutate |
+| action acknowledged / verifying | Continue verification; never re-patch the known-good template |
+| verifying unhealthy or rolling back | Restore captured original template and re-verify |
+| incomplete post-mutation record | Fail closed, escalate, `mutation_blocked` |
+| Lease not re-acquirable | Fail closed; refuse second mutation |
+
+One open saga per target is enforced: a second incident cannot start while a
+saga remains non-terminal.
+
+### Argo CD contract
+
+During the mutation/verification window AIOps annotates the target Deployment:
+
+- `aiops.techx/mutation-window` / `owned-by-incident` / window expiry
+- `argocd.argoproj.io/compare-options: IgnoreExtraneous` as an ownership marker
+
+**Application-level `ignoreDifferences` for `/spec/template` remains a CDO
+GitOps requirement** for the bounded drill window. Annotations alone do not
+pause Argo. After the live patch, AIOps compares the live template to the saga
+expected template; drift is classified as `argo_overwrite` or
+`conflicting_desired_state` and fails closed (restore original when available).
+
+### Cleanup / retention
+
+Terminal sagas are retained for `AIOPS_SAGA_RETENTION_HOURS` (default 72h) for
+audit; operators may prune older JSON records. Lease and Argo window
+annotations are cleared in the `finally` / resume path.
+
+### Rejected alternative
+
+Embedding full saga state only in the Kubernetes Lease annotation was rejected:
+Lease TTL expiry would drop intent, payload size is limited, and verification
+samples/templates do not fit a safe Lease-only design. A full CRD reconciler is
+deferred; file/emptyDir + startup reconcile meets offline evidence level 3
+without cluster CRD promotion under freeze.
+
+### Offline evidence
+
+```bash
+cd techx-corp-platform/src/aiops
+python -m pytest tests/test_saga.py -q
+python -m benchmark.saga_restart_replay \
+  ../../../docs/aio1/mandate-22/saga-restart-cases-v1.jsonl \
+  --output ../../../docs/aio1/mandate-22/saga-restart-report.json
+```
+
+Claim boundary unchanged: offline/integration only. Do not enable sustained
+live autonomy from TF4AIO-89 alone.
 
 ## Activation gates
 

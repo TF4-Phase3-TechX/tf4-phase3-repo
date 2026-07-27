@@ -16,6 +16,20 @@ verified rollback, and unhealthy rollback with mutation block plus escalation.
 The harness imports the production `RemediationController`; only Kubernetes and
 telemetry are bounded adapters. This does not claim a live pass.
 
+## Durable saga restart gate (TF4AIO-89)
+
+```bash
+cd techx-corp-platform/src/aiops
+python -m pytest tests/test_saga.py -q
+python -m benchmark.saga_restart_replay \
+  ../../../docs/aio1/mandate-22/saga-restart-cases-v1.jsonl \
+  --output ../../../docs/aio1/mandate-22/saga-restart-report.json
+```
+
+Proves offline restart after preflight, action ack, verification and rollback,
+plus lost Lease, conflicting desired state and incomplete records. Reviewer
+verdict is machine-readable in the report JSON. Does not enable live autonomy.
+
 ## Live activation
 
 Default chart values remain `dry-run`, autonomous mode false and patch RBAC
