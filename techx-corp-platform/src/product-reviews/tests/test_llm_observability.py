@@ -31,8 +31,27 @@ def test_pseudonym_is_stable_bounded_and_salted(monkeypatch):
     assert "customer" not in first
 
 
+def test_pseudonym_fails_closed_without_dedicated_salt(monkeypatch):
+    monkeypatch.setenv("LLM_OBSERVABILITY_ENABLED", "true")
+    monkeypatch.delenv("LLM_OBSERVABILITY_HASH_SALT", raising=False)
+    monkeypatch.setenv("BEDROCK_SYSTEM_CANARY", "must-not-be-reused")
+
+    with pytest.raises(RuntimeError, match="hash_salt_missing"):
+        llm_observability.pseudonymize("customer-123")
+
+
+def test_disabled_local_observability_does_not_require_runtime_secret(
+    monkeypatch,
+):
+    monkeypatch.setenv("LLM_OBSERVABILITY_ENABLED", "false")
+    monkeypatch.delenv("LLM_OBSERVABILITY_HASH_SALT", raising=False)
+
+    llm_observability.validate_observability_configuration()
+
+
 def test_request_annotation_retains_only_pseudonyms(monkeypatch, spans):
     tracer, exporter = spans
+    monkeypatch.setenv("LLM_OBSERVABILITY_ENABLED", "true")
     monkeypatch.setenv("LLM_OBSERVABILITY_HASH_SALT", "test-only-salt")
 
     with tracer.start_as_current_span("request"):
@@ -48,6 +67,23 @@ def test_request_annotation_retains_only_pseudonyms(monkeypatch, spans):
     assert span.attributes["app.content.retained"] is False
     assert "raw-user" not in str(span.attributes)
     assert "raw-session" not in str(span.attributes)
+
+
+def test_enabled_request_annotation_fails_before_collapsing_identities(
+    monkeypatch,
+    spans,
+):
+    tracer, _ = spans
+    monkeypatch.setenv("LLM_OBSERVABILITY_ENABLED", "true")
+    monkeypatch.delenv("LLM_OBSERVABILITY_HASH_SALT", raising=False)
+
+    with tracer.start_as_current_span("request"):
+        with pytest.raises(RuntimeError, match="hash_salt_missing"):
+            llm_observability.annotate_request(
+                "shopping_copilot",
+                "raw-user",
+                "raw-session",
+            )
 
 
 def test_model_span_records_usage_cost_and_safe_contract_metadata(

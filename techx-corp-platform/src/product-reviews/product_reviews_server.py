@@ -32,7 +32,10 @@ from database import fetch_avg_product_review_score_from_db, fetch_product_revie
 import demo_pb2
 import demo_pb2_grpc
 from metrics import init_metrics, llm_metric_identity
-from llm_observability import annotate_request
+from llm_observability import (
+    annotate_request,
+    validate_observability_configuration,
+)
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
 from session_store import session_store
 
@@ -350,6 +353,7 @@ def configure_logging(service_name: str) -> None:
 
 def main() -> None:
     global tracer, product_review_svc_metrics, product_catalog_stub, cart_stub, assistant
+    validate_observability_configuration()
     service_name = must_map_env("OTEL_SERVICE_NAME")
     api.set_provider(
         FlagdProvider(host=os.environ.get("FLAGD_HOST", "flagd"), port=int(os.environ.get("FLAGD_PORT", "8013")))

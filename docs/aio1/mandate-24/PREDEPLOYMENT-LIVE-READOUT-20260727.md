@@ -59,4 +59,3 @@ Argo Application listing is also forbidden to this role.
 5. Fetch both traces, run aggregate/privacy/overhead checks and record the
    deployed image digest plus Argo revision.
 6. Obtain the named ADR approvals.
-

@@ -16,6 +16,25 @@ from opentelemetry.trace import SpanKind, Status, StatusCode
 _TRACER = trace.get_tracer("product-reviews.llm-observability")
 
 
+def observability_enabled() -> bool:
+    """Return whether the identity-bearing Mandate 24 contract is active."""
+    configured = os.environ.get("LLM_OBSERVABILITY_ENABLED")
+    if configured is not None:
+        return configured.strip().lower() in {"1", "true", "yes", "on"}
+    return os.environ.get("APP_ENV", "local").strip().lower() in {
+        "production",
+        "staging",
+    }
+
+
+def validate_observability_configuration() -> None:
+    """Fail service startup when the enabled identity contract lacks its salt."""
+    if observability_enabled() and not os.environ.get(
+        "LLM_OBSERVABILITY_HASH_SALT"
+    ):
+        raise RuntimeError("llm_observability_hash_salt_missing")
+
+
 def current_trace_id() -> str:
     """Return the active W3C trace ID, or the all-zero sentinel without a span."""
     context = trace.get_current_span().get_span_context()
@@ -26,12 +45,8 @@ def pseudonymize(value: str) -> str:
     """Return a bounded pseudonym without retaining the caller-supplied value."""
     if not value:
         return "absent"
-    salt = (
-        os.environ.get("LLM_OBSERVABILITY_HASH_SALT")
-        or os.environ.get("BEDROCK_SYSTEM_CANARY")
-    )
-    if not salt:
-        return "unavailable"
+    validate_observability_configuration()
+    salt = os.environ["LLM_OBSERVABILITY_HASH_SALT"]
     digest = hmac.new(
         salt.encode("utf-8"),
         value.encode("utf-8"),
@@ -44,6 +59,11 @@ def annotate_request(surface: str, user_id: str, session_id: str) -> str:
     """Attach only bounded metadata to the active request span."""
     span = trace.get_current_span()
     span.set_attribute("app.ai.surface", surface)
+    enabled = observability_enabled()
+    span.set_attribute("app.ai.observability.enabled", enabled)
+    if not enabled:
+        span.set_attribute("app.content.retained", False)
+        return current_trace_id()
     span.set_attribute("app.user.pseudonym", pseudonymize(user_id))
     span.set_attribute("app.session.pseudonym", pseudonymize(session_id))
     span.set_attribute("app.content.retained", False)
@@ -77,10 +97,12 @@ def _record_model_result(span: Any, value: Any, outcome: str) -> None:
         "app.ai.latency_ms",
         float(metadata.get("latency_ms", getattr(value, "latency_ms", 0))),
     )
-    span.set_attribute(
-        "gen_ai.response.finish_reasons",
-        [str(getattr(value, "stop_reason", "not_received"))[:64]],
+    stop_reason = (
+        value.get("stopReason", "not_received")
+        if isinstance(value, dict)
+        else getattr(value, "stop_reason", "not_received")
     )
+    span.set_attribute("gen_ai.response.finish_reasons", [str(stop_reason)[:64]])
     span.set_attribute(
         "app.ai.response_contract_stage",
         str(getattr(value, "contract_stage", "not_applicable"))[:64],

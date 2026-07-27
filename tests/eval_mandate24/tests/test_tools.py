@@ -63,12 +63,19 @@ def test_fetch_trace_requires_exact_returned_id(monkeypatch):
 
 
 def test_aggregate_uses_model_surface_and_time_window(monkeypatch):
+    valid_result = [{
+        "metric": {
+            "llm_model": "us.amazon.nova-2-lite-v1:0",
+            "ai_surface": "shopping_copilot",
+        },
+        "value": [1_722_000_000, "1.25"],
+    }]
     monkeypatch.setattr(
         aggregate.urllib.request,
         "urlopen",
         lambda *_args, **_kwargs: JsonResponse({
             "status": "success",
-            "data": {"result": []},
+            "data": {"result": valid_result},
         }),
     )
 
@@ -79,6 +86,31 @@ def test_aggregate_uses_model_surface_and_time_window(monkeypatch):
     assert all("[1h]" in item["promql"] for item in report["queries"])
     with pytest.raises(ValueError):
         aggregate.aggregate("http://prometheus", "1 hour")
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        [],
+        [{"metric": {"llm_model": "model"}, "value": [1, "1"]}],
+        [{
+            "metric": {"llm_model": "model", "ai_surface": "surface"},
+            "value": [1, "NaN"],
+        }],
+    ],
+)
+def test_aggregate_rejects_incomplete_runtime_evidence(monkeypatch, result):
+    monkeypatch.setattr(
+        aggregate.urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: JsonResponse({
+            "status": "success",
+            "data": {"result": result},
+        }),
+    )
+
+    with pytest.raises(RuntimeError):
+        aggregate.aggregate("http://prometheus", "1h")
 
 
 def test_marker_absence_report_never_retains_marker(monkeypatch, tmp_path):

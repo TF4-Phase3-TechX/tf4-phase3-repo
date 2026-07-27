@@ -959,7 +959,29 @@ class BedrockAdapter:
                 self.breaker.failure(self.clock())
             raise ProviderFailure(error_name[:64]) from exc
 
-    @trace_model_call("search_intent", "emit_search_intent", "intent_breaker")
+    @trace_model_call("search_intent", "emit_search_intent")
+    def _invoke_search_intent_attempt(
+        self,
+        request: dict[str, Any],
+    ) -> Any:
+        """Invoke exactly one provider attempt so each retry gets its own span."""
+        started = time.monotonic()
+        try:
+            response = self.client.converse(**request)
+        except Exception as exc:
+            exc.latency_ms = (time.monotonic() - started) * 1_000
+            raise
+        if not isinstance(response, dict):
+            return response
+        traced_response = response.copy()
+        usage = response.get("usage", {})
+        traced_response["_metadata"] = {
+            "latency_ms": (time.monotonic() - started) * 1_000,
+            "input_tokens": int(usage.get("inputTokens", 0)),
+            "output_tokens": int(usage.get("outputTokens", 0)),
+        }
+        return traced_response
+
     def parse_search_intent(
         self,
         query: str,
@@ -972,9 +994,9 @@ class BedrockAdapter:
         Returns validated intent dict with _metadata (latency_ms, input_tokens, output_tokens).
         Raises ProviderFailure on any contract violation so the caller can fail closed.
         """
-        started = (
-            self.clock() if _provider_started_at is None else _provider_started_at
-        )
+        started = self.clock() if _provider_started_at is None else _provider_started_at
+        if _provider_started_at is None:
+            self.intent_breaker.before_call(started)
         try:
             messages = []
             if history:
@@ -1045,7 +1067,7 @@ class BedrockAdapter:
             response = None
             for attempt in range(2):
                 try:
-                    response = self.client.converse(**request)
+                    response = self._invoke_search_intent_attempt(request)
                     break
                 except Exception as exc:
                     if attempt == 1:

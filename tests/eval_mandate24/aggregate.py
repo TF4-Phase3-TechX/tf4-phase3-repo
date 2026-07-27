@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import urllib.parse
 import urllib.request
@@ -36,6 +37,32 @@ def prom_query(prometheus_url: str, query: str) -> list[dict[str, Any]]:
     return payload.get("data", {}).get("result", [])
 
 
+def validate_result(metric_name: str, result: list[dict[str, Any]]) -> None:
+    """Reject incomplete Prometheus evidence instead of publishing false proof."""
+    if not result:
+        raise RuntimeError(f"{metric_name}: Prometheus returned no samples")
+    for index, sample in enumerate(result):
+        labels = sample.get("metric")
+        if not isinstance(labels, dict):
+            raise RuntimeError(f"{metric_name}[{index}]: metric labels missing")
+        for label_name in ("llm_model", "ai_surface"):
+            if not str(labels.get(label_name, "")).strip():
+                raise RuntimeError(
+                    f"{metric_name}[{index}]: {label_name} label missing"
+                )
+        value = sample.get("value")
+        if not isinstance(value, list) or len(value) != 2:
+            raise RuntimeError(f"{metric_name}[{index}]: instant value missing")
+        try:
+            numeric_value = float(value[1])
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"{metric_name}[{index}]: sample is not numeric"
+            ) from exc
+        if not math.isfinite(numeric_value):
+            raise RuntimeError(f"{metric_name}[{index}]: sample is not finite")
+
+
 def aggregate(prometheus_url: str, window: str) -> dict[str, Any]:
     if not WINDOW_RE.fullmatch(window):
         raise ValueError("window must look like 30m, 1h, or 7d")
@@ -55,18 +82,22 @@ def aggregate(prometheus_url: str, window: str) -> dict[str, Any]:
             f"(rate(app_llm_latency_seconds_bucket{selector}[{window}])))"
         ),
     }
+    query_results = []
+    for metric, query in queries.items():
+        result = prom_query(prometheus_url, query)
+        validate_result(metric, result)
+        query_results.append(
+            {
+                "metric": metric,
+                "promql": query,
+                "result": result,
+            }
+        )
     return {
         "schema_version": "mandate24-aggregate-v1",
         "window": window,
         "source": prometheus_url,
-        "queries": [
-            {
-                "metric": metric,
-                "promql": query,
-                "result": prom_query(prometheus_url, query),
-            }
-            for metric, query in queries.items()
-        ],
+        "queries": query_results,
     }
 
 

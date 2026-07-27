@@ -30,6 +30,8 @@ components:
           secretKeyRef:
             name: product-reviews-llm-observability
             key: hash-salt
+      - name: LLM_OBSERVABILITY_ENABLED
+        value: "true"
       - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
         value: "false"
     securityContext:
