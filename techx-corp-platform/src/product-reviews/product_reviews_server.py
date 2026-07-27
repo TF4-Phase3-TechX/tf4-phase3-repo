@@ -31,6 +31,7 @@ from database import fetch_avg_product_review_score_from_db, fetch_product_revie
 import demo_pb2
 import demo_pb2_grpc
 from metrics import init_metrics, llm_metric_identity
+from resilience_control import FaultController, ResilienceControlHandler
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
 from session_store import session_store
 
@@ -52,8 +53,17 @@ def must_map_env(key: str) -> str:
     return value
 
 
-def check_feature_flag(flag_name: str) -> bool:
-    return api.get_client().get_boolean_value(flag_name, False)
+def active_ai_fault(controller: FaultController) -> str:
+    """Prefer the bounded app drill while preserving BTC flagd read-only flags."""
+    controlled = controller.current_mode()
+    if controlled != "off":
+        return controlled
+    client = api.get_client()
+    if client.get_boolean_value("llmRateLimitError", False):
+        return "throttling"
+    if client.get_boolean_value("llmInaccurateResponse", False):
+        return "malformed_output"
+    return "off"
 
 
 class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
@@ -321,7 +331,10 @@ def main() -> None:
     global tracer, product_review_svc_metrics, product_catalog_stub, cart_stub, assistant
     service_name = must_map_env("OTEL_SERVICE_NAME")
     api.set_provider(
-        FlagdProvider(host=os.environ.get("FLAGD_HOST", "flagd"), port=int(os.environ.get("FLAGD_PORT", "8013")))
+        FlagdProvider(
+            host=os.environ.get("FLAGD_HOST", "flagd"),
+            port=int(os.environ.get("FLAGD_PORT", "8013")),
+        )
     )
     tracer = trace.get_tracer_provider().get_tracer(service_name)
     product_review_svc_metrics = init_metrics(metrics.get_meter_provider().get_meter(service_name))
@@ -334,6 +347,11 @@ def main() -> None:
         grpc.insecure_channel(must_map_env("CART_ADDR"))
     )
     system_canary = os.environ.get("BEDROCK_SYSTEM_CANARY", "")
+    fault_controller = FaultController(
+        max_ttl_seconds=int(
+            os.environ.get("MANDATE25_MAX_FAULT_TTL_SECONDS", "120")
+        )
+    )
     provider = BedrockAdapter(
         model_id=must_map_env("BEDROCK_MODEL_ID"),
         guardrail_id=must_map_env("BEDROCK_GUARDRAIL_ID"),
@@ -342,6 +360,11 @@ def main() -> None:
         output_mode=os.environ.get("BEDROCK_OUTPUT_MODE", "json_schema"),
         deadline_seconds=float(os.environ.get("BEDROCK_DEADLINE_SECONDS", "4.5")),
         system_canary=system_canary,
+        max_attempts=int(os.environ.get("BEDROCK_MAX_ATTEMPTS", "2")),
+        retry_backoff_seconds=float(
+            os.environ.get("BEDROCK_RETRY_BACKOFF_SECONDS", "0.1")
+        ),
+        fault_source=lambda: active_ai_fault(fault_controller),
     )
     assistant = GroundedAssistant(
         provider=provider,
@@ -362,6 +385,14 @@ def main() -> None:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
     service = ProductReviewService()
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
+    server.add_generic_rpc_handlers(
+        (
+            ResilienceControlHandler(
+                fault_controller,
+                status_source=provider.resilience_snapshot,
+            ),
+        )
+    )
     port = must_map_env("PRODUCT_REVIEWS_PORT")
     server.add_insecure_port(f"[::]:{port}")
     server.start()

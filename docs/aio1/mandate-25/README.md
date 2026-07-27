@@ -1,33 +1,76 @@
-# Mandate 25: LLM resilience and fault injection
+# Mandate 25: AI resilience and controlled fallback
 
-## Purpose
+**Jira:** TF4AIO-86
 
-Protect the AI Copilot from transient provider failures and malformed model
-output through bounded SDK retries, an application circuit breaker, honest
-fallback, and externally controlled feature flags.
+**Owner:** Tất Văn
 
-## Implementation
+**Evidence status:** implemented and tested offline; runtime proof pending
 
-1. Boto3 uses bounded standard-mode retries for transient HTTP failures.
-2. The application circuit opens after repeated availability failures and
-   fast-fails during its cooldown.
-3. The UI displays a deterministic degraded state instead of fabricated data.
-4. OpenFeature/flagd controls `llmRateLimitError` and
-   `llmInaccurateResponse`. Injection occurs inside the adapter provider
-   boundary so the normal breaker and fallback code paths are exercised.
+## What is implemented
 
-## Evidence boundary
+- explicit two-attempt application retry with bounded backoff and deadline;
+- normalized timeout, throttling, and provider-5xx errors;
+- circuit open, fast-fail, cooldown, and recovery;
+- honest unavailable/insufficient responses;
+- malformed tool-shaped model output rejected before any action;
+- token-protected, TTL-bounded external gRPC fault control;
+- content-free resilience status used by `/api/copilot-health`;
+- no flagd mutation.
 
-The committed unit tests are offline level-3 evidence. The control script
-`scripts/inject_mandate25_faults.sh` is not proof that a deployed drill ran.
+## External drill
 
-Runtime level 5 remains pending until a sanitized artifact tied to the exact
-deployed SHA records:
+Provision the approved runtime secret:
 
-- flag state transitions;
-- repeated request outcomes and the circuit-open transition;
-- fast-fail fallback behavior;
-- recovery after the flag is disabled and cooldown elapses;
-- timestamps and the runtime revision.
+```text
+Secret: product-reviews-mandate25-control
+Key: token
+Environment: MANDATE25_FAULT_TOKEN
+```
 
-Related branch: `aio01/feat/mandate25-resilience`.
+Port-forward the deployed Product Reviews service and export the same token:
+
+```bash
+kubectl -n techx-tf4 port-forward svc/product-reviews 3551:3551
+export MANDATE25_TARGET=127.0.0.1:3551
+export MANDATE25_FAULT_TOKEN='<runtime secret>'
+```
+
+Run one bounded fault window around an external replay command:
+
+```bash
+./scripts/inject_mandate25_faults.sh throttling -- \
+  python -m tests.eval_mandate24.replay \
+  tests/eval_mandate24/sample-requests.jsonl \
+  --target 127.0.0.1:3551 \
+  --output /tmp/m25-throttling.jsonl
+```
+
+Supported modes are `timeout`, `throttling`, `provider_5xx`, and
+`malformed_output`. The script:
+
+1. sets a fault with a maximum 120-second TTL;
+2. reads back effective fault and circuit state;
+3. runs the supplied command;
+4. restores `off` and reads back the restored state on every exit path.
+
+Status-only and emergency restore commands:
+
+```bash
+./scripts/inject_mandate25_faults.sh status
+./scripts/inject_mandate25_faults.sh recover
+```
+
+## Required runtime evidence
+
+Record the exact deployed image/Argo revision and sanitized outputs for:
+
+1. single timeout, throttling, and 5xx fallback without 500/hang;
+2. exact attempt count and bounded latency;
+3. sustained failures causing `circuit_state=open`;
+4. fast-fail with no provider attempt;
+5. cooldown plus a successful real-provider recovery;
+6. malformed output returning an honest insufficient response with no action;
+7. final effective readback showing `fault.mode=off`;
+8. named ADR acceptance.
+
+Do not call the mandate Done from unit tests or the control script alone.

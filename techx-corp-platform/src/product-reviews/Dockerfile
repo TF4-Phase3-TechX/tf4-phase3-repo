@@ -34,6 +34,7 @@ COPY ./src/product-reviews/safety.py safety.py
 COPY ./src/product-reviews/session_store.py session_store.py
 COPY ./src/product-reviews/router.py router.py
 COPY ./src/product-reviews/copilot_review_summary.py copilot_review_summary.py
+COPY ./src/product-reviews/resilience_control.py resilience_control.py
 
 EXPOSE ${PRODUCT_REVIEWS_PORT}
 ENTRYPOINT [ "/venv/bin/opentelemetry-instrument", "/venv/bin/python", "product_reviews_server.py" ]

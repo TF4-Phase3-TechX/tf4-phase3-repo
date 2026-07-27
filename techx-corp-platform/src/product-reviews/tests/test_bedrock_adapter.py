@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from botocore.exceptions import ClientError
 
 from bedrock_adapter import BedrockAdapter, CircuitBreaker, CircuitOpen, ProviderFailure
 
@@ -207,30 +208,82 @@ def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
     breaker.before_call(65)
 
 
-def test_rate_limit_fault_injection_trips_the_real_circuit(monkeypatch):
-    class Flags:
-        def get_boolean_value(self, name, default):
-            return name == "llmRateLimitError"
+def test_provider_retry_is_bounded_and_normalizes_client_error(monkeypatch):
+    class ThrottledClient:
+        def __init__(self):
+            self.calls = 0
 
-    monkeypatch.setattr("openfeature.api.get_client", lambda: Flags())
-    client = FakeClient(tool_response_with({"decision": "insufficient", "answer": "", "citations": []}))
+        def converse(self, **_request):
+            self.calls += 1
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ThrottlingException",
+                        "Message": "rate exceeded",
+                    }
+                },
+                "Converse",
+            )
+
+    client = ThrottledClient()
+    subject = adapter(
+        client,
+        max_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        subject.converse("q", {}, [{}])
+
+    assert client.calls == 2
+    assert exc_info.value.error_class == "throttlingexception"
+    assert subject.resilience_snapshot()["last_provider_error"] == (
+        "throttlingexception"
+    )
+
+
+def test_injected_throttle_opens_fast_fails_and_recovers_after_cooldown():
+    fault_mode = ["throttling"]
+    now = [0.0]
+    client = FakeClient(
+        tool_response_with(
+            {"decision": "insufficient", "answer": "", "citations": []}
+        )
+    )
     breaker = CircuitBreaker(threshold=2, window_seconds=30, cooldown_seconds=60)
-    clock_values = iter((0.0, 0.0, 1.0, 1.0, 2.0))
     subject = adapter(
         client,
         output_mode="tool",
         circuit_breaker=breaker,
-        clock=lambda: next(clock_values),
+        clock=lambda: now[0],
+        max_attempts=1,
+        retry_backoff_seconds=0,
+        fault_source=lambda: fault_mode[0],
     )
 
-    with pytest.raises(ProviderFailure):
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
         subject.converse("q", {}, [{}])
-    with pytest.raises(ProviderFailure):
+    now[0] = 1.0
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
         subject.converse("q", {}, [{}])
+    now[0] = 2.0
     with pytest.raises(CircuitOpen):
         subject.converse("q", {}, [{}])
 
     assert client.request is None
+    assert subject.resilience_snapshot()["circuit_state"] == "open"
+
+    fault_mode[0] = "off"
+    now[0] = 62.0
+    result = subject.converse("q", {}, [{}])
+
+    assert result.payload["decision"] == "insufficient"
+    assert client.request is not None
+    assert subject.resilience_snapshot() == {
+        "circuit_state": "closed",
+        "last_provider_outcome": "success",
+        "last_provider_error": "none",
+    }
 
 
 def test_rejects_draft_guardrail():

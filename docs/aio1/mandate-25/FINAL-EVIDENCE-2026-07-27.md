@@ -1,39 +1,36 @@
-# Mandate 25 final evidence packet — 2026-07-27
+# Mandate 25 evidence packet — 2026-07-27
 
-Canonical Jira: [TF4AIO-34](https://aio1-xbrain.atlassian.net/browse/TF4AIO-34)
+Canonical Jira: [TF4AIO-86](https://aio1-xbrain.atlassian.net/browse/TF4AIO-86)
 
-## Submission verdict
+## Current verdict
 
-Current evidence is level 3: implemented and tested offline. Runtime level 5 is
-not established because no committed drill log proves the deployed revision,
-flag transition, circuit opening, fallback response, recovery, and timestamps.
+Evidence level 3: implemented and tested offline. No level-4 deployment,
+level-5 runtime observation, or level-6 acceptance is claimed.
 
-The implementation included:
-- **Boto3 Capped Retry**: 3 automatic retries for transient HTTP errors.
-- **Circuit Breaker**: Fast failure activation upon exhausting retries.
-- **Honest Fallback**: Graceful degradation UI response instead of unhandled exceptions.
-- **Chaos Engineering**: Real-time fault injection using `flagd` feature flags (`llmRateLimitError`, `llmInaccurateResponse`).
+## Implemented artifact
 
-Offline tests prove that injected throttling failures pass through the real
-circuit-breaker accounting path and eventually fast-fail. This does not yet
-prove deployed UI behavior or recovery.
+- explicit capped retry/backoff in `bedrock_adapter.py`;
+- normalized provider error and circuit state contract;
+- `resilience_control.py` token/TTL/readback/auto-expiry control;
+- `inject_mandate25_faults.sh` bounded external drill wrapper;
+- provider/circuit-aware frontend health route;
+- offline tests for retry cap, ClientError normalization, open/fast-fail,
+  cooldown recovery, malformed-output no-action, authorization, TTL expiry,
+  external gRPC readback, and restoration.
 
-## 1. PRs and commits
+## Safety boundary
 
-### Application
+This implementation does not mutate flagd. `SetFault` fails closed when the
+dedicated token is absent. Fault state is process-local, allow-listed, and
+expires after at most 120 seconds.
 
-- Branch `aio01/feat/mandate25-resilience`
-- Commit: `fix(aio01): resolve infrastructure build failures, add missing router to Dockerfile, and wire up flagd chaos injection for Mandate 25`
+## Still required
 
-## 2. Evidence
+- merge and deploy the reviewed SHA;
+- provision the dedicated control Secret through the approved path;
+- run timeout/429/5xx and malformed-output drills externally;
+- capture exact attempts, latency, fallback, breaker-open, fast-fail,
+  recovery, no-action, and final `off` readback;
+- obtain named ADR acceptance.
 
-- `tests/test_bedrock_adapter.py`: offline regression for injected throttling,
-  failure accounting, and circuit opening.
-- `scripts/inject_mandate25_faults.sh`: drill control script; the script alone
-  is not runtime evidence.
-
-The previously referenced
-`evidence/MANDATE25_CHAOS_EVIDENCE.log` is not committed and must not be cited.
-Before claiming level 5, commit a sanitized log tied to the exact deployed SHA
-and include flag transition, request outcomes, circuit state, fallback,
-recovery, and timestamps.
+The control script and offline tests are not runtime evidence.

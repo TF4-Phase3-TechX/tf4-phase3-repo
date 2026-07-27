@@ -1,6 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { ChannelCredentials } from '@grpc/grpc-js';
-import { ProductReviewServiceClient } from '../../protos/demo';
+import {
+  ChannelCredentials,
+  Client,
+  Metadata,
+  ServiceError,
+} from '@grpc/grpc-js';
+import {
+  decodeResiliencePayload,
+  publicResilienceStatus,
+  ResiliencePayload,
+} from '../../utils/aiResilienceStatus';
+
+const STATUS_METHOD = '/tf4.mandate25.ResilienceControl/GetStatus';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -8,26 +19,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const backendUrl = process.env.PRODUCT_REVIEWS_ADDR || 'product-reviews:3551';
+  const client = new Client(backendUrl, ChannelCredentials.createInsecure());
 
   try {
-    const client = new ProductReviewServiceClient(backendUrl, ChannelCredentials.createInsecure());
-    
-    // We can't easily ping a generic gRPC endpoint without HealthCheck protocol,
-    // but initializing the client and doing a dummy call or just waiting for readiness works.
-    const check = new Promise((resolve, reject) => {
-      client.waitForReady(Date.now() + 2000, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve('healthy');
-        }
-      });
+    const status = await new Promise<ResiliencePayload>((resolve, reject) => {
+      client.makeUnaryRequest<Record<string, never>, ResiliencePayload>(
+        STATUS_METHOD,
+        (value) => Buffer.from(JSON.stringify(value), 'utf8'),
+        decodeResiliencePayload,
+        {},
+        new Metadata(),
+        { deadline: Date.now() + 2000 },
+        (error: ServiceError | null, value?: ResiliencePayload) => {
+          if (error || !value) {
+            reject(error ?? new Error('empty resilience response'));
+            return;
+          }
+          resolve(value);
+        },
+      );
     });
-
-    await check;
-    res.status(200).json({ status: 'healthy' });
+    const publicStatus = publicResilienceStatus(status);
+    return res
+      .status(publicStatus.status === 'healthy' ? 200 : 503)
+      .json(publicStatus);
   } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(503).json({ status: 'unhealthy', reason: 'provider_unavailable' });
+    console.error('AI resilience status check failed:', error);
+    return res.status(503).json({
+      status: 'unavailable',
+      circuitState: 'unknown',
+      lastProviderOutcome: 'unknown',
+      lastProviderError: 'status_contract_unavailable',
+      faultMode: 'unknown',
+      secondsRemaining: 0,
+    });
+  } finally {
+    client.close();
   }
 }

@@ -1,5 +1,5 @@
 from ai_assistant import GroundedAssistant
-from bedrock_adapter import BedrockResult, ProviderFailure
+from bedrock_adapter import BedrockAdapter, BedrockResult, ProviderFailure
 from safety import BLOCKED_RESPONSE, INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
 
 
@@ -78,6 +78,36 @@ def test_provider_error_never_falls_back_to_mock():
     assert outcome.response == UNAVAILABLE_RESPONSE
     assert outcome.outcome == "unavailable"
     assert outcome.error_class == "timeout"
+
+
+def test_injected_malformed_tool_output_never_produces_an_action():
+    class MustNotCallProvider:
+        calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            raise AssertionError("malformed injection must replace provider call")
+
+    client = MustNotCallProvider()
+    provider = BedrockAdapter(
+        model_id="test-model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        output_mode="tool",
+        client=client,
+        max_attempts=1,
+        fault_source=lambda: "malformed_output",
+    )
+
+    outcome = make_assistant(provider).answer(
+        "p1",
+        "How are the moon views?",
+    )
+
+    assert client.calls == 0
+    assert outcome.outcome == "insufficient"
+    assert outcome.response == INSUFFICIENT_RESPONSE
+    assert outcome.action_proposal is None
 
 
 def test_provider_contract_failure_preserves_sanitized_usage_metadata():
