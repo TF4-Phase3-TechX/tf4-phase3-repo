@@ -147,12 +147,43 @@ async def approve(incident_id: str):
     incident = await store.get(incident_id)
     if not incident:
         raise HTTPException(404, "Incident not found")
+    if await store.is_target_blocked(incident.affected_service):
+        block = await store.target_block(incident.affected_service)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "target_mutation_quarantine_active",
+                "service": incident.affected_service,
+                "block": block,
+            },
+        )
     try:
         remediation.approve(incident)
         await remediation.execute(incident)
     except PolicyDenied as exc:
+        # Reconcile even on policy denial: execute may have already mutated and
+        # marked mutation_blocked before raising (or left an ambiguous outcome).
+        await _reconcile_manual_quarantine(incident)
         raise HTTPException(409, str(exc)) from exc
+    await _reconcile_manual_quarantine(incident)
     return incident
+
+
+async def _reconcile_manual_quarantine(incident) -> None:
+    """Same post-execution quarantine path as the background worker."""
+
+    if await store.reconcile_post_execution_quarantine(incident):
+        logging.getLogger("aiops.operator").warning(
+            json.dumps(
+                {
+                    "event": "target_mutation_quarantined",
+                    "service": incident.affected_service,
+                    "incident_id": incident.incident_id,
+                    "reason": incident.escalation_reason,
+                    "source": "manual_approval",
+                }
+            )
+        )
 
 
 @app.post("/v1/incidents/{incident_id}/reject", dependencies=[Depends(require_token)])
@@ -175,7 +206,11 @@ async def get_mutation_block(service: str):
     dependencies=[Depends(require_token)],
 )
 async def clear_mutation_block(service: str):
-    """Operator unlock after reviewing an escalated post-mutation quarantine."""
+    """Operator unlock after reviewing an escalated post-mutation quarantine.
+
+    Clears the process-local target block and unlocks related
+    ``mutation_blocked`` incidents so recovery / a new cycle can proceed.
+    """
 
     detail = await store.target_block(service)
     cleared = await store.clear_target_block(service)
@@ -190,7 +225,7 @@ async def clear_mutation_block(service: str):
             }
         )
     )
-    return {"service": service, "cleared": True}
+    return {"service": service, "cleared": True, "previous_block": detail}
 
 
 if __name__ == "__main__":

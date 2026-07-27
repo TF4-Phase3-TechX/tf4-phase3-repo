@@ -1,6 +1,6 @@
 import pytest
 
-from app.models import Incident, IncidentStatus
+from app.models import AuditEvent, Incident, IncidentStatus
 from app.store import IncidentStore
 
 
@@ -112,6 +112,8 @@ async def test_target_quarantine_blocks_auto_resolve_and_survives_clear_cycle():
     store = IncidentStore(cooldown_seconds=0)
     active, _ = await store.upsert(incident())
     active.status = IncidentStatus.ESCALATED
+    active.mutation_blocked = True
+    active.escalation_reason = "post-mutation safety failure"
     await store.block_target(
         active.affected_service,
         reason="post-mutation safety failure",
@@ -121,8 +123,50 @@ async def test_target_quarantine_blocks_auto_resolve_and_survives_clear_cycle():
     assert await store.is_target_blocked(active.affected_service) is True
     assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
     assert active.status == IncidentStatus.ESCALATED
+    assert active.mutation_blocked is True
 
     assert await store.clear_target_block(active.affected_service) is True
+    assert await store.is_target_blocked(active.affected_service) is False
+    # Operator clear must unlock the incident flag so recovery can finish.
+    assert active.mutation_blocked is False
+    assert any(
+        event.event == "mutation_block_cleared_by_operator"
+        for event in active.audit_events
+    )
+    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is active
+    assert active.status == IncidentStatus.RESOLVED
+
+
+@pytest.mark.asyncio
+async def test_reconcile_post_execution_quarantines_ambiguous_mutation():
+    store = IncidentStore(cooldown_seconds=0)
+    active, _ = await store.upsert(incident())
+    active.status = IncidentStatus.ESCALATED
+    active.mutation_blocked = True
+    active.escalation_reason = "Live mutation outcome is unknown"
+    active.audit_events.append(
+        AuditEvent(
+            event="action_outcome_unknown",
+            detail={"operator_reconciliation_required": True},
+        )
+    )
+
+    assert await store.reconcile_post_execution_quarantine(active) is True
+    assert await store.is_target_blocked(active.affected_service) is True
+    detail = await store.target_block(active.affected_service)
+    assert detail is not None
+    assert detail["incident_id"] == active.incident_id
+
+
+@pytest.mark.asyncio
+async def test_reconcile_skips_pre_mutation_policy_deny():
+    store = IncidentStore(cooldown_seconds=0)
+    active, _ = await store.upsert(incident())
+    active.status = IncidentStatus.ESCALATED
+    active.mutation_blocked = False
+    active.escalation_reason = "Autonomous policy denied"
+
+    assert await store.reconcile_post_execution_quarantine(active) is False
     assert await store.is_target_blocked(active.affected_service) is False
 
 

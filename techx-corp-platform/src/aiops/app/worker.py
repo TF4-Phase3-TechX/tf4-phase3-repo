@@ -116,21 +116,10 @@ class AIOpsWorker:
                 await handler(incident)
             else:
                 self.remediation.request_approval(incident)
-            # Quarantine only after a real live patch (or rollback path). Pre-
-            # mutation policy denies must not lock the target forever.
-            mutation_risk = any(
-                event.event in {"action_executed", "action_outcome_unknown"}
-                for event in incident.audit_events
-            )
-            if incident.mutation_blocked and (
-                mutation_risk or incident.rollback_result is not None
-            ):
-                await self.store.block_target(
-                    incident.affected_service,
-                    reason=incident.escalation_reason
-                    or "mutation_blocked after remediation safety path",
-                    incident_id=incident.incident_id,
-                )
+            # Shared with the manual approval endpoint: quarantine only after a
+            # real live patch (or rollback path). Pre-mutation policy denies
+            # must not lock the target forever.
+            if await self.store.reconcile_post_execution_quarantine(incident):
                 log.warning(
                     json.dumps(
                         {

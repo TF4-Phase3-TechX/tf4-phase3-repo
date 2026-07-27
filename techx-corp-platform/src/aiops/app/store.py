@@ -175,6 +175,22 @@ class IncidentStore:
             self._recovery_streaks.pop(key, None)
             return incident
 
+    @staticmethod
+    def should_quarantine_after_execution(incident: Incident) -> bool:
+        """True when post-mutation safety path requires target-level quarantine.
+
+        Pre-mutation policy denials set escalation without locking the whole
+        Deployment; only a real mutation/rollback risk should block the target.
+        """
+
+        if not incident.mutation_blocked:
+            return False
+        mutation_risk = any(
+            event.event in {"action_executed", "action_outcome_unknown"}
+            for event in incident.audit_events
+        )
+        return mutation_risk or incident.rollback_result is not None
+
     async def block_target(
         self,
         service: str,
@@ -191,11 +207,59 @@ class IncidentStore:
                 "blocked_at": utcnow().isoformat(),
             }
 
+    async def reconcile_post_execution_quarantine(self, incident: Incident) -> bool:
+        """Apply target quarantine after worker or manual remediation execute.
+
+        Shared by the background worker and the manual approval endpoint so an
+        ambiguous/timeout mutation cannot leave only the incident locked while
+        another incident type on the same service remains free to mutate.
+        """
+
+        if not self.should_quarantine_after_execution(incident):
+            return False
+        await self.block_target(
+            incident.affected_service,
+            reason=incident.escalation_reason
+            or "mutation_blocked after remediation safety path",
+            incident_id=incident.incident_id,
+        )
+        return True
+
     async def clear_target_block(self, service: str) -> bool:
-        """Operator-facing unlock after manual review (process-local)."""
+        """Operator unlock: drop target quarantine and re-enable recovery.
+
+        Clearing only ``_blocked_targets`` is insufficient: incidents that still
+        carry ``mutation_blocked`` never auto-resolve. Under the store lock we
+        also unlock those service-scoped records so recovery and a new
+        remediation cycle can proceed after operator review.
+        """
 
         async with self._lock:
-            return self._blocked_targets.pop(service, None) is not None
+            if service not in self._blocked_targets:
+                return False
+            previous = self._blocked_targets.pop(service)
+            for incident in self._items.values():
+                if incident.affected_service != service:
+                    continue
+                if incident.status in {
+                    IncidentStatus.RESOLVED,
+                    IncidentStatus.REJECTED,
+                }:
+                    continue
+                if not incident.mutation_blocked:
+                    continue
+                incident.mutation_blocked = False
+                incident.audit_events.append(
+                    AuditEvent(
+                        event="mutation_block_cleared_by_operator",
+                        detail={
+                            "service": service,
+                            "previous_block": previous,
+                        },
+                    )
+                )
+                self._recovery_streaks.pop(incident.dedup_key, None)
+            return True
 
     async def is_target_blocked(self, service: str) -> bool:
         async with self._lock:
