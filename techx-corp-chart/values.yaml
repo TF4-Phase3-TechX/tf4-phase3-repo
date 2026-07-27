@@ -256,6 +256,15 @@ components:
         value: "20"
       - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
         value: "900"
+      # Process-local only. A reviewed live-autonomous values override must use
+      # "file" and mount AIOPS_SAGA_PATH from a persistent volume; startup
+      # rejects live autonomous mode with this memory default.
+      - name: AIOPS_SAGA_BACKEND
+        value: memory
+      - name: AIOPS_SAGA_RETENTION_HOURS
+        value: "72"
+      - name: AIOPS_ARGO_WINDOW_ENABLED
+        value: "true"
       - name: AIOPS_TARGET_NAMESPACE
         valueFrom:
           fieldRef:
