@@ -262,7 +262,17 @@ async def reject(incident_id: str):
 @app.get("/v1/targets/{service}/mutation-block")
 async def get_mutation_block(service: str):
     detail = await store.target_block(service)
-    return {"service": service, "blocked": detail is not None, "detail": detail}
+    durable = [
+        saga.saga_id
+        for saga in await saga_store.list_open_for_target(service)
+        if saga.mutation_blocked
+    ]
+    return {
+        "service": service,
+        "blocked": detail is not None or bool(durable),
+        "detail": detail,
+        "durable_saga_ids": durable,
+    }
 
 
 @app.delete(
@@ -272,24 +282,36 @@ async def get_mutation_block(service: str):
 async def clear_mutation_block(service: str):
     """Operator unlock after reviewing an escalated post-mutation quarantine.
 
-    Clears the process-local target block and unlocks related
-    ``mutation_blocked`` incidents so recovery / a new cycle can proceed.
+    Clears both the durable saga quarantine and the process-local target block,
+    then unlocks related incidents so recovery / a new cycle can proceed.
     """
 
     detail = await store.target_block(service)
-    cleared = await store.clear_target_block(service)
-    if not cleared:
+    durable = [
+        saga.saga_id
+        for saga in await saga_store.list_open_for_target(service)
+        if saga.mutation_blocked
+    ]
+    if detail is None and not durable:
         raise HTTPException(404, "Target is not under mutation quarantine")
+    cleared_sagas = await saga_store.clear_mutation_block_for_target(service)
+    cleared = await store.clear_target_block(service)
     logging.getLogger("aiops.operator").warning(
         json.dumps(
             {
                 "event": "target_quarantine_cleared",
                 "service": service,
                 "previous_block": detail,
+                "cleared_saga_ids": cleared_sagas,
             }
         )
     )
-    return {"service": service, "cleared": True, "previous_block": detail}
+    return {
+        "service": service,
+        "cleared": cleared or bool(cleared_sagas),
+        "previous_block": detail,
+        "cleared_saga_ids": cleared_sagas,
+    }
 
 
 if __name__ == "__main__":

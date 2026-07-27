@@ -518,6 +518,44 @@ async def test_lost_lease_on_restart_fails_closed():
 
 
 @pytest.mark.asyncio
+async def test_restart_quarantine_blocks_new_mutation_until_operator_clear(
+    tmp_path: Path,
+):
+    """A terminal fail-closed saga remains authoritative across processes."""
+
+    store = FileSagaStore(tmp_path)
+    quarantined = RemediationSaga(
+        incident_id="inc-quarantined",
+        target="product-reviews",
+        phase=SagaPhase.TERMINAL,
+        outcome=SagaOutcome.ESCALATED,
+        mutation_attempted=True,
+        mutation_blocked=True,
+        terminal_reason="mutation outcome unknown",
+    )
+    await store.save(quarantined)
+
+    adapter = TrackingAdapter()
+    controller = make_controller(adapter, store, healthy=True)
+    fresh = incident()
+    fresh.incident_id = "inc-after-restart"
+    controller.request_approval(fresh)
+    controller.approve(fresh)
+
+    with pytest.raises(PolicyDenied, match="Open remediation saga"):
+        await controller.execute(fresh)
+    assert adapter.patches == []
+    assert (await store.get(quarantined.saga_id)).is_open is True
+
+    cleared = await store.clear_mutation_block_for_target("product-reviews")
+    assert cleared == [quarantined.saga_id]
+    assert await store.list_open_for_target("product-reviews") == []
+
+    await controller.execute(fresh)
+    assert len(adapter.patches) == 1
+
+
+@pytest.mark.asyncio
 async def test_conflicting_desired_state_detected_on_resume():
     store = MemorySagaStore()
     adapter = TrackingAdapter()

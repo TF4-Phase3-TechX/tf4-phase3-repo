@@ -130,8 +130,15 @@ class RemediationSaga(BaseModel):
     @property
     def is_open(self) -> bool:
         # Terminal business state is not fully reconciled while external
-        # ownership markers remain. Keeping it open makes restart cleanup retry.
-        return self.phase in OPEN_PHASES or self.argo_window_active or self.lease_held
+        # ownership markers or a fail-closed mutation quarantine remain.
+        # Quarantined records stay durable until an authenticated operator clears
+        # them, so a process restart cannot silently re-enable mutation.
+        return (
+            self.phase in OPEN_PHASES
+            or self.argo_window_active
+            or self.lease_held
+            or self.mutation_blocked
+        )
 
     @property
     def may_have_mutated(self) -> bool:
@@ -150,6 +157,8 @@ class SagaStore(Protocol):
     async def list_open_for_target(self, target: str) -> list[RemediationSaga]: ...
 
     async def list_all(self) -> list[RemediationSaga]: ...
+
+    async def clear_mutation_block_for_target(self, target: str) -> list[str]: ...
 
     async def prune_terminal_before(self, cutoff: datetime) -> list[str]: ...
 
@@ -209,6 +218,27 @@ class MemorySagaStore:
                 for item in self._items.values()
             ]
 
+    async def clear_mutation_block_for_target(self, target: str) -> list[str]:
+        async with self._lock:
+            blocked = [
+                item
+                for item in self._items.values()
+                if item.target == target and item.mutation_blocked
+            ]
+            if any(
+                item.phase != SagaPhase.TERMINAL
+                or item.lease_held
+                or item.argo_window_active
+                for item in blocked
+            ):
+                raise SagaPersistenceError(
+                    f"cannot clear {target}: saga cleanup is incomplete"
+                )
+            for item in blocked:
+                item.mutation_blocked = False
+                item.note("mutation_block_cleared_by_operator", target=target)
+            return [item.saga_id for item in blocked]
+
     async def prune_terminal_before(self, cutoff: datetime) -> list[str]:
         async with self._lock:
             removed = [
@@ -235,17 +265,20 @@ class FileSagaStore:
         safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in saga_id)
         return self.root / f"{safe}.json"
 
+    def _write_unlocked(self, saga: RemediationSaga) -> RemediationSaga:
+        path = self._path(saga.saga_id)
+        tmp = path.with_suffix(".tmp")
+        payload = saga.model_dump(mode="json")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        os.replace(tmp, path)
+        return RemediationSaga.model_validate(payload)
+
     async def save(self, saga: RemediationSaga) -> RemediationSaga:
         async with self._lock:
             if self.fail_next_save:
                 self.fail_next_save = False
                 raise SagaPersistenceError("injected file save failure")
-            path = self._path(saga.saga_id)
-            tmp = path.with_suffix(".tmp")
-            payload = saga.model_dump(mode="json")
-            tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-            os.replace(tmp, path)
-            return RemediationSaga.model_validate(payload)
+            return self._write_unlocked(saga)
 
     async def get(self, saga_id: str) -> RemediationSaga | None:
         path = self._path(saga_id)
@@ -289,6 +322,35 @@ class FileSagaStore:
                         f"unreadable saga record {path}: {exc}"
                     ) from exc
             return items
+
+    async def clear_mutation_block_for_target(self, target: str) -> list[str]:
+        async with self._lock:
+            blocked: list[RemediationSaga] = []
+            for path in sorted(self.root.glob("*.json")):
+                try:
+                    saga = RemediationSaga.model_validate_json(
+                        path.read_text(encoding="utf-8")
+                    )
+                except Exception as exc:
+                    raise SagaPersistenceError(
+                        f"unreadable saga record {path}: {exc}"
+                    ) from exc
+                if saga.target == target and saga.mutation_blocked:
+                    blocked.append(saga)
+            if any(
+                saga.phase != SagaPhase.TERMINAL
+                or saga.lease_held
+                or saga.argo_window_active
+                for saga in blocked
+            ):
+                raise SagaPersistenceError(
+                    f"cannot clear {target}: saga cleanup is incomplete"
+                )
+            for saga in blocked:
+                saga.mutation_blocked = False
+                saga.note("mutation_block_cleared_by_operator", target=target)
+                self._write_unlocked(saga)
+            return [saga.saga_id for saga in blocked]
 
     async def prune_terminal_before(self, cutoff: datetime) -> list[str]:
         """Delete only fully-cleaned terminal records older than the cutoff."""
