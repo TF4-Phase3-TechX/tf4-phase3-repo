@@ -34,11 +34,13 @@ Do not close `AI MANDATE #23` until those external artifacts exist.
 | `MAX_HISTORY_EXCHANGES` | `5` | Complete session exchanges retained |
 | `APP_ENV` | deployment-specific | Staging/production disallow process-memory fallback |
 
-The Helm deployment reads distinct `cache-hmac-secret` and
-`memory-hmac-secret` keys from Kubernetes Secret `ai-state-hmac-secret`.
-Provision two independently generated values through the approved
+The Helm deployment reads distinct `cache-hmac-secret`, `memory-hmac-secret`,
+and `principal-hmac-secret` keys from Kubernetes Secret `ai-state-hmac-secret`.
+The frontend uses the third key to sign its HttpOnly pseudonymous AI principal
+cookie and ignores body-supplied user ownership fields. Provision three independently
+generated values through the approved
 secret-management path before rollout; never commit either value. The
-deployment intentionally fails closed when the secret or either key is absent.
+deployment intentionally fails closed when the secret or any required key is absent.
 
 ## Local verification
 

@@ -83,7 +83,7 @@ No predicted number is accepted as evidence.
 
 ## Security and operational consequences
 
-- User isolation depends on secret HMAC key material. Production deployment requires Kubernetes Secret `ai-state-hmac-secret` with independently generated `cache-hmac-secret` and `memory-hmac-secret` values; neither value is committed.
+- User isolation depends on server-owned identity and secret HMAC key material. The public Next.js routes ignore body-supplied ownership and replace it with a signed HttpOnly pseudonymous principal cookie. Production deployment requires Kubernetes Secret `ai-state-hmac-secret` with independently generated `cache-hmac-secret`, `memory-hmac-secret`, and `principal-hmac-secret` values; no value is committed.
 - Valkey loss removes optimization and profile availability but cannot produce a fabricated remembered/deleted state.
 - Computing a source fingerprint still reads current catalog/review data on lookup. This is required for freshness and is cheaper than a repeated provider call.
 - Exact caching intentionally leaves semantic equivalents as misses.

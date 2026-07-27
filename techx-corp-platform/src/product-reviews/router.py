@@ -1139,7 +1139,18 @@ def route_search_products_ai(
                             if waited.reason == "cache_error":
                                 default_cache_reason = "cache_error"
                             else:
-                                default_cache_reason = "lock_timeout"
+                                return finalize(
+                                    demo_pb2.SearchProductsAIAssistantResponse(
+                                        results=[early_product],
+                                        response=SEARCH_UNAVAILABLE_RESPONSE,
+                                        outcome="unavailable",
+                                        cache_status="miss",
+                                        cache_eligible=True,
+                                        cache_reason="lock_timeout",
+                                        model_calls=0,
+                                        memory_status="not_applicable",
+                                    )
+                                )
                         else:
                             default_cache_reason = lookup.reason
 

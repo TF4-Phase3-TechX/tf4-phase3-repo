@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from response_cache import ResponseCache, normalize_exact_request, source_fingerprint
 
 
@@ -119,6 +121,15 @@ def test_lock_limits_duplicate_fill():
     assert cache.acquire_lock(identity) is None
     cache.release_lock(identity, token)
     assert cache.acquire_lock(identity)
+
+
+def test_lock_wait_must_be_shorter_than_lock_ttl():
+    with pytest.raises(ValueError, match="shorter than lock TTL"):
+        ResponseCache(
+            secret="test-secret",
+            lock_ttl_seconds=1,
+            lock_wait_seconds=1,
+        )
 
 
 def test_model_prompt_guardrail_and_schema_versions_change_identity():

@@ -959,6 +959,11 @@ components:
         value: product-catalog:8080
       - name: PRODUCT_REVIEWS_ADDR
         value: product-reviews:3551
+      - name: AI_PRINCIPAL_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: principal-hmac-secret
       - name: RECOMMENDATION_ADDR
         value: recommendation:8080
       - name: SHIPPING_ADDR

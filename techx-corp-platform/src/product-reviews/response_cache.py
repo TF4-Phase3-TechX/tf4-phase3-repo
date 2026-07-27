@@ -20,8 +20,8 @@ RESPONSE_SCHEMA_VERSION = "grounded-response-v1"
 PRODUCT_QA_PROMPT_VERSION = "product-qa-v1"
 COPILOT_REVIEW_PROMPT_VERSION = "deterministic-review-v1"
 DEFAULT_CACHE_TTL_SECONDS = 300
-DEFAULT_LOCK_TTL_SECONDS = 5
-DEFAULT_LOCK_WAIT_SECONDS = 0.2
+DEFAULT_LOCK_TTL_SECONDS = 10
+DEFAULT_LOCK_WAIT_SECONDS = 5.0
 
 
 def normalize_exact_request(value: Any) -> str:
@@ -106,6 +106,8 @@ class ResponseCache:
         *,
         secret: str | None = None,
         ttl_seconds: int | None = None,
+        lock_ttl_seconds: int | None = None,
+        lock_wait_seconds: float | None = None,
         clock: Any = time.time,
     ) -> None:
         app_env = os.getenv("APP_ENV", "local").strip().lower()
@@ -119,6 +121,20 @@ class ResponseCache:
             if ttl_seconds is not None
             else os.getenv("AI_RESPONSE_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS)
         )
+        self._lock_ttl = int(
+            lock_ttl_seconds
+            if lock_ttl_seconds is not None
+            else os.getenv("AI_RESPONSE_CACHE_LOCK_TTL_SECONDS", DEFAULT_LOCK_TTL_SECONDS)
+        )
+        self._lock_wait = float(
+            lock_wait_seconds
+            if lock_wait_seconds is not None
+            else os.getenv("AI_RESPONSE_CACHE_LOCK_WAIT_SECONDS", DEFAULT_LOCK_WAIT_SECONDS)
+        )
+        if self._lock_ttl <= 0 or self._lock_wait <= 0:
+            raise ValueError("cache lock TTL and wait must be positive")
+        if self._lock_wait >= self._lock_ttl:
+            raise ValueError("cache lock wait must be shorter than lock TTL")
         self._clock = clock
         self._lock = threading.Lock()
         self._memory: dict[str, tuple[float, str]] = {}
@@ -250,7 +266,7 @@ class ResponseCache:
                 acquired = self._redis.set(
                     lock_key,
                     token,
-                    ex=DEFAULT_LOCK_TTL_SECONDS,
+                    ex=self._lock_ttl,
                     nx=True,
                 )
                 return token if acquired else None
@@ -259,7 +275,7 @@ class ResponseCache:
                 cached = self._memory.get(lock_key)
                 if cached and cached[0] > now:
                     return None
-                self._memory[lock_key] = (now + DEFAULT_LOCK_TTL_SECONDS, token)
+                self._memory[lock_key] = (now + self._lock_ttl, token)
                 return token
         except Exception:
             return None
@@ -288,8 +304,10 @@ return 0
     def wait_for_fill(
         self,
         identity: CacheIdentity,
-        timeout_seconds: float = DEFAULT_LOCK_WAIT_SECONDS,
+        timeout_seconds: float | None = None,
     ) -> CacheLookup:
+        if timeout_seconds is None:
+            timeout_seconds = self._lock_wait
         deadline = time.monotonic() + timeout_seconds
         last = CacheLookup(None, "miss", "lock_timeout", 0)
         while time.monotonic() < deadline:

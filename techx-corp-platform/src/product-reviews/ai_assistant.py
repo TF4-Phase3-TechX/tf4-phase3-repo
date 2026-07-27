@@ -358,7 +358,17 @@ class GroundedAssistant:
                 if waited.reason == "cache_error":
                     cache_reason = "cache_error"
                 elif waited.reason == "lock_timeout":
-                    cache_reason = "lock_timeout"
+                    return AssistantOutcome(
+                        response=UNAVAILABLE_RESPONSE,
+                        outcome="unavailable",
+                        error_class="cache_fill_in_progress",
+                        quarantined_reviews=prepared.quarantined_review_count,
+                        provider_attempted=False,
+                        cache_eligible=True,
+                        cache_reason="lock_timeout",
+                        model_calls=0,
+                        cache_lookup_latency_ms=cache_lookup_latency_ms,
+                    )
 
             provider_attempted = True
             result = self.provider.converse(prepared.question, prepared.product, prepared.reviews)

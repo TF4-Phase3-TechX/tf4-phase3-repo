@@ -379,3 +379,47 @@ def test_concurrent_cold_requests_are_single_flight():
     assert len(provider.calls) == 1
     assert sum(outcome.cache_status == "miss" for outcome in outcomes) == 1
     assert sum(outcome.cache_status == "hit" for outcome in outcomes) == 4
+
+
+def test_slow_fill_never_falls_through_to_duplicate_provider_calls():
+    class SlowProvider(Provider):
+        def converse(self, question, product, reviews):
+            time.sleep(0.2)
+            return super().converse(question, product, reviews)
+
+    provider = SlowProvider({
+        "decision": "answered",
+        "answer": "It gives clear moon views.",
+        "citations": [{"review_id": 1, "evidence_quote": "clear views of the moon"}],
+    })
+    assistant = GroundedAssistant(
+        provider,
+        fetch_product=lambda _: {"id": "p1", "name": "Scope"},
+        fetch_reviews=lambda _: ROWS,
+        response_cache=ResponseCache(
+            secret="test-secret",
+            lock_ttl_seconds=1,
+            lock_wait_seconds=0.05,
+        ),
+    )
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        outcomes = list(
+            executor.map(
+                lambda _: assistant.answer(
+                    "p1",
+                    "How are the moon views?",
+                    user_id="slow-concurrent-user",
+                ),
+                range(5),
+            )
+        )
+
+    assert len(provider.calls) == 1
+    assert sum(outcome.outcome == "answered" for outcome in outcomes) == 1
+    assert sum(outcome.error_class == "cache_fill_in_progress" for outcome in outcomes) == 4
+    assert all(
+        outcome.model_calls == 0
+        for outcome in outcomes
+        if outcome.error_class == "cache_fill_in_progress"
+    )
