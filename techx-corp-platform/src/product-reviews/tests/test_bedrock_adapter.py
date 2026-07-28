@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 from botocore.exceptions import ClientError
@@ -283,6 +284,94 @@ def test_product_qa_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
         "throttlingexception",
         "throttlingexception",
     ]
+
+
+def test_production_client_timeouts_fit_one_attempt_budget(monkeypatch):
+    captured = {}
+
+    def create_client(_service, *, region_name, config):
+        captured["region_name"] = region_name
+        captured["config"] = config
+        return FakeClient()
+
+    monkeypatch.setattr(bedrock_adapter.boto3, "client", create_client)
+    subject = BedrockAdapter(
+        model_id="model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        deadline_seconds=4.5,
+        max_attempts=2,
+        retry_backoff_seconds=0.1,
+    )
+
+    config = captured["config"]
+    assert captured["region_name"] == "us-east-1"
+    assert config.retries["max_attempts"] == 0
+    assert config.connect_timeout + config.read_timeout == pytest.approx(
+        subject.attempt_timeout_seconds
+    )
+
+
+def test_model_not_ready_429_retries_and_opens_circuit():
+    class ModelNotReadyClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ModelNotReadyException",
+                        "Message": "model is not ready",
+                    },
+                    "ResponseMetadata": {"HTTPStatusCode": 429},
+                },
+                "Converse",
+            )
+
+    client = ModelNotReadyClient()
+    subject = adapter(
+        client,
+        max_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    for _ in range(5):
+        with pytest.raises(ProviderFailure, match="modelnotreadyexception"):
+            subject.converse("q", {}, [{}])
+
+    assert client.calls == 10
+    assert subject.resilience_snapshot()["circuit_state"] == "open"
+    with pytest.raises(CircuitOpen):
+        subject.converse("q", {}, [{}])
+    assert client.calls == 10
+
+
+def test_retry_is_skipped_when_next_attempt_cannot_fit_deadline():
+    class SlowTimeoutClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            time.sleep(0.04)
+            raise TimeoutError("first attempt consumed its budget")
+
+    client = SlowTimeoutClient()
+    subject = adapter(
+        client,
+        deadline_seconds=0.05,
+        max_attempts=2,
+        retry_backoff_seconds=0.001,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(ProviderFailure, match="timeout"):
+        subject.converse("q", {}, [{}])
+
+    assert client.calls == 1
+    assert time.monotonic() - started < 0.08
 
 
 def test_injected_throttle_opens_fast_fails_and_recovers_after_cooldown():
@@ -678,6 +767,50 @@ def test_parse_search_retry_emits_one_span_per_real_provider_attempt(monkeypatch
     assert spans[0].attributes["error.type"] == "timeouterror"
     assert spans[1].attributes["gen_ai.usage.input_tokens"] == 50
     assert spans[1].attributes["gen_ai.usage.output_tokens"] == 15
+
+
+def test_search_failure_updates_shared_resilience_status():
+    subject = adapter(
+        FakeClient(),
+        max_attempts=1,
+        retry_backoff_seconds=0,
+        fault_source=lambda: "throttling",
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.parse_search_intent("find a product")
+
+    assert subject.resilience_snapshot() == {
+        "circuit_state": "closed",
+        "last_provider_outcome": "error",
+        "last_provider_error": "throttlingexception",
+    }
+
+
+def test_search_retry_is_skipped_when_next_attempt_cannot_fit_deadline():
+    class SlowTimeoutClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            time.sleep(0.04)
+            raise TimeoutError("first attempt consumed its budget")
+
+    client = SlowTimeoutClient()
+    subject = adapter(
+        client,
+        deadline_seconds=0.05,
+        max_attempts=2,
+        retry_backoff_seconds=0.001,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(ProviderFailure, match="timeout"):
+        subject.parse_search_intent("find a product")
+
+    assert client.calls == 1
+    assert time.monotonic() - started < 0.08
 
 
 def test_compare_products_uses_dedicated_grounded_tool():

@@ -43,6 +43,14 @@ def test_fault_rejects_unbounded_ttl(ttl):
         controller.set("throttling", ttl)
 
 
+def test_fault_ttl_hard_cap_cannot_be_raised_by_configuration():
+    controller = FaultController(max_ttl_seconds=999)
+
+    assert controller.set("timeout", 120).mode == "timeout"
+    with pytest.raises(ValueError, match="ttl_seconds"):
+        controller.set("timeout", 121)
+
+
 def test_fault_control_fails_closed_without_dedicated_token(monkeypatch):
     monkeypatch.delenv("MANDATE25_FAULT_TOKEN", raising=False)
     handler = ResilienceControlHandler(

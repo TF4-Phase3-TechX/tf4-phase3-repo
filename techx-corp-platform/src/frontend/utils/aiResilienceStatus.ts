@@ -41,7 +41,9 @@ export const publicResilienceStatus = (payload: ResiliencePayload) => {
     ? Math.max(0, Math.min(120, remaining))
     : 0;
   const degraded =
-    circuitState !== 'closed' || lastProviderOutcome === 'error';
+    faultMode !== 'off'
+    || circuitState !== 'closed'
+    || lastProviderOutcome === 'error';
 
   return {
     status: degraded ? 'degraded' : 'healthy',

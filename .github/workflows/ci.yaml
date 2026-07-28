@@ -178,6 +178,9 @@ jobs:
       - name: Run resilience unit tests
         run: npm run test:resilience
 
+      - name: Run AI resilience status regression
+        run: npm run test:ai-resilience-status
+
   product-reviews-test:
     name: Product reviews Python suite
     runs-on: ubuntu-latest
