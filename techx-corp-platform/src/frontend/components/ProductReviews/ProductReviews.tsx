@@ -7,6 +7,7 @@ import { useAiAssistant } from '../../providers/ProductAIAssistant.provider';
 import React, { useState, useMemo } from 'react';
 import { CypressFields } from '../../utils/enums/CypressFields';
 import CartActionCard from '../Copilot/CartActionCard';
+import AiDebugPanel from '../AiDebug/AiDebugPanel';
 
 const clamp = (n: number, min = 0, max = 5) => Math.max(min, Math.min(max, n));
 
@@ -57,6 +58,7 @@ const ProductReviews = () => {
     const [aiQuestion, setAiQuestion] = useState('');
     const { sendAiRequest, aiResponse, aiLoading, aiError, reset, sessionId, userId } = useAiAssistant();
     const actionProposal = typeof aiResponse === 'object' && aiResponse ? aiResponse.actionProposal : undefined;
+    const aiDebug = typeof aiResponse === 'object' && aiResponse ? aiResponse.aiDebug : undefined;
 
     const handleAskAI = (questionOverride?: string) => {
         const q = (questionOverride ?? aiQuestion).trim();
@@ -142,6 +144,7 @@ const ProductReviews = () => {
                           ? aiResponse
                           : (aiResponse as any).response || (aiResponse as any).text}
                     </S.AIMessage>
+                    <AiDebugPanel metadata={aiDebug} />
                     {actionProposal && (
                         <CartActionCard proposal={actionProposal} userId={userId} sessionId={sessionId} />
                     )}

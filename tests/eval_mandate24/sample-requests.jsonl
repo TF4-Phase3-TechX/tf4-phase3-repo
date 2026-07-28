@@ -1,0 +1,2 @@
+{"case_id":"normal-product-search","query":"Show me telescopes under $200"}
+{"case_id":"pii-negative-proof","query":"Find a telescope for marker m24-canary-alice@example.test"}

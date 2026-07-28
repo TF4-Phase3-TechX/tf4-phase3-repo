@@ -122,8 +122,13 @@ curl -X POST http://localhost:8088/v1/incidents/INCIDENT_ID/approve \
 - Every action requires a non-expired approval for that incident.
 - Only allowlisted Deployments can be targeted.
 - One action can run per target; arbitrary commands and flagd mutation are unsupported.
-- A live rollback is successful only when the Deployment is ready, target p95 recovers, and checkout/storefront error rate stays below 1%.
-- Failed verification restores the original pod template and escalates.
+- A live remediation is successful only when the Deployment is ready, the mutated service's p95 and error rate recover, request volume meets the verification floor, and the trailing consecutive verification polls are healthy.
+- Failed verification restores the original pod template, escalates, and quarantines further mutation for that target until an operator clears the process-local block.
+- A live patch is attempted once. A timeout or transport error after that
+  attempt is treated as an unknown mutation outcome: the incident escalates,
+  further mutation is blocked and the target is quarantined for operator
+  reconciliation. The controller never retries an ambiguous live patch.
+- Cross-service (for example checkout/storefront) error guards are not applied silently; they require an explicit approved dependency mapping.
 
 Create the approval Secret before deploying if the API will be used:
 
@@ -147,6 +152,12 @@ For a controlled live drill, CDO must first confirm the namespace, Deployment al
 | GET | `/v1/incidents/{id}/summary` | Operator Markdown with exact queries and encoded Grafana Explore link |
 | POST | `/v1/incidents/{id}/approve` | Approve and execute the bound action |
 | POST | `/v1/incidents/{id}/reject` | Reject the action |
+| GET | `/v1/targets/{service}/mutation-block` | Read process-local post-mutation quarantine |
+| DELETE | `/v1/targets/{service}/mutation-block` | Operator unlock (Bearer approval token required) |
+
+Live mutation also requires `AIOPS_KNOWN_GOOD_REVISIONS=service=revision` for
+each allowlisted target. Process-local quarantine is applied only after a
+post-mutation safety failure, not after pre-mutation policy denials.
 
 The incident store is intentionally bounded and in-memory for the first MVP. Structured incident/audit events are also written to stdout for collection into OpenSearch. Alertmanager notification is wired through `aiops_incident_active`, while `aiops_incidents_created_total` remains the audit counter; persistent state and automatic Jira creation remain follow-up work.
 

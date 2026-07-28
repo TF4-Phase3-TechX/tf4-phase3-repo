@@ -1,0 +1,1 @@
+/home/huyvu/Desktop/Workspace/tf4-phase3/techx-corp-platform/src/product-reviews/venv/bin/python tests/eval_mandate23/replay.py --input tests/eval_mandate23/cases.short-term.jsonl --target localhost:32806 --output-dir tests/eval_mandate23/evidence/short-term-20260726T1610Z --repetitions 3 --identity-suffix=-runtime-20260726T1610Z --timeout-seconds 20

@@ -1,0 +1,65 @@
+{
+  "groups": {
+    "copilot": {
+      "assertion_failures": 0,
+      "cache_hits": 0,
+      "cache_misses": 9,
+      "cases": 9,
+      "estimated_cost_usd": 0.0,
+      "failed_cases": 0,
+      "hit_rate": 0.0,
+      "input_tokens": 0,
+      "latency_ms": {
+        "hit_mean": 0.0,
+        "miss_mean": 5.348832777801565,
+        "p50": 2.4288150007123477,
+        "p95": 20.050113000252168
+      },
+      "model_calls": 0,
+      "output_tokens": 0,
+      "successful_cases": 9,
+      "validated_cases": 9
+    },
+    "product_qa": {
+      "assertion_failures": 0,
+      "cache_hits": 6,
+      "cache_misses": 3,
+      "cases": 9,
+      "estimated_cost_usd": 0.00418847,
+      "failed_cases": 0,
+      "hit_rate": 0.6666666666666666,
+      "input_tokens": 4434,
+      "latency_ms": {
+        "hit_mean": 10.93328799985708,
+        "miss_mean": 2247.5240739998603,
+        "p50": 12.712429999737651,
+        "p95": 2763.167051999517
+      },
+      "model_calls": 3,
+      "output_tokens": 991,
+      "successful_cases": 9,
+      "validated_cases": 9
+    },
+    "total": {
+      "assertion_failures": 0,
+      "cache_hits": 6,
+      "cache_misses": 12,
+      "cases": 18,
+      "estimated_cost_usd": 0.00418847,
+      "failed_cases": 0,
+      "hit_rate": 0.3333333333333333,
+      "input_tokens": 4434,
+      "latency_ms": {
+        "hit_mean": 10.93328799985708,
+        "miss_mean": 565.8926430833162,
+        "p50": 9.717042000374931,
+        "p95": 2763.167051999517
+      },
+      "model_calls": 3,
+      "output_tokens": 991,
+      "successful_cases": 18,
+      "validated_cases": 18
+    }
+  },
+  "schema_version": "mandate23-replay-v1"
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from opentelemetry import trace
+from llm_observability import current_trace_id
 
 
 SAFETY_DECISIONS = {"allow", "block", "refuse", "provider_unavailable"}
@@ -21,12 +21,6 @@ def safety_decision_for_outcome(outcome: str) -> str:
     if outcome in {"unavailable", "provider_failure"}:
         return "provider_unavailable"
     return "allow"
-
-
-def current_trace_id() -> str:
-    """Return the current W3C trace identifier without logging request content."""
-    context = trace.get_current_span().get_span_context()
-    return f"{context.trace_id:032x}"
 
 
 def emit_ai_tool_audit(

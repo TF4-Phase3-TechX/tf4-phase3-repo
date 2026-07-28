@@ -13,6 +13,7 @@ import asyncio
 import json
 from dataclasses import replace
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from app.config import Settings
@@ -79,13 +80,19 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
     action_health = [bool(value) for value in case["action_health"]]
     rollback_health = [bool(value) for value in case["rollback_health"]]
     outcomes = [False, *action_health, *rollback_health]
+    saga_dir = TemporaryDirectory(prefix="aiops-mitigation-replay-")
     settings = replace(
         Settings(),
         autonomous_remediation_enabled=True,
         remediation_mode="live",
+        saga_backend="file",
+        saga_path=saga_dir.name,
         allowed_deployments=(str(case["service"]),),
+        # Replay uses a synthetic pin so live-mode known-good gate is exercised.
+        known_good_revisions={str(case["service"]): "replay-known-good"},
         verification_polls=len(action_health),
         rollback_verification_polls=max(len(rollback_health), 1),
+        verification_consecutive_healthy_polls=len(action_health),
         # The replay supplies deterministic post-action samples directly; only
         # runtime Prometheus verification needs the real settle delay.
         verification_settle_seconds=0,
@@ -103,7 +110,7 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         suspected_root_cause="external replay scenario",
         evidence=[
             Evidence(
-                source="external_replay",
+                source="prometheus",
                 query=f"scenario:{case['id']}",
                 window="scenario",
                 value="breached",
@@ -114,7 +121,7 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
     )
     await controller.handle_incident(incident)
     actual = incident.status.value
-    return {
+    result = {
         "id": case["id"],
         "expected_status": case["expected_status"],
         "actual_status": actual,
@@ -125,6 +132,8 @@ async def evaluate(case: dict[str, Any]) -> dict[str, Any]:
         "mutation_blocked": incident.mutation_blocked,
         "audit": [event.model_dump(mode="json") for event in incident.audit_events],
     }
+    saga_dir.cleanup()
+    return result
 
 
 async def replay(path: Path) -> dict[str, Any]:

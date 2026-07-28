@@ -10,6 +10,12 @@ from typing import Any, Callable
 import re
 from bedrock_adapter import BedrockAdapter, ProviderFailure
 import demo_pb2
+from response_cache import (
+    PRODUCT_QA_PROMPT_VERSION,
+    RESPONSE_SCHEMA_VERSION,
+    ResponseCache,
+    source_fingerprint,
+)
 from safety import (
     BLOCKED_RESPONSE,
     INSUFFICIENT_RESPONSE,
@@ -21,6 +27,7 @@ from safety import (
     prepare_context,
     validate_grounded_comparison,
     validate_grounded_output,
+    contains_pii,
 )
 from session_store import session_store
 
@@ -39,6 +46,15 @@ class AssistantOutcome:
     action_proposal: Any = None
     provider_attempted: bool = False
     citations: tuple[dict[str, Any], ...] = ()
+    cache_status: str = "miss"
+    cache_eligible: bool = False
+    cache_reason: str = "not_eligible"
+    model_calls: int = 0
+    memory_status: str = "not_applicable"
+    cache_lookup_latency_ms: float = 0
+    saved_model_calls: int = 0
+    saved_input_tokens: int = 0
+    saved_output_tokens: int = 0
 
 
 class GroundedAssistant:
@@ -48,11 +64,15 @@ class GroundedAssistant:
         fetch_product: Callable[[str], dict[str, Any]],
         fetch_reviews: Callable[[str], list[tuple[Any, ...]]],
         system_canary: str = "",
+        response_cache: ResponseCache | None = None,
     ):
         self.provider = provider
         self.fetch_product = fetch_product
         self.fetch_reviews = fetch_reviews
         self.system_canary = system_canary
+        self.response_cache = response_cache or ResponseCache(
+            getattr(session_store, "_valkey_client", None)
+        )
 
     @staticmethod
     def _product_dict(product: Any) -> dict[str, Any]:
@@ -141,9 +161,6 @@ class GroundedAssistant:
                 {"products": evidence_products, "sources": sources},
             )
             validated = validate_grounded_comparison(result.payload, sources, self.system_canary)
-            if session_id:
-                session_store.append_turn(user_id, session_id, "user", question)
-                session_store.append_turn(user_id, session_id, "assistant", validated["answer"])
             return AssistantOutcome(
                 response=validated["answer"],
                 outcome=validated["decision"],
@@ -154,6 +171,7 @@ class GroundedAssistant:
                 provider_stop_reason=result.stop_reason,
                 response_contract_stage=result.contract_stage,
                 provider_attempted=True,
+                model_calls=1,
                 citations=tuple(validated["citations"]),
             )
         except ProviderFailure as exc:
@@ -161,9 +179,6 @@ class GroundedAssistant:
                 [self._product_dict(product) for product in products],
                 question,
             )
-            if session_id:
-                session_store.append_turn(user_id, session_id, "user", question)
-                session_store.append_turn(user_id, session_id, "assistant", fallback)
             return AssistantOutcome(
                 response=fallback,
                 outcome="degraded",
@@ -197,13 +212,18 @@ class GroundedAssistant:
                 provider_stop_reason=result.stop_reason,
                 response_contract_stage=result.contract_stage,
                 provider_attempted=True,
+                model_calls=1,
             )
 
     def answer(self, product_id: str, question: str, session_id: str = "", user_id: str = "guest") -> AssistantOutcome:
         quarantined_reviews = 0
         provider_attempted = False
-        if not question or is_attack(question):
-            return AssistantOutcome(response=BLOCKED_RESPONSE, outcome="blocked")
+        if not question or is_attack(question) or contains_pii(question):
+            return AssistantOutcome(
+                response=BLOCKED_RESPONSE,
+                outcome="blocked",
+                cache_reason="guardrail_blocked",
+            )
         elif is_action_intent(question):
             try:
                 if not session_id:
@@ -223,16 +243,22 @@ class GroundedAssistant:
                     confirmation_required=True,
                     idempotency_key=confirmation_token,
                 )
-                if session_id:
-                    session_store.append_turn(user_id, session_id, "user", question)
-                    session_store.append_turn(user_id, session_id, "assistant", f"I can help add '{prod_name}' to your cart.")
                 return AssistantOutcome(
                     response=f"I can help add '{prod_name}' to your cart. Please confirm below.",
                     outcome="answered",
                     action_proposal=proposal,
+                    cache_reason="action_proposal",
                 )
             except Exception:
-                pass
+                return AssistantOutcome(
+                    response=UNAVAILABLE_RESPONSE,
+                    outcome="unavailable",
+                    cache_reason="action_proposal_error",
+                )
+        cache_identity = None
+        cache_reason = "cold"
+        cache_lookup_latency_ms = 0.0
+        cache_lock = None
         try:
             product = self.fetch_product(product_id)
             review_rows = self.fetch_reviews(product_id)
@@ -243,14 +269,111 @@ class GroundedAssistant:
                     response=INSUFFICIENT_RESPONSE,
                     outcome="insufficient",
                     quarantined_reviews=prepared.quarantined_review_count,
+                    cache_eligible=True,
+                    cache_reason="insufficient_source",
                 )
+            if not user_id or user_id == "guest":
+                provider_attempted = True
+                result = self.provider.converse(
+                    prepared.question,
+                    prepared.product,
+                    prepared.reviews,
+                )
+                validated = validate_grounded_output(
+                    result.payload,
+                    prepared.reviews,
+                    self.system_canary,
+                )
+                return AssistantOutcome(
+                    response=validated["answer"],
+                    outcome=validated["decision"],
+                    latency_ms=result.latency_ms,
+                    input_tokens=result.input_tokens,
+                    output_tokens=result.output_tokens,
+                    quarantined_reviews=prepared.quarantined_review_count,
+                    provider_stop_reason=result.stop_reason,
+                    response_contract_stage=result.contract_stage,
+                    provider_attempted=True,
+                    cache_eligible=False,
+                    cache_reason="missing_user_identity",
+                    model_calls=1,
+                    citations=tuple(validated["citations"]),
+                )
+            fingerprint = source_fingerprint(prepared.product, prepared.reviews)
+            cache_identity = self.response_cache.identity(
+                surface="product_qa",
+                user_id=user_id,
+                product_id=product_id,
+                request=prepared.question,
+                dependency_class="explicit_product_qa_v1",
+                model_id=self.provider.model_id,
+                prompt_version=PRODUCT_QA_PROMPT_VERSION,
+                guardrail_version=(
+                    f"{getattr(self.provider, 'guardrail_id', '')}:"
+                    f"{self.provider.guardrail_version}"
+                ),
+                response_schema_version=RESPONSE_SCHEMA_VERSION,
+                fingerprint=fingerprint,
+            )
+            lookup = self.response_cache.lookup(cache_identity)
+            cache_reason = lookup.reason
+            cache_lookup_latency_ms = lookup.lookup_latency_ms
+            if lookup.status == "hit" and lookup.value:
+                cached = lookup.value
+                return AssistantOutcome(
+                    response=str(cached["response"]),
+                    outcome=str(cached["outcome"]),
+                    quarantined_reviews=prepared.quarantined_review_count,
+                    citations=tuple(cached.get("citations") or ()),
+                    cache_status="hit",
+                    cache_eligible=True,
+                    cache_reason="hit",
+                    model_calls=0,
+                    cache_lookup_latency_ms=lookup.lookup_latency_ms,
+                    saved_model_calls=1,
+                    saved_input_tokens=int(cached.get("input_tokens", 0)),
+                    saved_output_tokens=int(cached.get("output_tokens", 0)),
+                )
+
+            cache_lock = self.response_cache.acquire_lock(cache_identity)
+            if cache_lock is None and cache_reason != "cache_error":
+                waited = self.response_cache.wait_for_fill(cache_identity)
+                cache_lookup_latency_ms += waited.lookup_latency_ms
+                if waited.status == "hit" and waited.value:
+                    cached = waited.value
+                    return AssistantOutcome(
+                        response=str(cached["response"]),
+                        outcome=str(cached["outcome"]),
+                        quarantined_reviews=prepared.quarantined_review_count,
+                        citations=tuple(cached.get("citations") or ()),
+                        cache_status="hit",
+                        cache_eligible=True,
+                        cache_reason="hit_after_wait",
+                        model_calls=0,
+                        cache_lookup_latency_ms=cache_lookup_latency_ms,
+                        saved_model_calls=1,
+                        saved_input_tokens=int(cached.get("input_tokens", 0)),
+                        saved_output_tokens=int(cached.get("output_tokens", 0)),
+                    )
+                if waited.reason == "cache_error":
+                    cache_reason = "cache_error"
+                elif waited.reason == "lock_timeout":
+                    return AssistantOutcome(
+                        response=UNAVAILABLE_RESPONSE,
+                        outcome="unavailable",
+                        error_class="cache_fill_in_progress",
+                        quarantined_reviews=prepared.quarantined_review_count,
+                        provider_attempted=False,
+                        cache_eligible=True,
+                        cache_reason="lock_timeout",
+                        model_calls=0,
+                        cache_lookup_latency_ms=cache_lookup_latency_ms,
+                    )
+
             provider_attempted = True
             result = self.provider.converse(prepared.question, prepared.product, prepared.reviews)
             validated = validate_grounded_output(result.payload, prepared.reviews, self.system_canary)
-            if session_id and validated.get("answer"):
-                session_store.append_turn(user_id, session_id, "user", question)
-                session_store.append_turn(user_id, session_id, "assistant", validated["answer"])
-            return AssistantOutcome(
+            outcome = AssistantOutcome(
                 response=validated["answer"],
                 outcome=validated["decision"],
                 latency_ms=result.latency_ms,
@@ -260,8 +383,31 @@ class GroundedAssistant:
                 provider_stop_reason=result.stop_reason,
                 response_contract_stage=result.contract_stage,
                 provider_attempted=True,
+                cache_eligible=True,
+                cache_reason=cache_reason,
+                model_calls=1,
+                cache_lookup_latency_ms=cache_lookup_latency_ms,
                 citations=tuple(validated["citations"]),
             )
+            if validated["decision"] == "answered" and cache_identity is not None:
+                wrote = self.response_cache.write(
+                    cache_identity,
+                    {
+                        "response": outcome.response,
+                        "outcome": outcome.outcome,
+                        "citations": list(outcome.citations),
+                        "input_tokens": outcome.input_tokens,
+                        "output_tokens": outcome.output_tokens,
+                    },
+                )
+                if not wrote and outcome.cache_reason != "cache_error":
+                    outcome = AssistantOutcome(
+                        **{
+                            **outcome.__dict__,
+                            "cache_reason": "cache_error",
+                        }
+                    )
+            return outcome
         except ProviderFailure as exc:
             outcome = "blocked" if exc.error_class == "guardrail_intervened" else "unavailable"
             response = BLOCKED_RESPONSE if outcome == "blocked" else UNAVAILABLE_RESPONSE
@@ -276,6 +422,10 @@ class GroundedAssistant:
                 provider_stop_reason=exc.stop_reason,
                 response_contract_stage=exc.contract_stage,
                 provider_attempted=True,
+                cache_eligible=True,
+                cache_reason=cache_reason,
+                model_calls=1,
+                cache_lookup_latency_ms=cache_lookup_latency_ms,
             )
         except UnsafeModelOutput as exc:
             return AssistantOutcome(
@@ -284,6 +434,10 @@ class GroundedAssistant:
                 error_class=str(exc),
                 quarantined_reviews=quarantined_reviews,
                 provider_attempted=True,
+                cache_eligible=True,
+                cache_reason="invalid_response",
+                model_calls=1,
+                cache_lookup_latency_ms=cache_lookup_latency_ms,
             )
         except Exception as exc:
             # Fail closed without returning or logging provider/database details.
@@ -293,4 +447,11 @@ class GroundedAssistant:
                 error_class=type(exc).__name__.lower()[:64],
                 quarantined_reviews=quarantined_reviews,
                 provider_attempted=provider_attempted,
+                cache_eligible=cache_identity is not None,
+                cache_reason=cache_reason,
+                model_calls=1 if provider_attempted else 0,
+                cache_lookup_latency_ms=cache_lookup_latency_ms,
             )
+        finally:
+            if cache_identity is not None:
+                self.response_cache.release_lock(cache_identity, cache_lock)

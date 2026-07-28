@@ -1,0 +1,171 @@
+{
+  "suite": "tf4aio-89-saga-restart",
+  "total": 8,
+  "passed": 8,
+  "failed": 0,
+  "reviewer_verdict": "PASS",
+  "cases": [
+    {
+      "case_id": "restart-after-preflight",
+      "phase": "preflight",
+      "decision": "abandon_pre_mutation",
+      "expected_decision": "abandon_pre_mutation",
+      "expected_outcome": "abandoned_pre_mutation",
+      "actual_outcome": "abandoned_pre_mutation",
+      "mutation_blocked": false,
+      "patches": 0,
+      "resume_result": {
+        "saga_id": "saga-restart-after-preflight",
+        "incident_id": "inc-restart-after-preflight",
+        "target": "product-reviews",
+        "phase": "preflight",
+        "action": "abandon_pre_mutation",
+        "outcome": "abandoned_pre_mutation"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "restart-after-lease",
+      "phase": "lease_acquired",
+      "decision": "abandon_pre_mutation",
+      "expected_decision": "abandon_pre_mutation",
+      "expected_outcome": "abandoned_pre_mutation",
+      "actual_outcome": "abandoned_pre_mutation",
+      "mutation_blocked": false,
+      "patches": 0,
+      "resume_result": {
+        "saga_id": "saga-restart-after-lease",
+        "incident_id": "inc-restart-after-lease",
+        "target": "product-reviews",
+        "phase": "lease_acquired",
+        "action": "abandon_pre_mutation",
+        "outcome": "abandoned_pre_mutation"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "restart-after-action-ack-healthy",
+      "phase": "action_acknowledged",
+      "decision": "continue_verification",
+      "expected_decision": "continue_verification",
+      "expected_outcome": "resolved",
+      "actual_outcome": "resolved",
+      "mutation_blocked": false,
+      "patches": 0,
+      "resume_result": {
+        "saga_id": "saga-restart-after-action-ack-healthy",
+        "incident_id": "inc-restart-after-action-ack-healthy",
+        "target": "product-reviews",
+        "phase": "action_acknowledged",
+        "action": "continue_verification",
+        "outcome": "resolved"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "restart-during-verify-unhealthy",
+      "phase": "verifying",
+      "decision": "continue_verification",
+      "expected_decision": "continue_verification",
+      "expected_outcome": "rolled_back",
+      "actual_outcome": "rolled_back",
+      "mutation_blocked": false,
+      "patches": 1,
+      "resume_result": {
+        "saga_id": "saga-restart-during-verify-unhealthy",
+        "incident_id": "inc-restart-during-verify-unhealthy",
+        "target": "product-reviews",
+        "phase": "verifying",
+        "action": "continue_verification",
+        "outcome": "rolled_back"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "restart-during-rollback",
+      "phase": "rolling_back",
+      "decision": "restore_original",
+      "expected_decision": "restore_original",
+      "expected_outcome": "rolled_back",
+      "actual_outcome": "rolled_back",
+      "mutation_blocked": false,
+      "patches": 1,
+      "resume_result": {
+        "saga_id": "saga-restart-during-rollback",
+        "incident_id": "inc-restart-during-rollback",
+        "target": "product-reviews",
+        "phase": "rolling_back",
+        "action": "restore_original",
+        "outcome": "rolled_back"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "lost-lease-on-restart",
+      "phase": "verifying",
+      "decision": "continue_verification",
+      "expected_decision": "continue_verification",
+      "expected_outcome": "escalated",
+      "actual_outcome": "escalated",
+      "mutation_blocked": true,
+      "patches": 0,
+      "resume_result": {
+        "saga_id": "saga-lost-lease-on-restart",
+        "incident_id": "inc-lost-lease-on-restart",
+        "target": "product-reviews",
+        "phase": "verifying",
+        "action": "continue_verification",
+        "outcome": "escalated",
+        "lease": "lost"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "conflicting-desired-state",
+      "phase": "verifying",
+      "decision": "continue_verification",
+      "expected_decision": "continue_verification",
+      "expected_outcome": "conflicting_desired_state",
+      "actual_outcome": "conflicting_desired_state",
+      "mutation_blocked": true,
+      "patches": 1,
+      "resume_result": {
+        "saga_id": "saga-conflicting-desired-state",
+        "incident_id": "inc-conflicting-desired-state",
+        "target": "product-reviews",
+        "phase": "verifying",
+        "action": "continue_verification",
+        "outcome": "conflicting_desired_state"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    },
+    {
+      "case_id": "stale-incomplete-post-mutation",
+      "phase": "action_acknowledged",
+      "decision": "fail_closed_escalate",
+      "expected_decision": "fail_closed_escalate",
+      "expected_outcome": "escalated",
+      "actual_outcome": "escalated",
+      "mutation_blocked": true,
+      "patches": 0,
+      "resume_result": {
+        "saga_id": "saga-stale-incomplete-post-mutation",
+        "incident_id": "inc-stale-incomplete-post-mutation",
+        "target": "product-reviews",
+        "phase": "action_acknowledged",
+        "action": "fail_closed_escalate",
+        "outcome": "escalated"
+      },
+      "passed": true,
+      "verdict": "PASS"
+    }
+  ],
+  "claim_boundary": "Offline/integration evidence level 3 only. Does not enable live autonomous remediation or prove EKS/GitOps."
+}

@@ -256,6 +256,15 @@ components:
         value: "20"
       - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
         value: "900"
+      # Process-local only. A reviewed live-autonomous values override must use
+      # "file" and mount AIOPS_SAGA_PATH from a persistent volume; startup
+      # rejects live autonomous mode with this memory default.
+      - name: AIOPS_SAGA_BACKEND
+        value: memory
+      - name: AIOPS_SAGA_RETENTION_HOURS
+        value: "72"
+      - name: AIOPS_ARGO_WINDOW_ENABLED
+        value: "true"
       - name: AIOPS_TARGET_NAMESPACE
         valueFrom:
           fieldRef:
@@ -534,7 +543,7 @@ components:
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
+          whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
               app.kubernetes.io/component: cart
@@ -959,6 +968,11 @@ components:
         value: product-catalog:8080
       - name: PRODUCT_REVIEWS_ADDR
         value: product-reviews:3551
+      - name: AI_PRINCIPAL_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: principal-hmac-secret
       - name: RECOMMENDATION_ADDR
         value: recommendation:8080
       - name: SHIPPING_ADDR
@@ -1186,6 +1200,8 @@ components:
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: "false"
+      - name: LOCUST_PAID_AI_ENABLED
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -1375,9 +1391,9 @@ components:
       - name: BEDROCK_DEADLINE_SECONDS
         value: "4.5"
       - name: BEDROCK_INPUT_USD_PER_MILLION
-        value: "0.30"
+        value: "0.33"
       - name: BEDROCK_OUTPUT_USD_PER_MILLION
-        value: "2.50"
+        value: "2.75"
       - name: PRODUCT_REVIEWS_PORT
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
@@ -1388,6 +1404,20 @@ components:
         value: production
       - name: VALKEY_ADDR
         value: valkey-cart:6379
+      - name: AI_CACHE_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: cache-hmac-secret
+      - name: AI_MEMORY_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: memory-hmac-secret
+      - name: AI_RESPONSE_CACHE_TTL_SECONDS
+        value: "300"
+      - name: MAX_HISTORY_EXCHANGES
+        value: "5"
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
