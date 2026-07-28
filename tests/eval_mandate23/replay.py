@@ -495,6 +495,7 @@ def main() -> int:
             "guardrail_version": args.guardrail_version,
         },
         "price_snapshot": {
+            "basis": "configured_estimate",
             "input_usd_per_million": os.getenv("BEDROCK_INPUT_USD_PER_MILLION"),
             "output_usd_per_million": os.getenv("BEDROCK_OUTPUT_USD_PER_MILLION"),
         },

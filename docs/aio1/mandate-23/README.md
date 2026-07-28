@@ -70,7 +70,10 @@ tests/eval_mandate23/repro.sh
 
 The canonical proof starts with Product Q&A because every safe grounded question is cache eligible. Copilot evidence is additional and must use an exact full product name or ID plus a review marker.
 
-Run at least three repetitions per case with the same dataset, model, prompt, Guardrail, and price snapshot. Attach:
+Run at least three repetitions per case with the same dataset, model, prompt,
+Guardrail, and configured price snapshot. Cost values are estimates computed
+from the pinned runtime coefficients, not AWS invoice or Cost and Usage Report
+amounts. Attach:
 
 - `per_case.jsonl`;
 - `aggregate.json`;

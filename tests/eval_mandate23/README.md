@@ -48,7 +48,12 @@ tests/eval_mandate23/repro.sh
 Each run writes `runtime/`, `short-term/`, and either `invalidation.json` or an
 explicit `invalidation-skipped.txt`. Runtime configuration records the source
 revision, dirty state, runtime image/digest/code hash when supplied, model,
-Guardrail, and price snapshot. Set `MANDATE23_RUNTIME_IMAGE`,
+Guardrail, and price snapshot. The snapshot is labelled
+`configured_estimate`: it reproduces the runtime coefficients used to compute
+per-call estimates and is not an AWS invoice or Cost and Usage Report. The
+defaults (`0.33` input / `2.75` output USD per million tokens) match the current
+Compose and Helm runtime; override them together when the deployed runtime uses
+different pinned coefficients. Set `MANDATE23_RUNTIME_IMAGE`,
 `MANDATE23_RUNTIME_IMAGE_DIGEST`, and `MANDATE23_RUNTIME_CODE_SHA256` when
 capturing submission evidence.
 
