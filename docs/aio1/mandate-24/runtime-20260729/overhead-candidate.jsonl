@@ -1,0 +1,3 @@
+{"started":1785260713353541,"latency_ms":2119.05,"trace_id":"f9bfc51e2483cd4f6fa7389db6e9714b","image":"405fd07-product-reviews","model_input_tokens":1485,"case_id":"product-qa-cold-r1"}
+{"started":1785260716046719,"latency_ms":1831.209,"trace_id":"c5bba31d9b6f24b7a9bde9ad1a31de01","image":"405fd07-product-reviews","model_input_tokens":1485,"case_id":"product-qa-cold-r2"}
+{"started":1785260718437966,"latency_ms":1872.266,"trace_id":"b52d0ea9cee1b3d1dcd3df290140e39f","image":"405fd07-product-reviews","model_input_tokens":1485,"case_id":"product-qa-cold-r3"}

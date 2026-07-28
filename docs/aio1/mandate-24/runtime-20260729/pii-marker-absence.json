@@ -1,0 +1,16 @@
+{
+  "schema_version": "mandate24-marker-absence-v1",
+  "captured_at_utc": "2026-07-28T17:39:00Z",
+  "marker_sha256": "6ece3d3cd8d59c0f4b0a62dd6e315ee2d2dde55c69b3a3f8b45bc1cfeb5515a9",
+  "request_trace_id": "5f1dfcb2ca62d10016dc880dcd2fa6da",
+  "jaeger_trace_raw_marker_hits": 0,
+  "opensearch_index": "otel-logs-*",
+  "opensearch_raw_marker_hits": 0,
+  "opensearch_shards": {
+    "total": 3,
+    "successful": 3,
+    "failed": 0
+  },
+  "pass": true,
+  "note": "The synthetic raw marker is intentionally excluded from this retained report; only its SHA-256 is retained."
+}
