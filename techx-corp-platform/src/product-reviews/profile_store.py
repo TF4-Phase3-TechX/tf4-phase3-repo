@@ -35,12 +35,46 @@ _UNSUPPORTED_MEMORY_MARKERS = (
     "địa chỉ của tôi",
 )
 _NEGATED_MEMORY_PATTERNS = (
-    r"\b(?:do not|don't|dont|never)\s+(?:remember|save|store)\b",
-    r"\b(?:do not|don't|dont|never|not|no)\b"
+    r"\b(?:do not|don['’]?t|never)\s+(?:remember|save|store|forget)\b",
+    r"\b(?:do not|don['’]?t|never|not|no)\b"
     r"(?:\s+[\w'-]+){0,6}\s+(?:remember|save|store)\b",
     r"\b(?:not|no)\s+(?:remember|save|store)\b",
-    r"(?:đừng|không)\s+(?:nhớ|lưu)\b",
-    r"(?:không\s+muốn|đừng\s+có)\s+(?:bạn\s+)?(?:nhớ|lưu)\b",
+    r"\b(?:đừng|không|chớ)\b(?:\s+[\w'-]+){0,6}\s+(?:nhớ|lưu|quên)\b",
+    r"(?:không\s+muốn|đừng\s+có)\s+(?:bạn\s+)?(?:nhớ|lưu|quên)\b",
+)
+_FORGET_MEMORY_PATTERNS = (
+    r"\bforget\s+(?:my\s+preferences|what\s+you\s+remember|it|that)\b",
+    r"\bdelete\s+my\s+preferences\b",
+    r"\b(?:quên|xóa|xoá)\s+(?:điều\s+bạn\s+nhớ|sở\s+thích\s+của\s+tôi|sở\s+thích|nó|đi)\b",
+)
+_EXPLICIT_CONSENT_PATTERNS = (
+    r"^(?:please\s+)?(?:remember|save|store)\b",
+    r"^(?:can|could|would)\s+you\s+(?:please\s+)?"
+    r"(?:remember|save|store)\b",
+    r"^(?:bạn\s+)?(?:có\s+thể\s+)?(?:(?:xin\s+)?hãy\s+)?"
+    r"(?:nhớ|lưu)\b",
+)
+_FOLLOWUP_CONSENT_PATTERNS = (
+    r"(?:[,;.]\s*|\b(?:then|and(?:\s+then)?|but(?:\s+then)?)\s+)"
+    r"(?:(?:then|and(?:\s+then)?|but(?:\s+then)?)\s+)?"
+    r"(?:(?:please\s+)?(?:remember|save|store)|"
+    r"(?:can|could|would)\s+you\s+(?:please\s+)?(?:remember|save|store))\b",
+    r"(?:[,;.]\s*|\b(?:rồi|sau\s+đó|và|nhưng)\s+)"
+    r"(?:(?:rồi|sau\s+đó|và|nhưng)\s+)?"
+    r"(?:bạn\s+)?(?:có\s+thể\s+)?(?:(?:xin\s+)?hãy\s+)?"
+    r"(?:nhớ|lưu)\b",
+)
+_NEGATED_PROFILE_VALUE_PATTERNS = (
+    r"\bi\s+(?:prefer|like|love)\s+(?:the\s+)?(?:category\s+)?"
+    r"(?:not|no|none)(?=\s|$|[.,;!?])",
+    r"\b(?:preferred\s+category|favou?rite\s+category)\s*"
+    r"(?:is|=|:)?\s*(?:not|no|none)(?=\s|$|[.,;!?])",
+    r"\bmy\s+(?:preference|favou?rite)\s*(?:category)?\s*"
+    r"(?:is|=|:)?\s*(?:not|no|none)(?=\s|$|[.,;!?])",
+    r"\btôi\s+(?:không|chẳng|chả)\s+(?:thích|ưa\s+thích|ưu\s+tiên|có)\b",
+    r"\b(?:danh\s+mục|loại\s+sản\s+phẩm)\s*"
+    r"(?:yêu\s+thích|ưa\s+thích)?\s*(?:là|=|:)?\s*"
+    r"(?:không(?:\s+(?:có|phải))?|none)(?=\s|$|[.,;!?])",
 )
 
 
@@ -69,19 +103,22 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
     if any(re.search(pattern, lowered) for pattern in _NEGATED_MEMORY_PATTERNS):
         return MemoryCommand("reject", {})
 
-    if any(
-        marker in lowered
-        for marker in (
-            "forget my preferences",
-            "forget what you remember",
-            "delete my preferences",
-            "quên sở thích của tôi",
-            "xóa điều bạn nhớ",
-            "xoá điều bạn nhớ",
-            "xóa sở thích",
-            "xoá sở thích",
-        )
-    ):
+    explicit_consent = any(
+        re.match(pattern, lowered) for pattern in _EXPLICIT_CONSENT_PATTERNS
+    )
+    followup_consent = any(
+        re.search(pattern, lowered) for pattern in _FOLLOWUP_CONSENT_PATTERNS
+    )
+    forget_requested = any(
+        re.search(pattern, lowered) for pattern in _FORGET_MEMORY_PATTERNS
+    )
+
+    # A single request that asks to both write and delete memory is ambiguous
+    # and potentially destructive. Reject it without invoking either store
+    # operation instead of guessing which clause owns the user's final intent.
+    if forget_requested and (explicit_consent or followup_consent):
+        return MemoryCommand("reject", {})
+    if forget_requested:
         return MemoryCommand("forget", {})
 
     if any(
@@ -114,25 +151,25 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
     # affirmative command. A loose substring check is unsafe here because
     # refusals such as "I don't want you to remember ..." also contain the
     # word "remember".
-    explicit_consent = any(
-        re.match(pattern, lowered)
-        for pattern in (
-            r"^(?:please\s+)?(?:remember|save|store)\b",
-            r"^(?:can|could|would)\s+you\s+(?:please\s+)?"
-            r"(?:remember|save|store)\b",
-            r"^(?:hãy\s+)?nhớ\b",
-            r"^lưu\s+sở\s+thích\b",
-        )
-    )
     if not explicit_consent:
         return None
     if any(marker in lowered for marker in _UNSUPPORTED_MEMORY_MARKERS):
         return MemoryCommand("reject", {})
+    if any(
+        re.search(pattern, lowered) for pattern in _NEGATED_PROFILE_VALUE_PATTERNS
+    ):
+        return MemoryCommand("reject", {})
 
     values: dict[str, Any] = {}
     category_patterns = (
-        r"(?:preferred category|favorite category)\s*(?:is|=|:)?\s*([\w-]+)",
+        r"(?:preferred category|favou?rite category)\s*(?:is|=|:)?\s*([\w-]+)",
+        r"(?:that\s+)?i\s+(?:prefer|like|love)\s+(?:the\s+)?"
+        r"(?:category\s+)?([\w-]+)",
+        r"my\s+(?:preference|favou?rite)\s*(?:category)?\s*"
+        r"(?:is|=|:)?\s*([\w-]+)",
         r"(?:danh mục|loại sản phẩm)\s*(?:yêu thích|ưa thích)?\s*(?:là|=|:)?\s*([\w-]+)",
+        r"(?:tôi\s+(?:thích|ưa thích|ưu tiên)|sở thích của tôi\s*(?:là|=|:)?)\s+"
+        r"(?:(?:danh mục|loại sản phẩm)\s+)?([\w-]+)",
     )
     for pattern in category_patterns:
         matched = re.search(pattern, lowered, re.IGNORECASE)
@@ -142,7 +179,11 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
 
     budget_patterns = (
         r"(?:max(?:imum)? budget|budget limit)\s*(?:is|=|:)?\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+        r"(?:my\s+budget|i\s+can\s+spend)\s*(?:is|=|:|up\s+to)?\s*"
+        r"\$?\s*(\d+(?:\.\d{1,2})?)",
         r"(?:ngân sách tối đa|mức chi tối đa)\s*(?:là|=|:)?\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+        r"(?:ngân sách của tôi|tôi có thể chi)\s*(?:là|=|:|tối đa)?\s*"
+        r"\$?\s*(\d+(?:\.\d{1,2})?)",
     )
     for pattern in budget_patterns:
         matched = re.search(pattern, lowered, re.IGNORECASE)
