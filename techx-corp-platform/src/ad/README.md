@@ -21,7 +21,7 @@ To run the Ad Service:
 ```sh
 export AD_PORT=8080
 export FEATURE_FLAG_GRPC_SERVICE_ADDR=featureflagservice:50053
-./build/install/techx-corp-ad/bin/Ad
+./build/install/techx-corp-ad/bin/Ad 
 ```
 
 ### Upgrading Gradle
@@ -39,3 +39,4 @@ From the root of `techx-corp`, run:
 ```sh
 docker build --file ./src/ad/Dockerfile ./
 ```
+

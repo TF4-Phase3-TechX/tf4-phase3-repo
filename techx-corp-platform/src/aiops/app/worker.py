@@ -21,7 +21,7 @@ from .detection import (
     request_rate_query,
     values,
 )
-from .models import Evidence, Incident, IncidentStatus
+from .models import AuditEvent, Evidence, Incident, IncidentStatus
 from .remediation import RemediationController
 from .store import IncidentStore
 from .telemetry import TelemetryClient, TelemetryError
@@ -105,6 +105,35 @@ class AIOpsWorker:
         self.remediation = remediation
         self.availability = availability
         self.running = False
+        self._remediation_tasks: set[asyncio.Task[Any]] = set()
+
+    async def _run_remediation(self, incident: Incident) -> None:
+        """Execute remediation off the detection loop so other services keep polling."""
+
+        try:
+            handler = getattr(self.remediation, "handle_incident", None)
+            if handler:
+                await handler(incident)
+            else:
+                self.remediation.request_approval(incident)
+            # Shared with the manual approval endpoint: quarantine only after a
+            # real live patch (or rollback path). Pre-mutation policy denies
+            # must not lock the target forever.
+            if await self.store.reconcile_post_execution_quarantine(incident):
+                log.warning(
+                    json.dumps(
+                        {
+                            "event": "target_mutation_quarantined",
+                            "service": incident.affected_service,
+                            "incident_id": incident.incident_id,
+                            "reason": incident.escalation_reason,
+                        }
+                    )
+                )
+        except Exception:
+            log.exception(
+                "remediation task failed for incident %s", incident.incident_id
+            )
 
     async def poll_once(self) -> None:
         import time
@@ -141,50 +170,62 @@ class AIOpsWorker:
 
         decisions = []
         for service in self.settings.services:
-            query = latency_query(service, self.settings.namespace)
-            latency_decision = (
-                await asyncio.to_thread(
-                    self.detector.latency,
-                    service,
-                    await query_range(query),
-                    query,
-                )
-            )
-            decisions.append(latency_decision)
-            query = error_rate_query(
-                service, self.settings.minimum_request_count, self.settings.namespace
-            )
-            burn_rates: tuple[float | None, float | None] | None = None
-            slo_target = self.settings.service_slo_targets.get(service)
-            if slo_target is not None:
-                observed_burn_rates: list[float | None] = []
-                for window in (
-                    self.settings.burn_rate_short_window_minutes,
-                    self.settings.burn_rate_long_window_minutes,
-                ):
-                    burn_query = error_budget_burn_rate_query(
+            latency_breached = False
+            error_rate_breached = False
+            if service in self.settings.generic_signal_services:
+                query = latency_query(service, self.settings.namespace)
+                latency_decision = (
+                    await asyncio.to_thread(
+                        self.detector.latency,
                         service,
-                        slo_target,
-                        window,
-                        self.settings.minimum_request_count,
-                        self.settings.namespace,
+                        await query_range(query),
+                        query,
                     )
-                    observed = instant_value(await query_instant(burn_query))
-                    observed_burn_rates.append(observed)
-                    error_budget_burn_rate.labels(service, f"{window}m").set(
-                        observed if observed is not None else float("nan")
-                    )
-                burn_rates = (observed_burn_rates[0], observed_burn_rates[1])
-            error_decision = (
-                await asyncio.to_thread(
-                    self.detector.error_rate,
-                    service,
-                    await query_range(query),
-                    query,
-                    burn_rates=burn_rates,
                 )
-            )
-            decisions.append(error_decision)
+                decisions.append(latency_decision)
+                latency_breached = latency_decision.breached
+
+                query = error_rate_query(
+                    service,
+                    self.settings.minimum_request_count,
+                    self.settings.namespace,
+                )
+                burn_rates: tuple[float | None, float | None] | None = None
+                slo_target = self.settings.service_slo_targets.get(service)
+                if slo_target is not None:
+                    observed_burn_rates: list[float | None] = []
+                    for window in (
+                        self.settings.burn_rate_short_window_minutes,
+                        self.settings.burn_rate_long_window_minutes,
+                    ):
+                        burn_query = error_budget_burn_rate_query(
+                            service,
+                            slo_target,
+                            window,
+                            self.settings.minimum_request_count,
+                            self.settings.namespace,
+                        )
+                        observed = instant_value(await query_instant(burn_query))
+                        observed_burn_rates.append(observed)
+                        error_budget_burn_rate.labels(service, f"{window}m").set(
+                            observed if observed is not None else float("nan")
+                        )
+                    burn_rates = (
+                        observed_burn_rates[0],
+                        observed_burn_rates[1],
+                    )
+
+                error_decision = (
+                    await asyncio.to_thread(
+                        self.detector.error_rate,
+                        service,
+                        await query_range(query),
+                        query,
+                        burn_rates=burn_rates,
+                    )
+                )
+                decisions.append(error_decision)
+                error_rate_breached = error_decision.breached
 
             if self.availability:
                 snapshot = await asyncio.to_thread(
@@ -204,8 +245,8 @@ class AIOpsWorker:
                 state = classify_service_state(
                     snapshot,
                     traffic_points[-1] if traffic_points else None,
-                    latency_breached=latency_decision.breached,
-                    error_rate_breached=error_decision.breached,
+                    latency_breached=latency_breached,
+                    error_rate_breached=error_rate_breached,
                     busy_request_rate_threshold=(
                         self.settings.busy_request_rate_threshold
                     ),
@@ -401,12 +442,36 @@ class AIOpsWorker:
                     notification_severity,
                     _impact_level(incident.impact),
                 ).set(1)
-                handler = getattr(self.remediation, "handle_incident", None)
-                if handler:
-                    await handler(stored)
+                if await self.store.is_target_blocked(stored.affected_service):
+                    block = await self.store.target_block(stored.affected_service)
+                    stored.status = IncidentStatus.ESCALATED
+                    stored.mutation_blocked = True
+                    stored.escalation_reason = (
+                        "Target mutation quarantine is active; operator unlock required"
+                    )
+                    stored.audit_events.append(
+                        AuditEvent(
+                            event="target_quarantine_denied_remediation",
+                            detail=block or {},
+                        )
+                    )
+                    log.warning(
+                        json.dumps(
+                            {
+                                "event": "remediation_skipped_target_quarantine",
+                                "incident_id": stored.incident_id,
+                                "service": stored.affected_service,
+                                "block": block,
+                            }
+                        )
+                    )
                 else:
-                    # Backward-compatible seam for test doubles and manual-mode adapters.
-                    self.remediation.request_approval(stored)
+                    task = asyncio.create_task(
+                        self._run_remediation(stored),
+                        name=f"aiops-remediate-{stored.incident_id}",
+                    )
+                    self._remediation_tasks.add(task)
+                    task.add_done_callback(self._remediation_tasks.discard)
                 log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
             elif active_before and stored.incident_id == active_before.incident_id:
                 current_routing = (

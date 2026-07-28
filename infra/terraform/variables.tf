@@ -1,4 +1,15 @@
 # Owner: Huy Hoàng nhóm CDO_04
+
+# REL-22 (CDO08): MSK Connect provisioned capacity is blocked at the AWS account
+# level with "AccessDeniedException: We are unable to process your request"
+# even when called with Admin/BreakGlass credentials. All IAM, SCP, quota, VPC
+# and DNS checks pass — this is a backend account-level restriction.
+# Set to true only after AWS Support enables MSK Connect for account 511825856493.
+variable "msk_connect_connector_enabled" {
+  description = "Enable MSK Connect provisioned connector for REL-22 orders S3 archive. Set false until AWS Support enables MSK Connect capacity for this account."
+  type        = bool
+  default     = false
+}
 variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string

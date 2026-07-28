@@ -8,6 +8,8 @@
     "start": "node --require ./Instrumentation.js server.js",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:ai-debug": "tsc utils/aiDebugMetadata.ts utils/aiDebugMetadata.test.ts --target ES2022 --module commonjs --moduleResolution node --rootDir . --outDir .next/cache/ai-debug-tests --noEmit false --esModuleInterop --skipLibCheck && node --test .next/cache/ai-debug-tests/utils/aiDebugMetadata.test.js",
+    "test:ai-principal": "export PRODUCT_REVIEWS_ADDR=localhost:3550; tsc pages/api/product-ask-ai-assistant/[productId]/index.ts utils/aiPrincipal.test.ts --target ES2022 --module commonjs --moduleResolution node --rootDir . --outDir .next/cache/ai-principal-tests --noEmit false --esModuleInterop --skipLibCheck && node --test .next/cache/ai-principal-tests/utils/aiPrincipal.test.js",
     "test:resilience": "tsc utils/resilience/optionalDependency.ts utils/resilience/optionalDependency.test.ts --target ES2022 --module commonjs --moduleResolution node --rootDir utils/resilience --outDir .next/cache/resilience-tests --noEmit false --esModuleInterop --skipLibCheck && node --test .next/cache/resilience-tests/optionalDependency.test.js",
     "cy:open": "cypress open",
     "grpc:generate": "mkdir -p ./protos && protoc -I ./pb  --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=esModuleInterop=true --ts_proto_out=./protos --ts_proto_opt=outputServices=grpc-js demo.proto"
@@ -70,10 +72,10 @@
   "overrides": {
     "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.1",
-    "postcss": "8.5.12",
+    "postcss": "8.5.18",
+    "brace-expansion": "5.0.8",
     "fast-uri": "3.1.4",
     "minimatch": "10.2.5",
-    "postcss": "8.5.12",
     "sharp": "0.35.0"
   }
 }

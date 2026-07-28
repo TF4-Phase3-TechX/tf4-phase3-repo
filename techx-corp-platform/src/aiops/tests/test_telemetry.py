@@ -71,6 +71,31 @@ async def test_secondary_source_failure_is_unavailable_not_healthy_empty():
 
 
 @pytest.mark.asyncio
+async def test_jaeger_trace_enrichment_uses_bounded_configured_query():
+    async def handler(request: httpx.Request):
+        assert request.url.path == "/jaeger/ui/api/traces"
+        assert request.url.params["service"] == "product-reviews"
+        assert request.url.params["lookback"] == "5m"
+        assert request.url.params["limit"] == "5"
+        return httpx.Response(200, json={"data": [{"traceID": "trace-1"}]})
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    telemetry = TelemetryClient(
+        replace(
+            Settings(),
+            jaeger_url="http://jaeger/jaeger/ui",
+            jaeger_trace_lookback="5m",
+            jaeger_trace_limit=5,
+        ),
+        http,
+    )
+    assert await telemetry.find_traces("product-reviews") == [
+        {"traceID": "trace-1"}
+    ]
+    await telemetry.close()
+
+
+@pytest.mark.asyncio
 async def test_read_only_observability_probe_uses_documented_api_paths():
     async def handler(request: httpx.Request):
         if request.url.host == "prometheus":

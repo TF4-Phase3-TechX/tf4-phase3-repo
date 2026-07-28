@@ -70,6 +70,7 @@ def test_error_rate_uses_per_service_span_metrics_and_requires_sustained_polls()
     assert 'span_name="oteldemo.CheckoutService/PlaceOrder"' in query
     assert "increase(" in query
     assert ">= 20" in query
+    assert "or vector(0)" in query
     assert detector.error_rate("checkout", series, query).anomalous is False
     assert detector.error_rate("checkout", series, query).anomalous is True
 
@@ -79,6 +80,16 @@ def test_frontend_latency_query_reuses_user_visible_slo_routes():
     assert 'span_kind="SPAN_KIND_SERVER"' in query
     assert 'span_name=~"GET /|GET /product.*' in query
     assert "POST /api/checkout" not in query
+    assert "[5m]" in query
+
+
+def test_latency_query_accepts_short_post_action_verification_window():
+    query = latency_query("product-reviews", "techx-tf4", "30s")
+
+    assert 'service_name="product-reviews"' in query
+    assert 'k8s_namespace_name="techx-tf4"' in query
+    assert "[30s]" in query
+    assert "[5m]" not in query
 
 
 def test_frontend_error_query_uses_canonical_all_server_span_boundary():
@@ -92,6 +103,7 @@ def test_burn_rate_query_is_request_weighted_and_scoped_to_exact_window():
         "checkout", 0.99, 30, minimum_requests=40, namespace="techx-tf4"
     )
     assert "increase(" in query
+    assert "or vector(0)" in query
     assert "[30m]" in query
     assert "/ 0.01" in query
     assert ">= 40" in query

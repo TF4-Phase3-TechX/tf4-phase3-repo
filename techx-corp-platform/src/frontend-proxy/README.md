@@ -1,6 +1,6 @@
 # Frontend Proxy Service
 
-This service acts as a reverse proxy for the various user-facing web interfaces.
+This service acts as a reverse proxy for the various user-facing web interfaces. 
 
 ## Modifying the Envoy Configuration
 

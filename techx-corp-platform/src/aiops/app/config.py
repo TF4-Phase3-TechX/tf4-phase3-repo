@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 
 
@@ -29,6 +30,43 @@ def _float_map(name: str, default: str) -> dict[str, float]:
     return result
 
 
+def _string_map(name: str, default: str = "") -> dict[str, str]:
+    result: dict[str, str] = {}
+    raw = os.getenv(name, default)
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        key, separator, value = item.partition("=")
+        if not separator or not key.strip() or not value.strip():
+            raise ValueError(f"{name} entries must use service=value: {item!r}")
+        result[key.strip()] = value.strip()
+    return result
+
+
+def prometheus_duration_seconds(duration: str) -> int:
+    """Convert a positive Prometheus duration (for example 2m, 90s) to seconds."""
+
+    match = re.fullmatch(r"([1-9]\d*)(ms|s|m|h|d|w|y)", duration)
+    if not match:
+        raise ValueError(f"invalid Prometheus duration: {duration!r}")
+    amount = int(match.group(1))
+    unit = match.group(2)
+    multipliers = {
+        "ms": 0.001,
+        "s": 1,
+        "m": 60,
+        "h": 3600,
+        "d": 86400,
+        "w": 604800,
+        "y": 31536000,
+    }
+    seconds = amount * multipliers[unit]
+    if seconds < 1:
+        raise ValueError(f"duration must be at least one second: {duration!r}")
+    return int(seconds)
+
+
 @dataclass(frozen=True)
 class Settings:
     prometheus_url: str = os.getenv(
@@ -43,6 +81,11 @@ class Settings:
         "JAEGER_URL",
         "http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui",
     )
+    # Trace enrichment is deliberately narrower than the detector's metric
+    # lookback. Jaeger returns complete trace payloads, so a 30-minute/20-trace
+    # query can exceed the client timeout during a load incident.
+    jaeger_trace_lookback: str = os.getenv("AIOPS_JAEGER_TRACE_LOOKBACK", "5m")
+    jaeger_trace_limit: int = int(os.getenv("AIOPS_JAEGER_TRACE_LIMIT", "5"))
     grafana_url: str = os.getenv(
         "GRAFANA_URL", "http://grafana.techx-observability.svc.cluster.local/grafana"
     )
@@ -182,11 +225,26 @@ class Settings:
     )
     error_high_multiplier: float = float(os.getenv("AIOPS_ERROR_HIGH_MULTIPLIER", "2"))
     llm_high_error_rate: float = float(os.getenv("AIOPS_LLM_HIGH_ERROR_RATE", "0.25"))
+    # Runtime controlled drills observed true high-severity acute latency
+    # incidents at 0.742-0.743. With slow_drift=0, the configured confidence
+    # terms have a theoretical ceiling of 0.75 and the normalized isolation
+    # score remains below 1, so a 0.75 gate is structurally unreachable.
+    # Severity, allowlist, runbook and evidence gates remain independent.
     remediation_confidence_threshold: float = float(
-        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.75")
+        os.getenv("AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD", "0.74")
     )
     verification_error_rate_threshold: float = float(
         os.getenv("AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD", "0.01")
+    )
+    # Post-action SLO samples with fewer requests than this floor fail closed.
+    verification_minimum_request_count: int = int(
+        os.getenv("AIOPS_VERIFICATION_MINIMUM_REQUEST_COUNT", "5")
+    )
+    # CDO-pinned known-good Deployment revision numbers
+    # (deployment.kubernetes.io/revision). Required for every live mutation
+    # target; dry-run may still inspect owned[1] without treating it as proven.
+    known_good_revisions: dict[str, str] = field(
+        default_factory=lambda: _string_map("AIOPS_KNOWN_GOOD_REVISIONS", "")
     )
     remediation_mode: str = os.getenv("REMEDIATION_MODE", "dry-run")
     autonomous_remediation_enabled: bool = _bool(
@@ -204,12 +262,34 @@ class Settings:
     rollback_verification_polls: int = int(
         os.getenv("AIOPS_ROLLBACK_VERIFICATION_POLLS", "3")
     )
+    # Require the last N polls to be healthy so one stale first sample (live
+    # drill pattern) does not veto an otherwise recovered window.
+    verification_consecutive_healthy_polls: int = int(
+        os.getenv("AIOPS_VERIFICATION_CONSECUTIVE_HEALTHY_POLLS", "2")
+    )
+    # Detection deliberately uses a stable 5m rate window. Post-action
+    # verification must exclude the pre-action incident, so it uses a short
+    # window after an explicit settle delay while retaining the same SLO.
+    # Default settle is strictly greater than the default 2m window so the
+    # first verification poll's range no longer fully overlaps the action.
+    verification_metric_window: str = os.getenv(
+        "AIOPS_VERIFICATION_METRIC_WINDOW", "2m"
+    )
+    verification_settle_seconds: float = float(
+        os.getenv("AIOPS_VERIFICATION_SETTLE_SECONDS", "150")
+    )
     verification_interval_seconds: float = float(
         os.getenv("AIOPS_VERIFICATION_INTERVAL_SECONDS", "20")
     )
     remediation_lock_ttl_seconds: int = int(
         os.getenv("AIOPS_REMEDIATION_LOCK_TTL_SECONDS", "900")
     )
+    # Durable remediation saga (TF4AIO-89). memory = process-local tests;
+    # file = JSON under AIOPS_SAGA_PATH on an operator-provided durable volume.
+    saga_backend: str = os.getenv("AIOPS_SAGA_BACKEND", "memory")
+    saga_path: str = os.getenv("AIOPS_SAGA_PATH", "")
+    saga_retention_hours: int = int(os.getenv("AIOPS_SAGA_RETENTION_HOURS", "72"))
+    argo_window_enabled: bool = _bool("AIOPS_ARGO_WINDOW_ENABLED", "true")
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
     deployment_recency_hours: int = int(
@@ -224,6 +304,16 @@ class Settings:
             "AIOPS_MONITORED_SERVICES", "llm,product-reviews,frontend,checkout"
         )
     )
+    # Only services that export the generic server-span metrics belong in this
+    # set. Availability monitoring still covers every monitored service, while
+    # service-specific signals (for example LLM call errors) use their own
+    # instrumentation and ownership discovery.
+    generic_signal_services: tuple[str, ...] = field(
+        default_factory=lambda: _csv(
+            "AIOPS_GENERIC_SIGNAL_SERVICES",
+            "product-reviews,frontend,cart,checkout",
+        )
+    )
     # Expected callers are used only to report unavailable coverage. Actual
     # incident ownership is discovered from the service_name metric label.
     llm_services: tuple[str, ...] = field(
@@ -234,6 +324,54 @@ class Settings:
     )
 
     def __post_init__(self) -> None:
+        if self.jaeger_trace_limit <= 0:
+            raise ValueError("Jaeger trace limit must be positive")
+        if not re.fullmatch(
+            r"[1-9]\d*(?:ms|s|m|h|d|w|y)", self.verification_metric_window
+        ):
+            raise ValueError(
+                "verification metric window must be one positive Prometheus duration"
+            )
+        if self.verification_settle_seconds < 0:
+            raise ValueError("verification settle seconds cannot be negative")
+        # Offline/replay may set settle=0. Live/drill configs must keep the
+        # settle delay at least as long as the metric window so the first poll
+        # is not entirely pre-action traffic.
+        if self.verification_settle_seconds > 0:
+            window_seconds = prometheus_duration_seconds(
+                self.verification_metric_window
+            )
+            if self.verification_settle_seconds < window_seconds:
+                raise ValueError(
+                    "verification settle seconds must be >= verification metric "
+                    "window so the first post-action poll is not fully pre-action"
+                )
+        if self.verification_consecutive_healthy_polls < 1:
+            raise ValueError(
+                "verification consecutive healthy polls must be at least 1"
+            )
+        if self.verification_minimum_request_count < 0:
+            raise ValueError(
+                "verification minimum request count cannot be negative"
+            )
+        if self.saga_retention_hours <= 0:
+            raise ValueError("saga retention hours must be positive")
+        if self.saga_backend.strip().lower() in {"file", "fs", "json"}:
+            if not self.saga_path.strip():
+                raise ValueError(
+                    "AIOPS_SAGA_PATH is required when AIOPS_SAGA_BACKEND is file"
+                )
+        if self.saga_backend.strip().lower() == "configmap":
+            raise ValueError("configmap saga backend is not implemented")
+        if (
+            self.remediation_mode == "live"
+            and self.autonomous_remediation_enabled
+            and self.saga_backend.strip().lower()
+            in {"", "memory", "mem", "none", "off"}
+        ):
+            raise ValueError(
+                "live autonomous remediation requires a durable saga backend"
+            )
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
         if (

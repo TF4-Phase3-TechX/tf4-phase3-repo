@@ -16,10 +16,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-MAX_HISTORY_TURNS = 5
+MAX_HISTORY_EXCHANGES = int(os.getenv("MAX_HISTORY_EXCHANGES", "5"))
+MAX_HISTORY_MESSAGES = MAX_HISTORY_EXCHANGES * 2
+# Backward-compatible import for older callers/tests. The value has always
+# represented exchanges even though its former name said "turns".
+MAX_HISTORY_TURNS = MAX_HISTORY_EXCHANGES
 MAX_HISTORY_TOKENS = 2_000
 MAX_HISTORY_CHARS = MAX_HISTORY_TOKENS * 4
-MAX_TURN_CHARS = MAX_HISTORY_CHARS // (MAX_HISTORY_TURNS * 2)
+MAX_TURN_CHARS = MAX_HISTORY_CHARS // MAX_HISTORY_MESSAGES
 SESSION_TTL_SECONDS = 1_800
 PROPOSAL_TTL_SECONDS = 300
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
@@ -43,6 +47,7 @@ class SessionStore:
     def __init__(self, redis_client: Any | None = None) -> None:
         self._lock = threading.Lock()
         self._memory_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
+        self._memory_last_search_products: dict[str, tuple[float, list[dict[str, Any]]]] = {}
         self._memory_proposals: dict[str, tuple[float, dict[str, Any]]] = {}
         self._required = os.getenv("APP_ENV", "local").strip().lower() in {"staging", "production"}
         self._valkey_client: Any = redis_client
@@ -79,6 +84,9 @@ class SessionStore:
         user = _validated_id(user_id or "guest", "user_id", allow_guest=True)
         session = _validated_id(session_id, "session_id")
         return f"copilot:session:{user}:{session}"
+
+    def _last_search_key(self, user_id: str, session_id: str) -> str:
+        return f"{self._history_key(user_id, session_id)}:products"
 
     def _handle_runtime_error(self, operation: str, exc: Exception) -> None:
         logger.warning("Valkey %s error: %s", operation, exc)
@@ -117,7 +125,7 @@ class SessionStore:
             try:
                 pipe = self._valkey_client.pipeline(transaction=True)
                 pipe.rpush(key, json.dumps(turn, ensure_ascii=False))
-                pipe.ltrim(key, -(MAX_HISTORY_TURNS * 2), -1)
+                pipe.ltrim(key, -MAX_HISTORY_MESSAGES, -1)
                 pipe.expire(key, SESSION_TTL_SECONDS)
                 pipe.execute()
                 return
@@ -127,10 +135,143 @@ class SessionStore:
         with self._lock:
             history = list(self._memory_cache.get(key, (0, []))[1])
             history.append(turn)
-            history = history[-(MAX_HISTORY_TURNS * 2):]
+            history = history[-MAX_HISTORY_MESSAGES:]
             while history and sum(len(item["content"]) for item in history) > MAX_HISTORY_CHARS:
                 history.pop(0)
             self._memory_cache[key] = (time.time(), history)
+
+    @staticmethod
+    def _trim_exchanges(history: list[dict[str, str]]) -> list[dict[str, str]]:
+        """Keep complete user/assistant pairs under both count and char bounds."""
+        complete: list[dict[str, str]] = []
+        index = 0
+        while index + 1 < len(history):
+            first, second = history[index], history[index + 1]
+            if first.get("role") == "user" and second.get("role") == "assistant":
+                complete.extend((first, second))
+            index += 2
+        complete = complete[-MAX_HISTORY_MESSAGES:]
+        while (
+            len(complete) >= 2
+            and sum(len(item.get("content", "")) for item in complete) > MAX_HISTORY_CHARS
+        ):
+            complete = complete[2:]
+        return complete
+
+    def append_exchange(
+        self,
+        user_id: str,
+        session_id: str,
+        user_content: str,
+        assistant_content: str,
+    ) -> None:
+        """Atomically append one complete exchange and never retain half a pair."""
+        if not session_id or not user_content or not assistant_content:
+            return
+        key = self._history_key(user_id, session_id)
+        user_turn = {"role": "user", "content": str(user_content)[:MAX_TURN_CHARS]}
+        assistant_turn = {
+            "role": "assistant",
+            "content": str(assistant_content)[:MAX_TURN_CHARS],
+        }
+
+        if self._valkey_client is not None:
+            script = """
+redis.call('RPUSH', KEYS[1], ARGV[1], ARGV[2])
+local values = redis.call('LRANGE', KEYS[1], 0, -1)
+local max_messages = tonumber(ARGV[3])
+local max_chars = tonumber(ARGV[4])
+while #values > max_messages do
+  table.remove(values, 1)
+  table.remove(values, 1)
+end
+local chars = 0
+for _, raw in ipairs(values) do
+  local row = cjson.decode(raw)
+  chars = chars + string.len(row['content'] or '')
+end
+while #values >= 2 and chars > max_chars do
+  local first = cjson.decode(values[1])
+  local second = cjson.decode(values[2])
+  chars = chars - string.len(first['content'] or '') - string.len(second['content'] or '')
+  table.remove(values, 1)
+  table.remove(values, 1)
+end
+redis.call('DEL', KEYS[1])
+if #values > 0 then redis.call('RPUSH', KEYS[1], unpack(values)) end
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[5]))
+return #values
+"""
+            try:
+                self._valkey_client.eval(
+                    script,
+                    1,
+                    key,
+                    json.dumps(user_turn, ensure_ascii=False),
+                    json.dumps(assistant_turn, ensure_ascii=False),
+                    MAX_HISTORY_MESSAGES,
+                    MAX_HISTORY_CHARS,
+                    SESSION_TTL_SECONDS,
+                )
+                return
+            except Exception as exc:
+                self._handle_runtime_error("exchange-append", exc)
+
+        with self._lock:
+            history = list(self._memory_cache.get(key, (0, []))[1])
+            history.extend((user_turn, assistant_turn))
+            self._memory_cache[key] = (
+                time.time(),
+                self._trim_exchanges(history),
+            )
+
+    def set_last_search_products(self, user_id: str, session_id: str, products: list[dict]) -> None:
+        if not session_id:
+            return
+        key = self._last_search_key(user_id, session_id)
+        # The JSON round trip validates the persisted shape and prevents callers
+        # from mutating process-local session state after the write.
+        safe_products = json.loads(json.dumps(products, ensure_ascii=False))
+        if not isinstance(safe_products, list) or not all(isinstance(item, dict) for item in safe_products):
+            raise ValueError("products must be a list of objects")
+        serialized = json.dumps(safe_products, ensure_ascii=False)
+        if self._valkey_client is not None:
+            try:
+                self._valkey_client.setex(key, SESSION_TTL_SECONDS, serialized)
+                return
+            except Exception as exc:
+                self._handle_runtime_error("last-search-write", exc)
+        with self._lock:
+            self._memory_last_search_products[key] = (
+                time.time() + SESSION_TTL_SECONDS,
+                safe_products,
+            )
+
+    def get_last_search_products(self, user_id: str, session_id: str) -> list[dict]:
+        """Fetch the unexpired, user-and-session-scoped product referent."""
+        if not session_id:
+            return []
+        key = self._last_search_key(user_id, session_id)
+        if self._valkey_client is not None:
+            try:
+                raw_data = self._valkey_client.get(key)
+                if not raw_data:
+                    return []
+                decoded = json.loads(
+                    raw_data.decode("utf-8") if isinstance(raw_data, bytes) else raw_data
+                )
+                if not isinstance(decoded, list) or not all(isinstance(item, dict) for item in decoded):
+                    raise ValueError("invalid last-search payload")
+                return json.loads(json.dumps(decoded, ensure_ascii=False))
+            except Exception as exc:
+                self._handle_runtime_error("last-search-read", exc)
+        with self._lock:
+            now = time.time()
+            cached = self._memory_last_search_products.get(key)
+            if cached and now <= cached[0]:
+                return json.loads(json.dumps(cached[1], ensure_ascii=False))
+            self._memory_last_search_products.pop(key, None)
+            return []
 
     def create_cart_proposal(
         self,

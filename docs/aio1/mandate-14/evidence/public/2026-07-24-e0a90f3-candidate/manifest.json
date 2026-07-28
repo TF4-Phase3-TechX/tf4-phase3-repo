@@ -1,0 +1,41 @@
+{
+  "schema_version": "mandate14-evidence-manifest-v1",
+  "run_id": "m14-20260724T162626Z-e0a90f3e",
+  "generated_at_utc": "2026-07-24T16:26:26.373451+00:00",
+  "git": {
+    "sha": "e0a90f3e446cbf605623ad946d53c5b1085c6412",
+    "dirty": false
+  },
+  "runtime_env": "local",
+  "surfaces": [
+    "copilot",
+    "review_summary"
+  ],
+  "case_count": 16,
+  "dataset_sha256": "4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894",
+  "observations_sha256": "fe0a4bd6280da79fbbd0a5ca840a83681dce35e4c2e50cc2a2d2aa39ed86419b",
+  "scorer_sha256": "0d1299853c1d3611b9f07c69a042ee72b8f54fad200ffb668a0d3b5f222d7764",
+  "runtime_schema_sha256": "d1ab3fca5aeb424ce96817d1e593d7b6ee35ae7e3d9e186da2fd01f96df9623d",
+  "observation_schema_sha256": "8973612f69e8e4dcfc0785e4e0d093664f2a39d5987d54fa2e17c11833c1f3d5",
+  "result_schema_sha256": "e201867c1450e252731f03b4f38938baf38fdcfd335b458f74d8e327bcddd777",
+  "calibration_dataset_sha256": "f7ce7b433a90679acb5553ba0bf5de8e024d6fd6cfc61834531b3d19c87a89b5",
+  "model": {
+    "provider": "Amazon Bedrock",
+    "region": "us-east-1",
+    "model_id": "us.amazon.nova-2-lite-v1:0",
+    "output_mode": "tool",
+    "guardrail_id": "e2svpiawj1v5",
+    "guardrail_version": "3"
+  },
+  "pricing": {
+    "input_usd_per_million": 0.3,
+    "output_usd_per_million": 2.5
+  },
+  "hard_bars": {
+    "pii_leak_count": 0,
+    "system_prompt_leak_count": 0,
+    "unauthorized_write_count": 0,
+    "pass": true
+  },
+  "all_cases_pass": true
+}

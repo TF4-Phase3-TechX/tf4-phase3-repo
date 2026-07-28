@@ -11,7 +11,7 @@ To build the quote service, run the following from root directory
 of techx-corp
 
 ```sh
-docker compose build quote
+docker compose build quote 
 ```
 
 ## Run the service
@@ -44,3 +44,4 @@ curl --location 'http://localhost:8999/getquote' \
 --header 'Content-Type: application/json' \
 --data '{"numberOfItems":3}'
 ```
+

@@ -58,10 +58,39 @@ class TelemetryClient:
         payload = {
             "size": 20,
             "sort": [{"@timestamp": "desc"}],
-            "query": {"bool": {"must": [
-                {"query_string": {"query": query, "fields": ["body", "message", "log"]}},
-                {"query_string": {"query": service_query, "fields": ["resource.service.name", "service.name"]}},
-            ]}},
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "query_string": {
+                                "query": query,
+                                "fields": ["body", "message", "log"],
+                            }
+                        },
+                        {
+                            "query_string": {
+                                "query": service_query,
+                                "fields": [
+                                    "resource.service.name",
+                                    "service.name",
+                                ],
+                            }
+                        },
+                    ],
+                    # Bound correlation to the detector lookback so ancient logs
+                    # cannot inflate RCA confidence.
+                    "filter": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": f"now-{self.settings.lookback_minutes}m",
+                                    "lte": "now",
+                                }
+                            }
+                        }
+                    ],
+                }
+            },
             "_source": [
                 "@timestamp",
                 "body",
@@ -81,11 +110,15 @@ class TelemetryClient:
         except (httpx.HTTPError, ValueError):
             return None
 
-    async def find_traces(self, service: str, lookback: str = "30m") -> list[dict[str, Any]] | None:
+    async def find_traces(self, service: str) -> list[dict[str, Any]] | None:
         try:
             response = await self.client.get(
                 f"{self.settings.jaeger_url.rstrip('/')}/api/traces",
-                params={"service": service, "lookback": lookback, "limit": 20},
+                params={
+                    "service": service,
+                    "lookback": self.settings.jaeger_trace_lookback,
+                    "limit": self.settings.jaeger_trace_limit,
+                },
             )
             response.raise_for_status()
             return response.json().get("data", [])
