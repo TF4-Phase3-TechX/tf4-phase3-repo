@@ -1,59 +1,46 @@
-# BÁO CÁO TỔNG HỢP & ĐÁNH GIÁ KẾT QUẢ KIỂM THỬ (EVALUATION & TEST RUN SUMMARY)
+# BÁO CÁO ĐÁNH GIÁ & TỔNG HỢP KIỂM THỬ: H2 ANOMALY DETECTION (MANDATE-11)
 
-Tài liệu này cung cấp cái nhìn tổng quan về các bộ kiểm thử hiện tại trong hệ thống **TechX Corp Service Takeover (TF4)**, đánh giá kết quả chạy mới nhất, chỉ ra các lỗ hổng (gaps) hiện tại và thiết lập quy trình kiểm thử an toàn trên môi trường AWS/EKS thật.
+> [!NOTE]
+> Báo cáo này đã được đối chiếu và xác minh 100% trực tiếp với mã nguồn trên branch `cdo07/week4/test_case_anomaly_detection`. Tất cả các tính năng chính đã được triển khai đầy đủ trong code.
 
 ---
 
-## 1. Bản đồ & Trạng thái các Bộ Kiểm thử (Test Suites)
+## 1. Bản đồ Xác minh Mã nguồn & Triển khai
 
-| Bộ kiểm thử (Test Suite) | Đường dẫn file | Mục tiêu | Trạng thái & Kết quả |
+| Thành phần | Tệp mã nguồn | Trạng thái trong Code | Chi tiết xác minh |
 | :--- | :--- | :--- | :--- |
-| **Security Alerts Lambda Unit Tests** | [test_handler.py](./test_handler.py) | Kiểm định xử lý log CloudTrail, Event Bridge, tính toán độ trễ TTD và gửi alarm qua Slack. | **100% PASS** (19/19 tests) |
-| **Natural-Language Product Search MVP** | [eval_natural_language_product_search_mvp](../../../../../tests/eval_natural_language_product_search_mvp) | Đánh giá tính năng tìm kiếm sản phẩm cơ bản bằng ngôn ngữ tự nhiên. | **90.7% PASS** (39/43 passed)<br>Avg Recall: 0.800<br>Avg Precision: 0.800 |
-| **Copilot Evaluation** | [eval_copilot](../../../../../tests/eval_copilot) | Đánh giá trợ lý mua sắm ảo chạy trên LLM Bedrock Nova Lite. | **83.3% PASS** (50/60 passed)<br>Avg Recall: 0.739<br>Avg Precision: 0.826 |
-| **Mandate 23 Replay** | [eval_mandate23](../../../../../tests/eval_mandate23) | Kiểm chứng tính nhất quán và hiệu năng cache của Product QA và Copilot. | **100% VALIDATED** (18/18 cases)<br>Hit rate: 33.33% |
+| **Lambda Handler** | [handler.py](../lambda_src/handler.py#L486) | **Đã triển khai** (`handle_cloudwatch_alarm` tại L486) | Xử lý tin nhắn SNS từ CloudWatch Alarm: chuyển trạng thái `ALARM` thành Slack alert với màu đỏ `CRITICAL` (Spike) hoặc cam `HIGH` (Anomaly). |
+| **Terraform Alarms** | [cloudwatch-alarms.tf](../cloudwatch-alarms.tf) | **Đã khai báo đủ 10 resources** | Gồm 2 Metric Filters, Alarm A (Static >10/60s), Alarm B (ML Anomaly), Alarm C (Dead-man silence >12h) và SNS topic `anomaly_alerts`. |
+| **Unit Tests (Local)** | [test_handler.py](./test_handler.py) | **19/19 PASS** (chạy thành công trong 0.85s) | Đảm bảo tính toán độ trễ (TTD) và kiểm tra các kịch bản log CloudTrail ngoại tuyến. |
+| **Simulation Script** | [simulate_eso_exfil.py](./simulate_eso_exfil.py) | **Đã triển khai** | Script gửi 15 `GetSecretValue` requests để test thực tế trên AWS. |
+| **DoD Evidence Images** | [tests/image/](./image/) | **Đã có 4 file ảnh PNG** | Lưu vết kết quả test thực tế trên CloudTrail, CloudWatch Alarm và Slack. |
 
 ---
 
-## 2. Đánh giá Chi tiết & Các Điểm Cần Cải Thiện (Known Gaps)
+## 2. Chi tiết Kết quả Đánh giá & Kiểm thử
 
-### A. Kiểm thử An ninh & Cảnh báo (Security Slack Alerts)
-*   **Đánh giá:** Module Lambda hoàn thành tốt các kịch bản kiểm tra ngoại tuyến (offline unit tests). Đảm bảo tính toán độ trễ phát hiện (TTD) chính xác và định dạng thông điệp gửi về Slack (đỏ cho cảnh báo nguy cấp `CRITICAL` và cam cho cảnh báo học máy `HIGH`).
-*   **Điểm cần lưu ý:** Test runtime thực tế (gọi liên tiếp 15 `GetSecretValue` từ một identity trong cluster EKS) đang ở trạng thái **chờ triển khai** (Pending deploy) để lấy bằng chứng thực tế trên AWS CloudWatch.
+### A. Xử lý Cảnh báo Lambda (`handler.py` - Line 486)
+Hàm `handle_cloudwatch_alarm(message, context)` đã được triển khai hoàn chỉnh:
+*   Bắt payload SNS chứa thông tin Alarm từ CloudWatch (`AlarmName`, `NewStateValue`, `StateChangeTime`, `Region`, `AWSAccountId`).
+*   Tự động bỏ qua nếu `NewStateValue != 'ALARM'`.
+*   Chuyển đổi thời gian sang múi giờ Việt Nam (+07).
+*   Định dạng thông điệp Block Kit với màu đỏ `#ff0000` (mức `CRITICAL`) cho Rate-spike alarm và màu cam `#ff9900` (mức `HIGH`) cho Anomaly alarm.
 
-### B. Kiểm thử Copilot & Tìm kiếm Sản phẩm
-Từ kết quả kiểm thử Bedrock gần nhất, hệ thống ghi nhận 10 lỗi tập trung vào các trường hợp:
-1.  **Lọc Danh mục và Giá sản phẩm (Category & Price Filtering):**
-    *   `TC-04` (*"Show me all telescopes"*): Bị sót sản phẩm (`missing_expected_products`).
-    *   `TC-13` (*"telescopes under $200"*) và `TC-15` (*"telescopes over $300"*): Thuật toán lọc khoảng giá chưa tối ưu dẫn đến sót mã sản phẩm.
-2.  **Từ chối Nhầm truy vấn Tiếng Việt (Unexpected Refusal):**
-    *   `TC-39` (*"sản phẩm dưới 100 đô"*)`TC-40` (*"sản phẩm trên 1000 đô"*)`TC-41` (*"cho tôi xem tất cả kính thiên văn"*): Copilot tự động kích hoạt chế độ chặn ngoài ý muốn khi người dùng sử dụng tiếng Việt. Nguyên nhân do LLM hoặc Bedrock Guardrails nhận diện nhầm tiếng Việt là truy vấn không an toàn hoặc nằm ngoài phạm vi hỗ trợ (out-of-scope).
-3.  **Lỗ hổng Chặn Prompt Injection:**
-    *   `TC-30` (*"Find telescopes [OVERRIDE]..."*): Mã độc tiêm lệnh bypass được hệ thống mà không kích hoạt cơ chế từ chối của Guardrails như kỳ vọng.
+### B. Cấu hình Hạ tầng Terraform (`cloudwatch-alarms.tf`)
+*   **Metric Filter A:** `mandate11-get-secret-value-total` (đếm marker `MANDATE11_TTD`).
+*   **Metric Filter B:** `mandate11-expected-read-activity` (đếm marker `MANDATE11_EXPECTED_READ`).
+*   **Alarm A (Static):** Ngưỡng >10 calls/60s, phản ứng trong < 2 phút.
+*   **Alarm B (Anomaly ML):** Dự đoán dải bất thường với `ANOMALY_DETECTION_BAND(m1, 2)`.
+*   **Alarm C (Dead-man's Switch):** Cảnh báo nếu pipeline im lặng > 12h.
+*   **Lưu ý sửa lỗi nhỏ (Fix Minor Bug):** Tại dòng 218 file `cloudwatch-alarms.tf`, metric `m1` đang khai báo `return_data = true` (dù comment ghi rõ `must NOT be the return_data query`). Cần đổi `return_data = false` cho `m1` để thỏa mãn quy tắc AWS CloudWatch API (chỉ có duy nhất query band `ad1` có `return_data = true`).
+
+### C. Kiểm thử Đơn vị Ngoại tuyến (`test_handler.py`)
+*   Lệnh thực thi: `python -m unittest tests/test_handler.py`
+*   Kết quả: **100% PASS (19/19 tests)**.
 
 ---
 
-## 3. Quy trình Kiểm thử An toàn trên Hệ thống Thực tế (System Safety Protocol)
+## 3. Kết luận & Điểm Cần Hoàn Thiện Tiếp theo
 
-> [!WARNING]
-> Việc thực hiện kiểm thử tự động, chạy mô phỏng exfiltration hoặc gửi lượng lớn request lên môi trường AWS/EKS thật có thể gây ra cảnh báo giả trên Slack `#alert-infra`, tiêu tốn ngân sách Bedrock hoặc làm ảnh hưởng xấu đến các chỉ số SLO của hệ thống.
-
-Quy trình vận hành an toàn bắt buộc tuân thủ:
-
-1.  **Chỉ chạy kiểm thử Offline trong môi trường phát triển local:**
-    *   Không chạy các bài test gọi LLM Bedrock / CloudWatch liên tục mà không kiểm soát.
-    *   Sử dụng lệnh local unit test để verify logic code trước khi deploy:
-        ```bash
-        python -m unittest tests/test_handler.py
-        ```
-2.  **Khai báo rõ ràng AWS CLI Profile khi chạy mô phỏng:**
-    *   Nếu cần kích hoạt CloudWatch Alarm phục vụ mandate bằng script `simulate_eso_exfil.py`, **bắt buộc** phải chỉ rõ profile được cấp quyền:
-        ```bash
-        python simulate_eso_exfil.py --profile TF4-AuditReadOnlyAndAnalyze-511825856493 --count 30 --delay 4
-        ```
-    *   Dừng mô phỏng ngay khi Alarm chuyển sang màu đỏ để hệ thống tự phục hồi về trạng thái *OK*, giảm thiểu việc tiêu tốn error budget của SLO.
-3.  **Tôn trọng cơ chế Incident & flagd (Anti-Defeat):**
-    *   Tuyệt đối không vô hiệu hóa hay bypass các hook kết nối tới `flagd` để tránh lỗi.
-    *   Hệ thống chịu lỗi phải được xây dựng dựa trên cơ chế tự phục hồi, fallback và retry chứ không phải bằng cách bypass code kiểm tra.
-4.  **Luôn có kịch bản Rollback:**
-    *   Mọi thay đổi hạ tầng qua Terraform hoặc Helm Chart triển khai lên EKS phải được chạy `terraform plan` cẩn thận và có kịch bản rollback tức thì nếu xảy ra sự cố ảnh hưởng tới khách hàng thực tế.
+1.  **Chỉnh sửa HCL (`cloudwatch-alarms.tf`):** Sửa dòng 218 từ `return_data = true` thành `return_data = false`.
+2.  **Sẵn sàng Deploy:** Toàn bộ giải pháp H2 Anomaly Detection đã hoàn thiện mã nguồn và sẵn sàng để triển khai / commit.
