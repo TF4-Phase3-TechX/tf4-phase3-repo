@@ -66,7 +66,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-          "expr": "100 * sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__rate_interval])) or vector(0)",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__range])) > 0)",
           "legendFormat": "checkout success",
           "refId": "A"
         }
@@ -283,7 +283,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"checkout|cart|product-catalog|currency|shipping|quote|payment|email|kafka|accounting|fraud-detection\"}[$__rate_interval]))",
+          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"${checkout_dependency:regex}\"}[$__rate_interval]))",
           "legendFormat": "{{service_name}}",
           "refId": "A"
         }
@@ -315,7 +315,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"checkout|cart|product-catalog|currency|shipping|quote|payment|email|kafka|accounting|fraud-detection\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"${checkout_dependency:regex}\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
           "legendFormat": "{{service_name}} errors",
           "refId": "A"
         }
@@ -325,7 +325,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "description": "Payment charge call rate. If this is empty, span labels may not expose Charge; use payment service rate/error panels as fallback.",
+      "description": "Payment service call rate grouped by span_name. This avoids hiding data when Charge-specific span labels are not exposed.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -347,12 +347,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-          "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=\"payment\", span_name=~\".*Charge.*|.*PaymentService.*\"}[$__rate_interval]))",
+          "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=\"payment\"}[$__rate_interval]))",
           "legendFormat": "{{span_name}}",
           "refId": "A"
         }
       ],
-      "title": "Payment Charge Calls",
+      "title": "Payment Calls By Span",
       "type": "timeseries"
     },
     {
@@ -455,7 +455,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-          "expr": "k8s_deployment_available{k8s_namespace_name=\"${namespace}\", k8s_deployment_name=~\"frontend|checkout|cart|payment|product-catalog|currency|shipping|quote|email|kafka|accounting|fraud-detection\"}",
+          "expr": "k8s_deployment_available{k8s_namespace_name=\"${namespace}\", k8s_deployment_name=~\"${checkout_dependency:regex}\"}",
           "legendFormat": "{{k8s_deployment_name}}",
           "refId": "A"
         }
@@ -465,7 +465,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "description": "Kafka/order-event panel. Empty data indicates Kafka publish/lag metrics are not currently instrumented or scraped.",
+      "description": "Post-checkout accounting/fraud consumer activity. Kafka/MSK publish or consumer lag requires CloudWatch/MSK exporter metrics and is not represented as an in-cluster kafka service here.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -487,12 +487,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"kafka|accounting|fraud-detection\"}[$__rate_interval]))",
+          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"accounting|fraud-detection\"}[$__rate_interval]))",
           "legendFormat": "{{service_name}} calls",
           "refId": "A"
         }
       ],
-      "title": "Post-checkout Async Signal (Kafka/Accounting/Fraud)",
+      "title": "Post-checkout Async Consumer Activity",
       "type": "timeseries"
     }
   ],
@@ -516,6 +516,30 @@
           { "selected": true, "text": "techx-tf4", "value": "techx-tf4" }
         ],
         "query": "techx-tf4",
+        "type": "custom"
+      },
+      {
+        "allValue": "checkout|cart|product-catalog|currency|shipping|quote|payment|email|accounting|fraud-detection",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Checkout dependency",
+        "multi": true,
+        "name": "checkout_dependency",
+        "options": [
+          { "selected": false, "text": "checkout", "value": "checkout" },
+          { "selected": false, "text": "cart", "value": "cart" },
+          { "selected": false, "text": "product-catalog", "value": "product-catalog" },
+          { "selected": false, "text": "currency", "value": "currency" },
+          { "selected": false, "text": "shipping", "value": "shipping" },
+          { "selected": false, "text": "quote", "value": "quote" },
+          { "selected": false, "text": "payment", "value": "payment" },
+          { "selected": false, "text": "email", "value": "email" },
+          { "selected": false, "text": "accounting", "value": "accounting" },
+          { "selected": false, "text": "fraud-detection", "value": "fraud-detection" }
+        ],
+        "query": "checkout,cart,product-catalog,currency,shipping,quote,payment,email,accounting,fraud-detection",
+        "skipUrlSync": false,
         "type": "custom"
       }
     ]
