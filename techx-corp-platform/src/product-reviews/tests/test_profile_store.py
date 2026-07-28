@@ -10,18 +10,76 @@ def test_profile_requires_explicit_consent():
     assert command.values == {"preferred_category": "telescopes"}
 
 
+def test_natural_affirmative_memory_commands_are_supported():
+    for query in (
+        "Remember that I prefer telescopes",
+        "Please remember I like telescopes",
+        "Please remember my favourite category is telescopes",
+        "Can you remember that my preferred category is telescopes?",
+        "Hãy lưu danh mục yêu thích là telescopes",
+        "Lưu danh mục yêu thích là telescopes",
+        "Nhớ rằng tôi thích telescopes",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "remember", query
+        assert command.values == {"preferred_category": "telescopes"}, query
+
+
+def test_natural_budget_memory_commands_are_supported():
+    for query in (
+        "Remember my budget is $123.45",
+        "Please remember I can spend up to $123.45",
+        "Hãy lưu ngân sách của tôi là $123.45",
+        "Nhớ tôi có thể chi tối đa $123.45",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "remember", query
+        assert command.values == {"max_budget_usd_cents": 12_345}, query
+
+
 def test_negated_memory_consent_is_rejected_before_positive_matching():
     for query in (
         "Don't remember my preferred category is electronics",
+        "Don’t remember my preferred category is electronics",
         "I don't want you to remember my preferred category is electronics",
         "Please don't ever remember my preferred category is electronics",
+        "Don't forget my preferences",
         "Do not save my maximum budget is $100",
         "Đừng nhớ danh mục yêu thích là electronics",
+        "Đừng quên sở thích của tôi",
         "Không lưu ngân sách tối đa là $100",
     ):
         command = parse_memory_command(query)
         assert command.action == "reject"
         assert command.values == {}
+
+
+def test_mixed_remember_and_forget_actions_are_rejected_in_both_orders():
+    for query in (
+        "Remember my preferred category is telescopes, then forget it",
+        "Forget my preferences, then remember that I prefer telescopes",
+        "Hãy nhớ danh mục yêu thích là telescopes, rồi xóa sở thích của tôi",
+        "Quên sở thích của tôi, rồi nhớ rằng tôi thích telescopes",
+        "Forget my preferences and remember that I prefer telescopes",
+        "Quên sở thích của tôi và nhớ rằng tôi thích telescopes",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "reject", query
+        assert command.values == {}, query
+
+
+def test_negated_profile_values_are_rejected_before_value_extraction():
+    for query in (
+        "Remember that I prefer not telescopes",
+        "Remember that I prefer no category",
+        "Please remember my preferred category is none",
+        "Hãy nhớ rằng tôi không thích telescopes",
+        "Hãy nhớ rằng tôi không có danh mục yêu thích",
+        "Hãy nhớ danh mục yêu thích là không có",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "reject", query
+        assert command.values == {}, query
 
 
 def test_budget_is_stored_as_integer_cents():
