@@ -30,6 +30,12 @@ STATUS_METHOD = "/tf4.mandate25.ResilienceControl/GetStatus"
 
 
 def read_cases(path: Path) -> list[dict[str, str]]:
+    """Read JSONL cases, supporting both 'ask' (Q&A) and 'search' (intent) types.
+
+    'ask' cases require: case_id, product_id, question, user_id, session_id.
+    'search' cases require: case_id, query, user_id, session_id.
+    A missing 'type' field defaults to 'ask' for backward compatibility.
+    """
     cases = []
     for line_number, raw_line in enumerate(
         path.read_text(encoding="utf-8").splitlines(),
@@ -38,16 +44,40 @@ def read_cases(path: Path) -> list[dict[str, str]]:
         if not raw_line.strip():
             continue
         value = json.loads(raw_line)
-        required = {
-            "case_id",
-            "product_id",
-            "question",
-            "user_id",
-            "session_id",
-        }
-        if not isinstance(value, dict) or not required.issubset(value):
-            raise ValueError(f"line {line_number}: required fields missing")
-        cases.append({key: str(value[key]) for key in required})
+        if not isinstance(value, dict) or "case_id" not in value:
+            raise ValueError(f"line {line_number}: required field 'case_id' missing")
+        case_type = str(value.get("type", "ask")).lower()
+        if case_type == "search":
+            required = {"case_id", "query", "user_id", "session_id"}
+            if not required.issubset(value):
+                raise ValueError(
+                    f"line {line_number}: search case requires: {sorted(required)}"
+                )
+            cases.append(
+                {
+                    "case_id": str(value["case_id"]),
+                    "type": "search",
+                    "query": str(value["query"]),
+                    "user_id": str(value["user_id"]),
+                    "session_id": str(value["session_id"]),
+                }
+            )
+        else:
+            required = {"case_id", "product_id", "question", "user_id", "session_id"}
+            if not required.issubset(value):
+                raise ValueError(
+                    f"line {line_number}: ask case requires: {sorted(required)}"
+                )
+            cases.append(
+                {
+                    "case_id": str(value["case_id"]),
+                    "type": "ask",
+                    "product_id": str(value["product_id"]),
+                    "question": str(value["question"]),
+                    "user_id": str(value["user_id"]),
+                    "session_id": str(value["session_id"]),
+                }
+            )
     if not cases:
         raise ValueError("at least one replay case is required")
     return cases
@@ -74,23 +104,42 @@ def replay(
     repeat: int,
     timeout_seconds: float,
 ) -> list[dict[str, Any]]:
+    """Replay cases against the service and capture bounded resilience state.
+
+    Routes to AskProductAIAssistant for type='ask' cases and
+    SearchProductsAIAssistant for type='search' cases so that the
+    Search Intent fault-injection path is exercised in addition to Q&A.
+    """
     rows: list[dict[str, Any]] = []
     for case in cases:
         for iteration in range(1, repeat + 1):
             started = time.monotonic()
+            case_type = case.get("type", "ask")
             try:
-                response = stub.AskProductAIAssistant(
-                    demo_pb2.AskProductAIAssistantRequest(
-                        product_id=case["product_id"],
-                        question=case["question"],
-                        user_id=case["user_id"],
-                        session_id=case["session_id"],
-                    ),
-                    timeout=timeout_seconds,
-                )
-                response_text = str(response.response)[:1_000]
+                if case_type == "search":
+                    response = stub.SearchProductsAIAssistant(
+                        demo_pb2.SearchProductsAIAssistantRequest(
+                            query=case["query"],
+                            user_id=case["user_id"],
+                            session_id=case["session_id"],
+                        ),
+                        timeout=timeout_seconds,
+                    )
+                    response_text = str(response.response)[:1_000]
+                    has_action = response.HasField("action_proposal")
+                else:
+                    response = stub.AskProductAIAssistant(
+                        demo_pb2.AskProductAIAssistantRequest(
+                            product_id=case["product_id"],
+                            question=case["question"],
+                            user_id=case["user_id"],
+                            session_id=case["session_id"],
+                        ),
+                        timeout=timeout_seconds,
+                    )
+                    response_text = str(response.response)[:1_000]
+                    has_action = response.HasField("action_proposal")
                 transport = "ok"
-                has_action = response.HasField("action_proposal")
             except grpc.RpcError as exc:
                 response_text = ""
                 transport = exc.code().name
@@ -99,6 +148,7 @@ def replay(
             rows.append(
                 {
                     "case_id": case["case_id"],
+                    "case_type": case_type,
                     "iteration": iteration,
                     "request_sha256": request_fingerprint(case),
                     "transport": transport,

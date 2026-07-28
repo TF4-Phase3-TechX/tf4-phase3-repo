@@ -1158,16 +1158,23 @@ class BedrockAdapter:
                 }
 
             response = None
-            for attempt in range(2):
+            for attempt in range(self.max_attempts):
                 try:
-                    response = self.client.converse(**request)
+                    injected = self._fault_response(self.fault_source())
+                    response = (
+                        injected
+                        if injected is not None
+                        else self.client.converse(**request)
+                    )
                     break
                 except Exception as exc:
-                    if attempt == 1:
+                    if attempt == self.max_attempts - 1:
                         logger.error("parse_search_intent_failed", exc_info=exc)
-                        error_name = type(exc).__name__.lower()
+                        error_name = _provider_error_class(exc)
+                        if _trips_circuit(error_name):
+                            self.intent_breaker.failure(self.clock())
                         raise ProviderFailure(error_name[:64]) from exc
-                    time.sleep(0.5)
+                    time.sleep(0.5 * (2 ** attempt))
             elapsed = self.clock() - started
 
             # Extract usage before any early-exit so telemetry is always accurate.
