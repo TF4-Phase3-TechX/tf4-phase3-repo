@@ -115,6 +115,6 @@ commands and negated preference values fail closed at that head.
 
 | Role | Full name | Decision | Date | Approval evidence |
 |---|---|---|---|---|
-| AIO1 / decision owner | Nguyễn Trần Huy Vũ (`@HuyVu12`) | Accepted | 2026-07-28 | [Owner acceptance comment](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/733#issuecomment-5100600079); [merged implementation](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/e6f571ec7a5c746f06e686b0df5ccfc9a440c5ed) |
+| AIO1 / decision owner | Nguyễn Trần Huy Vũ (`@HuyVu12`) | Accepted | 2026-07-28 | [Reviewer-fix owner acceptance](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/733#issuecomment-5100940603); [merged implementation](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/commit/e6f571ec7a5c746f06e686b0df5ccfc9a440c5ed) |
 | Independent reviewer | Cái Xuân Hòa (`@XUanhoa04`) | Approved | 2026-07-27 | [PR approval at `8a279eb`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/692#pullrequestreview-4788865475) |
 | Independent reviewer | Lê Ngọc Thành Tâm (`@H1eu232`) | Approved | 2026-07-27 | [PR approval at `8a279eb`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/692#pullrequestreview-4788809074) |
