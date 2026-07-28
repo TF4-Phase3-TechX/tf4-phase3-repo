@@ -8,10 +8,9 @@ Tài liệu này phân tách rõ ràng **Báo cáo Chứng nhận Chuyển đổ
 
 - **Kiến trúc Live Worker**: 100% kiến trúc ARM64 trên toàn bộ các EKS worker nodes.
 - **Phân bổ Topology Node**:
-  - us-east-1a: 1 Managed 	4g.large On-Demand + 1 Karpenter 
-7g.large Spot
-  - us-east-1b: 1 Managed 	4g.large On-Demand + 1 Protected 	4g.large On-Demand + 1 Karpenter c7g.xlarge Spot
-- **Nguồn Hạ tầng**: Mã nguồn Terraform infra/terraform/eks.tf (PR #719 / commit cd947f3).
+  - `us-east-1a`: 1 Managed `t4g.large` On-Demand + 1 Karpenter `r7g.large` Spot
+  - `us-east-1b`: 1 Managed `t4g.large` On-Demand + 1 Protected `t4g.large` On-Demand + 1 Karpenter `c7g.xlarge` Spot
+- **Nguồn Hạ tầng**: Mã nguồn Terraform `infra/terraform/eks.tf` (PR #719 / commit `acd947f3`).
 - **Khả năng tương thích Workload**: Toàn bộ core platform workloads (CoreDNS, Karpenter, EBS CSI, External Secrets, Argo CD, Prometheus, Jaeger, OpenSearch, Kafka Connect) được xác nhận hoạt động 100% healthy trên ARM64.
 
 ## 2. Bảng Tổng hợp Kết quả Nghiệm thu Mandate 13
