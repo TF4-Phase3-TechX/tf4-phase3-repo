@@ -18,11 +18,17 @@ Hệ thống vận hành được định tuyến bảo mật qua Cloudflare Acc
 ---
 
 ### 🚨 Fallback / Break-Glass: SSM Tunnel qua Bastion Host
-Trong trường hợp kênh Cloudflare Access gặp sự cố hoặc cần break-glass, sử dụng **SSM Port Forwarding Session** kết nối đến Bastion Host `tf4-portal-bastion` (`i-0690c5a0beb93845d`).
+Trong trường hợp kênh Cloudflare Access gặp sự cố hoặc cần break-glass, sử dụng **SSM Port Forwarding Session** kết nối đến Bastion Host `tf4-portal-bastion`. Không hard-code Instance ID; luôn tra cứu và xác nhận bastion đang `running` trước khi mở tunnel.
 
 > 💡 **Mẹo tra cứu Instance ID động**:
 > ```bash
-> BASTION_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=tf4-portal-bastion" --query "Reservations[0].Instances[0].InstanceId" --output text)
+> BASTION_ID=$(aws ec2 describe-instances \
+>   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 \
+>   --region us-east-1 \
+>   --filters "Name=tag:Name,Values=tf4-portal-bastion" "Name=instance-state-name,Values=running" \
+>   --query "Reservations[0].Instances[0].InstanceId" \
+>   --output text)
+> test "$BASTION_ID" != "None"
 > ```
 
 #### 💻 Lệnh Mở Tunnel (Chạy trên Terminal Máy Cá Nhân)
@@ -31,21 +37,21 @@ Trong trường hợp kênh Cloudflare Access gặp sự cố hoặc cần break
 # 1. Port-Forward Grafana (Local Port 3000 -> Remote Port 13000)
 aws ssm start-session \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 \
-  --target i-0690c5a0beb93845d \
+  --target "$BASTION_ID" \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["13000"],"localPortNumber":["3000"]}'
 
 # 2. Port-Forward Locust Load Generator (Local Port 8089 -> Remote Port 18089)
 aws ssm start-session \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 \
-  --target i-0690c5a0beb93845d \
+  --target "$BASTION_ID" \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["18089"],"localPortNumber":["8089"]}'
 
 # 3. Port-Forward Jaeger Distributed Tracing (Local Port 16686 -> Remote Port 16686)
 aws ssm start-session \
   --profile TF4-AuditReadOnlyAndAnalyze-511825856493 \
-  --target i-0690c5a0beb93845d \
+  --target "$BASTION_ID" \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["16686"],"localPortNumber":["16686"]}'
 ```
@@ -92,11 +98,11 @@ kubectl exec -it deployment/load-generator -n techx-tf4 -- \
 | **Business SLO** | **HTTP Error Rate (5xx)** | Proxy / App Status Codes | Mức $0\%$ (hoặc $< 0.1\%$ transient spike) |
 | **Load** | **Requests Per Second (RPS)** | Frontend Proxy HTTP Rate | Giữ mức ổn định theo 200 Locust users |
 | **Load** | **Active Users & Req/Err Count** | Load-generator metrics / Simulated users | Hiển thị 200 active users, count request/error tăng đều |
-| **K8s Runtime** | **Pod Ready, Restart, Replicas** | `kube_pod_status_phase` / restarts | Replicas duy trì đầy đủ, restart rate không tăng đột biến |
+| **K8s Runtime** | **Pod Ready, Restart, Replicas** | `k8s_pod_phase`, `k8s_container_restarts`, deployment available metrics | Replicas duy trì đầy đủ, restart rate không tăng đột biến |
 | **K8s Runtime** | **HPA Current vs Max Replicas** | `kube_horizontalpodautoscaler_status` | HPA hoạt động ổn định khi dồn tải |
-| **K8s Runtime** | **Pod Placement theo AZ/node** | `kube_pod_info` * `kube_node_labels` | Pods tự reschedule từ AZ sập sang AZ sống |
-| **Node/AZ Health** | **Node Count theo AZ (Ready/NotReady)** | `kube_node_labels` / `topology.kubernetes.io/zone` | AZ bị sập biến mất Node, AZ sống tăng Node (Karpenter scale) |
-| **Node/AZ Health** | **CPU/Memory pressure** | `kube_node_status_condition` / Node resource util | Không bị nghẽn CPU/RAM trên các node AZ còn sống |
+| **K8s Runtime** | **Pod Placement theo node** | `k8s_pod_phase` grouped by `k8s_node_name`; AZ mapping lấy từ REL-33 observer/kubectl snapshot | Pods tự reschedule từ AZ sập sang AZ sống |
+| **Node/AZ Health** | **Node telemetry theo node** | `k8s_node_cpu_usage`, `k8s_node_memory_working_set_bytes` | Node còn sống vẫn publish telemetry; AZ mapping xác nhận bằng REL-33 observer |
+| **Node/AZ Health** | **CPU/Memory pressure** | `k8s_node_cpu_usage`, `k8s_node_memory_working_set_bytes`, `k8s_node_memory_available_bytes` | Không bị nghẽn CPU/RAM trên các node AZ còn sống |
 | **Managed Data** | **RDS PostgreSQL Primary Role** | `postgresql_backends` / Active connections | Primary AZ tự chuyển đổi từ AZ sập sang AZ sống, connections hồi phục |
 | **Managed Data** | **Valkey Health & Clients** | `redis_up` / `redis_connected_clients` | Valkey node failover tự động |
 | **Managed Data** | **MSK Health & Consumer Lag** | `kafka_consumergroup_lag` | Đơn hàng được tiêu thụ bình thường, không lag |
@@ -120,7 +126,7 @@ sum(rate(traces_span_metrics_calls_total{service_name="frontend",span_kind="SPAN
 ### 🔍 Truy Vấn PromQL Tính Latency p95
 
 ```promql
-histogram_quantile(0.95, sum(rate(traces_span_metrics_calls_duration_seconds_bucket{service_name="frontend",span_name="POST /api/checkout"}[1m])) by (le)) * 1000
+histogram_quantile(0.95, sum(rate(traces_span_metrics_duration_milliseconds_bucket{service_name="frontend",span_kind="SPAN_KIND_SERVER",span_name="POST /api/checkout"}[1m])) by (le))
 ```
 
 ### ⏱️ Quy Trình Xác Định RTO Thực Tế:
