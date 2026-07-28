@@ -71,9 +71,20 @@ Run from the repository root in Git Bash. Use a fresh local-only token and do
 not paste its value into terminal screenshots or committed files.
 
 ```bash
+python -m venv .venv-m25
+source .venv-m25/Scripts/activate
+python -m pip install -r techx-corp-platform/src/product-reviews/requirements-test.txt
+
 export MSYS_NO_PATHCONV=1
 export MANDATE25_FAULT_TOKEN="<redacted-local-token>"
-export MANDATE25_TARGET="127.0.0.1:3551"
+
+docker compose -f techx-corp-platform/docker-compose.yml build product-reviews
+docker compose -f techx-corp-platform/docker-compose.yml up -d product-reviews
+
+export MANDATE25_TARGET="$(
+  docker compose -f techx-corp-platform/docker-compose.yml \
+    port product-reviews 3551
+)"
 
 python3() {
   python "$@"
@@ -166,15 +177,18 @@ directly observable.
 - `healthy baseline.png` is intentionally excluded because the screenshot
   contains a local control-token value. It must not be staged or committed.
 - Rotate the exposed local token before any further run.
-- Older non-`v2` breaker and recovery artifacts are retained as raw history but
-  are superseded by the canonical `*-v2-*` evidence linked above.
+- Older non-`final` artifacts may remain in an operator workspace as raw
+  history but are not part of the committed packet. The canonical evidence is
+  the `*-final-*` set linked above.
 
 ## Remaining closure gates
 
 - ADR-025 currently says `Proposed; named reviewer acceptance pending`; obtain
   the named reviewer signature/acceptance and link the signed ADR.
-- Synchronize the PR branch with the latest `main`, rerun the focused tests,
-  and push the resulting commits.
+- Obtain successful post-cooldown real-provider recovery on the exact reviewed
+  SHA, then capture the final `closed`/`success` readback.
+- Deploy the reviewed revision and repeat the external drill against that exact
+  deployed image/Argo revision.
 - In Jira, use summary `AI MANDATE #25`, labels `ai-mandate` and `m25`, and one
   accountable assignee (Tất Văn).
 - Add the PR/commit link, exact reproduction commands, runtime screenshots/logs,

@@ -19,7 +19,11 @@ python -m pytest src/product-reviews/tests -q
 | `BEDROCK_GUARDRAIL_ID` | required | Guardrail ID/ARN |
 | `BEDROCK_GUARDRAIL_VERSION` | required numeric | Immutable Guardrail version; `DRAFT` is rejected |
 | `BEDROCK_OUTPUT_MODE` | `json_schema` | `json_schema`, or `tool` for Nova 2 Lite |
-| `BEDROCK_DEADLINE_SECONDS` | `4.5` | SDK read and application deadline |
+| `BEDROCK_DEADLINE_SECONDS` | `4.5` | Total application provider deadline; retry backoff and per-attempt connect/read budgets must fit inside it |
+| `BEDROCK_MAX_ATTEMPTS` | `2` | Maximum visible application-owned provider attempts; SDK retries remain disabled |
+| `BEDROCK_RETRY_BACKOFF_SECONDS` | `0.1` | Initial bounded exponential retry backoff |
+| `MANDATE25_FAULT_TOKEN` | empty/disabled | Dedicated token enabling the external Mandate 25 `SetFault` control |
+| `MANDATE25_MAX_FAULT_TTL_SECONDS` | `120` | Operator-configurable TTL ceiling, hard-capped by the server at 120 seconds |
 | `AWS_REGION` | `us-east-1` | Bedrock Runtime region |
 | `BEDROCK_SYSTEM_CANARY` | empty | Optional non-secret leak-detection marker |
 | `VALKEY_ADDR` | `valkey-cart:6379` | Shared exact cache, sessions, cart proposals, and profiles |

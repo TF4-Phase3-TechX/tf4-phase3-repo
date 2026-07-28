@@ -4,7 +4,9 @@
 
 **Owner:** Tất Văn
 
-**Evidence status:** implemented and tested offline; runtime proof pending
+**Evidence status:** implementation and CI complete; local Docker runtime proof
+is partial. Successful post-cooldown provider recovery, deployed-runtime proof,
+and named ADR acceptance remain pending.
 
 ## What is implemented
 
@@ -60,6 +62,39 @@ Status-only and emergency restore commands:
 ./scripts/inject_mandate25_faults.sh status
 ./scripts/inject_mandate25_faults.sh recover
 ```
+
+## Local Docker reproduction
+
+The canonical Compose file passes the same bounded retry and protected control
+settings used by the deployment values. From the repository root:
+
+```bash
+python -m venv .venv-m25
+source .venv-m25/Scripts/activate
+python -m pip install -r techx-corp-platform/src/product-reviews/requirements-test.txt
+
+export MANDATE25_FAULT_TOKEN='<fresh local-only token>'
+docker compose -f techx-corp-platform/docker-compose.yml build product-reviews
+docker compose -f techx-corp-platform/docker-compose.yml up -d product-reviews
+
+export MANDATE25_TARGET="$(
+  docker compose -f techx-corp-platform/docker-compose.yml \
+    port product-reviews 3551
+)"
+```
+
+On Git Bash for Windows, also export `MSYS_NO_PATHCONV=1`. Do not commit or
+capture the control-token value in screenshots. Obtain the current Jaeger UI
+port with:
+
+```bash
+docker compose -f techx-corp-platform/docker-compose.yml port jaeger 16686
+```
+
+The current local evidence packet is
+[`evidence/runtime-local-20260728/RUNTIME-EVIDENCE-REPORT.md`](evidence/runtime-local-20260728/RUNTIME-EVIDENCE-REPORT.md).
+It records a successful cooldown state transition but not a successful live
+Bedrock response after cooldown.
 
 ## Required runtime evidence
 

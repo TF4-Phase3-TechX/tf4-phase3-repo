@@ -73,3 +73,13 @@ Activation requires a reviewed image, a dedicated control Secret, an external
 replay tied to the deployed SHA, and named ADR acceptance. Rollback removes the
 control-token Secret or rolls back the image; without the token, `SetFault`
 remains disabled.
+
+## Validation status
+
+Implementation, CI, external local fault injection, bounded retry,
+circuit-open provider suppression, honest fallback, and malformed-output
+rejection have been observed. The local breaker transitioned from `open` to
+`closed` after cooldown, but the subsequent live Bedrock request timed out
+under the approved 4.5-second total deadline. Successful real-provider recovery,
+deployed-runtime observation, and named reviewer acceptance remain activation
+gates; this ADR therefore remains `Proposed`.
