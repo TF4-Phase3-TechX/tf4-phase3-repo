@@ -4,10 +4,12 @@
 
 The code path, unit/regression tests, additive protobuf contract, container
 closure, metrics, semantic replay harness, runtime replay, and safe
-invalidation drill are implemented on a clean `origin/main`-based branch. A
-PR/Jira link and named ADR approval are intentionally still pending.
+invalidation drill were merged to `main` in PR #692. ADR-023 has named
+approval. Jira linkage and final evidence submission remain pending.
 
-Do not close `AI MANDATE #23` until those external artifacts exist.
+The final-revision evidence package is captured in the repository. Do not close
+`AI MANDATE #23` until the follow-up commit/PR and evidence are linked from the
+Jira ticket.
 
 ## Implementation map
 
@@ -68,7 +70,10 @@ tests/eval_mandate23/repro.sh
 
 The canonical proof starts with Product Q&A because every safe grounded question is cache eligible. Copilot evidence is additional and must use an exact full product name or ID plus a review marker.
 
-Run at least three repetitions per case with the same dataset, model, prompt, Guardrail, and price snapshot. Attach:
+Run at least three repetitions per case with the same dataset, model, prompt,
+Guardrail, and configured price snapshot. Cost values are estimates computed
+from the pinned runtime coefficients, not AWS invoice or Cost and Usage Report
+amounts. Attach:
 
 - `per_case.jsonl`;
 - `aggregate.json`;
@@ -96,9 +101,18 @@ developers can opt in through `.env.override`.
 
 ### Captured runtime evidence
 
-The canonical semantically asserted replay is:
+The canonical submission replay is:
 
-`tests/eval_mandate23/evidence/runtime-20260726T175526Z/`
+`tests/eval_mandate23/evidence/submission-d0ac437-final/`
+
+It was captured from clean tracked revision
+`d0ac437d07c34a771f8d52f790c8b3bfd727b26b`, rebased on
+`origin/main@eb74a54`, through the rebuilt production container. Both replay
+configurations record the runtime image reference, image digest, code SHA-256,
+model, Guardrail, and configured-estimate price snapshot (`0.33` input /
+`2.75` output USD per million tokens). The manifests under `runtime/` and
+`short-term/` verify successfully; the root `manifest.sha256` additionally
+covers both children and the invalidation record.
 
 | Product Q&A observation | Runtime result |
 |---|---:|
@@ -108,28 +122,33 @@ The canonical semantically asserted replay is:
 | Warm hits | 6 / 6 |
 | Warm hit rate | 66.67% |
 | Model calls | 3 (cold only) |
-| Input / output tokens | 4,434 / 993 |
-| Estimated cost | USD 0.00381270 |
-| Mean cold latency | 2,051.25 ms |
-| Mean warm latency | 7.28 ms |
-| Measured latency reduction | 99.64% |
+| Input / output tokens | 4,434 / 991 |
+| Configured estimated cost | USD 0.00418847 |
+| Mean cold latency | 2,247.52 ms |
+| Mean warm latency | 10.93 ms |
+| Measured latency reduction | 99.51% |
 
 All nine memory operations were also semantically validated with zero
 assertion failures: each repetition stored an allow-listed preference,
 recalled it from a new session for the same user, and proved `not_found` for a
-different user.
+different user. These deterministic memory operations made zero model calls.
 
-The canonical three-turn context proof is:
+The `short-term/` child is the canonical three-turn context proof. All 9 / 9
+calls were semantically validated with zero assertion failures across three
+independent conversations. Every conversation asserted that the initial search
+contained product `6E92ZMYYFZ`, the relative cheapest turn selected exactly
+that product, and the “this product” review turn returned the same product and
+named Solar Filter. The replay made nine model calls, used 27,096 input and 580
+output tokens, and measured a configured estimate of USD 0.01053668.
 
-`tests/eval_mandate23/evidence/short-term-20260726T175526Z/`
+`invalidation.json` records the safe source drill against the discovered
+`reviews.productreviews.id=1`: cold miss, warm hit with no model call, then
+`source_changed` miss after mutation. `restore_verified=true` proves the exact
+original description and score were restored.
 
-All 9 / 9 calls were semantically validated with zero assertion failures.
-Every conversation asserted that the initial search contained product
-`6E92ZMYYFZ`, the relative cheapest turn selected exactly that product, and the
-“this product” review turn returned exactly the same product and named Solar
-Filter. Transport success alone no longer counts as a passing replay.
-
-The earlier 2026-07-26 replay remains preserved for historical comparison:
+The earlier 2026-07-26 replay remains preserved for historical comparison, but
+is not the canonical submission because it predates the final parser, replay
+provenance, and clean-checkout hardening:
 
 The 2026-07-26 replay used the production gRPC boundary from the rebuilt
 `product-reviews` container, the same dataset/configuration, three independent
@@ -194,7 +213,7 @@ The drill records the exact row ID and original description/score, checks miss �
 
 ## Acceptance checklist
 
-- [x] Existing 173 product-review tests remain green on the clean main-based branch.
+- [x] Product-review and Mandate 23 replay suites remain green (197 tests).
 - [x] Cold miss → hit with no second provider call.
 - [x] Cross-user repeat misses.
 - [x] Source/model/prompt/Guardrail/schema identity participates in keys.
@@ -214,5 +233,5 @@ The drill records the exact row ID and original description/score, checks miss �
 - [x] Frontend AI diagnostics tests (5 / 5) and Next.js production build pass.
 - [x] Helm 3.17.3 template render and Docker Compose configuration pass.
 - [ ] PR/commit linked to Jira.
-- [ ] ADR-023 has named approval.
+- [x] ADR-023 has named approval.
 - [ ] Jira ticket has the four required evidence items.

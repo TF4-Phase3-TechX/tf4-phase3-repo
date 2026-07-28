@@ -178,6 +178,13 @@ jobs:
       - name: Run resilience unit tests
         run: npm run test:resilience
 
+      - name: Run AI principal route regression
+        run: npm run test:ai-principal
+
+      - name: Build production frontend image
+        working-directory: techx-corp-platform
+        run: docker build --file src/frontend/Dockerfile --tag frontend-pr-check:local .
+
   product-reviews-test:
     name: Product reviews Python suite
     runs-on: ubuntu-latest
