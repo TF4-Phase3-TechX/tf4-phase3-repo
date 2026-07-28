@@ -30,6 +30,7 @@ COPY ./src/product-reviews/metrics.py metrics.py
 COPY ./src/product-reviews/ai_assistant.py ai_assistant.py
 COPY ./src/product-reviews/audit_logging.py audit_logging.py
 COPY ./src/product-reviews/bedrock_adapter.py bedrock_adapter.py
+COPY ./src/product-reviews/llm_observability.py llm_observability.py
 COPY ./src/product-reviews/safety.py safety.py
 COPY ./src/product-reviews/session_store.py session_store.py
 COPY ./src/product-reviews/router.py router.py
