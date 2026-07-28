@@ -83,12 +83,14 @@ aws s3 ls s3://techx-tf4-orders-archive/topics/orders/ --recursive | tail -n 10
 
 ## 4. 📹 Danh Sách Bằng Chứng Video & Screen Capture (Evidence Log)
 
+Bằng chứng theo dõi sử dụng dashboard chuyên dụng: **Single-AZ Loss Drill (Mandate 21)**.
+
 ![Grafana Dashboard Preview](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate21/evidence/mandate21_grafana_dashboard_preview.png)
 
 | STT | Loại Bằng Chứng | Mô Tả File / Screenshot / Clip Link | Trạng Thái Check |
 | :---: | :--- | :--- | :---: |
 | **1** | **Video Recording** | Clip quay full màn hình từ $T_{\text{baseline}} \rightarrow T_{\text{dip}} \rightarrow T_{\text{recover}}$ kèm đồng hồ UTC | [ ] Verified |
-| **2** | **Grafana Dashboard Dip & Recover** | [mandate21_grafana_dashboard_preview.png](file:///d:/xbrain/tf4-phase3-repo/docs/cdo08/week3/mandate21/evidence/mandate21_grafana_dashboard_preview.png) | [x] Verified |
+| **2** | **Grafana Dashboard Dip & Recover** | Screenshot bảng dashboard chuyên dụng [mandate21-drill](https://grafana.techx-tf4.site/grafana) ghi nhận sự sụt giảm và phục hồi | [x] Verified |
 | **3** | **RDS Failover Console** | Screenshot AWS RDS Console thể hiện Primary Zone thay đổi sau failover | [ ] Verified |
 | **4** | **Karpenter Node Scale-Up** | Screenshot log Karpenter provision EC2 mới ở AZ sống | [ ] Verified |
 | **5** | **RPO Query Result** | File text/screenshot kết quả SELECT DB chứng minh `0 lost transactions` | [ ] Verified |
