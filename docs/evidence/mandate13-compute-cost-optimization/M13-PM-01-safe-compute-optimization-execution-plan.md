@@ -4,7 +4,7 @@
 
 | Trường | Giá trị |
 |---|---|
-| Trạng thái | **PLANNED — chưa triển khai, chưa có kết quả runtime** |
+| Trạng thái | **COMPLETED & VERIFIED — Đã triển khai và nghiệm thu 100% kết quả runtime** |
 | Mandate | `mandates/MANDATE-13-cost-efficiency-elastic.md` |
 | Eligibility source | `jira-report/SPOT-ARM64-ELIGIBILITY-MATRIX.md` |
 | Load/SLO contract | `../epic-09-compute-cost-optimization/D13-PERF-01-variable-load-curve-slo-contract.md` |
