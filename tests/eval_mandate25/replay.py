@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import sys
 import time
-from typing import Any, Iterable
+from collections.abc import Iterable
+from pathlib import Path
+from typing import Any
 
 import grpc
 
@@ -24,7 +25,6 @@ if str(PRODUCT_REVIEWS_SRC) not in sys.path:
 import demo_pb2
 import demo_pb2_grpc
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE
-
 
 STATUS_METHOD = "/tf4.mandate25.ResilienceControl/GetStatus"
 
@@ -127,6 +127,7 @@ def replay(
                     )
                     response_text = str(response.response)[:1_000]
                     has_action = response.HasField("action_proposal")
+                    trace_id = str(response.trace.trace_id)
                 else:
                     response = stub.AskProductAIAssistant(
                         demo_pb2.AskProductAIAssistantRequest(
@@ -139,11 +140,13 @@ def replay(
                     )
                     response_text = str(response.response)[:1_000]
                     has_action = response.HasField("action_proposal")
+                    trace_id = ""
                 transport = "ok"
             except grpc.RpcError as exc:
                 response_text = ""
                 transport = exc.code().name
                 has_action = False
+                trace_id = ""
             status = status_call({}, timeout=2)
             rows.append(
                 {
@@ -152,6 +155,7 @@ def replay(
                     "iteration": iteration,
                     "request_sha256": request_fingerprint(case),
                     "transport": transport,
+                    "trace_id": trace_id,
                     "outcome": (
                         classify_response(response_text)
                         if transport == "ok"

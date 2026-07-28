@@ -4,9 +4,12 @@
 
 **Owner:** Tất Văn
 
-**Evidence status:** implementation and CI complete; local Docker runtime proof
-is partial. Successful post-cooldown provider recovery, deployed-runtime proof,
-and named ADR acceptance remain pending.
+**Evidence status:** implementation, CI, local Docker evidence, and the bounded
+production failure/recovery drill are complete. Named ADR acceptance remains
+pending.
+
+Canonical production evidence:
+[`evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md`](evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md).
 
 ## What is implemented
 
@@ -108,5 +111,8 @@ Record the exact deployed image/Argo revision and sanitized outputs for:
 6. malformed output returning an honest insufficient response with no action;
 7. final effective readback showing `fault.mode=off`;
 8. named ADR acceptance.
+
+Items 1–7 are satisfied by the 2026-07-29 production packet. Item 8 remains an
+independent human acceptance gate.
 
 Do not call the mandate Done from unit tests or the control script alone.

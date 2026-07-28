@@ -8,6 +8,7 @@ set -euo pipefail
 TARGET="${MANDATE25_TARGET:-127.0.0.1:3551}"
 TTL_SECONDS="${MANDATE25_FAULT_TTL_SECONDS:-60}"
 TOKEN="${MANDATE25_FAULT_TOKEN:-}"
+PYTHON_BIN="${MANDATE25_PYTHON_BIN:-python3}"
 CONTROL_PATH="/tf4.mandate25.ResilienceControl"
 
 if [[ -z "${TOKEN}" ]]; then
@@ -18,7 +19,7 @@ fi
 rpc() {
   local method="$1"
   local payload="$2"
-  python3 - "${TARGET}" "${TOKEN}" "${CONTROL_PATH}/${method}" "${payload}" <<'PY'
+  "${PYTHON_BIN}" - "${TARGET}" "${TOKEN}" "${CONTROL_PATH}/${method}" "${payload}" <<'PY'
 import grpc
 import json
 import sys
