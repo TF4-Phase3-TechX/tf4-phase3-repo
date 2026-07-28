@@ -78,8 +78,12 @@ remains disabled.
 
 Implementation, CI, external local fault injection, bounded retry,
 circuit-open provider suppression, honest fallback, and malformed-output
-rejection have been observed. The local breaker transitioned from `open` to
-`closed` after cooldown, but the subsequent live Bedrock request timed out
-under the approved 4.5-second total deadline. Successful real-provider recovery,
-deployed-runtime observation, and named reviewer acceptance remain activation
-gates; this ADR therefore remains `Proposed`.
+rejection have been observed. The bounded production drill on 2026-07-29 also
+proved timeout/throttling/5xx fallback, two-attempt retry, zero provider spans
+while the circuit was open, cooldown, and a successful real Bedrock recovery
+on the deployed immutable image. The control Secret was removed and both pods
+were replaced after the drill. See
+[`evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md`](evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md).
+
+Named reviewer acceptance remains the final activation gate; this ADR
+therefore remains `Proposed` and must not be marked Accepted by the operator.
