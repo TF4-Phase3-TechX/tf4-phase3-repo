@@ -43,9 +43,10 @@ resource "aws_vpc_endpoint" "s3" {
   )
 }
 
-# 2. Interface Endpoints: ECR API, ECR DKR, STS, Logs, SSM, SSM Messages, EC2 Messages
+# 2. Interface Endpoints: private AWS service paths used by EKS workloads.
 locals {
   interface_services = [
+    "bedrock-runtime",
     "ecr.api",
     "ecr.dkr",
     "sts",
