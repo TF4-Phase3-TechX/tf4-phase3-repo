@@ -1,6 +1,6 @@
 # ADR-014: Standard evaluation for review summary and Shopping Copilot
 
-- Status: Accepted for evaluation; Auditability amendment pending approval
+- Status: Accepted
 - Date: 2026-07-23
 - Accepted: 2026-07-25
 - Jira: TF4AIO-79, TF4AIO-81, TF4AIO-82
@@ -108,52 +108,6 @@ Hidden grading cases must never be used to tune thresholds.
   entailment. Low-support cases require per-case inspection and may motivate a
   future, separately calibrated LLM judge.
 - Regex PII detection is a hard-bar backstop, not a complete DLP product.
-
-## Auditability amendment
-
-**Proposed:** 2026-07-28
-
-**Owners:** CDO-07 Auditability and AIE
-
-**Approval status:** Pending; the approvals from PR #658 do not cover this
-amendment.
-
-AI/tool-call evidence uses the same typed runtime observations as the standard
-evaluation, but stores only a content-free canonical audit record:
-
-- `log_type`
-- `trace_id`
-- `surface`
-- `model_id`
-- `tool_name`
-- `tool_input_redacted`
-- `safety_decision`
-- `confirmation_status`
-
-Raw prompts, responses, tool inputs, user/session identifiers, confirmation
-tokens, credentials and PII are not written to the audit pipeline.
-
-The approved target flow is:
-
-```text
-product-reviews
-  -> OTLP
-  -> OTel exact filter for log_type=ai_tool_audit
-  -> CloudWatch /aws/eks/techx-tf4/ai-audit
-  -> CloudWatch subscription
-  -> Firehose
-  -> S3 GZIP with Versioning and Object Lock COMPLIANCE
-  -> Glue/Athena query by trace_id
-```
-
-CloudWatch is the operational copy. S3 Object Lock is the evidence authority,
-and Athena provides forensic reconstruction. CDO-07 verifies the pipeline with
-a read-only role that cannot modify or delete audit records.
-
-Runtime evidence and the read-only reproduction command are linked from
-[`MANDATE-14-EVIDENCE-INDEX.md`](MANDATE-14-EVIDENCE-INDEX.md). This amendment
-must receive named approval from both AIE and CDO-07 before it is described as
-accepted.
 
 ## Approval record
 

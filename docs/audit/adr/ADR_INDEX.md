@@ -28,6 +28,7 @@ Sổ ghi nhận các quyết định liên quan đến kiến trúc, bảo mật
 | ADR-016 | 2026-07-16 | Cost dashboard estimate-first trước actual billing sync | Có cost visibility nhanh, không thêm IAM/runtime component, tránh Cost Explorer/CUR query cost ở phase đầu | Accepted | CDO-07 | [ADR-016](./adr/016-cost-dashboard-estimate-first.md) |
 | ADR-017 | 2026-07-15 | Hệ thống Log kiểm toán bất biến (Tamper-Evident) | S3 Object Lock Compliance Mode 90 ngày, KDF EKS stream, SSO | Accepted | CDO-07 | [ADR-017](./adr/017-eks-cloudtrail-tamper-evident-logging.md) |
 | ADR-018 | 2026-07-19 | Kiến trúc cảnh báo bảo mật thời gian thực (Mandate-11) | EventBridge + Lambda + Slack — TTD p95 = 5.23s vs target 60s; chi phí ~$0/tháng | Accepted | CDO-07 | [ADR-018](./adr/018-realtime-security-alerting-eventbridge-lambda.md) |
+| ADR-020 | 2026-07-28 | Auditability cho AI và Tool Call | Canonical metadata, OTel, CloudWatch, S3 WORM và Athena | Proposed | Bá Huân - CDO07 / AIE pending | [ADR-020](./020-ai-tool-call-auditability.md) |
 
 
 ---

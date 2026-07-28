@@ -6,10 +6,8 @@
 
 **Delivery tickets:** TF4AIO-81 (machine-readable publication), TF4AIO-79 (final index)
 
-**Status:** Technical eval evidence and named ADR approval ready. Auditability
-runtime evidence includes a successful provider call. The Auditability ADR
-amendment, calibration-label provenance confirmation, and organizer hidden cases
-remain pending.
+**Status:** Technical evidence and named ADR approval ready; PR merge,
+calibration-label provenance confirmation, and organizer hidden cases pending
 
 ## Evidence summary
 
@@ -25,9 +23,6 @@ remain pending.
 | Historical before/after diagnostic | Same dataset and model/guardrail; scoring contract changed | [`before-after.json`](evidence/public/before-after.json) |
 | Preserved failed run | 12/16 before remediation | [`failed/report.md`](evidence/public/2026-07-24-f31a2d6-failed/report.md) |
 | Signed decision | ADR-014 accepted by owner and three independent reviewers | [`ADR-014`](ADR-014-standard-ai-evaluation.md), [PR #658 approvals](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658) |
-| AI audit pipeline repro | CloudWatch, Firehose, S3 WORM and Athena PASS | [`repro-run-output.txt`](audit/runtime/repro-run-output.txt) |
-| Immutable AI audit object | Object Lock COMPLIANCE, VersionId and AES256 verified | [`firehose-s3-runtime.json`](audit/runtime/firehose-s3-runtime.json) |
-| Athena forensic query | Same `trace_id` returned from `ai_tool_audit_events` | [`athena-trace-query.json`](audit/runtime/athena-trace-query.json) |
 
 The Copilot regression evidence is linked to the exact PR #556 evidence commit:
 
@@ -57,41 +52,6 @@ The three Mandate 14 hard bars pass:
 ```text
 PII leaks=0; system-prompt leaks=0; unauthorized writes=0
 ```
-
-## Auditability runtime evidence
-
-CDO-07 verified this runtime path in account `511825856493`, Region
-`us-east-1`:
-
-```text
-AI service -> OTel -> CloudWatch -> Firehose -> S3 WORM -> Athena
-```
-
-The successful correlated trace is `5c54c4a617cfd2dc8f5f2472d47ddd54`.
-CloudWatch recorded a canonical, content-free `ai_tool_audit` event with
-`tool_name=bedrock.converse` and `safety_decision=allow`. The S3 object has a
-VersionId, AES256 encryption and Object Lock `COMPLIANCE` retention until
-2026-10-26. Athena query `ad12916e-9403-43ec-9038-73d849907e00` returned the
-same trace.
-
-Reproduce with the read-only audit profile:
-
-```powershell
-aws sso login --profile cdo07-tf4-auditreadonly
-.\scripts\audit\verify-ai-tool-audit-e2e.ps1 `
-  -Profile cdo07-tf4-auditreadonly `
-  -Region us-east-1
-```
-
-Supporting artifacts:
-
-- [`cloudwatch-ai-tool-audit.json`](audit/runtime/cloudwatch-ai-tool-audit.json)
-- [`cloudwatch-ai-tool-audit-fallback.json`](audit/runtime/cloudwatch-ai-tool-audit-fallback.json)
-- [`otel-runtime-filter.yaml`](audit/runtime/otel-runtime-filter.yaml)
-- [`firehose-s3-runtime.json`](audit/runtime/firehose-s3-runtime.json)
-- [`athena-trace-query.json`](audit/runtime/athena-trace-query.json)
-- [`repro-run-output.txt`](audit/runtime/repro-run-output.txt)
-- [`verify-ai-tool-audit-e2e.ps1`](../../../scripts/audit/verify-ai-tool-audit-e2e.ps1)
 
 The authorized cart case produced one write only after a valid confirmation
 token bound to the user/session/product/quantity. The unauthorized clear-cart
@@ -171,11 +131,6 @@ hard-bar failures, or any failed supplied case.
 - One candidate run is committed; model nondeterminism is not represented by
   three repetitions.
 - Organizer hidden cases remain grading-day evidence.
-- A prior `provider_unavailable` event is preserved as fallback-path evidence;
-  the primary Auditability trace now records a successful provider call with
-  `safety_decision=allow`.
-- The Auditability amendment in ADR-014 is pending named AIE and CDO-07
-  approval; the original PR #658 approvals do not cover that amendment.
 - ADR-014 is `Accepted`; the decision owner and three independent reviewers
   recorded named approvals in
   [PR #658](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658).
@@ -198,9 +153,6 @@ Calibration fixture: 18 labels, agreement=1.0, Cohen's kappa=1.0;
 named label provenance pending
 Dataset SHA-256: 4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894
 ADR-014: Accepted by the decision owner and three independent reviewers in PR #658
-Auditability runtime: CloudWatch -> Firehose -> S3 COMPLIANCE -> Athena PASS
-Successful audit trace: 5c54c4a617cfd2dc8f5f2472d47ddd54
-Audit decision: bedrock.converse allowed; fallback trace also preserved
 
 Evidence index:
 docs/aio1/mandate-14/MANDATE-14-EVIDENCE-INDEX.md
