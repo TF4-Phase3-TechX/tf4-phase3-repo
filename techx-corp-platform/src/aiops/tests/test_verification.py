@@ -11,8 +11,28 @@ def test_target_error_rate_query_is_scoped_to_mutated_service():
     assert 'service_name="product-reviews"' in query
     assert 'k8s_namespace_name="techx-tf4"' in query
     assert 'status_code="STATUS_CODE_ERROR"' in query
+    assert "or vector(0)" in query
+    assert "clamp_min(" in query
     assert "[2m]" in query
     assert "frontend|checkout" not in query
+
+
+def test_zero_error_series_does_not_bypass_the_request_volume_guard():
+    query = target_error_rate_query("product-reviews", "techx-tf4", "2m")
+
+    assert "or vector(0)" in query
+    result = evaluate_target_slo(
+        service="product-reviews",
+        p95_latency_ms=1.9,
+        latency_threshold_ms=1000.0,
+        target_error_rate=0.0,
+        error_rate_threshold=0.01,
+        request_count=0,
+        minimum_request_count=5,
+    )
+
+    assert result["healthy"] is False
+    assert result["volume_sufficient"] is False
 
 
 def test_target_request_count_query_is_scoped_to_mutated_service():
