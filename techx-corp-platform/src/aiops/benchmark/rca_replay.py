@@ -65,7 +65,13 @@ def git_revision() -> str:
         root = Path(__file__).resolve().parents[4]
         # parents: benchmark->aiops->src->techx-corp-platform->repo
         out = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
+            [
+                "git",
+                "-c",
+                f"safe.directory={root}",
+                "rev-parse",
+                "HEAD",
+            ],
             cwd=str(root),
             stderr=subprocess.DEVNULL,
             text=True,
