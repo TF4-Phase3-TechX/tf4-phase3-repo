@@ -1,0 +1,82 @@
+timestamp_utc,phase,target_users,node_count,total_rps,checkout_succ_pct,browse_succ_pct,max_p95_ms,hpa_summary
+2026-07-28T16:14:06Z,Phase 1: Low Baseline,25,5,3.21,99.97,99.96,1800.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:14:43Z,Phase 1: Low Baseline,25,5,3.22,99.97,99.96,1800.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:15:26Z,Phase 1: Low Baseline,25,5,3.23,99.97,99.96,1800.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:16:07Z,Phase 1: Low Baseline,25,5,3.24,99.97,99.96,3800.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:16:43Z,Phase 1: Low Baseline,25,5,3.25,99.97,99.96,4000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:17:19Z,Phase 1: Low Baseline,25,5,3.25,99.97,99.95,4000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:17:55Z,Phase 1: Low Baseline,25,5,3.26,99.97,99.95,4300.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:18:31Z,Phase 1: Low Baseline,25,5,3.27,99.97,99.95,4300.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:19:07Z,Phase 1: Low Baseline,25,5,3.28,99.97,99.95,4300.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:19:43Z,Phase 1: Low Baseline,25,5,3.29,99.97,99.95,4300.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:20:20Z,Phase 2: Ramp-Up,200,5,3.36,99.97,99.95,4300.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:20:56Z,Phase 2: Ramp-Up,200,5,3.45,99.97,99.89,8600.0,cart:2, checkout:2, currency:2, frontend:4, frontend-proxy:2, product-catalog:2
+2026-07-28T16:21:31Z,Phase 2: Ramp-Up,200,5,3.55,99.95,99.79,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:22:07Z,Phase 2: Ramp-Up,200,5,3.64,99.96,99.72,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:22:43Z,Phase 2: Ramp-Up,200,5,3.72,99.96,99.62,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:23:19Z,Phase 2: Ramp-Up,200,5,3.81,99.96,99.52,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:23:54Z,Phase 2: Ramp-Up,200,5,3.90,99.96,99.45,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:24:30Z,Phase 2: Ramp-Up,200,5,3.99,99.96,99.36,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:25:06Z,Phase 2: Ramp-Up,200,5,4.08,99.96,99.28,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:25:43Z,Phase 2: Ramp-Up,200,5,4.16,99.96,99.22,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:26:20Z,Phase 3: High Load Peak,200,5,4.26,99.96,99.14,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:26:56Z,Phase 3: High Load Peak,200,5,4.35,99.96,99.07,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:27:32Z,Phase 3: High Load Peak,200,5,4.43,99.96,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:28:08Z,Phase 3: High Load Peak,200,5,4.52,99.96,98.94,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:28:45Z,Phase 3: High Load Peak,200,5,4.61,99.97,98.87,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:29:21Z,Phase 3: High Load Peak,200,5,4.69,99.97,98.81,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:29:57Z,Phase 3: High Load Peak,200,5,4.78,99.97,98.76,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:30:33Z,Phase 3: High Load Peak,200,5,4.88,99.97,98.73,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:31:09Z,Phase 3: High Load Peak,200,5,4.98,99.97,98.76,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:31:45Z,Phase 3: High Load Peak,200,5,5.08,99.97,98.76,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:32:21Z,Phase 3: High Load Peak,200,5,5.18,99.97,98.78,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:32:57Z,Phase 3: High Load Peak,200,5,5.29,99.97,98.79,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:33:34Z,Phase 3: High Load Peak,200,5,5.39,99.97,98.79,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:34:10Z,Phase 3: High Load Peak,200,5,5.49,99.97,98.82,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:34:46Z,Phase 3: High Load Peak,200,5,5.60,99.97,98.83,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:35:22Z,Phase 3: High Load Peak,200,5,5.70,99.97,98.85,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:35:58Z,Phase 3: High Load Peak,200,5,5.80,99.97,98.87,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:36:35Z,Phase 3: High Load Peak,200,5,5.89,99.97,98.89,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:37:11Z,Phase 3: High Load Peak,200,5,5.99,99.97,98.91,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:37:48Z,Phase 3: High Load Peak,200,5,6.09,99.97,98.91,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:38:24Z,Phase 3: High Load Peak,200,5,6.19,99.97,98.93,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:39:00Z,Phase 3: High Load Peak,200,5,6.29,99.98,98.92,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:39:37Z,Phase 3: High Load Peak,200,5,6.39,99.98,98.93,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:40:13Z,Phase 3: High Load Peak,200,5,6.49,99.98,98.94,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:40:50Z,Phase 3: High Load Peak,200,5,6.59,99.98,98.95,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:41:27Z,Phase 3: High Load Peak,200,5,6.70,99.98,98.93,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:42:03Z,Phase 3: High Load Peak,200,5,6.80,99.98,98.94,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:42:39Z,Phase 3: High Load Peak,200,5,6.90,99.98,98.96,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:43:15Z,Phase 3: High Load Peak,200,5,7.00,99.98,98.97,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:43:51Z,Phase 3: High Load Peak,200,5,7.10,99.98,98.97,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:44:29Z,Phase 4: Ramp-Down,25,5,7.15,99.98,98.98,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:45:06Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.98,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:45:42Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.98,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:46:18Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.98,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:46:55Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.98,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:47:31Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:48:07Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:48:43Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:49:20Z,Phase 4: Ramp-Down,25,5,7.16,99.98,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:6, frontend-proxy:2, product-catalog:3
+2026-07-28T16:49:56Z,Phase 4: Ramp-Down,25,5,7.17,99.98,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:5, frontend-proxy:2, product-catalog:2
+2026-07-28T16:50:33Z,Phase 5: Low Observation,25,5,7.17,99.97,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:4, frontend-proxy:2, product-catalog:2
+2026-07-28T16:51:08Z,Phase 5: Low Observation,25,5,7.17,99.97,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:4, frontend-proxy:2, product-catalog:2
+2026-07-28T16:51:45Z,Phase 5: Low Observation,25,5,7.17,99.97,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:3, frontend-proxy:2, product-catalog:2
+2026-07-28T16:52:21Z,Phase 5: Low Observation,25,5,7.17,99.97,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:3, frontend-proxy:2, product-catalog:2
+2026-07-28T16:52:57Z,Phase 5: Low Observation,25,5,7.17,99.94,98.99,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:53:33Z,Phase 5: Low Observation,25,5,7.17,99.94,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:54:10Z,Phase 5: Low Observation,25,5,7.18,99.94,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:54:46Z,Phase 5: Low Observation,25,5,7.18,99.94,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:55:23Z,Phase 5: Low Observation,25,5,7.18,99.95,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:55:59Z,Phase 5: Low Observation,25,5,7.18,99.95,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:56:35Z,Phase 5: Low Observation,25,5,7.18,99.95,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:57:16Z,Phase 5: Low Observation,25,5,7.18,99.95,99.01,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:57:52Z,Phase 5: Low Observation,25,5,7.18,99.95,99.01,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:58:29Z,Phase 5: Low Observation,25,5,7.18,99.95,99.01,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:59:05Z,Phase 5: Low Observation,25,5,7.18,99.95,99.01,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T16:59:41Z,Phase 5: Low Observation,25,5,7.19,99.95,99.01,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T17:00:17Z,Phase 5: Low Observation,25,5,7.19,99.95,99.02,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T17:00:54Z,Phase 5: Low Observation,25,5,7.19,99.95,99.02,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T17:01:30Z,Phase 5: Low Observation,25,5,7.19,99.95,99.02,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T17:02:07Z,Phase 5: Low Observation,25,5,7.18,99.95,99.01,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
+2026-07-28T17:02:43Z,Phase 5: Low Observation,25,6,7.18,99.93,99.00,15000.0,cart:2, checkout:2, currency:2, frontend:2, frontend-proxy:2, product-catalog:2
