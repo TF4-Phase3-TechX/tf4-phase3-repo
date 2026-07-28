@@ -46,7 +46,6 @@ def test_q_and_a_emits_canonical_event_only_after_provider_attempt(monkeypatch):
     )
     monkeypatch.setattr(server, "assistant", assistant)
     monkeypatch.setattr(server, "product_review_svc_metrics", metrics())
-    monkeypatch.setattr(server, "check_feature_flag", lambda _name: False)
     monkeypatch.setattr(server, "emit_ai_tool_audit", lambda _logger, **event: audit_events.append(event))
 
     response = server.get_ai_assistant_response(
@@ -81,7 +80,6 @@ def test_q_and_a_cache_hit_metadata_and_history_use_shared_finalizer(monkeypatch
     )
     monkeypatch.setattr(server, "assistant", assistant)
     monkeypatch.setattr(server, "product_review_svc_metrics", metrics())
-    monkeypatch.setattr(server, "check_feature_flag", lambda _name: False)
     monkeypatch.setattr(
         server,
         "session_store",
