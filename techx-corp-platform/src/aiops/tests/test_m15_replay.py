@@ -302,7 +302,7 @@ def test_masking_noise_in_target_window_does_not_hide_subtle_incident(tmp_path: 
 
 
 def test_committed_labeled_scenarios_dataset_passes():
-    """Verify that the committed docs/aio1/mandate-15/labeled-scenarios-v1.jsonl dataset passes 5/5."""
+    """Verify the committed Mandate-15 dataset, including cross-service masking."""
     dataset_path = (
         Path(__file__).resolve().parents[4]
         / "docs"
@@ -313,8 +313,10 @@ def test_committed_labeled_scenarios_dataset_passes():
     assert dataset_path.exists(), f"Committed dataset not found at {dataset_path}"
     report = replay(dataset_path)
     agg = report["aggregate"]
-    assert agg["total_cases"] == 5
-    assert agg["passed_cases"] == 5
+    assert agg["total_cases"] == 6
+    assert agg["passed_cases"] == 6
+    assert agg["events_evaluated"] == 8
+    assert agg["confusion_matrix"] == {"TP": 4, "FP": 0, "FN": 0, "TN": 4}
     assert agg["all_passed"] is True
     assert agg["precision"] == 1.0
     assert agg["recall"] == 1.0

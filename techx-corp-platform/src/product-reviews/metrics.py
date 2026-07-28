@@ -48,6 +48,41 @@ def init_metrics(meter):
     app_llm_call_counter = meter.create_counter(
         'app_llm_calls_total', unit='calls', description="Bedrock calls partitioned by outcome"
     )
+    app_ai_cache_request_counter = meter.create_counter(
+        'app_ai_cache_requests_total',
+        unit='requests',
+        description="AI response-cache hit/miss requests by surface and bounded reason",
+    )
+    app_ai_cache_lookup_latency_histogram = meter.create_histogram(
+        'app_ai_cache_lookup_latency_seconds',
+        unit='s',
+        description="AI response-cache lookup latency",
+    )
+    app_ai_cache_saved_model_calls_counter = meter.create_counter(
+        'app_ai_cache_saved_model_calls_total',
+        unit='calls',
+        description="Provider calls avoided by exact-cache hits",
+    )
+    app_ai_cache_saved_tokens_counter = meter.create_counter(
+        'app_ai_cache_saved_tokens_total',
+        unit='tokens',
+        description="Provider input/output tokens avoided by exact-cache hits",
+    )
+    app_ai_cache_saved_cost_counter = meter.create_counter(
+        'app_ai_cache_saved_cost_usd_total',
+        unit='USD',
+        description="Estimated provider cost avoided by exact-cache hits",
+    )
+    app_ai_cache_event_counter = meter.create_counter(
+        'app_ai_cache_events_total',
+        unit='events',
+        description="AI cache writes, rejections and errors",
+    )
+    app_ai_profile_operation_counter = meter.create_counter(
+        'app_ai_profile_operations_total',
+        unit='operations',
+        description="Allow-listed profile reads, writes, deletes and errors",
+    )
 
     product_review_svc_metrics = {
         "app_product_review_counter": app_product_review_counter,
@@ -59,6 +94,13 @@ def init_metrics(meter):
         "app_llm_estimated_cost_counter": app_llm_estimated_cost_counter,
         "app_llm_error_counter": app_llm_error_counter,
         "app_llm_call_counter": app_llm_call_counter,
+        "app_ai_cache_request_counter": app_ai_cache_request_counter,
+        "app_ai_cache_lookup_latency_histogram": app_ai_cache_lookup_latency_histogram,
+        "app_ai_cache_saved_model_calls_counter": app_ai_cache_saved_model_calls_counter,
+        "app_ai_cache_saved_tokens_counter": app_ai_cache_saved_tokens_counter,
+        "app_ai_cache_saved_cost_counter": app_ai_cache_saved_cost_counter,
+        "app_ai_cache_event_counter": app_ai_cache_event_counter,
+        "app_ai_profile_operation_counter": app_ai_profile_operation_counter,
     }
 
     return product_review_svc_metrics

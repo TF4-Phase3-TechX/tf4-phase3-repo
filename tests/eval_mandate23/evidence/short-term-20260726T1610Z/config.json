@@ -1,0 +1,16 @@
+{
+  "case_count": 9,
+  "created_at": "2026-07-26T16:12:45.951582+00:00",
+  "default_product_id": "",
+  "identity_suffix": "-runtime-20260726T1610Z",
+  "input_sha256": "216b0f70d2bd298b3d45ea6220ec04c018d986d3c69ebb2c0eeca985a6e03a9a",
+  "price_snapshot": {
+    "input_usd_per_million": null,
+    "output_usd_per_million": null
+  },
+  "repetitions": 3,
+  "schema_version": "mandate23-replay-v1",
+  "source_case_count": 3,
+  "target": "localhost:32806",
+  "timeout_seconds": 20.0
+}

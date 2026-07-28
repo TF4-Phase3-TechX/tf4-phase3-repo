@@ -8,7 +8,7 @@ from prometheus_client import REGISTRY
 from app.availability import AvailabilitySnapshot
 from app.config import Settings
 from app.detection import Detector
-from app.models import Decision, IncidentStatus
+from app.models import AuditEvent, Decision, Incident, IncidentStatus
 from app.store import IncidentStore
 from app.worker import AIOpsWorker
 
@@ -180,6 +180,13 @@ class ApprovalRecorder:
         incident.approval_status = "pending"
 
 
+async def _await_remediation_tasks(worker: AIOpsWorker) -> None:
+    """Remediation runs off the detection loop; tests wait for background tasks."""
+
+    if worker._remediation_tasks:
+        await asyncio.gather(*list(worker._remediation_tasks), return_exceptions=True)
+
+
 @pytest.mark.asyncio
 async def test_worker_breach_recover_breach_notifies_for_two_incidents():
     settings = replace(Settings(), services=(), recovery_polls=2)
@@ -194,6 +201,7 @@ async def test_worker_breach_recover_breach_notifies_for_two_incidents():
 
     for _ in range(4):
         await worker.poll_once()
+        await _await_remediation_tasks(worker)
 
     assert len(recorder.incident_ids) == 2
     assert recorder.incident_ids[0] != recorder.incident_ids[1]
@@ -295,9 +303,11 @@ async def test_confirmed_service_down_creates_pageable_incident():
     )
 
     await worker.poll_once()
+    await _await_remediation_tasks(worker)
     assert await store.list() == []
 
     await worker.poll_once()
+    await _await_remediation_tasks(worker)
     incidents = await store.list()
 
     assert len(incidents) == 1
@@ -321,3 +331,76 @@ async def test_confirmed_service_down_creates_pageable_incident():
     assert REGISTRY.get_sample_value(
         "aiops_incident_active", counter_labels
     ) == 0
+
+
+@pytest.mark.asyncio
+async def test_worker_skips_remediation_when_target_quarantined():
+    """Worker must not dispatch remediation for a quarantined target."""
+
+    settings = replace(Settings(), services=(), recovery_polls=2)
+    recorder = ApprovalRecorder()
+    store = IncidentStore(cooldown_seconds=0)
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        LifecycleDetector(),
+        store,
+        remediation=recorder,
+    )
+    # Block the target before any incident is created.
+    await store.block_target(
+        "product-reviews",
+        reason="post-mutation safety failure (test)",
+        incident_id="prev-inc-001",
+    )
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+
+    incidents = await store.list()
+    assert len(incidents) == 1
+    inc = incidents[0]
+    assert inc.status == IncidentStatus.ESCALATED
+    assert inc.mutation_blocked is True
+    assert "operator unlock" in (inc.escalation_reason or "").lower()
+    assert any(
+        event.event == "target_quarantine_denied_remediation"
+        for event in inc.audit_events
+    )
+    # Remediation should never have been called.
+    assert recorder.incident_ids == []
+
+
+@pytest.mark.asyncio
+async def test_worker_quarantines_ambiguous_live_action_outcome():
+    store = IncidentStore(cooldown_seconds=0)
+
+    class AmbiguousController:
+        async def handle_incident(self, item):
+            item.status = IncidentStatus.ESCALATED
+            item.mutation_blocked = True
+            item.escalation_reason = "Live mutation outcome is unknown"
+            item.audit_events.append(AuditEvent(event="action_outcome_unknown"))
+
+    worker = AIOpsWorker(
+        Settings(),
+        EmptyTelemetry(),
+        RecordingDetector(),
+        store,
+        remediation=AmbiguousController(),
+    )
+    item = Incident(
+        incident_type="service_latency_spike",
+        severity="high",
+        affected_service="product-reviews",
+        confidence=.9,
+        suspected_root_cause="test",
+        runbook_id="deployment-latency-rollback",
+        recommended_action="rollback",
+    )
+
+    await worker._run_remediation(item)
+
+    assert await store.is_target_blocked("product-reviews") is True
+    detail = await store.target_block("product-reviews")
+    assert detail["incident_id"] == item.incident_id
