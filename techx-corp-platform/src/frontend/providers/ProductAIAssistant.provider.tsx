@@ -6,12 +6,18 @@ import { useMutation, MutateOptions } from '@tanstack/react-query';
 import ApiGateway from '../gateways/Api.gateway';
 import SessionGateway from '../gateways/Session.gateway';
 import { v4 } from 'uuid';
+import type { AiDebugMetadata } from '../utils/aiDebugMetadata';
 
 export interface AiRequestPayload {
     question: string;
 }
 
-export type AiResponse = { response?: string; text?: string; actionProposal?: any } | string;
+export type AiResponse = {
+    response?: string;
+    text?: string;
+    actionProposal?: any;
+    aiDebug?: AiDebugMetadata;
+} | string;
 
 interface AiAssistantContextValue {
     aiResponse: AiResponse | null;

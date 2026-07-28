@@ -16,6 +16,23 @@ verified rollback, and unhealthy rollback with mutation block plus escalation.
 The harness imports the production `RemediationController`; only Kubernetes and
 telemetry are bounded adapters. This does not claim a live pass.
 
+## Durable saga restart gate (TF4AIO-89)
+
+```bash
+cd techx-corp-platform/src/aiops
+python -m pytest tests/test_saga.py -q
+python -m benchmark.saga_restart_replay \
+  ../../../docs/aio1/mandate-22/saga-restart-cases-v1.jsonl \
+  --output ../../../docs/aio1/mandate-22/saga-restart-report.json
+```
+
+Proves offline restart after preflight, action ack, verification and rollback,
+plus lost Lease, conflicting desired state and incomplete records. Reviewer
+verdict is machine-readable in the report JSON. Does not enable live autonomy.
+The file backend must be mounted on persistent storage for cross-pod recovery;
+`emptyDir` and the process-local `memory` backend do not satisfy live autonomy.
+Live autonomous startup fails closed when configured with `memory`.
+
 ## Live activation
 
 Default chart values remain `dry-run`, autonomous mode false and patch RBAC
@@ -25,3 +42,18 @@ must sign ADR-022, select the exact target/known-good revision and
 review the drill window before enabling all three gates. Runtime closure then
 requires real detector input, readiness/SLO verification, OpenSearch audit
 records and the successful plus forced-wrong drill evidence on TF4AIO-83.
+
+The current runtime inventory, activation gates, proposed fault mechanism,
+stop conditions and evidence checklist are recorded in
+[`LIVE-DRILL-READINESS-2026-07-24.md`](LIVE-DRILL-READINESS-2026-07-24.md).
+
+## Final evidence packet
+
+The controlled 2026-07-25 drill, machine-readable audit summary, timing,
+blockers and strict claim boundary are indexed in
+[`FINAL-EVIDENCE-2026-07-25.md`](FINAL-EVIDENCE-2026-07-25.md).
+
+The drill proves the live safety/failure path. It does not prove a successful
+closed-loop pass because the deployed cross-service verifier rejected the
+otherwise recovered target. No further EKS/load drill is authorized during the
+CDO-04 freeze window.

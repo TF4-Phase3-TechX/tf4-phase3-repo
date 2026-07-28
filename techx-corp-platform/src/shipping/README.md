@@ -1,7 +1,7 @@
 # Shipping Service
 
 The Shipping service queries `quote` for price quote, provides tracking IDs,
-and the impression of order fulfillment & shipping processes.
+and the impression of order fulfillment &amp; shipping processes.
 
 ## Local
 
@@ -16,8 +16,9 @@ From `../../`, run:
 docker compose build shipping
 ```
 
-## Test
+## Test 
 
 ```sh
 cargo test
 ```
+

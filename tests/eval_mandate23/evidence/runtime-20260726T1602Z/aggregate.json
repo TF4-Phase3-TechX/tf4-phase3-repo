@@ -1,0 +1,56 @@
+{
+  "groups": {
+    "copilot": {
+      "cache_hits": 0,
+      "cache_misses": 9,
+      "cases": 9,
+      "estimated_cost_usd": 0.0,
+      "hit_rate": 0.0,
+      "input_tokens": 0,
+      "latency_ms": {
+        "hit_mean": 0.0,
+        "miss_mean": 4.312980555672159,
+        "p50": 3.074524000112433,
+        "p95": 14.467352000792744
+      },
+      "model_calls": 0,
+      "output_tokens": 0,
+      "successful_cases": 9
+    },
+    "product_qa": {
+      "cache_hits": 6,
+      "cache_misses": 3,
+      "cases": 9,
+      "estimated_cost_usd": 0.0038352000000000004,
+      "hit_rate": 0.6666666666666666,
+      "input_tokens": 4434,
+      "latency_ms": {
+        "hit_mean": 9.727841166750295,
+        "miss_mean": 2899.975514665736,
+        "p50": 11.858609999762848,
+        "p95": 3530.9087819987326
+      },
+      "model_calls": 3,
+      "output_tokens": 1002,
+      "successful_cases": 9
+    },
+    "total": {
+      "cache_hits": 6,
+      "cache_misses": 12,
+      "cases": 18,
+      "estimated_cost_usd": 0.0038352000000000004,
+      "hit_rate": 0.3333333333333333,
+      "input_tokens": 4434,
+      "latency_ms": {
+        "hit_mean": 9.727841166750295,
+        "miss_mean": 728.2286140831881,
+        "p50": 6.477072000052431,
+        "p95": 3530.9087819987326
+      },
+      "model_calls": 3,
+      "output_tokens": 1002,
+      "successful_cases": 18
+    }
+  },
+  "schema_version": "mandate23-replay-v1"
+}

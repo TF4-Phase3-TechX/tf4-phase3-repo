@@ -4,7 +4,7 @@
 **Date:** 2026-07-21 (Updated: 2026-07-22; config/dataset aligned 2026-07-22)
 **Ticket:** TF4AIO-80 (AI MANDATE #15)
 **Author:** Đình Thông Trần (Assignee, AIOps Lead)
-**Reviewer:** _(Tech Lead signature pending live cluster evidence)_
+**Reviewer:** Đinh Danh Nam (Tech Lead; accepted 2026-07-25)
 
 ---
 
@@ -71,7 +71,7 @@ breached = trend ≥ 25% relative change AND consistency ≥ 75% monotone AND cu
 
 The safety floors (latency: 1 000 ms, error rate: 5%) prevent a signal from being anomalous at an absolutely negligible value (e.g., z-score = 4 on a 0.01 ms baseline). The `trend_min_floor_ratio = 0.7` guard ensures a memory-drain or queue-growth drift on a very-low-baseline service does not page until the absolute value is non-trivial, while still firing ahead of the full floor for gradual symptoms.
 
-**How it avoids masking:** A noise spike inside the target signal's own history that would inflate `baseline_mean` is stripped by the MAD filter. The committed masking scenario places a 20% error-rate outlier in the same checkout history used to detect a sustained 6.2-6.4% incident against that service's 4% normal. Service/signal-specific detector state additionally prevents unrelated services from sharing streak state.
+**How it avoids masking:** A noise spike inside the target signal's own history that would inflate `baseline_mean` is stripped by the MAD filter. The first committed masking scenario places a 20% error-rate outlier in the same checkout history used to detect a sustained 6.2-6.4% incident against that service's 4% normal. The second case adds a separate large frontend latency spike while the subtle checkout incident fires simultaneously. Service/signal-specific detector state prevents unrelated services from sharing streak state. Both are offline fixtures; a live simultaneous masking incident remains unproven.
 
 ### 5. Sustained-breach requirement
 
@@ -89,13 +89,22 @@ A single worker poll may produce an incident when `AIOPS_SUSTAINED_POLLS=1`, but
 
 | Period | MTTD measurement method | Value |
 |---|---|---|
-| **Before** (historical static alert rules) | Estimated static threshold rule delay (`for: 5m` window) | ~300–600s (5–10 min) |
+| **Before** (historical static alert rules) | Configuration-derived from the existing [`for: 5m` application rules](../../../techx-corp-chart/prometheus/flash-sale-alerts.yaml); not an observed incident | at least 300s |
 | **After — offline simulation** (this harness) | Scenarios declare 15-second sample intervals; replay groups three samples per 45-second poll and records the first `decision.anomalous` poll | **45s** (1 detector cycle) |
-| **After — live cluster** | Continuous pod proof; real on-call timestamps from TF4AIO-80/77 | Pending live evidence |
+| **After — live detector** | Controlled `llm` availability fault: externally observed down state to incident creation | **~60.9s** |
+| **After — live alert start** | Controlled `llm` availability fault: externally observed down state to Prometheus alert start | **~113s** |
 
-> **Note:** The offline MTTD of 45s is reproducible from the committed JSONL dataset (`labeled-scenarios-v1.jsonl`) using the one-command repro below. Live cluster MTTD will be recorded when continuous pod proof is available; it may differ due to real Prometheus scrape jitter and network latency. Do not conflate the two measurements.
+> **Note:** The offline MTTD of 45s is reproducible from the committed JSONL
+> dataset (`labeled-scenarios-v1.jsonl`). The live detector value is longer
+> because incident onset is not aligned to the 45-second poll schedule. The
+> alert-start value additionally includes rule evaluation delay. Slack delivery
+> latency is not claimed because the screenshot does not preserve an
+> independent receipt timestamp.
 
-On the labeled dataset, **offline simulated MTTD-after is 45s (1 detector cycle)** for all real_incident cases (TP=3, avg_lead_time_seconds=45.0).
+On the labeled dataset, **offline simulated MTTD-after is 45s (1 detector cycle)** for all detected incident events (TP=4, avg_lead_time_seconds=45.0).
+
+The bounded live chronology and its exact claim boundary are recorded in
+[`MANDATE-15-EVIDENCE-INDEX.md`](MANDATE-15-EVIDENCE-INDEX.md).
 
 ---
 
@@ -148,7 +157,12 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 - ✅ Auditable scoring logic (all formulas in this ADR and in `detection.py`)
 - ✅ Incident summary artifact per detected event (service, severity, runbook, evidence; validated by `test_incident_summary_contains_service_severity_runbook`)
 - ✅ Hard floors: PII leakage = N/A (AIOps detector does not handle PII); unauthorized writes = blocked by `REMEDIATION_MODE=dry-run` default + approval gate
-- ⏳ Live cluster / continuous pod proof and real on-call timestamps: tracked in TF4AIO-80/77 (not blocked by this phase-1 harness PR)
+- ✅ Continuous in-cluster workload, controlled incident creation and
+  FIRING/RESOLVED on-call receipts are observed.
+- ✅ A bounded healthy-busy drill classified frontend/cart as `busy` for two
+  covered observations without creating an incident or alert.
+- ✅ Named Tech Lead acceptance is recorded below.
+- ⏳ Organizer hidden-set evidence remains pending.
 
 ---
 
@@ -157,4 +171,4 @@ Accept this algorithm as the MANDATE-15 standard. It satisfies:
 | Role | Name | Date | Status |
 |---|---|---|---|
 | Author / AIOps Lead | Đình Thông Trần | 2026-07-21 | Signed |
-| Tech Lead | _(pending live cluster evidence)_ | | In Progress |
+| Tech Lead | Đinh Danh Nam (`c0mmie-b0msh3ll`) | 2026-07-25 | Accepted for the documented detector design, public replay, and bounded runtime evidence; hidden-set acceptance remains separate |

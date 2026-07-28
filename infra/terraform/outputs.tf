@@ -134,6 +134,11 @@ output "msk_orders_bootstrap_brokers_sasl_scram" {
   value       = aws_msk_cluster.orders.bootstrap_brokers_sasl_scram
 }
 
+output "msk_orders_bootstrap_brokers_sasl_iam" {
+  description = "Private SASL/IAM bootstrap brokers for Firehose native MSK source"
+  value       = aws_msk_cluster.orders.bootstrap_brokers_sasl_iam
+}
+
 output "msk_orders_broker_node_type" {
   description = "MSK broker node type for the orders migration target"
   value       = aws_msk_cluster.orders.broker_node_group_info[0].instance_type
@@ -180,8 +185,8 @@ output "msk_orders_scram_secret_handoff_note" {
 }
 
 output "msk_orders_authentication_protocol" {
-  description = "Authentication and transport protocol expected by Kafka clients"
-  value       = "SASL_SSL with SCRAM-SHA-512"
+  description = "Authentication and transport protocol expected by Kafka clients and Firehose"
+  value       = "SASL_SSL dual-auth: SCRAM-SHA-512 for apps and IAM for Firehose"
 }
 
 output "msk_orders_client_port" {
@@ -223,6 +228,60 @@ output "msk_connect_plugin_bucket_arn" {
 output "msk_connect_plugin_prefix" {
   description = "Prefix reserved for MSK Connect custom plugin artifacts"
   value       = local.msk_connect_plugin_prefix
+}
+
+output "msk_orders_kafka_connect_archive_irsa_role_arn" {
+  description = "IRSA role ARN for REL-22 self-managed Kafka Connect orders archive fallback"
+  value       = module.msk_orders_kafka_connect_archive_irsa.iam_role_arn
+}
+output "msk_orders_s3_sink_connector_arn" {
+  description = "MSK Connect connector ARN for REL-22 orders S3 archive (null when msk_connect_connector_enabled=false)"
+  value       = try(aws_mskconnect_connector.orders_s3_sink[0].arn, null)
+}
+
+output "msk_orders_s3_sink_connector_name" {
+  description = "MSK Connect connector name for REL-22 orders S3 archive (null when msk_connect_connector_enabled=false)"
+  value       = try(aws_mskconnect_connector.orders_s3_sink[0].name, null)
+}
+
+output "msk_orders_s3_sink_custom_plugin_arn" {
+  description = "Custom plugin ARN used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_custom_plugin.orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_custom_plugin_revision" {
+  description = "Custom plugin revision used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_custom_plugin.orders_s3_sink.latest_revision
+}
+
+output "msk_orders_s3_sink_worker_configuration_arn" {
+  description = "Worker configuration ARN used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_worker_configuration.orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_worker_configuration_revision" {
+  description = "Worker configuration revision used by the REL-22 orders S3 Sink connector"
+  value       = aws_mskconnect_worker_configuration.orders_s3_sink.latest_revision
+}
+
+output "msk_orders_s3_sink_log_group_name" {
+  description = "CloudWatch log group for the REL-22 orders S3 Sink connector"
+  value       = aws_cloudwatch_log_group.msk_connect_orders_s3_sink.name
+}
+
+output "msk_orders_s3_sink_service_role_arn" {
+  description = "Service execution role ARN for the REL-22 orders S3 Sink connector"
+  value       = aws_iam_role.msk_connect_orders_s3_sink.arn
+}
+
+output "msk_orders_s3_sink_plugin_artifact" {
+  description = "Pinned S3 object used for the REL-22 MSK Connect custom plugin"
+  value = {
+    bucket     = aws_s3_bucket.msk_connect_plugins.id
+    key        = local.msk_connect_plugin_key
+    version_id = local.msk_connect_plugin_version_id
+    sha256     = local.msk_connect_plugin_sha256
+  }
 }
 
 output "elasticache_valkey_replication_group_id" {
@@ -458,4 +517,51 @@ output "athena_analyst_policy_arn" {
 output "cloudwatch_insights_forensics_policy_arn" {
   description = "IAM policy ARN cho CloudWatch Logs Insights real-time forensic queries"
   value       = aws_iam_policy.cloudwatch_insights_forensics.arn
+}
+
+# CDO08-REL-24 - backup/archive separation-of-duties role outputs
+output "rel24_backup_admin_role_arn" {
+  description = "CDO08-REL-24 approved backup administration role ARN"
+  value       = aws_iam_role.rel24_backup_admin.arn
+}
+
+output "rel24_restore_operator_role_arn" {
+  description = "CDO08-REL-24 approved restore operator role ARN"
+  value       = aws_iam_role.rel24_restore_operator.arn
+}
+
+output "rel24_backup_delete_break_glass_role_arn" {
+  description = "CDO08-REL-24 break-glass role ARN for approved protected backup/archive deletion"
+  value       = aws_iam_role.rel24_backup_delete_break_glass.arn
+}
+
+output "rel24_msk_orders_archive_bucket_name" {
+  description = "Expected CDO08-REL-24 protected MSK orders archive bucket name from REL-22"
+  value       = local.rel24_msk_archive_bucket
+}
+
+output "rel24_normal_operator_role_arns" {
+  description = "Normal CI/operator roles denied from protected backup/archive deletion by CDO08-REL-24 controls"
+  value       = local.rel24_normal_operator_role_arns
+}
+
+# Task 62 / Mandate 14 AI audit pipeline
+output "ai_audit_cloudwatch_log_group_name" {
+  description = "Dedicated CloudWatch Log Group receiving canonical ai_tool_audit records"
+  value       = aws_cloudwatch_log_group.ai_audit.name
+}
+
+output "ai_audit_firehose_delivery_stream_arn" {
+  description = "Firehose stream delivering AI audit records from CloudWatch Logs to S3"
+  value       = aws_kinesis_firehose_delivery_stream.ai_audit.arn
+}
+
+output "ai_audit_s3_bucket_name" {
+  description = "S3 Object Lock bucket holding the retained Mandate 14 AI audit copy"
+  value       = aws_s3_bucket.ai_audit.id
+}
+
+output "otel_collector_ai_audit_role_arn" {
+  description = "EKS Pod Identity role used by the OTel Collector to write the dedicated CloudWatch Log Group"
+  value       = aws_iam_role.otel_collector_ai_audit.arn
 }

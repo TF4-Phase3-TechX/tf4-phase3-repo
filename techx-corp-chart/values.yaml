@@ -48,11 +48,10 @@ serviceAccount:
 aiopsRemediation:
   liveEnabled: false
 
-prometheusRetainStorageClass:
-  enabled: true
-  name: gp2-retain
-  provisioner: kubernetes.io/aws-ebs
-  allowVolumeExpansion: false
+gp3StorageClasses:
+  enabled: false
+  provisioner: ebs.csi.aws.com
+  allowVolumeExpansion: true
 
 cloudflareAccess:
   enabled: false
@@ -222,6 +221,12 @@ components:
         value: http://opensearch-cluster-master.techx-observability.svc.cluster.local:9200
       - name: JAEGER_URL
         value: http://jaeger.techx-observability.svc.cluster.local:16686/jaeger/ui
+      # Evidence enrichment returns full trace payloads. Keep it bounded so a
+      # high-load incident cannot turn a healthy Jaeger API into a 10s timeout.
+      - name: AIOPS_JAEGER_TRACE_LOOKBACK
+        value: "5m"
+      - name: AIOPS_JAEGER_TRACE_LIMIT
+        value: "5"
       - name: GRAFANA_URL
         value: http://grafana.techx-observability.svc.cluster.local/grafana
       - name: OPENSEARCH_DATASOURCE_UID
@@ -240,10 +245,26 @@ components:
         value: "3"
       - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
         value: "3"
+      # Verify only post-action telemetry. Runtime probing showed the span
+      # metrics are empty at 30s/1m and available at 2m, so wait for one full
+      # 2m window before retaining the same three-poll, 1s latency-SLO decision.
+      - name: AIOPS_VERIFICATION_METRIC_WINDOW
+        value: "2m"
+      - name: AIOPS_VERIFICATION_SETTLE_SECONDS
+        value: "120"
       - name: AIOPS_VERIFICATION_INTERVAL_SECONDS
         value: "20"
       - name: AIOPS_REMEDIATION_LOCK_TTL_SECONDS
         value: "900"
+      # Process-local only. A reviewed live-autonomous values override must use
+      # "file" and mount AIOPS_SAGA_PATH from a persistent volume; startup
+      # rejects live autonomous mode with this memory default.
+      - name: AIOPS_SAGA_BACKEND
+        value: memory
+      - name: AIOPS_SAGA_RETENTION_HOURS
+        value: "72"
+      - name: AIOPS_ARGO_WINDOW_ENABLED
+        value: "true"
       - name: AIOPS_TARGET_NAMESPACE
         valueFrom:
           fieldRef:
@@ -254,6 +275,8 @@ components:
         value: llm,product-reviews
       - name: AIOPS_MONITORED_SERVICES
         value: llm,product-reviews,frontend,cart,checkout
+      - name: AIOPS_GENERIC_SIGNAL_SERVICES
+        value: product-reviews,frontend,cart,checkout
       - name: AIOPS_POLL_SECONDS
         value: "45"
       - name: AIOPS_LOOKBACK_MINUTES
@@ -371,7 +394,10 @@ components:
       - name: AIOPS_LLM_HIGH_ERROR_RATE
         value: "0.25"
       - name: AIOPS_REMEDIATION_CONFIDENCE_THRESHOLD
-        value: "0.75"
+        # Calibrated after controlled runtime drills: true high-severity acute
+        # incidents scored 0.742-0.743. Independent severity, allowlist,
+        # runbook and evidence gates still have to pass.
+        value: "0.74"
       - name: AIOPS_VERIFICATION_ERROR_RATE_THRESHOLD
         value: "0.01"
       - name: AIOPS_APPROVAL_TOKEN
@@ -942,6 +968,11 @@ components:
         value: product-catalog:8080
       - name: PRODUCT_REVIEWS_ADDR
         value: product-reviews:3551
+      - name: AI_PRINCIPAL_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: principal-hmac-secret
       - name: RECOMMENDATION_ADDR
         value: recommendation:8080
       - name: SHIPPING_ADDR
@@ -1169,6 +1200,8 @@ components:
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: "false"
+      - name: LOCUST_PAID_AI_ENABLED
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -1180,8 +1213,8 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      requests: { cpu: 300m, memory: 256Mi }
-      limits: { cpu: 600m, memory: 512Mi }
+      requests: { cpu: 150m, memory: 160Mi }
+      limits: { cpu: 600m, memory: 256Mi }
     securityContext:
       runAsUser: 10001
       runAsGroup: 10001
@@ -1358,9 +1391,9 @@ components:
       - name: BEDROCK_DEADLINE_SECONDS
         value: "4.5"
       - name: BEDROCK_INPUT_USD_PER_MILLION
-        value: "0.30"
+        value: "0.33"
       - name: BEDROCK_OUTPUT_USD_PER_MILLION
-        value: "2.50"
+        value: "2.75"
       - name: PRODUCT_REVIEWS_PORT
         value: "3551"
       - name: PRODUCT_CATALOG_ADDR
@@ -1371,6 +1404,20 @@ components:
         value: production
       - name: VALKEY_ADDR
         value: valkey-cart:6379
+      - name: AI_CACHE_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: cache-hmac-secret
+      - name: AI_MEMORY_HMAC_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: ai-state-hmac-secret
+            key: memory-hmac-secret
+      - name: AI_RESPONSE_CACHE_TTL_SECONDS
+        value: "300"
+      - name: MAX_HISTORY_EXCHANGES
+        value: "5"
       - name: FLAGD_HOST
         value: flagd
       - name: FLAGD_PORT
@@ -1912,8 +1959,13 @@ opentelemetry-collector:
   enabled: true
   image:
     repository: "otel/opentelemetry-collector-contrib"
+    tag: "0.151.0"
+    digest: "sha256:d57bfe8eee2378f31cb1193239fbcac521d54a5a071fca2bfc106916a32b892d"
   fullnameOverride: otel-collector
   mode: daemonset
+  serviceAccount:
+    create: true
+    name: otel-collector
   securityContext:
     runAsUser: 10001
     runAsGroup: 10001
@@ -1958,21 +2010,13 @@ opentelemetry-collector:
               allowed_origins:
                 - "http://*"
                 - "https://*"
-      kafkametrics:
-        scrapers:
-          - brokers
-          - topics
-          - consumers
-        brokers:
-          - kafka:9092
-        collection_interval: 10s
     exporters:
       otlp/jaeger:
         endpoint: jaeger:4317
         tls:
           insecure: true
         sending_queue:
-          num_consumers: 10
+          num_consumers: 5
           queue_size: 1000
           batch: {}
         retry_on_failure:
@@ -2003,6 +2047,38 @@ opentelemetry-collector:
         sending_queue:
           num_consumers: 10
           queue_size: 1000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      awscloudwatchlogs/ai_audit:
+        region: us-east-1
+        log_group_name: /aws/eks/techx-tf4/ai-audit
+        log_stream_name: "otel-{ServiceName}-{InstanceId}"
+        # Preserve the OTLP envelope and record attributes, including log_type
+        # and the remaining canonical AI audit fields.
+        raw_log: false
+        sending_queue:
+          num_consumers: 2
+          queue_size: 2000
+          batch: {}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      opensearch/ai_tool_audit:
+        logs_index: ai-tool-audit
+        logs_index_time_format: "yyyy-MM-dd"
+        http:
+          endpoint: http://opensearch:9200
+          tls:
+            insecure: true
+        sending_queue:
+          num_consumers: 4
+          queue_size: 2000
           batch: {}
         retry_on_failure:
           enabled: true
@@ -2044,6 +2120,18 @@ opentelemetry-collector:
         - key: service.instance.id
           from_attribute: k8s.pod.uid
           action: insert
+      # Filter processors drop matching records. This condition therefore keeps
+      # only records explicitly marked as canonical AI/tool audit events.
+      filter/ai_tool_audit:
+        error_mode: propagate
+        log_conditions:
+          - 'log.attributes["log_type"] != "ai_tool_audit"'
+      # Drop AI audit logs from the general application log pipeline to avoid
+      # duplicate storage in otel-logs-* after shadow routing is complete.
+      filter/drop_ai_tool_audit:
+        error_mode: propagate
+        log_conditions:
+          - 'log.attributes["log_type"] == "ai_tool_audit"'
 
     connectors:
       spanmetrics: {}
@@ -2054,15 +2142,19 @@ opentelemetry-collector:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [otlp/jaeger, spanmetrics]
         metrics:
-          receivers: [otlp, kafkametrics, spanmetrics]
+          receivers: [otlp, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
           exporters: [otlphttp/prometheus]
         logs:
-          processors: [memory_limiter, resourcedetection, resource, batch]
+          processors: [memory_limiter, resourcedetection, resource, filter/drop_ai_tool_audit, batch]
           exporters: [opensearch]
+        logs/ai-audit:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, resourcedetection, resource, filter/ai_tool_audit, batch]
+          exporters: [opensearch/ai_tool_audit, awscloudwatchlogs/ai_audit]
       telemetry:
         metrics:
-          level: detailed
+          level: normal
           readers:
             - periodic:
                 interval: 10000
@@ -2107,7 +2199,7 @@ jaeger:
         memory: 1Gi
       limits:
         cpu: 500m
-        memory: 1Gi
+        memory: 2Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -2147,6 +2239,13 @@ jaeger:
           opensearch_backend:
             elasticsearch:
               server_urls: ["http://opensearch:9200"]
+              indices:
+                spans:
+                  shards: 1
+                  replicas: 0
+                services:
+                  shards: 1
+                  replicas: 0
         metric_backends:
           metrics_backend:
             prometheus:
@@ -2352,7 +2451,8 @@ prometheus:
         - postgresql.index.name
     persistentVolume:
       enabled: true
-      storageClass: gp2-retain
+      existingClaim: prometheus
+      storageClass: gp3-retain
       size: 20Gi
       annotations:
         helm.sh/resource-policy: keep
@@ -2433,12 +2533,12 @@ opensearch:
   nodeGroup: techx-corp
   singleNode: true
   protocol: http
-  opensearchJavaOpts: "-Xms800m -Xmx800m"
+  opensearchJavaOpts: "-Xms1g -Xmx1g"
   persistence:
     enabled: true
     enableInitChown: false
-    size: 20Gi
-    storageClass: "gp2"
+    size: 160Gi
+    storageClass: "gp3"
     image: busybox
     imageTag: "1.36.1"
   initResources:
@@ -2460,7 +2560,7 @@ opensearch:
       cpu: 1000m
       memory: 1Gi
     limits:
-      cpu: 1000m
+      cpu: 2000m
       memory: 2Gi
 
   otelLogsLifecycle:
@@ -2470,6 +2570,8 @@ opensearch:
     endpoint: http://opensearch:9200
     policyId: otel-logs-retention
     retention: 3d
+    aiAuditPolicyId: ai-tool-audit-retention
+    aiAuditRetention: 7d
     resources:
       requests:
         cpu: 10m
@@ -2516,10 +2618,48 @@ managedData:
     secretName: msk-kafka-secret
     services: [accounting, checkout, fraud-detection]
 
+# CDO08-REL-22 fallback foundation: self-managed Kafka Connect orders archive.
+# Disabled by default. Enable only after image digest, IRSA annotation and runtime plan are approved.
+kafkaConnectArchive:
+  enabled: false
+  name: kafka-connect-orders-archive
+  replicas: 1
+  image:
+    repository: 511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  serviceAccount:
+    create: true
+    name: kafka-connect-orders-archive
+    annotations: {}
+  kafkaSecret:
+    name: msk-kafka-secret
+    addressKey: kafka-address
+    securityProtocolKey: security-protocol
+    saslMechanismKey: sasl-mechanism
+    usernameKey: username
+    passwordKey: password
+  restPort: 8083
+  heapOpts: "-Xms256m -Xmx512m"
+  connect:
+    groupId: orders-archive-connect
+    configStorageTopic: orders-archive-connect-configs
+    offsetStorageTopic: orders-archive-connect-offsets
+    statusStorageTopic: orders-archive-connect-status
+    replicationFactor: 2
+    offsetFlushIntervalMs: 60000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: 1000m
+      memory: 1536Mi
 postgresqlMigrationBridge:
   # REL-15: temporary private NLB bridge for AWS DMS to reach the self-hosted PostgreSQL source.
   # Keep enabled only during PostgreSQL migration/observation, then disable and cleanup.
-  enabled: true
+  enabled: false
 
 valkeyMigrationBridge:
   # Temporary private NLB bridge for ElastiCache Valkey Online Migration to reach the
@@ -2573,3 +2713,4 @@ mirrormaker2:
     limits:
       cpu: 500m
       memory: 1Gi
+# Trigger promotion PR

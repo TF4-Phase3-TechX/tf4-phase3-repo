@@ -677,10 +677,12 @@ class Detector:
         )
 
 
-def latency_query(service: str, namespace: str | None = None) -> str:
+def latency_query(
+    service: str, namespace: str | None = None, window: str = "5m"
+) -> str:
     return (
         "histogram_quantile(0.95, sum by (le) "
-        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[5m])))"
+        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[{window}])))"
     )
 
 
@@ -725,8 +727,8 @@ def error_rate_query(
         include_operation=include_operation,
     )
     return (
-        "(sum(rate(traces_span_metrics_calls_total{"
-        f"{error_spans}}}[5m])) "
+        "((sum(rate(traces_span_metrics_calls_total{"
+        f"{error_spans}}}[5m])) or vector(0)) "
         f"/ clamp_min(sum(rate(traces_span_metrics_calls_total{{{all_spans}}}[5m])), 0.000001)) "
         "and on() (sum(increase(traces_span_metrics_calls_total{"
         f"{all_spans}}}[5m])) >= {minimum_requests})"
@@ -758,8 +760,8 @@ def error_budget_burn_rate_query(
     error_budget = 1 - slo_target
     window = f"{window_minutes}m"
     return (
-        "((sum(increase(traces_span_metrics_calls_total{"
-        f"{error_spans}}}[{window}])) "
+        "(((sum(increase(traces_span_metrics_calls_total{"
+        f"{error_spans}}}[{window}])) or vector(0)) "
         f"/ clamp_min(sum(increase(traces_span_metrics_calls_total{{{all_spans}}}[{window}])), 1)) "
         f"/ {error_budget:.10g}) "
         "and on() (sum(increase(traces_span_metrics_calls_total{"

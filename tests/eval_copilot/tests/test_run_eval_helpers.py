@@ -19,7 +19,12 @@ if str(_EVAL_DIR) not in sys.path:
 if str(_EVAL_DIR / "src") not in sys.path:
     sys.path.insert(0, str(_EVAL_DIR / "src"))
 
-from run_eval import get_database_hash, load_env_override
+from run_eval import (
+    generate_report,
+    generate_run_readme,
+    get_database_hash,
+    load_env_override,
+)
 
 
 def test_load_env_override_filters_secrets(tmp_path):
@@ -86,3 +91,102 @@ def test_get_database_hash_missing_file_graceful_degradation(tmp_path):
 
     db_hash = get_database_hash(sql_file_path=missing_sql)
     assert db_hash == "unavailable"
+
+
+def test_run_readme_has_no_trailing_whitespace(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    dataset_path = tmp_path / "eval_dataset.json"
+    dataset_path.write_text("{}\n", encoding="utf-8")
+    evidence_data = {
+        "timestamp_utc": "2026-07-24T00:00:00+00:00",
+        "git_sha": "abc123",
+        "model_id": "test-model",
+        "runtime_env": "local",
+        "config_source": "environment",
+        "summary": {
+            "total_cases": 0,
+            "passed_cases": 0,
+            "failed_cases": 0,
+            "pass_rate": 0.0,
+        },
+        "results": [],
+    }
+
+    generate_run_readme(
+        run_dir,
+        dataset_path,
+        "dataset-hash",
+        "database-hash",
+        "python run_eval.py",
+        evidence_data,
+        0.0,
+        0.0,
+    )
+
+    lines = (run_dir / "README.md").read_text(encoding="utf-8").splitlines()
+    assert all(line == line.rstrip() for line in lines)
+
+
+def test_report_observations_are_derived_from_latest_results(tmp_path):
+    evidence_dir = tmp_path / "evidence"
+    run_dir = evidence_dir / "run"
+    run_dir.mkdir(parents=True)
+    report_path = tmp_path / "report.md"
+
+    def result(test_id, *, actual_ids=None, refused=False):
+        return {
+            "test_id": test_id,
+            "group": "regression",
+            "query": test_id,
+            "expected_product_ids": actual_ids or [],
+            "expected_behavior": "cart_action_proposal"
+            if test_id == "TC-51"
+            else "refuse_injection",
+            "actual_product_ids": actual_ids or [],
+            "actual_refused": refused,
+            "refusal_reason": "guardrail_blocked" if refused else "",
+            "input_tokens": 1,
+            "output_tokens": 1,
+            "estimated_cost_usd": 0.0,
+            "passed": True,
+            "reason": "pass",
+            "details": {},
+        }
+
+    results = [
+        result("TC-34", refused=True),
+        result("TC-46", refused=True),
+        result("TC-47", refused=True),
+        result("TC-51", actual_ids=["6E92ZMYYFZ"]),
+    ]
+    evidence = {
+        "timestamp_utc": "2026-07-24T00:00:00+00:00",
+        "git_sha": "abc123",
+        "database_sha256": "db-hash",
+        "dataset_sha256": "dataset-hash",
+        "runtime_env": "local",
+        "model_id": "test-model",
+        "config_source": "environment",
+        "summary": {
+            "total_cases": 4,
+            "passed_cases": 4,
+            "failed_cases": 0,
+            "pass_rate": 1.0,
+            "total_input_tokens": 4,
+            "total_output_tokens": 4,
+            "total_estimated_cost_usd": 0.0,
+        },
+        "results": results,
+    }
+    (run_dir / "results.json").write_text(
+        __import__("json").dumps(evidence), encoding="utf-8"
+    )
+
+    generate_report(evidence_dir, report_path)
+
+    report = report_path.read_text(encoding="utf-8")
+    assert "all 4 cases passed" in report
+    assert "`6E92ZMYYFZ`" in report
+    assert "The ten remaining failures" not in report
+    assert "1YMWWN1N4O" not in report

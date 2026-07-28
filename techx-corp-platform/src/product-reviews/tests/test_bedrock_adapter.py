@@ -1,7 +1,14 @@
 import json
 
 import pytest
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
+import bedrock_adapter
+import llm_observability
 from bedrock_adapter import BedrockAdapter, CircuitBreaker, CircuitOpen, ProviderFailure
 
 
@@ -292,6 +299,28 @@ def test_parse_search_intent_valid_compare_with_two_targets():
     assert len(result["comparison_targets"]) == 2
 
 
+def test_parse_search_intent_valid_compare_with_catalog_selectors():
+    intent = {
+        "search_type": "compare",
+        "category": "telescopes",
+        "comparison_selectors": ["most_expensive", "cheapest"],
+        "comparison_criteria": ["price", "features", "customer_feedback", "best_for"],
+    }
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent(
+        "so sánh kính thiên văn đắt nhất và rẻ nhất"
+    )
+    assert result["comparison_selectors"] == ["most_expensive", "cheapest"]
+
+
+def test_parse_search_intent_allows_cart_reference_from_server_session():
+    intent = {"search_type": "cart_action", "quantity": 1}
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent("thêm sản phẩm đó vào giỏ")
+    assert result["search_type"] == "cart_action"
+    assert "keywords" not in result
+
+
 def test_parse_search_intent_valid_out_of_scope():
     intent = {"search_type": "out_of_scope"}
     client = FakeClient(search_intent_response(intent))
@@ -482,3 +511,88 @@ def test_parse_search_intent_schema_violation_preserves_billable_usage():
     assert exc_info.value.error_class == "invalid_response"
     assert exc_info.value.input_tokens == 50
     assert exc_info.value.output_tokens == 15
+
+
+def test_invalid_intent_contract_does_not_open_availability_circuit():
+    invalid_client = FakeClient(search_intent_response({"search_type": "bad_type"}))
+    subject = adapter(invalid_client)
+    for _ in range(6):
+        with pytest.raises(ProviderFailure, match="invalid_response"):
+            subject.parse_search_intent("find something")
+
+    subject.client = FakeClient(search_intent_response({"search_type": "search"}))
+    assert subject.parse_search_intent("find a product")["search_type"] == "search"
+
+
+def test_parse_search_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    class FailThenSucceedClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            if self.calls == 1:
+                raise TimeoutError("first attempt timed out")
+            return search_intent_response({"search_type": "search"})
+
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate24.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    client = FailThenSucceedClient()
+
+    result = adapter(client).parse_search_intent("find a product")
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert result["search_type"] == "search"
+    assert client.calls == 2
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "success",
+    ]
+    assert spans[0].attributes["error.type"] == "timeouterror"
+    assert spans[1].attributes["gen_ai.usage.input_tokens"] == 50
+    assert spans[1].attributes["gen_ai.usage.output_tokens"] == 15
+
+
+def test_compare_products_uses_dedicated_grounded_tool():
+    payload = {
+        "decision": "answered",
+        "answer": "Product A is cheaper than Product B.",
+        "citations": [
+            {"source_id": "product:a:price", "evidence_quote": "$10.00"},
+            {"source_id": "product:b:price", "evidence_quote": "$20.00"},
+        ],
+    }
+    client = FakeClient(
+        tool_response_with(payload, tool_name="emit_grounded_comparison")
+    )
+    result = adapter(
+        client,
+        output_mode="tool",
+    ).compare_products(
+        "compare them",
+        {
+            "products": [],
+            "sources": {
+                "product:a:price": "$10.00",
+                "product:b:price": "$20.00",
+            },
+        },
+    )
+
+    assert result.payload == payload
+    assert client.request["toolConfig"]["toolChoice"] == {
+        "tool": {"name": "emit_grounded_comparison"}
+    }
+    assert client.request["modelId"] == "model"

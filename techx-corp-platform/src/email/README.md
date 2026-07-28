@@ -12,7 +12,7 @@ rendering it as a log message. It expects a JSON payload like:
 
 ## Local Build
 
-We use `bundler` to manage dependencies. To get started, simply `bundle install`.
+We use `bundler` to manage dependencies. To get started, simply `bundle install`. 
 
 ## Running locally
 
