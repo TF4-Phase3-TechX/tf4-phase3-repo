@@ -1,0 +1,1 @@
+{"fault": {"mode": "off", "seconds_remaining": 0.0}, "resilience": {"circuit_state": "closed", "last_provider_error": "timeout", "last_provider_outcome": "error"}}

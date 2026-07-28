@@ -1,0 +1,4 @@
+{"mode": "timeout", "seconds_remaining": 60.0}
+{"fault": {"mode": "timeout", "seconds_remaining": 59.787}, "resilience": {"circuit_state": "half_open", "last_provider_error": "timeout", "last_provider_outcome": "error"}}
+{"output": "docs\\aio1\\mandate-25\\evidence\\runtime-local-20260728\\timeout-final-replay.jsonl", "rows": 1}
+{"fault": {"mode": "off", "seconds_remaining": 0.0}, "resilience": {"circuit_state": "closed", "last_provider_error": "timeout", "last_provider_outcome": "error"}}
