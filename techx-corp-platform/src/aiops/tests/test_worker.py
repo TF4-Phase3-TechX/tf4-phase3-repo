@@ -187,6 +187,116 @@ async def _await_remediation_tasks(worker: AIOpsWorker) -> None:
         await asyncio.gather(*list(worker._remediation_tasks), return_exceptions=True)
 
 
+class SeverityPromotionDetector(RecordingDetector):
+    def __init__(self):
+        super().__init__()
+        self.severities = ["medium", "high", "high"]
+
+    def latency(self, service, series, query):
+        self.latency_services.append(service)
+        return Decision(
+            anomalous=True,
+            breached=True,
+            incident_type="service_latency_spike",
+            service=service,
+            severity=self.severities.pop(0),
+            confidence=0.9,
+            root_cause="test latency promotion",
+            runbook_id="deployment-latency-rollback",
+            recommended_action="rollback",
+        )
+
+
+class SeverityPromotionRemediation:
+    def __init__(
+        self,
+        first_denial: str = "Autonomous policy denied: severity_high",
+    ):
+        self.severities = []
+        self.first_denial = first_denial
+
+    async def handle_incident(self, incident):
+        self.severities.append(incident.severity)
+        if len(self.severities) == 1:
+            incident.status = IncidentStatus.ESCALATED
+            incident.escalation_reason = self.first_denial
+            return
+        incident.status = IncidentStatus.APPROVED
+        incident.escalation_reason = None
+
+
+@pytest.mark.asyncio
+async def test_worker_re_evaluates_severity_only_denial_once_on_high_promotion():
+    settings = replace(
+        Settings(),
+        services=("product-reviews",),
+        generic_signal_services=("product-reviews",),
+        llm_services=(),
+        llm_log_services=(),
+        autonomous_remediation_enabled=True,
+    )
+    remediation = SeverityPromotionRemediation()
+    store = IncidentStore(cooldown_seconds=0)
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        SeverityPromotionDetector(),
+        store,
+        remediation=remediation,
+    )
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+
+    assert remediation.severities == ["medium", "high"]
+    incident = (await store.list())[0]
+    assert incident.status == IncidentStatus.APPROVED
+    assert sum(
+        event.event == "autonomous_policy_re_evaluation_scheduled"
+        for event in incident.audit_events
+    ) == 1
+
+
+@pytest.mark.asyncio
+async def test_worker_does_not_re_evaluate_a_multi_gate_policy_denial():
+    settings = replace(
+        Settings(),
+        services=("product-reviews",),
+        generic_signal_services=("product-reviews",),
+        llm_services=(),
+        llm_log_services=(),
+        autonomous_remediation_enabled=True,
+    )
+    remediation = SeverityPromotionRemediation(
+        "Autonomous policy denied: confidence_sufficient, severity_high"
+    )
+    store = IncidentStore(cooldown_seconds=0)
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        SeverityPromotionDetector(),
+        store,
+        remediation=remediation,
+    )
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+
+    assert remediation.severities == ["medium"]
+    incident = (await store.list())[0]
+    assert incident.status == IncidentStatus.ESCALATED
+    assert not any(
+        event.event == "autonomous_policy_re_evaluation_scheduled"
+        for event in incident.audit_events
+    )
+
+
 @pytest.mark.asyncio
 async def test_worker_breach_recover_breach_notifies_for_two_incidents():
     settings = replace(Settings(), services=(), recovery_polls=2)
