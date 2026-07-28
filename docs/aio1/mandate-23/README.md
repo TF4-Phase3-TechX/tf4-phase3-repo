@@ -103,11 +103,11 @@ developers can opt in through `.env.override`.
 
 The canonical submission replay is:
 
-`tests/eval_mandate23/evidence/submission-4ff88e3-final/`
+`tests/eval_mandate23/evidence/submission-d0ac437-final/`
 
 It was captured from clean tracked revision
-`4ff88e3def3284ee55fa9ae73b835508654e5617`, rebased on
-`origin/main@b2d3d52`, through the rebuilt production container. Both replay
+`d0ac437d07c34a771f8d52f790c8b3bfd727b26b`, rebased on
+`origin/main@eb74a54`, through the rebuilt production container. Both replay
 configurations record the runtime image reference, image digest, code SHA-256,
 model, Guardrail, and configured-estimate price snapshot (`0.33` input /
 `2.75` output USD per million tokens). The manifests under `runtime/` and
@@ -122,11 +122,11 @@ covers both children and the invalidation record.
 | Warm hits | 6 / 6 |
 | Warm hit rate | 66.67% |
 | Model calls | 3 (cold only) |
-| Input / output tokens | 4,434 / 987 |
-| Configured estimated cost | USD 0.00417747 |
-| Mean cold latency | 2,142.08 ms |
-| Mean warm latency | 6.62 ms |
-| Measured latency reduction | 99.69% |
+| Input / output tokens | 4,434 / 991 |
+| Configured estimated cost | USD 0.00418847 |
+| Mean cold latency | 2,247.52 ms |
+| Mean warm latency | 10.93 ms |
+| Measured latency reduction | 99.51% |
 
 All nine memory operations were also semantically validated with zero
 assertion failures: each repetition stored an allow-listed preference,
@@ -138,8 +138,8 @@ calls were semantically validated with zero assertion failures across three
 independent conversations. Every conversation asserted that the initial search
 contained product `6E92ZMYYFZ`, the relative cheapest turn selected exactly
 that product, and the “this product” review turn returned the same product and
-named Solar Filter. The replay made nine model calls, used 27,096 input and 603
-output tokens, and measured a configured estimate of USD 0.01059993.
+named Solar Filter. The replay made nine model calls, used 27,096 input and 580
+output tokens, and measured a configured estimate of USD 0.01053668.
 
 `invalidation.json` records the safe source drill against the discovered
 `reviews.productreviews.id=1`: cold miss, warm hit with no model call, then
@@ -213,7 +213,7 @@ The drill records the exact row ID and original description/score, checks miss �
 
 ## Acceptance checklist
 
-- [x] Product-review and Mandate 23 replay suites remain green (190 tests).
+- [x] Product-review and Mandate 23 replay suites remain green (197 tests).
 - [x] Cold miss → hit with no second provider call.
 - [x] Cross-user repeat misses.
 - [x] Source/model/prompt/Guardrail/schema identity participates in keys.

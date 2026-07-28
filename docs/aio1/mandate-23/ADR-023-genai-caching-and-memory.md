@@ -109,8 +109,9 @@ No predicted number is accepted as evidence.
 This ADR was accepted after two named independent reviewers approved the final
 implementation head `8a279eb`. PR #692 was subsequently squash-merged as
 `e6f571e`. Post-acceptance submission hardening was rebased on
-`origin/main@b2d3d52` and replayed from clean tracked head `4ff88e3`; it does
-not expand the accepted architecture decision.
+`origin/main@eb74a54` and replayed from clean tracked head `d0ac437`; it does
+not expand the accepted architecture decision. Ambiguous mixed write/delete
+commands and negated preference values fail closed at that head.
 
 | Role | Full name | Decision | Date | Approval evidence |
 |---|---|---|---|---|
