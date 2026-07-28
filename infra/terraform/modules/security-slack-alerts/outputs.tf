@@ -50,3 +50,33 @@ output "alert_email_endpoint" {
   description = "Email address subscribed to receive human-readable security alerts"
   value       = var.alert_email_endpoint
 }
+
+output "anomaly_sns_topic_arn" {
+  description = "ARN of the SNS topic for Mandate-11 H2 anomaly detection alarms"
+  value       = aws_sns_topic.anomaly_alerts.arn
+}
+
+output "anomaly_alarm_rate_spike_arn" {
+  description = "ARN of the static-threshold CloudWatch Alarm for GetSecretValue rate spike (>10 calls/60s)"
+  value       = aws_cloudwatch_metric_alarm.get_secret_value_spike.arn
+}
+
+output "anomaly_alarm_anomaly_detection_arn" {
+  description = "ARN of the ML Anomaly Detection CloudWatch Alarm for GetSecretValue frequency"
+  value       = aws_cloudwatch_metric_alarm.get_secret_value_anomaly.arn
+}
+
+output "anomaly_alarm_pipeline_silence_arn" {
+  description = "ARN of the dead-man's-switch CloudWatch Alarm for pipeline silence detection"
+  value       = aws_cloudwatch_metric_alarm.pipeline_silence.arn
+}
+
+output "metric_filter_total_count_name" {
+  description = "Name of the CloudWatch Metric Filter counting all GetSecretValue calls (MANDATE11_TTD)"
+  value       = aws_cloudwatch_log_metric_filter.get_secret_value_total.name
+}
+
+output "metric_filter_expected_read_name" {
+  description = "Name of the CloudWatch Metric Filter counting allowlisted MANDATE11_EXPECTED_READ events"
+  value       = aws_cloudwatch_log_metric_filter.expected_read_count.name
+}

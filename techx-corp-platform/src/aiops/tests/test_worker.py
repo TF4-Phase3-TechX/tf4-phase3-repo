@@ -1,10 +1,14 @@
+import asyncio
+import time
 from dataclasses import replace
 
 import pytest
 from prometheus_client import REGISTRY
 
+from app.availability import AvailabilitySnapshot
 from app.config import Settings
-from app.models import Decision, IncidentStatus
+from app.detection import Detector
+from app.models import AuditEvent, Decision, Incident, IncidentStatus
 from app.store import IncidentStore
 from app.worker import AIOpsWorker
 
@@ -16,6 +20,9 @@ class EmptyTelemetry:
     async def query_range(self, query):
         return []
 
+    async def query(self, query):
+        return []
+
     async def find_traces(self, service):
         return []
 
@@ -23,18 +30,54 @@ class EmptyTelemetry:
 class RecordingDetector:
     def __init__(self):
         self.llm_services = []
+        self.latency_services = []
+        self.error_rate_services = []
 
-    @staticmethod
-    def latency(service, series, query):
+    def latency(self, service, series, query):
+        self.latency_services.append(service)
         return Decision(anomalous=False, incident_type="service_latency_spike", service=service)
 
-    @staticmethod
-    def error_rate(service, series, query):
+    def error_rate(self, service, series, query, **kwargs):
+        self.error_rate_services.append(service)
         return Decision(anomalous=False, incident_type="service_error_rate_spike", service=service)
 
     def llm_error(self, service, series, query, log_count):
         self.llm_services.append(service)
         return Decision(anomalous=False, incident_type="llm_timeout_error", service=service)
+
+
+class BlockingDetector(RecordingDetector):
+    @staticmethod
+    def latency(service, series, query):
+        time.sleep(0.1)
+        return Decision(
+            anomalous=False,
+            incident_type="service_latency_spike",
+            service=service,
+        )
+
+
+@pytest.mark.asyncio
+async def test_cpu_bound_detection_does_not_block_health_event_loop():
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("checkout",),
+            llm_services=(),
+            llm_log_services=(),
+        ),
+        EmptyTelemetry(),
+        BlockingDetector(),
+        IncidentStore(),
+        remediation=object(),
+    )
+
+    poll = asyncio.create_task(worker.poll_once())
+    # This timer represents a health/readiness request sharing FastAPI's event
+    # loop. It must run while synchronous detector CPU work is in progress.
+    await asyncio.wait_for(asyncio.sleep(0.02), timeout=0.08)
+    assert not poll.done()
+    await poll
 
 
 @pytest.mark.asyncio
@@ -56,6 +99,29 @@ async def test_missing_llm_metric_reports_coverage_for_expected_caller():
     await worker.poll_once()
 
     assert detector.llm_services == ["product-reviews"]
+
+
+@pytest.mark.asyncio
+async def test_generic_span_detection_only_runs_for_explicitly_instrumented_services():
+    detector = RecordingDetector()
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("llm", "cart"),
+            generic_signal_services=("cart",),
+            llm_services=(),
+            llm_log_services=(),
+        ),
+        EmptyTelemetry(),
+        detector,
+        IncidentStore(),
+        remediation=object(),
+    )
+
+    await worker.poll_once()
+
+    assert detector.latency_services == ["cart"]
+    assert detector.error_rate_services == ["cart"]
 
 
 class MultiCallerTelemetry(EmptyTelemetry):
@@ -114,6 +180,13 @@ class ApprovalRecorder:
         incident.approval_status = "pending"
 
 
+async def _await_remediation_tasks(worker: AIOpsWorker) -> None:
+    """Remediation runs off the detection loop; tests wait for background tasks."""
+
+    if worker._remediation_tasks:
+        await asyncio.gather(*list(worker._remediation_tasks), return_exceptions=True)
+
+
 @pytest.mark.asyncio
 async def test_worker_breach_recover_breach_notifies_for_two_incidents():
     settings = replace(Settings(), services=(), recovery_polls=2)
@@ -128,6 +201,7 @@ async def test_worker_breach_recover_breach_notifies_for_two_incidents():
 
     for _ in range(4):
         await worker.poll_once()
+        await _await_remediation_tasks(worker)
 
     assert len(recorder.incident_ids) == 2
     assert recorder.incident_ids[0] != recorder.incident_ids[1]
@@ -143,7 +217,9 @@ class DegradedEnrichmentTelemetry(EmptyTelemetry):
 
 @pytest.mark.asyncio
 async def test_worker_counts_opensearch_and_jaeger_poll_failures():
-    labels = lambda source: {"source": source}
+    def labels(source):
+        return {"source": source}
+
     opensearch_before = REGISTRY.get_sample_value(
         "aiops_telemetry_poll_failures_total", labels("opensearch")
     ) or 0
@@ -166,3 +242,165 @@ async def test_worker_counts_opensearch_and_jaeger_poll_failures():
     assert REGISTRY.get_sample_value(
         "aiops_telemetry_poll_failures_total", labels("jaeger")
     ) == jaeger_before + 1
+
+
+class DownAvailability:
+    @staticmethod
+    def snapshot(service):
+        return AvailabilitySnapshot(
+            service=service,
+            state="down",
+            desired_replicas=1,
+            available_replicas=0,
+            ready_replicas=0,
+            updated_replicas=1,
+            reason="no_available_or_ready_replicas",
+        )
+
+
+class HealthyAvailability:
+    @staticmethod
+    def snapshot(service):
+        return AvailabilitySnapshot(
+            service=service,
+            state="healthy",
+            desired_replicas=1,
+            available_replicas=1,
+            ready_replicas=1,
+            updated_replicas=1,
+            reason="desired_replicas_ready",
+        )
+
+
+@pytest.mark.asyncio
+async def test_confirmed_service_down_creates_pageable_incident():
+    settings = replace(
+        Settings(),
+        services=("checkout",),
+        llm_services=(),
+        llm_log_services=(),
+        availability_sustained_polls=2,
+        recovery_polls=2,
+    )
+    recorder = ApprovalRecorder()
+    store = IncidentStore(cooldown_seconds=0)
+    counter_labels = {
+        "incident_type": "service_availability",
+        "service": "checkout",
+        "severity": "critical",
+        "impact": "not_assessed",
+    }
+    created_before = REGISTRY.get_sample_value(
+        "aiops_incidents_created_total", counter_labels
+    ) or 0
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        Detector(settings),
+        store,
+        remediation=recorder,
+        availability=DownAvailability(),
+    )
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+    assert await store.list() == []
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+    incidents = await store.list()
+
+    assert len(incidents) == 1
+    assert incidents[0].incident_type == "service_availability"
+    assert incidents[0].affected_service == "checkout"
+    assert incidents[0].severity == "high"
+    assert incidents[0].execution_attempts == 0
+    assert recorder.incident_ids == [incidents[0].incident_id]
+    assert REGISTRY.get_sample_value(
+        "aiops_incidents_created_total", counter_labels
+    ) == created_before + 1
+    assert REGISTRY.get_sample_value(
+        "aiops_incident_active", counter_labels
+    ) == 1
+
+    worker.availability = HealthyAvailability()
+    await worker.poll_once()
+    await worker.poll_once()
+
+    assert (await store.list())[0].status.value == "resolved"
+    assert REGISTRY.get_sample_value(
+        "aiops_incident_active", counter_labels
+    ) == 0
+
+
+@pytest.mark.asyncio
+async def test_worker_skips_remediation_when_target_quarantined():
+    """Worker must not dispatch remediation for a quarantined target."""
+
+    settings = replace(Settings(), services=(), recovery_polls=2)
+    recorder = ApprovalRecorder()
+    store = IncidentStore(cooldown_seconds=0)
+    worker = AIOpsWorker(
+        settings,
+        EmptyTelemetry(),
+        LifecycleDetector(),
+        store,
+        remediation=recorder,
+    )
+    # Block the target before any incident is created.
+    await store.block_target(
+        "product-reviews",
+        reason="post-mutation safety failure (test)",
+        incident_id="prev-inc-001",
+    )
+
+    await worker.poll_once()
+    await _await_remediation_tasks(worker)
+
+    incidents = await store.list()
+    assert len(incidents) == 1
+    inc = incidents[0]
+    assert inc.status == IncidentStatus.ESCALATED
+    assert inc.mutation_blocked is True
+    assert "operator unlock" in (inc.escalation_reason or "").lower()
+    assert any(
+        event.event == "target_quarantine_denied_remediation"
+        for event in inc.audit_events
+    )
+    # Remediation should never have been called.
+    assert recorder.incident_ids == []
+
+
+@pytest.mark.asyncio
+async def test_worker_quarantines_ambiguous_live_action_outcome():
+    store = IncidentStore(cooldown_seconds=0)
+
+    class AmbiguousController:
+        async def handle_incident(self, item):
+            item.status = IncidentStatus.ESCALATED
+            item.mutation_blocked = True
+            item.escalation_reason = "Live mutation outcome is unknown"
+            item.audit_events.append(AuditEvent(event="action_outcome_unknown"))
+
+    worker = AIOpsWorker(
+        Settings(),
+        EmptyTelemetry(),
+        RecordingDetector(),
+        store,
+        remediation=AmbiguousController(),
+    )
+    item = Incident(
+        incident_type="service_latency_spike",
+        severity="high",
+        affected_service="product-reviews",
+        confidence=.9,
+        suspected_root_cause="test",
+        runbook_id="deployment-latency-rollback",
+        recommended_action="rollback",
+    )
+
+    await worker._run_remediation(item)
+
+    assert await store.is_target_blocked("product-reviews") is True
+    detail = await store.target_block("product-reviews")
+    assert detail["incident_id"] == item.incident_id

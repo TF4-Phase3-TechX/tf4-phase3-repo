@@ -26,15 +26,31 @@ module "eks" {
     "karpenter.sh/node-security-group" = var.cluster_name
   }
 
-  # Bật Control Plane Logging
-  cluster_enabled_log_types = ["api", "audit", "authenticator"]
+  # Bật Control Plane Logging theo tuân thủ ADR-005 / AUDIT-001 (Đã tắt 'api' log để tối ưu chi phí CloudWatch Ingestion)
+  cluster_enabled_log_types              = ["audit", "authenticator"]
+  cloudwatch_log_group_retention_in_days = 7
 
   # Bật OIDC provider cho Service Accounts (IRSA)
   enable_irsa = true
 
   # Khai báo các Addon cần cài đặt cho EKS
   cluster_addons = {
-    coredns    = {}
+    coredns = {
+      configuration_values = jsonencode({
+        nodeSelector = {
+          role = "worker"
+        }
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "70Mi"
+          }
+          limits = {
+            memory = "170Mi"
+          }
+        }
+      })
+    }
     kube-proxy = {}
     vpc-cni    = {}
     aws-ebs-csi-driver = {
@@ -53,13 +69,15 @@ module "eks" {
 
   # Định nghĩa Managed Node Group chạy trong Private Subnets
   eks_managed_node_groups = {
-    general = {
-      name         = "techx-general-ng"
-      min_size     = 2
-      max_size     = 4
-      desired_size = 2
+    general_arm64_1a = {
+      name         = "techx-general-arm64-1a"
+      subnet_ids   = [module.vpc.private_subnets[0]]
+      min_size     = 1
+      max_size     = 2
+      desired_size = 1
 
-      instance_types = ["t3.large"]
+      instance_types = ["t4g.large"]
+      ami_type       = "AL2023_ARM_64_STANDARD"
       capacity_type  = "ON_DEMAND"
 
       block_device_mappings = {
@@ -75,15 +93,49 @@ module "eks" {
         }
       }
 
-      # Gắn thêm các IAM policy phổ biến cho worker nodes
       iam_role_additional_policies = {
-        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-        CloudWatchAgentServerPolicy        = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
       }
 
       labels = {
-        role = "worker"
+        role                         = "worker"
+        "optimization.techx.io/tier" = "protected"
+      }
+
+      tags = var.tags
+    }
+
+    general_arm64_1b = {
+      name         = "techx-general-arm64-1b"
+      subnet_ids   = [module.vpc.private_subnets[1]]
+      min_size     = 1
+      max_size     = 2
+      desired_size = 1
+
+      instance_types = ["t4g.large"]
+      ami_type       = "AL2023_ARM_64_STANDARD"
+      capacity_type  = "ON_DEMAND"
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 20
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 125
+            delete_on_termination = true
+          }
+        }
+      }
+
+      iam_role_additional_policies = {
+        CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+      }
+
+      labels = {
+        role                         = "worker"
+        "optimization.techx.io/tier" = "protected"
       }
 
       tags = var.tags

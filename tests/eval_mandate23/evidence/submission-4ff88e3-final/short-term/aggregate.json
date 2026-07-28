@@ -1,0 +1,45 @@
+{
+  "groups": {
+    "copilot": {
+      "assertion_failures": 0,
+      "cache_hits": 0,
+      "cache_misses": 9,
+      "cases": 9,
+      "estimated_cost_usd": 0.01059993,
+      "failed_cases": 0,
+      "hit_rate": 0.0,
+      "input_tokens": 27096,
+      "latency_ms": {
+        "hit_mean": 0.0,
+        "miss_mean": 1298.671989777732,
+        "p50": 1308.3658320001632,
+        "p95": 1590.874390999943
+      },
+      "model_calls": 9,
+      "output_tokens": 603,
+      "successful_cases": 9,
+      "validated_cases": 9
+    },
+    "total": {
+      "assertion_failures": 0,
+      "cache_hits": 0,
+      "cache_misses": 9,
+      "cases": 9,
+      "estimated_cost_usd": 0.01059993,
+      "failed_cases": 0,
+      "hit_rate": 0.0,
+      "input_tokens": 27096,
+      "latency_ms": {
+        "hit_mean": 0.0,
+        "miss_mean": 1298.671989777732,
+        "p50": 1308.3658320001632,
+        "p95": 1590.874390999943
+      },
+      "model_calls": 9,
+      "output_tokens": 603,
+      "successful_cases": 9,
+      "validated_cases": 9
+    }
+  },
+  "schema_version": "mandate23-replay-v1"
+}

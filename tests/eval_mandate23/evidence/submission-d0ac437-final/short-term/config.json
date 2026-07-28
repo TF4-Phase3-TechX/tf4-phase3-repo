@@ -1,0 +1,29 @@
+{
+  "case_count": 9,
+  "created_at": "2026-07-28T06:45:35.238190+00:00",
+  "default_product_id": "",
+  "identity_suffix": "-20260728T064517Z",
+  "input_sha256": "fc2e327a09da51f9927370e0dc4eae7c9cffbf4035cfd9b09dcdf212f3c3022f",
+  "price_snapshot": {
+    "basis": "configured_estimate",
+    "input_usd_per_million": "0.33",
+    "output_usd_per_million": "2.75"
+  },
+  "repetitions": 3,
+  "runtime": {
+    "code_sha256": "faf2cca8fd636736d325f8b8ba981ea95b39c574b4a1fa3e99917f1bcf2d0bf1",
+    "guardrail_id": "e2svpiawj1v5",
+    "guardrail_version": "3",
+    "image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:1.0-product-reviews",
+    "image_digest": "sha256:71045360c4258a6f8a299dc8fb4c272c8cfcea0779af5a81135abdf4b6b76c14",
+    "model_id": "us.amazon.nova-2-lite-v1:0"
+  },
+  "schema_version": "mandate23-replay-v1",
+  "source": {
+    "revision": "d0ac437d07c34a771f8d52f790c8b3bfd727b26b",
+    "tracked_dirty": false
+  },
+  "source_case_count": 3,
+  "target": "localhost:32799",
+  "timeout_seconds": 15.0
+}

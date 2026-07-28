@@ -4,6 +4,7 @@
 import { Ad, Address, Cart, CartItem, Money, PlaceOrderRequest, Product, ProductReview } from '../protos/demo';
 import { IProductCart, IProductCartItem, IProductCheckout } from '../types/Cart';
 import request from '../utils/Request';
+import type { AiDebugMetadata } from '../utils/aiDebugMetadata';
 import { AttributeNames } from '../utils/enums/AttributeNames';
 import SessionGateway from './Session.gateway';
 import { context, propagation } from "@opentelemetry/api";
@@ -83,11 +84,11 @@ const Apis = () => ({
       url: `${basePath}/product-reviews-avg-score/${productId}`
     });
   },
-  askProductAIAssistant(productId: string, question: string) {
-    return request<string>({
+  askProductAIAssistant(productId: string, question: string, sessionId: string, userId: string) {
+    return request<{ response?: string; actionProposal?: unknown; aiDebug?: AiDebugMetadata }>({
       url: `${basePath}/product-ask-ai-assistant/${productId}`,
       method: 'POST',
-      body: { question },
+      body: { question, sessionId, userId },
     });
   },
   listRecommendations(productIds: string[], currencyCode: string) {

@@ -50,15 +50,20 @@ class Incident(BaseModel):
     last_observed_at: datetime = Field(default_factory=utcnow)
     confidence: float
     suspected_root_cause: str
+    impact: dict[str, Any] = Field(default_factory=dict)
     evidence: list[Evidence] = Field(default_factory=list)
     rca_candidates: list[dict[str, Any]] = Field(default_factory=list)
     runbook_id: str
     recommended_action: str
     approval_status: str = "not_requested"
     approval_expires_at: datetime | None = None
+    policy_version: str | None = None
     execution_attempts: int = 0
+    mutation_blocked: bool = False
+    before_snapshot: dict[str, Any] | None = None
     verification_result: dict[str, Any] | None = None
     rollback_result: dict[str, Any] | None = None
+    rollback_verification_result: dict[str, Any] | None = None
     escalation_reason: str | None = None
     audit_events: list[AuditEvent] = Field(default_factory=list)
 
@@ -76,6 +81,7 @@ class Decision(BaseModel):
     severity: str = "medium"
     confidence: float = 0.0
     root_cause: str = "Insufficient evidence"
+    impact: dict[str, Any] = Field(default_factory=dict)
     evidence: list[Evidence] = Field(default_factory=list)
     candidates: list[dict[str, Any]] = Field(default_factory=list)
     runbook_id: str = "observe-and-escalate"

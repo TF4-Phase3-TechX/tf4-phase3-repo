@@ -6,7 +6,11 @@ import { ListProductsResponse, Product, ProductCatalogServiceClient } from '../.
 
 const { PRODUCT_CATALOG_ADDR = '' } = process.env;
 
-const client = new ProductCatalogServiceClient(PRODUCT_CATALOG_ADDR, ChannelCredentials.createInsecure());
+const client = new ProductCatalogServiceClient(PRODUCT_CATALOG_ADDR, ChannelCredentials.createInsecure(), {
+  'grpc.service_config': JSON.stringify({
+    loadBalancingConfig: [{ round_robin: {} }],
+  }),
+});
 
 const ProductCatalogGateway = () => ({
   listProducts() {

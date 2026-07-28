@@ -11,12 +11,20 @@ runbooks:
     incident_type: service_latency_spike
     automatic_action: rollback_previous_replicaset
     preconditions:
-      - Per-incident approval is valid.
+      - A signed policy version pre-authorizes this exact incident/action/target envelope, or a per-incident approval is valid in manual mode.
       - Deployment is allowlisted and retains a previous ReplicaSet.
       - Latency degradation is sustained and user-facing.
+      - Dry-run/preflight resolves both the current and previous templates before mutation.
+      - No non-terminal durable remediation saga exists for the target (TF4AIO-89).
+      - Live autonomous mode uses a file saga backend on an operator-provided persistent volume; the memory backend is rejected.
+      - Argo mutation window annotations can be applied; CDO Application ignoreDifferences covers /spec/template for the window.
     verification:
       - Deployment rollout becomes ready.
-      - Latency and error rate recover without degrading checkout/storefront SLO.
+      - Target p95 latency and target error rate recover for the mutated service.
+      - Request volume meets the verification floor (missing/low traffic fails closed).
+      - Cross-service dependency guards are optional policy mappings, not silent defaults.
+      - Live template still matches the saga expected template (no silent Argo overwrite).
+      - After pod restart, open sagas resume verify/restore without a second mutation.
   - id: service-error-rate-escalation
     incident_type: service_error_rate_spike
     automatic_action: null
@@ -25,3 +33,11 @@ runbooks:
       - Correlate failed traces and scoped error logs for the same service and window.
       - Review recent deployments without assigning causality from timing alone.
       - Escalate to the owning service team with the evidence bundle.
+  - id: service-availability-escalation
+    incident_type: service_availability
+    automatic_action: null
+    steps:
+      - Confirm desired, available, ready and updated Deployment replicas.
+      - Inspect Pod and Deployment events for scheduling, probe, image or resource failures.
+      - Check recent rollout changes without assuming temporal correlation is causal.
+      - Page the owning service team through Alertmanager and follow its approved recovery runbook.

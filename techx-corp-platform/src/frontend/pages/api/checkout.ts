@@ -17,18 +17,14 @@ const handler = async ({ method, body }: NextApiRequest, res: NextApiResponse<TR
       const { order: { items = [], ...order } = {} } = await CheckoutGateway.placeOrder(orderData);
 
       const productList: IProductCheckoutItem[] = await Promise.all(
-        items.map(async ({ item: { productId = '', quantity = 0 } = {}, cost }) => {
-          const product = await ProductCatalogService.getProductForDisplay(productId);
-
-          return {
-            cost,
-            item: {
-              productId,
-              quantity,
-              product,
-            },
-          };
-        })
+        items.map(async ({ item: { productId = '', quantity = 0 } = {}, cost, productDisplay }) => ({
+          cost,
+          item: {
+            productId,
+            quantity,
+            product: productDisplay ?? await ProductCatalogService.getProductForDisplay(productId),
+          },
+        }))
       );
 
       return res.status(200).json({ ...order, items: productList });

@@ -3,7 +3,7 @@
 This service provides recommendations for other products based on the currently
 selected product.
 
-## Local Build
+## Local Build 
 
 To build the protos, run from the root directory:
 
@@ -16,5 +16,6 @@ make docker-generate-protobuf
 From the root directory, run:
 
 ```sh
-docker compose build recommendation
+docker compose build recommendation 
 ```
+

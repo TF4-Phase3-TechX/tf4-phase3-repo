@@ -1,0 +1,15 @@
+{
+  "commit_hash": "4b085f7ce6a365a7196fd8c6fdb34b62c81c4d88",
+  "timestamp_utc": "2026-07-21T17:46:33.618023+00:00",
+  "database_sha256": "7f7259b5e2b95e2c8c534fdc53c56a4ec7e9ce26e99a6b37adddaf9747de77d1",
+  "dataset_sha256": "404dcac63b92509e399d78296b0b9bd81d1031e46fc4d4a576d718ffcdcd5e3c",
+  "config_source": "env_override",
+  "model_details": {
+    "model_id": "us.amazon.nova-2-lite-v1:0",
+    "provider": "Amazon Bedrock",
+    "region": "us-east-1",
+    "output_mode": "tool",
+    "guardrail_id": "e2svpiawj1v5",
+    "guardrail_version": "3"
+  }
+}

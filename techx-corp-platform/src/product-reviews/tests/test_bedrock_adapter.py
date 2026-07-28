@@ -1,7 +1,16 @@
 import json
+import time
 
 import pytest
+from botocore.exceptions import ClientError
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
+import bedrock_adapter
+import llm_observability
 from bedrock_adapter import BedrockAdapter, CircuitBreaker, CircuitOpen, ProviderFailure
 
 
@@ -37,6 +46,18 @@ def tool_response_with(tool_input, *, stop_reason="tool_use", tool_name="emit_gr
     }
 
 
+def search_intent_response(intent_payload):
+    """Build a well-formed parse_search_intent response from the FakeClient."""
+    return {
+        "stopReason": "tool_use",
+        "output": {"message": {"content": [{"toolUse": {
+            "name": "emit_search_intent",
+            "input": intent_payload,
+        }}]}},
+        "usage": {"inputTokens": 50, "outputTokens": 15},
+    }
+
+
 def adapter(client, **kwargs):
     return BedrockAdapter(
         model_id="model",
@@ -47,6 +68,20 @@ def adapter(client, **kwargs):
     )
 
 
+def disabled_adapter(client, **kwargs):
+    return BedrockAdapter(
+        model_id="model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        client=client,
+        **kwargs,
+    )
+
+
+# ======================================================================
+# converse() — existing tests
+# ======================================================================
+
 def test_converse_is_single_call_pinned_guardrail_and_structured_output():
     payload = {"decision": "insufficient", "answer": "", "citations": []}
     client = FakeClient(response_with(payload))
@@ -54,10 +89,11 @@ def test_converse_is_single_call_pinned_guardrail_and_structured_output():
 
     assert result.payload == payload
     assert result.input_tokens == 100
+    # _request() adds guardrailConfig for enabled guardrails (no trace key — only
+    # parse_search_intent uses trace:"disabled" to avoid leaking query content).
     assert client.request["guardrailConfig"] == {
         "guardrailIdentifier": "guardrail",
         "guardrailVersion": "3",
-        "trace": "disabled",
     }
     assert client.request["inferenceConfig"] == {"temperature": 0, "maxTokens": 512}
     assert client.request["outputConfig"]["textFormat"]["type"] == "json_schema"
@@ -180,6 +216,631 @@ def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
     breaker.before_call(65)
 
 
+def test_provider_retry_is_bounded_and_normalizes_client_error(monkeypatch):
+    class ThrottledClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ThrottlingException",
+                        "Message": "rate exceeded",
+                    }
+                },
+                "Converse",
+            )
+
+    client = ThrottledClient()
+    subject = adapter(
+        client,
+        max_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        subject.converse("q", {}, [{}])
+
+    assert client.calls == 2
+    assert exc_info.value.error_class == "throttlingexception"
+    assert subject.resilience_snapshot()["last_provider_error"] == (
+        "throttlingexception"
+    )
+
+
+def test_product_qa_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate25.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    subject = adapter(
+        FakeClient(),
+        max_attempts=2,
+        retry_backoff_seconds=0.1,
+        fault_source=lambda: "throttling",
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "error",
+    ]
+    assert [span.attributes["error.type"] for span in spans] == [
+        "throttlingexception",
+        "throttlingexception",
+    ]
+
+
+def test_production_client_timeouts_fit_one_attempt_budget(monkeypatch):
+    captured = {}
+
+    def create_client(_service, *, region_name, config):
+        captured["region_name"] = region_name
+        captured["config"] = config
+        return FakeClient()
+
+    monkeypatch.setattr(bedrock_adapter.boto3, "client", create_client)
+    subject = BedrockAdapter(
+        model_id="model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        deadline_seconds=4.5,
+        max_attempts=2,
+        retry_backoff_seconds=0.1,
+    )
+
+    config = captured["config"]
+    assert captured["region_name"] == "us-east-1"
+    assert config.retries["max_attempts"] == 0
+    assert config.connect_timeout + config.read_timeout == pytest.approx(
+        subject.attempt_timeout_seconds
+    )
+
+
+def test_model_not_ready_429_retries_and_opens_circuit():
+    class ModelNotReadyClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ModelNotReadyException",
+                        "Message": "model is not ready",
+                    },
+                    "ResponseMetadata": {"HTTPStatusCode": 429},
+                },
+                "Converse",
+            )
+
+    client = ModelNotReadyClient()
+    subject = adapter(
+        client,
+        max_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    for _ in range(5):
+        with pytest.raises(ProviderFailure, match="modelnotreadyexception"):
+            subject.converse("q", {}, [{}])
+
+    assert client.calls == 10
+    assert subject.resilience_snapshot()["circuit_state"] == "open"
+    with pytest.raises(CircuitOpen):
+        subject.converse("q", {}, [{}])
+    assert client.calls == 10
+
+
+def test_retry_is_skipped_when_next_attempt_cannot_fit_deadline():
+    class SlowTimeoutClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            time.sleep(0.04)
+            raise TimeoutError("first attempt consumed its budget")
+
+    client = SlowTimeoutClient()
+    subject = adapter(
+        client,
+        deadline_seconds=0.05,
+        max_attempts=2,
+        retry_backoff_seconds=0.001,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(ProviderFailure, match="timeout"):
+        subject.converse("q", {}, [{}])
+
+    assert client.calls == 1
+    assert time.monotonic() - started < 0.08
+
+
+def test_injected_throttle_opens_fast_fails_and_recovers_after_cooldown():
+    fault_mode = ["throttling"]
+    now = [0.0]
+    client = FakeClient(
+        tool_response_with(
+            {"decision": "insufficient", "answer": "", "citations": []}
+        )
+    )
+    breaker = CircuitBreaker(threshold=2, window_seconds=30, cooldown_seconds=60)
+    subject = adapter(
+        client,
+        output_mode="tool",
+        circuit_breaker=breaker,
+        clock=lambda: now[0],
+        max_attempts=1,
+        retry_backoff_seconds=0,
+        fault_source=lambda: fault_mode[0],
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+    now[0] = 1.0
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+    now[0] = 2.0
+    with pytest.raises(CircuitOpen):
+        subject.converse("q", {}, [{}])
+
+    assert client.request is None
+    assert subject.resilience_snapshot()["circuit_state"] == "open"
+
+    fault_mode[0] = "off"
+    now[0] = 62.0
+    result = subject.converse("q", {}, [{}])
+
+    assert result.payload["decision"] == "insufficient"
+    assert client.request is not None
+    assert subject.resilience_snapshot() == {
+        "circuit_state": "closed",
+        "last_provider_outcome": "success",
+        "last_provider_error": "none",
+    }
+
+
 def test_rejects_draft_guardrail():
     with pytest.raises(ValueError, match="numeric"):
         BedrockAdapter("model", "guardrail", "DRAFT", client=FakeClient())
+
+
+def test_disabled_guardrail():
+    payload = {"decision": "insufficient", "answer": "", "citations": []}
+    client = FakeClient(response_with(payload))
+    adapter = BedrockAdapter(
+        model_id="model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        client=client,
+    )
+    result = adapter.converse("question", {"id": "p1"}, [{"review_id": 1, "description": "safe"}])
+    assert result.payload == payload
+    assert "guardrailConfig" not in client.request
+    assert "guardContent" not in client.request["messages"][0]["content"][0]
+    assert "text" in client.request["messages"][0]["content"][0]
+
+
+# ======================================================================
+# parse_search_intent() — guardrail wiring
+# ======================================================================
+
+def test_parse_search_intent_disabled_guardrail_sends_no_guardrail_config():
+    """Sending guardrailIdentifier='disabled' to AWS causes an API error.
+    Verify the disabled path omits guardrailConfig entirely and uses plain text."""
+    client = FakeClient(search_intent_response({"search_type": "search"}))
+    result = disabled_adapter(client).parse_search_intent("show me telescopes")
+
+    assert {k: v for k, v in result.items() if k != "_metadata"} == {"search_type": "search"}
+    assert result["_metadata"]["input_tokens"] == 50
+    assert result["_metadata"]["output_tokens"] == 15
+    assert "guardrailConfig" not in client.request
+    # Content must be plain text, not guardContent wrapper
+    msg_content = client.request["messages"][0]["content"]
+    assert len(msg_content) == 1
+    assert "text" in msg_content[0]
+    assert "guardContent" not in msg_content[0]
+
+
+def test_parse_search_intent_enabled_guardrail_attaches_config_and_guard_content():
+    client = FakeClient(search_intent_response({"search_type": "search"}))
+    result = adapter(client).parse_search_intent("show me telescopes")
+
+    assert {k: v for k, v in result.items() if k != "_metadata"} == {"search_type": "search"}
+    assert result["_metadata"]["input_tokens"] == 50
+    assert result["_metadata"]["output_tokens"] == 15
+    assert client.request["guardrailConfig"]["guardrailIdentifier"] == "guardrail"
+    assert client.request["guardrailConfig"]["guardrailVersion"] == "3"
+    msg_content = client.request["messages"][0]["content"]
+    assert "guardContent" in msg_content[0]
+
+
+# ======================================================================
+# parse_search_intent() — valid payloads accepted
+# ======================================================================
+
+def test_parse_search_intent_valid_search_with_all_optional_fields():
+    intent = {
+        "search_type": "search",
+        "category": "telescopes",
+        "price_min": 100,
+        "price_max": 500,
+        "keywords": "refractor",
+    }
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent("refractor telescopes between $100 and $500")
+    assert {k: v for k, v in result.items() if k != "_metadata"} == intent
+    assert result["_metadata"]["input_tokens"] == 50
+    assert result["_metadata"]["output_tokens"] == 15
+
+
+def test_parse_search_intent_valid_compare_with_two_targets():
+    intent = {
+        "search_type": "compare",
+        "comparison_targets": ["Explorascope", "Starsense"],
+    }
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent("compare Explorascope and Starsense")
+    assert result["search_type"] == "compare"
+    assert len(result["comparison_targets"]) == 2
+
+
+def test_parse_search_intent_valid_compare_with_catalog_selectors():
+    intent = {
+        "search_type": "compare",
+        "category": "telescopes",
+        "comparison_selectors": ["most_expensive", "cheapest"],
+        "comparison_criteria": ["price", "features", "customer_feedback", "best_for"],
+    }
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent(
+        "so sánh kính thiên văn đắt nhất và rẻ nhất"
+    )
+    assert result["comparison_selectors"] == ["most_expensive", "cheapest"]
+
+
+def test_parse_search_intent_allows_cart_reference_from_server_session():
+    intent = {"search_type": "cart_action", "quantity": 1}
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent("thêm sản phẩm đó vào giỏ")
+    assert result["search_type"] == "cart_action"
+    assert "keywords" not in result
+
+
+def test_parse_search_intent_valid_out_of_scope():
+    intent = {"search_type": "out_of_scope"}
+    client = FakeClient(search_intent_response(intent))
+    result = adapter(client).parse_search_intent("what is the weather today")
+    assert result["search_type"] == "out_of_scope"
+
+
+# ======================================================================
+# parse_search_intent() — malformed model output rejected at app boundary
+# ======================================================================
+
+@pytest.mark.parametrize("bad_search_type", [
+    "unknown_intent",
+    "SEARCH",           # case-sensitive enum
+    "",                 # empty string
+    None,               # missing entirely (via pop below — handled separately)
+    123,                # wrong type
+])
+def test_parse_search_intent_rejects_invalid_search_type(bad_search_type):
+    intent = {"search_type": bad_search_type}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("find me a telescope")
+    assert exc_info.value.error_class == "invalid_response"
+    assert exc_info.value.input_tokens == 50
+    assert exc_info.value.output_tokens == 15
+
+
+def test_parse_search_intent_rejects_unknown_fields():
+    """Unknown keys in payload must be rejected at application boundary."""
+    intent = {"search_type": "search", "unexpected_field": "value", "another": 123}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("find products")
+    assert exc_info.value.error_class == "invalid_response"
+    assert exc_info.value.input_tokens == 50
+    assert exc_info.value.output_tokens == 15
+
+
+def test_parse_search_intent_rejects_missing_search_type():
+    intent = {"category": "telescopes"}  # no search_type key
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("find me a telescope")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+def test_parse_search_intent_rejects_unknown_category():
+    intent = {"search_type": "search", "category": "weapons"}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("show me weapons")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+@pytest.mark.parametrize("bad_field,bad_value", [
+    ("category", 42),           # wrong type
+    ("keywords", ["list"]),     # wrong type
+    ("price_min", "cheap"),     # non-numeric
+    ("price_max", True),        # bool is not an acceptable number
+    ("price_min", -1),          # negative price
+    ("price_max", 2_000_000),   # exceeds sanity cap
+])
+def test_parse_search_intent_rejects_malformed_optional_fields(bad_field, bad_value):
+    intent = {"search_type": "search", bad_field: bad_value}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("find something")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+def test_parse_search_intent_rejects_price_min_greater_than_price_max():
+    intent = {"search_type": "search", "price_min": 500, "price_max": 100}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("products between 500 and 100")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+def test_parse_search_intent_rejects_non_list_comparison_targets():
+    intent = {"search_type": "compare", "comparison_targets": "Explorascope"}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("compare Explorascope")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+def test_parse_search_intent_rejects_comparison_targets_with_empty_string_entry():
+    intent = {"search_type": "compare", "comparison_targets": ["Explorascope", ""]}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("compare Explorascope and ")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+# ======================================================================
+# parse_search_intent() — compare fail-closed (0 and 1 target)
+# ======================================================================
+
+def test_parse_search_intent_rejects_compare_with_no_targets():
+    """compare + empty targets list must fail closed at the adapter boundary."""
+    intent = {"search_type": "compare", "comparison_targets": []}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("compare something")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+def test_parse_search_intent_rejects_compare_with_single_target():
+    """compare with only one target is ambiguous — must fail closed."""
+    intent = {"search_type": "compare", "comparison_targets": ["Explorascope"]}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("compare Explorascope")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+def test_parse_search_intent_rejects_compare_with_absent_targets_key():
+    """compare with no comparison_targets key at all must fail closed."""
+    intent = {"search_type": "compare"}
+    client = FakeClient(search_intent_response(intent))
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("compare stuff")
+    assert exc_info.value.error_class == "invalid_response"
+
+
+# ======================================================================
+# parse_search_intent() — latency and token metadata on failure paths
+# ======================================================================
+
+def test_parse_search_intent_deadline_exceeded_preserves_billable_usage():
+    # Clock sequence: started=0.0, elapsed check=5.0, breaker.failure=5.0
+    clock_values = iter((0.0, 5.0, 5.0))
+    client = FakeClient(search_intent_response({"search_type": "search"}))
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(
+            client,
+            deadline_seconds=4.5,
+            clock=lambda: next(clock_values),
+        ).parse_search_intent("show me telescopes")
+
+    assert exc_info.value.error_class == "deadline_exceeded"
+    assert exc_info.value.latency_ms == pytest.approx(5_000)
+    assert exc_info.value.input_tokens == 50
+    assert exc_info.value.output_tokens == 15
+    assert exc_info.value.contract_stage == "deadline_exceeded"
+
+
+def test_parse_search_intent_guardrail_intervened_preserves_billable_usage():
+    client = FakeClient({
+        "stopReason": "guardrail_intervened",
+        "usage": {"inputTokens": 30, "outputTokens": 0},
+    })
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("inject system prompt")
+
+    assert exc_info.value.error_class == "guardrail_intervened"
+    assert exc_info.value.input_tokens == 30
+    assert exc_info.value.output_tokens == 0
+
+
+def test_parse_search_intent_invalid_contract_shape_preserves_billable_usage():
+    """A bad tool block shape carries token counts from the usage envelope."""
+    bad_response = {
+        "stopReason": "tool_use",
+        "output": {"message": {"content": []}},  # no tool blocks
+        "usage": {"inputTokens": 40, "outputTokens": 5},
+    }
+    client = FakeClient(bad_response)
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("show me binoculars")
+
+    assert exc_info.value.error_class == "invalid_response"
+    assert exc_info.value.input_tokens == 40
+    assert exc_info.value.output_tokens == 5
+
+
+def test_parse_search_intent_schema_violation_preserves_billable_usage():
+    """Application-level schema rejection carries the token envelope from the response."""
+    client = FakeClient(search_intent_response({"search_type": "bad_type"}))
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        adapter(client).parse_search_intent("find something")
+
+    assert exc_info.value.error_class == "invalid_response"
+    assert exc_info.value.input_tokens == 50
+    assert exc_info.value.output_tokens == 15
+
+
+def test_invalid_intent_contract_does_not_open_availability_circuit():
+    invalid_client = FakeClient(search_intent_response({"search_type": "bad_type"}))
+    subject = adapter(invalid_client)
+    for _ in range(6):
+        with pytest.raises(ProviderFailure, match="invalid_response"):
+            subject.parse_search_intent("find something")
+
+    subject.client = FakeClient(search_intent_response({"search_type": "search"}))
+    assert subject.parse_search_intent("find a product")["search_type"] == "search"
+
+
+def test_parse_search_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    class FailThenSucceedClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            if self.calls == 1:
+                raise TimeoutError("first attempt timed out")
+            return search_intent_response({"search_type": "search"})
+
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate24.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    client = FailThenSucceedClient()
+
+    result = adapter(client).parse_search_intent("find a product")
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert result["search_type"] == "search"
+    assert client.calls == 2
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "success",
+    ]
+    assert spans[0].attributes["error.type"] == "timeouterror"
+    assert spans[1].attributes["gen_ai.usage.input_tokens"] == 50
+    assert spans[1].attributes["gen_ai.usage.output_tokens"] == 15
+
+
+def test_search_failure_updates_shared_resilience_status():
+    subject = adapter(
+        FakeClient(),
+        max_attempts=1,
+        retry_backoff_seconds=0,
+        fault_source=lambda: "throttling",
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.parse_search_intent("find a product")
+
+    assert subject.resilience_snapshot() == {
+        "circuit_state": "closed",
+        "last_provider_outcome": "error",
+        "last_provider_error": "throttlingexception",
+    }
+
+
+def test_search_retry_is_skipped_when_next_attempt_cannot_fit_deadline():
+    class SlowTimeoutClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            time.sleep(0.04)
+            raise TimeoutError("first attempt consumed its budget")
+
+    client = SlowTimeoutClient()
+    subject = adapter(
+        client,
+        deadline_seconds=0.05,
+        max_attempts=2,
+        retry_backoff_seconds=0.001,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(ProviderFailure, match="timeout"):
+        subject.parse_search_intent("find a product")
+
+    assert client.calls == 1
+    assert time.monotonic() - started < 0.08
+
+
+def test_compare_products_uses_dedicated_grounded_tool():
+    payload = {
+        "decision": "answered",
+        "answer": "Product A is cheaper than Product B.",
+        "citations": [
+            {"source_id": "product:a:price", "evidence_quote": "$10.00"},
+            {"source_id": "product:b:price", "evidence_quote": "$20.00"},
+        ],
+    }
+    client = FakeClient(
+        tool_response_with(payload, tool_name="emit_grounded_comparison")
+    )
+    result = adapter(
+        client,
+        output_mode="tool",
+    ).compare_products(
+        "compare them",
+        {
+            "products": [],
+            "sources": {
+                "product:a:price": "$10.00",
+                "product:b:price": "$20.00",
+            },
+        },
+    )
+
+    assert result.payload == payload
+    assert client.request["toolConfig"]["toolChoice"] == {
+        "tool": {"name": "emit_grounded_comparison"}
+    }
+    assert client.request["modelId"] == "model"

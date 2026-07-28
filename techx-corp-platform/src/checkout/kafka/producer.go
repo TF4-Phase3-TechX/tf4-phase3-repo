@@ -59,19 +59,8 @@ func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.AsyncPro
 	// Set the logger for sarama to use.
 	sarama.Logger = &saramaLogger{logger: logger}
 
-	saramaConfig := sarama.NewConfig()
-	saramaConfig.Producer.Return.Successes = true
-	saramaConfig.Producer.Return.Errors = true
-
-	// Sarama has an issue in a single broker kafka if the kafka broker is restarted.
-	// This setting is to prevent that issue from manifesting itself, but may swallow failed messages.
-	saramaConfig.Producer.RequiredAcks = sarama.NoResponse
-
-	saramaConfig.Version = ProtocolVersion
-
-	// So we can know the partition and offset of messages.
-	saramaConfig.Producer.Return.Successes = true
-	if err := applySecurityConfig(saramaConfig); err != nil {
+	saramaConfig, err := newProducerConfig()
+	if err != nil {
 		return nil, err
 	}
 
@@ -88,6 +77,26 @@ func CreateKafkaProducer(brokers []string, logger *slog.Logger) (sarama.AsyncPro
 		}
 	}()
 	return producer, nil
+}
+
+func newProducerConfig() (*sarama.Config, error) {
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.Producer.Return.Successes = true
+	saramaConfig.Producer.Return.Errors = true
+
+	// RequiredAcks must not be NoResponse while Return.Successes is enabled:
+	// checkout waits for the ack offset to prove the order event reached Kafka.
+	saramaConfig.Producer.RequiredAcks = sarama.WaitForLocal
+
+	saramaConfig.Version = ProtocolVersion
+
+	// So we can know the partition and offset of messages.
+	saramaConfig.Producer.Return.Successes = true
+	if err := applySecurityConfig(saramaConfig); err != nil {
+		return nil, err
+	}
+
+	return saramaConfig, nil
 }
 
 func applySecurityConfig(config *sarama.Config) error {

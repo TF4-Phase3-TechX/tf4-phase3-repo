@@ -29,3 +29,4 @@ ENV JAVA_TOOL_OPTIONS=-javaagent:/usr/src/app/opentelemetry-javaagent.jar
 
 EXPOSE ${AD_PORT}
 ENTRYPOINT [ "./build/install/techx-corp-ad/bin/Ad" ]
+

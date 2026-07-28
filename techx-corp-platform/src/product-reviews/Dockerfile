@@ -16,6 +16,8 @@ RUN venv/bin/opentelemetry-bootstrap -a install
 
 FROM docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322
 
+RUN apk upgrade --no-cache libcrypto3 libssl3
+
 COPY --from=build-venv /venv/ /venv/
 
 WORKDIR /app
@@ -26,9 +28,16 @@ COPY ./src/product-reviews/product_reviews_server.py product_reviews_server.py
 COPY ./src/product-reviews/database.py database.py
 COPY ./src/product-reviews/metrics.py metrics.py
 COPY ./src/product-reviews/ai_assistant.py ai_assistant.py
+COPY ./src/product-reviews/audit_logging.py audit_logging.py
 COPY ./src/product-reviews/bedrock_adapter.py bedrock_adapter.py
+COPY ./src/product-reviews/llm_observability.py llm_observability.py
 COPY ./src/product-reviews/safety.py safety.py
-
+COPY ./src/product-reviews/session_store.py session_store.py
+COPY ./src/product-reviews/router.py router.py
+COPY ./src/product-reviews/copilot_review_summary.py copilot_review_summary.py
+COPY ./src/product-reviews/resilience_control.py resilience_control.py
+COPY ./src/product-reviews/response_cache.py response_cache.py
+COPY ./src/product-reviews/profile_store.py profile_store.py
 
 EXPOSE ${PRODUCT_REVIEWS_PORT}
 ENTRYPOINT [ "/venv/bin/opentelemetry-instrument", "/venv/bin/python", "product_reviews_server.py" ]

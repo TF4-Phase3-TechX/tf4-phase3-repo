@@ -9,7 +9,10 @@ import random
 import uuid
 import logging
 
-from locust import HttpUser, task, between, LoadTestShape
+from locust import HttpUser, task, between, constant, LoadTestShape
+from locust.exception import StopUser
+
+from paid_ai_control import PaidAIConfig, PaidAIRequestBudget
 
 from opentelemetry import context, baggage, trace
 from opentelemetry.context import Context
@@ -104,6 +107,22 @@ products = [
     "HQTGWGPNH4",
 ]
 
+paid_ai_config = PaidAIConfig.from_env()
+paid_ai_budget = PaidAIRequestBudget(paid_ai_config)
+
+if paid_ai_config.enabled:
+    logging.warning(
+        "Paid AI load scenario enabled: owner=%s run_id=%s max_requests=%s "
+        "window_seconds=%s wait_seconds=%s",
+        paid_ai_config.owner,
+        paid_ai_config.run_id,
+        paid_ai_config.max_requests,
+        paid_ai_config.window_seconds,
+        paid_ai_config.wait_seconds,
+    )
+else:
+    logging.info("Paid AI load scenario disabled; baseline traffic will not call AI endpoints")
+
 people_file = open('people.json')
 people = json.load(people_file)
 
@@ -149,17 +168,6 @@ class WebsiteUser(HttpUser):
         with self.tracer.start_as_current_span("user_get_product_reviews", context=Context(), attributes={"product.id": product}):
             logging.info(f"User getting product reviews for product: {product}")
             self.client.get("/api/product-reviews/" + product)
-
-    @task(10)
-    def ask_product_ai_assistant(self):
-        product = random.choice(products)
-        question = 'Can you summarize the product reviews?'
-        with self.tracer.start_as_current_span("user_ask_product_ai_assistant", context=Context(), attributes={"product.id": product, "question": question}):
-            logging.info(f"Asking the AI Assistant a question for: {product} {question}")
-            question = {
-                "question": question
-            }
-            self.client.post("/api/product-ask-ai-assistant/" + product, json=question)
 
     @task(6)
     def get_ads(self):
@@ -235,6 +243,62 @@ class WebsiteUser(HttpUser):
             ctx = baggage.set_baggage("synthetic_request", "true", context=ctx)
             context.attach(ctx)
             self.index()
+
+
+if paid_ai_config.enabled:
+    class PaidAIUser(HttpUser):
+        """Explicit, capped synthetic user for endpoints that incur Bedrock cost."""
+
+        fixed_count = 1
+        wait_time = constant(paid_ai_config.wait_seconds)
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.tracer = trace.get_tracer(__name__)
+
+        def on_start(self):
+            paid_ai_budget.start()
+            logging.warning(
+                "Starting paid AI user: owner=%s run_id=%s",
+                paid_ai_config.owner,
+                paid_ai_config.run_id,
+            )
+
+        @task
+        def ask_product_ai_assistant(self):
+            allowed, reason = paid_ai_budget.claim()
+            if not allowed:
+                logging.warning(
+                    "Stopping paid AI user: reason=%s owner=%s run_id=%s requests=%s",
+                    reason,
+                    paid_ai_config.owner,
+                    paid_ai_config.run_id,
+                    paid_ai_budget.request_count,
+                )
+                raise StopUser()
+
+            product = random.choice(products)
+            question = "Can you summarize the product reviews?"
+            with self.tracer.start_as_current_span(
+                "paid_ai_user_ask_product_ai_assistant",
+                context=Context(),
+                attributes={
+                    "product.id": product,
+                    "load_test.owner": paid_ai_config.owner,
+                    "load_test.run_id": paid_ai_config.run_id,
+                    "load_test.paid_ai_request_number": paid_ai_budget.request_count,
+                },
+            ):
+                payload = {
+                    "question": question,
+                    "sessionId": f"loadtest-{paid_ai_config.run_id}",
+                    "userId": f"loadtest-{paid_ai_config.owner}",
+                }
+                self.client.post(
+                    "/api/product-ask-ai-assistant/" + product,
+                    json=payload,
+                    name="/api/product-ask-ai-assistant/:product_id",
+                )
 
 
 browser_traffic_enabled = os.environ.get("LOCUST_BROWSER_TRAFFIC_ENABLED", "").lower() in ("true", "yes", "on")

@@ -1,0 +1,602 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "karpenter.sh/v1",
+            "kind": "NodeClaim",
+            "metadata": {
+                "annotations": {
+                    "compatibility.karpenter.k8s.aws/cluster-name-tagged": "true",
+                    "karpenter.k8s.aws/ec2nodeclass-hash": "4689754915429741937",
+                    "karpenter.k8s.aws/ec2nodeclass-hash-version": "v5",
+                    "karpenter.k8s.aws/instance-profile-name": "techx-tf4-cluster_6332193992597369731",
+                    "karpenter.k8s.aws/tagged": "true",
+                    "karpenter.sh/nodeclaim-min-values-relaxed": "false",
+                    "karpenter.sh/nodepool-hash": "10581740522941538598",
+                    "karpenter.sh/nodepool-hash-version": "v3"
+                },
+                "creationTimestamp": "2026-07-22T10:41:32Z",
+                "finalizers": [
+                    "karpenter.sh/termination"
+                ],
+                "generateName": "techx-general-",
+                "generation": 1,
+                "labels": {
+                    "karpenter.k8s.aws/ec2nodeclass": "techx-general",
+                    "karpenter.k8s.aws/instance-capability-flex": "false",
+                    "karpenter.k8s.aws/instance-category": "t",
+                    "karpenter.k8s.aws/instance-cpu": "2",
+                    "karpenter.k8s.aws/instance-cpu-manufacturer": "amd",
+                    "karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz": "2200",
+                    "karpenter.k8s.aws/instance-ebs-bandwidth": "2780",
+                    "karpenter.k8s.aws/instance-encryption-in-transit-supported": "false",
+                    "karpenter.k8s.aws/instance-family": "t3a",
+                    "karpenter.k8s.aws/instance-generation": "3",
+                    "karpenter.k8s.aws/instance-hypervisor": "nitro",
+                    "karpenter.k8s.aws/instance-memory": "8192",
+                    "karpenter.k8s.aws/instance-network-bandwidth": "512",
+                    "karpenter.k8s.aws/instance-size": "large",
+                    "karpenter.k8s.aws/instance-tenancy": "default",
+                    "karpenter.sh/capacity-type": "on-demand",
+                    "karpenter.sh/nodepool": "techx-general",
+                    "kubernetes.io/arch": "amd64",
+                    "kubernetes.io/os": "linux",
+                    "node.kubernetes.io/instance-type": "t3a.large",
+                    "topology.k8s.aws/zone-id": "use1-az2",
+                    "topology.kubernetes.io/region": "us-east-1",
+                    "topology.kubernetes.io/zone": "us-east-1b"
+                },
+                "name": "techx-general-2k74s",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "karpenter.sh/v1",
+                        "blockOwnerDeletion": true,
+                        "kind": "NodePool",
+                        "name": "techx-general",
+                        "uid": "d6b4c398-4df9-41e1-bb7d-e7eb8ea74e8f"
+                    }
+                ],
+                "resourceVersion": "7085086",
+                "uid": "6d1c52d2-c7ea-45b7-8476-97963b47a9da"
+            },
+            "spec": {
+                "expireAfter": "720h",
+                "nodeClassRef": {
+                    "group": "karpenter.k8s.aws",
+                    "kind": "EC2NodeClass",
+                    "name": "techx-general"
+                },
+                "requirements": [
+                    {
+                        "key": "karpenter.sh/nodepool",
+                        "operator": "In",
+                        "values": [
+                            "techx-general"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.k8s.aws/ec2nodeclass",
+                        "operator": "In",
+                        "values": [
+                            "techx-general"
+                        ]
+                    },
+                    {
+                        "key": "kubernetes.io/arch",
+                        "operator": "In",
+                        "values": [
+                            "amd64"
+                        ]
+                    },
+                    {
+                        "key": "node.kubernetes.io/instance-type",
+                        "operator": "In",
+                        "values": [
+                            "t3.large",
+                            "t3a.large"
+                        ]
+                    },
+                    {
+                        "key": "kubernetes.io/os",
+                        "operator": "In",
+                        "values": [
+                            "linux"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.sh/capacity-type",
+                        "operator": "In",
+                        "values": [
+                            "on-demand"
+                        ]
+                    }
+                ],
+                "resources": {
+                    "requests": {
+                        "cpu": "530m",
+                        "memory": "460Mi",
+                        "pods": "6"
+                    }
+                }
+            },
+            "status": {
+                "allocatable": {
+                    "cpu": "1930m",
+                    "ephemeral-storage": "17Gi",
+                    "memory": "7270828Ki",
+                    "pods": "35"
+                },
+                "capacity": {
+                    "cpu": "2",
+                    "ephemeral-storage": "20Gi",
+                    "memory": "8028588Ki",
+                    "pods": "35"
+                },
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-07-22T10:41:34Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Launched",
+                        "status": "True",
+                        "type": "Launched"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:41:59Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Registered",
+                        "status": "True",
+                        "type": "Registered"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:42:18Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Initialized",
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:51:34Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "ConsistentStateFound",
+                        "status": "True",
+                        "type": "ConsistentStateFound"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T12:57:19Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Consolidatable",
+                        "status": "True",
+                        "type": "Consolidatable"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:42:18Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Ready",
+                        "status": "True",
+                        "type": "Ready"
+                    }
+                ],
+                "imageID": "ami-09f62c72654741033",
+                "lastPodEventTime": "2026-07-22T12:52:19Z",
+                "nodeName": "ip-10-0-11-37.ec2.internal",
+                "providerID": "aws:///us-east-1b/i-01aae8ffa93cdb3ec"
+            }
+        },
+        {
+            "apiVersion": "karpenter.sh/v1",
+            "kind": "NodeClaim",
+            "metadata": {
+                "annotations": {
+                    "compatibility.karpenter.k8s.aws/cluster-name-tagged": "true",
+                    "karpenter.k8s.aws/ec2nodeclass-hash": "4689754915429741937",
+                    "karpenter.k8s.aws/ec2nodeclass-hash-version": "v5",
+                    "karpenter.k8s.aws/instance-profile-name": "techx-tf4-cluster_6332193992597369731",
+                    "karpenter.k8s.aws/tagged": "true",
+                    "karpenter.sh/nodeclaim-min-values-relaxed": "false",
+                    "karpenter.sh/nodepool-hash": "10581740522941538598",
+                    "karpenter.sh/nodepool-hash-version": "v3"
+                },
+                "creationTimestamp": "2026-07-16T03:57:09Z",
+                "deletionGracePeriodSeconds": 0,
+                "deletionTimestamp": "2026-07-22T10:48:52Z",
+                "finalizers": [
+                    "karpenter.sh/termination"
+                ],
+                "generateName": "techx-general-",
+                "generation": 2,
+                "labels": {
+                    "karpenter.k8s.aws/ec2nodeclass": "techx-general",
+                    "karpenter.k8s.aws/instance-capability-flex": "false",
+                    "karpenter.k8s.aws/instance-category": "t",
+                    "karpenter.k8s.aws/instance-cpu": "2",
+                    "karpenter.k8s.aws/instance-cpu-manufacturer": "amd",
+                    "karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz": "2200",
+                    "karpenter.k8s.aws/instance-ebs-bandwidth": "2780",
+                    "karpenter.k8s.aws/instance-encryption-in-transit-supported": "false",
+                    "karpenter.k8s.aws/instance-family": "t3a",
+                    "karpenter.k8s.aws/instance-generation": "3",
+                    "karpenter.k8s.aws/instance-hypervisor": "nitro",
+                    "karpenter.k8s.aws/instance-memory": "8192",
+                    "karpenter.k8s.aws/instance-network-bandwidth": "512",
+                    "karpenter.k8s.aws/instance-size": "large",
+                    "karpenter.k8s.aws/instance-tenancy": "default",
+                    "karpenter.sh/capacity-type": "on-demand",
+                    "karpenter.sh/nodepool": "techx-general",
+                    "kubernetes.io/arch": "amd64",
+                    "kubernetes.io/os": "linux",
+                    "node.kubernetes.io/instance-type": "t3a.large",
+                    "topology.k8s.aws/zone-id": "use1-az2",
+                    "topology.kubernetes.io/region": "us-east-1",
+                    "topology.kubernetes.io/zone": "us-east-1b"
+                },
+                "name": "techx-general-djg4k",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "karpenter.sh/v1",
+                        "blockOwnerDeletion": true,
+                        "kind": "NodePool",
+                        "name": "techx-general",
+                        "uid": "d6b4c398-4df9-41e1-bb7d-e7eb8ea74e8f"
+                    }
+                ],
+                "resourceVersion": "7006173",
+                "uid": "4bf307e1-1397-4555-98b2-7394c1743038"
+            },
+            "spec": {
+                "expireAfter": "720h",
+                "nodeClassRef": {
+                    "group": "karpenter.k8s.aws",
+                    "kind": "EC2NodeClass",
+                    "name": "techx-general"
+                },
+                "requirements": [
+                    {
+                        "key": "kubernetes.io/arch",
+                        "operator": "In",
+                        "values": [
+                            "amd64"
+                        ]
+                    },
+                    {
+                        "key": "topology.kubernetes.io/zone",
+                        "operator": "In",
+                        "values": [
+                            "us-east-1b"
+                        ]
+                    },
+                    {
+                        "key": "topology.kubernetes.io/region",
+                        "operator": "In",
+                        "values": [
+                            "us-east-1"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.sh/capacity-type",
+                        "operator": "In",
+                        "values": [
+                            "on-demand"
+                        ]
+                    },
+                    {
+                        "key": "node.kubernetes.io/instance-type",
+                        "operator": "In",
+                        "values": [
+                            "t3.large",
+                            "t3a.large"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.k8s.aws/ec2nodeclass",
+                        "operator": "In",
+                        "values": [
+                            "techx-general"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.sh/nodepool",
+                        "operator": "In",
+                        "values": [
+                            "techx-general"
+                        ]
+                    },
+                    {
+                        "key": "kubernetes.io/os",
+                        "operator": "In",
+                        "values": [
+                            "linux"
+                        ]
+                    }
+                ],
+                "resources": {
+                    "requests": {
+                        "cpu": "1230m",
+                        "memory": "304Mi",
+                        "pods": "6"
+                    }
+                }
+            },
+            "status": {
+                "allocatable": {
+                    "cpu": "1930m",
+                    "ephemeral-storage": "17Gi",
+                    "memory": "7270828Ki",
+                    "pods": "35"
+                },
+                "capacity": {
+                    "cpu": "2",
+                    "ephemeral-storage": "20Gi",
+                    "memory": "8028588Ki",
+                    "pods": "35"
+                },
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-07-16T03:57:11Z",
+                        "message": "",
+                        "observedGeneration": 2,
+                        "reason": "Launched",
+                        "status": "True",
+                        "type": "Launched"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-16T03:57:35Z",
+                        "message": "",
+                        "observedGeneration": 2,
+                        "reason": "Registered",
+                        "status": "True",
+                        "type": "Registered"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-16T03:57:50Z",
+                        "message": "",
+                        "observedGeneration": 2,
+                        "reason": "Initialized",
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-16T04:07:11Z",
+                        "message": "",
+                        "observedGeneration": 2,
+                        "reason": "ConsistentStateFound",
+                        "status": "True",
+                        "type": "ConsistentStateFound"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:46:55Z",
+                        "message": "",
+                        "observedGeneration": 2,
+                        "reason": "Consolidatable",
+                        "status": "True",
+                        "type": "Consolidatable"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:48:52Z",
+                        "message": "Underutilized",
+                        "observedGeneration": 2,
+                        "reason": "Underutilized",
+                        "status": "True",
+                        "type": "DisruptionReason"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:48:52Z",
+                        "message": "Draining",
+                        "observedGeneration": 2,
+                        "reason": "Draining",
+                        "status": "Unknown",
+                        "type": "Drained"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-16T03:57:50Z",
+                        "message": "",
+                        "observedGeneration": 2,
+                        "reason": "Ready",
+                        "status": "True",
+                        "type": "Ready"
+                    }
+                ],
+                "imageID": "ami-09f62c72654741033",
+                "lastPodEventTime": "2026-07-22T10:49:24Z",
+                "nodeName": "ip-10-0-11-217.ec2.internal",
+                "providerID": "aws:///us-east-1b/i-0b9df4a4ec1d03c16"
+            }
+        },
+        {
+            "apiVersion": "karpenter.sh/v1",
+            "kind": "NodeClaim",
+            "metadata": {
+                "annotations": {
+                    "compatibility.karpenter.k8s.aws/cluster-name-tagged": "true",
+                    "karpenter.k8s.aws/ec2nodeclass-hash": "4689754915429741937",
+                    "karpenter.k8s.aws/ec2nodeclass-hash-version": "v5",
+                    "karpenter.k8s.aws/instance-profile-name": "techx-tf4-cluster_6332193992597369731",
+                    "karpenter.k8s.aws/tagged": "true",
+                    "karpenter.sh/nodeclaim-min-values-relaxed": "false",
+                    "karpenter.sh/nodepool-hash": "10581740522941538598",
+                    "karpenter.sh/nodepool-hash-version": "v3"
+                },
+                "creationTimestamp": "2026-07-22T10:51:25Z",
+                "finalizers": [
+                    "karpenter.sh/termination"
+                ],
+                "generateName": "techx-general-",
+                "generation": 1,
+                "labels": {
+                    "karpenter.k8s.aws/ec2nodeclass": "techx-general",
+                    "karpenter.k8s.aws/instance-capability-flex": "false",
+                    "karpenter.k8s.aws/instance-category": "t",
+                    "karpenter.k8s.aws/instance-cpu": "2",
+                    "karpenter.k8s.aws/instance-cpu-manufacturer": "amd",
+                    "karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz": "2200",
+                    "karpenter.k8s.aws/instance-ebs-bandwidth": "2780",
+                    "karpenter.k8s.aws/instance-encryption-in-transit-supported": "false",
+                    "karpenter.k8s.aws/instance-family": "t3a",
+                    "karpenter.k8s.aws/instance-generation": "3",
+                    "karpenter.k8s.aws/instance-hypervisor": "nitro",
+                    "karpenter.k8s.aws/instance-memory": "8192",
+                    "karpenter.k8s.aws/instance-network-bandwidth": "512",
+                    "karpenter.k8s.aws/instance-size": "large",
+                    "karpenter.k8s.aws/instance-tenancy": "default",
+                    "karpenter.sh/capacity-type": "on-demand",
+                    "karpenter.sh/nodepool": "techx-general",
+                    "kubernetes.io/arch": "amd64",
+                    "kubernetes.io/os": "linux",
+                    "node.kubernetes.io/instance-type": "t3a.large",
+                    "topology.k8s.aws/zone-id": "use1-az1",
+                    "topology.kubernetes.io/region": "us-east-1",
+                    "topology.kubernetes.io/zone": "us-east-1a"
+                },
+                "name": "techx-general-v6zw9",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "karpenter.sh/v1",
+                        "blockOwnerDeletion": true,
+                        "kind": "NodePool",
+                        "name": "techx-general",
+                        "uid": "d6b4c398-4df9-41e1-bb7d-e7eb8ea74e8f"
+                    }
+                ],
+                "resourceVersion": "7085913",
+                "uid": "d309cdcf-fba6-4d4e-a518-8452862eab9c"
+            },
+            "spec": {
+                "expireAfter": "720h",
+                "nodeClassRef": {
+                    "group": "karpenter.k8s.aws",
+                    "kind": "EC2NodeClass",
+                    "name": "techx-general"
+                },
+                "requirements": [
+                    {
+                        "key": "karpenter.sh/nodepool",
+                        "operator": "In",
+                        "values": [
+                            "techx-general"
+                        ]
+                    },
+                    {
+                        "key": "kubernetes.io/os",
+                        "operator": "In",
+                        "values": [
+                            "linux"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.k8s.aws/ec2nodeclass",
+                        "operator": "In",
+                        "values": [
+                            "techx-general"
+                        ]
+                    },
+                    {
+                        "key": "node.kubernetes.io/instance-type",
+                        "operator": "In",
+                        "values": [
+                            "t3.large",
+                            "t3a.large"
+                        ]
+                    },
+                    {
+                        "key": "kubernetes.io/arch",
+                        "operator": "In",
+                        "values": [
+                            "amd64"
+                        ]
+                    },
+                    {
+                        "key": "karpenter.sh/capacity-type",
+                        "operator": "In",
+                        "values": [
+                            "on-demand"
+                        ]
+                    }
+                ],
+                "resources": {
+                    "requests": {
+                        "cpu": "305m",
+                        "memory": "252Mi",
+                        "pods": "6"
+                    }
+                }
+            },
+            "status": {
+                "allocatable": {
+                    "cpu": "1930m",
+                    "ephemeral-storage": "17Gi",
+                    "memory": "7270828Ki",
+                    "pods": "35"
+                },
+                "capacity": {
+                    "cpu": "2",
+                    "ephemeral-storage": "20Gi",
+                    "memory": "8028588Ki",
+                    "pods": "35"
+                },
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-07-22T10:51:28Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Launched",
+                        "status": "True",
+                        "type": "Launched"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:52:00Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Registered",
+                        "status": "True",
+                        "type": "Registered"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:52:18Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Initialized",
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T11:01:28Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "ConsistentStateFound",
+                        "status": "True",
+                        "type": "ConsistentStateFound"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T12:58:41Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Consolidatable",
+                        "status": "True",
+                        "type": "Consolidatable"
+                    },
+                    {
+                        "lastTransitionTime": "2026-07-22T10:52:18Z",
+                        "message": "",
+                        "observedGeneration": 1,
+                        "reason": "Ready",
+                        "status": "True",
+                        "type": "Ready"
+                    }
+                ],
+                "imageID": "ami-09f62c72654741033",
+                "lastPodEventTime": "2026-07-22T12:53:41Z",
+                "nodeName": "ip-10-0-10-8.ec2.internal",
+                "providerID": "aws:///us-east-1a/i-0869b2c204e950346"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

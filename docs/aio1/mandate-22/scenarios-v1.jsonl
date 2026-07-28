@@ -1,0 +1,3 @@
+{"id":"m22-success-01","service":"product-reviews","expected_status":"resolved","action_health":[true,true,true],"rollback_health":[]}
+{"id":"m22-forced-wrong-01","service":"product-reviews","expected_status":"rolled_back","action_health":[false,false,false],"rollback_health":[true,true,true]}
+{"id":"m22-rollback-unhealthy-01","service":"product-reviews","expected_status":"escalated","action_health":[false,false,false],"rollback_health":[false,false,false]}

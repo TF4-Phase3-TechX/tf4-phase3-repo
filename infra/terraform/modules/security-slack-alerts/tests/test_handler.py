@@ -638,6 +638,152 @@ class HandlerTests(unittest.TestCase):
         self.assertIn('test-backdoor-user', body)
         self.assertIn('ffffffff-0000-1111-2222-333333333333', body)
 
+    # ------------------------------------------------------------------
+    # H2 Anomaly Detection — CloudWatch Alarm payload handling
+    # ------------------------------------------------------------------
+
+    def test_cloudwatch_alarm_in_alarm_state_sends_red_slack_alert(self):
+        """Rate-spike alarm (ALARM state) must send a red Slack message."""
+        alarm_payload = {
+            'AlarmName': 'mandate11-get-secret-value-rate-spike',
+            'AlarmDescription': 'MANDATE-11 H2 [STATIC THRESHOLD]: >10 GetSecretValue calls trong 60 giây.',
+            'NewStateValue': 'ALARM',
+            'NewStateReason': 'Threshold Crossed: 15 datapoints [15.0 (23/07/26 10:00:00)] was greater than the threshold (10.0).',
+            'OldStateValue': 'OK',
+            'StateChangeTime': '2026-07-23T10:01:00.000+0000',
+            'Region': 'us-east-1',
+            'AWSAccountId': '511825856493',
+        }
+        sns_event = {
+            'Records': [{'Sns': {'Message': json.dumps(alarm_payload)}}]
+        }
+
+        with patch.object(
+            self.handler.urllib.request,
+            'urlopen',
+            return_value=FakeHTTPResponse(),
+        ) as urlopen:
+            self.handler.lambda_handler(sns_event, None)
+
+        urlopen.assert_called_once()
+        payload = urlopen.call_args.args[0].data.decode('utf-8')
+        slack_msg = json.loads(payload)
+
+        # Must be red (#ff0000) for spike alarm
+        self.assertEqual(slack_msg['attachments'][0]['color'], '#ff0000')
+        # Must contain alarm name
+        self.assertIn('mandate11-get-secret-value-rate-spike', payload)
+        # Must show CRITICAL severity
+        self.assertIn('CRITICAL', payload)
+        # Must contain ALARM state
+        self.assertIn('ALARM', payload)
+        # Must include runbook link
+        self.assertIn('mandate-11-incident-response', payload)
+        # CloudWatch metrics must NOT be published (alarm handler skips latency metrics)
+        self.assertEqual(self.cloudwatch.requests, [])
+
+    def test_cloudwatch_alarm_ok_state_does_not_alert(self):
+        """When alarm recovers to OK, no Slack message should be sent."""
+        alarm_payload = {
+            'AlarmName': 'mandate11-get-secret-value-rate-spike',
+            'AlarmDescription': 'MANDATE-11 H2 alarm.',
+            'NewStateValue': 'OK',
+            'NewStateReason': 'Threshold Crossed: back to normal.',
+            'OldStateValue': 'ALARM',
+            'StateChangeTime': '2026-07-23T10:10:00.000+0000',
+            'Region': 'us-east-1',
+            'AWSAccountId': '511825856493',
+        }
+        sns_event = {
+            'Records': [{'Sns': {'Message': json.dumps(alarm_payload)}}]
+        }
+
+        with patch.object(self.handler.urllib.request, 'urlopen') as urlopen:
+            self.handler.lambda_handler(sns_event, None)
+
+        # OK state → no Slack call
+        urlopen.assert_not_called()
+
+    def test_cloudwatch_anomaly_alarm_sends_orange_slack_alert(self):
+        """Anomaly Detection alarm must send an orange (HIGH) Slack message."""
+        alarm_payload = {
+            'AlarmName': 'mandate11-get-secret-value-anomaly-detection',
+            'AlarmDescription': 'MANDATE-11 H2 [ANOMALY DETECTION]: GetSecretValue frequency vượt ML band.',
+            'NewStateValue': 'ALARM',
+            'NewStateReason': 'Outside of anomaly detection band.',
+            'OldStateValue': 'OK',
+            'StateChangeTime': '2026-07-23T11:00:00.000+0000',
+            'Region': 'us-east-1',
+            'AWSAccountId': '511825856493',
+        }
+        sns_event = {
+            'Records': [{'Sns': {'Message': json.dumps(alarm_payload)}}]
+        }
+
+        with patch.object(
+            self.handler.urllib.request,
+            'urlopen',
+            return_value=FakeHTTPResponse(),
+        ) as urlopen:
+            self.handler.lambda_handler(sns_event, None)
+
+        urlopen.assert_called_once()
+        payload = urlopen.call_args.args[0].data.decode('utf-8')
+        slack_msg = json.loads(payload)
+
+        # Anomaly alarm → orange
+        self.assertEqual(slack_msg['attachments'][0]['color'], '#ff9900')
+        self.assertIn('mandate11-get-secret-value-anomaly-detection', payload)
+        self.assertIn('HIGH', payload)
+
+    def test_cloudwatch_alarm_does_not_interfere_with_cloudtrail_events(self):
+        """Normal CloudTrail events in the same batch must still be processed."""
+        alarm_payload = {
+            'AlarmName': 'mandate11-get-secret-value-rate-spike',
+            'NewStateValue': 'ALARM',
+            'NewStateReason': 'Threshold crossed.',
+            'StateChangeTime': '2026-07-23T10:01:00.000+0000',
+            'Region': 'us-east-1',
+            'AWSAccountId': '511825856493',
+        }
+        event_time = datetime.now(timezone.utc) - timedelta(seconds=5)
+        cloudtrail_event = {
+            'source': 'aws.iam',
+            'detail-type': 'AWS API Call via CloudTrail',
+            'account': '511825856493',
+            'region': 'us-east-1',
+            'time': event_time.isoformat().replace('+00:00', 'Z'),
+            'detail': {
+                'eventID': 'abcdef12-3456-7890-abcd-ef1234567890',
+                'eventName': 'CreateUser',
+                'eventTime': event_time.isoformat().replace('+00:00', 'Z'),
+                'sourceIPAddress': '10.0.0.1',
+                'userIdentity': {
+                    'arn': 'arn:aws:sts::511825856493:assumed-role/TF4-Test/attacker',
+                },
+                'requestParameters': {'userName': 'backdoor'},
+            },
+        }
+        sns_event = {
+            'Records': [
+                {'Sns': {'Message': json.dumps(alarm_payload)}},
+                {'Sns': {'Message': json.dumps(cloudtrail_event)}},
+            ]
+        }
+
+        with patch.object(
+            self.handler.urllib.request,
+            'urlopen',
+            return_value=FakeHTTPResponse(),
+        ) as urlopen:
+            self.handler.lambda_handler(sns_event, None)
+
+        # Both alarm + CloudTrail event → 2 Slack calls
+        self.assertEqual(urlopen.call_count, 2)
+        calls_payload = [c.args[0].data.decode('utf-8') for c in urlopen.call_args_list]
+        self.assertTrue(any('mandate11-get-secret-value-rate-spike' in p for p in calls_payload))
+        self.assertTrue(any('CreateUser' in p for p in calls_payload))
+
     def test_email_failure_does_not_block_slack(self):
         """If SNS publish raises, the Slack notification must still be sent."""
         os.environ['FORMATTED_SNS_TOPIC_ARN'] = 'arn:aws:sns:us-east-1:511825856493:audit-security-alerts-formatted'

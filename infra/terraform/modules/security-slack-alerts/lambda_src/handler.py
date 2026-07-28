@@ -483,28 +483,159 @@ def is_expected_sensitive_read(
 
     return False
 
+def handle_cloudwatch_alarm(message, context):
+    """Format and send a Slack alert for a CloudWatch Alarm state change.
+
+    CloudWatch publishes this payload when an alarm transitions to ALARM state:
+    {
+        "AlarmName": "mandate11-...",
+        "AlarmDescription": "...",
+        "NewStateValue": "ALARM",
+        "NewStateReason": "...",
+        "StateChangeTime": "2026-07-23T10:00:00.000+0000",
+        "Region": "us-east-1",
+        "AWSAccountId": "511825856493",
+        "OldStateValue": "OK",
+        "Trigger": { ... }
+    }
+    """
+    alarm_name = message.get('AlarmName', 'UnknownAlarm')
+    alarm_description = message.get('AlarmDescription', '')
+    new_state = message.get('NewStateValue', 'UNKNOWN')
+    state_reason = message.get('NewStateReason', '')
+    state_change_time = message.get('StateChangeTime', 'UnknownTime')
+    region = message.get('Region', 'UnknownRegion')
+    account = message.get('AWSAccountId', 'UnknownAccount')
+
+    if new_state != 'ALARM':
+        logger.info(f"CloudWatch Alarm {alarm_name} transitioned to {new_state} — no alert needed.")
+        return
+
+    lambda_received_at = datetime.now(timezone.utc)
+
+    display_time = state_change_time
+    event_dt = parse_aws_timestamp(state_change_time)
+    if event_dt is not None:
+        event_dt_vn = event_dt + timedelta(hours=7)
+        display_time = (
+            f"{event_dt_vn.strftime('%Y-%m-%d %H:%M:%S')} +07 "
+            f"(UTC: {state_change_time})"
+        )
+
+    cloudtrail_link = (
+        f"https://{region}.console.aws.amazon.com/cloudtrail/home"
+        f"?region={region}#/events?EventName=GetSecretValue"
+    )
+    runbook_link = (
+        "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main"
+        "/docs/audit/runbooks/mandate-11-incident-response.md"
+    )
+
+    # Determine color: static threshold spike = red, anomaly = orange
+    is_spike_alarm = 'rate-spike' in alarm_name
+    color = "#ff0000" if is_spike_alarm else "#ff9900"
+    severity_label = "CRITICAL" if is_spike_alarm else "HIGH"
+
+    slack_message = {
+        "attachments": [
+            {
+                "color": color,
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": f"🚨 MANDATE-11 H2 Anomaly Alarm: {alarm_name}",
+                            "emoji": True,
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "fields": [
+                            {"type": "mrkdwn", "text": f"*Severity:*\n`{severity_label}`"},
+                            {"type": "mrkdwn", "text": f"*State:*\n`{new_state}`"},
+                            {"type": "mrkdwn", "text": f"*Time:*\n{display_time}"},
+                            {"type": "mrkdwn", "text": f"*Account:*\n`{account}`"},
+                            {"type": "mrkdwn", "text": f"*Region:*\n`{region}`"},
+                            {"type": "mrkdwn", "text": f"*Alarm:*\n`{alarm_name}`"},
+                        ],
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": (
+                                f"*Description:* {alarm_description}\n\n"
+                                f"*Reason:* {state_reason}\n\n"
+                                f"*Action:* Investigate immediately — possible credential theft / data exfiltration.\n"
+                                f"<{cloudtrail_link}|View GetSecretValue in CloudTrail> | "
+                                f"<{runbook_link}|Incident Runbook>"
+                            ),
+                        },
+                    },
+                ],
+            }
+        ]
+    }
+
+    logger.info(json.dumps({
+        'marker': 'MANDATE11_H2_ALARM_ALERT',
+        'alarmName': alarm_name,
+        'newState': new_state,
+        'region': region,
+        'account': account,
+    }))
+
+    webhook_url = get_webhook_url()
+    req = urllib.request.Request(
+        webhook_url,
+        data=json.dumps(slack_message).encode('utf-8'),
+        headers={'Content-Type': 'application/json'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            logger.info(
+                f"H2 Alarm alert sent to Slack. AlarmName={alarm_name} "
+                f"Status={response.status}"
+            )
+    except urllib.error.HTTPError as e:
+        logger.error(f"Failed to send H2 alarm to Slack. HTTP {e.code}: {e.read().decode()}")
+        raise
+    except urllib.error.URLError as e:
+        logger.error(f"Failed to send H2 alarm to Slack. URL Error: {e.reason}")
+        raise
+
+
 def lambda_handler(event, context):
     logger.info(json.dumps({
         'marker': 'SECURITY_ALERT_BATCH_RECEIVED',
         'recordCount': len(event.get('Records', [])),
         'requestId': getattr(context, 'aws_request_id', None),
     }))
-    
+
     for record in event.get('Records', []):
         sns_message = record.get('Sns', {}).get('Message')
         if not sns_message:
             continue
-            
+
         try:
             message = json.loads(sns_message)
         except json.JSONDecodeError:
             logger.error("SNS Message is not valid JSON")
             continue
 
+        # -----------------------------------------------------------------
+        # CloudWatch Alarm state change — từ anomaly_alerts SNS topic (H2)
+        # Payload nhận dạng: có 'AlarmName' và 'NewStateValue'
+        # -----------------------------------------------------------------
+        if 'AlarmName' in message and 'NewStateValue' in message:
+            handle_cloudwatch_alarm(message, context)
+            continue
+
         lambda_received_at = datetime.now(timezone.utc)
         source = message.get('source')
         detail = message.get('detail', {})
-        
+
         event_id = detail.get('eventID') or detail.get('id', 'UnknownEventID')
         event_name = "UnknownEvent"
         actor = "UnknownActor"
@@ -515,9 +646,9 @@ def lambda_handler(event, context):
         source_ip = "UnknownIP"
         severity = "high"
         metric_pipeline = 'UnknownToSlack'
-        
+
         should_alert = True
-        
+
         if message.get('detail-type') in ('AWS API Call via CloudTrail', 'AWS Console Sign In via CloudTrail'):
             metric_pipeline = 'CloudTrailToSlack'
             event_name = detail.get('eventName', 'UnknownEvent')

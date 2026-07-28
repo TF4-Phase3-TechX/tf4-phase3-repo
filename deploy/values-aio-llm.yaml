@@ -16,15 +16,34 @@ components:
         value: tool
       - name: BEDROCK_DEADLINE_SECONDS
         value: "4.5"
+      - name: BEDROCK_MAX_ATTEMPTS
+        value: "2"
+      - name: BEDROCK_RETRY_BACKOFF_SECONDS
+        value: "0.1"
+      - name: MANDATE25_MAX_FAULT_TTL_SECONDS
+        value: "120"
+      - name: MANDATE25_FAULT_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: product-reviews-mandate25-control
+            key: token
+            optional: true
       - name: BEDROCK_INPUT_USD_PER_MILLION
-        value: "0.30"
+        value: "0.33"
       - name: BEDROCK_OUTPUT_USD_PER_MILLION
-        value: "2.50"
+        value: "2.75"
       - name: BEDROCK_SYSTEM_CANARY
         valueFrom:
           secretKeyRef:
             name: product-reviews-bedrock-canary
             key: marker
+      - name: LLM_OBSERVABILITY_HASH_SALT
+        valueFrom:
+          secretKeyRef:
+            name: product-reviews-llm-observability
+            key: hash-salt
+      - name: LLM_OBSERVABILITY_ENABLED
+        value: "true"
       - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
         value: "false"
     securityContext:
