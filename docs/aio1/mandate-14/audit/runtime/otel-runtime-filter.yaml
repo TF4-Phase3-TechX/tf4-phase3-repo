@@ -1,0 +1,37 @@
+source: configmap/otel-collector-agent
+namespace: techx-observability
+captured_at: "2026-07-27"
+
+processors:
+  filter/ai_tool_audit:
+    error_mode: propagate
+    log_conditions:
+      - 'log.attributes["log_type"] != "ai_tool_audit"'
+
+exporters:
+  awscloudwatchlogs/ai_audit:
+    log_group_name: /aws/eks/techx-tf4/ai-audit
+    log_stream_name: otel-{ServiceName}-{InstanceId}
+    raw_log: false
+    region: us-east-1
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 300s
+    sending_queue:
+      num_consumers: 2
+      queue_size: 2000
+
+service:
+  pipelines:
+    logs/ai-audit:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - k8sattributes
+        - resourcedetection
+        - resource
+        - filter/ai_tool_audit
+        - batch
+      exporters:
+        - opensearch/ai_tool_audit
+        - awscloudwatchlogs/ai_audit

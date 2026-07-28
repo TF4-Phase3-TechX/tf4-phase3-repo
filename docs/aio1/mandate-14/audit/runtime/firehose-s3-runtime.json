@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-07-27",
+  "subscription_filter": {
+    "log_group": "/aws/eks/techx-tf4/ai-audit",
+    "name": "tf4-ai-audit-to-firehose",
+    "destination": "arn:aws:firehose:us-east-1:511825856493:deliverystream/tf4-ai-audit-logs",
+    "role": "arn:aws:iam::511825856493:role/tf4-ai-audit-cwl-to-firehose-role",
+    "distribution": "ByLogStream"
+  },
+  "delivery_stream": {
+    "name": "tf4-ai-audit-logs",
+    "status": "ACTIVE",
+    "bucket": "arn:aws:s3:::tf4-ai-audit-logs-511825856493",
+    "prefix": "mandate-14/ai-tool-audit/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
+    "error_prefix": "mandate-14/errors/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/type=!{firehose:error-output-type}/",
+    "compression": "GZIP"
+  },
+  "object": {
+    "key": "mandate-14/ai-tool-audit/year=2026/month=07/day=27/hour=14/tf4-ai-audit-logs-1-2026-07-27-14-28-42-ba29ba36-fbcb-4433-9fdd-f411f64f98c0.gz",
+    "last_modified": "2026-07-27T14:29:46Z",
+    "content_length": 2651,
+    "version_id": "bMIjCMh3iLYZaW3wdrxXGhenyX1pNOY5",
+    "content_encoding": "gzip",
+    "server_side_encryption": "AES256",
+    "object_lock_mode": "COMPLIANCE",
+    "object_lock_retain_until": "2026-10-25T14:29:45.969Z",
+    "lifecycle_expiry": "2026-10-26T00:00:00Z"
+  }
+}

@@ -1,0 +1,15 @@
+Command:
+.\scripts\audit\verify-ai-tool-audit-e2e.ps1 -Profile cdo07-tf4-auditreadonly -Region us-east-1
+
+Output:
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-AuditReadOnlyAndAnalyze_2b03e7d876722882/huan.huynh
+Trace ID: 1312ae67158c9e144f40392741b48ea6
+CloudWatch Logs: PASS (1 record)
+Firehose: PASS (ACTIVE)
+S3 WORM: PASS (COMPLIANCE until 2026-10-25T14:29:45.969000+00:00)
+Athena: PASS (query 032aeab6-502a-40d9-805e-25f095dd6278)
+E2E verification: PASS
+
+Note:
+- Lần chạy chỉ thực hiện các API read/query.
+- Không chứa access key, session token, prompt, response hoặc PII.
