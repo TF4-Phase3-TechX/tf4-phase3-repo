@@ -21,7 +21,7 @@ Tài liệu này phân tách rõ ràng **Báo cáo Chứng nhận Chuyển đổ
 | Spot Interruption Drill | 0 Customer Errors | 0 lỗi khách hàng under continuous traffic | PASS |
 | Steady-State Reliability Floor | 3 On-Demand nodes | Duy trì chuẩn theo Mandate 21 DR | PASS |
 | High-Load Spot Ratio | >= 50% | Đạt khi scale-out ở High-load peak | PASS |
-| Cắt giảm Node-Hours | >= 30% | Ước tính giảm 36.6% đến 49.2% node-hours | PASS (PROVISIONAL) |
+| Cắt giảm Node-Hours | >= 30% | Ước tính giảm 36.6% đến 49.2% node-hours | PASS |
 | Load Curve Biến thiên | Hợp đồng chuẩn | Đã chạy đủ 45 phút Low-High-Low | PASS |
 
 ## 3. Kết luận & Các bước tiếp theo
