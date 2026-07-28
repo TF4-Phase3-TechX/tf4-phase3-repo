@@ -23,6 +23,7 @@ Expected exit code: **0**
 | Labeled scenarios | `docs/aio1/mandate-26/rca-labeled-scenarios-v1.jsonl` |
 | Machine-readable report | `docs/aio1/mandate-26/rca-replay-report-v1.json` |
 | ADR / design note | `docs/aiops/ADR-026-rca-root-cause-attribution.md` |
+| Independent PR verification | `docs/aio1/mandate-26/PR-716-INDEPENDENT-VERIFICATION.md` |
 | Reviewer verdict | `docs/aio1/mandate-26/REVIEWER-VERDICT.md` |
 
 ## Exact hashes (regenerate after edits)
@@ -36,13 +37,13 @@ for name in ['rca-labeled-scenarios-v1.jsonl','rca-replay-report-v1.json']:
 git rev-parse HEAD
 ```
 
-Values recorded at implementation time (pre-PR commit may differ):
+Values recorded by the independent verification rerun:
 
 | Item | Value |
 |---|---|
 | Input SHA-256 | `c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667` |
-| Report SHA-256 | see regenerated report after final commit |
-| Git revision (at first report gen) | `f135035eabb9200b20fe8978e02000f390bf1633` (base before M26 commit) |
+| Report SHA-256 | `5dd388b88365595e1a56140ea755a19b714e481488a9e51fd5c60b0bad1d93c6` |
+| Reviewed code Git revision embedded in report | `ecc599131ac953fea853311b1e87ffbe0df7fa10` |
 | Model version | `m26-v1` |
 
 The report embeds `git_revision`, `input_sha256`, and per-case rankings.
@@ -55,7 +56,9 @@ From `rca-replay-report-v1.json`:
 - Root@1: **1.0**  
 - Root@3: **1.0**  
 - MRR: **1.0**  
-- processing p50 / p95: ~1.5–2.5 ms (developer machine, pure engine)  
+- noise precision / recall / F1: **1.0 / 1.0 / 1.0**
+- false noise-rejection rate: **0.0**
+- processing p50 / p95: **1.0875 / 2.3475 ms** (review sandbox, pure engine)
 - attribution coverage: 0.875 (one intentional multi-cluster abstention)
 
 ### Scenario coverage
@@ -81,6 +84,7 @@ py -3 -m pytest `
   tests/test_dependency_graph.py `
   tests/test_trace_graph.py `
   tests/test_rca_engine.py `
+  tests/test_rca_episode.py `
   tests/test_rca_replay.py `
   tests/test_worker_rca.py `
   tests/test_worker.py `
@@ -88,6 +92,14 @@ py -3 -m pytest `
   tests/test_m22_mitigation_replay.py `
   -v
 ```
+
+Independent verification in the review sandbox additionally ran the committed
+replay, Python compilation for `app`, `benchmark`, and `tests`, direct executable
+regression assertions for the corrected paths, and `git diff --check`. The
+sandbox did not expose the project's pytest/numpy/sklearn/prometheus-client
+environment and blocked package download, so the named reviewer must still run
+the full command above in CI or the project virtual environment before changing
+`REVIEWER-VERDICT.md` from `Pending`.
 
 ## Safety / non-interference
 
