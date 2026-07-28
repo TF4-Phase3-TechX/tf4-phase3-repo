@@ -32,7 +32,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Ti le thanh cong cua service product-reviews. Giam manh o day co the anh huong truc tiep den flow xem review va AI assistant.",
+      "description": "Ti le thanh cong cua service product-reviews. No data nghia la chua co traffic/span metric trong khoang thoi gian dang chon.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -58,6 +58,7 @@
               }
             ]
           },
+          "noValue": "No traffic",
           "unit": "percent"
         },
         "overrides": []
@@ -91,7 +92,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "100 * sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\"}[$__rate_interval])) or vector(0)",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
           "legendFormat": "product-reviews success",
           "range": true,
           "refId": "A"
@@ -105,7 +106,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Ti le thanh cong cua LLM service neu he thong co span metrics cho service nay.",
+      "description": "Ti le thanh cong cua Bedrock/LLM call duoc phat ra tu product-reviews. No data nghia la chua co LLM call trong khoang thoi gian dang chon hoac metric chua duoc ingest.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -131,6 +132,7 @@
               }
             ]
           },
+          "noValue": "No LLM calls",
           "unit": "percent"
         },
         "overrides": []
@@ -164,8 +166,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "100 * sum(rate(traces_span_metrics_calls_total{service_name=\"llm\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"llm\"}[$__rate_interval])) or vector(0)",
-          "legendFormat": "llm success",
+          "expr": "(100 * (1 - (sum(rate(app_llm_errors_total{service_name=\"product-reviews\"}[$__rate_interval])) / clamp_min(sum(rate(app_llm_calls_total{service_name=\"product-reviews\"}[$__rate_interval])), 0.000001)))) and (sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
+          "legendFormat": "bedrock success",
           "range": true,
           "refId": "A"
         }
@@ -259,7 +261,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"product-reviews|llm\"}[$__rate_interval]))",
+          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\"}[$__rate_interval]))",
           "legendFormat": "{{service_name}}",
           "range": true,
           "refId": "A"
@@ -358,7 +360,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"product-reviews|llm\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "expr": "sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
           "legendFormat": "{{service_name}} {{span_name}}",
           "range": true,
           "refId": "A"
@@ -576,8 +578,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"llm\"}[$__rate_interval])))",
-          "legendFormat": "llm p95",
+          "expr": "(histogram_quantile(0.95, sum by (le) (rate(app_llm_latency_seconds_bucket{service_name=\"product-reviews\"}[$__rate_interval]))) * 1000) and (sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
+          "legendFormat": "bedrock p95",
           "range": true,
           "refId": "A"
         },
@@ -587,9 +589,9 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"llm\"}[$__rate_interval])))",
+          "expr": "(histogram_quantile(0.99, sum by (le) (rate(app_llm_latency_seconds_bucket{service_name=\"product-reviews\"}[$__rate_interval]))) * 1000) and (sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
           "hide": false,
-          "legendFormat": "llm p99",
+          "legendFormat": "bedrock p99",
           "range": true,
           "refId": "B"
         }
@@ -682,7 +684,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "topk(12, sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"product-reviews|llm\"}[$__rate_interval])))",
+          "expr": "topk(12, sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\"}[$__rate_interval])))",
           "legendFormat": "{{service_name}} {{span_name}}",
           "range": true,
           "refId": "A"
@@ -752,10 +754,10 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "k8s_deployment_available{namespace=~\"$namespace\", deployment=~\".*product-reviews.*|.*llm.*|.*postgresql.*\"}",
+          "expr": "k8s_deployment_available{k8s_namespace_name=\"${namespace}\", k8s_deployment_name=~\"product-reviews|llm\"}",
           "format": "table",
           "instant": true,
-          "legendFormat": "{{deployment}}",
+          "legendFormat": "{{k8s_deployment_name}}",
           "range": false,
           "refId": "A"
         }
@@ -853,8 +855,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (namespace, pod, container) (increase(k8s_container_restarts{namespace=~\"$namespace\", container=~\".*product-reviews.*|.*llm.*|.*postgresql.*\"}[$__range]))",
-          "legendFormat": "{{pod}}/{{container}}",
+          "expr": "sum by (k8s_pod_name, k8s_container_name) (increase(k8s_container_restarts{k8s_namespace_name=\"${namespace}\", k8s_container_name=~\"product-reviews|llm\"}[$__range]))",
+          "legendFormat": "{{k8s_pod_name}}/{{k8s_container_name}}",
           "range": true,
           "refId": "A"
         }
@@ -985,7 +987,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", alertname=~\".*Review.*|.*AI.*|.*LLM.*|.*Postgres.*|.*product.*\"}",
+          "expr": "ALERTS{alertstate=~\"pending|firing\", alertname=~\".*(Review|AI|LLM|Postgres|PostgreSql|Product|product).*\"}",
           "legendFormat": "{{alertname}}",
           "range": true,
           "refId": "A"
@@ -1012,7 +1014,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "Audit note\\n- Dashboard nay uu tien span metrics, Kubernetes metrics va OpenSearch logs hien co.\\n- Neu cac panel LLM/AI khong co data, can bo sung instrumentation cho token usage, fallback count, provider latency, rate-limit/throttle va model error.\\n- Dashboard chi ho tro quan sat va forensic evidence; alert rule rieng van can duoc quan ly trong Prometheus/Grafana alerting.",
+        "content": "Audit note\\n- Dashboard nay uu tien span metrics, Kubernetes metrics, app_llm_* metrics va OpenSearch logs hien co.\\n- LLM production path duoc do tu product-reviews/Bedrock, khong dua vao traffic cua mock llm service.\\n- No data o success-rate panel thuong nghia la chua co traffic/metric trong time range, khong dong nghia 0% success.\\n- Dashboard chi ho tro quan sat va forensic evidence; alert rule rieng van can duoc quan ly trong Prometheus/Grafana alerting.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3",
@@ -1041,18 +1043,47 @@
         "includeAll": false,
         "label": "Namespace",
         "name": "namespace",
-        "options": [],
-        "query": "label_values(k8s_pod_info, namespace)",
-        "refresh": 1,
+        "options": [
+          {
+            "selected": true,
+            "text": "techx-tf4",
+            "value": "techx-tf4"
+          }
+        ],
+        "query": "techx-tf4",
+        "refresh": 0,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "webstore-metrics"
+        "sort": 0,
+        "type": "custom"
+      },
+      {
+        "allValue": "product-reviews|llm",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
         },
-        "definition": "label_values(k8s_pod_info, namespace)"
+        "hide": 0,
+        "includeAll": true,
+        "label": "Review/AI component",
+        "multi": true,
+        "name": "review_ai_component",
+        "options": [
+          {
+            "selected": false,
+            "text": "product-reviews",
+            "value": "product-reviews"
+          },
+          {
+            "selected": false,
+            "text": "llm",
+            "value": "llm"
+          }
+        ],
+        "query": "product-reviews,llm",
+        "skipUrlSync": false,
+        "type": "custom"
       }
     ]
   },
