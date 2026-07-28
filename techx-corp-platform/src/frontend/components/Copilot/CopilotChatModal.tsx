@@ -4,6 +4,8 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import CartActionCard, { CartActionProposalData } from './CartActionCard';
 import SessionGateway from '../../gateways/Session.gateway';
+import AiDebugPanel from '../AiDebug/AiDebugPanel';
+import type { AiDebugMetadata } from '../../utils/aiDebugMetadata';
 
 interface ChatMessage {
     id: string;
@@ -12,6 +14,7 @@ interface ChatMessage {
     proposal?: CartActionProposalData;
     results?: any[];
     isQuickAction?: boolean;
+    aiDebug?: AiDebugMetadata;
 }
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -168,6 +171,7 @@ export const CopilotChatModal: React.FC = () => {
                 text: assistantText,
                 proposal,
                 results: shouldShowResults ? results : undefined,
+                aiDebug: data.aiDebug,
             };
 
             setMessages((prev) => [...prev, assistantMsg]);
@@ -471,6 +475,11 @@ export const CopilotChatModal: React.FC = () => {
                         >
                             {msg.sender === 'assistant' ? renderMarkdown(msg.text) : msg.text}
                         </div>
+                        {msg.sender === 'assistant' && (
+                            <div style={{ width: '100%', maxWidth: '88%' }}>
+                                <AiDebugPanel metadata={msg.aiDebug} />
+                            </div>
+                        )}
                         {msg.proposal && (
                             <div style={{ width: '100%', marginTop: '4px' }}>
                                 <CartActionCard proposal={msg.proposal} userId={userId} sessionId={sessionId} />

@@ -24,3 +24,22 @@ from the root folder.
 It will start all of the required backend services
 and within the container simply run `npm run dev`.
 After that the app should be available at <http://localhost:8080/>.
+
+## AI diagnostics
+
+The Product Q&A and Shopping Copilot interfaces can display cache, model-call,
+token, cost, latency, and memory metadata for local verification. The feature
+is disabled by default.
+
+Set the server-side environment variable below in `.env.override`, then rebuild
+and restart `frontend`:
+
+```shell
+AI_DEBUG_METADATA_ENABLED=true
+docker compose --env-file .env --env-file .env.override build frontend
+make restart service=frontend
+```
+
+When disabled, the Next.js API removes the diagnostic fields before returning
+the response to the browser. This is not a CSS-only visibility toggle. Keep the
+variable false or unset in production.

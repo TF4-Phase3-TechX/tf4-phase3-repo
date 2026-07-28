@@ -2,7 +2,14 @@ import json
 
 import pytest
 from botocore.exceptions import ClientError
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
+import bedrock_adapter
+import llm_observability
 from bedrock_adapter import BedrockAdapter, CircuitBreaker, CircuitOpen, ProviderFailure
 
 
@@ -594,6 +601,47 @@ def test_invalid_intent_contract_does_not_open_availability_circuit():
 
     subject.client = FakeClient(search_intent_response({"search_type": "search"}))
     assert subject.parse_search_intent("find a product")["search_type"] == "search"
+
+
+def test_parse_search_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    class FailThenSucceedClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            if self.calls == 1:
+                raise TimeoutError("first attempt timed out")
+            return search_intent_response({"search_type": "search"})
+
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate24.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    client = FailThenSucceedClient()
+
+    result = adapter(client).parse_search_intent("find a product")
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert result["search_type"] == "search"
+    assert client.calls == 2
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "success",
+    ]
+    assert spans[0].attributes["error.type"] == "timeouterror"
+    assert spans[1].attributes["gen_ai.usage.input_tokens"] == 50
+    assert spans[1].attributes["gen_ai.usage.output_tokens"] == 15
 
 
 def test_compare_products_uses_dedicated_grounded_tool():

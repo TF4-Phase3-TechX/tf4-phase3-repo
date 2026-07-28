@@ -14,6 +14,7 @@ from typing import Any, Callable
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from llm_observability import tool_span, trace_model_call
 from session_store import session_store
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,8 @@ def call_tool(intent: IntentLabel, tool_name: str, fn: Callable, *args, **kwargs
             "tool_name": tool_name,
         },
     )
-    return fn(*args, **kwargs)
+    with tool_span(intent, tool_name):
+        return fn(*args, **kwargs)
 
 
 def _map_search_type_to_intent(search_type: str) -> IntentLabel:
@@ -806,9 +808,18 @@ class BedrockAdapter:
             }
         return request
 
-    def converse(self, question: str, product: dict[str, Any], reviews: list[dict[str, Any]]) -> BedrockResult:
-        started = self.clock()
-        self.breaker.before_call(started)
+    @trace_model_call("product_review_qa", "emit_grounded_answer", "breaker")
+    def converse(
+        self,
+        question: str,
+        product: dict[str, Any],
+        reviews: list[dict[str, Any]],
+        *,
+        _provider_started_at: float | None = None,
+    ) -> BedrockResult:
+        started = (
+            self.clock() if _provider_started_at is None else _provider_started_at
+        )
         try:
             response = self._invoke_with_retry(
                 self._request(question, product, reviews),
@@ -971,10 +982,18 @@ class BedrockAdapter:
                 self.breaker.failure(self.clock())
             raise ProviderFailure(error_name[:64]) from exc
 
-    def compare_products(self, question: str, evidence: dict[str, Any]) -> BedrockResult:
+    @trace_model_call("product_comparison", "emit_grounded_comparison", "breaker")
+    def compare_products(
+        self,
+        question: str,
+        evidence: dict[str, Any],
+        *,
+        _provider_started_at: float | None = None,
+    ) -> BedrockResult:
         """Create a grounded natural-language comparison from resolved catalog evidence."""
-        started = self.clock()
-        self.breaker.before_call(started)
+        started = (
+            self.clock() if _provider_started_at is None else _provider_started_at
+        )
         context = json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
         content = [{"text": context}, {"text": question}]
         if self.guardrail_id != "disabled":
@@ -1082,14 +1101,49 @@ class BedrockAdapter:
                 self.breaker.failure(self.clock())
             raise ProviderFailure(error_name[:64]) from exc
 
-    def parse_search_intent(self, query: str, history: list[dict[str, str]] = None) -> dict[str, Any]:
+    @trace_model_call("search_intent", "emit_search_intent")
+    def _invoke_search_intent_attempt(
+        self,
+        request: dict[str, Any],
+    ) -> Any:
+        """Invoke exactly one provider attempt so each retry gets its own span."""
+        started = time.monotonic()
+        try:
+            injected = self._fault_response(self.fault_source())
+            response = (
+                injected
+                if injected is not None
+                else self.client.converse(**request)
+            )
+        except Exception as exc:
+            exc.latency_ms = (time.monotonic() - started) * 1_000
+            raise
+        if not isinstance(response, dict):
+            return response
+        traced_response = response.copy()
+        usage = response.get("usage", {})
+        traced_response["_metadata"] = {
+            "latency_ms": (time.monotonic() - started) * 1_000,
+            "input_tokens": int(usage.get("inputTokens", 0)),
+            "output_tokens": int(usage.get("outputTokens", 0)),
+        }
+        return traced_response
+
+    def parse_search_intent(
+        self,
+        query: str,
+        history: list[dict[str, str]] = None,
+        *,
+        _provider_started_at: float | None = None,
+    ) -> dict[str, Any]:
         """Parse a natural-language product search query into structured filters.
 
         Returns validated intent dict with _metadata (latency_ms, input_tokens, output_tokens).
         Raises ProviderFailure on any contract violation so the caller can fail closed.
         """
-        started = self.clock()
-        self.intent_breaker.before_call(started)
+        started = self.clock() if _provider_started_at is None else _provider_started_at
+        if _provider_started_at is None:
+            self.intent_breaker.before_call(started)
         try:
             messages = []
             if history:
@@ -1160,12 +1214,7 @@ class BedrockAdapter:
             response = None
             for attempt in range(self.max_attempts):
                 try:
-                    injected = self._fault_response(self.fault_source())
-                    response = (
-                        injected
-                        if injected is not None
-                        else self.client.converse(**request)
-                    )
+                    response = self._invoke_search_intent_attempt(request)
                     break
                 except Exception as exc:
                     if attempt == self.max_attempts - 1:

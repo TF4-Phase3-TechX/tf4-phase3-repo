@@ -51,7 +51,7 @@ def read_cases(path: Path) -> list[dict[str, str]]:
             required = {"case_id", "query", "user_id", "session_id"}
             if not required.issubset(value):
                 raise ValueError(
-                    f"line {line_number}: search case requires: {sorted(required)}"
+                    f"line {line_number}: search case required fields: {sorted(required)}"
                 )
             cases.append(
                 {
@@ -66,7 +66,7 @@ def read_cases(path: Path) -> list[dict[str, str]]:
             required = {"case_id", "product_id", "question", "user_id", "session_id"}
             if not required.issubset(value):
                 raise ValueError(
-                    f"line {line_number}: ask case requires: {sorted(required)}"
+                    f"line {line_number}: ask case required fields: {sorted(required)}"
                 )
             cases.append(
                 {
