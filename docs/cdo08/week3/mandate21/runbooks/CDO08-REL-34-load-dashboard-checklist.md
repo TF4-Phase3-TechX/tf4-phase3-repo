@@ -1,7 +1,7 @@
 # 📋 CDO08-REL-34: Load Generator & Dashboard Operational Checklist
 ## Mandate 21: Single-AZ Loss Drill Readiness
 
-- **Owner**: **Đặng Viết Quyết (DVQuyet) — Lead Security & Reliability Engineer**
+- **Owner**: **Đinh Viết Quyết (DVQuyet) — Lead Security & Reliability Engineer**
 - **Môi trường**: EKS Production `techx-tf4-cluster` | AWS Account `511825856493` | Region `us-east-1`
 - **Mục tiêu**: Chuẩn hóa quy trình thiết lập tải, kênh truy cập private tunnel, bảng theo dõi dashboard và công thức đo RTO phục vụ đợt diễn tập sập AZ đột ngột.
 
