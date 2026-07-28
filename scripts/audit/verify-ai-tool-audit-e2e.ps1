@@ -1,10 +1,10 @@
 param(
     [string]$Profile = "cdo07-tf4-auditreadonly",
     [string]$Region = "us-east-1",
-    [string]$TraceId = "1312ae67158c9e144f40392741b48ea6",
-    [datetime]$StartTimeUtc = [datetime]"2026-07-27T14:00:00Z",
-    [datetime]$EndTimeUtc = [datetime]"2026-07-27T15:00:00Z",
-    [string]$S3ObjectKey = "mandate-14/ai-tool-audit/year=2026/month=07/day=27/hour=14/tf4-ai-audit-logs-1-2026-07-27-14-28-42-ba29ba36-fbcb-4433-9fdd-f411f64f98c0.gz"
+    [string]$TraceId = "5c54c4a617cfd2dc8f5f2472d47ddd54",
+    [datetime]$StartTimeUtc = [datetime]"2026-07-28T07:00:00Z",
+    [datetime]$EndTimeUtc = [datetime]"2026-07-28T08:00:00Z",
+    [string]$S3ObjectKey = "mandate-14/ai-tool-audit/year=2026/month=07/day=28/hour=07/tf4-ai-audit-logs-1-2026-07-28-07-04-40-c5d15f77-a121-4cea-820a-30ca6dc6ca95.gz"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +36,11 @@ $identity = Invoke-AwsCli -Arguments @(
 $accountId = $identity.Account
 $bucketName = "tf4-ai-audit-logs-$accountId"
 $resultBucket = "s3://tf4-athena-query-results-$accountId/results/"
+$partitionTime = $StartTimeUtc.ToUniversalTime()
+$partitionYear = $partitionTime.ToString("yyyy")
+$partitionMonth = $partitionTime.ToString("MM")
+$partitionDay = $partitionTime.ToString("dd")
+$partitionHour = $partitionTime.ToString("HH")
 
 Write-Host "AWS identity: $($identity.Arn)"
 Write-Host "Trace ID: $TraceId"
@@ -101,9 +106,10 @@ Write-Host "S3 WORM: PASS (COMPLIANCE until $($objectMetadata.ObjectLockRetainUn
 $athenaSql = @"
 SELECT year, month, day, hour, trace_id
 FROM tf4_audit_forensics.ai_tool_audit_events
-WHERE year = '2026'
-  AND month = '07'
-  AND day = '27'
+WHERE year = '$partitionYear'
+  AND month = '$partitionMonth'
+  AND day = '$partitionDay'
+  AND hour = '$partitionHour'
   AND trace_id = '$TraceId'
 LIMIT 10
 "@

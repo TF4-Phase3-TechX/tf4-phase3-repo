@@ -7,9 +7,9 @@
 **Delivery tickets:** TF4AIO-81 (machine-readable publication), TF4AIO-79 (final index)
 
 **Status:** Technical eval evidence and named ADR approval ready. Auditability
-runtime evidence is available; the Auditability ADR amendment, a successful
-provider event, calibration-label provenance confirmation, and organizer hidden
-cases remain pending.
+runtime evidence includes a successful provider call. The Auditability ADR
+amendment, calibration-label provenance confirmation, and organizer hidden cases
+remain pending.
 
 ## Evidence summary
 
@@ -67,11 +67,12 @@ CDO-07 verified this runtime path in account `511825856493`, Region
 AI service -> OTel -> CloudWatch -> Firehose -> S3 WORM -> Athena
 ```
 
-The correlated trace is `1312ae67158c9e144f40392741b48ea6`.
-CloudWatch recorded a canonical, content-free `ai_tool_audit` event. The S3
-object has a VersionId, AES256 encryption and Object Lock `COMPLIANCE` retention
-until 2026-10-25. Athena query
-`e34ab45d-33ab-4b54-a304-3b57eef0ed15` returned the same trace.
+The successful correlated trace is `5c54c4a617cfd2dc8f5f2472d47ddd54`.
+CloudWatch recorded a canonical, content-free `ai_tool_audit` event with
+`tool_name=bedrock.converse` and `safety_decision=allow`. The S3 object has a
+VersionId, AES256 encryption and Object Lock `COMPLIANCE` retention until
+2026-10-26. Athena query `ad12916e-9403-43ec-9038-73d849907e00` returned the
+same trace.
 
 Reproduce with the read-only audit profile:
 
@@ -85,6 +86,7 @@ aws sso login --profile cdo07-tf4-auditreadonly
 Supporting artifacts:
 
 - [`cloudwatch-ai-tool-audit.json`](audit/runtime/cloudwatch-ai-tool-audit.json)
+- [`cloudwatch-ai-tool-audit-fallback.json`](audit/runtime/cloudwatch-ai-tool-audit-fallback.json)
 - [`otel-runtime-filter.yaml`](audit/runtime/otel-runtime-filter.yaml)
 - [`firehose-s3-runtime.json`](audit/runtime/firehose-s3-runtime.json)
 - [`athena-trace-query.json`](audit/runtime/athena-trace-query.json)
@@ -169,9 +171,9 @@ hard-bar failures, or any failed supplied case.
 - One candidate run is committed; model nondeterminism is not represented by
   three repetitions.
 - Organizer hidden cases remain grading-day evidence.
-- The captured Auditability trace records `provider_unavailable`. It proves the
-  fallback and storage path, not a successful provider/tool mutation. A
-  controlled successful event must be captured after throttling is resolved.
+- A prior `provider_unavailable` event is preserved as fallback-path evidence;
+  the primary Auditability trace now records a successful provider call with
+  `safety_decision=allow`.
 - The Auditability amendment in ADR-014 is pending named AIE and CDO-07
   approval; the original PR #658 approvals do not cover that amendment.
 - ADR-014 is `Accepted`; the decision owner and three independent reviewers
@@ -197,8 +199,8 @@ named label provenance pending
 Dataset SHA-256: 4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894
 ADR-014: Accepted by the decision owner and three independent reviewers in PR #658
 Auditability runtime: CloudWatch -> Firehose -> S3 COMPLIANCE -> Athena PASS
-Audit trace: 1312ae67158c9e144f40392741b48ea6
-Audit limitation: provider_unavailable sample; successful provider event pending
+Successful audit trace: 5c54c4a617cfd2dc8f5f2472d47ddd54
+Audit decision: bedrock.converse allowed; fallback trace also preserved
 
 Evidence index:
 docs/aio1/mandate-14/MANDATE-14-EVIDENCE-INDEX.md
