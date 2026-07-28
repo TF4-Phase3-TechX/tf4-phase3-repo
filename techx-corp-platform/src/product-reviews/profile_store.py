@@ -47,6 +47,35 @@ _FORGET_MEMORY_PATTERNS = (
     r"\bdelete\s+my\s+preferences\b",
     r"\b(?:quên|xóa|xoá)\s+(?:điều\s+bạn\s+nhớ|sở\s+thích\s+của\s+tôi|sở\s+thích|nó|đi)\b",
 )
+_EXPLICIT_CONSENT_PATTERNS = (
+    r"^(?:please\s+)?(?:remember|save|store)\b",
+    r"^(?:can|could|would)\s+you\s+(?:please\s+)?"
+    r"(?:remember|save|store)\b",
+    r"^(?:bạn\s+)?(?:có\s+thể\s+)?(?:(?:xin\s+)?hãy\s+)?"
+    r"(?:nhớ|lưu)\b",
+)
+_FOLLOWUP_CONSENT_PATTERNS = (
+    r"(?:[,;.]\s*|\b(?:then|and(?:\s+then)?|but(?:\s+then)?)\s+)"
+    r"(?:(?:then|and(?:\s+then)?|but(?:\s+then)?)\s+)?"
+    r"(?:(?:please\s+)?(?:remember|save|store)|"
+    r"(?:can|could|would)\s+you\s+(?:please\s+)?(?:remember|save|store))\b",
+    r"(?:[,;.]\s*|\b(?:rồi|sau\s+đó|và|nhưng)\s+)"
+    r"(?:(?:rồi|sau\s+đó|và|nhưng)\s+)?"
+    r"(?:bạn\s+)?(?:có\s+thể\s+)?(?:(?:xin\s+)?hãy\s+)?"
+    r"(?:nhớ|lưu)\b",
+)
+_NEGATED_PROFILE_VALUE_PATTERNS = (
+    r"\bi\s+(?:prefer|like|love)\s+(?:the\s+)?(?:category\s+)?"
+    r"(?:not|no|none)(?=\s|$|[.,;!?])",
+    r"\b(?:preferred\s+category|favou?rite\s+category)\s*"
+    r"(?:is|=|:)?\s*(?:not|no|none)(?=\s|$|[.,;!?])",
+    r"\bmy\s+(?:preference|favou?rite)\s*(?:category)?\s*"
+    r"(?:is|=|:)?\s*(?:not|no|none)(?=\s|$|[.,;!?])",
+    r"\btôi\s+(?:không|chẳng|chả)\s+(?:thích|ưa\s+thích|ưu\s+tiên|có)\b",
+    r"\b(?:danh\s+mục|loại\s+sản\s+phẩm)\s*"
+    r"(?:yêu\s+thích|ưa\s+thích)?\s*(?:là|=|:)?\s*"
+    r"(?:không(?:\s+(?:có|phải))?|none)(?=\s|$|[.,;!?])",
+)
 
 
 @dataclass(frozen=True)
@@ -74,7 +103,22 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
     if any(re.search(pattern, lowered) for pattern in _NEGATED_MEMORY_PATTERNS):
         return MemoryCommand("reject", {})
 
-    if any(re.search(pattern, lowered) for pattern in _FORGET_MEMORY_PATTERNS):
+    explicit_consent = any(
+        re.match(pattern, lowered) for pattern in _EXPLICIT_CONSENT_PATTERNS
+    )
+    followup_consent = any(
+        re.search(pattern, lowered) for pattern in _FOLLOWUP_CONSENT_PATTERNS
+    )
+    forget_requested = any(
+        re.search(pattern, lowered) for pattern in _FORGET_MEMORY_PATTERNS
+    )
+
+    # A single request that asks to both write and delete memory is ambiguous
+    # and potentially destructive. Reject it without invoking either store
+    # operation instead of guessing which clause owns the user's final intent.
+    if forget_requested and (explicit_consent or followup_consent):
+        return MemoryCommand("reject", {})
+    if forget_requested:
         return MemoryCommand("forget", {})
 
     if any(
@@ -107,19 +151,13 @@ def parse_memory_command(query: str) -> MemoryCommand | None:
     # affirmative command. A loose substring check is unsafe here because
     # refusals such as "I don't want you to remember ..." also contain the
     # word "remember".
-    explicit_consent = any(
-        re.match(pattern, lowered)
-        for pattern in (
-            r"^(?:please\s+)?(?:remember|save|store)\b",
-            r"^(?:can|could|would)\s+you\s+(?:please\s+)?"
-            r"(?:remember|save|store)\b",
-            r"^(?:bạn\s+)?(?:có\s+thể\s+)?(?:(?:xin\s+)?hãy\s+)?"
-            r"(?:nhớ|lưu)\b",
-        )
-    )
     if not explicit_consent:
         return None
     if any(marker in lowered for marker in _UNSUPPORTED_MEMORY_MARKERS):
+        return MemoryCommand("reject", {})
+    if any(
+        re.search(pattern, lowered) for pattern in _NEGATED_PROFILE_VALUE_PATTERNS
+    ):
         return MemoryCommand("reject", {})
 
     values: dict[str, Any] = {}

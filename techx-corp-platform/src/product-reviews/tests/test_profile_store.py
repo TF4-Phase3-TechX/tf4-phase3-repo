@@ -54,12 +54,32 @@ def test_negated_memory_consent_is_rejected_before_positive_matching():
         assert command.values == {}
 
 
-def test_explicit_final_forget_wins_over_earlier_remember_clause():
-    command = parse_memory_command(
-        "Remember my preferred category is telescopes, then forget it"
-    )
-    assert command.action == "forget"
-    assert command.values == {}
+def test_mixed_remember_and_forget_actions_are_rejected_in_both_orders():
+    for query in (
+        "Remember my preferred category is telescopes, then forget it",
+        "Forget my preferences, then remember that I prefer telescopes",
+        "Hãy nhớ danh mục yêu thích là telescopes, rồi xóa sở thích của tôi",
+        "Quên sở thích của tôi, rồi nhớ rằng tôi thích telescopes",
+        "Forget my preferences and remember that I prefer telescopes",
+        "Quên sở thích của tôi và nhớ rằng tôi thích telescopes",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "reject", query
+        assert command.values == {}, query
+
+
+def test_negated_profile_values_are_rejected_before_value_extraction():
+    for query in (
+        "Remember that I prefer not telescopes",
+        "Remember that I prefer no category",
+        "Please remember my preferred category is none",
+        "Hãy nhớ rằng tôi không thích telescopes",
+        "Hãy nhớ rằng tôi không có danh mục yêu thích",
+        "Hãy nhớ danh mục yêu thích là không có",
+    ):
+        command = parse_memory_command(query)
+        assert command.action == "reject", query
+        assert command.values == {}, query
 
 
 def test_budget_is_stored_as_integer_cents():
