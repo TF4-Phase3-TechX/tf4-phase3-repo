@@ -10,7 +10,7 @@
 
 **Mức độ:** Medium — không làm gián đoạn customer-facing traffic nhưng làm mất khả năng quan sát lịch sử
 
-**Trạng thái:** Đã xác định volume chứa dữ liệu cũ; chưa thực hiện recovery live
+**Trạng thái:** Đã xác định candidate former Prometheus volume; chưa xác minh nội dung TSDB hoặc thực hiện recovery live
 
 ---
 
@@ -18,7 +18,7 @@
 
 Grafana không hiển thị metrics trong phần lớn cửa sổ **Last 7 days**; các time series chỉ bắt đầu xuất hiện lại gần ngày 2026-07-28. Kiểm tra live cho thấy Prometheus đang dùng một PVC/EBS volume mới được tạo ngày 2026-07-27, trong khi EBS volume cũ tạo ngày 2026-07-16 đã bị detach nhưng vẫn còn ở trạng thái `available`.
 
-Sự cố không phải do Grafana time range hoặc Prometheus retention. Prometheus vẫn cấu hình retention `7d`. Nguyên nhân trực tiếp là PVC `prometheus` đã được recreate và bind sang một EBS volume rỗng mới; TSDB lịch sử vẫn có khả năng còn trên volume cũ nhờ `reclaimPolicy: Retain`.
+Prometheus vẫn cấu hình retention `7d`; việc dữ liệu biến mất tại một ranh giới đột ngột không phù hợp với expiration dần theo retention. Runtime evidence cho thấy PVC `prometheus` đã được recreate và bind sang một EBS volume mới được provision. Đây là điều kiện trực tiếp khiến Prometheus hiện tại không còn đọc các blocks trên former volume. Historical TSDB data có thể vẫn còn trên former volume, nhưng cần mount snapshot/clone read-only để xác minh.
 
 Không xóa volume cũ `vol-051c0352bdfaceb5d`. Recovery phải được thực hiện trong change window, sau khi snapshot và có phê duyệt của platform owner.
 
@@ -33,14 +33,14 @@ Không xóa volume cũ `vol-051c0352bdfaceb5d`. Recovery phải được thực 
 
 ![Grafana Last 7 days chỉ có dữ liệu sát ngày 28/07](images/incident-20260728-grafana-last-7-days-gap.png)
 
-_Hình 1 — Dashboard chọn `Last 7 days`, nhưng request-rate và p95-latency series chỉ xuất hiện sát ngày 28/07. Đây là biểu hiện đồng thời trên nhiều series, phù hợp với một lần reset TSDB hơn là lỗi query riêng lẻ._
+_Hình 1 — Dashboard `Business Flow Health Overview`, namespace `techx-tf4`, chọn `Last 7 days`; request-rate và p95-latency series chỉ xuất hiện sát ngày 28/07. Ảnh do người báo cáo sự cố cung cấp trong phiên điều tra ngày 2026-07-28; timestamp capture gốc không có trong metadata. Các khung đỏ đã có trong ảnh được cung cấp để nhấn mạnh time range và khoảng trống, không làm thay đổi dữ liệu panel. Biểu hiện đồng thời trên nhiều series phù hợp với storage/TSDB discontinuity, nhưng riêng ảnh này không loại trừ mọi lỗi query hoặc datasource._
 
 ## 3. Timeline
 
 | Thời gian (UTC) | Sự kiện |
 |---|---|
 | 2026-07-16 16:33:38 | EBS volume cũ `vol-051c0352bdfaceb5d` được tạo cho PVC `techx-observability/prometheus`. |
-| 2026-07-25 | Commit `628b66e1` bổ sung vòng đời gp3, `gp3-retain` và cấu hình Prometheus dùng `existingClaim: prometheus`. |
+| 2026-07-24 19:33:30 | Commit `628b66e1` bổ sung vòng đời gp3, `gp3-retain` và cấu hình Prometheus dùng `existingClaim: prometheus` (author timestamp `2026-07-25T02:33:30+07:00`). |
 | 2026-07-27 19:11:19 | PVC `prometheus` hiện tại được tạo với UID `ea652ab7-02d5-40eb-be05-8f922df2f6c9`. |
 | 2026-07-27 19:11:21 | EBS volume mới `vol-03364cc7d0cb2fd35` được provision cho PVC mới. |
 | 2026-07-27 19:33 | Prometheus khởi động, replay WAL trên volume mới và bắt đầu tạo TSDB blocks mới. |
@@ -51,8 +51,8 @@ _Hình 1 — Dashboard chọn `Last 7 days`, nhưng request-rate và p95-latency
 ### 4.1 PVC và mount hiện tại
 
 ```text
-NAME         STATUS   VOLUME                                     CAPACITY   STORAGECLASS   AGE
-prometheus   Bound    pvc-ea652ab7-02d5-40eb-be05-8f922df2f6c9   20Gi       gp3-retain    7h33m
+NAME         STATUS   VOLUME                                     CAPACITY   STORAGECLASS
+prometheus   Bound    pvc-ea652ab7-02d5-40eb-be05-8f922df2f6c9   20Gi       gp3-retain
 ```
 
 PVC live có:
@@ -75,7 +75,7 @@ container=prometheus-server mount=storage-volume:/data
 
 | Vai trò | Volume ID | Trạng thái | Created (UTC) | Kubernetes PV identity |
 |---|---|---|---|---|
-| Historic TSDB | `vol-051c0352bdfaceb5d` | `available` | 2026-07-16 16:33:38 | `pvc-efca0cc7-6cb1-4793-8864-d4c6e46a2fe7` |
+| Candidate former Prometheus volume | `vol-051c0352bdfaceb5d` | `available` | 2026-07-16 16:33:38 | `pvc-efca0cc7-6cb1-4793-8864-d4c6e46a2fe7` |
 | Current TSDB | `vol-03364cc7d0cb2fd35` | `in-use` | 2026-07-27 19:11:21 | `pvc-ea652ab7-02d5-40eb-be05-8f922df2f6c9` |
 
 Cả hai volume đều có tag:
@@ -85,7 +85,7 @@ kubernetes.io/created-for/pvc/name=prometheus
 kubernetes.io/created-for/pvc/namespace=techx-observability
 ```
 
-Volume cũ ở trạng thái `available`, thay vì bị xóa, chứng minh `Retain` đã bảo vệ EBS asset sau khi PVC/PV cũ bị loại khỏi binding hiện tại.
+Former volume ở trạng thái `available`, thay vì bị xóa. Trạng thái này phù hợp với retention behavior của StorageClass có `reclaimPolicy: Retain`, nhưng chưa đủ để xác nhận nội dung filesystem hoặc TSDB blocks còn recoverable. Role audit không đọc được cluster-scoped PV nên chưa kiểm tra được reclaim state và claim history ở Kubernetes.
 
 ### 4.3 Prometheus startup evidence
 
@@ -97,15 +97,15 @@ time=2026-07-27T19:33:32.338Z level=INFO msg="TSDB started"
 time=2026-07-27T19:33:32.340Z level=INFO msg="TSDB retention updated" duration=1w
 ```
 
-`duration=1w` xác nhận retention vẫn là bảy ngày. Vì vậy retention không thể giải thích việc toàn bộ dữ liệu trước ngày 27/07 biến mất cùng lúc.
+`duration=1w` xác nhận retention đang là bảy ngày. Expiration theo retention không phù hợp với ranh giới dữ liệu đột ngột quan sát trên nhiều series; volume replacement là lời giải thích nhất quán hơn với runtime evidence hiện có.
 
 ## 5. Root cause analysis
 
 ### Direct cause
 
-PVC `techx-observability/prometheus` đã bị recreate. PVC mới được dynamic provision sang EBS volume mới rỗng, nên Prometheus chỉ đọc được WAL/blocks phát sinh sau thời điểm cutover.
+PVC `techx-observability/prometheus` đã bị recreate và dynamic provision sang một EBS volume mới. Prometheus hiện chỉ đọc dữ liệu trên volume mới; dashboard cho thấy dữ liệu khả dụng bắt đầu sát thời điểm replacement. Evidence chưa chứng minh volume hoàn toàn rỗng tại thời điểm tạo, nhưng không ghi nhận historical blocks trước cutover trên datasource hiện tại.
 
-### Contributing change
+### Relevant configuration context
 
 Commit `628b66e196c4f575c2b0be091ba3adf1047522e5` (`feat(observability): add gp3 storage lifecycle`) giới thiệu `gp3-retain` và đặt cấu hình tương lai của Prometheus thành:
 
@@ -116,34 +116,36 @@ persistentVolume:
   storageClass: gp3-retain
 ```
 
-Mục tiêu của commit là reuse claim hiện hữu. Tuy nhiên `storageClassName` của PVC là immutable; việc chuyển binding từ lifecycle cũ sang `gp3-retain` không thể là một in-place update an toàn. Runtime evidence chứng minh PVC thực tế đã được thay thế vào ngày 27/07.
+Mục tiêu được ghi trong commit là reuse claim hiện hữu, không phải recreate PVC. Khi `existingClaim` được dùng, cấu hình `storageClass` không tự chứng minh rằng Helm/ArgoCD đã mutate hoặc thay thế claim. `storageClassName` của một PVC đã tạo là immutable, nhưng evidence hiện có chưa xác định controller, user hoặc quy trình nào đã thực hiện replacement ngày 27/07. Vì vậy commit này chỉ là configuration context gần sự cố, chưa được xác nhận là causal mechanism.
 
 ### Root-cause boundary
 
-Evidence hiện có xác nhận chắc chắn **PVC recreation và volume replacement** là nguyên nhân mất historical metrics. Role audit không có quyền đọc ArgoCD Application hoặc cluster-scoped PV/audit events, vì vậy báo cáo chưa quy kết thao tác delete/recreate cho một user, controller hay lệnh cụ thể. Cần EKS audit log/CloudTrail correlation để hoàn tất attribution.
+Evidence hiện có xác nhận **PVC recreation và volume replacement** là điều kiện trực tiếp khiến Prometheus hiện tại không còn truy cập former volume. Kết hợp với ranh giới dữ liệu trên Grafana, đây là nguyên nhân có bằng chứng mạnh nhất của historical-metrics gap. Role audit không có quyền đọc ArgoCD Application hoặc cluster-scoped PV/audit events, vì vậy báo cáo chưa quy kết thao tác delete/recreate cho một user, controller hay lệnh cụ thể. Cần EKS audit log/CloudTrail correlation để hoàn tất attribution và loại trừ hoàn toàn các yếu tố query/datasource đồng thời.
 
 ## 6. Recovery plan
 
 > Không thực hiện trực tiếp từ tài liệu này. Mọi bước write/delete/rebind cần change approval, backup và platform owner.
 
-1. Đặt protection tag và tuyệt đối không xóa `vol-051c0352bdfaceb5d`.
-2. Tạo EBS snapshot của cả volume cũ và volume hiện tại.
-3. Scale Prometheus về `0` trong change window để tránh ghi đồng thời.
-4. Mount snapshot/clone của volume cũ vào helper pod chỉ đọc và xác minh thư mục TSDB (`wal`, `chunks_head`, ULID block directories).
-5. Chọn một trong hai chiến lược:
-   - **Rebind:** tạo static PV trỏ đến volume cũ và bind lại PVC `prometheus`.
-   - **Block recovery:** copy các immutable TSDB block hợp lệ sang volume đích; không copy WAL đang active và phải kiểm tra overlapping blocks trước khi start.
-6. Scale Prometheus lên `1`, kiểm tra `/-/ready`, logs và query range qua ngày 16–28/07.
-7. Xác minh dashboard Grafana, alert evaluation và ingestion hiện tại.
-8. Giữ snapshot rollback cho đến khi owner ký xác nhận recovery.
+1. Đặt protection tag và tuyệt đối không xóa hoặc attach trực tiếp `vol-051c0352bdfaceb5d` vào production workload.
+2. Tạo EBS snapshot của cả former volume và current volume. Ghi lại snapshot ID, AZ, filesystem, volume size, encryption/KMS và rollback owner.
+3. Tạo clone từ hai snapshots trong AZ phù hợp; mọi forensic inspection và recovery thử nghiệm chỉ dùng clones, giữ nguyên hai source volumes.
+4. Mount clones read-only vào isolated helper workload để xác minh filesystem, ownership, Prometheus TSDB version, `wal`, `chunks_head`, ULID block directories, block min/max time và overlap. Nếu former clone không có blocks trước 27/07, dừng recovery.
+5. Chọn chiến lược sau khi platform/reliability owner review kết quả:
+   - **Forensic access:** sau bước inspection read-only, tạo thêm một disposable working clone từ snapshot và chạy Prometheus cô lập trên clone đó với quyền ghi cần thiết cho lock/runtime files. Không thay production PVC; metrics trước và sau cutover được truy vấn từ hai datasource riêng. Không dùng source volume hoặc inspection clone làm writable target.
+   - **Merged recovery:** dùng clone của current volume làm recovery target; khi Prometheus đã scale về `0`, chỉ nhập các immutable, non-overlapping block directories đã được kiểm tra từ former clone. Không copy active WAL hoặc `chunks_head`. Validate block ranges và TSDB compatibility bằng tooling/procedure được owner phê duyệt trước khi cutover.
+6. Chỉ sau khi merged target pass offline validation, tạo static PV/PVC trỏ đến recovered clone. Xác minh CSI driver, AZ/PV node affinity, access mode, filesystem permissions và `reclaimPolicy: Retain` trước khi start Prometheus.
+7. Scale Prometheus lên `1`; kiểm tra `/-/ready`, startup/repair/corruption logs, historical queries và ingestion mới. Nếu validation fail, scale xuống và rebind current-volume clone theo rollback plan.
+8. Xác minh Grafana, alert evaluation và recording rules. Giữ cả source snapshots và rollback clone cho đến khi owner ký xác nhận recovery.
 
 ## 7. Verification checklist
 
-- [ ] Snapshot của volume cũ và volume hiện tại hoàn tất.
-- [ ] Historic volume được mount read-only và xác nhận có TSDB blocks trước 27/07.
+- [ ] Snapshot của former volume và current volume hoàn tất; source volumes không bị attach hoặc mutate.
+- [ ] Former-volume clone được mount read-only và xác nhận có TSDB blocks trước 27/07.
+- [ ] Đã ghi nhận TSDB version, block min/max time, overlap, AZ, node affinity, filesystem và permissions.
 - [ ] Prometheus `Running 2/2`, không có mount, corruption hoặc repair error.
-- [ ] Query `up` và business-flow metrics trả về samples xuyên qua thời điểm 27/07.
-- [ ] Grafana hiển thị lại dữ liệu 16/07–27/07.
+- [ ] Với merged recovery, query `up` và business-flow metrics trả về samples xuyên qua thời điểm 27/07 mà không trùng blocks.
+- [ ] Với forensic access, cả historical datasource và current datasource đều query được đúng time range tương ứng.
+- [ ] Grafana hiển thị dữ liệu 16/07–27/07 qua recovery mode đã được phê duyệt.
 - [ ] Ingestion mới tiếp tục sau recovery, không tạo khoảng trống mới.
 - [ ] Alert rules và recording rules evaluate bình thường.
 
@@ -184,4 +186,4 @@ Role `TF4-AuditReadOnlyAndAnalyze` cho phép đọc namespaced pod/PVC và AWS E
 - đọc ArgoCD `Application` trong namespace `argocd`;
 - `pods/exec`, `pods/portforward` hoặc `services/proxy` để truy cập Grafana nội bộ.
 
-Do đó recovery chưa được thực hiện và ảnh Grafana trong báo cáo được thu tại thời điểm phát hiện sự cố. Các thao tác live tiếp theo phải dùng role được phê duyệt trong change window.
+Do đó recovery chưa được thực hiện. Ảnh Grafana là artifact do người báo cáo cung cấp trong phiên điều tra, không phải ảnh được role audit thu trực tiếp qua Grafana. Các thao tác live tiếp theo phải dùng role được phê duyệt trong change window.
