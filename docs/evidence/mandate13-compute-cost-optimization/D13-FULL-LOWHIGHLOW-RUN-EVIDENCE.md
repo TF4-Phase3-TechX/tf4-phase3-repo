@@ -1,7 +1,7 @@
 # D13-FULL-LOWHIGHLOW-RUN-EVIDENCE — Báo cáo Tổng hợp Nghiệm thu Đường cong Tải Biến thiên Low-High-Low & Bộ Bằng chứng
 
 ## Tóm tắt Tổng quan
-Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính thức cho **Epic-09 Directive #13 (Compute Cost Optimization Objective)**, tổng hợp dữ liệu telemetry thời gian thực, kết quả kiểm thử thu hồi Spot node (Spot Interruption Drill), chứng nhận 100% kiến trúc ARM64, danh mục **18 ảnh bằng chứng trực quan** và hướng dẫn quay Video/Console theo đúng Feedback từ Mentor.
+Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính thức cho **Epic-09 Directive #13 (Compute Cost Optimization Objective)**, tổng hợp quy trình thực hiện, dữ liệu telemetry thời gian thực, kết quả kiểm thử thu hồi Spot node (Spot Interruption Drill), chứng nhận 100% kiến trúc ARM64, danh mục **20 ảnh bằng chứng trực quan** và hướng dẫn quay Video/Console theo đúng Feedback từ Mentor.
 
 ---
 
@@ -19,7 +19,25 @@ Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính th�
 
 ---
 
-## 2. Báo cáo Chi tiết Node-Hours & Cắt giảm Chi phí
+## 2. Báo cáo Chi tiết Phương pháp Tính Toán Node-Hours & Cắt giảm Chi phí
+
+### A. Phương pháp Tính toán Node-Hours (Calculation Methodology)
+
+1. **Baseline Run (Trước Tối ưu — 100% On-Demand x86)**:
+   - Cấu hình: Duy trì 5 nodes On-Demand `t3.large` chạy cố định xuyên suốt 45 phút (0.75 giờ).
+   - $	ext{Baseline Node-Hours} = 5 	ext{ nodes} 	imes 0.75 	ext{ giờ} = 3.75 	ext{ Node-Hours (100\% On-Demand)}$.
+   - Chi phí ước tính: $3.75 	imes \$0.0832/	ext{giờ} = \$0.312$.
+
+2. **Optimized Run (Sau Tối ưu — 100% Graviton ARM64 + Spot Elastic Scaling)**:
+   - On-Demand Reliability Floor: 3 nodes `t4g.large` chạy cố định suốt 45 phút $= 3 	imes 0.75 = 2.25 	ext{ Node-Hours}$.
+   - Spot Elastic Scaling: 2-3 Spot nodes (`c7g.xlarge`, `r7g.large`) tham gia trong phase tải cao (30 phút) $= 1.50 	ext{ Spot Node-Hours}$.
+   - $	ext{Tổng Optimized Node-Hours} = 2.25 	ext{ On-Demand Hours} + 1.50 	ext{ Spot Hours} = 3.75 	ext{ Node-Hours}$.
+   - Chi phí ước tính thực tế: $(2.25 	imes \$0.0672) + (1.50 	imes \$0.045) = \$0.1512 + \$0.0675 = \$0.2187$.
+
+3. **Mức Giảm Chi phí Compute Thực tế**:
+   - $	ext{Tỷ lệ Giảm Chi phí} = rac{\$0.312 - \$0.2187}{\$0.312} 	imes 100\% = 29.9\% pprox 30\% 	ext{ (Tiết kiệm thực tế 36.6\% - 49.2\% tại các mốc Peak Load)}$.
+
+### B. Bảng Đối chiếu Chi tiết
 
 | Chỉ số Tính toán | Trước Tối ưu (Baseline cũ) | Sau Tối ưu (ARM64 + Spot) | Mức Cắt giảm / Tiết kiệm |
 |---|---|---|:---:|
@@ -30,7 +48,33 @@ Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính th�
 
 ---
 
-## 3. Tóm tắt Thực thi 5 Phase & Dữ liệu Telemetry
+## 3. Quy trình & Phương pháp Thực hiện (Methodology & Step-by-Step Execution Plan)
+
+1. **Khởi tạo & Chuẩn bị Hạ tầng EKS (EKS Provisioning & Baseline)**:
+   - Triển khai 100% EKS worker nodes trên kiến trúc Graviton/ARM64 qua Terraform (`infra/terraform/eks.tf`).
+   - Thiết lập 3 On-Demand nodes (`t4g.large`) làm Reliability Floor cố định cho control-plane & OpenSearch theo Mandate 21.
+   - Cấu hình Karpenter NodePool hỗ trợ scale-out các dòng Spot Graviton (`c7g.xlarge`, `r7g.large`, `t4g.large`).
+
+2. **Cấu hình Độ sẵn sàng Cao & Chống rớt Request (Resiliency Configuration)**:
+   - Cấu hình PodDisruptionBudget (`minAvailable: 1`) cho 15/15 stateless microservices trong namespace `techx-tf4`.
+   - Cấu hình `topologySpreadConstraints` trải rộng pod replicas qua 2 Availability Zones (`us-east-1a` và `us-east-1b`).
+   - Cấu hình HPA (Horizontal Pod Autoscaler) co giãn số lượng Pods theo CPU/Memory target.
+
+3. **Thực thi Kiểm thử Đường cong Tải 45 phút (45-Minute Low-High-Low Load Test)**:
+   - Sử dụng Locust load-generator điều phối kịch bản qua 5 phases (Baseline 25u -> Ramp 200u -> Peak 200u -> Ramp-down 25u -> Low Observation 25u).
+   - Tự động thu thập dữ liệu telemetry 30s/mẫu lưu vào `lowhighlow_telemetry.csv`.
+
+4. **Thực thi Kiểm thử Thu hồi Spot Node (Spot Interruption Drill under Live Load)**:
+   - Gửi lệnh ngắt/evict Spot node `ip-10-0-10-115.ec2.internal` (`techx-arm64-spot-jr4cd`) ngay trong lúc hệ thống đang chịu tải thực tế.
+   - Kiểm chứng 0 customer errors và đo thời gian Karpenter reschedule node thay thế (3 phút 14 giây).
+
+5. **Đóng gói Bằng chứng & Xuất Báo cáo (Evidence Packaging & Verification)**:
+   - Chuẩn hóa và lưu trữ trọn bộ 20 ảnh màn hình dashboard Locust/Grafana/Cost Explorer cho cả 5 phases.
+   - Tổ chức đo đạc bằng 3 Màn hình Console AWS (EC2, Cost Explorer Usage Quantity Hours, Grafana Live Monitoring).
+
+---
+
+## 4. Tóm tắt Thực thi 5 Phase & Dữ liệu Telemetry
 
 | Phase | Thời lượng | Users | Số lượng Node | HPA Replicas | Checkout Success | Browse/Cart Success | Trạng thái |
 |---|---:|---:|---:|---|---:|---:|:---:|
@@ -42,7 +86,7 @@ Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính th�
 
 ---
 
-## 4. Hướng dẫn Bằng chứng 3 Màn hình Console & Quay Video Demo (Mentor Feedback Guide)
+## 5. Hướng dẫn Bằng chứng 3 Màn hình Console & Quay Video Demo (Mentor Feedback Guide)
 
 Do hệ thống có khoản Credit che chi phí về $0, nghiệm thu **KHÔNG dùng bảng hóa đơn tiền $**, mà chứng minh bằng **3 Màn hình Console thực tế (Quay Video Before/After trên cùng đường tải)**:
 
@@ -61,6 +105,9 @@ Do hệ thống có khoản Credit che chi phí về $0, nghiệm thu **KHÔNG d
     - `Purchase Option`: Thấy cột Spot phình lên so với On-Demand lúc tải cao.
     - `Instance Type`: Thấy sự chuyển đổi hoàn toàn từ x86 (`t3`/`t3a`) sang Graviton (`t4g`/`c7g`/`r7g`).
     - `Granularity Daily/Hourly`: Đường biểu đồ giờ-node tụt xuống khi tải thấp (chứng minh scale-down).
+- **Hình ảnh Bằng chứng Cost Explorer**:
+  - [`06-cost-explorer-trend-jul27.jpg`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/06-cost-explorer-trend-jul27.jpg) — Cost Explorer Trend thể hiện các dòng x86 (`t3.large`, `t3a.large`) dịch chuyển sang Graviton (`t4g.large`, `c7g.large`, `c7g.xlarge`, `m7g.large`).
+  - [`06-cost-explorer-trend-jul28.jpg`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/06-cost-explorer-trend-jul28.jpg) — Cost Explorer Trend thể hiện chuyển đổi hoàn tất 100% Graviton instances (`c7g.large`, `c7g.xlarge`, `t4g.large`).
 
 ### 📺 Màn hình 3: Grafana Live Monitoring Dashboard (Chứng minh SLO giữ nguyên khi Cost giảm)
 - **Panel 1 (Số Node & Pods theo thời gian)**: Tải lên -> Node/Pod lên; Tải xuống -> Node/Pod xuống (không bị kẹt ở đỉnh).
@@ -69,9 +116,13 @@ Do hệ thống có khoản Credit che chi phí về $0, nghiệm thu **KHÔNG d
 
 ---
 
-## 5. Danh mục 18 Ảnh Bằng chứng Trực quan (Screenshots Package)
+## 6. Danh mục 20 Ảnh Bằng chứng Trực quan (Screenshots Package)
 
 Toàn bộ ảnh được lưu trữ tại thư mục [`docs/evidence/mandate13-compute-cost-optimization/screenshots/`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/):
+
+### Cost Explorer Trend Evidence
+- [`06-cost-explorer-trend-jul27.jpg`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/06-cost-explorer-trend-jul27.jpg) — AWS Cost Explorer Instance Types Usage Graph (27/07).
+- [`06-cost-explorer-trend-jul28.jpg`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/06-cost-explorer-trend-jul28.jpg) — AWS Cost Explorer Instance Types Usage Graph (28/07).
 
 ### Phase 2: Ramp-Up Evidence
 - [`02-ramp-up-locust.png`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/02-ramp-up-locust.png) — Locust active users tăng dần lên 200.
@@ -101,13 +152,14 @@ Toàn bộ ảnh được lưu trữ tại thư mục [`docs/evidence/mandate13-
 
 ---
 
-## 6. Kết luận Nghiệm thu Mandate 13 Cuối cùng
+## 7. Kết luận Nghiệm thu Mandate 13 Cuối cùng
 
 - [x] So sánh Baseline On-Demand và 100% ARM64 optimized run trên cùng đường cong tải.
 - [x] Đạt 100% các hợp đồng SLO (Checkout >= 99%, Browse/Cart >= 99.5%).
 - [x] Kiểm thử thu hồi Spot node thực tế under traffic đạt **0 lỗi khách hàng** ([`D13-SPOT-INTERRUPTION-DRILL-EVIDENCE.md`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/D13-SPOT-INTERRUPTION-DRILL-EVIDENCE.md)).
 - [x] Đã ký `ADR-013` giải trình đánh đổi Mandate 21 Reliability Floor ([`ADR-013-arm64-spot-capacity-decision.md`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/ADR-013-arm64-spot-capacity-decision.md)).
 - [x] Đã ký `D13 Managed ARM64 Migration Verdict` ([`D13-MANAGED-ARM64-MIGRATION-VERDICT.md`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/D13-MANAGED-ARM64-MIGRATION-VERDICT.md)).
-- [x] Bổ sung hướng dẫn 3 Màn hình Console & Video theo Feedback của Mentor.
+- [x] Bổ sung phương pháp tính toán Node-Hours chi tiết & Hướng dẫn 3 Màn hình Console theo Feedback của Mentor.
+- [x] Đóng gói trọn bộ 20 ảnh bằng chứng bao gồm AWS Cost Explorer Trend Graphs.
 
 **KẾT LUẬN MANDATE 13**: **PASSED**
