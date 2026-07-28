@@ -1,8 +1,8 @@
 # CDO08-REL-33 One-AZ Loss Drill Runbook
 
-**Owner:** Quyết  
-**Mandate:** MANDATE-21 - DR Failover  
-**Status:** Draft usable now; REL-32 baseline incorporated  
+**Owner:** Quyết
+**Mandate:** MANDATE-21 - DR Failover
+**Status:** Draft usable now; REL-32 baseline incorporated
 **Last updated:** 2026-07-28
 
 ## 1. Purpose
