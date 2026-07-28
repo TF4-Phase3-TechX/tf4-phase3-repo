@@ -22,6 +22,7 @@ COPY ./src/frontend/types/ types/
 COPY ./src/frontend/utils/enums/ utils/enums/
 COPY ./src/frontend/utils/aiDebugMetadata.ts utils/aiDebugMetadata.ts
 COPY ./src/frontend/utils/aiDebugMetadata.test.ts utils/aiDebugMetadata.test.ts
+COPY ./src/frontend/utils/aiResilienceStatus.ts utils/aiResilienceStatus.ts
 COPY ./src/frontend/utils/serverAiPrincipal.ts utils/serverAiPrincipal.ts
 COPY ./src/frontend/utils/aiPrincipal.test.ts utils/aiPrincipal.test.ts
 COPY ./src/frontend/utils/resilience/ utils/resilience/
