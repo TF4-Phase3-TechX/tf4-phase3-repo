@@ -26,6 +26,7 @@ jobs:
     outputs:
       app: ${{ steps.filter.outputs.app }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      load_generator: ${{ steps.filter.outputs.load_generator }}
       chart: ${{ steps.filter.outputs.chart }}
       deploy: ${{ steps.filter.outputs.deploy }}
       terraform: ${{ steps.filter.outputs.terraform }}
@@ -47,6 +48,8 @@ jobs:
               - 'deploy/build-push-images.sh'
             frontend:
               - 'techx-corp-platform/src/frontend/**'
+            load_generator:
+              - 'techx-corp-platform/src/load-generator/**'
             chart:
               - 'techx-corp-chart/**'
             deploy:
@@ -203,6 +206,29 @@ jobs:
         env:
           DB_CONNECTION_STRING: postgresql://unused:unused@127.0.0.1:1/unused
         run: python -m pytest techx-corp-platform/src/product-reviews/tests -q
+
+  load-generator-test:
+    name: Load generator safety suite
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.load_generator == 'true' || needs.changes.outputs.workflows == 'true'
+    defaults:
+      run:
+        working-directory: techx-corp-platform/src/load-generator
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install pinned test dependency
+        run: python -m pip install --disable-pip-version-check requests==2.34.2
+
+      - name: Compile and run safety tests
+        run: |
+          python -m compileall -q mandate_targeted_load.py paid_ai_control.py
+          python -m unittest \
+            test_paid_ai_control.py \
+            test_mandate_targeted_load.py \
+            -v
 
   yaml-check:
     name: YAML parse check
