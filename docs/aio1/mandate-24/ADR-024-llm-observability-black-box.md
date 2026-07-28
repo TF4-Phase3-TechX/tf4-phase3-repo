@@ -1,6 +1,6 @@
 # ADR-024 — Content-free LLM observability black box
 
-- Status: Proposed — implementation verified offline; runtime/signatures pending
+- Status: Proposed — implementation and production runtime evidence verified; signatures pending
 - Date: 2026-07-27
 - Decision owner: Đình Thông Trần
 - Jira: TF4AIO-85
@@ -64,5 +64,8 @@ observability without retaining prompt or response content.
 | Observability/AIOps owner | Đinh Danh Nam or delegate | Pending | — |
 | Audit reviewer | Named CDO-07 reviewer | Pending | — |
 
-The ADR is not signed and TF4AIO-85 must not be marked Done until these decisions
-and the live evidence index are attached.
+Production evidence is captured under `runtime-20260729/`, including a complete
+model/tool trace, aggregate view, PII-marker negative proof, provider-fallback
+trace and passing overhead comparison. The ADR is still not signed and
+TF4AIO-85 must not be marked Done until the named decisions and evidence pack
+are attached.

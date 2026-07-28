@@ -1,0 +1,28 @@
+{
+  "schema_version": "mandate24-original-trace-assessment-v1",
+  "trace_id": "4c0b33900665391ee04ce35d305ef0ab",
+  "start_time_utc": "2026-07-28T15:17:51Z",
+  "span_count": 15,
+  "services": [
+    "frontend",
+    "frontend-proxy",
+    "product-catalog",
+    "product-reviews"
+  ],
+  "operations": [
+    "POST",
+    "POST /api/product-search-ai",
+    "executing api route (pages) /api/product-search-ai",
+    "oteldemo.ProductCatalogService/ListProducts",
+    "oteldemo.ProductReviewService/SearchProductsAIAssistant",
+    "postgresql",
+    "redis",
+    "router frontend egress",
+    "search_products_ai",
+    "tool.catalog_search"
+  ],
+  "model_span_count": 0,
+  "tool_span_count": 1,
+  "accepted_as_full_chain": false,
+  "reason": "The exact requested trace reconstructs frontend, product-reviews, catalog retrieval and tool boundaries but contains no bedrock.converse model span; replacement trace 7c86a2172fcdded6c0f45dc9076d6b44 is the complete model/tool chain."
+}
