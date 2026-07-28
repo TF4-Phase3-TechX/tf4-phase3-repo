@@ -103,15 +103,16 @@ developers can opt in through `.env.override`.
 
 The canonical submission replay is:
 
-`tests/eval_mandate23/evidence/submission-966b2d3-final/`
+`tests/eval_mandate23/evidence/submission-4ff88e3-final/`
 
 It was captured from clean tracked revision
-`966b2d3619faf3f311d8d944b65802441e1b9a38` through the rebuilt production
-container. Both replay configurations record the runtime image reference,
-image digest, code SHA-256, model, Guardrail, and price snapshot. The manifests
-under `runtime/` and `short-term/` verify successfully; the root
-`manifest.sha256` additionally covers both children and the invalidation
-record.
+`4ff88e3def3284ee55fa9ae73b835508654e5617`, rebased on
+`origin/main@b2d3d52`, through the rebuilt production container. Both replay
+configurations record the runtime image reference, image digest, code SHA-256,
+model, Guardrail, and configured-estimate price snapshot (`0.33` input /
+`2.75` output USD per million tokens). The manifests under `runtime/` and
+`short-term/` verify successfully; the root `manifest.sha256` additionally
+covers both children and the invalidation record.
 
 | Product Q&A observation | Runtime result |
 |---|---:|
@@ -121,11 +122,11 @@ record.
 | Warm hits | 6 / 6 |
 | Warm hit rate | 66.67% |
 | Model calls | 3 (cold only) |
-| Input / output tokens | 4,434 / 986 |
-| Estimated cost | USD 0.00379520 |
-| Mean cold latency | 2,115.45 ms |
-| Mean warm latency | 35.41 ms |
-| Measured latency reduction | 98.33% |
+| Input / output tokens | 4,434 / 987 |
+| Configured estimated cost | USD 0.00417747 |
+| Mean cold latency | 2,142.08 ms |
+| Mean warm latency | 6.62 ms |
+| Measured latency reduction | 99.69% |
 
 All nine memory operations were also semantically validated with zero
 assertion failures: each repetition stored an allow-listed preference,
@@ -138,7 +139,7 @@ independent conversations. Every conversation asserted that the initial search
 contained product `6E92ZMYYFZ`, the relative cheapest turn selected exactly
 that product, and the “this product” review turn returned the same product and
 named Solar Filter. The replay made nine model calls, used 27,096 input and 603
-output tokens, and measured USD 0.00963630.
+output tokens, and measured a configured estimate of USD 0.01059993.
 
 `invalidation.json` records the safe source drill against the discovered
 `reviews.productreviews.id=1`: cold miss, warm hit with no model call, then
@@ -212,7 +213,7 @@ The drill records the exact row ID and original description/score, checks miss �
 
 ## Acceptance checklist
 
-- [x] Product-review and Mandate 23 replay suites remain green (185 tests).
+- [x] Product-review and Mandate 23 replay suites remain green (190 tests).
 - [x] Cold miss → hit with no second provider call.
 - [x] Cross-user repeat misses.
 - [x] Source/model/prompt/Guardrail/schema identity participates in keys.
