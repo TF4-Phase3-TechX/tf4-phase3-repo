@@ -249,6 +249,42 @@ def test_provider_retry_is_bounded_and_normalizes_client_error(monkeypatch):
     )
 
 
+def test_product_qa_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate25.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    subject = adapter(
+        FakeClient(),
+        max_attempts=2,
+        retry_backoff_seconds=0.1,
+        fault_source=lambda: "throttling",
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "error",
+    ]
+    assert [span.attributes["error.type"] for span in spans] == [
+        "throttlingexception",
+        "throttlingexception",
+    ]
+
+
 def test_injected_throttle_opens_fast_fails_and_recovers_after_cooldown():
     fault_mode = ["throttling"]
     now = [0.0]

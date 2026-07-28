@@ -708,6 +708,35 @@ class BedrockAdapter:
             }
         return None
 
+    @trace_model_call("product_review_qa", "emit_grounded_answer")
+    def _invoke_provider_attempt(
+        self,
+        request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Invoke exactly one Q&A provider attempt and emit one client span."""
+        started = time.monotonic()
+        try:
+            injected = self._fault_response(self.fault_source())
+            response = (
+                injected
+                if injected is not None
+                else self.client.converse(**request)
+            )
+        except Exception as exc:
+            exc.error_class = _provider_error_class(exc)
+            exc.latency_ms = (time.monotonic() - started) * 1_000
+            raise
+        if not isinstance(response, dict):
+            return response
+        traced_response = response.copy()
+        usage = response.get("usage", {})
+        traced_response["_metadata"] = {
+            "latency_ms": (time.monotonic() - started) * 1_000,
+            "input_tokens": int(usage.get("inputTokens", 0)),
+            "output_tokens": int(usage.get("outputTokens", 0)),
+        }
+        return traced_response
+
     def _invoke_with_retry(
         self,
         request: dict[str, Any],
@@ -716,12 +745,7 @@ class BedrockAdapter:
         last_error: ProviderFailure | None = None
         for attempt in range(self.max_attempts):
             try:
-                injected = self._fault_response(self.fault_source())
-                response = (
-                    injected
-                    if injected is not None
-                    else self.client.converse(**request)
-                )
+                response = self._invoke_provider_attempt(request)
                 self._record_provider_outcome("success")
                 return response
             except Exception as exc:
@@ -808,7 +832,6 @@ class BedrockAdapter:
             }
         return request
 
-    @trace_model_call("product_review_qa", "emit_grounded_answer", "breaker")
     def converse(
         self,
         question: str,
@@ -817,9 +840,9 @@ class BedrockAdapter:
         *,
         _provider_started_at: float | None = None,
     ) -> BedrockResult:
-        started = (
-            self.clock() if _provider_started_at is None else _provider_started_at
-        )
+        started = self.clock() if _provider_started_at is None else _provider_started_at
+        if _provider_started_at is None:
+            self.breaker.before_call(started)
         try:
             response = self._invoke_with_retry(
                 self._request(question, product, reviews),
