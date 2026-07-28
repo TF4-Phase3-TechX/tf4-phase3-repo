@@ -147,11 +147,12 @@ startup when invalid. RCA failure/timeout never blocks incident creation.
 - Clock skew and async messaging remain approximate (tolerance-based).
 - Episode memory is lost on process restart.
 
-## Deviations from IMPLEMENTATION-PLAN.md
+## Implementation notes
 
-None material. Section 22 hardening notes were applied (LLM boundary name
-`external-llm-provider`, legacy `signals` projection, eligibility by distinct
-canonical services or a multi-service failed trace, contribution rounding).
+The implementation includes explicit LLM boundary naming
+(`external-llm-provider`), a legacy `signals` projection, eligibility by
+distinct canonical services or a multi-service failed trace, and deterministic
+contribution rounding.
 
 ## Consequences
 

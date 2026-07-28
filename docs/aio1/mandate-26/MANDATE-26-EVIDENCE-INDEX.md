@@ -19,11 +19,9 @@ Expected exit code: **0**
 
 | Artifact | Path |
 |---|---|
-| Implementation plan | `docs/aio1/mandate-26/IMPLEMENTATION-PLAN.md` |
 | Labeled scenarios | `docs/aio1/mandate-26/rca-labeled-scenarios-v1.jsonl` |
 | Machine-readable report | `docs/aio1/mandate-26/rca-replay-report-v1.json` |
 | ADR / design note | `docs/aiops/ADR-026-rca-root-cause-attribution.md` |
-| Independent PR verification | `docs/aio1/mandate-26/PR-716-INDEPENDENT-VERIFICATION.md` |
 | Reviewer verdict | `docs/aio1/mandate-26/REVIEWER-VERDICT.md` |
 
 ## Exact hashes (regenerate after edits)
