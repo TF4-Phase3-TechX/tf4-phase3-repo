@@ -1,8 +1,8 @@
 # 📊 BẰNG CHỨNG DIỄN TẬP: CDO08-REL-35
 ## Single-AZ Loss & Disaster Recovery Evidence Pack (Mandate 21)
 
-- **Người thực hiện & Nộp (Owner)**: **Nhân (CDO08 Reliability Engineer)**
-- **Người duyệt (Approvers)**: **Đặng Viết Quyết (DVQuyet) — Lead Security & Reliability Engineer** | **Hải (PM)**
+- **Người thực hiện & Nộp (Owner)**: **Đặng Viết Quyết (DVQuyet) — Lead Security & Reliability Engineer**
+- **Người duyệt (Approvers)**: **Hải (PM)**
 - **Cụm Target**: EKS Production `techx-tf4-cluster` | AWS Account `511825856493` | Region `us-east-1`
 - **Môi trường Diễn tập**: Real Sudden Single-AZ Outage Under Live Load (200 Locust Users)
 - **Trạng thái**: **[ ] DRAFT / IN-PROGRESS** | **[ ] PASS** | **[ ] FAIL**
@@ -101,6 +101,5 @@ aws s3 ls s3://techx-tf4-orders-archive/topics/orders/ --recursive | tail -n 10
 
 | Vai Trò | Họ và Tên | Chữ Ký / Trạng Thái | Ngày Ký |
 | :--- | :--- | :--- | :--- |
-| **Reliability Engineer (Owner)** | **Nhân** | [ ] Signed | ____-__-__ |
-| **Lead Security & Reliability** | **Đặng Viết Quyết (DVQuyet)** | [ ] Approved | ____-__-__ |
+| **Lead Security & Reliability (Owner)** | **Đặng Viết Quyết (DVQuyet)** | [ ] Signed | ____-__-__ |
 | **Project Manager** | **Hải (PM)** | [ ] Approved | ____-__-__ |
