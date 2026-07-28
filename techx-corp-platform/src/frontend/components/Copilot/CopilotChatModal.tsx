@@ -39,6 +39,7 @@ export const CopilotChatModal: React.FC = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [fabHovered, setFabHovered] = useState(false);
     const [sessionId, setSessionId] = useState<string>(generateSessionId);
+    const [healthStatus, setHealthStatus] = useState<'healthy' | 'intermittent' | 'unhealthy'>('healthy');
 
     const userId = useMemo(() => SessionGateway.getSession().userId, []);
 
@@ -51,6 +52,22 @@ export const CopilotChatModal: React.FC = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages, loading, scrollToBottom]);
+
+    // Check health on open
+    useEffect(() => {
+        if (isOpen) {
+            fetch('/api/copilot-health')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'healthy') {
+                        setHealthStatus('healthy');
+                    } else {
+                        setHealthStatus('unhealthy');
+                    }
+                })
+                .catch(() => setHealthStatus('unhealthy'));
+        }
+    }, [isOpen]);
 
     // Auto-resize textarea
     useEffect(() => {
@@ -74,6 +91,7 @@ export const CopilotChatModal: React.FC = () => {
         setMessages((prev) => [...prev, userMsg]);
         setInput('');
         setLoading(true);
+        setHealthStatus('intermittent');
 
         try {
             const response = await fetch('/api/product-search-ai', {
@@ -130,6 +148,15 @@ export const CopilotChatModal: React.FC = () => {
                 }
             }
 
+            const criticalErrors = ['provider_unavailable', 'circuit_open', 'timeout', 'invalid_response', '503', '504', 'degraded'];
+            const isError = criticalErrors.includes(outcome) || criticalErrors.includes(rawIntent);
+
+            if (isError) {
+                setHealthStatus('unhealthy');
+            } else {
+                setHealthStatus('healthy');
+            }
+
             const shouldShowResults = outcome !== 'provider_unavailable'
                 && parsedType !== 'reviews'
                 && parsedType !== 'chitchat'
@@ -148,13 +175,27 @@ export const CopilotChatModal: React.FC = () => {
             };
 
             setMessages((prev) => [...prev, assistantMsg]);
-        } catch (error) {
+        } catch (error: any) {
+            let fallbackMsg = 'Trợ lý AI hiện đang bận. Vui lòng thử lại sau.';
+            const errStr = error?.message || String(error);
+
+            if (errStr.includes('503')) {
+                fallbackMsg = 'Hệ thống AI đang gặp gián đoạn tạm thời. Vui lòng thử lại sau.';
+                setHealthStatus('unhealthy');
+            } else if (errStr.includes('504')) {
+                fallbackMsg = 'Hệ thống AI đang phản hồi quá chậm. Vui lòng thử lại.';
+                setHealthStatus('intermittent');
+            } else if (errStr.includes('400')) {
+                fallbackMsg = 'Hệ thống AI gặp sự cố xử lý dữ liệu. Vui lòng thử lại.';
+                setHealthStatus('intermittent');
+            }
+
             setMessages((prev) => [
                 ...prev,
                 {
                     id: `msg_${Date.now() + 1}`,
                     sender: 'assistant',
-                    text: 'Trợ lý AI hiện đang bận. Vui lòng thử lại sau.',
+                    text: fallbackMsg,
                 },
             ]);
         } finally {
@@ -324,6 +365,18 @@ export const CopilotChatModal: React.FC = () => {
                     <span style={{
                         textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                     }}>Shopping Copilot</span>
+                    {/* Status Dot */}
+                    <div
+                        title={healthStatus === 'healthy' ? 'Đang kết nối bình thường' : healthStatus === 'intermittent' ? 'Kết nối chập chờn' : 'Mất kết nối'}
+                        style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            marginLeft: '4px',
+                            backgroundColor: healthStatus === 'healthy' ? '#10b981' : healthStatus === 'intermittent' ? '#f59e0b' : '#ef4444',
+                            boxShadow: `0 0 8px ${healthStatus === 'healthy' ? '#10b981' : healthStatus === 'intermittent' ? '#f59e0b' : '#ef4444'}`,
+                        }}
+                    />
                 </div>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <button

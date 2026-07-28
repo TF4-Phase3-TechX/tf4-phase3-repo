@@ -1,0 +1,4 @@
+{"mode": "malformed_output", "seconds_remaining": 60.0}
+{"fault": {"mode": "malformed_output", "seconds_remaining": 59.845}, "resilience": {"circuit_state": "closed", "last_provider_error": "none", "last_provider_outcome": "never_attempted"}}
+{"output": "docs\\aio1\\mandate-25\\evidence\\runtime-local-20260728\\malformed-final-replay.jsonl", "rows": 1}
+{"fault": {"mode": "off", "seconds_remaining": 0.0}, "resilience": {"circuit_state": "closed", "last_provider_error": "none", "last_provider_outcome": "success"}}
