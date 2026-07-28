@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Sequence
@@ -49,7 +50,7 @@ class RCAEngineConfig:
             self.temporal_weight,
             self.anomaly_weight,
         )
-        if any(w < 0 or w != w or w == float("inf") for w in weights):
+        if any(not math.isfinite(w) or w < 0 for w in weights):
             raise ValueError("RCA feature weights must be finite and nonnegative")
         if sum(weights) <= 0:
             raise ValueError("RCA total feature weight must be positive")
@@ -57,11 +58,23 @@ class RCAEngineConfig:
             ("contradiction_penalty", self.contradiction_penalty),
             ("parallel_anomaly_penalty", self.parallel_anomaly_penalty),
         ):
-            if value < 0 or value > 1 or value != value:
+            if not math.isfinite(value) or value < 0 or value > 1:
                 raise ValueError(f"{name} must be in [0, 1]")
-        if self.temporal_tolerance_seconds < 0:
-            raise ValueError("temporal tolerance cannot be negative")
-        if self.max_services <= 0 or self.max_traces <= 0 or self.max_spans <= 0:
+        if (
+            not math.isfinite(self.temporal_tolerance_seconds)
+            or self.temporal_tolerance_seconds < 0
+        ):
+            raise ValueError("temporal tolerance must be finite and nonnegative")
+        if (
+            not math.isfinite(self.min_score_margin_for_attribution)
+            or not 0 <= self.min_score_margin_for_attribution <= 1
+        ):
+            raise ValueError("minimum attribution margin must be in [0, 1]")
+        limits = (self.max_services, self.max_traces, self.max_spans)
+        if any(
+            not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0
+            for limit in limits
+        ):
             raise ValueError("RCA resource limits must be positive")
 
 
@@ -87,8 +100,16 @@ class RCAEngine:
         started = datetime.now(timezone.utc)
         cfg = self.config
         observations = list(engine_input.observations or [])
-        # Cap services deterministically
-        observations = sorted(observations, key=lambda o: o.service)[: cfg.max_services]
+        # Cap services deterministically while retaining current anomalies before
+        # recovered/non-anomalous episode context.
+        observations = sorted(
+            observations,
+            key=lambda o: (
+                0 if o.is_anomalous else 1,
+                0 if o.first_anomalous_at is not None else 1,
+                o.service,
+            ),
+        )[: cfg.max_services]
         by_service = {o.service: o for o in observations}
 
         graph = engine_input.graph or DependencyGraph.from_static(TECHX_CALL_GRAPH)
@@ -111,10 +132,19 @@ class RCAEngine:
 
         # Candidate universe
         anomalous_services = {o.service for o in observations if o.is_anomalous}
+        # Episode observations may represent a service that recovered before its
+        # callers became anomalous. Its recorded anomaly onset keeps it eligible.
+        episode_services = {
+            o.service
+            for o in observations
+            if o.is_anomalous or o.first_anomalous_at is not None
+        }
         trace_services = {s.service for s in parse.spans if s.error}
         affected = set(anomalous_services)
         # Expand with graph dependencies that could explain the affected cluster
-        candidate_set: set[str] = set(anomalous_services) | set(trace_services)
+        candidate_set: set[str] = (
+            set(anomalous_services) | set(episode_services) | set(trace_services)
+        )
         for service in list(affected):
             candidate_set |= set(working_graph.reachable_callees(service))
             candidate_set |= set(working_graph.callers(service))
@@ -126,10 +156,9 @@ class RCAEngine:
         candidate_set = {s for s in candidate_set if s and s != "unknown"}
         if len(candidate_set) > cfg.max_services:
             # Prefer anomalous + trace error services
-            priority = sorted(anomalous_services | trace_services)
+            priority = sorted(anomalous_services | episode_services | trace_services)
             rest = sorted(candidate_set - set(priority))
-            candidate_set = set(priority + rest) 
-            candidate_set = set(sorted(candidate_set)[: cfg.max_services])
+            candidate_set = set((priority + rest)[: cfg.max_services])
 
         if not candidate_set and not anomalous_services:
             ended = datetime.now(timezone.utc)
@@ -150,9 +179,17 @@ class RCAEngine:
                 span_count=len(parse.spans),
             )
 
-        # Components among anomalous services (for multi-cluster detection)
+        # Components among anomalous services plus trace-supported boundaries.
+        # Including trace services connects sibling victims through a trace-only
+        # root while keeping unrelated observed anomalies separate.
         if len(anomalous_services) >= 2:
-            undirected_components = working_graph.connected_components(anomalous_services)
+            component_nodes = anomalous_services | trace_services
+            raw_components = working_graph.connected_components(component_nodes)
+            undirected_components = [
+                frozenset(set(component) & anomalous_services)
+                for component in raw_components
+                if set(component) & anomalous_services
+            ]
             multi_cluster = len(undirected_components) >= 2
         else:
             undirected_components = [
@@ -162,7 +199,12 @@ class RCAEngine:
 
         trace_available = "trace" not in unavailable and bool(parse.spans)
         origins = (
-            analyze_trace_origins(parse)
+            analyze_trace_origins(
+                parse,
+                clock_skew_tolerance_us=int(
+                    cfg.temporal_tolerance_seconds * 1_000_000
+                ),
+            )
             if parse.spans
             else {}
         )
@@ -182,7 +224,7 @@ class RCAEngine:
                     affected=affected_list,
                     graph=working_graph,
                     origins=origins,
-                    trace_available=trace_available or bool(parse.spans),
+                    trace_available=trace_available,
                     traces_explicitly_unavailable="trace" in unavailable,
                     anomalous_services=anomalous_services,
                 )
@@ -221,13 +263,16 @@ class RCAEngine:
                 # Parallel noise: anomalous, not part of the top root's explained cascade,
                 # and does not itself explain the cascade root via a call path that would
                 # make it a superior upstream cause of the same victims.
-                if cand.service in anomalous_services and not in_cascade:
+                if (
+                    trace_available
+                    and cand.service in anomalous_services
+                    and not in_cascade
+                ):
                     explains_cascade_core = bool(
                         set(cand.explained_affected_services) & (cascade - {cand.service})
                     )
                     # Sibling / disconnected noise: may share a common caller but is not
                     # on the failure path selected by the top candidate.
-                    upstream_of_root = working_graph.has_call_path(top.service, cand.service)
                     # cand is upstream of root if root calls into cand... failure at cand
                     # hurts root when root->cand. For payment root, ad is NOT upstream.
                     is_upstream_cause = working_graph.has_call_path(
@@ -277,16 +322,32 @@ class RCAEngine:
             # Trace-supported single cascade + optional singleton noise may still attribute.
             # Without trace support, two+ undirected components abstain rather than invent
             # a global root (see multiple-independent-clusters fixture).
+            top_trace = (
+                candidates[0].contributions.get("trace_origin_support")
+                if candidates
+                else None
+            )
+            top_explains_cascade = bool(
+                candidates
+                and len(
+                    set(candidates[0].explained_affected_services)
+                    & anomalous_services
+                )
+                >= 2
+            )
             can_attribute_cascade = (
                 trace_available
                 and len(multi_service_components) <= 1
                 and candidates
                 and candidates[0].classification != "unexplained_parallel_anomaly"
+                and top_explains_cascade
+                and top_trace is not None
+                and top_trace.raw_value is not None
+                and top_trace.raw_value > 0
             )
             if can_attribute_cascade and (
                 score_margin is None
                 or score_margin >= cfg.min_score_margin_for_attribution
-                or single_components
             ):
                 top = candidates[0]
                 noise = [
@@ -315,30 +376,31 @@ class RCAEngine:
                     "supported cascade root across clusters."
                 )
                 for cand in candidates:
-                    if cand.classification == "suspected_root":
+                    if cand.classification in {
+                        "suspected_root",
+                        "unexplained_parallel_anomaly",
+                    }:
                         cand.classification = "root_candidate"
-        elif not candidates or (
-            candidates[0].score < 0.12
-            and not (trace_available and candidates[0].contributions.get("trace_origin_support", RCASignalContribution(available=False, raw_value=None, weight=0, weighted_value=None, reason="")).raw_value)
+        elif (
+            not candidates
+            or candidates[0].score < 0.12
+            or (
+                len(candidates) > 1
+                and score_margin is not None
+                and score_margin < cfg.min_score_margin_for_attribution
+            )
         ):
-            # Insufficient if everything is weak and no strong trace support
-            if not candidates or candidates[0].score < 0.12:
-                attribution_status = "insufficient_evidence"
-                suspected = None
-                confidence = 0.0
-                explanation = (
-                    "Insufficient evidence to attribute a root service safely. "
-                    f"Unavailable signals: {unavailable or 'none'}."
-                )
-                for cand in candidates:
-                    if cand.classification == "suspected_root":
-                        cand.classification = "insufficient_evidence"
-            else:
-                attribution_status = "attributed"
-                suspected = candidates[0].service
-                candidates[0].classification = "suspected_root"
-                confidence = min(0.95, candidates[0].score)
-                explanation = self._build_explanation(candidates[0], score_margin)
+            attribution_status = "insufficient_evidence"
+            suspected = None
+            confidence = 0.0
+            explanation = (
+                "Insufficient evidence to attribute a root service safely. "
+                f"Top score margin={score_margin}; unavailable signals: "
+                f"{unavailable or 'none'}."
+            )
+            for cand in candidates:
+                if cand.classification == "suspected_root":
+                    cand.classification = "insufficient_evidence"
         else:
             attribution_status = "attributed"
             suspected = candidates[0].service
@@ -463,17 +525,12 @@ class RCAEngine:
             coverage_raw = len(explained) / max(len(affected), 1)
         else:
             coverage_raw = 0.0
-        # Boost when candidate sits on path between affected nodes
-        path_hits = 0
-        for a in affected:
-            if a == service:
-                path_hits += 1
-                continue
-            if graph.has_call_path(a, service) or graph.has_call_path(service, a):
-                path_hits += 1
-        if affected:
-            coverage_raw = max(coverage_raw, path_hits / len(affected))
-        topology_available = bool(graph.services())
+        # Topology is candidate-specific: a global static graph must not turn an
+        # unseen, unconnected service's missing topology into a healthy zero.
+        topology_available = bool(
+            service in graph.services()
+            and (graph.callers(service) or graph.callees(service))
+        )
         if topology_available:
             topo_contrib = RCASignalContribution(
                 available=True,
@@ -537,37 +594,45 @@ class RCAEngine:
                         f"onset of {service} is later than {other_name} by {-delta:.1f}s"
                     )
             if comparisons == 0:
-                # Only self or missing peer onsets — neutral available with mid score if anomalous early
-                temporal_raw = 0.5 if service in anomalous_services else 0.3
-                reason = "insufficient pairwise onset pairs; neutral temporal score"
+                temporal_raw = None
+                reason = "insufficient pairwise onset pairs"
             else:
                 temporal_raw = consistent / comparisons
                 reason = f"temporal consistency {consistent}/{comparisons} within {tol}s"
-            temporal_contrib = RCASignalContribution(
-                available=True,
-                raw_value=round(temporal_raw, 6),
-                weight=cfg.temporal_weight,
-                weighted_value=None,
-                reason=reason,
-            )
-            evidence_facts.append(
-                RCAEvidenceFact(
-                    source="temporal",
-                    fact=reason,
-                    support=float(temporal_raw),
-                    available=True,
-                    observed_at=onset,
+            if temporal_raw is None:
+                temporal_contrib = RCASignalContribution(
+                    available=False,
+                    raw_value=None,
+                    weight=cfg.temporal_weight,
+                    weighted_value=None,
+                    reason=reason,
                 )
-            )
+            else:
+                temporal_contrib = RCASignalContribution(
+                    available=True,
+                    raw_value=round(temporal_raw, 6),
+                    weight=cfg.temporal_weight,
+                    weighted_value=None,
+                    reason=reason,
+                )
+                evidence_facts.append(
+                    RCAEvidenceFact(
+                        source="temporal",
+                        fact=reason,
+                        support=float(temporal_raw),
+                        available=True,
+                        observed_at=onset,
+                    )
+                )
 
         # --- local_anomaly_support ---
         if obs is None:
             anomaly_contrib = RCASignalContribution(
-                available=True,
-                raw_value=0.0,
+                available=False,
+                raw_value=None,
                 weight=cfg.anomaly_weight,
                 weighted_value=None,
-                reason="no local detector observation (allowed for trace-only root)",
+                reason="no local detector observation",
             )
         else:
             # Bounded aggregation: max confidence among anomalous signals
@@ -622,20 +687,24 @@ class RCAEngine:
                 contrib.weighted_value = None
 
         if available_weights > 0:
-            base_score = weighted_sum / available_weights
+            base_score = round(weighted_sum / available_weights, 6)
         else:
             base_score = 0.0
 
         # Penalties
         penalty = 0.0
+        penalties: dict[str, float] = {}
         if any("dependency-victim" in c for c in contradictions):
             penalty += cfg.contradiction_penalty
+            penalties["dependency_victim"] = cfg.contradiction_penalty
         if any("later than" in c for c in contradictions):
-            penalty += min(cfg.contradiction_penalty, 0.1)
+            temporal_penalty = min(cfg.contradiction_penalty, 0.1)
+            penalty += temporal_penalty
+            penalties["temporal_contradiction"] = temporal_penalty
 
         # Parallel anomaly penalty applied later in classification; light topology disconnect
         disconnected = False
-        if service in anomalous_services and affected:
+        if trace_available and service in anomalous_services and affected:
             if not any(
                 service == a
                 or graph.has_call_path(service, a)
@@ -645,6 +714,7 @@ class RCAEngine:
             ) and len(affected) > 1:
                 disconnected = True
                 penalty += cfg.parallel_anomaly_penalty
+                penalties["parallel_anomaly"] = cfg.parallel_anomaly_penalty
                 contradictions.append(
                     f"{service} is disconnected from primary affected cluster"
                 )
@@ -660,6 +730,8 @@ class RCAEngine:
             rank=0,
             classification=classification,
             contributions=contributions,
+            base_score=round(base_score, 6),
+            penalties={name: round(value, 6) for name, value in penalties.items()},
             explained_affected_services=explained_list,
             contradictions=contradictions,
             evidence=evidence_facts,
@@ -754,7 +826,7 @@ def parse_traces_payload(
     fmt = str(traces_block.get("format") or "jaeger-v1").lower()
     data = traces_block.get("data") or traces_block.get("traces") or []
     if not isinstance(data, list):
-        data = []
+        raise ValueError("traces.data must be a list")
     if fmt in {"jaeger-v1", "jaeger", "jaeger_v1"}:
         return (
             parse_jaeger_traces(
@@ -763,6 +835,13 @@ def parse_traces_payload(
             [],
         )
     if fmt in {"normalized", "normalized-spans", "spans"}:
-        return parse_normalized_spans(data, aliases=aliases), []
-    # Unknown format — treat as unavailable rather than inventing edges
-    return TraceParseResult(), ["trace"]
+        return (
+            parse_normalized_spans(
+                data,
+                aliases=aliases,
+                max_traces=max_traces,
+                max_spans=max_spans,
+            ),
+            [],
+        )
+    raise ValueError(f"unsupported trace format: {fmt}")

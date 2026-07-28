@@ -47,6 +47,10 @@ anomalous services
 A service is **not** excluded merely because it has no local anomalous `Decision`
 (trace-only root).
 
+Recently recovered services with a recorded episode onset are also retained.
+Candidate/resource truncation preserves anomalous, recovered, and failed-trace
+services before deterministic alphabetical fallback candidates.
+
 ### Scoring
 
 Four inspectable features with availability-aware normalization:
@@ -63,6 +67,10 @@ Bounded penalties apply for dependency-victim contradictions and disconnected
 parallel anomalies. Seed weights are design defaults, not production-calibrated
 coefficients.
 
+`base_score` and the named penalty map are serialized per candidate so the final
+score can be reproduced. A tie or margin below the configured attribution margin
+abstains instead of turning alphabetical order into a causal decision.
+
 ### Correlation / noise
 
 An anomalous service may be classified `unexplained_parallel_anomaly` when it is
@@ -74,6 +82,30 @@ discarded, and must not win Root@1 when the cascade is supported.
 Statuses: `attributed` | `multiple_independent_clusters` | `insufficient_evidence`.
 Independent multi-cluster faults without trace-supported single-cascade evidence
 abstain rather than invent a global root.
+
+An independent-cluster abstention does not relabel one cluster as correlated
+noise. A disconnected anomaly is classified as noise only when relevant trace
+coverage is present; missing trace evidence leaves it unresolved.
+
+### External input and trace hardening
+
+- Jaeger trace IDs and span IDs are deduplicated before evidence aggregation.
+- Normalized and Jaeger parsing skip malformed spans with explicit errors rather
+  than aborting the whole case.
+- Both trace formats enforce the configured trace/span caps.
+- Explicit boolean error fields are parsed semantically (`"false"` is false).
+- Malformed/unbounded service identifiers are replaced by a stable, distinct,
+  bounded digest identity before they enter Markdown, logs, or candidate output.
+- Namespace and deployment-suffix stripping require explicit opt-in so different
+  environments are not silently merged.
+
+### End-to-end replay mode
+
+`end_to_end_series` uses each signal's `series` array of
+`{"timestamp": <ISO-8601>, "value": <finite number>}` records plus an
+`incident_start_index`. Series across services must be timestamp-aligned. The
+runner replays the production `Detector` sequentially and derives first breach
+and anomaly timestamps; labels remain isolated in the evaluator.
 
 ### Episode state
 
@@ -119,7 +151,7 @@ startup when invalid. RCA failure/timeout never blocks incident creation.
 
 None material. Section 22 hardening notes were applied (LLM boundary name
 `external-llm-provider`, legacy `signals` projection, eligibility by distinct
-canonical services, contribution rounding).
+canonical services or a multi-service failed trace, contribution rounding).
 
 ## Consequences
 

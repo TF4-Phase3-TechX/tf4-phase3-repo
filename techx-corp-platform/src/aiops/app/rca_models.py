@@ -7,9 +7,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from .models import Evidence
-
-
 class SignalObservation(BaseModel):
     signal: str
     anomalous: bool
@@ -20,7 +17,9 @@ class SignalObservation(BaseModel):
     observed_at: datetime
     first_breached_at: datetime | None = None
     first_anomalous_at: datetime | None = None
-    evidence: list[Evidence] = Field(default_factory=list)
+    # Kept structural to avoid coupling the pure RCA model layer back to the
+    # incident model module. Worker/replay evidence remains JSON serializable.
+    evidence: list[Any] = Field(default_factory=list)
 
 
 class RCAObservation(BaseModel):
@@ -86,6 +85,8 @@ class RCACandidate(BaseModel):
         "insufficient_evidence",
     ]
     contributions: dict[str, RCASignalContribution]
+    base_score: float = 0.0
+    penalties: dict[str, float] = Field(default_factory=dict)
     explained_affected_services: list[str] = Field(default_factory=list)
     contradictions: list[str] = Field(default_factory=list)
     evidence: list[RCAEvidenceFact] = Field(default_factory=list)
@@ -107,6 +108,8 @@ class RCACandidate(BaseModel):
             "rank": self.rank,
             "classification": self.classification,
             "signals": signals,
+            "base_score": self.base_score,
+            "penalties": dict(self.penalties),
             "explained_affected_services": list(self.explained_affected_services),
             "contradictions": list(self.contradictions),
         }

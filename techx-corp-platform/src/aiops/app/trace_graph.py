@@ -112,6 +112,27 @@ def _is_error(tags: Mapping[str, str], status_code: Any = None) -> bool:
     return False
 
 
+def _explicit_error(value: Any) -> bool:
+    """Parse an explicit error flag without treating non-empty strings as true."""
+
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value == 1
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "error"}
+    return False
+
+
+def _integer(value: Any, *, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer")
+    converted = int(value)
+    if converted < 0:
+        raise ValueError(f"{field_name} must be nonnegative")
+    return converted
+
+
 def _span_kind(tags: Mapping[str, str], explicit: Any = None) -> SpanKind:
     raw = str(explicit or tags.get("span.kind") or tags.get("otlp.span.kind") or "").lower()
     mapping = {
@@ -153,10 +174,15 @@ def parse_normalized_spans(
     spans: Iterable[Mapping[str, Any]],
     *,
     aliases: Mapping[str, str] | None = None,
+    max_traces: int = 50,
+    max_spans: int = 5000,
 ) -> TraceParseResult:
     result = TraceParseResult()
     by_id: dict[tuple[str, str], NormalizedSpan] = {}
     for raw in spans:
+        if len(result.spans) >= max_spans:
+            result.warnings.append("span cap reached")
+            break
         if not isinstance(raw, Mapping):
             result.errors.append("non-object span skipped")
             continue
@@ -173,18 +199,48 @@ def parse_normalized_spans(
         )
         identity = normalize_service_name(service_raw, aliases=aliases)
         parents_raw = raw.get("parent_span_ids") or raw.get("parentSpanIds") or []
+        if isinstance(parents_raw, (str, bytes)):
+            parents_raw = [parents_raw]
+        elif not isinstance(parents_raw, (list, tuple, set)):
+            result.errors.append(
+                f"span {trace_id}/{span_id} has invalid parent_span_ids"
+            )
+            continue
         if raw.get("parent_span_id") or raw.get("parentSpanId"):
             parents_raw = list(parents_raw) + [
                 raw.get("parent_span_id") or raw.get("parentSpanId")
             ]
         parents = tuple(str(p) for p in parents_raw if p)
-        start = int(raw.get("start_us") or raw.get("startTime") or raw.get("start_time_us") or 0)
-        duration = int(raw.get("duration_us") or raw.get("duration") or 0)
-        end = int(raw.get("end_us") or (start + duration if duration else start))
+        try:
+            start = _integer(
+                raw.get("start_us")
+                if raw.get("start_us") is not None
+                else raw.get("startTime", raw.get("start_time_us", 0)),
+                field_name="start_us",
+            )
+            duration = _integer(
+                raw.get("duration_us")
+                if raw.get("duration_us") is not None
+                else raw.get("duration", 0),
+                field_name="duration_us",
+            )
+            end = _integer(
+                raw.get("end_us")
+                if raw.get("end_us") is not None
+                else start + duration,
+                field_name="end_us",
+            )
+            if end < start:
+                raise ValueError("end_us must not precede start_us")
+        except (TypeError, ValueError, OverflowError) as exc:
+            result.errors.append(f"span {trace_id}/{span_id} skipped: {exc}")
+            continue
         tags = {str(k): str(v) for k, v in (raw.get("tags") or {}).items()} if isinstance(
             raw.get("tags"), dict
         ) else _tag_map(raw.get("tags"))
-        error = bool(raw.get("error")) or _is_error(tags, raw.get("status_code"))
+        error = _explicit_error(raw.get("error")) or _is_error(
+            tags, raw.get("status_code")
+        )
         kind = _span_kind(tags, raw.get("kind") or raw.get("span_kind"))
         peer_raw = raw.get("peer_service") or _peer_service(tags)
         peer = (
@@ -210,6 +266,9 @@ def parse_normalized_spans(
         if key in by_id:
             result.warnings.append(f"duplicate span {trace_id}/{span_id}")
             continue
+        if trace_id not in result.trace_ids and len(result.trace_ids) >= max_traces:
+            result.warnings.append("trace cap reached")
+            continue
         by_id[key] = span
         result.spans.append(span)
         result.trace_ids.add(trace_id)
@@ -227,10 +286,11 @@ def parse_jaeger_traces(
 ) -> TraceParseResult:
     result = TraceParseResult()
     seen_trace_ids: set[str] = set()
+    all_by_id: dict[tuple[str, str], NormalizedSpan] = {}
     span_count = 0
-    for idx, trace in enumerate(traces):
-        if idx >= max_traces or span_count >= max_spans:
-            result.warnings.append("trace/span cap reached")
+    for trace in traces:
+        if span_count >= max_spans:
+            result.warnings.append("span cap reached")
             break
         if not isinstance(trace, Mapping):
             result.errors.append("non-object trace skipped")
@@ -241,8 +301,11 @@ def parse_jaeger_traces(
             continue
         if trace_id in seen_trace_ids:
             result.warnings.append(f"duplicate trace {trace_id}")
-            # Still merge spans if new; Jaeger multi-service queries may re-return.
-        seen_trace_ids.add(trace_id)
+        else:
+            if len(seen_trace_ids) >= max_traces:
+                result.warnings.append("trace cap reached")
+                break
+            seen_trace_ids.add(trace_id)
         processes = trace.get("processes") or {}
         process_service: dict[str, str] = {}
         if isinstance(processes, Mapping):
@@ -284,8 +347,12 @@ def parse_jaeger_traces(
                         if parent_id:
                             parents.append(str(parent_id))
             tags = _tag_map(raw.get("tags"))
-            start = int(raw.get("startTime") or 0)
-            duration = int(raw.get("duration") or 0)
+            try:
+                start = _integer(raw.get("startTime", 0), field_name="startTime")
+                duration = _integer(raw.get("duration", 0), field_name="duration")
+            except (TypeError, ValueError, OverflowError) as exc:
+                result.errors.append(f"span {trace_id}/{span_id} skipped: {exc}")
+                continue
             error = _is_error(tags)
             # Jaeger logs may also mark errors
             for log_entry in raw.get("logs") or []:
@@ -316,10 +383,11 @@ def parse_jaeger_traces(
                 tags=tags,
             )
             key = (trace_id, span_id)
-            if key in by_id:
+            if key in all_by_id:
                 result.warnings.append(f"duplicate span {trace_id}/{span_id}")
                 continue
             by_id[key] = span
+            all_by_id[key] = span
             result.spans.append(span)
             result.trace_ids.add(trace_id)
             span_count += 1
@@ -427,12 +495,25 @@ def analyze_trace_origins(
                         f"{peer} in trace {trace_id}"
                     )
                 else:
-                    # Client timeout without server span: still candidate but weaker root-like
-                    ev.root_like_score += 0.4
+                    # A caller-side timeout is victim-like evidence. When peer.service
+                    # is present, credit the missing callee boundary weakly without
+                    # pretending a server span was observed.
+                    ev.victim_like_score += 0.4
                     ev.facts.append(
                         f"client error on {span.service} without matching callee "
                         f"server error in trace {trace_id}"
                     )
+                    if peer and peer != span.service:
+                        peer_ev = bucket(peer)
+                        peer_ev.root_like_score += 0.4
+                        if trace_id not in peer_ev.trace_ids:
+                            peer_ev.trace_ids.append(trace_id)
+                        if span.span_id not in peer_ev.span_ids:
+                            peer_ev.span_ids.append(span.span_id)
+                        peer_ev.facts.append(
+                            f"callee {peer} inferred from failed client span "
+                            f"{span.span_id} in trace {trace_id}; server span unavailable"
+                        )
             elif span.kind in {"server", "unknown", "consumer", "internal"}:
                 # Root-like if no earlier failed callee explains this server error
                 explained = False

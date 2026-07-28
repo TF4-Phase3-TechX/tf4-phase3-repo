@@ -31,6 +31,32 @@ def test_no_accidental_merge_of_similar_names():
     assert a.canonical_service != b.canonical_service
 
 
+def test_namespace_and_suffix_stripping_require_explicit_opt_in():
+    assert normalize_service_name("prod.checkout").canonical_service == "prod.checkout"
+    assert normalize_service_name("checkout-v2").canonical_service == "checkout-v2"
+    assert (
+        normalize_service_name(
+            "prod.checkout", strip_namespace_prefix=True
+        ).canonical_service
+        == "checkout"
+    )
+    assert (
+        normalize_service_name(
+            "checkout-v2", strip_deployment_suffix=True
+        ).canonical_service
+        == "checkout"
+    )
+
+
+def test_malformed_identity_is_bounded_and_injection_safe():
+    first = normalize_service_name("<script>alert(1)</script>")
+    second = normalize_service_name("<script>alert(2)</script>")
+    assert first.canonical_service.startswith("invalid-service-")
+    assert "<" not in first.canonical_service
+    assert len(first.canonical_service) < 64
+    assert first.canonical_service != second.canonical_service
+
+
 def test_empty_and_whitespace():
     empty = normalize_service_name("")
     assert empty.canonical_service == "unknown"

@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from .rca_models import RCAResult
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -55,7 +57,7 @@ class Incident(BaseModel):
     rca_candidates: list[dict[str, Any]] = Field(default_factory=list)
     # Mandate-26 informational RCA enrichment. Does not retarget remediation.
     suspected_root_service: str | None = None
-    rca_result: dict[str, Any] | None = None
+    rca_result: RCAResult | None = None
     runbook_id: str
     recommended_action: str
     approval_status: str = "not_requested"

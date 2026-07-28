@@ -153,6 +153,52 @@ async def test_two_signals_one_service_does_not_trigger_cross_service_rca():
 
 
 @pytest.mark.asyncio
+async def test_single_observed_service_can_trigger_from_multiservice_error_trace():
+    class TraceTelemetry(EmptyTelemetry):
+        async def find_traces(self, service):
+            return [
+                {
+                    "traceID": "trace-cross-service",
+                    "processes": {"p1": {"serviceName": "checkout"}},
+                    "spans": [
+                        {
+                            "spanID": "client",
+                            "processID": "p1",
+                            "operationName": "Charge",
+                            "startTime": 1,
+                            "duration": 10,
+                            "tags": [
+                                {"key": "span.kind", "value": "client"},
+                                {"key": "peer.service", "value": "payment"},
+                                {"key": "error", "value": True},
+                            ],
+                            "references": [],
+                        }
+                    ],
+                }
+            ]
+
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("checkout",),
+            generic_signal_services=("checkout",),
+            llm_services=(),
+            llm_log_services=(),
+            rca_enabled=True,
+        ),
+        TraceTelemetry(),
+        SingleServiceMultiSignalDetector(),
+        IncidentStore(cooldown_seconds=0),
+        remediation=RecordingRemediation(),
+    )
+    await worker.poll_once()
+    items = await worker.store.list()
+    assert items
+    assert any(item.suspected_root_service == "payment" for item in items)
+
+
+@pytest.mark.asyncio
 async def test_two_distinct_services_trigger_rca_and_keep_remediation_target():
     rem = RecordingRemediation()
     worker = AIOpsWorker(
@@ -177,10 +223,13 @@ async def test_two_distinct_services_trigger_rca_and_keep_remediation_target():
     assert any(i.suspected_root_service == "payment" for i in items)
     assert any(i.rca_result is not None for i in items)
     # Remediation still targets detector-owned affected services
+    assert any(
+        item.affected_service == "checkout"
+        and item.suspected_root_service == "payment"
+        for item in items
+    )
+    assert "checkout" in rem.targets
     assert set(rem.targets) <= {"checkout", "payment"}
-    assert "payment" in rem.targets or "checkout" in rem.targets
-    for target in rem.targets:
-        assert target in {"checkout", "payment"}
 
 
 @pytest.mark.asyncio
@@ -266,3 +315,111 @@ async def test_legacy_summary_still_renders_with_rca_fields():
     assert "RCA candidates" in summary
     assert "Cross-service suspected root" in summary
     assert "does not retarget remediation" in summary
+
+
+@pytest.mark.asyncio
+async def test_episode_update_aggregates_all_signals_before_marking_recovered():
+    class MixedSignalDetector(SingleServiceMultiSignalDetector):
+        def error_rate(self, service, series, query, **kwargs):
+            return Decision(
+                anomalous=False,
+                breached=False,
+                incident_type="service_error_rate_spike",
+                service=service,
+            )
+
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("checkout",),
+            generic_signal_services=("checkout",),
+            llm_services=(),
+            llm_log_services=(),
+            rca_enabled=True,
+        ),
+        EmptyTelemetry(),
+        MixedSignalDetector(),
+        IncidentStore(cooldown_seconds=0),
+        remediation=RecordingRemediation(),
+    )
+    await worker.poll_once()
+    state = worker._episode.state("checkout")
+    assert state is not None
+    assert state.currently_anomalous is True
+
+
+@pytest.mark.asyncio
+async def test_recovered_unseen_root_remains_in_rca_candidate_universe():
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            services=("checkout", "frontend"),
+            generic_signal_services=("checkout", "frontend"),
+            llm_services=(),
+            llm_log_services=(),
+            rca_enabled=True,
+        ),
+        EmptyTelemetry(),
+        DualServiceDetector(),
+        IncidentStore(cooldown_seconds=0),
+        remediation=RecordingRemediation(),
+    )
+    worker._episode.observe(
+        "novel-root", anomalous=True, breached=True
+    )
+    worker._episode.observe(
+        "novel-root", anomalous=False, breached=False
+    )
+    decisions = [
+        Decision(
+            anomalous=True,
+            breached=True,
+            incident_type="service_error_rate_spike",
+            service=service,
+            confidence=0.8,
+        )
+        for service in ("checkout", "frontend")
+    ]
+    result, skipped, _ = await worker._run_cross_service_rca(decisions)
+    assert skipped is None
+    assert result is not None
+    assert "novel-root" in {candidate.service for candidate in result.candidates}
+
+
+@pytest.mark.asyncio
+async def test_store_clears_stale_rca_when_latest_observation_abstains():
+    store = IncidentStore(cooldown_seconds=0)
+    base = Incident(
+        incident_type="service_error_rate_spike",
+        severity="high",
+        affected_service="checkout",
+        confidence=0.9,
+        suspected_root_cause="local",
+        suspected_root_service="payment",
+        rca_result={
+            "model_version": "m26-v1",
+            "attribution_status": "attributed",
+            "suspected_root_service": "payment",
+            "confidence": 0.9,
+            "score_margin": 0.2,
+            "explanation": "payment",
+            "candidates": [],
+            "analysis_started_at": "2026-07-20T00:00:00Z",
+            "analysis_ended_at": "2026-07-20T00:00:01Z",
+        },
+        runbook_id="observe-and-escalate",
+        recommended_action="Investigate",
+    )
+    stored, created = await store.upsert(base)
+    assert created is True
+    latest = base.model_copy(
+        update={
+            "incident_id": "new-observation",
+            "suspected_root_service": None,
+            "rca_result": None,
+        }
+    )
+    stored, created = await store.upsert(latest)
+    assert created is False
+    assert stored.suspected_root_service is None
+    assert stored.rca_result is None

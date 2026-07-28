@@ -85,7 +85,8 @@ def test_client_timeout_without_server_span():
     result = parse_normalized_spans(spans)
     origins = analyze_trace_origins(result)
     assert "checkout" in origins
-    assert origins["checkout"].root_like_score > 0 or origins["checkout"].client_error_count == 1
+    assert origins["checkout"].victim_like_score > 0
+    assert origins["payment"].root_like_score > origins["checkout"].root_like_score
 
 
 def test_duplicate_trace_and_span_ids():
@@ -129,6 +130,89 @@ def test_duplicate_trace_and_span_ids():
     ]
     result = parse_jaeger_traces(traces)
     assert result.warnings
+    assert {(span.trace_id, span.span_id) for span in result.spans} == {
+        ("dup", "s1"),
+        ("dup", "s2"),
+    }
+
+
+def test_duplicate_trace_is_evidence_invariant():
+    trace = {
+        "traceID": "dup",
+        "processes": {"p": {"serviceName": "payment"}},
+        "spans": [
+            {
+                "spanID": "s",
+                "processID": "p",
+                "startTime": 1,
+                "duration": 1,
+                "tags": [
+                    {"key": "span.kind", "value": "server"},
+                    {"key": "error", "value": True},
+                ],
+                "references": [],
+            }
+        ],
+    }
+    single = analyze_trace_origins(parse_jaeger_traces([trace]))
+    duplicate = analyze_trace_origins(parse_jaeger_traces([trace, trace]))
+    assert len(parse_jaeger_traces([trace, trace]).spans) == 1
+    assert duplicate["payment"].root_like_score == single["payment"].root_like_score
+
+
+def test_normalized_false_string_is_not_an_error():
+    parsed = parse_normalized_spans(
+        [
+            {
+                "trace_id": "t",
+                "span_id": "s",
+                "service": "checkout",
+                "error": "false",
+                "start_us": 1,
+                "duration_us": 1,
+            }
+        ]
+    )
+    assert parsed.spans[0].error is False
+
+
+def test_malformed_span_is_skipped_without_aborting_parse():
+    parsed = parse_normalized_spans(
+        [
+            {
+                "trace_id": "t",
+                "span_id": "bad",
+                "service": "checkout",
+                "start_us": "not-a-number",
+            },
+            {
+                "trace_id": "t",
+                "span_id": "good",
+                "service": "payment",
+                "start_us": 1,
+                "duration_us": 1,
+            },
+        ]
+    )
+    assert [span.span_id for span in parsed.spans] == ["good"]
+    assert "bad" in parsed.errors[0]
+
+
+def test_normalized_trace_and_span_caps_are_enforced():
+    spans = [
+        {
+            "trace_id": f"t{i}",
+            "span_id": f"s{i}",
+            "service": "checkout",
+            "start_us": i + 1,
+            "duration_us": 1,
+        }
+        for i in range(4)
+    ]
+    parsed = parse_normalized_spans(spans, max_traces=2, max_spans=3)
+    assert len(parsed.trace_ids) == 2
+    assert len(parsed.spans) == 2
+    assert parsed.warnings
 
 
 def test_service_alias_normalization():

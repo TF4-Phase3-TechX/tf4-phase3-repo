@@ -37,13 +37,13 @@ class RCAEpisodeTracker:
             state = ServiceEpisodeState(service=service)
             self._services[service] = state
         state.last_seen_at = now
+        if breached and state.first_breached_at is None:
+            state.first_breached_at = now
         if anomalous:
             state.currently_anomalous = True
             state.last_anomalous_at = now
             if state.first_anomalous_at is None:
                 state.first_anomalous_at = now
-            if breached and state.first_breached_at is None:
-                state.first_breached_at = now
         else:
             state.currently_anomalous = False
         self.expire(now)
@@ -87,6 +87,11 @@ class RCAEpisodeTracker:
         if state is None:
             return None
         return state.first_breached_at or state.first_anomalous_at
+
+    def state(self, service: str) -> ServiceEpisodeState | None:
+        """Return current process-local state for worker input construction."""
+
+        return self._services.get(service)
 
     def clear(self) -> None:
         self._services.clear()

@@ -121,7 +121,12 @@ def _build_observations(
                 sig.get("observed_at") or raw.get("observed_at"),
                 field="observed_at",
                 case_id=str(engine_input.get("id")),
-            ) or datetime.now(timezone.utc)
+            )
+            if observed is None:
+                raise RCASchemaError(
+                    f"case {engine_input.get('id')!r}: observed_at is required "
+                    f"for {raw.get('service')}/{sig.get('signal')}"
+                )
             first_b = _parse_ts(
                 sig.get("first_breached_at"),
                 field="first_breached_at",
@@ -175,6 +180,132 @@ def _build_observations(
     return observations
 
 
+def _build_end_to_end_observations(
+    engine_input: dict[str, Any],
+) -> list[RCAObservation]:
+    """Replay timestamped metric points through the production Detector."""
+
+    # Lazy imports keep trace/snapshot mentor cases independent of the heavier
+    # numpy/sklearn detector dependency stack.
+    from app.config import Settings
+    from app.detection import Detector
+
+    aliases = engine_input.get("service_aliases") or {}
+    detector = Detector(Settings())
+    observations: list[RCAObservation] = []
+
+    for raw in engine_input.get("observations") or []:
+        identity = normalize_service_name(raw.get("service"), aliases=aliases)
+        output_signals: list[SignalObservation] = []
+        for sig in raw.get("signals") or []:
+            signal_name = str(sig.get("signal"))
+            points = sig["series"]
+            incident_start = int(sig["incident_start_index"])
+            first_breached: datetime | None = None
+            first_anomalous: datetime | None = None
+            last_decision = None
+            for point_index in range(incident_start, len(points)):
+                current = points[: point_index + 1]
+                fake_series = [
+                    {
+                        "metric": {},
+                        "values": [
+                            [
+                                _parse_ts(
+                                    point["timestamp"],
+                                    field="timestamp",
+                                    case_id=str(engine_input.get("id")),
+                                ).timestamp(),
+                                str(float(point["value"])),
+                            ]
+                            for point in current
+                        ],
+                    }
+                ]
+                query = (
+                    f"rca-replay:{engine_input.get('id')}:"
+                    f"{identity.canonical_service}:{signal_name}"
+                )
+                if signal_name == "latency":
+                    last_decision = detector.latency(
+                        identity.canonical_service, fake_series, query
+                    )
+                elif signal_name == "error_rate":
+                    last_decision = detector.error_rate(
+                        identity.canonical_service, fake_series, query
+                    )
+                elif signal_name == "llm_error":
+                    last_decision = detector.llm_error(
+                        identity.canonical_service,
+                        fake_series,
+                        query,
+                        log_count=0,
+                    )
+                else:  # guarded by schema validation
+                    raise RCASchemaError(
+                        f"unsupported end-to-end signal {signal_name!r}"
+                    )
+                observed_at = _parse_ts(
+                    points[point_index]["timestamp"],
+                    field="timestamp",
+                    case_id=str(engine_input.get("id")),
+                )
+                if last_decision.breached and first_breached is None:
+                    first_breached = observed_at
+                if last_decision.anomalous and first_anomalous is None:
+                    first_anomalous = observed_at
+
+            if last_decision is None:
+                raise RCASchemaError(
+                    f"no incident points executed for "
+                    f"{identity.canonical_service}/{signal_name}"
+                )
+            final_at = _parse_ts(
+                points[-1]["timestamp"],
+                field="timestamp",
+                case_id=str(engine_input.get("id")),
+            )
+            output_signals.append(
+                SignalObservation(
+                    signal=str(last_decision.incident_type),
+                    anomalous=bool(last_decision.anomalous),
+                    breached=bool(last_decision.breached),
+                    coverage_status=last_decision.coverage_status,
+                    confidence=float(last_decision.confidence),
+                    severity=str(last_decision.severity),
+                    observed_at=final_at,
+                    first_breached_at=first_breached,
+                    first_anomalous_at=first_anomalous,
+                    evidence=list(last_decision.evidence or []),
+                )
+            )
+
+        observations.append(
+            RCAObservation(
+                service=identity.canonical_service,
+                original_service_names=[identity.original_service],
+                signals=output_signals,
+                first_breached_at=min(
+                    (
+                        signal.first_breached_at
+                        for signal in output_signals
+                        if signal.first_breached_at is not None
+                    ),
+                    default=None,
+                ),
+                first_anomalous_at=min(
+                    (
+                        signal.first_anomalous_at
+                        for signal in output_signals
+                        if signal.first_anomalous_at is not None
+                    ),
+                    default=None,
+                ),
+            )
+        )
+    return observations
+
+
 def _build_graph(engine_input: dict[str, Any]) -> DependencyGraph:
     topology = engine_input.get("topology")
     aliases = engine_input.get("service_aliases") or {}
@@ -215,7 +346,10 @@ def run_case(
         captured_engine_payloads.append(json.loads(json.dumps(engine_input, default=str)))
 
     aliases = engine_input.get("service_aliases") or {}
-    observations = _build_observations(engine_input)
+    if engine_input.get("mode") == "end_to_end_series":
+        observations = _build_end_to_end_observations(engine_input)
+    else:
+        observations = _build_observations(engine_input)
     parse, unavailable_from_traces = parse_traces_payload(
         engine_input.get("traces"),
         aliases=aliases,
@@ -243,7 +377,14 @@ def run_case(
     evaluation: dict[str, Any] | None = None
     passed: bool | None = None
     if labels:
-        expected_root = labels.get("expected_root_service")
+        expected_root_raw = labels.get("expected_root_service")
+        expected_root = (
+            normalize_service_name(
+                str(expected_root_raw), aliases=aliases
+            ).canonical_service
+            if expected_root_raw
+            else None
+        )
         expected_status = labels.get("expected_attribution_status")
         noise = labels.get("correlated_noise_services") or []
         if not isinstance(noise, list):
@@ -263,9 +404,13 @@ def run_case(
         expected_noise = {
             normalize_service_name(str(s), aliases=aliases).canonical_service for s in noise
         }
+        anomalous_observed = {
+            obs.service for obs in observations if obs.is_anomalous
+        }
         tp = len(predicted_noise & expected_noise)
-        fp = len(predicted_noise - expected_noise)
+        fp = len((predicted_noise - expected_noise) & anomalous_observed)
         fn = len(expected_noise - predicted_noise)
+        tn = len(anomalous_observed - predicted_noise - expected_noise)
         precision = tp / (tp + fp) if (tp + fp) else (1.0 if not expected_noise else 0.0)
         recall = tp / (tp + fn) if (tp + fn) else (1.0 if not expected_noise else 0.0)
         f1 = (
@@ -297,6 +442,10 @@ def run_case(
             "noise_precision": round(precision, 6),
             "noise_recall": round(recall, 6),
             "noise_f1": round(f1, 6),
+            "noise_true_positive": tp,
+            "noise_false_positive": fp,
+            "noise_false_negative": fn,
+            "noise_true_negative": tn,
             "predicted_noise_services": sorted(predicted_noise),
             "passed": passed,
         }
@@ -337,7 +486,25 @@ def aggregate(cases: list[dict[str, Any]]) -> dict[str, Any]:
         for c in labeled
         if c["evaluation"].get("reciprocal_rank") is not None
     ]
-    noise_f1 = [c["evaluation"]["noise_f1"] for c in labeled]
+    noise_tp = sum(c["evaluation"].get("noise_true_positive", 0) for c in labeled)
+    noise_fp = sum(c["evaluation"].get("noise_false_positive", 0) for c in labeled)
+    noise_fn = sum(c["evaluation"].get("noise_false_negative", 0) for c in labeled)
+    noise_tn = sum(c["evaluation"].get("noise_true_negative", 0) for c in labeled)
+    noise_precision = (
+        noise_tp / (noise_tp + noise_fp)
+        if noise_tp + noise_fp
+        else (1.0 if noise_tp + noise_fn == 0 else 0.0)
+    )
+    noise_recall = (
+        noise_tp / (noise_tp + noise_fn)
+        if noise_tp + noise_fn
+        else 1.0
+    )
+    noise_f1 = (
+        2 * noise_precision * noise_recall / (noise_precision + noise_recall)
+        if noise_precision + noise_recall
+        else 0.0
+    )
     times = [c["processing_ms"] for c in cases if c.get("processing_ms") is not None]
     times_sorted = sorted(times)
 
@@ -366,7 +533,12 @@ def aggregate(cases: list[dict[str, Any]]) -> dict[str, Any]:
         "root_at_1": (sum(1 for x in root_hits_1 if x) / len(root_hits_1)) if root_hits_1 else None,
         "root_at_3": (sum(1 for x in root_hits_3 if x) / len(root_hits_3)) if root_hits_3 else None,
         "mrr": (sum(rrs) / len(rrs)) if rrs else None,
-        "noise_f1_mean": (sum(noise_f1) / len(noise_f1)) if noise_f1 else None,
+        "noise_precision": noise_precision,
+        "noise_recall": noise_recall,
+        "noise_f1": noise_f1,
+        "false_noise_rejection_rate": (
+            noise_fp / (noise_fp + noise_tn) if noise_fp + noise_tn else 0.0
+        ),
         "attribution_coverage": attributed / len(cases) if cases else 0.0,
         "abstention_rate": abstained / len(cases) if cases else 0.0,
         "processing_ms_p50": pct(0.50),
@@ -426,6 +598,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     agg = aggregate(results)
+    agg["parsing_execution_failures"] = len(errors)
     report = {
         "schema_name": REPORT_SCHEMA,
         "schema_version": 1,
@@ -455,12 +628,20 @@ def main(argv: list[str] | None = None) -> int:
             "Absence of a graph edge is not proof of absence of causality.",
             "Episode state is process-local and lost on restart in the runtime worker.",
             "RCA is informational and does not retarget Mandate-22 remediation.",
-            f"Labeled sample size for Root@1: {agg.get('labeled_total')}",
+            f"Labeled sample size for Root@1: "
+            f"{sum(1 for case in results if case.get('evaluation') and case['evaluation'].get('root_at_1') is not None)}",
         ],
     }
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    try:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(report, indent=2, sort_keys=False) + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"output error: {exc}", file=sys.stderr)
+        return 2
     print(json.dumps({"output": str(args.output), "aggregate": agg, "errors": len(errors)}))
 
     if errors and not results:

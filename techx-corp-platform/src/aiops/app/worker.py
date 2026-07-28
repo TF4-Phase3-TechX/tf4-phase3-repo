@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from collections import Counter as ValueCounter
+from datetime import datetime, timezone
 from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram
@@ -30,6 +31,7 @@ from .rca_engine import (
     observations_from_decisions,
 )
 from .rca_episode import RCAEpisodeTracker
+from .rca_models import RCAObservation, SignalObservation
 from .remediation import RemediationController
 from .service_identity import normalize_service_name
 from .store import IncidentStore
@@ -430,12 +432,24 @@ class AIOpsWorker:
             else:
                 await self.store.reset_recovery(decision.incident_type, decision.service)
 
-            # Episode memory for recovered-root candidates (Mandate 26).
+        # Aggregate every signal for a service before updating episode state.
+        # Sequential per-decision updates allow a later healthy signal to erase
+        # an anomalous signal from the same poll.
+        episode_poll_at = datetime.now(timezone.utc)
+        episode_status: dict[str, dict[str, bool]] = {}
+        for decision in decisions:
             canonical = normalize_service_name(decision.service).canonical_service
+            status = episode_status.setdefault(
+                canonical, {"anomalous": False, "breached": False}
+            )
+            status["anomalous"] = status["anomalous"] or bool(decision.anomalous)
+            status["breached"] = status["breached"] or bool(decision.breached)
+        for canonical, status in episode_status.items():
             self._episode.observe(
                 canonical,
-                anomalous=bool(decision.anomalous),
-                breached=bool(decision.breached),
+                anomalous=status["anomalous"],
+                breached=status["breached"],
+                at=episode_poll_at,
             )
 
         anomalous_decisions = [d for d in decisions if d.anomalous]
@@ -444,22 +458,9 @@ class AIOpsWorker:
         shared_trace_evidence: dict[str, list[Evidence]] = {}
 
         if anomalous_decisions:
-            # Distinct canonical services — not decision count.
-            distinct_services = {
-                normalize_service_name(d.service).canonical_service
-                for d in anomalous_decisions
-            }
-            recent = set(self._episode.recent_affected())
-            eligible = (
-                self.settings.rca_enabled
-                and (len(distinct_services) >= 2 or len(recent) >= 2)
-            )
             if not self.settings.rca_enabled:
                 rca_skipped_reason = "disabled"
                 rca_skipped.labels("disabled").inc()
-            elif not eligible:
-                rca_skipped_reason = "single_service"
-                rca_skipped.labels("single_service").inc()
             else:
                 try:
                     rca_result, rca_skipped_reason, shared_trace_evidence = (
@@ -495,7 +496,7 @@ class AIOpsWorker:
             if rca_result is not None:
                 rca_candidates = rca_result.legacy_candidates() or rca_candidates
                 suspected_root_service = rca_result.suspected_root_service
-                rca_result_payload = rca_result.model_dump(mode="json")
+                rca_result_payload = rca_result
                 # Keep original local root-cause text; append informational note.
                 root_note = (
                     f"{decision.root_cause} | cross-service RCA: "
@@ -753,6 +754,54 @@ class AIOpsWorker:
             max_spans=self.settings.rca_max_spans,
         )
         observations = observations_from_decisions(anomalous_decisions)
+        observed_services = {obs.service for obs in observations}
+        # Preserve a recently recovered root as an explicit episode observation.
+        # This matters for an unseen service that is neither in static topology nor
+        # present in the sampled traces of the downstream-only poll.
+        for service in self._episode.recent_affected():
+            if service in observed_services:
+                continue
+            state = self._episode.state(service)
+            if state is None or state.first_anomalous_at is None:
+                continue
+            observed_at = state.last_seen_at or datetime.now(timezone.utc)
+            observations.append(
+                RCAObservation(
+                    service=service,
+                    original_service_names=[service],
+                    signals=[
+                        SignalObservation(
+                            signal="episode_recovery",
+                            anomalous=False,
+                            breached=False,
+                            coverage_status="available",
+                            confidence=0.0,
+                            severity="medium",
+                            observed_at=observed_at,
+                            first_breached_at=state.first_breached_at,
+                            first_anomalous_at=state.first_anomalous_at,
+                        )
+                    ],
+                    first_breached_at=state.first_breached_at,
+                    first_anomalous_at=state.first_anomalous_at,
+                )
+            )
+        observations.sort(key=lambda obs: obs.service)
+        observed_episode_services = {
+            obs.service
+            for obs in observations
+            if obs.is_anomalous or obs.first_anomalous_at is not None
+        }
+        failed_trace_services = {span.service for span in parse.spans if span.error}
+        for span in parse.spans:
+            if span.error and span.peer_service:
+                failed_trace_services.add(span.peer_service)
+        if (
+            len(observed_episode_services) < 2
+            and len(observed_episode_services | failed_trace_services) < 2
+        ):
+            rca_skipped.labels("single_service").inc()
+            return None, "single_service", shared_evidence
         # Overlay episode onsets when present
         for obs in observations:
             onset = self._episode.first_onset(obs.service)
