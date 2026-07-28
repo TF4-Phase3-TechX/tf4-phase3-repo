@@ -51,7 +51,9 @@ latency.
 
 ## Remaining acceptance boundary
 
-Runtime evidence is complete. ADR-024 still needs named human decisions, and
-this pack still has to be attached to TF4AIO-85 before the ticket can move to
-Done. The exact live Argo sync revision was not queried; the runtime Jaeger
-resource attributes nevertheless prove both promoted application image tags.
+Runtime evidence is complete and the task owner accepted ADR-024 in PR #745.
+The AIE/Chatbot, Observability/AIOps and Audit reviewer decisions remain
+pending, and this pack still has to be attached to TF4AIO-85 before the ticket
+can move to Done. The exact live Argo sync revision was not queried; the
+runtime Jaeger resource attributes nevertheless prove both promoted
+application image tags.

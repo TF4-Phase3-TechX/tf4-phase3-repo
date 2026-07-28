@@ -21,7 +21,7 @@
 | Main-path latency overhead | `runtime-20260729/overhead.json` | Pass; `-3.05%` p95 vs `+5%` gate |
 | Pre-deployment live baseline | `PREDEPLOYMENT-LIVE-READOUT-20260727.md` plus matched replay baseline | Observed |
 | Deployed image/Argo revision | Runtime trace tags + GitOps desired digest in `runtime-20260729/manifest.json` | Runtime tag observed; live Argo sync revision not queried |
-| Signed ADR | ADR-024 created with named pending roles | Pending |
+| Signed ADR | Task-owner acceptance recorded in PR #745; AIE/AIOps/Audit decisions remain pending | Partially signed |
 
 ## Production artifact pack
 
