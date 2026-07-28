@@ -178,6 +178,16 @@ Mỗi iteration ghi:
 - RDS/Valkey/MSK state;
 - request rate và browse/cart/checkout SLO.
 
+Trong `observe`, SLO xuống dưới threshold là tín hiệu cần đo chứ không phải
+hard-stop. Script ghi:
+
+```text
+slo_dip_detected surface=<browse|cart|checkout> timestamp=<UTC>
+slo_recovered surface=<browse|cart|checkout> timestamp=<UTC>
+```
+
+Observer tiếp tục chạy qua failure window để hai timestamp này dùng tính RTO.
+
 Trước fault injection, operator ghi vào chat/evidence:
 
 ```text
@@ -203,8 +213,10 @@ Observer dừng với exit `3` khi có:
 - Pending/CrashLoop/OOM/ImagePull/config error mới;
 - load-generator không còn Ready;
 - request volume hoặc Prometheus metrics mất;
-- browse/cart/checkout baseline fail;
 - RDS, Valkey hoặc MSK unhealthy.
+
+SLO baseline dưới threshold chỉ là `NO-GO` trong `preflight`. Trong `observe`,
+SLO dip được ghi nhận và theo dõi đến recovery, không kích hoạt hard-stop.
 
 Output:
 

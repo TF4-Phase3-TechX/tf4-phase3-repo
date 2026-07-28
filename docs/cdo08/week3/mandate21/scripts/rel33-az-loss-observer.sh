@@ -35,6 +35,9 @@ PREFLIGHT_FAILURES=0
 HARD_STOP_FAILURES=0
 MSK_CLUSTER_ARN=""
 STOP_REQUESTED=false
+BROWSE_DIP_ACTIVE=false
+CART_DIP_ACTIVE=false
+CHECKOUT_DIP_ACTIVE=false
 
 usage() {
   cat <<'EOF'
@@ -272,7 +275,31 @@ prometheus_query() {
 
 float_ge() { awk -v actual="$1" -v expected="$2" 'BEGIN {exit !(actual >= expected)}'; }
 
+observe_slo_state() {
+  local surface="$1"
+  local actual="$2"
+  local minimum="$3"
+  local state_variable="$4"
+  local active="${!state_variable}"
+  if float_ge "$actual" "$minimum"; then
+    if [[ "$active" == true ]]; then
+      emit "slo_recovered surface=$surface actual=$actual minimum=$minimum timestamp=$(timestamp)"
+      printf -v "$state_variable" '%s' false
+    else
+      emit "slo_observation surface=$surface status=HEALTHY actual=$actual minimum=$minimum"
+    fi
+  else
+    if [[ "$active" == false ]]; then
+      emit "slo_dip_detected surface=$surface actual=$actual minimum=$minimum timestamp=$(timestamp)"
+      printf -v "$state_variable" '%s' true
+    else
+      emit "slo_observation surface=$surface status=BELOW_THRESHOLD actual=$actual minimum=$minimum"
+    fi
+  fi
+}
+
 check_metrics_and_slo() {
+  local check_mode="${1:-preflight}"
   local request_rate browse cart checkout
   request_rate="$(prometheus_query "$REQUEST_RATE_QUERY" || true)"
   browse="$(prometheus_query "$BROWSE_QUERY" || true)"
@@ -295,24 +322,25 @@ check_metrics_and_slo() {
     gate_fail request_volume "rate=$request_rate minimum=$MIN_REQUEST_RATE" \
       "Restore_real_load_before_drill"
   fi
-  if float_ge "$browse" "$BROWSE_SLO_MIN"; then
-    gate_pass browse_slo "actual=$browse minimum=$BROWSE_SLO_MIN"
-  else
-    gate_fail browse_slo "actual=$browse minimum=$BROWSE_SLO_MIN" \
+  if [[ "$check_mode" == observe ]]; then
+    observe_slo_state browse "$browse" "$BROWSE_SLO_MIN" BROWSE_DIP_ACTIVE
+    observe_slo_state cart "$cart" "$CART_SLO_MIN" CART_DIP_ACTIVE
+    observe_slo_state checkout "$checkout" "$CHECKOUT_SLO_MIN" CHECKOUT_DIP_ACTIVE
+    return
+  fi
+
+  float_ge "$browse" "$BROWSE_SLO_MIN" \
+    && gate_pass browse_slo "actual=$browse minimum=$BROWSE_SLO_MIN" \
+    || gate_fail browse_slo "actual=$browse minimum=$BROWSE_SLO_MIN" \
       "Recover_browse_baseline"
-  fi
-  if float_ge "$cart" "$CART_SLO_MIN"; then
-    gate_pass cart_slo "actual=$cart minimum=$CART_SLO_MIN"
-  else
-    gate_fail cart_slo "actual=$cart minimum=$CART_SLO_MIN" \
+  float_ge "$cart" "$CART_SLO_MIN" \
+    && gate_pass cart_slo "actual=$cart minimum=$CART_SLO_MIN" \
+    || gate_fail cart_slo "actual=$cart minimum=$CART_SLO_MIN" \
       "Recover_cart_baseline"
-  fi
-  if float_ge "$checkout" "$CHECKOUT_SLO_MIN"; then
-    gate_pass checkout_slo "actual=$checkout minimum=$CHECKOUT_SLO_MIN"
-  else
-    gate_fail checkout_slo "actual=$checkout minimum=$CHECKOUT_SLO_MIN" \
+  float_ge "$checkout" "$CHECKOUT_SLO_MIN" \
+    && gate_pass checkout_slo "actual=$checkout minimum=$CHECKOUT_SLO_MIN" \
+    || gate_fail checkout_slo "actual=$checkout minimum=$CHECKOUT_SLO_MIN" \
       "Recover_checkout_baseline"
-  fi
 }
 
 check_dashboards() {
@@ -370,6 +398,32 @@ check_managed_stores() {
     || gate_fail msk_health "actual=${msk:-missing}" "Escalate_MSK_unhealthy"
 }
 
+pod_placement_by_az() {
+  local node zone name phase ready pod_node restarts pod_zone
+  declare -A node_zones=()
+  while IFS='|' read -r node zone; do
+    [[ -n "$node" ]] && node_zones["$node"]="${zone:-<none>}"
+  done < <(kubectl get nodes \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.metadata.labels.topology\.kubernetes\.io/zone}{"\n"}{end}' \
+    2>/dev/null)
+
+  printf '%-48s %-10s %-12s %-36s %-14s %s\n' \
+    NAME PHASE READY NODE AZ RESTARTS
+  while IFS='|' read -r name phase ready pod_node restarts; do
+    [[ -z "$name" ]] && continue
+    if [[ -n "$pod_node" ]]; then
+      pod_zone="${node_zones[$pod_node]:-<unknown>}"
+    else
+      pod_zone="<unscheduled>"
+      pod_node="<none>"
+    fi
+    printf '%-48s %-10s %-12s %-36s %-14s %s\n' \
+      "$name" "$phase" "$ready" "$pod_node" "$pod_zone" "$restarts"
+  done < <(kubectl get pods -n "$KUBE_NAMESPACE" \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.status.phase}{"|"}{.status.containerStatuses[*].ready}{"|"}{.spec.nodeName}{"|"}{.status.containerStatuses[*].restartCount}{"\n"}{end}' \
+    2>/dev/null)
+}
+
 collect_snapshot() {
   section nodes_by_az
   kubectl get nodes \
@@ -377,10 +431,7 @@ collect_snapshot() {
     -o wide 2>&1 | tee -a "$OUTPUT_FILE"
 
   section pods_by_az
-  kubectl get pods -n "$KUBE_NAMESPACE" \
-    -o custom-columns='NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[*].ready,NODE:.spec.nodeName,AZ:.metadata.labels.topology\.kubernetes\.io/zone,RESTARTS:.status.containerStatuses[*].restartCount' \
-    2>&1 | tee -a "$OUTPUT_FILE"
-  kubectl get pods -n "$KUBE_NAMESPACE" -o wide 2>&1 | tee -a "$OUTPUT_FILE"
+  pod_placement_by_az | tee -a "$OUTPUT_FILE"
 
   section hpa
   kubectl get hpa -n "$KUBE_NAMESPACE" -o wide 2>&1 | tee -a "$OUTPUT_FILE"
@@ -407,7 +458,7 @@ run_preflight() {
   check_quota
   check_load_generator
   check_dashboards
-  check_metrics_and_slo
+  check_metrics_and_slo preflight
   check_managed_stores
   collect_snapshot
   if (( PREFLIGHT_FAILURES == 0 )); then
@@ -439,7 +490,7 @@ observer_hard_stop_check() {
     || hard_stop load_generator \
       "desired=${desired:-missing} ready=${ready:-0}" "Restore_load_or_stop_RTO_measurement"
 
-  check_metrics_and_slo
+  check_metrics_and_slo observe
   check_managed_stores
   if (( PREFLIGHT_FAILURES > 0 )); then
     hard_stop gates "runtime_gate_failures=$PREFLIGHT_FAILURES" \
