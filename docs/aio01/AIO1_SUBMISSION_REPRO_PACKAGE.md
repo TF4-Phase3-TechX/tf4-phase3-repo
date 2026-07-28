@@ -118,12 +118,13 @@ are merged or deployed:
 | Mandate 22 durable saga | Hòa | `#711` | Rebase on the final `#669` revision and rerun its evidence |
 | Mandate 23 memory/cache | Huy Vũ | `#692` | Source/CI evidence until merged; foundational product-review change |
 | Mandate 24 LLM observability | Thông | `#707` | Rebase on the final foundational product-review revision and rerun its evidence |
-| Mandate 25 resilience | Tất Văn | `#710` | Rebase after the preceding product-review changes and rerun its evidence |
+| Mandate 25 resilience | Tất Văn | `#710` | Synced with the foundational Product Reviews changes; local runtime evidence is partial, with deployed and successful post-cooldown provider recovery still pending |
 | TF4AIO-88 adversarial review | Thành Tâm | `#701` | Review artifact, not implementation or runtime evidence |
 
-Recommended merge order for the conflicting product-review work is `#692`, then
-rebased `#707`, then rewritten/rebased `#710`. For the remediation work, merge
-`#669` before rebasing `#711`.
+The historical Product Reviews dependency order was `#692`, then `#707`, then
+`#710`; the Mandate 25 branch has now been synchronized with those foundations
+and current `main`. For the remediation work, merge `#669` before rebasing
+`#711`.
 
 ## Known limitations and final submission gate
 

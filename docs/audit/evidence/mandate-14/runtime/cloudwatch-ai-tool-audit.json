@@ -1,0 +1,36 @@
+{
+  "captured_at": "2026-07-28",
+  "account_id": "511825856493",
+  "region": "us-east-1",
+  "log_group": "/aws/eks/techx-tf4/ai-audit",
+  "query_id": "0a69fb10-e589-4bc7-87dc-8313f78fd2bd",
+  "query_status": "Complete",
+  "records_matched": 1,
+  "event": {
+    "timestamp": "2026-07-28T07:04:39.339Z",
+    "log_stream": "otel-product-reviews-techx-tf4.product-reviews-64594b9494-6w8sp.product-reviews",
+    "body": "ai_tool_audit",
+    "trace_id": "5c54c4a617cfd2dc8f5f2472d47ddd54",
+    "span_id": "ad5e9fdc07d9629d",
+    "attributes": {
+      "log_type": "ai_tool_audit",
+      "surface": "product_qa",
+      "model_id": "us.amazon.nova-2-lite-v1:0",
+      "tool_name": "bedrock.converse",
+      "tool_input_redacted": {
+        "redacted": true,
+        "content_logged": false
+      },
+      "safety_decision": "allow",
+      "confirmation_status": "not_required"
+    },
+    "resource": {
+      "service_name": "product-reviews",
+      "service_version": "2.2.0",
+      "k8s_namespace": "techx-tf4",
+      "k8s_pod": "product-reviews-64594b9494-6w8sp",
+      "container_image": "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:f3fb8b7-product-reviews"
+    }
+  },
+  "privacy_note": "Content-free success evidence; no prompt, response, PII, credential or tool input is stored."
+}

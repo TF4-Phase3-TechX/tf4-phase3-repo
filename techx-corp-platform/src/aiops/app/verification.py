@@ -16,11 +16,15 @@ def target_error_rate_query(service: str, namespace: str, window: str) -> str:
         'span_kind="SPAN_KIND_SERVER",'
         f'k8s_namespace_name="{namespace}"'
     )
+    # The span-metrics connector may omit STATUS_CODE_ERROR entirely when the
+    # target produced no error spans.  That is a measured zero-error numerator,
+    # not missing target coverage.  Request-count verification remains the
+    # independent fail-closed guard for absent or insufficient traffic.
     return (
-        f'sum(rate(traces_span_metrics_calls_total{{{matchers},'
-        f'status_code="STATUS_CODE_ERROR"}}[{window}])) '
+        f'((sum(rate(traces_span_metrics_calls_total{{{matchers},'
+        f'status_code="STATUS_CODE_ERROR"}}[{window}])) or vector(0)) '
         f'/ clamp_min(sum(rate(traces_span_metrics_calls_total{{{matchers}}}'
-        f'[{window}])), 0.000001)'
+        f'[{window}])), 0.000001))'
     )
 
 
