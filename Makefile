@@ -14,8 +14,15 @@ REL25_MSK_START_TIME ?= 2026-07-27T05:00:00Z
 REL25_MSK_END_TIME ?= 2026-07-27T06:00:00Z
 REL25_MSK_DRILL_ID ?= rel25-$(shell date -u +"%Y%m%d")-msk-demo
 REL25_MSK_TARGET_TOPIC ?= orders-replay-drill-$(REL25_MSK_DRILL_ID)
+REL33_SCRIPT := docs/cdo08/week3/mandate21/scripts/rel33-az-loss-observer.sh
+REL33_AWS_PROFILE ?= default
+REL33_AWS_ACCOUNT_ID ?= 511825856493
+REL33_KUBE_CONTEXT ?= arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+REL33_INTERVAL ?= 30
+REL33_DURATION ?= 0
+REL33_OUTPUT ?= artifacts/rel33/observer-$(shell date -u +"%Y%m%dT%H%M%SZ").log
 
-.PHONY: rel25-msk-replay-demo rel26-preflight rel26-drill
+.PHONY: rel25-msk-replay-demo rel26-preflight rel26-drill rel33-preflight rel33-observe
 
 rel25-msk-replay-demo:
 	AWS_PROFILE="$(REL25_MSK_AWS_PROFILE)" \
@@ -43,3 +50,18 @@ rel26-drill:
 	REL26_DRILL_ID="$(REL26_DRILL_ID)" \
 	SOURCE_RESTORE_TIMESTAMP="$(REL26_SOURCE_RESTORE_TIMESTAMP)" \
 	"$(REL26_SCRIPT)"
+
+rel33-preflight:
+	AWS_PROFILE="$(REL33_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL33_AWS_ACCOUNT_ID)" \
+	EXPECTED_KUBE_CONTEXT="$(REL33_KUBE_CONTEXT)" \
+	bash "$(REL33_SCRIPT)" preflight --output "$(REL33_OUTPUT)"
+
+rel33-observe:
+	AWS_PROFILE="$(REL33_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL33_AWS_ACCOUNT_ID)" \
+	EXPECTED_KUBE_CONTEXT="$(REL33_KUBE_CONTEXT)" \
+	bash "$(REL33_SCRIPT)" observe \
+	  --interval "$(REL33_INTERVAL)" \
+	  --duration "$(REL33_DURATION)" \
+	  --output "$(REL33_OUTPUT)"
