@@ -7,7 +7,9 @@ closure, metrics, semantic replay harness, runtime replay, and safe
 invalidation drill were merged to `main` in PR #692. ADR-023 has named
 approval. Jira linkage and final evidence submission remain pending.
 
-Do not close `AI MANDATE #23` until those external artifacts exist.
+The final-revision evidence package is captured in the repository. Do not close
+`AI MANDATE #23` until the follow-up commit/PR and evidence are linked from the
+Jira ticket.
 
 ## Implementation map
 
@@ -96,9 +98,17 @@ developers can opt in through `.env.override`.
 
 ### Captured runtime evidence
 
-The canonical semantically asserted replay is:
+The canonical submission replay is:
 
-`tests/eval_mandate23/evidence/runtime-20260726T175526Z/`
+`tests/eval_mandate23/evidence/submission-966b2d3-final/`
+
+It was captured from clean tracked revision
+`966b2d3619faf3f311d8d944b65802441e1b9a38` through the rebuilt production
+container. Both replay configurations record the runtime image reference,
+image digest, code SHA-256, model, Guardrail, and price snapshot. The manifests
+under `runtime/` and `short-term/` verify successfully; the root
+`manifest.sha256` additionally covers both children and the invalidation
+record.
 
 | Product Q&A observation | Runtime result |
 |---|---:|
@@ -108,28 +118,33 @@ The canonical semantically asserted replay is:
 | Warm hits | 6 / 6 |
 | Warm hit rate | 66.67% |
 | Model calls | 3 (cold only) |
-| Input / output tokens | 4,434 / 993 |
-| Estimated cost | USD 0.00381270 |
-| Mean cold latency | 2,051.25 ms |
-| Mean warm latency | 7.28 ms |
-| Measured latency reduction | 99.64% |
+| Input / output tokens | 4,434 / 986 |
+| Estimated cost | USD 0.00379520 |
+| Mean cold latency | 2,115.45 ms |
+| Mean warm latency | 35.41 ms |
+| Measured latency reduction | 98.33% |
 
 All nine memory operations were also semantically validated with zero
 assertion failures: each repetition stored an allow-listed preference,
 recalled it from a new session for the same user, and proved `not_found` for a
-different user.
+different user. These deterministic memory operations made zero model calls.
 
-The canonical three-turn context proof is:
+The `short-term/` child is the canonical three-turn context proof. All 9 / 9
+calls were semantically validated with zero assertion failures across three
+independent conversations. Every conversation asserted that the initial search
+contained product `6E92ZMYYFZ`, the relative cheapest turn selected exactly
+that product, and the “this product” review turn returned the same product and
+named Solar Filter. The replay made nine model calls, used 27,096 input and 603
+output tokens, and measured USD 0.00963630.
 
-`tests/eval_mandate23/evidence/short-term-20260726T175526Z/`
+`invalidation.json` records the safe source drill against the discovered
+`reviews.productreviews.id=1`: cold miss, warm hit with no model call, then
+`source_changed` miss after mutation. `restore_verified=true` proves the exact
+original description and score were restored.
 
-All 9 / 9 calls were semantically validated with zero assertion failures.
-Every conversation asserted that the initial search contained product
-`6E92ZMYYFZ`, the relative cheapest turn selected exactly that product, and the
-“this product” review turn returned exactly the same product and named Solar
-Filter. Transport success alone no longer counts as a passing replay.
-
-The earlier 2026-07-26 replay remains preserved for historical comparison:
+The earlier 2026-07-26 replay remains preserved for historical comparison, but
+is not the canonical submission because it predates the final parser, replay
+provenance, and clean-checkout hardening:
 
 The 2026-07-26 replay used the production gRPC boundary from the rebuilt
 `product-reviews` container, the same dataset/configuration, three independent
