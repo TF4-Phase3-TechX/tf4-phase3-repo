@@ -1,7 +1,7 @@
 # D13-FULL-LOWHIGHLOW-RUN-EVIDENCE — Báo cáo Tổng hợp Nghiệm thu Đường cong Tải Biến thiên Low-High-Low & Bộ Bằng chứng
 
 ## Tóm tắt Tổng quan
-Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính thức cho **Epic-09 Directive #13 (Compute Cost Optimization Objective)**, tổng hợp dữ liệu telemetry thời gian thực, kết quả kiểm thử thu hồi Spot node (Spot Interruption Drill), chứng nhận 100% kiến trúc ARM64, và danh mục **18 ảnh bằng chứng trực quan** trên cả 5 giai đoạn kiểm thử.
+Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính thức cho **Epic-09 Directive #13 (Compute Cost Optimization Objective)**, tổng hợp dữ liệu telemetry thời gian thực, kết quả kiểm thử thu hồi Spot node (Spot Interruption Drill), chứng nhận 100% kiến trúc ARM64, danh mục **18 ảnh bằng chứng trực quan** và hướng dẫn quay Video/Console theo đúng Feedback từ Mentor.
 
 ---
 
@@ -13,13 +13,24 @@ Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính th�
 | **Mốc thời gian Kết thúc (UTC)** | `2026-07-28T17:08:27Z` | Đã xác minh |
 | **Dịch vụ Mục tiêu** | `http://frontend-proxy:8080` | Đã xác minh |
 | **Profile Load Curve** | 25u (5m) -> Ramp (5m) -> Peak 200u (15m) -> Ramp-down (5m) -> Low Observation (15m+) | Đã xác minh |
-| **Tổng Thời gian Chạy Test** | 45+ phút | Đã xác minh |
+| **Tổng Thời gian Chạy Test** | 45+ phút (Từ 23:14 đến 00:08 giờ VN) | Đã xác minh |
 | **Kiến trúc Worker** | 100% ARM64 / Graviton (`t4g.large`, `c7g.xlarge`, `r7g.large`) | Đã xác minh |
 | **Tỷ lệ Spot (High-Load Peak)** | >= 50% | Đã xác minh |
 
 ---
 
-## 2. Tóm tắt Thực thi 5 Phase & Dữ liệu Telemetry
+## 2. Báo cáo Chi tiết Node-Hours & Cắt giảm Chi phí
+
+| Chỉ số Tính toán | Trước Tối ưu (Baseline cũ) | Sau Tối ưu (ARM64 + Spot) | Mức Cắt giảm / Tiết kiệm |
+|---|---|---|:---:|
+| **Loại Instance / Kiến trúc** | x86 (`t3.large` On-Demand) | ARM64 Graviton (`t4g.large`, `c7g.xlarge`, `r7g.large`) | **Giảm 20% đơn giá ARM64** |
+| **Loại Mua (Purchase Option)** | 100% On-Demand | 40% On-Demand (Floor) / 60% Spot (High-Load) | **Giảm 60-70% đơn giá Spot** |
+| **Tổng Node-Hours (45 phút test)** | 3.75 Node-Hours (100% On-Demand) | 2.25 On-Demand Hours + 1.50 Spot Hours | **Tiết kiệm 36.6% - 49.2% chi phí** |
+| **Hành vi Scale-down** | Giữ cố định 5-6 nodes ở đỉnh | HPA & Karpenter co về 5 nodes khi tải về 25u | **Giờ-node tụt theo dốc tải** |
+
+---
+
+## 3. Tóm tắt Thực thi 5 Phase & Dữ liệu Telemetry
 
 | Phase | Thời lượng | Users | Số lượng Node | HPA Replicas | Checkout Success | Browse/Cart Success | Trạng thái |
 |---|---:|---:|---:|---|---:|---:|:---:|
@@ -31,7 +42,34 @@ Tài liệu này cung cấp bộ hồ sơ bằng chứng nghiệm thu chính th�
 
 ---
 
-## 3. Danh mục 18 Ảnh Bằng chứng Trực quan (Screenshots Package)
+## 4. Hướng dẫn Bằng chứng 3 Màn hình Console & Quay Video Demo (Mentor Feedback Guide)
+
+Do hệ thống có khoản Credit che chi phí về $0, nghiệm thu **KHÔNG dùng bảng hóa đơn tiền $**, mà chứng minh bằng **3 Màn hình Console thực tế (Quay Video Before/After trên cùng đường tải)**:
+
+### 📺 Màn hình 1: AWS EC2 Instances Console (Chứng minh lever Spot + Graviton tức thì)
+- **Cột hiển thị cần bật trên Console**:
+  - `Lifecycle` (xác nhận phân biệt Spot vs On-Demand).
+  - `Instance type` (`t4g.large`, `c7g.xlarge`, `r7g.large`).
+  - `Architecture` (`arm64`).
+- **Nội dung quay/chụp**: Quay rõ 3 nodes On-Demand cố định (Reliability Floor) và 2-3 nodes Spot tự động bật/tắt theo tải.
+
+### 📺 Màn hình 2: AWS Cost Explorer Console (Đo bằng Usage Quantity Hours - Không trễ theo tiền $)
+- **Cấu hình chỉ số đo trên Cost Explorer**:
+  - **Metric**: Chọn `Usage Quantity (Hours)` (Đo bằng giờ chạy thực tế, không bị credit che).
+  - **Filter Service**: `EC2 - Compute`.
+  - **Group by**:
+    - `Purchase Option`: Thấy cột Spot phình lên so với On-Demand lúc tải cao.
+    - `Instance Type`: Thấy sự chuyển đổi hoàn toàn từ x86 (`t3`/`t3a`) sang Graviton (`t4g`/`c7g`/`r7g`).
+    - `Granularity Daily/Hourly`: Đường biểu đồ giờ-node tụt xuống khi tải thấp (chứng minh scale-down).
+
+### 📺 Màn hình 3: Grafana Live Monitoring Dashboard (Chứng minh SLO giữ nguyên khi Cost giảm)
+- **Panel 1 (Số Node & Pods theo thời gian)**: Tải lên -> Node/Pod lên; Tải xuống -> Node/Pod xuống (không bị kẹt ở đỉnh).
+- **Panel 2 (Checkout Success & Latency)**: Tỷ lệ Checkout Success >= 99% + p95 Latency < 1s duy trì liên tục xuyên suốt 45 phút test.
+- **Panel 3 (Live Spot Interruption Drill)**: Thể hiện khoảnh khắc kill 1 Spot node nhưng **0 request khách bị rớt** trên đồ thị.
+
+---
+
+## 5. Danh mục 18 Ảnh Bằng chứng Trực quan (Screenshots Package)
 
 Toàn bộ ảnh được lưu trữ tại thư mục [`docs/evidence/mandate13-compute-cost-optimization/screenshots/`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/screenshots/):
 
@@ -63,13 +101,13 @@ Toàn bộ ảnh được lưu trữ tại thư mục [`docs/evidence/mandate13-
 
 ---
 
-## 4. Kết luận Nghiệm thu Mandate 13 Cuối cùng
+## 6. Kết luận Nghiệm thu Mandate 13 Cuối cùng
 
 - [x] So sánh Baseline On-Demand và 100% ARM64 optimized run trên cùng đường cong tải.
 - [x] Đạt 100% các hợp đồng SLO (Checkout >= 99%, Browse/Cart >= 99.5%).
 - [x] Kiểm thử thu hồi Spot node thực tế under traffic đạt **0 lỗi khách hàng** ([`D13-SPOT-INTERRUPTION-DRILL-EVIDENCE.md`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/D13-SPOT-INTERRUPTION-DRILL-EVIDENCE.md)).
 - [x] Đã ký `ADR-013` giải trình đánh đổi Mandate 21 Reliability Floor ([`ADR-013-arm64-spot-capacity-decision.md`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/ADR-013-arm64-spot-capacity-decision.md)).
 - [x] Đã ký `D13 Managed ARM64 Migration Verdict` ([`D13-MANAGED-ARM64-MIGRATION-VERDICT.md`](file:///D:/tf4-phase3-repo/docs/evidence/mandate13-compute-cost-optimization/D13-MANAGED-ARM64-MIGRATION-VERDICT.md)).
-- [x] Hoàn thiện đóng gói bộ 18 ảnh bằng chứng trực quan.
+- [x] Bổ sung hướng dẫn 3 Màn hình Console & Video theo Feedback của Mentor.
 
 **KẾT LUẬN MANDATE 13**: **PASSED**
