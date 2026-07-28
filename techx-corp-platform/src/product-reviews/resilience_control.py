@@ -14,6 +14,7 @@ import grpc
 
 
 CONTROL_SERVICE = "tf4.mandate25.ResilienceControl"
+HARD_MAX_FAULT_TTL_SECONDS = 120
 ALLOWED_FAULTS = frozenset(
     {"off", "timeout", "throttling", "provider_5xx", "malformed_output"}
 )
@@ -35,7 +36,12 @@ class FaultController:
         max_ttl_seconds: int = 120,
     ):
         self._clock = clock
-        self._max_ttl_seconds = max_ttl_seconds
+        if max_ttl_seconds < 1:
+            raise ValueError("max_ttl_seconds must be positive")
+        self._max_ttl_seconds = min(
+            max_ttl_seconds,
+            HARD_MAX_FAULT_TTL_SECONDS,
+        )
         self._mode = "off"
         self._expires_at = 0.0
         self._lock = threading.Lock()

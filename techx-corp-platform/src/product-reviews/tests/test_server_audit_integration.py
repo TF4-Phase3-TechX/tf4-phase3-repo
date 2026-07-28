@@ -80,7 +80,6 @@ def test_q_and_a_cache_hit_metadata_and_history_use_shared_finalizer(monkeypatch
     )
     monkeypatch.setattr(server, "assistant", assistant)
     monkeypatch.setattr(server, "product_review_svc_metrics", metrics())
-    monkeypatch.setattr(server, "check_feature_flag", lambda _name: False)
     monkeypatch.setattr(
         server,
         "session_store",

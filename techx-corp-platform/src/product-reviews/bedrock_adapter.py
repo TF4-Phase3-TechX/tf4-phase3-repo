@@ -479,6 +479,7 @@ _AVAILABILITY_FAILURES = frozenset({
     "connecttimeout",
     "readtimeout",
     "endpointconnectionerror",
+    "modelnotreadyexception",
     "throttlingexception",
     "serviceunavailableexception",
     "internalserverexception",
@@ -608,10 +609,23 @@ class BedrockAdapter:
             raise ValueError("production calls require a numeric guardrail version")
         if output_mode not in ("json_schema", "tool"):
             raise ValueError("BEDROCK_OUTPUT_MODE must be json_schema or tool")
+        if deadline_seconds <= 0:
+            raise ValueError("deadline_seconds must be positive")
         if not 1 <= max_attempts <= 3:
             raise ValueError("max_attempts must be between 1 and 3")
         if not 0 <= retry_backoff_seconds <= 1:
             raise ValueError("retry_backoff_seconds must be between 0 and 1")
+        total_retry_backoff = sum(
+            retry_backoff_seconds * (2**attempt)
+            for attempt in range(max_attempts - 1)
+        )
+        deadline_margin = min(0.05, deadline_seconds * 0.05)
+        provider_budget = deadline_seconds - total_retry_backoff - deadline_margin
+        if provider_budget <= 0:
+            raise ValueError("retry schedule must fit inside deadline_seconds")
+        attempt_timeout_seconds = provider_budget / max_attempts
+        if attempt_timeout_seconds < 0.01:
+            raise ValueError("deadline_seconds leaves no usable provider attempt budget")
         self.model_id = model_id
         self.guardrail_id = guardrail_id
         self.guardrail_version = guardrail_version
@@ -623,17 +637,23 @@ class BedrockAdapter:
         self.intent_breaker = CircuitBreaker()
         self.max_attempts = max_attempts
         self.retry_backoff_seconds = retry_backoff_seconds
+        self.attempt_timeout_seconds = attempt_timeout_seconds
         self.fault_source = fault_source or (lambda: "off")
         self._last_provider_outcome = "never_attempted"
         self._last_provider_error = "none"
         self._outcome_lock = threading.Lock()
+        connect_timeout = min(1.0, self.attempt_timeout_seconds * 0.25)
+        read_timeout = self.attempt_timeout_seconds - connect_timeout
         self.client = client or boto3.client(
             "bedrock-runtime",
             region_name=region,
             config=Config(
                 retries={"max_attempts": 0, "mode": "standard"},
-                connect_timeout=min(1.0, deadline_seconds),
-                read_timeout=deadline_seconds,
+                # Botocore applies connect and read timeouts separately. Their
+                # sum is capped to one attempt budget so all configured
+                # attempts plus backoff fit inside the application deadline.
+                connect_timeout=connect_timeout,
+                read_timeout=read_timeout,
             ),
         )
 
@@ -659,6 +679,24 @@ class BedrockAdapter:
         with self._outcome_lock:
             self._last_provider_outcome = outcome
             self._last_provider_error = error_class
+
+    def _retry_delay_seconds(self, attempt: int) -> float:
+        return self.retry_backoff_seconds * (2**attempt)
+
+    def _can_retry(
+        self,
+        *,
+        error_class: str,
+        attempt: int,
+        request_started: float,
+    ) -> bool:
+        if not _trips_circuit(error_class) or attempt + 1 >= self.max_attempts:
+            return False
+        retry_delay = self._retry_delay_seconds(attempt)
+        remaining = self.deadline_seconds - (
+            self.clock() - request_started
+        )
+        return remaining > retry_delay + self.attempt_timeout_seconds
 
     def _fault_response(self, mode: str) -> dict[str, Any] | None:
         if mode == "timeout":
@@ -733,16 +771,15 @@ class BedrockAdapter:
                     contract_stage="provider_attempt",
                 )
                 should_retry = (
-                    _trips_circuit(error_class)
-                    and attempt + 1 < self.max_attempts
+                    self._can_retry(
+                        error_class=error_class,
+                        attempt=attempt,
+                        request_started=request_started,
+                    )
                 )
-                remaining = self.deadline_seconds - (
-                    self.clock() - request_started
-                )
-                backoff = self.retry_backoff_seconds * (2**attempt)
-                if not should_retry or remaining <= backoff:
+                if not should_retry:
                     raise last_error from exc
-                time.sleep(backoff)
+                time.sleep(self._retry_delay_seconds(attempt))
         raise last_error or ProviderFailure("provider_unavailable")
 
     def _request(self, question: str, product: dict[str, Any], reviews: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1038,7 +1075,7 @@ class BedrockAdapter:
             }
 
         try:
-            response = self.client.converse(**request)
+            response = self._invoke_with_retry(request, started)
             elapsed = self.clock() - started
             if not isinstance(response, dict):
                 raise ProviderFailure("invalid_response", latency_ms=elapsed * 1_000, contract_stage="response_envelope")
@@ -1215,15 +1252,23 @@ class BedrockAdapter:
             for attempt in range(self.max_attempts):
                 try:
                     response = self._invoke_search_intent_attempt(request)
+                    self._record_provider_outcome("success")
                     break
                 except Exception as exc:
-                    if attempt == self.max_attempts - 1:
+                    error_name = _provider_error_class(exc)
+                    self._record_provider_outcome("error", error_name)
+                    if not self._can_retry(
+                        error_class=error_name,
+                        attempt=attempt,
+                        request_started=started,
+                    ):
                         logger.error("parse_search_intent_failed", exc_info=exc)
-                        error_name = _provider_error_class(exc)
-                        if _trips_circuit(error_name):
-                            self.intent_breaker.failure(self.clock())
-                        raise ProviderFailure(error_name[:64]) from exc
-                    time.sleep(0.5 * (2 ** attempt))
+                        raise ProviderFailure(
+                            error_name[:64],
+                            latency_ms=(self.clock() - started) * 1_000,
+                            contract_stage="provider_attempt",
+                        ) from exc
+                    time.sleep(self._retry_delay_seconds(attempt))
             elapsed = self.clock() - started
 
             # Extract usage before any early-exit so telemetry is always accurate.

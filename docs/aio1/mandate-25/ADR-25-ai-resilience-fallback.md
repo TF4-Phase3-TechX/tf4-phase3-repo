@@ -20,10 +20,14 @@ workstream.
 
 1. Disable hidden SDK retries (`max_attempts=0`) and own a visible application
    retry loop. A request makes at most two attempts with a bounded exponential
-   backoff inside the existing application deadline.
+   backoff inside the existing application deadline. The adapter reserves a
+   small deadline margin, subtracts all configured backoff, and divides the
+   remaining provider budget across attempts. Production connect plus read
+   timeout cannot exceed one attempt budget, and a retry is skipped unless the
+   full next-attempt budget remains.
 2. Normalize Bedrock `ClientError` codes before circuit accounting. Only
-   availability failures (timeout, throttling, provider 5xx) trip the breaker;
-   malformed content does not.
+   availability failures (timeout, throttling, `ModelNotReadyException`,
+   provider 5xx) trip the breaker; malformed content does not.
 3. Open the in-process breaker after five failed requests in 30 seconds,
    fast-fail during a 60-second cooldown, and allow recovery after cooldown.
 4. Return the existing honest unavailable/insufficient responses. A malformed
@@ -46,6 +50,11 @@ the SDK or mutating feature flags. In return, retry count, latency, circuit
 accounting, injection lifetime, and restoration are deterministic and directly
 testable. The control token is an additional secret; when absent, fault
 mutation fails closed while normal AI traffic remains available.
+
+Dividing the total deadline across attempts shortens the maximum read window of
+each individual provider call. This can reject a slow-but-eventually-successful
+response earlier, but preserves the user-visible deadline and prevents a retry
+from extending one request beyond its declared latency bound.
 
 ## Rejected alternatives
 
