@@ -15,6 +15,7 @@
 | Continuous in-cluster workload | [GitOps #118](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/118) and [read-only runtime capture](evidence/continuous-runtime-20260725.md): Deployment `1/1` Ready on exact `c2560b9-aiops` digest, current pod restart `0` | Observed |
 | Real-channel incident summary | Slack FIRING/RESOLVED for `llm/service_availability` | Observed |
 | Busy but healthy does not page | [GitOps #171](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/171) plus machine-readable observations | Observed |
+| Locust UI live masking calibration | [2026-07-28 bounded load report](evidence/live-locust-ui-calibration-20260728.md): healthy/noise behavior observed; load-only did not create a subtle checkout incident | Partial; masking gap remains |
 | Masking resistance | External replay case passes; live hidden case remains grading-day evidence | Offline |
 | MTTD before/after | Configuration-derived before and live after are recorded below | Bounded claim |
 | Signed ADR | [`ADR-015`](ADR-015-aiops-detection.md) is signed by AIOps Lead Đình Thông Trần and accepted by Tech Lead Đinh Danh Nam | Done |
@@ -157,6 +158,15 @@ load-generator pod was Ready with zero restarts, and no AIOps incident or alert
 was active after restore.
 The exact observations and bounded confusion matrix are preserved in
 [live-labeled-set-20260724-25.json](evidence/live-labeled-set-20260724-25.json).
+
+The later [Locust UI calibration on 2026-07-28](evidence/live-locust-ui-calibration-20260728.md)
+ran without a GitOps load change. A preloaded checkout-only case completed
+1,200/1,200 valid checkouts under a separate eight-second 125-user Locust
+spike, with no incident and all inspected workloads Ready. This extends the
+healthy/noise negative evidence. It does not close masking because the
+candidate window contained no subtle checkout incident. An earlier unpaced
+calibration crossed into obvious shared overload and was rejected as masking
+evidence.
 
 ## Submission readiness
 

@@ -13,6 +13,7 @@ import math
 import os
 from pathlib import Path
 import statistics
+import subprocess
 import sys
 import time
 from typing import Any, Iterable
@@ -34,6 +35,34 @@ SCHEMA_VERSION = "mandate23-replay-v1"
 
 def _json_line(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _git_revision() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+def _git_tracked_dirty() -> bool | None:
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return bool(result.stdout.strip())
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def _read_cases(path: str) -> list[dict[str, Any]]:
@@ -371,6 +400,34 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=float, default=15.0)
     parser.add_argument("--repetitions", type=int, default=1)
     parser.add_argument(
+        "--source-revision",
+        default=os.getenv("MANDATE23_SOURCE_REVISION") or _git_revision(),
+    )
+    parser.add_argument(
+        "--runtime-image",
+        default=os.getenv("MANDATE23_RUNTIME_IMAGE", ""),
+    )
+    parser.add_argument(
+        "--runtime-image-digest",
+        default=os.getenv("MANDATE23_RUNTIME_IMAGE_DIGEST", ""),
+    )
+    parser.add_argument(
+        "--runtime-code-sha256",
+        default=os.getenv("MANDATE23_RUNTIME_CODE_SHA256", ""),
+    )
+    parser.add_argument(
+        "--model-id",
+        default=os.getenv("BEDROCK_MODEL_ID", ""),
+    )
+    parser.add_argument(
+        "--guardrail-id",
+        default=os.getenv("BEDROCK_GUARDRAIL_ID", ""),
+    )
+    parser.add_argument(
+        "--guardrail-version",
+        default=os.getenv("BEDROCK_GUARDRAIL_VERSION", ""),
+    )
+    parser.add_argument(
         "--identity-suffix",
         default="",
         help="Suffix added to every user_id/session_id to guarantee a fresh replay",
@@ -425,7 +482,20 @@ def main() -> int:
         "source_case_count": len(source_cases),
         "case_count": len(cases),
         "input_sha256": hashlib.sha256(input_bytes).hexdigest(),
+        "source": {
+            "revision": args.source_revision,
+            "tracked_dirty": _git_tracked_dirty(),
+        },
+        "runtime": {
+            "image": args.runtime_image,
+            "image_digest": args.runtime_image_digest,
+            "code_sha256": args.runtime_code_sha256,
+            "model_id": args.model_id,
+            "guardrail_id": args.guardrail_id,
+            "guardrail_version": args.guardrail_version,
+        },
         "price_snapshot": {
+            "basis": "configured_estimate",
             "input_usd_per_million": os.getenv("BEDROCK_INPUT_USD_PER_MILLION"),
             "output_usd_per_million": os.getenv("BEDROCK_OUTPUT_USD_PER_MILLION"),
         },

@@ -1,0 +1,55 @@
+{
+  "created_at": "2026-07-28T06:45:35.647048+00:00",
+  "product_id": "OLJCESPC7Z",
+  "events": [
+    {
+      "step": "cold",
+      "cache": "miss",
+      "cache_eligible": true,
+      "cache_reason": "cold",
+      "model_calls": 1,
+      "input_tokens": 1480,
+      "output_tokens": 128,
+      "estimated_cost_usd": 0.0008404,
+      "latency_ms": 1311.2638500006142,
+      "response": "The exact feedback in review 1 is: \"Great entry-level telescope! Easy to set up and provides clear views of the moon and brighter planets. Highly recommend for new astronomers.\" with a score of 4.5."
+    },
+    {
+      "step": "warm",
+      "cache": "hit",
+      "cache_eligible": true,
+      "cache_reason": "hit",
+      "model_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 4.5247070002005785,
+      "response": "The exact feedback in review 1 is: \"Great entry-level telescope! Easy to set up and provides clear views of the moon and brighter planets. Highly recommend for new astronomers.\" with a score of 4.5."
+    },
+    {
+      "step": "source_changed",
+      "cache": "miss",
+      "cache_eligible": true,
+      "cache_reason": "source_changed",
+      "model_calls": 1,
+      "input_tokens": 1492,
+      "output_tokens": 151,
+      "estimated_cost_usd": 0.00090761,
+      "latency_ms": 1558.1593650003924,
+      "response": "The exact feedback in review 1 is: \"Great entry-level telescope! Easy to set up and provides clear views of the moon and brighter planets. Highly recommend for new astronomers. MANDATE23_INVALIDATION_1785221136\" and the score is 1.0."
+    }
+  ],
+  "source_record": {
+    "table": "reviews.productreviews",
+    "id": 1,
+    "original_description": "Great entry-level telescope! Easy to set up and provides clear views of the moon and brighter planets. Highly recommend for new astronomers.",
+    "original_score": "4.5"
+  },
+  "question": "What exact feedback and score are in review 1?",
+  "mutation": {
+    "id": 1,
+    "marker": "MANDATE23_INVALIDATION_1785221136",
+    "updated_score": "1"
+  },
+  "restore_verified": true
+}
