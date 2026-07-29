@@ -21,7 +21,7 @@ Dashboard thử nghiệm hiện tại của CDO08 không query được data ổ
 
 ## 2. Dashboard cần tạo
 
-**Tên đề xuất:** `CDO08 - Mandate 21 AZ Loss Drill`
+**Tên đề xuất:** `Mandate 21 AZ Loss Drill Dashboard`
 
 **Datasource:** Prometheus hiện tại của `techx-observability`.
 
