@@ -534,8 +534,13 @@ resource "aws_glue_catalog_table" "ai_tool_audit_events" {
       }
     }
 
+    # ── Top-level OTLP envelope fields ──
     columns {
-      name = "log_type"
+      name = "body"
+      type = "string"
+    }
+    columns {
+      name = "severity_text"
       type = "string"
     }
     columns {
@@ -543,28 +548,16 @@ resource "aws_glue_catalog_table" "ai_tool_audit_events" {
       type = "string"
     }
     columns {
-      name = "surface"
+      name = "span_id"
       type = "string"
     }
+
+    # ── Audit fields — nested inside OTLP "attributes" object ──
+    # OTel CloudWatch Logs exporter (raw_log: false) wraps log record
+    # attributes under the "attributes" key in the JSON envelope.
     columns {
-      name = "model_id"
-      type = "string"
-    }
-    columns {
-      name = "tool_name"
-      type = "string"
-    }
-    columns {
-      name = "tool_input_redacted"
-      type = "struct<redacted:boolean,content_logged:boolean>"
-    }
-    columns {
-      name = "safety_decision"
-      type = "string"
-    }
-    columns {
-      name = "confirmation_status"
-      type = "string"
+      name = "attributes"
+      type = "struct<log_type:string,trace_id:string,surface:string,model_id:string,tool_name:string,tool_input_redacted:struct<redacted:boolean,content_logged:boolean>,safety_decision:string,confirmation_status:string>"
     }
   }
 }
