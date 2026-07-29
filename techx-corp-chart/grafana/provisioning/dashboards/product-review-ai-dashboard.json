@@ -32,7 +32,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Ti le thanh cong cua service product-reviews. No data nghia la chua co traffic/span metric trong khoang thoi gian dang chon.",
+      "description": "Request-level SLI cua ProductReviewService. Chi tinh cac span request chinh, khong gom child span nhu Bedrock/tool/DB. No data nghia la chua co request metric trong khoang thoi gian dang chon.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -92,13 +92,13 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
-          "legendFormat": "product-reviews success",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\"}[$__range])) > 0)",
+          "legendFormat": "product-reviews api success",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Product Reviews Success Rate",
+      "title": "Product Reviews API Success Rate",
       "type": "stat"
     },
     {
@@ -106,7 +106,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Ti le thanh cong cua Bedrock/LLM call duoc phat ra tu product-reviews. No data nghia la chua co LLM call trong khoang thoi gian dang chon hoac metric chua duoc ingest.",
+      "description": "Ti le thanh cong cua Bedrock provider span bedrock.converse phat ra tu product-reviews. No data nghia la chua co Bedrock span trong khoang thoi gian dang chon. Panel nay khong do traffic cua deployment llm.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -132,7 +132,7 @@
               }
             ]
           },
-          "noValue": "No LLM calls",
+          "noValue": "No Bedrock calls",
           "unit": "percent"
         },
         "overrides": []
@@ -166,13 +166,13 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "(100 * (1 - (sum(rate(app_llm_errors_total{service_name=\"product-reviews\"}[$__rate_interval])) / clamp_min(sum(rate(app_llm_calls_total{service_name=\"product-reviews\"}[$__rate_interval])), 0.000001)))) and (sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
-          "legendFormat": "bedrock success",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=\"bedrock.converse\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=\"bedrock.converse\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=\"bedrock.converse\"}[$__range])) > 0)",
+          "legendFormat": "bedrock span success",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "LLM Success Rate",
+      "title": "Product Reviews / Bedrock Success Rate",
       "type": "stat"
     },
     {
@@ -180,7 +180,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Tong request rate cua flow product review va AI assistant.",
+      "description": "Request rate theo ProductReviewService operation. Panel nay chi tinh request span chinh de tranh double-count child spans nhu Bedrock/tool/DB.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -261,13 +261,13 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\"}[$__rate_interval]))",
-          "legendFormat": "{{service_name}}",
+          "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\"}[$__rate_interval]))",
+          "legendFormat": "{{span_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Review + AI Request Rate",
+      "title": "Product Reviews API Request Rate",
       "type": "timeseries"
     },
     {
@@ -275,7 +275,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Error rate cua cac operation trong product-reviews va llm. Dung de tach loi API review voi loi AI/LLM.",
+      "description": "Request-level error rate theo ProductReviewService operation. Neu co traffic nhung khong co error series, panel hien 0 req/s thay vi No data. No data chi con nghia la chua co traffic/metric trong time range.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -360,13 +360,13 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "expr": "sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or (0 * sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{service_name=~\"${review_ai_component:regex}\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\"}[$__rate_interval])))",
           "legendFormat": "{{service_name}} {{span_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Review + AI Error Breakdown",
+      "title": "Product Reviews API Error Rate",
       "type": "timeseries"
     },
     {
@@ -374,7 +374,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Latency p95/p99 cua product-reviews.",
+      "description": "Request-level latency p95/p99 cua ProductReviewService. Chi tinh request span chinh, khong gom child span Bedrock/tool/DB.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -463,8 +463,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\"}[$__rate_interval])))",
-          "legendFormat": "product-reviews p95",
+          "expr": "histogram_quantile(0.95, sum by (le, span_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\"}[$__rate_interval])))",
+          "legendFormat": "{{span_name}} p95",
           "range": true,
           "refId": "A"
         },
@@ -474,14 +474,14 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le, span_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\", span_name=~\"get_product_reviews|get_average_product_review_score|get_ai_assistant_response|search_products_ai|/oteldemo.ProductReviewService/(GetProductReviews|GetAverageProductReviewScore|AskProductAIAssistant|SearchProductsAIAssistant)\"}[$__rate_interval])))",
           "hide": false,
-          "legendFormat": "product-reviews p99",
+          "legendFormat": "{{span_name}} p99",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "Product Reviews Latency",
+      "title": "Product Reviews API Latency",
       "type": "timeseries"
     },
     {
@@ -489,7 +489,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Latency p95/p99 cua LLM service. Tang dot bien thuong la dau hieu AI path bi timeout/cham.",
+      "description": "Latency p95/p99 cua Bedrock provider span bedrock.converse trong service product-reviews. Panel nay khong do traffic cua deployment llm.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -578,8 +578,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "(histogram_quantile(0.95, sum by (le) (rate(app_llm_latency_seconds_bucket{service_name=\"product-reviews\"}[$__rate_interval]))) * 1000) and (sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
-          "legendFormat": "bedrock p95",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\", span_name=\"bedrock.converse\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=\"bedrock.converse\"}[$__range])) > 0)",
+          "legendFormat": "bedrock span p95",
           "range": true,
           "refId": "A"
         },
@@ -589,14 +589,14 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "(histogram_quantile(0.99, sum by (le) (rate(app_llm_latency_seconds_bucket{service_name=\"product-reviews\"}[$__rate_interval]))) * 1000) and (sum(increase(app_llm_calls_total{service_name=\"product-reviews\"}[$__range])) > 0)",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\", span_name=\"bedrock.converse\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"product-reviews\", span_name=\"bedrock.converse\"}[$__range])) > 0)",
           "hide": false,
-          "legendFormat": "bedrock p99",
+          "legendFormat": "bedrock span p99",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "LLM Latency",
+      "title": "Product Reviews / Bedrock Latency",
       "type": "timeseries"
     },
     {
@@ -604,7 +604,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Request theo span_name de nhin operation nao cua review/AI dang duoc goi nhieu nhat.",
+      "description": "Span-level breakdown de debug dependency/path ben trong product-reviews va llm. Panel nay co the gom child spans nhu Bedrock/tool/DB, khong dung lam request-level SLI.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -690,7 +690,7 @@
           "refId": "A"
         }
       ],
-      "title": "Review + AI Operation Breakdown",
+      "title": "Review + AI Span Breakdown",
       "type": "timeseries"
     },
     {
@@ -698,7 +698,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Tinh trang deployment cua product-reviews, llm va postgresql.",
+      "description": "Tinh trang deployment product-reviews va llm, aggregate theo namespace/deployment de tranh duplicate row tu collector/host. Deployment llm available khong dong nghia AI production traffic dang di qua service llm.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -754,7 +754,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "k8s_deployment_available{k8s_namespace_name=\"${namespace}\", k8s_deployment_name=~\"product-reviews|llm\"}",
+          "expr": "max by (k8s_namespace_name, k8s_deployment_name) (k8s_deployment_available{k8s_namespace_name=\"${namespace}\", k8s_deployment_name=~\"product-reviews|llm\"})",
           "format": "table",
           "instant": true,
           "legendFormat": "{{k8s_deployment_name}}",
@@ -770,7 +770,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Restart cua cac container lien quan den review va AI.",
+      "description": "Restart cua cac container product-reviews va llm. Llm la auxiliary service, khong phai primary AI production path hien tai.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -869,7 +869,7 @@
         "type": "grafana-opensearch-datasource",
         "uid": "webstore-logs"
       },
-      "description": "Log trich loc theo product-reviews va llm de ho tro audit khi AI assistant loi, timeout hoac fallback.",
+      "description": "Log trich loc theo product-reviews va llm de ho tro audit. Mo rong keyword loi Bedrock/timeout/throttling va sort moi nhat truoc. Product Detail AI production path hien tai la product-reviews -> Bedrock; llm la auxiliary service nen co the khong co traffic log.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -917,7 +917,7 @@
             "type": "grafana-opensearch-datasource",
             "uid": "webstore-logs"
           },
-          "query": "search source=otel-logs-* | where resource.service.name in (\"product-reviews\", \"llm\") | where body like \"%error%\" or body like \"%timeout%\" or body like \"%fallback%\" or body like \"%rate limit%\" | fields observedTimestamp, resource.service.name, severity.text, body",
+          "query": "search source=otel-logs-* | where resource.service.name in (\"product-reviews\", \"llm\") | where severity.text in (\"ERROR\", \"WARN\", \"WARNING\") or body like \"%error%\" or body like \"%Exception%\" or body like \"%timeout%\" or body like \"%deadline%\" or body like \"%DeadlineExceeded%\" or body like \"%fallback%\" or body like \"%rate limit%\" or body like \"%throttl%\" or body like \"%AccessDenied%\" or body like \"%bedrock%\" | fields observedTimestamp, resource.service.name, severity.text, body | sort - observedTimestamp | head 100",
           "queryType": "PPL",
           "refId": "A"
         }
@@ -930,7 +930,7 @@
         "type": "prometheus",
         "uid": "webstore-metrics"
       },
-      "description": "Alert dang firing lien quan product-reviews, llm, postgresql hoac AI.",
+      "description": "Alert dang firing lien quan product-reviews, llm, postgresql hoac AI. Can doc AI production signal chinh theo product-reviews/Bedrock.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1014,7 +1014,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "Audit note\\n- Dashboard nay uu tien span metrics, Kubernetes metrics, app_llm_* metrics va OpenSearch logs hien co.\\n- LLM production path duoc do tu product-reviews/Bedrock, khong dua vao traffic cua mock llm service.\\n- No data o success-rate panel thuong nghia la chua co traffic/metric trong time range, khong dong nghia 0% success.\\n- Dashboard chi ho tro quan sat va forensic evidence; alert rule rieng van can duoc quan ly trong Prometheus/Grafana alerting.",
+        "content": "Audit note\\n- AI production path hien tai la product-reviews -> Bedrock.\\n- API Success/Request/Latency panels la request-level SLI, chi tinh ProductReviewService request spans.\\n- Span Breakdown la debug view va co the gom child spans nhu Bedrock/tool/DB, khong dung lam SLI chinh.\\n- Product Reviews / Bedrock panels do span metrics bedrock.converse phat ra tu product-reviews de khop nguon data dang co tren dashboard.\\n- app_llm_* metrics van la metric contract trong source code, nhung can verify ingest/label rieng neu dung lam SLI chinh.\\n- Service llm co the ton tai trong cluster nhung khong nam tren primary AI production path, nen request/latency/error panels co the No data khi filter llm.\\n- Shopping Copilot review summary dung deterministic summarize_copilot_reviews va khong goi model-backed Product Detail AI.\\n- Error panel hien 0 req/s khi co traffic nhung khong co error series; No data con lai thuong nghia la chua co traffic/metric trong time range.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3",
@@ -1066,7 +1066,7 @@
         },
         "hide": 0,
         "includeAll": true,
-        "label": "Review/AI component",
+        "label": "Trace component",
         "multi": true,
         "name": "review_ai_component",
         "options": [
@@ -1077,7 +1077,7 @@
           },
           {
             "selected": false,
-            "text": "llm",
+            "text": "llm (auxiliary)",
             "value": "llm"
           }
         ],
