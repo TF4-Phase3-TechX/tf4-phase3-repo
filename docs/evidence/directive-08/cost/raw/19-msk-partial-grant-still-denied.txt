@@ -1,0 +1,10 @@
+=== 19-msk-partial-grant-still-denied ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T05:49:01Z
+Ghi chú: kafka:ListClusters/DescribeCluster đã được cấp, nhưng ListNodes/GetBootstrapBrokers vẫn AccessDenied — grant là một phần, không phải toàn bộ policy đề nghị ở D8-ACCESS-REQUEST-01
+
+
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the ListNodes operation: User: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan is not authorized to perform: kafka:ListNodes on resource: arn:aws:kafka:us-east-1:511825856493:cluster/techx-tf4-orders/71e62f82-16ff-4111-b94d-704cccf87259-2 because no identity-based policy allows the kafka:ListNodes action
+
+
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the GetBootstrapBrokers operation: User: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan is not authorized to perform: kafka:GetBootstrapBrokers on resource: arn:aws:kafka:us-east-1:511825856493:cluster/techx-tf4-orders/71e62f82-16ff-4111-b94d-704cccf87259-2 because no identity-based policy allows the kafka:GetBootstrapBrokers action

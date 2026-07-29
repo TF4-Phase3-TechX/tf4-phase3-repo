@@ -1,0 +1,28 @@
+=== 07-events-failedscheduling-pass1 ===
+No resources found in techx-tf4 namespace.
+
+--- Pending pods ---
+No resources found in techx-tf4 namespace.
+
+--- Recent Kill/deploy-model events (data-migration teardown context) ---
+LAST SEEN   TYPE      REASON              OBJECT                                   MESSAGE
+57m         Normal    SwitchService       rollout/checkout                         Switched selector for service 'checkout' from '54ff8fcc6c' to '6bfcbcdb7d'
+57m         Normal    RolloutCompleted    rollout/checkout                         Rollout completed update to revision 7 (6bfcbcdb7d): Completed blue-green update
+56m         Normal    Killing             pod/checkout-54ff8fcc6c-pqrcf            Stopping container checkout
+56m         Normal    Killing             pod/checkout-54ff8fcc6c-xsr5q            Stopping container checkout
+56m         Normal    SuccessfulDelete    replicaset/checkout-54ff8fcc6c           Deleted pod: checkout-54ff8fcc6c-pqrcf
+56m         Normal    SuccessfulDelete    replicaset/checkout-54ff8fcc6c           Deleted pod: checkout-54ff8fcc6c-xsr5q
+56m         Normal    ScalingReplicaSet   rollout/checkout                         Scaled down ReplicaSet checkout-54ff8fcc6c (revision 6) from 2 to 0
+50m         Normal    Started             pod/orders-mirrormaker2-mirrormaker2-0   Started container orders-mirrormaker2-mirrormaker2
+50m         Normal    Pulled              pod/orders-mirrormaker2-mirrormaker2-0   Container image "quay.io/strimzi/kafka:1.1.0-kafka-4.2.1" already present on machine
+50m         Normal    Created             pod/orders-mirrormaker2-mirrormaker2-0   Created container: orders-mirrormaker2-mirrormaker2
+49m         Warning   Unhealthy           pod/orders-mirrormaker2-mirrormaker2-0   Liveness probe failed: Get "http://10.0.10.184:8083/health": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+42m         Warning   FailedDeployModel   service/valkey-migration-bridge          Failed deploy model due to failed to delete securityGroup: timed out waiting for the condition: operation error EC2: DeleteSecurityGroup, https response error StatusCode: 400, RequestID: 6e53ee35-1120-4557-8d98-67a1be49015e, api error DependencyViolation: resource sg-0f0ccc2152e9c1948 has a dependent object
+42m         Warning   FailedDeployModel   service/valkey-migration-bridge          Failed deploy model due to failed to delete securityGroup: timed out waiting for the condition: operation error EC2: DeleteSecurityGroup, https response error StatusCode: 400, RequestID: 8cfed103-f5a5-452d-a9dd-91ab78f44b6b, api error DependencyViolation: resource sg-0f0ccc2152e9c1948 has a dependent object
+33m         Normal    Killing             pod/kafka-575c57b489-6drbf               Stopping container kafka
+33m         Normal    Killing             pod/valkey-cart-64779877c-5fmtj          Stopping container valkey-cart
+33m         Normal    Killing             pod/orders-mirrormaker2-mirrormaker2-0   Stopping container orders-mirrormaker2-mirrormaker2
+33m         Normal    Killing             pod/postgresql-8496d66bd5-28jzt          Stopping container postgresql
+33m         Warning   FailedDeployModel   service/postgresql-migration-bridge      Failed deploy model due to failed to delete securityGroup: timed out waiting for the condition: operation error EC2: DeleteSecurityGroup, https response error StatusCode: 400, RequestID: eac5b123-033a-40db-b3f9-bbd0f98976f9, api error DependencyViolation: resource sg-0074d25b1a6d9af39 has a dependent object
+33m         Warning   Unhealthy           pod/orders-mirrormaker2-mirrormaker2-0   Readiness probe failed: Get "http://10.0.10.184:8083/health": dial tcp 10.0.10.184:8083: connect: connection refused
+32m         Warning   FailedDeployModel   service/postgresql-migration-bridge      Failed deploy model due to failed to delete securityGroup: timed out waiting for the condition: operation error EC2: DeleteSecurityGroup, https response error StatusCode: 400, RequestID: 688f7cc2-e1c4-4549-b769-8cf17329b182, api error DependencyViolation: resource sg-0074d25b1a6d9af39 has a dependent object

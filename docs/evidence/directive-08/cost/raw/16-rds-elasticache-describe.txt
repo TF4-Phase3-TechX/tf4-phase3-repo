@@ -1,0 +1,46 @@
+=== 16-rds-elasticache-describe ===
+AWS identity: arn:aws:sts::511825856493:assumed-role/AWSReservedSSO_TF4-CostPerfReadOnlyAlerting_9122727d2f4b2e86/tuan
+Collected: 2026-07-22T04:53:13Z
+
+-- RDS --
+[
+    {
+        "ID": "techx-tf4-postgresql",
+        "Class": "db.t4g.micro",
+        "Engine": "postgres",
+        "MultiAZ": true,
+        "StorageGiB": 20,
+        "StorageType": "gp3",
+        "Status": "available",
+        "CreateTime": "2026-07-19T14:12:01.256000+00:00"
+    }
+]
+
+-- ElastiCache replication groups --
+[
+    {
+        "ID": "techx-tf4-valkey-cart",
+        "NodeType": "cache.t4g.micro",
+        "Status": "available",
+        "AutomaticFailover": "enabled",
+        "MultiAZ": "enabled"
+    }
+]
+
+-- ElastiCache cache clusters --
+[
+    {
+        "ID": "techx-tf4-valkey-cart-001",
+        "NodeType": "cache.t4g.micro",
+        "Status": "available",
+        "Engine": "valkey",
+        "CreateTime": "2026-07-19T15:39:42.723000+00:00"
+    },
+    {
+        "ID": "techx-tf4-valkey-cart-002",
+        "NodeType": "cache.t4g.micro",
+        "Status": "available",
+        "Engine": "valkey",
+        "CreateTime": "2026-07-19T15:39:42.723000+00:00"
+    }
+]

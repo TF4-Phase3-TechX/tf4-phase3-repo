@@ -1,0 +1,33 @@
+=== 06-pvc-ebs-after ===
+NAME              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE     VOLUMEMODE
+kafka-pvc         Bound    pvc-cb14ee85-b485-439e-b407-9ab1f76eb1dc   10Gi       RWO            gp2            <unset>                 7d11h   Filesystem
+postgresql-pvc    Bound    pvc-e0600223-7b8a-4bc6-ab58-bdb77e9653e0   10Gi       RWO            gp2            <unset>                 8d      Filesystem
+valkey-cart-pvc   Bound    pvc-cbc599bd-900e-480f-923a-6d03cdbc95e3   5Gi        RWO            gp2            <unset>                 7d11h   Filesystem
+
+--- aws ec2 describe-volumes for kafka-pvc ---
+----------------------------------------------------
+|                  DescribeVolumes                 |
++-------------+------------------------------------+
+|  CreateTime |  2026-07-14T16:07:57.262000+00:00  |
+|  Size       |  10                                |
+|  State      |  available                         |
+|  VolumeId   |  vol-01a7d9f5b6270c06d             |
++-------------+------------------------------------+
+--- aws ec2 describe-volumes for postgresql-pvc ---
+------------------------------------------------------------------------------------
+|                                  DescribeVolumes                                 |
++-----------------------------------+-------+------------+-------------------------+
+|            CreateTime             | Size  |   State    |        VolumeId         |
++-----------------------------------+-------+------------+-------------------------+
+|  2026-07-13T14:25:14.927000+00:00 |  10   |  available |  vol-0cb8c31ac039d6597  |
+|  2026-07-14T22:06:40.832000+00:00 |  10   |  available |  vol-0ce59bf32f9aea7d5  |
++-----------------------------------+-------+------------+-------------------------+
+--- aws ec2 describe-volumes for valkey-cart-pvc ---
+----------------------------------------------------
+|                  DescribeVolumes                 |
++-------------+------------------------------------+
+|  CreateTime |  2026-07-14T16:07:55.688000+00:00  |
+|  Size       |  5                                 |
+|  State      |  available                         |
+|  VolumeId   |  vol-0878313d6b2957e96             |
++-------------+------------------------------------+

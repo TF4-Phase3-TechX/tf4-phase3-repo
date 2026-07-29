@@ -1,0 +1,8 @@
+=== 24-nodes-wide-pass2 ===
+Collected: 2026-07-22T07:48:58Z
+
+NAME                          STATUS   ROLES    AGE     VERSION               INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                        KERNEL-VERSION                    CONTAINER-RUNTIME
+ip-10-0-10-19.ec2.internal    Ready    <none>   3d11h   v1.34.9-eks-8f14419   10.0.10.19    <none>        Amazon Linux 2023.12.20260611   6.12.90-120.164.amzn2023.x86_64   containerd://2.2.4+unknown
+ip-10-0-10-231.ec2.internal   Ready    <none>   13d     v1.34.9-eks-7d6f6ec   10.0.10.231   <none>        Amazon Linux 2023.12.20260622   6.12.92-122.166.amzn2023.x86_64   containerd://2.2.4+unknown
+ip-10-0-11-217.ec2.internal   Ready    <none>   6d3h    v1.34.9-eks-8f14419   10.0.11.217   <none>        Amazon Linux 2023.12.20260611   6.12.90-120.164.amzn2023.x86_64   containerd://2.2.4+unknown
+ip-10-0-11-40.ec2.internal    Ready    <none>   13d     v1.34.9-eks-7d6f6ec   10.0.11.40    <none>        Amazon Linux 2023.12.20260622   6.12.92-122.166.amzn2023.x86_64   containerd://2.2.4+unknown

@@ -1,0 +1,12 @@
+=== 30-asg-desiredsize-pass2 ===
+Collected: 2026-07-22T07:48:58Z
+
+[
+    {
+        "Name": "eks-techx-general-ng-20260707091432750200000017-cccf9dee-dc5d-8c58-e89b-17e7b4eb9a15",
+        "Desired": 2,
+        "Min": 2,
+        "Max": 4,
+        "Instances": 2
+    }
+]

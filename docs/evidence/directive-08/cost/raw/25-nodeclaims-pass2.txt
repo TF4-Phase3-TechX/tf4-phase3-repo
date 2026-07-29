@@ -1,0 +1,306 @@
+=== 25-nodeclaims-pass2 ===
+Collected: 2026-07-22T07:48:58Z
+
+NAME                  TYPE        CAPACITY    ZONE         NODE                          READY   AGE     IMAGEID                 ID                                      NODEPOOL        NODECLASS       DRIFTED
+techx-general-djg4k   t3a.large   on-demand   us-east-1b   ip-10-0-11-217.ec2.internal   True    6d3h    ami-09f62c72654741033   aws:///us-east-1b/i-0b9df4a4ec1d03c16   techx-general   techx-general   
+techx-general-jchb5   t3a.large   on-demand   us-east-1a   ip-10-0-10-19.ec2.internal    True    3d11h   ami-09f62c72654741033   aws:///us-east-1a/i-0662168fdb18c47d4   techx-general   techx-general   
+
+apiVersion: v1
+items:
+- apiVersion: karpenter.sh/v1
+  kind: NodeClaim
+  metadata:
+    annotations:
+      compatibility.karpenter.k8s.aws/cluster-name-tagged: "true"
+      karpenter.k8s.aws/ec2nodeclass-hash: "4689754915429741937"
+      karpenter.k8s.aws/ec2nodeclass-hash-version: v5
+      karpenter.k8s.aws/instance-profile-name: techx-tf4-cluster_6332193992597369731
+      karpenter.k8s.aws/tagged: "true"
+      karpenter.sh/nodeclaim-min-values-relaxed: "false"
+      karpenter.sh/nodepool-hash: "10581740522941538598"
+      karpenter.sh/nodepool-hash-version: v3
+    creationTimestamp: "2026-07-16T03:57:09Z"
+    finalizers:
+    - karpenter.sh/termination
+    generateName: techx-general-
+    generation: 1
+    labels:
+      karpenter.k8s.aws/ec2nodeclass: techx-general
+      karpenter.k8s.aws/instance-capability-flex: "false"
+      karpenter.k8s.aws/instance-category: t
+      karpenter.k8s.aws/instance-cpu: "2"
+      karpenter.k8s.aws/instance-cpu-manufacturer: amd
+      karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz: "2200"
+      karpenter.k8s.aws/instance-ebs-bandwidth: "2780"
+      karpenter.k8s.aws/instance-encryption-in-transit-supported: "false"
+      karpenter.k8s.aws/instance-family: t3a
+      karpenter.k8s.aws/instance-generation: "3"
+      karpenter.k8s.aws/instance-hypervisor: nitro
+      karpenter.k8s.aws/instance-memory: "8192"
+      karpenter.k8s.aws/instance-network-bandwidth: "512"
+      karpenter.k8s.aws/instance-size: large
+      karpenter.k8s.aws/instance-tenancy: default
+      karpenter.sh/capacity-type: on-demand
+      karpenter.sh/nodepool: techx-general
+      kubernetes.io/arch: amd64
+      kubernetes.io/os: linux
+      node.kubernetes.io/instance-type: t3a.large
+      topology.k8s.aws/zone-id: use1-az2
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1b
+    name: techx-general-djg4k
+    ownerReferences:
+    - apiVersion: karpenter.sh/v1
+      blockOwnerDeletion: true
+      kind: NodePool
+      name: techx-general
+      uid: d6b4c398-4df9-41e1-bb7d-e7eb8ea74e8f
+    resourceVersion: "6853854"
+    uid: 4bf307e1-1397-4555-98b2-7394c1743038
+  spec:
+    expireAfter: 720h
+    nodeClassRef:
+      group: karpenter.k8s.aws
+      kind: EC2NodeClass
+      name: techx-general
+    requirements:
+    - key: kubernetes.io/arch
+      operator: In
+      values:
+      - amd64
+    - key: topology.kubernetes.io/zone
+      operator: In
+      values:
+      - us-east-1b
+    - key: topology.kubernetes.io/region
+      operator: In
+      values:
+      - us-east-1
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values:
+      - on-demand
+    - key: node.kubernetes.io/instance-type
+      operator: In
+      values:
+      - t3.large
+      - t3a.large
+    - key: karpenter.k8s.aws/ec2nodeclass
+      operator: In
+      values:
+      - techx-general
+    - key: karpenter.sh/nodepool
+      operator: In
+      values:
+      - techx-general
+    - key: kubernetes.io/os
+      operator: In
+      values:
+      - linux
+    resources:
+      requests:
+        cpu: 1230m
+        memory: 304Mi
+        pods: "6"
+  status:
+    allocatable:
+      cpu: 1930m
+      ephemeral-storage: 17Gi
+      memory: 7270828Ki
+      pods: "35"
+    capacity:
+      cpu: "2"
+      ephemeral-storage: 20Gi
+      memory: 8028588Ki
+      pods: "35"
+    conditions:
+    - lastTransitionTime: "2026-07-16T03:57:11Z"
+      message: ""
+      observedGeneration: 1
+      reason: Launched
+      status: "True"
+      type: Launched
+    - lastTransitionTime: "2026-07-16T03:57:35Z"
+      message: ""
+      observedGeneration: 1
+      reason: Registered
+      status: "True"
+      type: Registered
+    - lastTransitionTime: "2026-07-16T03:57:50Z"
+      message: ""
+      observedGeneration: 1
+      reason: Initialized
+      status: "True"
+      type: Initialized
+    - lastTransitionTime: "2026-07-16T04:07:11Z"
+      message: ""
+      observedGeneration: 1
+      reason: ConsistentStateFound
+      status: "True"
+      type: ConsistentStateFound
+    - lastTransitionTime: "2026-07-22T06:48:33Z"
+      message: ""
+      observedGeneration: 1
+      reason: Consolidatable
+      status: "True"
+      type: Consolidatable
+    - lastTransitionTime: "2026-07-16T03:57:50Z"
+      message: ""
+      observedGeneration: 1
+      reason: Ready
+      status: "True"
+      type: Ready
+    imageID: ami-09f62c72654741033
+    lastPodEventTime: "2026-07-22T06:43:33Z"
+    nodeName: ip-10-0-11-217.ec2.internal
+    providerID: aws:///us-east-1b/i-0b9df4a4ec1d03c16
+- apiVersion: karpenter.sh/v1
+  kind: NodeClaim
+  metadata:
+    annotations:
+      compatibility.karpenter.k8s.aws/cluster-name-tagged: "true"
+      karpenter.k8s.aws/ec2nodeclass-hash: "4689754915429741937"
+      karpenter.k8s.aws/ec2nodeclass-hash-version: v5
+      karpenter.k8s.aws/instance-profile-name: techx-tf4-cluster_6332193992597369731
+      karpenter.k8s.aws/tagged: "true"
+      karpenter.sh/nodeclaim-min-values-relaxed: "false"
+      karpenter.sh/nodepool-hash: "10581740522941538598"
+      karpenter.sh/nodepool-hash-version: v3
+    creationTimestamp: "2026-07-18T19:57:30Z"
+    finalizers:
+    - karpenter.sh/termination
+    generateName: techx-general-
+    generation: 1
+    labels:
+      karpenter.k8s.aws/ec2nodeclass: techx-general
+      karpenter.k8s.aws/instance-capability-flex: "false"
+      karpenter.k8s.aws/instance-category: t
+      karpenter.k8s.aws/instance-cpu: "2"
+      karpenter.k8s.aws/instance-cpu-manufacturer: amd
+      karpenter.k8s.aws/instance-cpu-sustained-clock-speed-mhz: "2200"
+      karpenter.k8s.aws/instance-ebs-bandwidth: "2780"
+      karpenter.k8s.aws/instance-encryption-in-transit-supported: "false"
+      karpenter.k8s.aws/instance-family: t3a
+      karpenter.k8s.aws/instance-generation: "3"
+      karpenter.k8s.aws/instance-hypervisor: nitro
+      karpenter.k8s.aws/instance-memory: "8192"
+      karpenter.k8s.aws/instance-network-bandwidth: "512"
+      karpenter.k8s.aws/instance-size: large
+      karpenter.k8s.aws/instance-tenancy: default
+      karpenter.sh/capacity-type: on-demand
+      karpenter.sh/nodepool: techx-general
+      kubernetes.io/arch: amd64
+      kubernetes.io/os: linux
+      node.kubernetes.io/instance-type: t3a.large
+      topology.k8s.aws/zone-id: use1-az1
+      topology.kubernetes.io/region: us-east-1
+      topology.kubernetes.io/zone: us-east-1a
+    name: techx-general-jchb5
+    ownerReferences:
+    - apiVersion: karpenter.sh/v1
+      blockOwnerDeletion: true
+      kind: NodePool
+      name: techx-general
+      uid: d6b4c398-4df9-41e1-bb7d-e7eb8ea74e8f
+    resourceVersion: "6887356"
+    uid: 8d017ad8-0daf-409b-a52d-4247c8a2b662
+  spec:
+    expireAfter: 720h
+    nodeClassRef:
+      group: karpenter.k8s.aws
+      kind: EC2NodeClass
+      name: techx-general
+    requirements:
+    - key: karpenter.k8s.aws/ec2nodeclass
+      operator: In
+      values:
+      - techx-general
+    - key: kubernetes.io/os
+      operator: In
+      values:
+      - linux
+    - key: topology.kubernetes.io/zone
+      operator: In
+      values:
+      - us-east-1a
+    - key: node.kubernetes.io/instance-type
+      operator: In
+      values:
+      - t3.large
+      - t3a.large
+    - key: topology.kubernetes.io/region
+      operator: In
+      values:
+      - us-east-1
+    - key: karpenter.sh/nodepool
+      operator: In
+      values:
+      - techx-general
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values:
+      - on-demand
+    - key: kubernetes.io/arch
+      operator: In
+      values:
+      - amd64
+    resources:
+      requests:
+        cpu: 480m
+        memory: 1006Mi
+        pods: "8"
+  status:
+    allocatable:
+      cpu: 1930m
+      ephemeral-storage: 17Gi
+      memory: 7270828Ki
+      pods: "35"
+    capacity:
+      cpu: "2"
+      ephemeral-storage: 20Gi
+      memory: 8028588Ki
+      pods: "35"
+    conditions:
+    - lastTransitionTime: "2026-07-18T19:57:32Z"
+      message: ""
+      observedGeneration: 1
+      reason: Launched
+      status: "True"
+      type: Launched
+    - lastTransitionTime: "2026-07-18T19:57:55Z"
+      message: ""
+      observedGeneration: 1
+      reason: Registered
+      status: "True"
+      type: Registered
+    - lastTransitionTime: "2026-07-18T19:58:11Z"
+      message: ""
+      observedGeneration: 1
+      reason: Initialized
+      status: "True"
+      type: Initialized
+    - lastTransitionTime: "2026-07-18T20:07:32Z"
+      message: ""
+      observedGeneration: 1
+      reason: ConsistentStateFound
+      status: "True"
+      type: ConsistentStateFound
+    - lastTransitionTime: "2026-07-22T07:44:07Z"
+      message: ""
+      observedGeneration: 1
+      reason: Consolidatable
+      status: "True"
+      type: Consolidatable
+    - lastTransitionTime: "2026-07-18T19:58:11Z"
+      message: ""
+      observedGeneration: 1
+      reason: Ready
+      status: "True"
+      type: Ready
+    imageID: ami-09f62c72654741033
+    lastPodEventTime: "2026-07-22T07:39:07Z"
+    nodeName: ip-10-0-10-19.ec2.internal
+    providerID: aws:///us-east-1a/i-0662168fdb18c47d4
+kind: List
+metadata:
+  resourceVersion: ""
