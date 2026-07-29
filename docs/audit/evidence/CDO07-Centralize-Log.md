@@ -1,4 +1,3 @@
-```markdown
 # BÁO CÁO TIẾN ĐỘ THỰC HIỆN TASK: CENTRALIZE LOG & FORENSIC SECURITY ANALYTICS
 
 | Thuộc tính | Giá trị |
@@ -140,4 +139,4 @@ Kính trình **Mentor** xem xét báo cáo, đánh giá kết quả triển khai
 
 **Đinh Văn Ty**  
 **Group CDO-07 – Auditability**
-```
+
