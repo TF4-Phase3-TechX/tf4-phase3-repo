@@ -47,6 +47,17 @@ The current runtime inventory, activation gates, proposed fault mechanism,
 stop conditions and evidence checklist are recorded in
 [`LIVE-DRILL-READINESS-2026-07-24.md`](LIVE-DRILL-READINESS-2026-07-24.md).
 
+## Post-V7 local recovery gate
+
+The V7 drill exposed a startup/liveness loop while a restarted process awaited
+long saga verification, followed by cleanup failure when Deployment patch RBAC
+was restored too early. The implementation, disposable-Kubernetes test matrix,
+three consecutive local cycles and strict non-live claim are recorded in
+[`LOCAL-RECOVERY-GATE-2026-07-29.md`](LOCAL-RECOVERY-GATE-2026-07-29.md).
+
+This gate must pass before another production drill. It does not replace the
+remaining live success-path evidence.
+
 ## Final evidence packet
 
 The controlled 2026-07-25 drill, machine-readable audit summary, timing,

@@ -557,15 +557,24 @@ class AIOpsWorker:
 
     async def run(self) -> None:
         self.running = True
-        while self.running:
-            try:
-                await self.poll_once()
-            except TelemetryError as exc:
-                poll_failures.labels("prometheus").inc()
-                log.error(json.dumps({"event": "telemetry_degraded", "error": str(exc)}))
-            except Exception:
-                log.exception("unexpected polling failure")
-            await asyncio.sleep(self.settings.poll_seconds)
+        try:
+            while self.running:
+                try:
+                    await self.poll_once()
+                except TelemetryError as exc:
+                    poll_failures.labels("prometheus").inc()
+                    log.error(
+                        json.dumps(
+                            {"event": "telemetry_degraded", "error": str(exc)}
+                        )
+                    )
+                except Exception:
+                    log.exception("unexpected polling failure")
+                await asyncio.sleep(self.settings.poll_seconds)
+        finally:
+            # Cancellation is the normal lifespan shutdown path. Never leave
+            # readiness reporting a stale running=True state.
+            self.running = False
 
     def stop(self) -> None:
         self.running = False
