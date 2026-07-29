@@ -292,52 +292,12 @@ resource "aws_glue_catalog_table" "aws_config_history" {
     }
 
     columns {
-      name = "version"
+      name = "fileversion"
       type = "string"
     }
     columns {
-      name = "accountid"
-      type = "string"
-    }
-    columns {
-      name = "configurationitemcapturetime"
-      type = "string"
-    }
-    columns {
-      name = "configurationitemstatus"
-      type = "string"
-    }
-    columns {
-      name = "configurationstateid"
-      type = "string"
-    }
-    columns {
-      name = "resourcecreationtime"
-      type = "string"
-    }
-    columns {
-      name = "resourcetype"
-      type = "string"
-    }
-    columns {
-      name = "resourceid"
-      type = "string"
-    }
-    columns {
-      name = "resourcename"
-      type = "string"
-    }
-    columns {
-      name = "awsregion"
-      type = "string"
-    }
-    columns {
-      name = "supplementaryconfiguration"
-      type = "map<string,string>"
-    }
-    columns {
-      name = "relationships"
-      type = "array<struct<resourcetype:string,resourceid:string,resourcename:string,relationshipname:string>>"
+      name = "configurationitems"
+      type = "array<struct<relatedevents:array<string>,relationships:array<struct<resourceid:string,resourcename:string,resourcetype:string,relationshipname:string>>,configuration:string,supplementaryconfiguration:map<string,string>,tags:map<string,string>,configurationitemversion:string,configurationitemcapturetime:string,configurationstateid:string,awsaccountid:string,configurationitemmd5hash:string,arn:string,resourcetype:string,resourceid:string,resourcename:string,awsregion:string,availabilityzone:string,resourcecreationtime:string,configurationitemstatus:string>>"
     }
   }
 }
