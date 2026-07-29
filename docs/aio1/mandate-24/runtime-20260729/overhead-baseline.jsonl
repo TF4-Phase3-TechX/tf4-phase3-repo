@@ -1,0 +1,3 @@
+{"case_id":"product-qa-cold-r1","latency_ms":2185.8093839982757,"model_calls":1,"source":"tests/eval_mandate23/evidence/runtime-20260726T175526Z/per_case.jsonl"}
+{"case_id":"product-qa-cold-r2","latency_ms":2010.3707749985915,"model_calls":1,"source":"tests/eval_mandate23/evidence/runtime-20260726T175526Z/per_case.jsonl"}
+{"case_id":"product-qa-cold-r3","latency_ms":1957.5562449972495,"model_calls":1,"source":"tests/eval_mandate23/evidence/runtime-20260726T175526Z/per_case.jsonl"}

@@ -2,6 +2,8 @@ import pytest
 
 import session_store as store_module
 from session_store import (
+    MAX_HISTORY_EXCHANGES,
+    MAX_HISTORY_MESSAGES,
     MAX_HISTORY_TURNS,
     PROPOSAL_TTL_SECONDS,
     SESSION_TTL_SECONDS,
@@ -26,6 +28,39 @@ def test_history_is_scoped_and_bounded(monkeypatch):
     assert len(history) == MAX_HISTORY_TURNS * 2
     assert history[0]["content"] == "turn-4"
     assert store.get_history("user-2", "session-1") == []
+
+
+def test_history_keeps_five_complete_exchanges(monkeypatch):
+    store = make_store(monkeypatch)
+    for index in range(MAX_HISTORY_EXCHANGES + 2):
+        store.append_exchange(
+            "user-1",
+            "session-1",
+            f"user-{index}",
+            f"assistant-{index}",
+        )
+
+    history = store.get_history("user-1", "session-1")
+    assert len(history) == MAX_HISTORY_MESSAGES == 10
+    assert history[0] == {"role": "user", "content": "user-2"}
+    assert history[-1] == {"role": "assistant", "content": "assistant-6"}
+    assert [row["role"] for row in history] == ["user", "assistant"] * 5
+
+
+def test_token_trim_never_keeps_half_an_exchange(monkeypatch):
+    store = make_store(monkeypatch)
+    for index in range(8):
+        store.append_exchange(
+            "user-1",
+            "session-1",
+            f"user-{index}-" + ("x" * 700),
+            f"assistant-{index}-" + ("y" * 700),
+        )
+    history = store.get_history("user-1", "session-1")
+    assert len(history) % 2 == 0
+    assert [row["role"] for row in history] == ["user", "assistant"] * (
+        len(history) // 2
+    )
 
 
 def test_last_search_products_are_scoped_by_user_and_session(monkeypatch):

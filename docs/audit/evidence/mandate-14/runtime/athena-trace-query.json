@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-07-28",
+  "database": "tf4_audit_forensics",
+  "table": "ai_tool_audit_events",
+  "workgroup": "tf4-audit-forensics",
+  "query_execution_id": "ad12916e-9403-43ec-9038-73d849907e00",
+  "query": "SELECT year, month, day, hour, trace_id\nFROM tf4_audit_forensics.ai_tool_audit_events\nWHERE year = '2026' AND month = '07' AND day = '28' AND hour = '07'\n  AND trace_id = '5c54c4a617cfd2dc8f5f2472d47ddd54'\nLIMIT 10",
+  "status": "SUCCEEDED",
+  "submitted_at": "2026-07-28T07:22:15.365Z",
+  "completed_at": "2026-07-28T07:22:15.937Z",
+  "engine_execution_ms": 407,
+  "total_execution_ms": 572,
+  "data_scanned_bytes": 797,
+  "result": {
+    "year": "2026",
+    "month": "07",
+    "day": "28",
+    "hour": "07",
+    "trace_id": "5c54c4a617cfd2dc8f5f2472d47ddd54"
+  },
+  "result_location": "s3://tf4-athena-query-results-511825856493/results/ad12916e-9403-43ec-9038-73d849907e00.csv",
+  "result_encryption": "SSE_S3"
+}

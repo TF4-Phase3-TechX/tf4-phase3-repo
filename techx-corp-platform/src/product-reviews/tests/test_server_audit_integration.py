@@ -46,10 +46,11 @@ def test_q_and_a_emits_canonical_event_only_after_provider_attempt(monkeypatch):
     )
     monkeypatch.setattr(server, "assistant", assistant)
     monkeypatch.setattr(server, "product_review_svc_metrics", metrics())
-    monkeypatch.setattr(server, "check_feature_flag", lambda _name: False)
     monkeypatch.setattr(server, "emit_ai_tool_audit", lambda _logger, **event: audit_events.append(event))
 
-    server.get_ai_assistant_response("product-1", "content intentionally not captured")
+    response = server.get_ai_assistant_response(
+        "product-1", "content intentionally not captured"
+    )
 
     assert audit_events == [{
         "surface": "product_qa",
@@ -58,6 +59,56 @@ def test_q_and_a_emits_canonical_event_only_after_provider_attempt(monkeypatch):
         "safety_decision": "provider_unavailable",
         "confirmation_status": "not_required",
     }]
+    assert response.cache_status == "miss"
+    assert response.model_calls == 0
+    assert response.memory_status == "not_applicable"
+
+
+def test_q_and_a_cache_hit_metadata_and_history_use_shared_finalizer(monkeypatch):
+    exchanges = []
+    provider = SimpleNamespace(model_id="model-1", guardrail_version="3")
+    assistant = SimpleNamespace(
+        provider=provider,
+        answer=lambda *_args: AssistantOutcome(
+            response="cached grounded answer",
+            outcome="answered",
+            cache_status="hit",
+            cache_eligible=True,
+            cache_reason="hit",
+            model_calls=0,
+        ),
+    )
+    monkeypatch.setattr(server, "assistant", assistant)
+    monkeypatch.setattr(server, "product_review_svc_metrics", metrics())
+    monkeypatch.setattr(
+        server,
+        "session_store",
+        SimpleNamespace(
+            append_exchange=lambda user, session, question, answer: exchanges.append(
+                (user, session, question, answer)
+            )
+        ),
+    )
+
+    response = server.get_ai_assistant_response(
+        "product-1",
+        "What do reviews say?",
+        "session-1",
+        "user-1",
+    )
+
+    assert response.cache_status == "hit"
+    assert response.cache_eligible is True
+    assert response.model_calls == 0
+    assert response.input_tokens == response.output_tokens == 0
+    assert exchanges == [
+        (
+            "user-1",
+            "session-1",
+            "What do reviews say?",
+            "cached grounded answer",
+        )
+    ]
 
 
 def test_copilot_provider_failure_emits_canonical_event(monkeypatch):

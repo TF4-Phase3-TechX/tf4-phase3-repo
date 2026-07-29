@@ -1,0 +1,36 @@
+{
+  "schema_version": "mandate24-runtime-manifest-v1",
+  "captured_at_utc": "2026-07-28T17:47:23Z",
+  "captured_at_asia_ho_chi_minh": "2026-07-29T00:47:23+07:00",
+  "source_delivery": {
+    "pull_request": "https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/707",
+    "merged_commit": "8c10da36e70161d2d5dfcbd35fdc9b56c013324c"
+  },
+  "production_source_revision": "405fd07175423d1914aad42f002e5a6a98f107d1",
+  "gitops": {
+    "repository": "https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests",
+    "observed_main_commit": "9e9bf2362bdc1cf966a1066c04d6a2875b2c5ebc",
+    "observability_config_mapping_commit": "4c5d25018990d63815cb0576951cef77abe3f98a",
+    "observability_enablement_commit": "8de73cb1f423057261936a74170c018a0f8da891",
+    "production_promotion_commit": "562fdaed6787bafca9b836cefb6c38631ef88291",
+    "application_target_revision": "405fd07175423d1914aad42f002e5a6a98f107d1",
+    "configured_observability_enabled": true,
+    "configured_content_capture": false
+  },
+  "runtime": {
+    "namespace": "techx-tf4",
+    "frontend_image_tag": "405fd07-frontend",
+    "frontend_image_digest": "sha256:25cabf253f27a0e4d601d0b0bc9659ecc70ab5972f1252bfe29fbb5da042ae7b",
+    "product_reviews_image_tag": "405fd07-product-reviews",
+    "product_reviews_image_digest": "sha256:d301bf0d3a59688a3d2344a613455e921463a202078bc4b3d8dc4ad619222fc2",
+    "normal_trace_pod": "product-reviews-884cf5b55-zxbvn",
+    "runtime_identity_source": "Jaeger process resource attributes",
+    "digest_source": "GitOps production image-revisions.yaml"
+  },
+  "claim_boundary": {
+    "runtime_image_tags_observed": true,
+    "gitops_desired_digests_observed": true,
+    "argocd_live_sync_revision_queried": false,
+    "note": "The runtime traces independently show the promoted image tags. The exact live Argo Application sync revision was not queried because the active operator session has no EKS/Argo credentials."
+  }
+}

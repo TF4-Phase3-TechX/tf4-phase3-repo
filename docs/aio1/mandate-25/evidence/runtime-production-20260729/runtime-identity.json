@@ -1,0 +1,14 @@
+{
+    "account":  "511825856493",
+    "application_commit":  "405fd07175423d1914aad42f002e5a6a98f107d1",
+    "deployment":  "product-reviews",
+    "deployment_generation":  84,
+    "deployment_rollout_revision":  "81",
+    "gitops_merge_commit":  "562fdaed6787bafca9b836cefb6c38631ef88291",
+    "gitops_pull_request":  261,
+    "image":  "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:405fd07-product-reviews@sha256:d301bf0d3a59688a3d2344a613455e921463a202078bc4b3d8dc4ad619222fc2",
+    "namespace":  "techx-tf4",
+    "observed_ready_replicas":  2,
+    "operator_session":  "tamhieu",
+    "run_id":  "20260728T1724Z"
+}

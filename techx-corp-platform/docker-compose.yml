@@ -289,6 +289,8 @@ services:
       - CURRENCY_ADDR
       - PRODUCT_CATALOG_ADDR
       - PRODUCT_REVIEWS_ADDR
+      - AI_DEBUG_METADATA_ENABLED=${AI_DEBUG_METADATA_ENABLED:-false}
+      - AI_PRINCIPAL_HMAC_SECRET
       - RECOMMENDATION_ADDR
       - SHIPPING_ADDR
       - OTEL_EXPORTER_OTLP_ENDPOINT
@@ -557,16 +559,32 @@ services:
       - BEDROCK_GUARDRAIL_VERSION
       - BEDROCK_OUTPUT_MODE=tool
       - BEDROCK_DEADLINE_SECONDS=4.5
-      - BEDROCK_INPUT_USD_PER_MILLION=0.30
-      - BEDROCK_OUTPUT_USD_PER_MILLION=2.50
+      - BEDROCK_MAX_ATTEMPTS=2
+      - BEDROCK_RETRY_BACKOFF_SECONDS=0.1
+      - MANDATE25_MAX_FAULT_TTL_SECONDS=120
+      - MANDATE25_FAULT_TOKEN
+      - BEDROCK_INPUT_USD_PER_MILLION=0.33
+      - BEDROCK_OUTPUT_USD_PER_MILLION=2.75
       - BEDROCK_SYSTEM_CANARY
       - PRODUCT_CATALOG_ADDR
+      - CART_ADDR
+      - VALKEY_ADDR
+      - VALKEY_PASSWORD
+      - VALKEY_TLS
+      - AI_CACHE_HMAC_SECRET
+      - AI_MEMORY_HMAC_SECRET
+      - AI_RESPONSE_CACHE_TTL_SECONDS=300
+      - MAX_HISTORY_EXCHANGES=5
       - FLAGD_HOST
       - FLAGD_PORT
     depends_on:
+      cart:
+        condition: service_started
       product-catalog:
         condition: service_started
       postgresql:
+        condition: service_started
+      valkey-cart:
         condition: service_started
       otel-collector:
         condition: service_started

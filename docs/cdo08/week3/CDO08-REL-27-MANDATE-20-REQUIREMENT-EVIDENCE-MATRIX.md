@@ -46,7 +46,7 @@ Không dùng migration, cấu hình IaC hoặc ảnh “backup enabled” để 
 
 | Control/evidence | Path | Evidence timestamp | Context | Kết quả | Ghi chú |
 |---|---|---|---|---|---|
-| ADR target RPO/RTO, cadence, retention | [`../week2/mandate20/adr/CDO08-REL-21-adr-draft.md`](../week2/mandate20/adr/CDO08-REL-21-adr-draft.md) | Not recorded | RDS accounting/catalog/reviews, MSK orders, Valkey cart | **FAIL** | File ghi rõ `DRAFT - CHƯA KÝ`; target vẫn là đề xuất. |
+| ADR target RPO/RTO, cadence, retention | [`mandate20/adr/CDO08-REL-21-adr.md`](mandate20/adr/CDO08-REL-21-adr.md) | Not recorded | RDS accounting/catalog/reviews, MSK orders, Valkey cart | **FAIL** *(cần review lại - file nguồn đã đổi tên và chuyển sang SIGNED 2026-07-27, chưa được Hải/Nguyên review lại trong tài liệu này)* | File ghi rõ `DRAFT - CHƯA KÝ`; target vẫn là đề xuất. |
 | RPO/RTO matrix | [`../week2/mandate20/adr/CDO08-REL-21-rpo-rto-matrix.md`](../week2/mandate20/adr/CDO08-REL-21-rpo-rto-matrix.md) | Not recorded | Target theo data tier | **FAIL** | Chưa phải commitment được Hải và Nguyên ký. |
 | Backup cadence/retention matrix | [`../week2/mandate20/adr/CDO08-REL-21-backup-policy-matrix.md`](../week2/mandate20/adr/CDO08-REL-21-backup-policy-matrix.md) | Not recorded | RDS, Valkey, MSK/S3 | **PARTIAL** | RDS/Valkey hiện có cadence; MSK S3 archival vẫn là đề xuất/gap. |
 | Review/sign-off request | [`../week2/mandate20/review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md`](../week2/mandate20/review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md) | Not recorded | PM/Tech Lead approval process | **FAIL** | Có quy trình review nhưng chưa có chữ ký/timestamp approval. |

@@ -1,0 +1,217 @@
+{
+    "breaker":  [
+                    {
+                        "case_id":  "breaker-1",
+                        "elapsed_ms":  106.875,
+                        "has_action_proposal":  false,
+                        "model_calls":  1,
+                        "outcome":  "provider_unavailable",
+                        "status":  {
+                                       "fault":  {
+                                                     "mode":  "throttling",
+                                                     "seconds_remaining":  29.892
+                                                 },
+                                       "resilience":  {
+                                                          "circuit_state":  "closed",
+                                                          "last_provider_error":  "throttlingexception",
+                                                          "last_provider_outcome":  "error"
+                                                      }
+                                   },
+                        "trace_id":  "2aac18e9e8b2501b408302ba297eb325",
+                        "transport":  "ok"
+                    },
+                    {
+                        "case_id":  "breaker-2",
+                        "elapsed_ms":  106.05,
+                        "has_action_proposal":  false,
+                        "model_calls":  1,
+                        "outcome":  "provider_unavailable",
+                        "status":  {
+                                       "fault":  {
+                                                     "mode":  "throttling",
+                                                     "seconds_remaining":  29.785
+                                                 },
+                                       "resilience":  {
+                                                          "circuit_state":  "closed",
+                                                          "last_provider_error":  "throttlingexception",
+                                                          "last_provider_outcome":  "error"
+                                                      }
+                                   },
+                        "trace_id":  "5bef32aad076a20369204ba57af98042",
+                        "transport":  "ok"
+                    },
+                    {
+                        "case_id":  "breaker-3",
+                        "elapsed_ms":  106.302,
+                        "has_action_proposal":  false,
+                        "model_calls":  1,
+                        "outcome":  "provider_unavailable",
+                        "status":  {
+                                       "fault":  {
+                                                     "mode":  "throttling",
+                                                     "seconds_remaining":  29.678
+                                                 },
+                                       "resilience":  {
+                                                          "circuit_state":  "closed",
+                                                          "last_provider_error":  "throttlingexception",
+                                                          "last_provider_outcome":  "error"
+                                                      }
+                                   },
+                        "trace_id":  "0244c2ba25c3692406650cd95d583fd8",
+                        "transport":  "ok"
+                    },
+                    {
+                        "case_id":  "breaker-4",
+                        "elapsed_ms":  106.209,
+                        "has_action_proposal":  false,
+                        "model_calls":  1,
+                        "outcome":  "provider_unavailable",
+                        "status":  {
+                                       "fault":  {
+                                                     "mode":  "throttling",
+                                                     "seconds_remaining":  29.571
+                                                 },
+                                       "resilience":  {
+                                                          "circuit_state":  "closed",
+                                                          "last_provider_error":  "throttlingexception",
+                                                          "last_provider_outcome":  "error"
+                                                      }
+                                   },
+                        "trace_id":  "16ace6ce0938810301b5aef36fe4fec4",
+                        "transport":  "ok"
+                    },
+                    {
+                        "case_id":  "breaker-5",
+                        "elapsed_ms":  106.12,
+                        "has_action_proposal":  false,
+                        "model_calls":  1,
+                        "outcome":  "provider_unavailable",
+                        "status":  {
+                                       "fault":  {
+                                                     "mode":  "throttling",
+                                                     "seconds_remaining":  29.464
+                                                 },
+                                       "resilience":  {
+                                                          "circuit_state":  "open",
+                                                          "last_provider_error":  "throttlingexception",
+                                                          "last_provider_outcome":  "error"
+                                                      }
+                                   },
+                        "trace_id":  "81ac84183bc1990d9d78260a61ca7557",
+                        "transport":  "ok"
+                    },
+                    {
+                        "case_id":  "breaker-6",
+                        "elapsed_ms":  4.083,
+                        "has_action_proposal":  false,
+                        "model_calls":  1,
+                        "outcome":  "provider_unavailable",
+                        "status":  {
+                                       "fault":  {
+                                                     "mode":  "throttling",
+                                                     "seconds_remaining":  29.459
+                                                 },
+                                       "resilience":  {
+                                                          "circuit_state":  "open",
+                                                          "last_provider_error":  "throttlingexception",
+                                                          "last_provider_outcome":  "error"
+                                                      }
+                                   },
+                        "trace_id":  "26821388a279c63e60dde111d4abecc8",
+                        "transport":  "ok"
+                    }
+                ],
+    "final_status":  {
+                         "fault":  {
+                                       "mode":  "off",
+                                       "seconds_remaining":  0.0
+                                   },
+                         "resilience":  {
+                                            "circuit_state":  "open",
+                                            "last_provider_error":  "throttlingexception",
+                                            "last_provider_outcome":  "error"
+                                        }
+                     },
+    "observations":  [
+                         {
+                             "case_id":  "timeout",
+                             "elapsed_ms":  115.894,
+                             "has_action_proposal":  false,
+                             "model_calls":  1,
+                             "outcome":  "unavailable",
+                             "status":  {
+                                            "fault":  {
+                                                          "mode":  "timeout",
+                                                          "seconds_remaining":  29.883
+                                                      },
+                                            "resilience":  {
+                                                               "circuit_state":  "closed",
+                                                               "last_provider_error":  "timeout",
+                                                               "last_provider_outcome":  "error"
+                                                           }
+                                        },
+                             "transport":  "ok"
+                         },
+                         {
+                             "case_id":  "throttling",
+                             "elapsed_ms":  114.995,
+                             "has_action_proposal":  false,
+                             "model_calls":  1,
+                             "outcome":  "unavailable",
+                             "status":  {
+                                            "fault":  {
+                                                          "mode":  "throttling",
+                                                          "seconds_remaining":  29.884
+                                                      },
+                                            "resilience":  {
+                                                               "circuit_state":  "closed",
+                                                               "last_provider_error":  "throttlingexception",
+                                                               "last_provider_outcome":  "error"
+                                                           }
+                                        },
+                             "transport":  "ok"
+                         },
+                         {
+                             "case_id":  "provider_5xx",
+                             "elapsed_ms":  115.627,
+                             "has_action_proposal":  false,
+                             "model_calls":  1,
+                             "outcome":  "unavailable",
+                             "status":  {
+                                            "fault":  {
+                                                          "mode":  "provider_5xx",
+                                                          "seconds_remaining":  29.883
+                                                      },
+                                            "resilience":  {
+                                                               "circuit_state":  "closed",
+                                                               "last_provider_error":  "internalserverexception",
+                                                               "last_provider_outcome":  "error"
+                                                           }
+                                        },
+                             "transport":  "ok"
+                         },
+                         {
+                             "case_id":  "malformed_output",
+                             "elapsed_ms":  13.889,
+                             "has_action_proposal":  false,
+                             "model_calls":  1,
+                             "outcome":  "insufficient",
+                             "status":  {
+                                            "fault":  {
+                                                          "mode":  "malformed_output",
+                                                          "seconds_remaining":  29.985
+                                                      },
+                                            "resilience":  {
+                                                               "circuit_state":  "closed",
+                                                               "last_provider_error":  "none",
+                                                               "last_provider_outcome":  "success"
+                                                           }
+                                        },
+                             "transport":  "ok"
+                         }
+                     ],
+    "observed_at":  "2026-07-28T17:24:17.316058+00:00",
+    "phase":  "faults",
+    "pod":  "product-reviews-884cf5b55-46kl5",
+    "run_id":  "20260728T1724Z"
+}
