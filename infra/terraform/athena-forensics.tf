@@ -287,6 +287,10 @@ resource "aws_glue_catalog_table" "aws_config_history" {
 
     ser_de_info {
       serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      parameters = {
+        "ignore.malformed.json" = "true"
+        "case.insensitive"      = "true"
+      }
     }
 
     columns {
@@ -295,7 +299,7 @@ resource "aws_glue_catalog_table" "aws_config_history" {
     }
     columns {
       name = "configurationitems"
-      type = "array<struct<relatedevents:array<string>,relationships:array<struct<resourceid:string,resourcename:string,resourcetype:string,relationshipname:string>>,configuration:string,supplementaryconfiguration:map<string,string>,tags:map<string,string>,configurationitemversion:string,configurationitemcapturetime:string,configurationstateid:string,awsaccountid:string,configurationitemmd5hash:string,arn:string,resourcetype:string,resourceid:string,resourcename:string,awsregion:string,availabilityzone:string,resourcecreationtime:string,configurationitemstatus:string>>"
+      type = "array<struct<relatedevents:array<string>,relationships:array<struct<resourceid:string,resourcename:string,resourcetype:string,name:string>>,configuration:string,supplementaryconfiguration:map<string,string>,tags:map<string,string>,configurationitemversion:string,configurationitemcapturetime:string,configurationstateid:string,awsaccountid:string,configurationitemmd5hash:string,arn:string,resourcetype:string,resourceid:string,resourcename:string,awsregion:string,availabilityzone:string,resourcecreationtime:string,configurationitemstatus:string>>"
     }
   }
 }
