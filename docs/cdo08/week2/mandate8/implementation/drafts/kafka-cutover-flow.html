@@ -1,0 +1,327 @@
+<title>REL-17 Kafka Cutover Flow</title>
+<style>
+  :root {
+    --bg: #12151a;
+    --surface: #1c2129;
+    --surface-2: #232a34;
+    --line: #343c48;
+    --text: #eef1f5;
+    --text-dim: #8b93a3;
+    --msk: #e8a33d;
+    --msk-dim: #4a3a20;
+    --selfhosted: #5b8ab5;
+    --selfhosted-dim: #24313d;
+    --bluegreen: #7aa2f7;
+    --recreate: #6fcf97;
+    --step-badge-bg: #2a3038;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #eef0f3;
+    --line: #d7dbe2;
+    --text: #1a1d23;
+    --text-dim: #666f7d;
+    --msk-dim: #fbe8c9;
+    --selfhosted-dim: #dbe7f0;
+    --step-badge-bg: #e4e7ec;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface-2: #eef0f3;
+      --line: #d7dbe2;
+      --text: #1a1d23;
+      --text-dim: #666f7d;
+      --msk-dim: #fbe8c9;
+      --selfhosted-dim: #dbe7f0;
+      --step-badge-bg: #e4e7ec;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+  }
+
+  .stage { width: 100%; max-width: 1180px; }
+
+  h1 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 6px;
+  }
+  h2 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .kicker {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin: 0 0 36px;
+  }
+
+  /* --- background / ongoing note --- */
+  .bg-note {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 18px;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    margin-bottom: 34px;
+  }
+  .bg-note .bg-label {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .bg-note .row { margin: 0; flex: 1; }
+
+  /* --- timeline of numbered phases --- */
+  .timeline {
+    position: relative;
+    padding-left: 56px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 19px;
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: var(--line);
+  }
+
+  .phase { position: relative; margin-bottom: 34px; }
+  .phase:last-child { margin-bottom: 0; }
+
+  .phase-badge {
+    position: absolute;
+    left: -56px;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--step-badge-bg);
+    border: 2px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .phase.bluegreen .phase-badge { border-color: var(--bluegreen); color: var(--bluegreen); }
+  .phase.recreate .phase-badge { border-color: var(--recreate); color: var(--recreate); }
+
+  .phase-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 6px 0 14px;
+  }
+  .phase-title .when {
+    font-weight: 500;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-left: 10px;
+  }
+
+  .row { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+  .row:last-child { margin-bottom: 0; }
+
+  .box {
+    flex: 0 0 auto;
+    min-width: 168px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    text-align: center;
+  }
+  .box .label { font-weight: 700; font-size: 1rem; }
+  .box .sub {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .box.source { border-color: var(--selfhosted); background: var(--selfhosted-dim); }
+  .box.target { border-color: var(--msk); background: var(--msk-dim); }
+
+  .arrow {
+    flex: 1 1 auto;
+    min-width: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .arrow .tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .tag.bluegreen { background: color-mix(in srgb, var(--bluegreen) 20%, transparent); color: var(--bluegreen); border: 1px solid color-mix(in srgb, var(--bluegreen) 45%, transparent); }
+  .tag.recreate { background: color-mix(in srgb, var(--recreate) 20%, transparent); color: var(--recreate); border: 1px solid color-mix(in srgb, var(--recreate) 45%, transparent); }
+  .tag.mirror { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--line); }
+
+  .line { width: 100%; height: 2px; background: var(--line); position: relative; }
+  .line::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 9px solid var(--line);
+    transform: translateY(-50%);
+  }
+  .bluegreen .line, .bluegreen .line::after { background: var(--bluegreen); border-left-color: var(--bluegreen); }
+  .recreate .line, .recreate .line::after { background: var(--recreate); border-left-color: var(--recreate); }
+  .mirror .line { background-image: linear-gradient(90deg, var(--line) 0 8px, transparent 8px 16px); background-size: 16px 2px; background-repeat: repeat-x; background-color: transparent; }
+  .mirror .line::after { border-left-color: var(--line); }
+
+  /* --- gate marker between phase 1 and 3 --- */
+  .gate {
+    position: relative;
+    margin: -10px 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .gate .phase-badge {
+    width: 40px; height: 40px; font-size: 1.05rem;
+    border-color: var(--msk); color: var(--msk);
+  }
+  .gate .gate-text {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .gate .gate-text b { color: var(--text); }
+
+  .legend {
+    margin-top: 34px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 22px; height: 3px; border-radius: 2px; display: inline-block; }
+</style>
+
+<div class="stage">
+  <h1>CDO08-REL-17</h1>
+  <h2>Kafka self-hosted &rarr; MSK cutover</h2>
+  <p class="kicker">Thứ tự thực hiện: nền chạy trước &nbsp;&middot;&nbsp; Bước 1 &nbsp;&rarr;&nbsp; Gate &nbsp;&rarr;&nbsp; Bước 2</p>
+
+  <div class="bg-note">
+    <span class="bg-label">Nền &middot; luôn chạy</span>
+    <div class="row mirror">
+      <div class="box source">
+        <div class="label">Self-hosted Kafka</div>
+        <div class="sub">EKS StatefulSet</div>
+      </div>
+      <div class="arrow">
+        <span class="tag mirror">MirrorMaker2</span>
+        <div class="line"></div>
+      </div>
+      <div class="box target">
+        <div class="label">MSK</div>
+        <div class="sub">orders topic</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="phase bluegreen">
+      <div class="phase-badge">1</div>
+      <div class="phase-title">Giai đoạn A &mdash; cutover Producer<span class="when">làm trước</span></div>
+      <div class="row bluegreen">
+        <div class="box">
+          <div class="label">checkout</div>
+          <div class="sub">producer</div>
+        </div>
+        <div class="arrow">
+          <span class="tag bluegreen">Blue-Green &middot; Pause / Promote</span>
+          <div class="line"></div>
+        </div>
+        <div class="box target">
+          <div class="label">MSK</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="phase-badge">✓</div>
+      <div class="gate-text"><b>Gate:</b> lag ~0 giữa self-hosted &amp; MSK &mdash; phải qua mới sang Bước 2</div>
+    </div>
+
+    <div class="phase recreate">
+      <div class="phase-badge">2</div>
+      <div class="phase-title">Giai đoạn B &mdash; cutover Consumer<span class="when">chỉ làm sau khi Bước 1 xong</span></div>
+      <div class="row recreate">
+        <div class="box">
+          <div class="label">accounting</div>
+          <div class="sub">consumer</div>
+        </div>
+        <div class="arrow">
+          <span class="tag recreate">Recreate</span>
+          <div class="line"></div>
+        </div>
+        <div class="box target">
+          <div class="label">MSK</div>
+        </div>
+      </div>
+      <div class="row recreate">
+        <div class="box">
+          <div class="label">fraud-detection</div>
+          <div class="sub">consumer</div>
+        </div>
+        <div class="arrow">
+          <span class="tag recreate">Recreate</span>
+          <div class="line"></div>
+        </div>
+        <div class="box target">
+          <div class="label">MSK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--bluegreen)"></i> Blue-Green (có Service, Pause/Promote/Abort)</span>
+    <span><i style="background:var(--recreate)"></i> Recreate (consumer, không Service)</span>
+    <span><i style="background:var(--line);background-image:linear-gradient(90deg,var(--line) 0 4px,transparent 4px 8px);background-size:8px 2px;background-color:transparent"></i> MirrorMaker2 (nền, luôn chạy)</span>
+  </div>
+</div>
