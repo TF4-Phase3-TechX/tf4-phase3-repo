@@ -57,13 +57,15 @@ off-by-default, Deployment-revision-coupled delay on `GetProductReviews`:
 All three values are required to activate the fault. Health runs on the
 separate health server and is never delayed. The TTL and request budget are
 independent deadmen; invalid configuration fails safe to normal service
-behavior. Because activation changes the Deployment pod template, the prior
-ReplicaSet contains no fault variables and a real template rollback causally
-removes the delay. The drill still requires CDO approval, a pinned retained
-known-good revision, bounded mutation RBAC, real Prometheus detection and
-post-action runtime verification. The mechanism exposes no runtime control API
-and does not call Bedrock or mutate `flagd`. Unit/CI success alone is not a
-live pass.
+behavior. The TTL starts on the first eligible `GetProductReviews` request,
+not pod startup, so an approval or reconciliation delay cannot silently consume
+the drill window; the request budget is enforced from the same first request.
+Because activation changes the Deployment pod template, the prior ReplicaSet
+contains no fault variables and a real template rollback causally removes the
+delay. The drill still requires CDO approval, a pinned retained known-good
+revision, bounded mutation RBAC, real Prometheus detection and post-action
+runtime verification. The mechanism exposes no runtime control API and does
+not call Bedrock or mutate `flagd`. Unit/CI success alone is not a live pass.
 
 The current runtime inventory, activation gates, proposed fault mechanism,
 stop conditions and evidence checklist are recorded in
