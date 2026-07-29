@@ -2,7 +2,7 @@
 
 **Mandate:** [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md) - Directive #20, yêu cầu #2
 **Subtask:** "Đặt con số RPO/RTO đo được cho từng store"
-**Trạng thái:** **Draft - đề xuất ban đầu.** Nguyên sẽ research thêm và chỉnh số trước khi đưa vào ADR ký chính thức ([CDO08-REL-21-adr-draft.md](CDO08-REL-21-adr-draft.md)).
+**Trạng thái:** Số liệu đã được đưa vào ADR ký chính thức ([CDO08-REL-21-adr.md](CDO08-REL-21-adr.md)).
 **Input:** [CDO08-REL-20-revenue-path-dependency-trace.md](../scan/CDO08-REL-20-revenue-path-dependency-trace.md) (phân loại criticality), [CDO08-REL-20-stateful-store-inventory.md](../scan/CDO08-REL-20-stateful-store-inventory.md) (cơ chế backup hiện có)
 
 ---

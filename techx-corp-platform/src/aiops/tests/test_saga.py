@@ -53,6 +53,7 @@ class TrackingAdapter:
         self.argo_closed: list[str] = []
         self.hold_lease = False
         self.fail_patch_once = False
+        self.deny_argo_cleanup = False
 
     def acquire_lock(self, deployment, incident_id, ttl):
         if self.hold_lease:
@@ -87,6 +88,8 @@ class TrackingAdapter:
         return {"aiops.techx/mutation-window": incident_id}
 
     def end_argo_window(self, deployment, incident_id):
+        if self.deny_argo_cleanup:
+            raise PermissionError("deployment patch permission denied")
         self.argo_closed.append(incident_id)
 
 
@@ -197,6 +200,44 @@ async def test_terminal_saga_retries_external_ownership_cleanup():
     assert reloaded.argo_window_active is False
     assert reloaded.lease_held is False
     assert reloaded.is_open is False
+
+
+@pytest.mark.asyncio
+async def test_terminal_saga_stays_open_until_cleanup_rbac_returns():
+    """V7 regression: restore may revoke Deployment patch before saga cleanup."""
+
+    store = MemorySagaStore()
+    saga = RemediationSaga(
+        incident_id="inc-cleanup-rbac",
+        target="product-reviews",
+        argo_window_active=True,
+        lease_held=True,
+    )
+    saga.terminate(SagaOutcome.RESOLVED, "verification complete")
+    await store.save(saga)
+
+    adapter = TrackingAdapter()
+    adapter.deny_argo_cleanup = True
+    controller = make_controller(adapter, store)
+
+    with pytest.raises(RuntimeError, match="permission denied"):
+        await controller.reconcile_open_sagas()
+
+    blocked = await store.get(saga.saga_id)
+    assert blocked.is_open is True
+    assert blocked.argo_window_active is True
+    assert blocked.lease_held is True
+    assert adapter.argo_closed == []
+
+    adapter.deny_argo_cleanup = False
+    results = await controller.reconcile_open_sagas()
+
+    cleaned = await store.get(saga.saga_id)
+    assert results[0]["cleanup"] == "complete"
+    assert cleaned.is_open is False
+    assert cleaned.argo_window_active is False
+    assert cleaned.lease_held is False
+    assert adapter.argo_closed == ["inc-cleanup-rbac"]
 
 
 @pytest.mark.asyncio

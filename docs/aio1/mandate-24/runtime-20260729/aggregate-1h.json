@@ -1,0 +1,94 @@
+{
+  "schema_version": "mandate24-aggregate-v1",
+  "captured_at_utc": "2026-07-28T17:36:12Z",
+  "window": "1h",
+  "source": "Grafana datasource proxy / Prometheus uid webstore-metrics",
+  "queries": [
+    {
+      "metric": "model_calls",
+      "promql": "sum by (llm_model, ai_surface) (increase(app_llm_calls_total{service_name=\"product-reviews\"}[1h]))",
+      "result": [
+        {
+          "metric": {
+            "ai_surface": "copilot_search",
+            "llm_model": "us.amazon.nova-2-lite-v1:0"
+          },
+          "value": [
+            1785260169.425,
+            "9.743477718449025"
+          ]
+        },
+        {
+          "metric": {
+            "ai_surface": "product_qa",
+            "llm_model": "us.amazon.nova-2-lite-v1:0"
+          },
+          "value": [
+            1785260169.425,
+            "4.8"
+          ]
+        }
+      ]
+    },
+    {
+      "metric": "estimated_cost_usd",
+      "promql": "sum by (llm_model, ai_surface) (increase(app_llm_estimated_cost_usd_USD_total{service_name=\"product-reviews\"}[1h]))",
+      "result": [
+        {
+          "metric": {
+            "ai_surface": "copilot_search",
+            "llm_model": "us.amazon.nova-2-lite-v1:0"
+          },
+          "value": [
+            1785260171.013,
+            "0.0026629392437524605"
+          ]
+        },
+        {
+          "metric": {
+            "ai_surface": "product_qa",
+            "llm_model": "us.amazon.nova-2-lite-v1:0"
+          },
+          "value": [
+            1785260171.013,
+            "0"
+          ]
+        }
+      ]
+    },
+    {
+      "metric": "p95_latency_seconds",
+      "promql": "histogram_quantile(0.95, sum by (le, llm_model, ai_surface) (rate(app_llm_latency_seconds_bucket{service_name=\"product-reviews\"}[1h])))",
+      "result": [
+        {
+          "metric": {
+            "ai_surface": "copilot_search",
+            "llm_model": "us.amazon.nova-2-lite-v1:0"
+          },
+          "value": [
+            1785260172.569,
+            "4.75"
+          ]
+        },
+        {
+          "metric": {
+            "ai_surface": "product_qa",
+            "llm_model": "us.amazon.nova-2-lite-v1:0"
+          },
+          "value": [
+            1785260172.569,
+            "4.666666666666666"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "non_empty": true,
+    "required_labels": [
+      "llm_model",
+      "ai_surface"
+    ],
+    "finite_values": true
+  }
+}

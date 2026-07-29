@@ -1,0 +1,28 @@
+{
+  "schema_version": "mandate24-provider-fallback-summary-v1",
+  "trace_id": "79c796323a46dc4cacc3eb34c918b30f",
+  "source": "Mandate 25 shared controlled throttling drill",
+  "start_time_utc": "2026-07-28T17:24:16Z",
+  "runtime_image": "405fd07-product-reviews",
+  "request_outcome": "unavailable",
+  "provider_attempts": [
+    {
+      "span_id": "e59443238ec38e1b",
+      "outcome": "error",
+      "error_type": "throttlingexception",
+      "model": "us.amazon.nova-2-lite-v1:0",
+      "content_retained": false,
+      "duration_ms": 0.517
+    },
+    {
+      "span_id": "d34989e7a0f29820",
+      "outcome": "error",
+      "error_type": "throttlingexception",
+      "model": "us.amazon.nova-2-lite-v1:0",
+      "content_retained": false,
+      "duration_ms": 0.589
+    }
+  ],
+  "provider_attempt_count": 2,
+  "raw_prompt_hits": 0
+}

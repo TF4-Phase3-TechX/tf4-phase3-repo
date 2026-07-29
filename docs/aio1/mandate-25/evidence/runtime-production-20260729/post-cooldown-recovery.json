@@ -1,0 +1,48 @@
+{
+    "before":  {
+                   "fault":  {
+                                 "mode":  "off",
+                                 "seconds_remaining":  0.0
+                             },
+                   "resilience":  {
+                                      "circuit_state":  "half_open",
+                                      "last_provider_error":  "throttlingexception",
+                                      "last_provider_outcome":  "error"
+                                  }
+               },
+    "final_status":  {
+                         "fault":  {
+                                       "mode":  "off",
+                                       "seconds_remaining":  0.0
+                                   },
+                         "resilience":  {
+                                            "circuit_state":  "closed",
+                                            "last_provider_error":  "none",
+                                            "last_provider_outcome":  "success"
+                                        }
+                     },
+    "observed_at":  "2026-07-28T17:26:33.746463+00:00",
+    "phase":  "recovery",
+    "pod":  "product-reviews-884cf5b55-46kl5",
+    "recovered":  {
+                      "case_id":  "post-cooldown-recovery",
+                      "elapsed_ms":  941.778,
+                      "has_action_proposal":  false,
+                      "model_calls":  1,
+                      "outcome":  "success",
+                      "status":  {
+                                     "fault":  {
+                                                   "mode":  "off",
+                                                   "seconds_remaining":  0.0
+                                               },
+                                     "resilience":  {
+                                                        "circuit_state":  "closed",
+                                                        "last_provider_error":  "none",
+                                                        "last_provider_outcome":  "success"
+                                                    }
+                                 },
+                      "trace_id":  "a3bae6635cf3d8928603b5feda675f00",
+                      "transport":  "ok"
+                  },
+    "run_id":  "20260728T1724Z"
+}

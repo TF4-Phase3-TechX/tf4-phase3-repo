@@ -10,7 +10,7 @@
 |---|---|---|
 | 1 | [CDO08-REL-21-rpo-rto-matrix.md](CDO08-REL-21-rpo-rto-matrix.md) | Con số RPO/RTO đề xuất cho từng store, rationale, nguồn tham khảo (AWS Well-Architected) |
 | 2 | [CDO08-REL-21-backup-policy-matrix.md](CDO08-REL-21-backup-policy-matrix.md) | Cadence/retention thật map từ RPO ở trên, kiểm tra không mâu thuẫn |
-| 3 | [CDO08-REL-21-adr-draft.md](CDO08-REL-21-adr-draft.md) | ADR đầy đủ (scope, encryption, drill scenario, người ký) - **chưa ký** |
+| 3 | [CDO08-REL-21-adr.md](CDO08-REL-21-adr.md) | ADR đầy đủ (scope, encryption, drill scenario, người ký) - **đã ký 2026-07-27** |
 | 4 | [../review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md](../review-requests/CDO08-REL-21-REVIEW-REQUEST-RPO-RTO-PROCESS.md) | Quy trình 5 bước (draft → sửa gap → test → điều chỉnh → ký) để trình PM, kèm nguồn đã verify |
 
 ## Quyết định đã chốt (Techlead)
