@@ -257,11 +257,9 @@ resource "aws_glue_catalog_table" "aws_config_history" {
   parameters = {
     classification              = "json"
     compressionType             = "gzip"
-    "projection.day.digits"     = "2"
     "projection.day.range"      = "1,31"
     "projection.day.type"       = "integer"
     "projection.enabled"        = "true"
-    "projection.month.digits"   = "2"
     "projection.month.range"    = "1,12"
     "projection.month.type"     = "integer"
     "projection.year.range"     = "2026,2030"
