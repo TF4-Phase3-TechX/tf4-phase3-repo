@@ -83,11 +83,9 @@ summary_generator = IncidentSummaryGenerator(
 )
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    # TF4AIO-89: durable resume needs a real Kubernetes adapter. Construct here
-    # (not at import) so offline unit imports of main stay kubeconfig-free, but
-    # production startup always wires the adapter before reconcile_open_sagas.
+async def _reconcile_startup_state() -> None:
+    """Reconcile durable ownership before the polling worker can start."""
+
     global _remediation_adapter
     saga_log = logging.getLogger("aiops.saga")
     if remediation.adapter is None:
@@ -101,50 +99,91 @@ async def lifespan(_: FastAPI):
         except Exception as exc:
             open_sagas = await saga_store.list_open()
             if open_sagas:
-                saga_log.exception(
-                    "startup aborted: open durable sagas require a Kubernetes adapter"
-                )
                 raise RuntimeError(
-                    "startup aborted: open durable sagas require a Kubernetes adapter"
+                    "open durable sagas require a Kubernetes adapter"
                 ) from exc
             saga_log.exception(
-                "Kubernetes adapter unavailable; continuing without live remediation adapter"
+                "Kubernetes adapter unavailable; continuing without live "
+                "remediation adapter"
             )
 
-    # Finish or fail-closed any durable sagas before accepting work.
+    reconcile_results = await remediation.reconcile_open_sagas()
+    if reconcile_results:
+        saga_log.warning(
+            json.dumps(
+                {
+                    "event": "startup_saga_reconcile",
+                    "results": reconcile_results,
+                }
+            )
+        )
+    pruned_sagas = await saga_store.prune_terminal_before(
+        utcnow() - timedelta(hours=settings.saga_retention_hours)
+    )
+    if pruned_sagas:
+        saga_log.info(
+            json.dumps(
+                {
+                    "event": "startup_saga_retention_pruned",
+                    "saga_ids": pruned_sagas,
+                }
+            )
+        )
+
+
+async def _recover_then_run_worker(stop_event: asyncio.Event) -> None:
+    """Keep liveness responsive while recovery gates readiness and polling."""
+
+    saga_log = logging.getLogger("aiops.saga")
+    attempt = 0
+    while not stop_event.is_set():
+        attempt += 1
+        try:
+            await _reconcile_startup_state()
+            break
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            saga_log.exception(
+                json.dumps(
+                    {
+                        "event": "startup_saga_reconcile_retry",
+                        "attempt": attempt,
+                        "retry_seconds": (
+                            settings.startup_reconcile_retry_seconds
+                        ),
+                        "error": str(exc),
+                    }
+                )
+            )
+            try:
+                await asyncio.wait_for(
+                    stop_event.wait(),
+                    timeout=settings.startup_reconcile_retry_seconds,
+                )
+            except TimeoutError:
+                continue
+
+    if not stop_event.is_set():
+        await worker.run()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Recovery is deliberately asynchronous with respect to API bind:
+    # /healthz keeps the pod alive, while /readyz stays closed because the
+    # worker cannot run until all durable ownership is reconciled. This avoids
+    # the V7 liveness restart loop without allowing a second mutation.
+    stop_event = asyncio.Event()
+    task = asyncio.create_task(_recover_then_run_worker(stop_event))
     try:
-        reconcile_results = await remediation.reconcile_open_sagas()
-        if reconcile_results:
-            saga_log.warning(
-                json.dumps(
-                    {
-                        "event": "startup_saga_reconcile",
-                        "results": reconcile_results,
-                    }
-                )
-            )
-        pruned_sagas = await saga_store.prune_terminal_before(
-            utcnow() - timedelta(hours=settings.saga_retention_hours)
-        )
-        if pruned_sagas:
-            logging.getLogger("aiops.saga").info(
-                json.dumps(
-                    {
-                        "event": "startup_saga_retention_pruned",
-                        "saga_ids": pruned_sagas,
-                    }
-                )
-            )
-    except Exception:
-        logging.getLogger("aiops.saga").exception(
-            "startup saga reconcile or retention failed"
-        )
-        raise
-    task = asyncio.create_task(worker.run())
-    yield
-    worker.stop()
-    task.cancel()
-    await telemetry.close()
+        yield
+    finally:
+        stop_event.set()
+        worker.stop()
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        await telemetry.close()
 
 
 app = FastAPI(title="TF4 AIOps", version="0.1.0", lifespan=lifespan)

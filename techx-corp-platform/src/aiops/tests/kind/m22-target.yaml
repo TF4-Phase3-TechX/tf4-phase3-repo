@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-reviews
+  namespace: m22-local
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: product-reviews
+  template:
+    metadata:
+      labels:
+        app: product-reviews
+      annotations:
+        m22.test/revision: v1-known-good
+    spec:
+      containers:
+        - name: product-reviews
+          image: registry.k8s.io/pause:3.10.1
+          imagePullPolicy: IfNotPresent
