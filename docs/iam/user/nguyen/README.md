@@ -7,8 +7,8 @@ Tài khoản của người dùng **nguyen** chịu trách nhiệm quản trị 
 Người dùng này được gán các quyền hạn sau đây qua AWS IAM Identity Center:
 
 1. **[TF4-SecReliabilityReadOnlyAudit](TF4-SecReliabilityReadOnlyAudit.md)**
-   * **Mô tả**: Quyền đọc thông tin bảo mật hệ thống rộng (Security Hub, GuardDuty, ACM, KMS, WAFv2) và giám sát hạ tầng.
-   * **Mục đích**: Đánh giá và kiểm toán an toàn thông tin hạ tầng thường xuyên.
+   * **Mô tả**: Quyền đọc cấu hình hạ tầng mở rộng và các công cụ bảo mật (Security Hub, GuardDuty, WAFv2, Secrets Manager, KMS, ACM), đồng thời tích hợp thêm quyền quản trị toàn phần đối với IAM, AWS SSO (Identity Center), Identity Store, và quản lý EKS Access Entries được gom từ `TF4-SecurityIAMSSOManager`.
+   * **Mục đích**: Giám sát lỗ hổng bảo mật, theo dõi các cảnh báo đe dọa trực tuyến, quản trị định danh/phân quyền người dùng và quản lý quyền truy cập Kubernetes Cluster.
 
 2. **[TF4-SecurityIAMSSOManager](TF4-SecurityIAMSSOManager.md)**
    * **Mô tả**: Quyền quản trị toàn phần đối với IAM, SSO (IAM Identity Center), Identity Store và quản lý EKS Access Entries.
