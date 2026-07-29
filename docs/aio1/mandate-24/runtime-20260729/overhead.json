@@ -1,0 +1,11 @@
+{
+  "baseline_p50_ms": 2010.3707749985915,
+  "baseline_p95_ms": 2185.8093839982757,
+  "candidate_p50_ms": 1872.266,
+  "candidate_p95_ms": 2119.05,
+  "matched_cases": 3,
+  "p95_increase_percent": -3.0542180158527588,
+  "pass": true,
+  "schema_version": "mandate24-overhead-v1",
+  "threshold_percent": 5.0
+}

@@ -1,0 +1,11 @@
+{
+    "bedrock_converse_span_count":  0,
+    "operation_counts":  {
+                             "oteldemo.ProductReviewService/SearchProductsAIAssistant":  1,
+                             "redis":  2,
+                             "search_products_ai":  1
+                         },
+    "span_count":  4,
+    "trace_count":  1,
+    "trace_id":  "26821388a279c63e60dde111d4abecc8"
+}

@@ -2,7 +2,7 @@
 
 **Jira:** [TF4AIO-85](https://aio1-xbrain.atlassian.net/browse/TF4AIO-85)
 **Owner:** Đình Thông Trần
-**Status:** implementation and offline verification complete; deployment and live evidence pending
+**Status:** implementation and production evidence complete; named ADR acceptance and Jira attachment pending
 
 This package adds a content-free, reconstructable trace contract to the
 Shopping Copilot/Product Q&A model boundary.
@@ -124,5 +124,7 @@ PYTHONPATH=. techx-corp-platform/src/product-reviews/.venv/bin/python \
   --output /tmp/m24-overhead.json
 ```
 
-This task is not complete until the live artifacts, deployed image/Argo
-revision and named ADR approvals are attached to TF4AIO-85.
+The production artifact pack is in `runtime-20260729/`. This task is not
+accepted until the named ADR approvals and artifact pack are attached to
+TF4AIO-85. The runtime image tags and GitOps immutable digests are correlated;
+the exact live Argo sync revision remains outside the current operator session.
