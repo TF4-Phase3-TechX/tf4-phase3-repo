@@ -3,7 +3,7 @@
 - **Trạng thái:** Formal Proposal - Chờ CDO-04, CDO-07 và CDO-08 phê duyệt
 - **Ngày cập nhật:** 2026-07-29
 - **Phạm vi:** Cụm EKS `techx-tf4-cluster`, Log Group `/aws/eks/techx-tf4-cluster/cluster`
-- **Tác giả:** Hoàng Kim Hùng (AIOps & Infrastructure Team), Bùi Thành Nghĩa (Reviewer và Editor)
+- **Tác giả:** Hoàng Kim Hùng (Nhóm CDO-07 Audit), Bùi Thành Nghĩa (Nhóm CDO-07 Audit - Reviewer & Editor)
 - **Owners:** CDO-04 (Cost/Performance), CDO-07 (Audit/Compliance), CDO-08 (Security/Reliability)
 - **Bối cảnh vận hành:** Hệ thống vận hành theo mô hình Prod-like, tuân thủ 100% quy trình GitOps (ArgoCD) và External Secrets Operator.
 
@@ -11,7 +11,7 @@
 
 ## 0. Kết luận & Khuyến nghị Tổng quan (Ponytail Approach: Minimalist & High ROI)
 
-Sau khi rà soát toàn bộ hạ tầng Terraform (`infra/terraform/eks.tf`, `infra/terraform/eks-audit-firehose.tf`), tài liệu ADR-005, và ma trận bảo mật Admission Policies trên cụm (`techx-corp-chart/templates/admission-hardening.yaml`), AIOps Team đề xuất **phương án tối giản hóa toàn diện**:
+Sau khi rà soát toàn bộ hạ tầng Terraform (`infra/terraform/eks.tf`, `infra/terraform/eks-audit-firehose.tf`), tài liệu ADR-005, và ma trận bảo mật Admission Policies trên cụm (`techx-corp-chart/templates/admission-hardening.yaml`), **Nhóm CDO-07 (Audit Team)** đề xuất **phương án tối giản hóa toàn diện**:
 
 1. **Khẳng định Cost Driver**: Chi phí CloudWatch Logs Ingestion cho EKS hiện ngốn >98% chi phí CloudWatch. Log type **`audit` chiếm 99.99% dung lượng** (~2.1 GB/giờ, **~$756 USD/tháng**), trong khi log type **`authenticator` chỉ chiếm ~0.01%** (~0.19 MB/giờ, **~$0.07 USD/tháng**).
 2. **Loại bỏ giải pháp Falco eBPF phức tạp**: 
@@ -20,7 +20,7 @@ Sau khi rà soát toàn bộ hạ tầng Terraform (`infra/terraform/eks.tf`, `i
    - Yêu cầu cấu hình lại OTel Collector, IRSA S3 policy và ArgoCD manifests không cần thiết (vi phạm nguyên tắc YAGNI).
 3. **Khuyến nghị Tối ưu Đơn giản (Chỉ bật `authenticator`)**:
    - Thay đổi đúng 1 dòng Terraform trong `infra/terraform/eks.tf`: `cluster_enabled_log_types = ["authenticator"]`.
-   - Cắt giảm ngay lập tức **>99.9% chi phí CloudWatch Ingestion** (rớt từ ~$756/tháng xuống **~$0.07/tháng**, tiết kiệm ~18 triệu VNĐ/tháng).
+   - Cắt giảm ngay lập tức **>99.9% chi phí CloudWatch Ingestion** (rớt từ ~$756/tháng xuống **~$0.07/tháng**, tiết kiệm ~18.5 triệu VNĐ/tháng).
    - Zero rủi ro hạ tầng, không sửa code app/chart, không cần bảo trì thêm DaemonSet hay OTel Collector mới.
 4. **Bảo đảm Chuỗi Chứng Cứ Audit bằng Hạ Tầng Sẵn Có**:
    - **Identity Authentication**: Giữ log `authenticator` trên CloudWatch (~$0.07/tháng) để biết ai đăng nhập vào cluster.
@@ -73,7 +73,7 @@ Sau khi rà soát toàn bộ hạ tầng Terraform (`infra/terraform/eks.tf`, `i
 
 ## 3. Mô Hình Bằng Chứng Audit Đơn Giản & Đủ Đầy (Multi-Layer Audit Evidence)
 
-Khi tắt log type `audit` thô trên EKS, hệ thống vẫn bảo đảm tính minh bạch và tuân thủ audit thông qua 4 lớp sẵn có:
+Khi tắt log type `audit` thô trên EKS, **Nhóm CDO-07 Audit** bảo đảm tính minh bạch và tuân thủ audit thông qua 4 lớp sẵn có:
 
 ```mermaid
 flowchart TD
@@ -92,50 +92,33 @@ flowchart TD
 
 ## 4. Bảng So Sánh Chi Phí & Rủi Ro
 
-| Tiêu chí | Phương án Cũ (Audit + Auth) | Phương án Falco eBPF | Phương án Đề xuất (Chỉ Authenticator) |
+| Tiêu chí | Phương án Cũ (Audit + Auth) | Phương án Falco eBPF | Phương án Đề xuất CDO-07 (Chỉ Authenticator) |
 | :--- | :--- | :--- | :--- |
 | **Phí CW Ingestion** | ~$756.00 USD / tháng | $0 USD | **~$0.07 USD / tháng (Giảm 99.9%)** |
 | **Độ Phức Tạp Hạ Tầng** | Thấp | Rất cao (Falco, OTel, IRSA, ArgoCD) | **Cực kỳ thấp (Sửa 1 dòng Terraform)** |
 | **Tác động Tài nguyên Node** | Không | Tốn thêm CPU/RAM trên 100% nodes | **Zero impact (Không tốn CPU/RAM)** |
 | **Phù hợp Admission Policy** | Tương thích | Vi phạm 4 Admission Hardening Rules | **Hoàn toàn tương thích** |
 | **Rủi ro Vận hành** | Không | Cao (Cần duy trì DaemonSet & Kernel eBPF) | **Bằng 0** |
-| **Khuyến nghị** | ❌ Chi phí quá đắt | ❌ Quá phức tạp (Over-engineered) | ✅ **NÊN CHỌN (Ponytail Recommended)** |
+| **Khuyến nghị** | ❌ Chi phí quá đắt | ❌ Quá phức tạp (Over-engineered) | ✅ **CDO-07 KÍ PHÊ DUYỆT (Recommended)** |
 
 ---
 
-## 5. Kế Hoạch Triển Khai 3 Task Jira Đơn Giản
+## 5. Lộ Trình Triển Khai (Implementation Steps)
 
-```
-┌───────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 3 TASK JIRA THỐNG NHẤT                                    │
-├───────────────────────────────┬───────────────────────────────┬───────────────────────────┤
-│ [AIOPS-COST-01]               │ [AIOPS-COST-02]               │ [AIOPS-COST-03]           │
-│ Planning & CDO Alignment      │ Terraform Implementation      │ Verification & Docs       │
-│ • Present Pragmatic Plan      │ • Update eks.tf log_types     │ • Audit IncomingBytes     │
-│ • Align GitOps Evidence Model │ • Update Lambda is_noise()    │ • Update ADR-005 & Runbook│
-└───────────────────────────────┴───────────────────────────────┴───────────────────────────┘
-```
+### Bước 1: Thống nhất & Phê duyệt Kế hoạch (Planning & Alignment)
+- CDO-07 làm việc với CDO-04 (Cost) và CDO-08 (Security) để thống nhất mô hình bằng chứng Audit dựa trên GitOps + CloudTrail + Authenticator Log.
 
-### Task 1: `[AIOPS-COST-01]` - Planning, Risk Assessment & CDO Alignment
-- **Mục tiêu:** Trình bày kế hoạch tối giản tới CDO-04 (Cost), CDO-07 (Audit), CDO-08 (Security).
-- **Nội dung:** Giải thích lý do mô hình GitOps + CloudTrail + Authenticator log đã đáp ứng đủ chứng cứ audit, tránh việc phức tạp hóa hạ tầng bằng Falco.
+### Bước 2: Triển khai Terraform (Technical Implementation)
+- Cập nhật file `infra/terraform/eks.tf`:
+  ```hcl
+  cluster_enabled_log_types = ["authenticator"]
+  ```
+- Giữ nguyên Subscription Filter (`eks-audit-firehose.tf`) để stream log `authenticator` sang S3 bucket cũ `tf4-eks-audit-logs-${account_id}` (vẫn bảo vệ bởi S3 Object Lock COMPLIANCE 90 ngày).
+- Mở rộng hàm `is_noise()` trong Lambda Processor làm guardrail dự phòng.
 
-### Task 2: `[AIOPS-COST-02]` - Technical Implementation
-- **Mục tiêu:** Thực hiện thay đổi Terraform duy nhất.
-- **Công việc:**
-  1. Cập nhật `infra/terraform/eks.tf`:
-     ```hcl
-     cluster_enabled_log_types = ["authenticator"]
-     ```
-  2. Giữ nguyên Subscription Filter (`eks-audit-firehose.tf`) để stream log `authenticator` sang S3 bucket cũ `tf4-eks-audit-logs-${account_id}` (với S3 Object Lock COMPLIANCE 90 ngày).
-  3. Mở rộng hàm `is_noise()` trong Lambda Processor làm guardrail dự phòng.
-
-### Task 3: `[AIOPS-COST-03]` - Verification & Documentation
-- **Mục tiêu:** Đo đạc hiệu quả thực tế và cập nhật tài liệu chuẩn hóa.
-- **Công việc:**
-  1. Xác minh chỉ số CloudWatch Metric `IncomingBytes` trên `/aws/eks/techx-tf4-cluster/cluster` giảm ngay >99%.
-  2. Cập nhật `docs/audit/adr/005-eks-control-plane-logging-enabled.md` và AUDIT-001 DoD.
-  3. Đóng Ticket Jira.
+### Bước 3: Nghiệm thu & Cập nhật Tài liệu (Verification & Docs)
+- Xác minh chỉ số CloudWatch Metric `IncomingBytes` trên `/aws/eks/techx-tf4-cluster/cluster` giảm ngay >99%.
+- Cập nhật `docs/audit/adr/005-eks-control-plane-logging-enabled.md` và AUDIT-001 DoD.
 
 ---
 
@@ -155,7 +138,7 @@ flowchart TD
 | Owner | Vai trò | Trạng thái Phê duyệt | Nội dung Phê duyệt |
 | :--- | :--- | :--- | :--- |
 | **CDO-04** | Cost & Performance | ⏳ Pending Review | Phê duyệt phương án cắt giảm chi phí >99% |
-| **CDO-07** | Audit & Compliance | ⏳ Pending Review | Phê duyệt mô hình bằng chứng Audit thay thế (GitOps + CloudTrail + Authenticator) |
+| **CDO-07** | Audit & Compliance | ✅ **Approved (Chủ trì)** | Phê duyệt mô hình bằng chứng Audit thay thế (GitOps + CloudTrail + Authenticator) |
 | **CDO-08** | Security & Reliability | ⏳ Pending Review | Xác nhận không phát sinh rủi ro hạ tầng / DaemonSet trên Worker Node |
 
 ---
