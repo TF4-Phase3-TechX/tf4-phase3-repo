@@ -59,6 +59,32 @@ def test_fault_auto_disables_after_ttl():
     assert slept == [2.5]
 
 
+def test_fault_ttl_starts_on_first_request_not_process_start():
+    now = [100.0]
+    slept = []
+    fault = RevisionLatencyFault(
+        delay_ms=2500,
+        ttl_seconds=10,
+        max_requests=10,
+        clock=lambda: now[0],
+        sleep=slept.append,
+    )
+
+    # Simulate a GitOps approval window much longer than the bounded TTL.
+    now[0] = 1_000.0
+    first = fault.apply()
+    now[0] = 1_009.0
+    second = fault.apply()
+    now[0] = 1_010.0
+
+    assert first is not None
+    assert first.seconds_remaining == 10
+    assert second is not None
+    assert second.seconds_remaining == 1
+    assert fault.apply() is None
+    assert slept == [2.5, 2.5]
+
+
 def test_fault_auto_disables_after_request_budget():
     slept = []
     fault = RevisionLatencyFault(

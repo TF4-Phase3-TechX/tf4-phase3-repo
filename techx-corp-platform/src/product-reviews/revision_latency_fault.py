@@ -49,7 +49,10 @@ class RevisionLatencyFault:
         self.max_requests = max_requests
         self._clock = clock
         self._sleep = sleep
-        self._started_at = clock()
+        # Approval and GitOps reconciliation can legitimately take longer than
+        # the drill TTL. Start the time deadman on the first eligible request,
+        # while keeping the independent request-budget deadman unchanged.
+        self._started_at: float | None = None
         self._requests = 0
         self._lock = threading.Lock()
 
@@ -121,6 +124,8 @@ class RevisionLatencyFault:
             return None
         with self._lock:
             now = self._clock()
+            if self._started_at is None:
+                self._started_at = now
             elapsed = now - self._started_at
             if elapsed >= self.ttl_seconds or self._requests >= self.max_requests:
                 return None
