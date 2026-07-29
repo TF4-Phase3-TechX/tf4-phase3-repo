@@ -335,8 +335,8 @@ resource "aws_kinesis_firehose_delivery_stream" "eks_audit_logs" {
     buffering_size      = 5              # MB (1-128)
     buffering_interval  = 60             # Seconds (60-900)
     compression_format  = "UNCOMPRESSED" # Evades double-gzip
-    prefix              = "!yyyy/!MM/!dd/!HH/"
-    error_output_prefix = "errors/!yyyy/!MM/!dd/!HH/!error-output-type/"
+    prefix              = "!{timestamp:yyyy}/!{timestamp:MM}/!{timestamp:dd}/!{timestamp:HH}/"
+    error_output_prefix = "errors/!{firehose:error-output-type}/!{timestamp:yyyy}/!{timestamp:MM}/!{timestamp:dd}/!{timestamp:HH}/"
 
     # Lambda Processor tự động giải nén CloudWatch GZIP & chèn ngắt dòng \n chuẩn Newline-delimited JSON
     processing_configuration {
