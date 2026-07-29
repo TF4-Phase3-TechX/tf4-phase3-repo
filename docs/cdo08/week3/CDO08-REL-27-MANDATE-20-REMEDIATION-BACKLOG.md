@@ -49,7 +49,7 @@ Priority:
 
 **Evidence:**
 
-- [`../week2/mandate20/adr/CDO08-REL-21-adr-draft.md`](../week2/mandate20/adr/CDO08-REL-21-adr-draft.md)
+- [`mandate20/adr/CDO08-REL-21-adr.md`](mandate20/adr/CDO08-REL-21-adr.md) *(đã đổi tên + chuyển SIGNED 2026-07-27, cần Hải/Nguyên review lại item này)*
 - [`../week2/mandate20/adr/CDO08-REL-21-rpo-rto-matrix.md`](../week2/mandate20/adr/CDO08-REL-21-rpo-rto-matrix.md)
 
 **Next action:**
