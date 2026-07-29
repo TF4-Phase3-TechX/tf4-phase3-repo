@@ -155,6 +155,34 @@ def test_trace_only_root_without_local_anomaly():
     assert payment.contributions["local_anomaly_support"].raw_value is None
 
 
+def test_failed_client_peer_without_server_span_prefers_peer_callee():
+    t0 = datetime(2026, 7, 20, tzinfo=timezone.utc)
+    spans = [
+        {
+            "trace_id": "sampled-client-only",
+            "span_id": "client",
+            "service": "checkout",
+            "kind": "client",
+            "peer_service": "payment",
+            "error": True,
+            "start_us": 100,
+            "duration_us": 50,
+            "parent_span_ids": [],
+        }
+    ]
+    result = RCAEngine().analyze(
+        RCAEngineInput(
+            observations=[_obs("checkout", t0, 0.85)],
+            traces=parse_normalized_spans(spans),
+            graph=DependencyGraph.from_static(),
+        )
+    )
+
+    assert result.suspected_root_service == "payment"
+    checkout = next(c for c in result.candidates if c.service == "checkout")
+    assert checkout.penalties["dependency_victim"] > 0
+
+
 def test_missing_trace_unavailable_not_zero_support():
     t0 = datetime(2026, 7, 20, tzinfo=timezone.utc)
     result = RCAEngine().analyze(

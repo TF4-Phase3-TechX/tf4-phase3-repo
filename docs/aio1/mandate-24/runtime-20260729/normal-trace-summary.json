@@ -1,0 +1,176 @@
+{
+  "schema_version": "mandate24-trace-summary-v1",
+  "trace_id": "7c86a2172fcdded6c0f45dc9076d6b44",
+  "source": "Jaeger exact fetch by trace ID",
+  "start_time_utc": "2026-07-28T17:30:50Z",
+  "duration_ms": 866.526,
+  "span_count": 16,
+  "services": [
+    "frontend",
+    "frontend-proxy",
+    "product-catalog",
+    "product-reviews"
+  ],
+  "chain": [
+    {
+      "service": "frontend-proxy",
+      "operation": "POST",
+      "duration_ms": 866.526,
+      "span_id": "0fed476a2ab36d74",
+      "parent_span_id": null
+    },
+    {
+      "service": "frontend-proxy",
+      "operation": "router frontend egress",
+      "duration_ms": 866.368,
+      "span_id": "71cceaa6ce9a28d2",
+      "parent_span_id": "0fed476a2ab36d74"
+    },
+    {
+      "service": "frontend",
+      "operation": "POST /api/product-search-ai",
+      "duration_ms": 864.909,
+      "span_id": "1301aba6b979fc4a",
+      "parent_span_id": "71cceaa6ce9a28d2"
+    },
+    {
+      "service": "frontend",
+      "operation": "POST /api/product-search-ai",
+      "duration_ms": 864.483,
+      "span_id": "af66aa0a99a8271f",
+      "parent_span_id": "1301aba6b979fc4a"
+    },
+    {
+      "service": "frontend",
+      "operation": "oteldemo.ProductReviewService/SearchProductsAIAssistant",
+      "duration_ms": 861.693,
+      "span_id": "a984a4746eba11e0",
+      "parent_span_id": "a4c4552437737614"
+    },
+    {
+      "service": "frontend",
+      "operation": "executing api route (pages) /api/product-search-ai",
+      "duration_ms": 862.434,
+      "span_id": "a4c4552437737614",
+      "parent_span_id": "af66aa0a99a8271f"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "oteldemo.ProductReviewService/SearchProductsAIAssistant",
+      "duration_ms": 859.551,
+      "span_id": "1dc678960c2b4e74",
+      "parent_span_id": "a984a4746eba11e0"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "search_products_ai",
+      "duration_ms": 859.134,
+      "span_id": "3e6e564f7b30b004",
+      "parent_span_id": "1dc678960c2b4e74"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "redis",
+      "duration_ms": 1.457,
+      "span_id": "2b9a7845fc9fe8b1",
+      "parent_span_id": "3e6e564f7b30b004"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "bedrock.converse",
+      "duration_ms": 851.321,
+      "span_id": "5d6b01fe1a83185a",
+      "parent_span_id": "3e6e564f7b30b004"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "Bedrock Runtime/Converse",
+      "duration_ms": 850.942,
+      "span_id": "540a34472349fa12",
+      "parent_span_id": "5d6b01fe1a83185a"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "tool.catalog_search",
+      "duration_ms": 3.031,
+      "span_id": "e6c7e98fb3062eba",
+      "parent_span_id": "3e6e564f7b30b004"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "oteldemo.ProductCatalogService/ListProducts",
+      "duration_ms": 2.903,
+      "span_id": "c5cb7f53c88b202c",
+      "parent_span_id": "e6c7e98fb3062eba"
+    },
+    {
+      "service": "product-catalog",
+      "operation": "oteldemo.ProductCatalogService/ListProducts",
+      "duration_ms": 1.562,
+      "span_id": "2dd7f487b54c6de6",
+      "parent_span_id": "c5cb7f53c88b202c"
+    },
+    {
+      "service": "product-catalog",
+      "operation": "postgresql",
+      "duration_ms": 1.149,
+      "span_id": "a6f7d89939c75f2b",
+      "parent_span_id": "2dd7f487b54c6de6"
+    },
+    {
+      "service": "product-reviews",
+      "operation": "redis",
+      "duration_ms": 0.95,
+      "span_id": "f861df66ebb4e07e",
+      "parent_span_id": "3e6e564f7b30b004"
+    }
+  ],
+  "model_calls": [
+    {
+      "span_id": "5d6b01fe1a83185a",
+      "duration_ms": 851.321,
+      "attributes": {
+        "otel.scope.name": "product-reviews.llm-observability",
+        "app.ai.estimated_cost_usd": 0.0010618,
+        "app.ai.guardrail.version": "3",
+        "app.ai.latency_ms": 851.2500630022259,
+        "app.ai.outcome": "success",
+        "app.ai.response_contract_stage": "not_applicable",
+        "app.content.retained": false,
+        "gen_ai.operation.name": "search_intent",
+        "gen_ai.provider.name": "aws.bedrock",
+        "gen_ai.request.model": "us.amazon.nova-2-lite-v1:0",
+        "gen_ai.response.finish_reasons": "[\"tool_use\"]",
+        "gen_ai.tool.name": "emit_search_intent",
+        "gen_ai.usage.input_tokens": 2981,
+        "gen_ai.usage.output_tokens": 67,
+        "span.kind": "client"
+      }
+    }
+  ],
+  "tool_calls": [
+    {
+      "span_id": "e6c7e98fb3062eba",
+      "operation": "tool.catalog_search",
+      "duration_ms": 3.031,
+      "attributes": {
+        "otel.scope.name": "product-reviews.llm-observability",
+        "app.ai.intent": "product_search",
+        "app.ai.tool.name": "catalog_search",
+        "app.ai.tool.outcome": "success",
+        "app.content.retained": false,
+        "span.kind": "internal"
+      }
+    }
+  ],
+  "runtime": {
+    "frontend_image": "405fd07-frontend",
+    "product_reviews_image": "405fd07-product-reviews",
+    "product_reviews_pod": "product-reviews-884cf5b55-zxbvn"
+  },
+  "content_check": {
+    "raw_request_text_hits": 0,
+    "raw_user_identity_hits": 0,
+    "content_retained_false_on_model_and_tool": true
+  }
+}

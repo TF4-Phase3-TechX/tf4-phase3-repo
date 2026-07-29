@@ -41,3 +41,9 @@ Sau khi nhận được số lượng cuộc gọi vượt ngưỡng (> 10 lần
 Do tần suất cuộc gọi tăng đột biến vượt ngoài dải dự đoán (ML prediction band), Alarm học máy `mandate11-get-secret-value-anomaly-detection` cũng đã chuyển sang trạng thái **In alarm** thành công:
 
 ![ML Anomaly Alarm](./image/cw-anomaly-alarm.png)
+
+### D. Nhận thông báo cảnh báo H2 Anomaly Alarm trên Slack
+Sau khi sửa lỗi KMS policy (cho phép `cloudwatch.amazonaws.com` decrypt/generate data keys), CloudWatch Alarm đã gửi thành công tin nhắn cảnh báo đỏ `mandate11-get-secret-value-rate-spike` (CRITICAL severity) tới kênh Slack `#alert-infra` trong vòng chưa đầy 2 phút:
+
+![Slack H2 Alarm Alert](./image/slack-h2-alarm-received.png)
+

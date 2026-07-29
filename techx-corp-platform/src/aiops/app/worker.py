@@ -164,6 +164,28 @@ class AIOpsWorker:
             )
         )
 
+    def _schedule_remediation(
+        self,
+        incident: Incident,
+        *,
+        task_suffix: str = "",
+    ) -> bool:
+        """Schedule at most one remediation task for an incident at a time."""
+
+        task_prefix = f"aiops-remediate-{incident.incident_id}"
+        if any(
+            not task.done() and task.get_name().startswith(task_prefix)
+            for task in self._remediation_tasks
+        ):
+            return False
+        task = asyncio.create_task(
+            self._run_remediation(incident),
+            name=f"{task_prefix}{task_suffix}",
+        )
+        self._remediation_tasks.add(task)
+        task.add_done_callback(self._remediation_tasks.discard)
+        return True
+
     async def _run_remediation(self, incident: Incident) -> None:
         """Execute remediation off the detection loop so other services keep polling."""
 
@@ -571,6 +593,7 @@ class AIOpsWorker:
                 ),
                 None,
             )
+            previous_severity = active_before.severity if active_before else None
             previous_routing = (
                 (
                     _notification_severity(active_before.severity),
@@ -618,12 +641,7 @@ class AIOpsWorker:
                         )
                     )
                 else:
-                    task = asyncio.create_task(
-                        self._run_remediation(stored),
-                        name=f"aiops-remediate-{stored.incident_id}",
-                    )
-                    self._remediation_tasks.add(task)
-                    task.add_done_callback(self._remediation_tasks.discard)
+                    self._schedule_remediation(stored)
                 log.info(
                     json.dumps(
                         {
@@ -660,6 +678,39 @@ class AIOpsWorker:
                                 "current": current_routing,
                             }
                         )
+                    )
+                severity_only_denial = (
+                    stored.escalation_reason
+                    == "Autonomous policy denied: severity_high"
+                )
+                promoted_to_high = (
+                    previous_severity != "high" and stored.severity == "high"
+                )
+                target_blocked = await self.store.is_target_blocked(
+                    stored.affected_service
+                )
+                if (
+                    self.settings.autonomous_remediation_enabled
+                    and promoted_to_high
+                    and severity_only_denial
+                    and stored.status == IncidentStatus.ESCALATED
+                    and stored.execution_attempts == 0
+                    and not stored.mutation_blocked
+                    and not target_blocked
+                ):
+                    stored.audit_events.append(
+                        AuditEvent(
+                            event="autonomous_policy_re_evaluation_scheduled",
+                            detail={
+                                "previous_severity": previous_severity,
+                                "current_severity": stored.severity,
+                                "previous_denial": stored.escalation_reason,
+                            },
+                        )
+                    )
+                    self._schedule_remediation(
+                        stored,
+                        task_suffix="-severity-promotion",
                     )
         if prometheus_ok:
             last_poll_success.set(time.time())
@@ -864,15 +915,24 @@ class AIOpsWorker:
 
     async def run(self) -> None:
         self.running = True
-        while self.running:
-            try:
-                await self.poll_once()
-            except TelemetryError as exc:
-                poll_failures.labels("prometheus").inc()
-                log.error(json.dumps({"event": "telemetry_degraded", "error": str(exc)}))
-            except Exception:
-                log.exception("unexpected polling failure")
-            await asyncio.sleep(self.settings.poll_seconds)
+        try:
+            while self.running:
+                try:
+                    await self.poll_once()
+                except TelemetryError as exc:
+                    poll_failures.labels("prometheus").inc()
+                    log.error(
+                        json.dumps(
+                            {"event": "telemetry_degraded", "error": str(exc)}
+                        )
+                    )
+                except Exception:
+                    log.exception("unexpected polling failure")
+                await asyncio.sleep(self.settings.poll_seconds)
+        finally:
+            # Cancellation is the normal lifespan shutdown path. Never leave
+            # readiness reporting a stale running=True state.
+            self.running = False
 
     def stop(self) -> None:
         self.running = False

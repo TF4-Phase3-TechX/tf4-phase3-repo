@@ -157,6 +157,26 @@ than the cutoff; non-terminal records and terminal records that still own a
 Lease/Argo window are never retention-pruned. Lease and Argo window annotations
 are cleared in the `finally` / resume path.
 
+### Post-V7 startup recovery decision
+
+Startup saga reconciliation runs as a background lifespan task rather than
+blocking the FastAPI bind. Liveness is allowed to answer while recovery is in
+progress, but readiness remains closed and the detector polling worker is not
+started until reconciliation succeeds. Temporary adapter/RBAC/cleanup failures
+retry at `AIOPS_STARTUP_RECONCILE_RETRY_SECONDS` instead of terminating the pod.
+
+The rejected alternative was increasing liveness initial delay beyond the
+current verification window. That only hides one configured duration, still
+fails when cleanup permission is unavailable, and creates a timing dependency
+between application logic and probe tuning. The selected design makes
+readiness the explicit safety gate and keeps unresolved external ownership
+fail-closed.
+
+Restore is two-phase: stop the fault and restore target resources first; remove
+live cleanup RBAC only after the durable saga is terminal and no Lease/Argo
+ownership remains. Disposable-Kubernetes evidence is indexed in
+[`LOCAL-RECOVERY-GATE-2026-07-29.md`](LOCAL-RECOVERY-GATE-2026-07-29.md).
+
 ### Rejected alternative
 
 Embedding full saga state only in the Kubernetes Lease annotation was rejected:

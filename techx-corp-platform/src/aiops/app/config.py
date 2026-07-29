@@ -289,6 +289,12 @@ class Settings:
     saga_backend: str = os.getenv("AIOPS_SAGA_BACKEND", "memory")
     saga_path: str = os.getenv("AIOPS_SAGA_PATH", "")
     saga_retention_hours: int = int(os.getenv("AIOPS_SAGA_RETENTION_HOURS", "72"))
+    # Startup recovery runs behind the liveness endpoint and keeps readiness
+    # closed until every durable saga is reconciled. Retry instead of crashing
+    # the pod when Kubernetes cleanup permissions are temporarily unavailable.
+    startup_reconcile_retry_seconds: float = float(
+        os.getenv("AIOPS_STARTUP_RECONCILE_RETRY_SECONDS", "15")
+    )
     argo_window_enabled: bool = _bool("AIOPS_ARGO_WINDOW_ENABLED", "true")
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
@@ -381,6 +387,8 @@ class Settings:
             )
         if self.saga_retention_hours <= 0:
             raise ValueError("saga retention hours must be positive")
+        if self.startup_reconcile_retry_seconds <= 0:
+            raise ValueError("startup reconcile retry seconds must be positive")
         if self.saga_backend.strip().lower() in {"file", "fs", "json"}:
             if not self.saga_path.strip():
                 raise ValueError(

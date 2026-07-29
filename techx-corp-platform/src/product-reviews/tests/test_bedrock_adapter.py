@@ -1,7 +1,16 @@
 import json
+import time
 
 import pytest
+from botocore.exceptions import ClientError
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
+import bedrock_adapter
+import llm_observability
 from bedrock_adapter import BedrockAdapter, CircuitBreaker, CircuitOpen, ProviderFailure
 
 
@@ -205,6 +214,208 @@ def test_circuit_opens_after_five_failures_and_recovers_after_cooldown():
     with pytest.raises(CircuitOpen):
         breaker.before_call(5)
     breaker.before_call(65)
+
+
+def test_provider_retry_is_bounded_and_normalizes_client_error(monkeypatch):
+    class ThrottledClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ThrottlingException",
+                        "Message": "rate exceeded",
+                    }
+                },
+                "Converse",
+            )
+
+    client = ThrottledClient()
+    subject = adapter(
+        client,
+        max_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    with pytest.raises(ProviderFailure) as exc_info:
+        subject.converse("q", {}, [{}])
+
+    assert client.calls == 2
+    assert exc_info.value.error_class == "throttlingexception"
+    assert subject.resilience_snapshot()["last_provider_error"] == (
+        "throttlingexception"
+    )
+
+
+def test_product_qa_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate25.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    subject = adapter(
+        FakeClient(),
+        max_attempts=2,
+        retry_backoff_seconds=0.1,
+        fault_source=lambda: "throttling",
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "error",
+    ]
+    assert [span.attributes["error.type"] for span in spans] == [
+        "throttlingexception",
+        "throttlingexception",
+    ]
+
+
+def test_production_client_timeouts_fit_one_attempt_budget(monkeypatch):
+    captured = {}
+
+    def create_client(_service, *, region_name, config):
+        captured["region_name"] = region_name
+        captured["config"] = config
+        return FakeClient()
+
+    monkeypatch.setattr(bedrock_adapter.boto3, "client", create_client)
+    subject = BedrockAdapter(
+        model_id="model",
+        guardrail_id="disabled",
+        guardrail_version="1",
+        deadline_seconds=4.5,
+        max_attempts=2,
+        retry_backoff_seconds=0.1,
+    )
+
+    config = captured["config"]
+    assert captured["region_name"] == "us-east-1"
+    assert config.retries["max_attempts"] == 0
+    assert config.connect_timeout + config.read_timeout == pytest.approx(
+        subject.attempt_timeout_seconds
+    )
+
+
+def test_model_not_ready_429_retries_and_opens_circuit():
+    class ModelNotReadyClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ModelNotReadyException",
+                        "Message": "model is not ready",
+                    },
+                    "ResponseMetadata": {"HTTPStatusCode": 429},
+                },
+                "Converse",
+            )
+
+    client = ModelNotReadyClient()
+    subject = adapter(
+        client,
+        max_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    for _ in range(5):
+        with pytest.raises(ProviderFailure, match="modelnotreadyexception"):
+            subject.converse("q", {}, [{}])
+
+    assert client.calls == 10
+    assert subject.resilience_snapshot()["circuit_state"] == "open"
+    with pytest.raises(CircuitOpen):
+        subject.converse("q", {}, [{}])
+    assert client.calls == 10
+
+
+def test_retry_is_skipped_when_next_attempt_cannot_fit_deadline():
+    class SlowTimeoutClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            time.sleep(0.04)
+            raise TimeoutError("first attempt consumed its budget")
+
+    client = SlowTimeoutClient()
+    subject = adapter(
+        client,
+        deadline_seconds=0.05,
+        max_attempts=2,
+        retry_backoff_seconds=0.001,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(ProviderFailure, match="timeout"):
+        subject.converse("q", {}, [{}])
+
+    assert client.calls == 1
+    assert time.monotonic() - started < 0.08
+
+
+def test_injected_throttle_opens_fast_fails_and_recovers_after_cooldown():
+    fault_mode = ["throttling"]
+    now = [0.0]
+    client = FakeClient(
+        tool_response_with(
+            {"decision": "insufficient", "answer": "", "citations": []}
+        )
+    )
+    breaker = CircuitBreaker(threshold=2, window_seconds=30, cooldown_seconds=60)
+    subject = adapter(
+        client,
+        output_mode="tool",
+        circuit_breaker=breaker,
+        clock=lambda: now[0],
+        max_attempts=1,
+        retry_backoff_seconds=0,
+        fault_source=lambda: fault_mode[0],
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+    now[0] = 1.0
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.converse("q", {}, [{}])
+    now[0] = 2.0
+    with pytest.raises(CircuitOpen):
+        subject.converse("q", {}, [{}])
+
+    assert client.request is None
+    assert subject.resilience_snapshot()["circuit_state"] == "open"
+
+    fault_mode[0] = "off"
+    now[0] = 62.0
+    result = subject.converse("q", {}, [{}])
+
+    assert result.payload["decision"] == "insufficient"
+    assert client.request is not None
+    assert subject.resilience_snapshot() == {
+        "circuit_state": "closed",
+        "last_provider_outcome": "success",
+        "last_provider_error": "none",
+    }
 
 
 def test_rejects_draft_guardrail():
@@ -515,6 +726,91 @@ def test_invalid_intent_contract_does_not_open_availability_circuit():
 
     subject.client = FakeClient(search_intent_response({"search_type": "search"}))
     assert subject.parse_search_intent("find a product")["search_type"] == "search"
+
+
+def test_parse_search_retry_emits_one_span_per_real_provider_attempt(monkeypatch):
+    class FailThenSucceedClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            if self.calls == 1:
+                raise TimeoutError("first attempt timed out")
+            return search_intent_response({"search_type": "search"})
+
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(
+        llm_observability,
+        "_TRACER",
+        tracer_provider.get_tracer("test.mandate24.retry"),
+    )
+    monkeypatch.setattr(bedrock_adapter.time, "sleep", lambda _seconds: None)
+    client = FailThenSucceedClient()
+
+    result = adapter(client).parse_search_intent("find a product")
+
+    spans = [
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == "bedrock.converse"
+    ]
+    assert result["search_type"] == "search"
+    assert client.calls == 2
+    assert len(spans) == 2
+    assert [span.attributes["app.ai.outcome"] for span in spans] == [
+        "error",
+        "success",
+    ]
+    assert spans[0].attributes["error.type"] == "timeouterror"
+    assert spans[1].attributes["gen_ai.usage.input_tokens"] == 50
+    assert spans[1].attributes["gen_ai.usage.output_tokens"] == 15
+
+
+def test_search_failure_updates_shared_resilience_status():
+    subject = adapter(
+        FakeClient(),
+        max_attempts=1,
+        retry_backoff_seconds=0,
+        fault_source=lambda: "throttling",
+    )
+
+    with pytest.raises(ProviderFailure, match="throttlingexception"):
+        subject.parse_search_intent("find a product")
+
+    assert subject.resilience_snapshot() == {
+        "circuit_state": "closed",
+        "last_provider_outcome": "error",
+        "last_provider_error": "throttlingexception",
+    }
+
+
+def test_search_retry_is_skipped_when_next_attempt_cannot_fit_deadline():
+    class SlowTimeoutClient:
+        def __init__(self):
+            self.calls = 0
+
+        def converse(self, **_request):
+            self.calls += 1
+            time.sleep(0.04)
+            raise TimeoutError("first attempt consumed its budget")
+
+    client = SlowTimeoutClient()
+    subject = adapter(
+        client,
+        deadline_seconds=0.05,
+        max_attempts=2,
+        retry_backoff_seconds=0.001,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(ProviderFailure, match="timeout"):
+        subject.parse_search_intent("find a product")
+
+    assert client.calls == 1
+    assert time.monotonic() - started < 0.08
 
 
 def test_compare_products_uses_dedicated_grounded_tool():

@@ -492,7 +492,14 @@ class RCAEngine:
                 f"server_errors={origin.server_error_count} "
                 f"client_errors={origin.client_error_count}"
             )
-            if origin.victim_like_score > origin.root_like_score and origin.victim_like_score > 0.2:
+            # A sampled trace may contain only the failed client span. When that
+            # span names a peer, the caller is still a dependency victim even if
+            # the normalized victim score is below the old multi-span threshold.
+            # The configurable contradiction penalty controls the magnitude.
+            if (
+                origin.client_error_count > 0
+                and origin.victim_like_score > origin.root_like_score
+            ):
                 contradictions.append(
                     f"trace shows dependency-victim pattern for {service}"
                 )
