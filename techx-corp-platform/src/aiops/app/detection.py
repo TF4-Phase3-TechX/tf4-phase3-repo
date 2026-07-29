@@ -28,6 +28,10 @@ TORAI_LITE_WEIGHTS = {
 LATENCY_SPAN_NAMES = {
     "frontend": r"GET /|GET /product.*|GET /api/products.*|GET /api/data.*",
     "checkout": "oteldemo.CheckoutService/PlaceOrder",
+    # Product reviews exposes its gRPC health server under the same service
+    # name. Without the operation boundary, frequent probes can dominate the
+    # histogram and hide user-visible review latency.
+    "product-reviews": "oteldemo.ProductReviewService/GetProductReviews",
 }
 
 
@@ -259,7 +263,7 @@ def span_matchers(
         matchers.append(f'k8s_namespace_name="{namespace}"')
     span_name = LATENCY_SPAN_NAMES.get(service) if include_operation else None
     if span_name:
-        operator = "=" if service == "checkout" else "=~"
+        operator = "=~" if service == "frontend" else "="
         matchers.append(f'span_name{operator}"{span_name}"')
     if error_only:
         matchers.append('status_code="STATUS_CODE_ERROR"')
@@ -775,7 +779,7 @@ def request_rate_query(service: str, namespace: str | None = None) -> str:
     matchers = span_matchers(
         service,
         namespace=namespace,
-        include_operation=False,
+        include_operation=True,
     )
     return (
         "sum(rate(traces_span_metrics_calls_total{"
