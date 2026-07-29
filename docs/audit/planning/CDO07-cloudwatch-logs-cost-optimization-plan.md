@@ -1,203 +1,324 @@
-# CDO-07 - Kế hoạch đánh giá và tối ưu chi phí EKS CloudWatch Logs
+# CDO-07 - Kế hoạch tối ưu chi phí EKS CloudWatch Logs theo hướng PA3
 
 - **Trạng thái:** Draft - chờ CDO-04, CDO-07 và CDO-08 phê duyệt
 - **Ngày lập:** 2026-07-29
 - **Phạm vi:** `techx-tf4-cluster`, log group `/aws/eks/techx-tf4-cluster/cluster`
 - **Người lập:** Hoàng Kim Hùng
 - **Owners:** CDO-04 (Cost/Performance), CDO-07 (Audit), CDO-08 (Security/Reliability)
+- **Bối cảnh cập nhật:** hệ thống đang vận hành theo kiểu prod/prod-like, không phải dev/staging tách riêng
 
-## 0. Kết luận rà soát lần cuối
+## 0. Kết luận cập nhật
 
-Tài liệu này đã được đối chiếu với ADR-005, AUDIT-001, Mandate #4 và cấu hình Terraform hiện tại. Hướng phê duyệt an toàn nhất là **PA1 + PA2 có điều kiện**. Không phê duyệt PA3 như phương án thay thế hoàn toàn cho EKS control-plane audit.
+Sau khi rà soát lại giả định vận hành, hướng **PA1 + PA2** không còn là phương án chính. Lý do: hệ thống hiện tại được xem là prod-like, nên không có nhiều giá trị khi nói "dev/staging chỉ bật authenticator". Nếu vẫn bật `audit` trên cluster prod-like, chi phí CloudWatch Logs ingestion vẫn giữ nguyên driver lớn nhất.
 
-Các điểm cần nói rõ trong buổi phê duyệt:
+Khuyến nghị mới là **PA3-first, triển khai theo migration gate**:
 
-- Số liệu billing month-to-date là 448.1 GB, tương đương `$224.05`; nếu tốc độ 2.1 GB/giờ duy trì 24x7 thì run-rate mới là khoảng `$756/tháng`. Không trộn hai cách tính này với nhau.
-- `PA2` chỉ giảm CloudWatch hot storage và chi phí downstream Firehose/S3/Athena. Phương án này **không** giảm CloudWatch Logs ingestion vì EKS đã đẩy log vào CloudWatch trước khi subscription/Lambda xử lý.
-- `PA1` là cách giảm ingestion thực tế cho dev/staging nếu tắt `audit` ở các môi trường đó. Production và drill vẫn phải giữ `audit` + `authenticator` nếu muốn bảo toàn khả năng forensic control plane đầy đủ.
-- `PA3` Falco eBPF không thay thế được EKS managed control-plane audit/authenticator. Chỉ nên phê duyệt PA3 như một pilot runtime detection bổ sung, sau khi CDO-07 chấp nhận forensic equivalence bằng test.
-- AUDIT-001 gốc có một số yêu cầu đã được ADR-005/Terraform cập nhật: 5 log types -> 2 log types, 14 ngày -> 7 ngày, CMK -> SSE-S3, WORM 1 năm -> Object Lock 90 ngày + lifecycle 365 ngày. Các deviation này phải được CDO-07/CDO-08 xác nhận lại khi phê duyệt Task 79.
+1. Dựng pipeline **Falco eBPF DaemonSet -> dedicated OTel Collector -> S3 Object Lock** để ghi nhận runtime/security events trực tiếp về S3, không đi qua CloudWatch Logs.
+2. Chạy song song pipeline PA3 với EKS `audit` + `authenticator` hiện tại trong một giai đoạn shadow để đo coverage, cost và tài nguyên.
+3. Sau khi CDO-07 chấp nhận forensic equivalence bằng test, đề xuất tắt EKS `audit` để cắt phần CloudWatch ingestion lớn nhất.
+4. Khuyến nghị **giữ `authenticator`** trong EKS control-plane logging vì chi phí gần như bằng 0 (~0.14 GB/tháng theo mẫu đo) và vẫn giữ được chuỗi IAM -> Kubernetes identity. Nếu bắt buộc "CloudWatch ingestion = 0", việc tắt cả `authenticator` phải được CDO-07 phê duyệt riêng.
+5. PA2 chỉ giữ vai trò hỗ trợ trong giai đoạn chuyển tiếp: retention ngắn và filter noise giúp giảm storage/downstream, nhưng không giải quyết cost driver.
 
-## 1. Quyết định đề xuất
+> **Cảnh báo compliance:** PA3 không thay thế EKS control-plane audit theo nghĩa 1:1. Falco eBPF mạnh ở runtime detection trên worker node, còn EKS `audit` là log từ Kubernetes API server. Việc tắt EKS `audit` là một thay đổi ADR/compliance, chỉ được thực hiện khi CDO-07 chấp nhận rõ các khoảng trống và phạm vi forensic mới.
 
-Khuyến nghị phê duyệt phương án kết hợp **PA1 + PA2**:
+## 1. Hiện trạng và cost driver
 
-1. Dev/staging chỉ bật `authenticator`; production và drill bật `audit` + `authenticator`.
-2. Giữ audit archive qua CloudWatch subscription -> Firehose -> S3 Object Lock WORM; giảm CloudWatch hot retention xuống 1 ngày sau khi xác nhận S3/Athena forensic pass.
-3. Mở rộng bộ lọc Lambda `is_noise` bằng allowlist rõ ràng cho health checks, node heartbeats, lease polling và EBS CSI 404; không lọc các thay đổi, đọc secret, exec, RBAC/IAM và request của người dùng.
-4. Không triển khai PA3 như một phương án thay thế duy nhất cho EKS control-plane audit. Falco eBPF có thể bổ sung runtime detection, nhưng không phải nguồn audit từ managed EKS control plane.
-
-> **Cảnh báo chi phí:** Retention và filter ở subscription không làm giảm CloudWatch Logs ingestion. Ingestion phát sinh khi EKS gửi log vào CloudWatch Logs; subscription/Lambda chỉ xử lý đầu ra sau đó. Muốn cắt khoản lớn nhất (~$0.50/GB theo evidence billing hiện tại), phải giảm log type/phạm vi môi trường tại EKS (PA1) hoặc có kênh audit thay thế được AWS/CDO-07 chấp nhận. Không được coi PA2 là phương án giảm trực tiếp ingestion.
-
-## 2. Evidence và hiện trạng
-
-Nguồn tham chiếu trong repo:
-
-- `docs/audit/adr/005-eks-control-plane-logging-enabled.md` (ADR-005).
-- `docs/audit/tickets/AUDIT-001-enable-eks-logs.md` (yêu cầu bật control-plane logging và lưu dài hạn).
-- `docs/requirements/mandates/MANDATE-04-auditability-tf4.md` (forensic, tamper-evident, truy nguồn danh tính).
-- `infra/terraform/eks.tf`.
-- `infra/terraform/eks-audit-firehose.tf`.
-
-### Runtime evidence do task cung cấp
-
-| Nguồn | Events/giờ | Dung lượng/giờ | Tỷ trọng | Chi phí ingestion ước tính |
-| ----- | ---------: | -------------: | -------: | -------------------------: |
-| `authenticator` | 539 | 0.19 MB | không đáng kể | khoảng $0.07/tháng theo mẫu đo |
-| `audit` | 124,878 | 2.10 GB | ~99.99% dung lượng | ~`$756/tháng` nếu duy trì 24x7 |
-| Tổng log group MTD | - | 448.1 GB | >98% CloudWatch Logs | `$224.05` tại đơn giá $0.50/GB |
-
-Số liệu 448.1 GB/$224.05 là chi phí month-to-date trong ảnh. Ngoài ra, 2.1 GB/giờ x 24 x 30 = 1,512 GB/tháng, tương đương run-rate khoảng $756/tháng. Khi trình phê duyệt, cần ghi rõ đây là hai cách nhìn khác nhau: chi phí đã phát sinh đến hiện tại và run-rate nếu lưu lượng duy trì liên tục.
-
-### Cấu hình đang có trong repo
-
-- EKS đang bật `cluster_enabled_log_types = ["audit", "authenticator"]`; `api`, `controllerManager`, `scheduler` đang tắt theo ADR-005.
-- CloudWatch retention đang là 7 ngày, trong khi AUDIT-001 ban đầu khuyến nghị 14 ngày (tối đa 30 ngày). ADR-005 cập nhật sau đó đã chấp nhận 7 ngày và S3 WORM 90 ngày.
-- Subscription filter đang là `filter_pattern = ""` để giữ cả audit và authenticator.
-- Lambda `is_noise` hiện chỉ bỏ `/healthz`, `/livez`, và user `system:node:*`. Lease polling, EBS CSI controller 404 và một số internal periodic requests vẫn đi qua.
-- S3 audit bucket đã có Object Lock COMPLIANCE 90 ngày, versioning, SSE-S3, public access block và lifecycle sang `GLACIER_IR` sau ngày 91, expire sau 365 ngày.
-- `docs/audit/reports/cloudwatch-cost-optimization-report.md` mô tả một `filter_pattern` JSON lọc 80%, nhưng Terraform hiện tại đang dùng pattern rỗng và lọc trong Lambda. Báo cáo cũ cần được đánh dấu stale hoặc cập nhật sau khi có approval.
-
-## 3. Đánh giá compliance
-
-### ADR-005
-
-ADR-005 yêu cầu giữ hai luồng cốt lõi: `audit` để truy vết Kubernetes API action và `authenticator` để map IAM -> Kubernetes identity. ADR đã chấp nhận tắt `api` để giảm verbose request/response, đồng thời không bật `controllerManager`/`scheduler` trong baseline. Vì vậy, tắt `audit` trong production sẽ là thay đổi ADR, không phải một tinh chỉnh cost thông thường.
-
-### AUDIT-001 và Mandate #4
-
-AUDIT-001 yêu cầu:
-
-- bật control-plane logging;
-- có hot query trên CloudWatch;
-- stream sang lưu trữ dài hạn tamper-evident;
-- forensic có thể dựng lại `ai - làm gì - khi nào`.
-
-Mandate #4 yêu cầu log integrity và không để operator tự xóa vết. S3 WORM hiện tại đáp ứng phần archive, nhưng nếu lọc noise thì phải có allowlist, test regression và evidence cho thấy các hành vi nhạy cảm vẫn còn đủ.
-
-### Deviation cần owner approve
-
-| Hạng mục | AUDIT-001 gốc | ADR/Terraform hiện tại | Kết luận approve |
-| -------- | ------------- | ---------------------- | ---------------- |
-| Log types | Đề xuất bật 5 loại log | Bật `audit`, `authenticator`; tắt `api`, `controllerManager`, `scheduler` | Chấp nhận nếu CDO-07 xác nhận `audit` + `authenticator` đủ để forensic |
-| CloudWatch retention | 14 ngày ưu tiên, tối đa 30 ngày | 7 ngày | Có thể giảm 1 ngày chỉ sau khi S3/Athena forensic pass |
-| Long-term retention | Lưu 1 năm | Lifecycle expire 365 ngày, Object Lock COMPLIANCE 90 ngày | Cần CDO-07/CDO-08 chấp nhận WORM 90 ngày là compliance floor |
-| Encryption | DoD cũ ghi CMK `tf4-cdo07-audit-cmk` | Terraform dùng SSE-S3 AES256 để tránh KMS API cost | Cần approve rõ nếu không bắt buộc CMK |
-| Bucket name | AUDIT-001 ghi `tf4-cdo07-audit-log` | Terraform tạo `tf4-eks-audit-logs-${account_id}` | Cần evidence bucket thực tế khi nghiệm thu |
-
-## 4. So sánh phương án
-
-| Tiêu chí | PA1 - tách môi trường | PA2 - retention + noise filter | PA3 - Falco eBPF + OTel -> S3 |
-| -------- | --------------------- | ------------------------------- | ------------------------------ |
-| Giảm CloudWatch ingestion | Cao ở dev/staging; không giảm production nếu vẫn bật audit | **Không giảm** ingestion; chỉ giảm storage/Firehose/S3/Athena | Lý thuyết cao nhưng repo chưa có kênh thay thế EKS control-plane audit được AWS/CDO-07 xác nhận |
-| Bao phủ forensic control plane | Prod đầy đủ; nonprod có chủ ý giảm audit | Prod đầy đủ nếu allowlist đúng | Falco không thay managed control-plane API audit/IAM authenticator |
-| Compliance risk | Trung bình, cần phân loại môi trường và drill riêng | Thấp-trung bình nếu archive S3 và test đầy đủ | Cao nếu dùng độc lập; không nên dùng để thay ADR-005/AUDIT-001 |
-| Độ phức tạp | Thấp | Thấp-trung bình | Cao, thêm DaemonSet/OTel/S3 pipeline và vận hành mới |
-| Rủi ro tài nguyên | Thấp | Lambda nhỏ, có thể benchmark | Falco/OTel có overhead trên mỗi node; cần tránh tranh chấp tài nguyên |
-| Khuyến nghị | **Nên làm** | **Nên làm ngay sau validation** | Chỉ xem xét như detection bổ sung, không thay audit |
-
-### Đánh giá tải tài nguyên
-
-Ở mức 124,878 events/giờ (~34.7 events/giây, 2.1 GB/giờ), nếu đưa raw event vào OTel/Falco:
-
-- OTel Collector phải parse, batch, retry và export trung bình khoảng 35 event/s nhưng payload rất lớn (~16.8 KB/event theo mẫu đo). Burst/retry có thể làm tăng heap, queue và disk queue.
-- Falco eBPF phân tích syscall trên mỗi worker, không phải pipeline lọc EKS audit. Overhead phụ thuộc rule và số process; cần canary trên một node, đặt CPU/memory limit và theo dõi drop/backpressure.
-- Không được đưa raw 2.1 GB/giờ vào collector dùng chung với telemetry storefront nếu chưa có queue isolation, memory limiter, batch và alert cho exporter failure.
-- PA2 xử lý ở Firehose Lambda sau khi CloudWatch đã nhận log; Lambda 256 MB/60 s hiện tại cần load test và theo dõi các metric `Throttles`, `Errors`, duration, Firehose delivery lag.
-
-## 5. Implementation Plan
-
-### Phase 0 - Freeze baseline và approval (P0)
-
-1. CDO-04 xác nhận billing evidence: log group, UsageType, region, timeframe và đơn giá; tách MTD với run-rate.
-2. CDO-07 lập forensic canary cases: `kubectl` delete/patch, RBAC change, secret read, `kubectl exec`, IAM authentication và một lease/health request.
-3. CDO-08 review retention, Object Lock, IAM least privilege, rollback và incident impact.
-4. Không thay đổi `cluster_enabled_log_types` production trước khi có approval bằng văn bản.
-
-### Phase 1 - PA2 safe filter và retention
-
-1. Viết unit test cho `is_noise` bằng audit fixtures. Noise chỉ được drop khi khớp cả verb/resource/username/requestURI/responseStatus đã được phân loại.
-2. Thêm explicit patterns cho `/readyz`, `/healthz`, `/livez`, node heartbeat, lease polling và EBS CSI controller 404; ghi rõ những pattern không được drop.
-3. Không drop bất kỳ event nào có `responseStatus.code` là `401`, `403`, hoặc `>=500`; không drop `secrets`, RBAC, `pods/exec`, create/update/patch/delete, IAM/user request, admission deny và escalation-related verb/resource.
-4. Giữ nguyên `filter_pattern = ""` để authenticator không bị mất do khác schema. Lọc tại Lambda, sau CloudWatch ingestion.
-5. Giảm retention CloudWatch từ 7 ngày xuống 1 ngày chỉ sau khi S3 có object mới trong 24 giờ, Object Lock/versioning/policy được verify, Athena query đọc được forensic canary, và Firehose/Lambda error rate cùng delivery lag bằng 0 trong cửa sổ quan sát.
-6. Theo dõi 7 ngày: CloudWatch incoming bytes, Firehose processed/delivered bytes, Lambda errors/throttles, S3 object count/size, Athena queryability.
-
-### Phase 2 - PA1 environment separation
-
-1. Xác định cluster tags/account classification: dev, staging, prod/drill.
-2. Dev/staging: `cluster_enabled_log_types = ["authenticator"]` nếu CDO-07 chấp nhận không forensic Kubernetes API đầy đủ ở các môi trường này.
-3. Prod/drill: giữ `["audit", "authenticator"]`, không bật `api`.
-4. Mọi thay đổi phải có Terraform plan, approval CDO-04 + CDO-07, rollback và evidence `aws eks describe-cluster`.
-5. Tạo dashboard cost theo cluster/environment để đảm bảo cost saving đến từ giảm ingestion, không chỉ từ retention.
-
-### Phase 3 - PA3 research gate, không phải implementation mặc định
-
-Chỉ tiếp tục nếu AWS/EKS owner xác nhận có kênh audit control-plane thay thế và CDO-07 chấp nhận equivalence. Nếu thử nghiệm Falco:
-
-- canary 1 node, rule allowlist chỉ bắt security-relevant syscall;
-- OTel Collector riêng, queue/memory limiter, resource requests/limits, drop counter và S3 encryption/Object Lock;
-- chaos test collector down, S3 deny, node pressure và retry storm;
-- đối chiếu forensic cases với audit log gốc.
-
-Nếu không đạt được equivalence, hủy PA3 và giữ Falco như detection bổ sung.
-
-## 6. Cost Model và KPI
-
-- Baseline ingestion: `$224.05` cho 448.1 GB MTD theo evidence; run-rate nếu 2.1 GB/giờ liên tục: khoảng `$756/tháng`.
-- Authenticator: gần như không đáng kể so với audit.
-- PA2 tiết kiệm chủ yếu storage và downstream processing; không ghi nhận saving ingestion trong business case.
-- PA1 tiết kiệm ingestion của môi trường chỉ tắt `audit`; phải đo trước/sau bằng CloudWatch usage data.
-
-Ước tính để so sánh (đơn giá trong evidence/pricing tham chiếu, chưa bao gồm free tier, tax, Firehose request, Lambda, S3 request và Athena; CDO-04 phải đối chiếu Cost Explorer theo region/account thực tế):
-
-| Khoản | Cách tính | Ước tính |
-| ----- | --------- | -------: |
-| CloudWatch ingestion run-rate | 1,512 GB/tháng x $0.50 | ~$756/tháng |
-| CloudWatch hot storage 7 ngày | 2.1 GB/giờ x 24 x 7 x $0.03/GB-tháng | ~$10.58/tháng |
-| CloudWatch hot storage 1 ngày | 2.1 GB/giờ x 24 x 1 x $0.03/GB-tháng | ~$1.51/tháng |
-| Storage saving 7 ngày -> 1 ngày | chênh lệch hai dòng trên | ~$9.07/tháng |
-
-Bảng này cho thấy PA2 không thể giải quyết driver $224 MTD/$756 run-rate nếu audit vẫn được bật trong cùng môi trường. PA1 mới có khả năng giảm ingestion trực tiếp, còn PA2 chủ yếu giảm hot storage và chi phí downstream sau subscription.
-
-KPI bắt buộc:
-
-| KPI | Mục tiêu |
-| --- | -------- |
-| Forensic canary recall | 100% event nhạy cảm tìm thấy trong S3/Athena |
-| Authenticator retention | 100% event cần thiết được giữ |
-| False-drop rate | 0 cho RBAC, Secret, exec, create/update/delete, IAM identity |
-| Firehose/Lambda processing failure | 0 trong cửa sổ acceptance |
-| S3 Object Lock | COMPLIANCE 90 ngày, operator không delete được |
-| Cost | Tách rõ ingestion saving (PA1) và storage/downstream saving (PA2) |
-| Collector resource, nếu PA3 pilot | Không OOM, không tranh CPU với checkout/telemetry |
-
-## 7. Rollback và incident controls
-
-- PA2 filter: revert Lambda code/zip và Terraform plan; giữ raw subscription trong thời gian rollback.
-- Retention: tăng lại 7 ngày nếu CloudWatch hot query cần thiết; không ảnh hưởng S3 WORM archive.
-- PA1: bật lại `audit` cho cluster đã tắt qua Terraform; không xóa log group/archive.
-- PA3 pilot: xóa DaemonSet/OTel route nếu node pressure, exporter backlog, missing forensic event hoặc S3 delivery failure.
-- Mọi rollback phải có change ticket, actor identity, timestamp, Terraform plan/apply output và sau đó re-run forensic canary.
-
-## 8. Approval Record
-
-| Owner | Quyết định cần phê duyệt | Trạng thái |
-| ----- | ------------------------ | ---------- |
-| CDO-04 | Cost model, PA1/PA2 rollout, billing/KPI và budget guardrail | Pending |
-| CDO-07 | ADR-005/AUDIT-001 compliance, noise allowlist, forensic evidence và acceptance | Pending |
-| CDO-08 | Security, IAM, WORM, resource isolation, rollback và PA3 risk gate | Pending |
-
-**Acceptance của Task 79:** tài liệu này là implementation plan để trình ba owner. Task chỉ được đóng sau khi có approval của CDO-04 (và review CDO-07/CDO-08), có evidence baseline, test filter, và rollout/rollback record.
-
-## 9. References
+Nguồn trong repo đã rà soát:
 
 - `docs/audit/adr/005-eks-control-plane-logging-enabled.md`
 - `docs/audit/tickets/AUDIT-001-enable-eks-logs.md`
 - `docs/requirements/mandates/MANDATE-04-auditability-tf4.md`
 - `infra/terraform/eks.tf`
 - `infra/terraform/eks-audit-firehose.tf`
-- `infra/terraform/d18-storage-lifecycle.tf`
-- AWS EKS docs: `https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html`
-- AWS CloudWatch Logs subscription docs: `https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html`
-- AWS CloudWatch pricing: `https://aws.amazon.com/cloudwatch/pricing/`
+- `infra/terraform/ai-audit-logs.tf`
+- `infra/terraform/athena-forensics.tf`
+- `deploy/values-observability.yaml`
+
+### Evidence vận hành
+
+| Nguồn | Events/giờ | Dung lượng/giờ | Tỷ trọng | Chi phí ingestion ước tính |
+| ----- | ---------: | -------------: | -------: | -------------------------: |
+| `authenticator` | 539 | 0.19 MB | gần như không đáng kể | khoảng $0.07/tháng |
+| `audit` | 124,878 | 2.10 GB | ~99.99% dung lượng | khoảng `$756/tháng` nếu duy trì 24x7 |
+| Tổng log group MTD | - | 448.1 GB | >98% CloudWatch Logs | `$224.05` theo evidence hiện tại |
+
+Điểm cần chốt với CDO-04: `$224.05` là chi phí month-to-date theo ảnh; `$756/tháng` là run-rate nếu tốc độ 2.1 GB/giờ duy trì 24x7. Đây là hai số liệu khác nhau và phải tách khi trình duyệt ngân sách.
+
+### Cấu hình hiện tại
+
+- `infra/terraform/eks.tf` đang bật `cluster_enabled_log_types = ["audit", "authenticator"]`.
+- CloudWatch retention hiện là 7 ngày.
+- `infra/terraform/eks-audit-firehose.tf` đang stream toàn bộ log group sang Firehose/S3 với `filter_pattern = ""`.
+- Lambda `is_noise` hiện chỉ bỏ `/healthz`, `/livez`, và user `system:node:*`; nhiều nguồn noise lớn như `/readyz`, lease polling, EBS CSI 404 vẫn có thể đi qua.
+- S3 archive cho EKS audit đã có Object Lock COMPLIANCE 90 ngày, versioning, SSE-S3, lifecycle sang `GLACIER_IR` sau ngày 91 và expire sau 365 ngày.
+- Repo đã có OTel Collector cho observability (`deploy/values-observability.yaml`) và pipeline AI audit OTel -> CloudWatch -> Firehose -> S3 (`infra/terraform/ai-audit-logs.tf`). Tuy nhiên pipeline AI audit hiện vẫn đi qua CloudWatch; PA3 của Task 79 phải dùng nhánh S3 trực tiếp nếu mục tiêu là bypass CloudWatch ingestion.
+
+## 2. Vì sao đổi hướng sang PA3
+
+### PA1 không còn phù hợp làm hướng chính
+
+PA1 giả định có dev/staging để tắt `audit` và chỉ giữ `authenticator`. Với bối cảnh mới, cluster đang chạy theo kiểu prod/prod-like. Nếu không có cụm dev/staging riêng, PA1 không tạo ra saving đáng kể trên cost driver hiện tại.
+
+PA1 vẫn có thể ghi vào backlog dài hạn nếu sau này tách account/cluster theo môi trường, nhưng không nên là quyết định chính cho Task 79.
+
+### PA2 không giải quyết CloudWatch ingestion
+
+Retention 1 ngày và filter noise tại Lambda chỉ xảy ra sau khi EKS đã gửi log vào CloudWatch. Do đó PA2 giúp giảm:
+
+- CloudWatch hot storage;
+- Firehose processed bytes;
+- S3 storage/query downstream;
+- Athena scan cost.
+
+PA2 **không giảm** khoản CloudWatch Logs ingestion đang gây cost lớn. Với run-rate 2.1 GB/giờ, saving storage từ 7 ngày xuống 1 ngày chỉ khoảng $9/tháng, không đủ xử lý vấn đề chính.
+
+### PA3 là hướng duy nhất có thể cắt mạnh ingestion trên prod-like
+
+PA3 có thể cắt phần cost lớn nếu sau khi validation, CDO-07 cho phép tắt EKS `audit` và thay bằng một evidence pipeline mới:
+
+```text
+Falco eBPF DaemonSet
+  -> dedicated OTel Collector
+  -> AWS S3 exporter / S3-compatible exporter
+  -> S3 Object Lock WORM
+  -> Athena/Glue forensic tables
+```
+
+Mục tiêu là chỉ ghi các security-relevant events, không đẩy raw 2.1 GB/giờ audit noise vào CloudWatch.
+
+## 3. Ranh giới compliance khi dùng PA3
+
+### Điều PA3 làm tốt
+
+PA3 phù hợp để phát hiện và lưu bằng chứng cho runtime/security events trên worker nodes:
+
+- exec shell trong container;
+- privilege escalation;
+- container chạy privileged hoặc mount host path nhạy cảm;
+- truy cập file nhạy cảm;
+- thay đổi binary/config bất thường;
+- network connection đáng ngờ;
+- hành vi ghi/đọc secret từ process trong workload nếu rule nhìn thấy ở runtime;
+- correlation với namespace, pod, container, image, node.
+
+### Điều PA3 không thay thế 1:1
+
+Falco eBPF không phải EKS control-plane audit log. Nếu tắt EKS `audit`, các khoảng trống cần CDO-07 chấp nhận gồm:
+
+- không còn raw record đầy đủ cho mọi Kubernetes API request `get/list/watch/create/update/patch/delete`;
+- khó chứng minh đầy đủ "ai gọi `kubectl get secret`" nếu hành vi chỉ diễn ra ở API server và không tạo dấu vết runtime quan sát được trên worker;
+- `authenticator` là nguồn rẻ nhất để map IAM -> Kubernetes identity; nếu tắt luôn thì mất một breadcrumb rất hữu ích;
+- CloudTrail chỉ ghi AWS API/EKS service operations, không thay thế toàn bộ Kubernetes API audit bên trong cluster.
+
+Vì vậy, approval đúng phải là: **CDO-07 chấp nhận evidence model mới**, không phải tuyên bố PA3 tương đương tuyệt đối với EKS audit.
+
+### Deviation cần owner approve
+
+| Hạng mục | ADR/AUDIT hiện tại | Đề xuất PA3 | Điều kiện phê duyệt |
+| -------- | ------------------ | ----------- | ------------------- |
+| EKS `audit` | Bật để truy vết Kubernetes API action | Tắt sau shadow period nếu PA3 đạt forensic canary | CDO-07 ký chấp nhận coverage mới và khoảng trống |
+| EKS `authenticator` | Bật để map IAM -> K8s identity | Khuyến nghị giữ vì chi phí rất thấp | Chỉ tắt nếu CDO-07 chấp nhận mất IAM auth breadcrumb |
+| Hot query CloudWatch | Query nhanh trên CloudWatch Logs Insights | Chuyển runtime/security query sang Athena/S3 hoặc OpenSearch nếu có | CDO-07 xác nhận playbook query mới |
+| S3 WORM | EKS audit archive hiện có Object Lock 90 ngày | Tạo bucket/prefix PA3 với Object Lock 90 ngày và lifecycle 365 ngày | CDO-08 xác nhận bucket/policy/retention |
+| DoD forensic | Dựa vào audit log thô | Dựa vào Falco security events + CloudTrail + Git/Terraform change trail + authenticator nếu giữ | Canary test phải pass 100% cho case đã định nghĩa |
+
+## 4. So sánh lại 3 phương án
+
+| Tiêu chí | PA1 - tách môi trường | PA2 - retention + filter | PA3 - Falco eBPF + OTel -> S3 |
+| -------- | --------------------- | ------------------------ | ----------------------------- |
+| Phù hợp với prod-like hiện tại | Thấp | Trung bình, chỉ hỗ trợ | Cao nhất nếu CDO-07 chấp nhận evidence model mới |
+| Giảm CloudWatch ingestion | Thấp nếu không có dev/staging riêng | Không giảm | Cao nếu tắt EKS `audit`; gần 100% nếu tắt cả `authenticator` |
+| Giữ full EKS API audit | Không nếu tắt audit ở môi trường nào đó | Có | Không, trừ khi tiếp tục bật EKS `audit` song song |
+| Chi phí vận hành | Thấp | Thấp | Trung bình: thêm Falco/OTel/S3/Athena và vận hành rule |
+| Rủi ro tài nguyên | Thấp | Thấp | Trung bình-cao, cần canary và giới hạn CPU/RAM |
+| Rủi ro compliance | Trung bình | Thấp | Cao nếu tắt EKS `audit` không có sign-off |
+| Kết luận | Không chọn làm main plan | Là guardrail chuyển tiếp | **Chọn làm target plan có migration gate** |
+
+## 5. Kiến trúc mục tiêu PA3
+
+### Luồng dữ liệu
+
+```mermaid
+flowchart TD
+    A["Worker Nodes / Pods"] --> B["Falco eBPF DaemonSet"]
+    B --> C["Falco JSON output"]
+    C --> D["Dedicated OTel Collector"]
+    D --> E["S3 exporter / S3-compatible exporter"]
+    E --> F["S3 Object Lock COMPLIANCE 90d"]
+    F --> G["Glue/Athena forensic tables"]
+    D --> H["Optional OpenSearch hot search"]
+    I["CloudTrail + Git/Terraform trail"] --> G
+    J["EKS authenticator, nếu giữ"] --> G
+```
+
+### Nguyên tắc thiết kế
+
+- Không dùng OTel Collector observability chung để gánh audit/security pipeline. Dùng collector riêng hoặc pipeline riêng có queue/memory limiter tách biệt.
+- Không đẩy raw audit noise 2.1 GB/giờ vào OTel.
+- Falco chỉ emit các event đã match rule. Mục tiêu là giảm từ 124,878 raw audit events/giờ xuống một lượng nhỏ security-relevant events.
+- S3 là evidence authority, bật Object Lock COMPLIANCE 90 ngày, versioning, block public access, SSE-S3 hoặc KMS nếu CDO-08 yêu cầu.
+- Athena/Glue là lớp forensic query chính sau cutover.
+- OpenSearch, nếu dùng, chỉ là hot search convenience, không phải evidence authority.
+
+### Lưu ý về OTel S3 exporter
+
+OpenTelemetry Collector có AWS S3 exporter trong `contrib`, nhưng trạng thái stability hiện là alpha. Vì vậy PA3 production phải có một trong hai hướng:
+
+- chấp nhận `awss3exporter` sau canary/load test và pin image/version rõ ràng;
+- hoặc dùng OTel -> Firehose/Kinesis/S3-compatible path không đi qua CloudWatch Logs nếu CDO-08 muốn giảm rủi ro exporter alpha.
+
+Không dùng lại pattern `OTel -> CloudWatch -> Firehose -> S3` của AI audit cho Task 79, vì pattern đó vẫn phát sinh CloudWatch ingestion.
+
+## 6. Đánh giá tải tài nguyên
+
+Số liệu 124,878 events/giờ là tải của EKS audit log thô, không phải số event Falco cần export. PA3 chỉ hợp lý nếu lọc ở nguồn:
+
+- Falco/eBPF quan sát syscall ở worker node, nhưng chỉ emit event khi rule match.
+- OTel Collector chỉ nhận output đã lọc từ Falco, không nhận raw EKS audit 2.1 GB/giờ.
+- Nếu cấu hình sai và forward quá nhiều event, OTel có thể gặp queue pressure, tăng heap, tăng CPU, mất event khi exporter retry.
+
+### Guardrail tài nguyên đề xuất
+
+| Thành phần | Guardrail ban đầu | Metric cần theo dõi |
+| ---------- | ----------------- | ------------------- |
+| Falco DaemonSet | requests/limits riêng, rollout 1 node trước | CPU, memory, dropped events, rule match rate |
+| OTel Collector dedicated | memory_limiter, batch, sending_queue, file_storage nếu dùng persistent queue | queue length, send_failed_log_records, dropped log records |
+| Worker node | không chạy PA3 full cluster trước canary | node CPU allocatable, eviction, pod restart |
+| S3 exporter | retry/backoff có giới hạn | export latency, failed exports, object count/size |
+| Athena | partition theo year/month/day/hour | bytes scanned/query, query failure |
+
+### Ngưỡng acceptance tài nguyên
+
+- Không có OOMKilled ở Falco hoặc OTel trong shadow period.
+- Không tăng đáng kể CPU steal/pressure trên worker node.
+- Không có sustained queue >80% trong 5 phút.
+- Không có dropped security event trong canary.
+- S3 object xuất hiện trong vòng 5 phút với partition đúng.
+
+## 7. Implementation Plan
+
+### Phase 0 - Re-baseline và quyết định compliance
+
+1. CDO-04 xác nhận lại Cost Explorer theo log group, region, UsageType và time window.
+2. CDO-07 xác nhận hệ thống là prod-like và PA1 không còn là main path.
+3. CDO-07 định nghĩa forensic canary tối thiểu:
+   - `kubectl exec` vào pod;
+   - tạo privileged pod hoặc pod mount hostPath;
+   - đọc/ghi file nhạy cảm trong container;
+   - thay đổi RBAC/ClusterRoleBinding;
+   - đọc Secret qua Kubernetes API;
+   - delete/patch Deployment;
+   - IAM authentication vào cluster.
+4. Với từng case, phân loại expected source: Falco, CloudTrail, Git/Terraform trail, EKS authenticator, hoặc EKS audit only.
+5. CDO-07 ký trước danh sách case nào PA3 phải bắt được và case nào chấp nhận mất nếu tắt EKS `audit`.
+
+### Phase 1 - PA3 shadow pipeline
+
+1. Tạo S3 bucket/prefix riêng cho runtime security audit, bật Object Lock COMPLIANCE 90 ngày, versioning, SSE-S3, block public access và lifecycle 365 ngày.
+2. Triển khai Falco DaemonSet ở chế độ canary 1 node với rule tối thiểu, ưu tiên security-relevant rules.
+3. Triển khai dedicated OTel Collector nhận Falco JSON output và export trực tiếp S3.
+4. Bật metric/alert cho Falco dropped events, OTel queue pressure, export failure và S3 delivery gap.
+5. Giữ nguyên EKS `audit` + `authenticator` trong giai đoạn shadow để đối chiếu.
+
+### Phase 2 - Coverage và load validation
+
+1. Chạy forensic canary, đối chiếu PA3 event với EKS audit gốc.
+2. Đo event volume thực tế của Falco/OTel trong tối thiểu 72 giờ vận hành bình thường.
+3. Chạy chaos test:
+   - OTel restart;
+   - S3 deny tạm thời;
+   - network failure;
+   - node pressure;
+   - exporter retry storm.
+4. Nếu thiếu event bắt buộc, bổ sung Falco rule hoặc bổ sung nguồn evidence khác trước khi cutover.
+5. Nếu OTel/S3 exporter không ổn định, không tắt EKS `audit`.
+
+### Phase 3 - Cost cutover
+
+Chỉ thực hiện sau khi Phase 2 pass và có approval:
+
+1. CDO-04 phê duyệt cost model mới.
+2. CDO-07 phê duyệt thay đổi forensic model.
+3. CDO-08 phê duyệt security/IAM/resource isolation.
+4. Terraform thay đổi EKS log types:
+   - khuyến nghị: `cluster_enabled_log_types = ["authenticator"]`;
+   - chỉ dùng `[]` nếu CDO-07 chấp nhận mất luôn authenticator.
+5. Giữ CloudWatch log group/S3 archive cũ đến hết retention/lifecycle, không xóa evidence.
+6. Theo dõi 7 ngày sau cutover: CloudWatch ingestion, Falco event volume, OTel failure, S3 object delivery, Athena queryability.
+
+### Phase 4 - Chuẩn hóa tài liệu và runbook
+
+1. Cập nhật ADR-005 hoặc tạo ADR mới cho PA3.
+2. Cập nhật AUDIT-001 DoD theo evidence model mới.
+3. Cập nhật Athena Glue table/view cho runtime security events.
+4. Viết runbook "cách dựng timeline forensic sau PA3".
+5. Đánh dấu `docs/audit/reports/cloudwatch-cost-optimization-report.md` là stale hoặc viết lại để tránh nhầm filter subscription giảm CloudWatch ingestion.
+
+## 8. Cost Model mới
+
+### Baseline hiện tại
+
+| Khoản | Ước tính |
+| ----- | -------: |
+| EKS audit ingestion MTD | `$224.05` cho 448.1 GB |
+| EKS audit run-rate | khoảng `$756/tháng` nếu 2.1 GB/giờ duy trì 24x7 |
+| Authenticator | khoảng `$0.07/tháng` |
+| Storage saving PA2 7 ngày -> 1 ngày | khoảng `$9/tháng` |
+
+### Sau PA3 cutover
+
+| Kịch bản | CloudWatch ingestion | Ghi chú |
+| -------- | -------------------: | ------- |
+| Tắt `audit`, giữ `authenticator` | gần như chỉ còn ~$0.07/tháng | Khuyến nghị vì vẫn giữ IAM identity breadcrumb |
+| Tắt cả `audit` và `authenticator` | gần `$0/tháng` cho EKS control-plane logs | Compliance risk cao hơn |
+| PA3 S3 direct | phụ thuộc event Falco thực tế | S3 storage/request rất nhỏ nếu chỉ lưu security-relevant events |
+
+Business case mới không được ghi "PA3 tiết kiệm 100%" nếu vẫn giữ `authenticator`. Cách ghi đúng là: PA3 có thể cắt gần như toàn bộ cost driver vì phần tốn tiền là `audit`, còn `authenticator` quá nhỏ.
+
+## 9. KPI nghiệm thu
+
+| KPI | Mục tiêu |
+| --- | -------- |
+| Cost reduction | CloudWatch Logs ingestion của `/aws/eks/techx-tf4-cluster/cluster` giảm >95% sau cutover nếu giữ `authenticator` |
+| Forensic canary | 100% case đã được CDO-07 đánh dấu "must capture" có evidence trong S3/Athena |
+| Identity breadcrumb | Nếu giữ `authenticator`, 100% IAM auth events cần thiết vẫn query được |
+| S3 WORM | Object Lock COMPLIANCE 90 ngày, versioning enabled, operator không delete được |
+| Falco stability | Không sustained dropped events, không OOMKilled |
+| OTel stability | Queue không vượt 80% kéo dài, không export failure chưa xử lý |
+| Queryability | Athena đọc được event theo partition year/month/day/hour |
+| Rollback readiness | Có Terraform rollback để bật lại `audit` trong cùng ngày nếu forensic gap |
+
+## 10. Rollback và kiểm soát sự cố
+
+- Nếu PA3 thiếu forensic event bắt buộc: bật lại `audit` qua Terraform ngay, giữ Falco như detection bổ sung.
+- Nếu Falco gây node pressure: rollback DaemonSet hoặc giới hạn rule set, không tắt CloudWatch audit.
+- Nếu OTel/S3 exporter lỗi: dừng cutover, giữ EKS `audit`, sửa queue/retry/IAM trước.
+- Nếu CDO-07 không chấp nhận gap của `kubectl get/list/watch`: không tắt EKS `audit`; chỉ triển khai PA3 như security detection bổ sung.
+- Không xóa log group, S3 archive, Glue table hoặc Athena view cũ trong quá trình rollback.
+
+## 11. Approval Record
+
+| Owner | Quyết định cần phê duyệt | Trạng thái |
+| ----- | ------------------------ | ---------- |
+| CDO-04 | Cost baseline, expected saving, guardrail ngân sách PA3 | Pending |
+| CDO-07 | Chấp nhận evidence model PA3, forensic canary, gap khi tắt EKS `audit` | Pending |
+| CDO-08 | Falco/OTel security, IAM, resource isolation, S3 WORM, rollback | Pending |
+| Tech Lead | Xác nhận định hướng PA3-first cho prod-like cluster | Pending |
+
+**Acceptance của Task 79:** tài liệu này hoàn thành phần đánh giá và kế hoạch đề xuất. Task chỉ được đóng khi CDO-04 phê duyệt cost plan, CDO-07/CDO-08 review và có quyết định rõ về việc tắt `audit` hay chỉ triển khai PA3 song song.
+
+## 12. References
+
+- `docs/audit/adr/005-eks-control-plane-logging-enabled.md`
+- `docs/audit/tickets/AUDIT-001-enable-eks-logs.md`
+- `docs/requirements/mandates/MANDATE-04-auditability-tf4.md`
+- `infra/terraform/eks.tf`
+- `infra/terraform/eks-audit-firehose.tf`
+- `infra/terraform/ai-audit-logs.tf`
+- `infra/terraform/athena-forensics.tf`
+- `deploy/values-observability.yaml`
+- AWS EKS control plane logs: `https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html`
+- AWS EKS auditing best practices: `https://docs.aws.amazon.com/eks/latest/best-practices/auditing-and-logging.html`
+- Falco Kubernetes audit events: `https://falco.org/docs/concepts/event-sources/plugins/kubernetes-audit/`
+- OpenTelemetry Collector exporters: `https://opentelemetry.io/docs/collector/components/exporter/`
+- OpenTelemetry `awss3exporter`: `https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter`
