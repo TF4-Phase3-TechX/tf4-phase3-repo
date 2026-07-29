@@ -2,6 +2,12 @@
 
 Canonical Jira: [TF4AIO-83](https://aio1-xbrain.atlassian.net/browse/TF4AIO-83)
 
+The current production go/no-go contract is
+[PRODUCTION-DRILL-GO-NO-GO.md](PRODUCTION-DRILL-GO-NO-GO.md). It reduces live
+activation to five hard STOP gates and records the exact operation-scoped
+signal, known-good revision pin, mutation lifecycle, traffic and restore
+requirements.
+
 ## Offline external-scenario gate
 
 ```bash

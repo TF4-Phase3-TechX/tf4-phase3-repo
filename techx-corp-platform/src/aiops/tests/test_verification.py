@@ -10,6 +10,8 @@ def test_target_error_rate_query_is_scoped_to_mutated_service():
 
     assert 'service_name="product-reviews"' in query
     assert 'k8s_namespace_name="techx-tf4"' in query
+    assert 'span_name="oteldemo.ProductReviewService/GetProductReviews"' in query
+    assert "grpc.health.v1.Health/Check" not in query
     assert 'status_code="STATUS_CODE_ERROR"' in query
     assert "or vector(0)" in query
     assert "clamp_min(" in query
@@ -39,6 +41,8 @@ def test_target_request_count_query_is_scoped_to_mutated_service():
     query = target_request_count_query("product-reviews", "techx-tf4", "2m")
 
     assert 'service_name="product-reviews"' in query
+    assert 'span_name="oteldemo.ProductReviewService/GetProductReviews"' in query
+    assert "grpc.health.v1.Health/Check" not in query
     assert "increase(" in query
     assert "[2m]" in query
 
