@@ -1,0 +1,7 @@
+{"case_id":"restart-before-prepare","incident_id":"inc-restart-preflight","phase":"PREFLIGHT","has_transaction":false,"expected_decision":"abandon_pre_merge"}
+{"case_id":"restart-after-pr-timeout","incident_id":"inc-restart-pr","phase":"PR_OPEN","has_transaction":true,"pr_exists":true,"expected_decision":"rediscover_and_continue"}
+{"case_id":"restart-checks-pending","incident_id":"inc-restart-checks","phase":"CHECKS_PENDING","has_transaction":true,"pr_exists":true,"expected_decision":"rediscover_and_continue"}
+{"case_id":"restart-merge-race","incident_id":"inc-restart-merge","phase":"MERGE_QUEUED","has_transaction":true,"pr_exists":true,"merged":true,"expected_decision":"rediscover_and_continue"}
+{"case_id":"restart-runtime-pending","incident_id":"inc-restart-runtime","phase":"RUNTIME_PENDING","has_transaction":true,"pr_exists":true,"merged":true,"expected_decision":"rediscover_and_continue"}
+{"case_id":"restart-compensating","incident_id":"inc-restart-compensation","phase":"COMPENSATING","has_transaction":true,"transaction_kind":"remediation","merged":true,"expected_decision":"rediscover_and_continue"}
+{"case_id":"legacy-v1-open","incident_id":"inc-restart-v1","schema_version":1,"legacy_phase":"verifying","phase":"PREFLIGHT","has_transaction":false,"expected_decision":"block_legacy_v1"}

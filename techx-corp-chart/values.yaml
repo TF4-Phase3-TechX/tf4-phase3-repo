@@ -44,10 +44,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-# Patch permission remains absent until CDO approves a controlled live-remediation drill.
-aiopsRemediation:
-  liveEnabled: false
-
 gp3StorageClasses:
   enabled: false
   provisioner: ebs.csi.aws.com
@@ -204,8 +200,8 @@ components:
     useDefault:
       env: true
     serviceAccountName: aiops
-    # Required for the read-only Kubernetes availability adapter. Mutation
-    # remains independently gated by aiopsRemediation.liveEnabled and RBAC.
+    # Required for read-only runtime observation and target-scoped Lease writes.
+    # This ServiceAccount never receives Deployment patch/update permission.
     automountServiceAccountToken: true
     service:
       port: 8080
@@ -232,15 +228,33 @@ components:
       - name: OPENSEARCH_DATASOURCE_UID
         value: webstore-logs
       - name: REMEDIATION_MODE
-        value: dry-run
+        value: gitops/dry-run
       # Both switches remain off until CDO signs the exact Mandate-22 policy,
       # target and drill window. Live RBAC is separately gated below.
       - name: AIOPS_AUTONOMOUS_REMEDIATION_ENABLED
         value: "false"
       - name: AIOPS_REMEDIATION_POLICY_VERSION
-        value: "m22-v1"
+        value: "m22-gitops-v1"
       - name: AIOPS_AUTONOMOUS_RUNBOOKS
-        value: "deployment-latency-rollback"
+        value: "product-reviews-config-rollback"
+      - name: AIOPS_ALLOWED_DEPLOYMENTS
+        value: "product-reviews"
+      - name: AIOPS_GITOPS_REPOSITORY
+        value: "TF4-Phase3-TechX/tf4-phase3-gitops-manifests"
+      - name: AIOPS_GITOPS_BASE_BRANCH
+        value: "main"
+      - name: AIOPS_GITOPS_POLICY_PATH
+        value: ".aiops/mandate22-policy.yaml"
+      - name: AIOPS_GITOPS_REQUIRED_CHECKS
+        value: "validate,check-pinned-dependencies,aiops-remediation-policy"
+      # Production defaults. Time-boxed demos must override both values
+      # explicitly and acknowledge the exception in policy/evidence.
+      - name: AIOPS_GITHUB_AUTH_MODE
+        value: app
+      - name: AIOPS_GITOPS_MERGE_STRATEGY
+        value: auto
+      - name: AIOPS_TIMEBOXED_DEMO_ACKNOWLEDGED
+        value: "false"
       - name: AIOPS_VERIFICATION_POLLS
         value: "3"
       - name: AIOPS_ROLLBACK_VERIFICATION_POLLS
@@ -263,8 +277,6 @@ components:
         value: memory
       - name: AIOPS_SAGA_RETENTION_HOURS
         value: "72"
-      - name: AIOPS_ARGO_WINDOW_ENABLED
-        value: "true"
       - name: AIOPS_TARGET_NAMESPACE
         valueFrom:
           fieldRef:

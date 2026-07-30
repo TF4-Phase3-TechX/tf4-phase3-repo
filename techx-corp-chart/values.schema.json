@@ -142,13 +142,6 @@
     "components": {
       "$ref": "#/definitions/Components"
     },
-    "aiopsRemediation": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "liveEnabled": { "type": "boolean" }
-      }
-    },
     "opentelemetry-collector": {
       "type": "object"
     },

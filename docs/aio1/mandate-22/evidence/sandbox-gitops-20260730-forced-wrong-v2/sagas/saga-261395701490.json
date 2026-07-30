@@ -1,0 +1,511 @@
+{
+  "audit": [
+    {
+      "at": "2026-07-30T06:21:34.000233+00:00",
+      "detail": {
+        "mode": "gitops/live"
+      },
+      "event": "gitops_preflight_started"
+    },
+    {
+      "at": "2026-07-30T06:21:34.054535+00:00",
+      "detail": {},
+      "event": "target_lease_acquired"
+    },
+    {
+      "at": "2026-07-30T06:21:34.483904+00:00",
+      "detail": {
+        "phase": "PR_OPEN"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:21:35.255762+00:00",
+      "detail": {
+        "phase": "CHECKS_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:21:36.669669+00:00",
+      "detail": {
+        "phase": "MERGE_QUEUED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:21:37.681558+00:00",
+      "detail": {
+        "merge_sha": "85bc3f4c8f7cf995bbe989989ea9fe1ef5f48e57",
+        "phase": "MERGED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:21:37.682603+00:00",
+      "detail": {
+        "phase": "RUNTIME_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:21:47.686011+00:00",
+      "detail": {
+        "phase": "VERIFYING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:22:04.775546+00:00",
+      "detail": {
+        "phase": "COMPENSATING",
+        "reason": "post-remediation verification was unhealthy or under-volume"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:22:05.814909+00:00",
+      "detail": {
+        "phase": "CHECKS_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:22:07.047370+00:00",
+      "detail": {
+        "phase": "MERGE_QUEUED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:22:08.061023+00:00",
+      "detail": {
+        "merge_sha": "5e27ed2ddab2e185115761971674f5b4a0884f54",
+        "phase": "MERGED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:22:17.722158+00:00",
+      "detail": {
+        "outcome": "compensated_escalated",
+        "reason": "post-remediation verification was unhealthy or under-volume; compensation restored the pre-action Git/runtime identity; operator investigation required"
+      },
+      "event": "saga_terminal"
+    },
+    {
+      "at": "2026-07-30T06:22:18.169431+00:00",
+      "detail": {},
+      "event": "target_lease_released"
+    }
+  ],
+  "base_sha": "9772a3975ddabe38a973e510a9c7503b481cacfb",
+  "compensation": {
+    "after_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MS",
+              "value": "800"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_TTL_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+              "value": "100"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {},
+          "replicas": 1
+        }
+      }
+    },
+    "after_file_sha": "0152e2fe1f01847b3de81b3d2fee2b1d93be3fb3",
+    "after_hash": "993d673dd27c56bf843b7f22815e1e289593c056bdabd17c4b5db49a70bbd0c2",
+    "base_sha": "85bc3f4c8f7cf995bbe989989ea9fe1ef5f48e57",
+    "before_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MS",
+              "value": "800"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_TTL_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+              "value": "100"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {
+            "aiops.techx.io/remediation-id": "inc-forcedwrong"
+          },
+          "replicas": 1
+        }
+      }
+    },
+    "before_file_sha": "6a73b0e517990ea31118a2e64b8c54834ef1bf5a",
+    "before_hash": "9c6830b0e6bf87f78258ebb6845350f8e44e692910a6ce2b144df9de2df34acb",
+    "branch": "aiops/compensation/inc-forcedwrong",
+    "checks": {
+      "aiops-remediation-policy": "success",
+      "check-pinned-dependencies": "success",
+      "validate": "success"
+    },
+    "head_sha": "315a176685b88d87428cebe479e645997bbeca11",
+    "kind": "compensation",
+    "known_good_sha": "6b33604bbd3df99792ed877c1cb2137eb48434eb",
+    "merge_queued": true,
+    "merge_sha": "5e27ed2ddab2e185115761971674f5b4a0884f54",
+    "policy_sha": "9ff32a8f93deaa7ec2e4ff851b299a167f57a92a",
+    "pr_node_id": "sandbox-pr-2-315a176685b8",
+    "pr_number": 2,
+    "pr_url": "sandbox://pull/2/aiops/compensation/inc-forcedwrong",
+    "state": "merged",
+    "target_file": "environments/production/app-values.yaml"
+  },
+  "compensation_verification_samples": [
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 19,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:08.119170+00:00",
+      "observed_generation": 19,
+      "ready": true,
+      "remediation_id": "inc-forcedwrong",
+      "template_hash": "95495255c62df2e792f0a0ffd9740d2cc3be8319c6e8c301f3ed6b7a631d08a4"
+    },
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 20,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:09.469054+00:00",
+      "observed_generation": 19,
+      "ready": false,
+      "remediation_id": null,
+      "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+    },
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 20,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:10.764098+00:00",
+      "observed_generation": 20,
+      "ready": false,
+      "remediation_id": null,
+      "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+    },
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 20,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:11.928625+00:00",
+      "observed_generation": 20,
+      "ready": false,
+      "remediation_id": null,
+      "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+    },
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 20,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:13.196849+00:00",
+      "observed_generation": 20,
+      "ready": false,
+      "remediation_id": null,
+      "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+    },
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 20,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:14.889497+00:00",
+      "observed_generation": 20,
+      "ready": false,
+      "remediation_id": null,
+      "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+    },
+    {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 20,
+      "managed_env_present": [
+        "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+        "MANDATE22_REVIEW_DELAY_MS",
+        "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+      ],
+      "observed_at": "2026-07-30T06:22:17.718899+00:00",
+      "observed_generation": 20,
+      "ready": true,
+      "remediation_id": null,
+      "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+    }
+  ],
+  "created_at": "2026-07-30T06:21:34.000233+00:00",
+  "escalation_reason": "post-remediation verification was unhealthy or under-volume; compensation restored the pre-action Git/runtime identity; operator investigation required",
+  "expected_runtime_identity": {
+    "managed_env_present": [
+      "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+      "MANDATE22_REVIEW_DELAY_MS",
+      "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+    ],
+    "merge_sha": "85bc3f4c8f7cf995bbe989989ea9fe1ef5f48e57",
+    "remediation_id": "inc-forcedwrong",
+    "target_hash": "9c6830b0e6bf87f78258ebb6845350f8e44e692910a6ce2b144df9de2df34acb"
+  },
+  "generation": 11,
+  "incident_id": "inc-forcedwrong",
+  "incident_type": "service_latency_spike",
+  "known_good_sha": "6b33604bbd3df99792ed877c1cb2137eb48434eb",
+  "legacy_phase": null,
+  "lock_held": false,
+  "mutation_blocked": true,
+  "outcome": "compensated_escalated",
+  "phase": "TERMINAL",
+  "policy_sha": "9ff32a8f93deaa7ec2e4ff851b299a167f57a92a",
+  "policy_version": "m22-gitops-v1",
+  "remediation": {
+    "after_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MS",
+              "value": "800"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_TTL_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+              "value": "100"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {
+            "aiops.techx.io/remediation-id": "inc-forcedwrong"
+          },
+          "replicas": 1
+        }
+      }
+    },
+    "after_file_sha": "6a73b0e517990ea31118a2e64b8c54834ef1bf5a",
+    "after_hash": "9c6830b0e6bf87f78258ebb6845350f8e44e692910a6ce2b144df9de2df34acb",
+    "base_sha": "9772a3975ddabe38a973e510a9c7503b481cacfb",
+    "before_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MS",
+              "value": "800"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_TTL_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+              "value": "100"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {},
+          "replicas": 1
+        }
+      }
+    },
+    "before_file_sha": "0152e2fe1f01847b3de81b3d2fee2b1d93be3fb3",
+    "before_hash": "993d673dd27c56bf843b7f22815e1e289593c056bdabd17c4b5db49a70bbd0c2",
+    "branch": "aiops/remediation/inc-forcedwrong",
+    "checks": {
+      "aiops-remediation-policy": "success",
+      "check-pinned-dependencies": "success",
+      "validate": "success"
+    },
+    "head_sha": "136e05019f2d484e12d2fb3845e52bd3ad9af6b3",
+    "kind": "remediation",
+    "known_good_sha": "6b33604bbd3df99792ed877c1cb2137eb48434eb",
+    "merge_queued": true,
+    "merge_sha": "85bc3f4c8f7cf995bbe989989ea9fe1ef5f48e57",
+    "policy_sha": "9ff32a8f93deaa7ec2e4ff851b299a167f57a92a",
+    "pr_node_id": "sandbox-pr-1-136e05019f2d",
+    "pr_number": 1,
+    "pr_url": "sandbox://pull/1/aiops/remediation/inc-forcedwrong",
+    "state": "merged",
+    "target_file": "environments/production/app-values.yaml"
+  },
+  "runtime_observation": {
+    "container_found": true,
+    "deployment": "product-reviews",
+    "generation": 20,
+    "managed_env_present": [
+      "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+      "MANDATE22_REVIEW_DELAY_MS",
+      "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+    ],
+    "observed_at": "2026-07-30T06:22:17.718899+00:00",
+    "observed_generation": 20,
+    "ready": true,
+    "remediation_id": null,
+    "template_hash": "84ff9fe79422c60632917c4b92b5a77dd2bbe4fe42f38b05ba80c6f74dd5f809"
+  },
+  "saga_id": "saga-261395701490",
+  "schema_version": 2,
+  "target": "product-reviews",
+  "terminal_reason": "post-remediation verification was unhealthy or under-volume; compensation restored the pre-action Git/runtime identity; operator investigation required",
+  "updated_at": "2026-07-30T06:22:18.169431+00:00",
+  "verification_samples": [
+    {
+      "poll": 1,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 19,
+        "managed_env_present": [
+          "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+          "MANDATE22_REVIEW_DELAY_MS",
+          "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+        ],
+        "observed_at": "2026-07-30T06:21:47.981786+00:00",
+        "observed_generation": 19,
+        "ready": true,
+        "remediation_id": "inc-forcedwrong",
+        "template_hash": "95495255c62df2e792f0a0ffd9740d2cc3be8319c6e8c301f3ed6b7a631d08a4"
+      },
+      "sampled_at": "2026-07-30T06:21:53.551975+00:00",
+      "slo": {
+        "healthy": false,
+        "p95_latency_ms": 807.774,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          805.424,
+          807.544,
+          806.959,
+          805.813,
+          807.774
+        ]
+      }
+    },
+    {
+      "poll": 2,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 19,
+        "managed_env_present": [
+          "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+          "MANDATE22_REVIEW_DELAY_MS",
+          "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+        ],
+        "observed_at": "2026-07-30T06:21:54.572341+00:00",
+        "observed_generation": 19,
+        "ready": true,
+        "remediation_id": "inc-forcedwrong",
+        "template_hash": "95495255c62df2e792f0a0ffd9740d2cc3be8319c6e8c301f3ed6b7a631d08a4"
+      },
+      "sampled_at": "2026-07-30T06:21:59.137087+00:00",
+      "slo": {
+        "healthy": false,
+        "p95_latency_ms": 807.422,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          806.186,
+          805.527,
+          806.998,
+          807.422,
+          807.034
+        ]
+      }
+    },
+    {
+      "poll": 3,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 19,
+        "managed_env_present": [
+          "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+          "MANDATE22_REVIEW_DELAY_MS",
+          "MANDATE22_REVIEW_DELAY_TTL_SECONDS"
+        ],
+        "observed_at": "2026-07-30T06:22:00.174947+00:00",
+        "observed_generation": 19,
+        "ready": true,
+        "remediation_id": "inc-forcedwrong",
+        "template_hash": "95495255c62df2e792f0a0ffd9740d2cc3be8319c6e8c301f3ed6b7a631d08a4"
+      },
+      "sampled_at": "2026-07-30T06:22:04.773418+00:00",
+      "slo": {
+        "healthy": false,
+        "p95_latency_ms": 829.647,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          805.929,
+          810.274,
+          819.181,
+          809.216,
+          829.647
+        ]
+      }
+    }
+  ]
+}

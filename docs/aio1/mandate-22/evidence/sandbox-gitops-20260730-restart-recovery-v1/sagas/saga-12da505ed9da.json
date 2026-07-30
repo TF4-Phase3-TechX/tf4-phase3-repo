@@ -1,0 +1,251 @@
+{
+  "audit": [
+    {
+      "at": "2026-07-30T06:24:12.536153+00:00",
+      "detail": {
+        "mode": "gitops/live"
+      },
+      "event": "gitops_preflight_started"
+    },
+    {
+      "at": "2026-07-30T06:24:13.085323+00:00",
+      "detail": {
+        "phase": "PR_OPEN"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:24:13.993528+00:00",
+      "detail": {
+        "phase": "CHECKS_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:24:15.453453+00:00",
+      "detail": {
+        "merge_sha": "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1",
+        "phase": "MERGED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:24:15.454453+00:00",
+      "detail": {
+        "phase": "RUNTIME_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:24:23.997937+00:00",
+      "detail": {
+        "phase": "VERIFYING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:24:27.753143+00:00",
+      "detail": {
+        "outcome": "resolved",
+        "reason": "restart rediscovery and verification healthy"
+      },
+      "event": "saga_terminal"
+    },
+    {
+      "at": "2026-07-30T06:24:28.295470+00:00",
+      "detail": {},
+      "event": "target_lease_released"
+    }
+  ],
+  "base_sha": "8c439bce7971366f467b936762990391e96c51bb",
+  "compensation": null,
+  "compensation_verification_samples": [],
+  "created_at": "2026-07-30T06:24:12.536153+00:00",
+  "escalation_reason": null,
+  "expected_runtime_identity": {
+    "managed_env_present": [],
+    "remediation_id": "inc-restartrace",
+    "target_hash": "81048cec59aa471e8058b0ccd670e2043facd38e882970acca813f9358196a5d"
+  },
+  "generation": 6,
+  "incident_id": "inc-restartrace",
+  "incident_type": "service_latency_spike",
+  "known_good_sha": "f1b3371a8f29738a5d51db89bfa589e25011416d",
+  "legacy_phase": null,
+  "lock_held": false,
+  "mutation_blocked": false,
+  "outcome": "resolved",
+  "phase": "TERMINAL",
+  "policy_sha": "bc6479d41b99092973d9c01fabb530bf5f8e5a93",
+  "policy_version": "m22-gitops-v1",
+  "remediation": {
+    "after_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {
+            "aiops.techx.io/remediation-id": "inc-restartrace"
+          },
+          "replicas": 1
+        }
+      }
+    },
+    "after_file_sha": "a77ea67477a58bc11ffe6134d4348dcb6a7c6980",
+    "after_hash": "81048cec59aa471e8058b0ccd670e2043facd38e882970acca813f9358196a5d",
+    "base_sha": "8c439bce7971366f467b936762990391e96c51bb",
+    "before_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MS",
+              "value": "800"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_TTL_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+              "value": "100"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {},
+          "replicas": 1
+        }
+      }
+    },
+    "before_file_sha": "0152e2fe1f01847b3de81b3d2fee2b1d93be3fb3",
+    "before_hash": "993d673dd27c56bf843b7f22815e1e289593c056bdabd17c4b5db49a70bbd0c2",
+    "branch": "aiops/remediation/inc-restartrace",
+    "checks": {
+      "aiops-remediation-policy": "success",
+      "check-pinned-dependencies": "success",
+      "validate": "success"
+    },
+    "head_sha": "8286392ab3721d559807792a94bbf126d4b4b7c3",
+    "kind": "remediation",
+    "known_good_sha": "f1b3371a8f29738a5d51db89bfa589e25011416d",
+    "merge_queued": false,
+    "merge_sha": "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1",
+    "policy_sha": "bc6479d41b99092973d9c01fabb530bf5f8e5a93",
+    "pr_node_id": "sandbox-pr-1-8286392ab372",
+    "pr_number": 1,
+    "pr_url": "sandbox://pull/1/aiops/remediation/inc-restartrace",
+    "state": "merged",
+    "target_file": "environments/production/app-values.yaml"
+  },
+  "runtime_observation": {
+    "container_found": true,
+    "deployment": "product-reviews",
+    "generation": 23,
+    "managed_env_present": [],
+    "observed_at": "2026-07-30T06:24:23.995813+00:00",
+    "observed_generation": 23,
+    "ready": true,
+    "remediation_id": "inc-restartrace",
+    "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+  },
+  "saga_id": "saga-12da505ed9da",
+  "schema_version": 2,
+  "target": "product-reviews",
+  "terminal_reason": "restart rediscovery and verification healthy",
+  "updated_at": "2026-07-30T06:24:28.295470+00:00",
+  "verification_samples": [
+    {
+      "poll": 1,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 23,
+        "managed_env_present": [],
+        "observed_at": "2026-07-30T06:24:24.003247+00:00",
+        "observed_generation": 23,
+        "ready": true,
+        "remediation_id": "inc-restartrace",
+        "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+      },
+      "sampled_at": "2026-07-30T06:24:24.586309+00:00",
+      "slo": {
+        "healthy": true,
+        "p95_latency_ms": 28.084,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          28.084,
+          4.981,
+          4.418,
+          4.59,
+          19.027
+        ]
+      }
+    },
+    {
+      "poll": 2,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 23,
+        "managed_env_present": [],
+        "observed_at": "2026-07-30T06:24:25.599190+00:00",
+        "observed_generation": 23,
+        "ready": true,
+        "remediation_id": "inc-restartrace",
+        "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+      },
+      "sampled_at": "2026-07-30T06:24:26.151886+00:00",
+      "slo": {
+        "healthy": true,
+        "p95_latency_ms": 5.189,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          5.189,
+          4.893,
+          4.074,
+          3.941,
+          4.348
+        ]
+      }
+    },
+    {
+      "poll": 3,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 23,
+        "managed_env_present": [],
+        "observed_at": "2026-07-30T06:24:27.193472+00:00",
+        "observed_generation": 23,
+        "ready": true,
+        "remediation_id": "inc-restartrace",
+        "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+      },
+      "sampled_at": "2026-07-30T06:24:27.753143+00:00",
+      "slo": {
+        "healthy": true,
+        "p95_latency_ms": 7.664,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          5.979,
+          6.092,
+          6.304,
+          7.519,
+          7.664
+        ]
+      }
+    }
+  ]
+}

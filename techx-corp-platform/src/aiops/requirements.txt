@@ -10,3 +10,4 @@ kubernetes==32.0.1
 pytest==9.0.3
 pytest-asyncio==1.4.0
 PyYAML==6.0.3
+PyJWT[crypto]==2.10.1
