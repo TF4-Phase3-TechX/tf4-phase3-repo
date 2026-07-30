@@ -1,7 +1,7 @@
 # AIO1 proof-of-knowledge and defense index
 
 - Accountable team: AIO1
-- Audited base: `main@77a3dbbc939a28fccb7aa6a50b9cbf3edf1c16ef`
+- Audited base: `main@fd1c7f3445812d6058e3b97c4ecc903bb70dfe6e`
 - Evidence rule: code or synthetic replay is not presented as live production
   proof; open PRs are labelled as candidates until merged.
 
@@ -17,8 +17,8 @@
 | 24 — observability | Black-box span/metric contract, redaction, runtime cost/latency overhead method, why matched alternating arms matter, and rollback | [`MANDATE-24-EVIDENCE-INDEX.md`](mandate-24/MANDATE-24-EVIDENCE-INDEX.md), candidate [PR #777](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/777) | Matched production packet is in an open PR and is not canonical on `main` yet |
 | 25 — resilience | Retry budget, breaker state machine, provider suppression, safe response semantics, fault-control TTL and cleanup | [`runtime production report`](mandate-25/evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md), [`ADR-025`](mandate-25/ADR-25-ai-resilience-fallback.md) | Production drill passed; do not rerun without an approved bounded operator window |
 | 26 — RCA | Evidence graph construction, cross-service ordering, candidate ranking, Root@1/MRR/noise metrics, and externally supplied replay | [`MANDATE-26-EVIDENCE-INDEX.md`](mandate-26/MANDATE-26-EVIDENCE-INDEX.md), merged [PR #716](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/716) | Evidence level 3; mentor/Jira acceptance is distinct from merge |
-| 27 — model-quality drift | Capability-bound baseline, semantic score source, statistical thresholds, elapsed persistence, version binding, traffic weighting and rolling-baseline limitation | Candidate [PR #780](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/780), [`POK-DEFENSE.md`](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/aio01/feat/mandate27-model-drift/docs/aio1/mandate-27/POK-DEFENSE.md) | Exact head is CI-green and independently approved once; merge rules still require another reviewer |
-| 28 — sustained incidents | Frozen baseline lifecycle, stacked incident identity, continuity during telemetry gaps/load shifts, CAS/restart behavior, bounded evidence and external oracle | Candidate [PR #778](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/778) | Evidence level 3 and CI-green; production Valkey/runtime wiring is a deployment gate |
+| 27 — model-quality drift | Capability-bound baseline, semantic score source, statistical thresholds, elapsed persistence, version binding, traffic weighting and rolling-baseline limitation | Merged [PR #780](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/780), [`POK-DEFENSE.md`](mandate-27/POK-DEFENSE.md) | Evidence level 3 is merged; no live production drift incident is claimed |
+| 28 — sustained incidents | Frozen baseline lifecycle, stacked incident identity, continuity during telemetry gaps/load shifts, CAS/restart behavior, bounded evidence and external oracle | Merged [PR #778](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/778) | Evidence level 3 is merged; production Valkey/runtime wiring remains a deployment gate |
 
 ## Eight mentor questions every owner must answer
 
