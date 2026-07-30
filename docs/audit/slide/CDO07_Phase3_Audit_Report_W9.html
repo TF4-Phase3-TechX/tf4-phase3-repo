@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>W9 — Deliver Smartly (Kiến thức + Ví dụ)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand-primary: #0f172a;
+  --brand-accent: #f59e0b;
+  --brand-accent-2: #fb923c;
+  --brand-secondary: #3b82f6;
+  --brand-danger: #ef4444;
+  --brand-success: #22c55e;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border: #e2e8f0;
+  --surface-dark: #ffffff;
+  --surface-card: #f8fafc;
+  --gradient-warm: linear-gradient(135deg, #f59e0b, #ef4444);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; overflow-x: hidden; }
+body { font-family: 'Google Sans', sans-serif; background: var(--surface-dark); color: var(--text-primary); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.slide {
+  min-height: 100vh; width: 100%; scroll-snap-align: start; scroll-snap-stop: always;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: clamp(32px, 5vh, 80px) clamp(24px, 5vw, 120px); position: relative; overflow: hidden;
+}
+.slide-title { background: var(--surface-dark); text-align: center; }
+.slide-title::before { content: ''; position: absolute; top: -30%; right: -20%; width: 60%; height: 80%; background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%); pointer-events: none; }
+.slide-title::after { content: ''; position: absolute; bottom: -20%; left: -15%; width: 50%; height: 60%; background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); pointer-events: none; }
+.slide-title h1 { font-size: clamp(2.2rem, 5vw, 4rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 16px; }
+.slide-title .lead { font-size: clamp(1rem, 2vw, 1.3rem); color: var(--text-secondary); max-width: 760px; }
+.gradient-text { background: var(--gradient-warm); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.slide-divider { background: var(--surface-dark); text-align: center; }
+.slide-divider::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(245,158,11,0.06) 0%, transparent 60%); pointer-events: none; }
+.section-number { font-family: 'IBM Plex Mono', monospace; font-size: clamp(5rem, 12vw, 10rem); font-weight: 700; -webkit-text-stroke: 2px rgba(245,158,11,0.2); color: transparent; line-height: 1; margin-bottom: -20px; }
+.section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--brand-accent); margin-bottom: 8px; }
+.slide-divider h2 { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; }
+.slide-divider .lead { font-size: clamp(0.95rem, 1.5vw, 1.15rem); color: var(--text-secondary); margin-top: 12px; max-width: 640px; }
+.slide-content { width: 100%; max-width: 1100px; }
+.slide-header { margin-bottom: clamp(20px, 3vh, 40px); }
+.slide-header h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; }
+.slide-header .lead { font-size: clamp(0.85rem, 1.2vw, 1rem); color: var(--text-secondary); margin-top: 6px; }
+.slide-footer { position: absolute; bottom: 20px; left: 40px; right: 100px; display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.eyebrow { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--brand-accent); margin-bottom: 8px; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; }
+.badge-accent { background: rgba(245,158,11,0.15); color: var(--brand-accent); }
+.badge-blue { background: rgba(59,130,246,0.15); color: var(--brand-secondary); }
+.badge-danger { background: rgba(239,68,68,0.15); color: var(--brand-danger); }
+.badge-success { background: rgba(34,197,94,0.15); color: var(--brand-success); }
+.grid { display: grid; gap: clamp(12px, 2vw, 20px); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 12px; padding: clamp(16px, 2vw, 24px); transition: transform 0.3s var(--ease-out); }
+.card:hover { transform: translateY(-2px); }
+.card h3 { font-size: clamp(0.9rem, 1.3vw, 1.1rem); font-weight: 700; margin-bottom: 8px; }
+.card p, .card li { font-size: clamp(0.8rem, 1vw, 0.9rem); color: var(--text-secondary); line-height: 1.5; }
+.card-dark { background: var(--brand-primary); border-color: rgba(245,158,11,0.2); color:#e2e8f0; }
+.card-dark h3 { color:#fff; }
+.card-accent { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(251,146,60,0.05)); border-color: rgba(245,158,11,0.3); }
+.card-accent h3 { color: var(--brand-accent); }
+.card-number { font-family: 'IBM Plex Mono', monospace; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 700; color: var(--brand-accent); line-height: 1; }
+.card-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+.flow { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; justify-content: center; }
+.flow-step { background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: clamp(10px, 1.5vw, 18px) clamp(14px, 2vw, 22px); text-align: center; font-size: clamp(0.75rem, 1vw, 0.88rem); font-weight: 600; }
+.flow-arrow { color: var(--brand-accent); font-size: 1.2rem; padding: 0 6px; flex-shrink: 0; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+.stat { text-align: center; padding: 16px; }
+.bullets { list-style: none; padding: 0; }
+.bullets li { padding: 8px 0 8px 24px; position: relative; font-size: clamp(0.85rem, 1.1vw, 0.95rem); color: var(--text-secondary); border-bottom: 1px solid var(--border); }
+.bullets li:last-child { border-bottom: none; }
+.bullets li::before { content: ''; position: absolute; left: 0; top: 14px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-accent); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 3vw, 40px); align-items: start; }
+table { width: 100%; border-collapse: collapse; font-size: clamp(0.78rem, 1vw, 0.88rem); }
+th { text-align: left; padding: 10px 14px; background: rgba(30,41,59,0.8); color: var(--brand-accent); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 2px solid rgba(245,158,11,0.3); }
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:hover td { background: rgba(51,65,85,0.06); }
+code { font-family: 'IBM Plex Mono', monospace; font-size: 0.85em; background: rgba(51,65,85,0.12); padding: 2px 6px; border-radius: 4px; color:#0f172a; }
+.code-block { background:#0f172a; border:1px solid rgba(245,158,11,0.2); border-radius:10px; padding:16px 18px; font-family:'IBM Plex Mono',monospace; font-size:clamp(0.7rem,0.92vw,0.84rem); color:#e2e8f0; line-height:1.65; overflow-x:auto; white-space:pre; }
+.code-block .cmt { color:#64748b; } .code-block .kw { color:#f59e0b; } .code-block .str { color:#34d399; } .code-block .fn { color:#60a5fa; } .code-block .out { color:#94a3b8; }
+.lab-tag { display:inline-block; background:var(--gradient-warm); color:#fff; font-weight:800; font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; padding:4px 12px; border-radius:6px; margin-bottom:10px; }
+.do-now { display:flex; align-items:center; gap:8px; font-weight:700; color:var(--brand-accent); font-size:0.82rem; margin:4px 0 8px; }
+.checkpoint { background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:12px 16px; font-size:0.84rem; color:var(--text-secondary); }
+.checkpoint strong { color:var(--brand-success); }
+.warn { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px 16px; font-size:0.84rem; color:var(--text-secondary); }
+.warn strong { color:var(--brand-danger); }
+.meta-chips { display: flex; gap: 12px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
+.chip { display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: var(--surface-card); border: 1px solid var(--border); border-radius: 8px; font-size: 0.8rem; color: var(--text-secondary); }
+.chip strong { color: var(--text-primary); }
+.reveal { opacity: 1; }
+.stagger > * { opacity: 1; }
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--gradient-warm); z-index: 1000; width: 0%; transition: width 0.3s; }
+.nav-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(148,163,184,0.3); cursor: pointer; transition: all 0.3s; border: none; padding: 0; }
+.nav-dot.active { background: var(--brand-accent); transform: scale(1.4); }
+.slide-counter { position: fixed; bottom: 20px; right: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--text-muted); z-index: 1000; }
+.slide-counter strong { color: var(--text-primary); }
+.slide-closing { text-align: center; }
+.slide-closing h2 { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; line-height: 1.1; margin-bottom: 16px; }
+.refs { margin-top:16px; padding:10px 14px; background:#1e293b; border-radius:8px; font-size:0.72rem; color:#94a3b8; line-height:1.6; }
+.refs a { color:#60a5fa; text-decoration:none; } .refs a:hover { text-decoration:underline; }
+@keyframes flowRight1 {
+  0% { left: 0; opacity: 1; }
+  50% { left: 50%; opacity: 0.5; }
+  100% { left: 100%; opacity: 0; }
+}
+@keyframes flowRight2 {
+  0% { left: 0; opacity: 1; }
+  50% { left: 50%; opacity: 0.5; }
+  100% { left: 100%; opacity: 0; }
+}
+@keyframes flowRight3 {
+  0% { left: 0; opacity: 1; }
+  50% { left: 50%; opacity: 0.5; }
+  100% { left: 100%; opacity: 0; }
+}
+@media (max-width: 767px) { .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;} .two-col{grid-template-columns:1fr;} .flow{flex-direction:column;} .flow-arrow{transform:rotate(90deg);} .nav-dots{display:none;} }
+@media (max-height: 700px) { .slide { padding: 24px 20px; } }
+@media (prefers-reduced-motion: reduce) { .reveal,.stagger>*{opacity:1;transform:none;transition:none;} html{scroll-behavior:auto;} .flow-arrow-animated{animation:none!important;} }
+@keyframes zoom { from {transform:scale(0.95); opacity:0;} to {transform:scale(1); opacity:1;} }
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progress"></div><nav class="nav-dots" id="navDots"></nav><div class="slide-counter" id="counter"><strong>01</strong> / 13</div>
+<section class="slide slide-title"><div class="eyebrow">PHASE 3 · FINAL REVIEW</div><h1>CDO-07<br><span class="gradient-text">Auditability & Compliance</span></h1><p class="lead">Báo cáo kết quả 4 tuần · 07/07 – 30/07/2026 · TF4 Platform</p><div class="meta-chips"><div class="chip"><strong>8</strong> thành viên</div><div class="chip"><strong>6</strong> Mandate</div><div class="chip"><strong>7</strong> postmortems</div></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Executive Summary</div><h2>Kết quả nổi bật <span class="gradient-text">Phase 3</span></h2><p class="lead">Từ audit infrastructure đến incident response, team CDO-07 tạo chuỗi delivery có evidence.</p></div><div class="grid grid-4"><div class="card stat"><div class="card-number">6</div><div class="card-label">Mandate / Directive</div></div><div class="card stat"><div class="card-number">7</div><div class="card-label">Incident Postmortems</div></div><div class="card stat"><div class="card-number">20</div><div class="card-label">Architecture Decisions</div></div><div class="card stat"><div class="card-number">28</div><div class="card-label">Cross-team Tickets</div></div></div><div class="card card-dark" style="margin-top:22px"><p style="color:#e2e8f0"><strong style="color:var(--brand-accent)">Outcome:</strong> Audit trail bất biến, cảnh báo chủ động, forensic analytics và cơ chế quản trị delivery có thể review.</p></div></div><div class="slide-footer"><span>CDO-07 · Executive Summary</span><span>Phase 3</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Operating Model</div><h2>Từ feedback đến <span class="gradient-text">delivery có bằng chứng</span></h2><p class="lead">Tuần 2, Jira thiếu Due date, Priority và Label; team đã chuẩn hóa metadata và workflow để quản lý task tốt hơn.</p></div><div class="card card-accent"><h3>Feedback → Cải thiện</h3><p>Thêm <strong>Priority</strong>, <strong>Due date</strong> và <strong>Label</strong>; sau đó nhận thấy chưa có workflow rõ ràng nên bổ sung vòng đời review trước khi task hoàn tất.</p></div><div style="margin-top:20px; text-align:center;"><img src="image/workflow.png" alt="Operating Model Workflow" style="max-width:100%; max-height:280px; height:auto; border-radius:8px; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor:zoom-in;" onclick="openModal(this.src)" /></div><div class="checkpoint" style="margin-top:26px"><strong>Definition of Done:</strong> task chỉ hoàn tất khi có output kỹ thuật hoặc tài liệu, review và evidence truy vết được.</div></div><div class="slide-footer"><span>CDO-07 · Ways of Working</span><span>Phase 3</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Immutable Audit Infrastructure</div><h2>Kiến trúc audit <span class="gradient-text">tamper-evident</span></h2><p class="lead">Ba tầng ghi log: query nhanh, streaming và evidence WORM phục vụ forensic.</p></div><div class="flow"><div class="flow-step"><strong style="color:var(--brand-secondary)">CloudTrail / EKS / Config</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Nguồn sự kiện</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong style="color:var(--brand-accent)">CloudWatch Logs</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Insights · Alarm · 7d</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong style="color:var(--brand-secondary)">Kinesis Firehose</strong><br><span style="font-size:.72rem;color:var(--text-muted)">GZIP · batch · forward</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong style="color:var(--brand-success)">S3 WORM</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Object Lock COMPLIANCE 90d</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong style="color:var(--brand-accent)">Athena</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Forensic analytics</span></div></div><div class="grid grid-3" style="margin-top:28px"><div class="card"><h3>CloudTrail</h3><p>Multi-region, Log File Validation, KMS CMK và dual delivery S3 + CloudWatch.</p></div><div class="card"><h3>EKS Audit</h3><p>audit + authenticator → Subscription Filter → Firehose → S3 WORM.</p></div><div class="card"><h3>AWS Config</h3><p>Recorder, delivery channel, 32 resource types và replication staging/archive.</p></div></div></div><div class="slide-footer"><span>CDO-07 · Audit Architecture</span><span>Phase 3</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Mandate 04 & 08</div><h2>Forensic audit trail & <span class="gradient-text">cutover verification</span></h2></div><div class="grid grid-2"><div class="card card-accent"><h3>Mandate 04 — Forensic Audit Trail</h3><ul class="bullets"><li>Mục tiêu: dựng lại ai-làm-gì-khi-nào trong ≤10 phút</li><li>Drill ≥3 kịch bản pass</li><li>Operator không xóa được log</li><li>Identity mapping gắn hành động về danh tính cụ thể</li></ul></div><div class="card"><h3>Mandate 08 — Managed Data Cutover</h3><ul class="bullets"><li>Audit PostgreSQL → RDS, Valkey → ElastiCache, Kafka → MSK</li><li>9 mốc timeline từ Git, EKS audit và CloudTrail</li><li>CloudTrail validate-logs verified, 0 modified</li></ul></div></div></div><div class="slide-footer"><span>CDO-07 · Mandate Compliance</span><span>04 / 08</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Mandate 11</div><h2>Cảnh báo bảo mật <span class="gradient-text">thời gian thực</span></h2><p class="lead">Chuyển audit trail thụ động thành luồng phát hiện và thông báo có thể hành động.</p></div><div class="flow"><div class="flow-step"><strong>CloudTrail</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Security events</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>EventBridge</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Rule matching</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>SNS</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Fan-out</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>Lambda</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Format + allowlist</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>Slack / Email</strong><br><span style="font-size:.72rem;color:var(--text-muted)">On-call</span></div></div><div class="two-col" style="margin-top:28px"><div class="card"><h3>Detection coverage</h3><p>StopLogging, DeleteTrail, Root ConsoleLogin, SG ingress public, S3 public policy/ACL, Config recorder deletion và Access Analyzer finding.</p></div><div class="card card-accent"><h3>Measured objective</h3><p>TTD target ≤60 giây; dùng số liệu acceptance report cuối cùng khi trình bày để thống nhất nguồn evidence.</p></div></div></div><div class="slide-footer"><span>CDO-07 · Mandate 11</span><span>Active Alerting</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Mandate 12</div><h2>Anti-blinding: phát hiện, tự phục hồi, <span class="gradient-text">không đứt bằng chứng</span></h2></div><div class="flow"><div class="flow-step"><strong style="color:var(--brand-danger)">StopLogging</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Attempt to blind</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>EventBridge</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Detect event</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>SSM Automation</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Restore automation</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong style="color:var(--brand-success)">StartLogging</strong><br><span style="font-size:.72rem;color:var(--text-muted)">1–3 seconds</span></div></div><div class="grid grid-2" style="margin-top:30px"><div class="card"><h3>Self-healing forensic value</h3><p>Chuỗi StopLogging + StartLogging thu hẹp blind window và giữ evidence về hành động can thiệp logging.</p></div><div class="card"><h3>Sensitive Data Access Audit</h3><p>Scope 5 S3 prefixes vào data events; không bật PutObject trên log/evidence prefix để kiểm soát chi phí.</p></div></div></div><div class="slide-footer"><span>CDO-07 · Mandate 12</span><span>Anti-Blinding</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Mandate 14 & 21</div><h2>Design readiness và <span class="gradient-text">cross-team response</span></h2></div><div class="grid grid-2"><div class="card card-accent"><h3>Mandate 14 — AI Audit Log Pipeline</h3><p>Product Reviews Pod → OTel filter <code>ai_tool_audit</code> → CloudWatch/OpenSearch → Firehose → S3 WORM.</p><div class="warn" style="margin-top:16px"><strong>STATUS: PROPOSED</strong><br>Đã có thiết kế/schema/redaction và least privilege; chưa trình bày như đã có runtime evidence.</div></div><div class="card"><h3>Mandate 21 — DR Dashboard Readiness</h3><p>Phản hồi CDO-08 cho Single-AZ Loss Drill.</p><ul class="bullets"><li>Đủ: Golden Signals, Kubernetes workload metrics</li><li>Thiếu: AZ-level health, DB writer failover, Valkey, MSK lag</li></ul></div></div></div><div class="slide-footer"><span>CDO-07 · Mandate 14 / 21</span><span>Readiness</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Cost Optimization</div><h2>CloudWatch cost: từ root cause đến <span class="gradient-text">guarded rollout</span></h2></div><div class="grid grid-3"><div class="card"><div class="card-number">$730.92</div><div class="card-label">Baseline / tháng</div><p style="margin-top:12px">CloudWatch ingestion baseline.</p></div><div class="card"><div class="card-number">92.8%</div><div class="card-label">Audit bytes</div><p style="margin-top:12px">Argo CD reconcile cập nhật Kyverno CRDs; 47.36 GB/ngày.</p></div><div class="card card-accent"><div class="card-number">$585–$678</div><div class="card-label">Projected saving / tháng</div><p style="margin-top:12px">Bỏ Replace=true, thêm ApplyOutOfSyncOnly=true.</p></div></div><div class="checkpoint" style="margin-top:28px"><strong>Accuracy note:</strong> Đây là estimated saving; chỉ kết luận mức tiết kiệm thực tế khi có post-rollout cost evidence.</div></div><div class="slide-footer"><span>CDO-07 · Cost Optimization</span><span>CloudWatch Logs</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Incident Learning</div><h2>7 incident postmortems và <span class="gradient-text">1 forensic investigation</span></h2></div><table><thead><tr><th>Ngày</th><th>Sự cố</th><th>Mức độ</th></tr></thead><tbody><tr><td>14/07</td><td>Checkout / Payment Degradation</td><td><strong style="color:var(--brand-danger)">Critical</strong></td></tr><tr><td>15/07</td><td>Async Order Processing & Kafka Queue Overload</td><td><strong style="color:var(--brand-danger)">Critical</strong></td></tr><tr><td>17/07</td><td>Currency CPU / OTel bottleneck</td><td><strong style="color:var(--brand-danger)">Critical</strong></td></tr><tr><td>20/07</td><td>Browse/Checkout errors + telemetry degradation</td><td><strong style="color:var(--brand-accent)">High</strong></td></tr><tr><td>23/07</td><td>Cart & Checkout Success = 0%</td><td><strong style="color:var(--brand-accent)">High</strong></td></tr><tr><td>23/07</td><td>OTel Collector / Jaeger telemetry degradation</td><td><strong style="color:var(--brand-secondary)">Medium</strong></td></tr><tr><td>28/07</td><td>Prometheus historical metrics loss after storage migration</td><td><strong style="color:var(--brand-secondary)">Medium</strong></td></tr></tbody></table><div class="card card-accent" style="margin-top:20px"><p>Forensic investigation bổ sung: xác định workload apply nhầm vào namespace <code>default</code> qua EKS audit log; không có evidence Argo CD là tác nhân trực tiếp.</p></div></div><div class="slide-footer"><span>CDO-07 · Incident Postmortems</span><span>Phase 3</span></div></section>
+
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Governance & Collaboration</div><h2>Quản trị kiến trúc và <span class="gradient-text">phối hợp cross-team</span></h2></div><div class="grid grid-3"><div class="card"><div class="card-number">20</div><div class="card-label">ADR</div><p style="margin-top:10px">Quyết định về separation of duties, dashboard, cost, immutable logging, alerting và AI auditability.</p></div><div class="card"><div class="card-number">28</div><div class="card-label">Tickets</div><p style="margin-top:10px">Giao việc CDO-04/CDO-08 với assignee, DoD và evidence requirement.</p></div><div class="card"><div class="card-number">21</div><div class="card-label">SLO Alert Rules</div><p style="margin-top:10px">Checkout, payment, Kafka, database và Alertmanager routing.</p></div></div><div class="card card-dark" style="margin-top:26px"><p style="color:#e2e8f0"><strong style="color:var(--brand-accent)">Traceability chain:</strong> Jira task → assignee → DoD → PR → test/evidence → review.</p></div></div><div class="slide-footer"><span>CDO-07 · Governance</span><span>Cross-team</span></div></section>
+<section class="slide"><div class="slide-content"><div class="slide-header"><div class="eyebrow">Centralized Log & Forensics</div><h2>Từ log phân tán đến <span class="gradient-text">forensic analytics</span></h2></div><div class="flow"><div class="flow-step"><strong>Distributed logs</strong><br><span style="font-size:.72rem;color:var(--text-muted)">EKS · CloudTrail · App · AI</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>Centralized design</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Immutable · Content-Free</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>S3 WORM</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Evidence retention</span></div><div class="flow-arrow">→</div><div class="flow-step"><strong>Athena</strong><br><span style="font-size:.72rem;color:var(--text-muted)">Timeline reconstruction</span></div></div><div class="two-col" style="margin-top:28px"><div class="card"><h3>Forensic analytics</h3><p>Glue/Athena catalog, partition projection, 10 GB/query guardrail và truy vấn phục vụ điều tra.</p></div><div class="card"><h3>Operational runbooks</h3><p>Athena forensics, image provenance, forensic timeline, flash-sale alerts và Mandate 11 incident response.</p></div></div></div><div class="slide-footer"><span>CDO-07 · Centralized Logs</span><span>Week 4</span></div></section>
+<section class="slide slide-closing"><div class="eyebrow">Review Ask</div><h2>Audit trail bất biến.<br><span class="gradient-text">Evidence có thể kiểm chứng.</span></h2><p class="lead">Đề nghị stakeholder review evidence, ưu tiên đóng IAM gaps và phê duyệt kế hoạch validation tiếp theo.</p><div class="meta-chips"><div class="chip"><strong>Review</strong> Mandate evidence</div><div class="chip"><strong>Prioritize</strong> IAM & EKS gaps</div><div class="chip"><strong>Approve</strong> cost/M14 validation</div></div></section>
+<script>const slides=[...document.querySelectorAll('.slide')],counter=document.getElementById('counter'),progress=document.getElementById('progress'),dots=document.getElementById('navDots');slides.forEach((s,i)=>{let d=document.createElement('button');d.className='nav-dot';d.onclick=()=>s.scrollIntoView({behavior:'smooth'});dots.appendChild(d)});const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){let i=slides.indexOf(e.target);[...dots.children].forEach((d,j)=>d.classList.toggle('active',j===i));counter.innerHTML='<strong>'+String(i+1).padStart(2,'0')+'</strong> / '+slides.length;progress.style.width=((i+1)/slides.length*100)+'%'}}),{threshold:.55});slides.forEach(s=>obs.observe(s));</script>
+<!-- Modal for zoomable image -->
+<div id="image-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background-color:rgba(15,23,42,0.9); backdrop-filter:blur(4px); justify-content:center; align-items:center; cursor:zoom-out;" onclick="this.style.display='none'">
+  <span style="position:absolute; top:20px; right:30px; color:#fff; font-size:30px; font-weight:bold; font-family:sans-serif;">&times;</span>
+  <img id="modal-content" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 12px 32px rgba(0,0,0,0.2); animation: zoom 0.2s cubic-bezier(0.16, 1, 0.3, 1);" />
+</div>
+<script>
+  function openModal(src) {
+    const modal = document.getElementById('image-modal');
+    const img = document.getElementById('modal-content');
+    modal.style.display = 'flex';
+    img.src = src;
+  }
+</script>
+</body></html>
