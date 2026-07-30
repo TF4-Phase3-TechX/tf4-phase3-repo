@@ -1,5 +1,5 @@
 {
-  "baseline_sha256": "dcb6ee01196a0b5e2ed37c6eae44929033d07ebc805e295ac846eced408de8b6",
+  "baseline_sha256": "3d2c4229aa8db372acd2665d9852ebde8270932ccdcbef954a83f071619305df",
   "config": {
     "confidence_z": 2.576,
     "metrics": {
@@ -32,16 +32,18 @@
       }
     },
     "min_baseline_samples": 50,
+    "minimum_persistence_seconds": 600,
+    "minimum_window_span_seconds": 1740,
     "recovery_windows": 3,
     "required_consecutive": 2,
     "stride": 10,
     "window_size": 30
   },
   "diagnostics": [],
-  "generated_at_utc": "2026-07-30T09:12:25.568094Z",
+  "generated_at_utc": "2026-07-30T12:59:10.991393Z",
   "git": {
     "dirty": false,
-    "sha": "a935834512b5f4e7ba05e0555a852384ffccfd41"
+    "sha": "4d293e0664bd28ed2d9ad1bdf98efad7049824c8"
   },
   "input_sha256": "6436e384441d1bb02cfeb528a051d5263ed44fb23829a7aa30b0612143f11709",
   "schema_version": "mandate27-report-v1",
@@ -49,656 +51,6 @@
   "status": "no_drift",
   "windows": [
     {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T00:29:00Z",
-      "window_start": "2026-07-30T00:00:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T00:39:00Z",
-      "window_start": "2026-07-30T00:10:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T00:49:00Z",
-      "window_start": "2026-07-30T00:20:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T00:59:00Z",
-      "window_start": "2026-07-30T00:30:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T01:09:00Z",
-      "window_start": "2026-07-30T00:40:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T01:19:00Z",
-      "window_start": "2026-07-30T00:50:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T01:29:00Z",
-      "window_start": "2026-07-30T01:00:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T01:39:00Z",
-      "window_start": "2026-07-30T01:10:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T01:49:00Z",
-      "window_start": "2026-07-30T01:20:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_interval": [
-        0.04915926537743126,
-        0.19276112211243576
-      ],
-      "baseline_value": 0.1,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.025649613897367557,
-        0.31925302990086946
-      ],
-      "current_value": 0.1,
-      "metric": "abstention_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.1671115082150682,
-      "surface": "review_summary",
-      "threshold": 0.15,
-      "window_end": "2026-07-30T01:59:00Z",
-      "window_start": "2026-07-30T01:30:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:29:00Z",
-      "window_start": "2026-07-30T00:00:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:39:00Z",
-      "window_start": "2026-07-30T00:10:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:49:00Z",
-      "window_start": "2026-07-30T00:20:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:59:00Z",
-      "window_start": "2026-07-30T00:30:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:09:00Z",
-      "window_start": "2026-07-30T00:40:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:19:00Z",
-      "window_start": "2026-07-30T00:50:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:29:00Z",
-      "window_start": "2026-07-30T01:00:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:39:00Z",
-      "window_start": "2026-07-30T01:10:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:49:00Z",
-      "window_start": "2026-07-30T01:20:00Z"
-    },
-    {
-      "absolute_delta": 0.0,
-      "baseline_value": 0.956,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_value": 0.956,
-      "metric": "faithfulness",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "jensen_shannon_divergence",
-      "statistic_threshold": 0.1,
-      "statistic_value": 0.0,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:59:00Z",
-      "window_start": "2026-07-30T01:30:00Z"
-    },
-    {
-      "absolute_delta": 0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0039252766544744105,
-        0.2317944744434688
-      ],
-      "current_value": 0.03333333333333333,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.0768011917735803,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:29:00Z",
-      "window_start": "2026-07-30T00:00:00Z"
-    },
-    {
-      "absolute_delta": -0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0,
-        0.18112830474779626
-      ],
-      "current_value": 0.0,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.08072646842805471,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:39:00Z",
-      "window_start": "2026-07-30T00:10:00Z"
-    },
-    {
-      "absolute_delta": -0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0,
-        0.18112830474779626
-      ],
-      "current_value": 0.0,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.08072646842805471,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:49:00Z",
-      "window_start": "2026-07-30T00:20:00Z"
-    },
-    {
-      "absolute_delta": -0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0,
-        0.18112830474779626
-      ],
-      "current_value": 0.0,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.08072646842805471,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T00:59:00Z",
-      "window_start": "2026-07-30T00:30:00Z"
-    },
-    {
-      "absolute_delta": -0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0,
-        0.18112830474779626
-      ],
-      "current_value": 0.0,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.08072646842805471,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:09:00Z",
-      "window_start": "2026-07-30T00:40:00Z"
-    },
-    {
-      "absolute_delta": -0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0,
-        0.18112830474779626
-      ],
-      "current_value": 0.0,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.08072646842805471,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:19:00Z",
-      "window_start": "2026-07-30T00:50:00Z"
-    },
-    {
-      "absolute_delta": 0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0039252766544744105,
-        0.2317944744434688
-      ],
-      "current_value": 0.03333333333333333,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.0768011917735803,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:29:00Z",
-      "window_start": "2026-07-30T01:00:00Z"
-    },
-    {
-      "absolute_delta": 0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0039252766544744105,
-        0.2317944744434688
-      ],
-      "current_value": 0.03333333333333333,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.0768011917735803,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:39:00Z",
-      "window_start": "2026-07-30T01:10:00Z"
-    },
-    {
-      "absolute_delta": 0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0039252766544744105,
-        0.2317944744434688
-      ],
-      "current_value": 0.03333333333333333,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.0768011917735803,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:49:00Z",
-      "window_start": "2026-07-30T01:20:00Z"
-    },
-    {
-      "absolute_delta": -0.016666666666666666,
-      "baseline_interval": [
-        0.0032606664555345916,
-        0.08072646842805471
-      ],
-      "baseline_value": 0.016666666666666666,
-      "breach": false,
-      "consecutive_breaches": 0,
-      "current_interval": [
-        0.0,
-        0.18112830474779626
-      ],
-      "current_value": 0.0,
-      "metric": "fallback_rate",
-      "sample_count": 30,
-      "state": "normal",
-      "statistic": "wilson_interval",
-      "statistic_value": -0.08072646842805471,
-      "surface": "review_summary",
-      "threshold": 0.1,
-      "window_end": "2026-07-30T01:59:00Z",
-      "window_start": "2026-07-30T01:30:00Z"
-    },
-    {
       "absolute_delta": 0.016666666666666677,
       "baseline_interval": [
         0.03823766682414083,
@@ -720,6 +72,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T00:29:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:00:00Z"
     },
     {
@@ -744,6 +97,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T00:39:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:10:00Z"
     },
     {
@@ -768,6 +122,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T00:49:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:20:00Z"
     },
     {
@@ -792,6 +147,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T00:59:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:30:00Z"
     },
     {
@@ -816,6 +172,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T01:09:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:40:00Z"
     },
     {
@@ -840,6 +197,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T01:19:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:50:00Z"
     },
     {
@@ -864,6 +222,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T01:29:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:00:00Z"
     },
     {
@@ -888,6 +247,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T01:39:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:10:00Z"
     },
     {
@@ -912,6 +272,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T01:49:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:20:00Z"
     },
     {
@@ -936,6 +297,7 @@
       "surface": "copilot",
       "threshold": 0.15,
       "window_end": "2026-07-30T01:59:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:30:00Z"
     },
     {
@@ -953,6 +315,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:29:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:00:00Z"
     },
     {
@@ -970,6 +333,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:39:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:10:00Z"
     },
     {
@@ -987,6 +351,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:49:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:20:00Z"
     },
     {
@@ -1004,6 +369,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:59:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:30:00Z"
     },
     {
@@ -1021,6 +387,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:09:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:40:00Z"
     },
     {
@@ -1038,6 +405,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:19:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:50:00Z"
     },
     {
@@ -1055,6 +423,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:29:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:00:00Z"
     },
     {
@@ -1072,6 +441,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:39:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:10:00Z"
     },
     {
@@ -1089,6 +459,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:49:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:20:00Z"
     },
     {
@@ -1106,6 +477,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:59:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:30:00Z"
     },
     {
@@ -1130,6 +502,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:29:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:00:00Z"
     },
     {
@@ -1154,6 +527,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:39:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:10:00Z"
     },
     {
@@ -1178,6 +552,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:49:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:20:00Z"
     },
     {
@@ -1202,6 +577,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T00:59:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:30:00Z"
     },
     {
@@ -1226,6 +602,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:09:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:40:00Z"
     },
     {
@@ -1250,6 +627,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:19:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T00:50:00Z"
     },
     {
@@ -1274,6 +652,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:29:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:00:00Z"
     },
     {
@@ -1298,6 +677,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:39:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:10:00Z"
     },
     {
@@ -1322,6 +702,7 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:49:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:20:00Z"
     },
     {
@@ -1346,6 +727,687 @@
       "surface": "copilot",
       "threshold": 0.1,
       "window_end": "2026-07-30T01:59:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:30:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T00:29:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:00:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T00:39:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:10:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T00:49:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:20:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T00:59:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:30:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T01:09:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:40:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T01:19:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:50:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T01:29:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:00:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T01:39:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:10:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T01:49:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:20:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_interval": [
+        0.04915926537743126,
+        0.19276112211243576
+      ],
+      "baseline_value": 0.1,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.025649613897367557,
+        0.31925302990086946
+      ],
+      "current_value": 0.1,
+      "metric": "abstention_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.1671115082150682,
+      "surface": "review_summary",
+      "threshold": 0.15,
+      "window_end": "2026-07-30T01:59:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:30:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:29:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:00:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:39:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:10:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:49:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:20:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:59:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:30:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:09:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:40:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:19:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:50:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:29:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:00:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:39:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:10:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:49:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:20:00Z"
+    },
+    {
+      "absolute_delta": 0.0,
+      "baseline_value": 0.956,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_value": 0.956,
+      "metric": "faithfulness",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "jensen_shannon_divergence",
+      "statistic_threshold": 0.1,
+      "statistic_value": 0.0,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:59:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:30:00Z"
+    },
+    {
+      "absolute_delta": 0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0039252766544744105,
+        0.2317944744434688
+      ],
+      "current_value": 0.03333333333333333,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.0768011917735803,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:29:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:00:00Z"
+    },
+    {
+      "absolute_delta": -0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0,
+        0.18112830474779626
+      ],
+      "current_value": 0.0,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.08072646842805471,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:39:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:10:00Z"
+    },
+    {
+      "absolute_delta": -0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0,
+        0.18112830474779626
+      ],
+      "current_value": 0.0,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.08072646842805471,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:49:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:20:00Z"
+    },
+    {
+      "absolute_delta": -0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0,
+        0.18112830474779626
+      ],
+      "current_value": 0.0,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.08072646842805471,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T00:59:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:30:00Z"
+    },
+    {
+      "absolute_delta": -0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0,
+        0.18112830474779626
+      ],
+      "current_value": 0.0,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.08072646842805471,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:09:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:40:00Z"
+    },
+    {
+      "absolute_delta": -0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0,
+        0.18112830474779626
+      ],
+      "current_value": 0.0,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.08072646842805471,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:19:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T00:50:00Z"
+    },
+    {
+      "absolute_delta": 0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0039252766544744105,
+        0.2317944744434688
+      ],
+      "current_value": 0.03333333333333333,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.0768011917735803,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:29:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:00:00Z"
+    },
+    {
+      "absolute_delta": 0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0039252766544744105,
+        0.2317944744434688
+      ],
+      "current_value": 0.03333333333333333,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.0768011917735803,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:39:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:10:00Z"
+    },
+    {
+      "absolute_delta": 0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0039252766544744105,
+        0.2317944744434688
+      ],
+      "current_value": 0.03333333333333333,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.0768011917735803,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:49:00Z",
+      "window_span_seconds": 1740.0,
+      "window_start": "2026-07-30T01:20:00Z"
+    },
+    {
+      "absolute_delta": -0.016666666666666666,
+      "baseline_interval": [
+        0.0032606664555345916,
+        0.08072646842805471
+      ],
+      "baseline_value": 0.016666666666666666,
+      "breach": false,
+      "consecutive_breaches": 0,
+      "current_interval": [
+        0.0,
+        0.18112830474779626
+      ],
+      "current_value": 0.0,
+      "metric": "fallback_rate",
+      "sample_count": 30,
+      "state": "normal",
+      "statistic": "wilson_interval",
+      "statistic_value": -0.08072646842805471,
+      "surface": "review_summary",
+      "threshold": 0.1,
+      "window_end": "2026-07-30T01:59:00Z",
+      "window_span_seconds": 1740.0,
       "window_start": "2026-07-30T01:30:00Z"
     }
   ]

@@ -1,12 +1,12 @@
 # Mandate 27 verification record
 
 Implementation commit:
-`a935834512b5f4e7ba05e0555a852384ffccfd41`
+`4d293e0664bd28ed2d9ad1bdf98efad7049824c8`
 
 ## Hermetic replay
 
 ```text
-26 passed
+45 passed
 stable_false_flags=0
 shifted_series_detected=2
 copilot/fallback_rate detected after the injected shift
@@ -16,19 +16,18 @@ review_summary/faithfulness detected after the injected shift
 ## Regression
 
 ```text
-305 passed
+268 passed
 ```
 
-Scope: all `product-reviews` tests plus Mandate 14, 24 and 27 suites. The
-loopback gRPC integration test was run outside the filesystem/network sandbox.
+Scope: all `product-reviews` tests plus the Mandate 27 suite.
 
 ## Prometheus
 
 Validated with Prometheus `v3.11.3`, matching the vendored chart app version.
 
 ```text
-model-drift-recording-rules.yaml: SUCCESS, 5 rules
-model-drift-alerts.yaml: SUCCESS, 2 rules
+model-drift-recording-rules.yaml: SUCCESS, 7 rules
+model-drift-alerts.yaml: SUCCESS, 3 rules
 model-drift-recording-rules.test.yaml: SUCCESS
 model-drift-alerts.test.yaml: SUCCESS
 ```

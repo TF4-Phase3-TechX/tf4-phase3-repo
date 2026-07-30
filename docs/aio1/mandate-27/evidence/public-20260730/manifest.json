@@ -1,25 +1,25 @@
 {
-  "baseline_sha256": "e45ae0210257eab9b3147679beb0e473141a51699326a7aff2306aa5d1c10db4",
-  "checksums_sha256": "017ea1295a3ea63564706977af5aff182d4fc4a99544748ed10dcef8b35f6ad1",
+  "baseline_sha256": "950d9751d34faaf486aaf1d7b7d73971c846be8f8cdf3e33e17b5c70b4f1baf4",
+  "checksums_sha256": "5b608de525a3d3b4ae49763bfebd7cd693cc95539cb775b5cd4da385d04d3adf",
   "claims": {
     "raw_content_retained": false,
     "shifted_series_detected": 2,
     "stable_false_flags": 0
   },
-  "generated_at_utc": "2026-07-30T09:12:25.882597Z",
+  "generated_at_utc": "2026-07-30T12:59:11.389708Z",
   "git": {
     "dirty": false,
-    "sha": "a935834512b5f4e7ba05e0555a852384ffccfd41"
+    "sha": "4d293e0664bd28ed2d9ad1bdf98efad7049824c8"
   },
   "results": {
     "seasonal_stable": {
-      "input": "inputs/seasonal-stable.jsonl",
+      "input": "inputs\\seasonal-stable.jsonl",
       "report": "seasonal-stable-report.json",
       "signals": [],
       "status": "no_drift"
     },
     "shifted_copilot_fallback": {
-      "input": "inputs/shifted-copilot-fallback.jsonl",
+      "input": "inputs\\shifted-copilot-fallback.jsonl",
       "report": "shifted-copilot-fallback-report.json",
       "signals": [
         {
@@ -30,7 +30,7 @@
       "status": "drift"
     },
     "shifted_review_faithfulness": {
-      "input": "inputs/shifted-review-faithfulness.jsonl",
+      "input": "inputs\\shifted-review-faithfulness.jsonl",
       "report": "shifted-review-faithfulness-report.json",
       "signals": [
         {
@@ -41,13 +41,13 @@
       "status": "drift"
     },
     "stable": {
-      "input": "inputs/stable.jsonl",
+      "input": "inputs\\stable.jsonl",
       "report": "stable-report.json",
       "signals": [],
       "status": "no_drift"
     },
     "transient_spike": {
-      "input": "inputs/transient-spike.jsonl",
+      "input": "inputs\\transient-spike.jsonl",
       "report": "transient-spike-report.json",
       "signals": [],
       "status": "no_drift"
