@@ -1,7 +1,7 @@
 # Mandate 27 verification record
 
 Implementation commit:
-`98b1b43ba572d5c0acb8a7fcdd5c5f99c9e280c1`
+`de247172c298ce9a2aa94993c1a64adaa71b51d7`
 
 ## Hermetic replay
 

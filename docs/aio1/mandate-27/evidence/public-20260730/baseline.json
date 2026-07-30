@@ -43,10 +43,10 @@
     "stride": 10,
     "window_size": 30
   },
-  "created_at_utc": "2026-07-30T13:00:43.883098Z",
+  "created_at_utc": "2026-07-30T13:06:20.935656Z",
   "git": {
     "dirty": false,
-    "sha": "98b1b43ba572d5c0acb8a7fcdd5c5f99c9e280c1"
+    "sha": "de247172c298ce9a2aa94993c1a64adaa71b51d7"
   },
   "input_sha256": "4b7de67f736e1a08e7e12a1d4c37b61ee6ea2a325754d13fb832607a48e3a29f",
   "schema_version": "mandate27-baseline-v1",

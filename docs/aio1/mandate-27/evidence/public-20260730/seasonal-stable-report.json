@@ -1,5 +1,5 @@
 {
-  "baseline_sha256": "a0e0ac4e6b95e20b55b835ea9db0661029d73c6ffb4ace2887864e53611df9f4",
+  "baseline_sha256": "e9970c11482bbb48b4216a7ba6ea0c43e9c79c606c6f359f0fd173f809cf249e",
   "config": {
     "confidence_z": 2.576,
     "metrics": {
@@ -40,10 +40,10 @@
     "window_size": 30
   },
   "diagnostics": [],
-  "generated_at_utc": "2026-07-30T13:00:44.303489Z",
+  "generated_at_utc": "2026-07-30T13:06:21.330978Z",
   "git": {
     "dirty": false,
-    "sha": "98b1b43ba572d5c0acb8a7fcdd5c5f99c9e280c1"
+    "sha": "de247172c298ce9a2aa94993c1a64adaa71b51d7"
   },
   "input_sha256": "6436e384441d1bb02cfeb528a051d5263ed44fb23829a7aa30b0612143f11709",
   "schema_version": "mandate27-report-v1",
