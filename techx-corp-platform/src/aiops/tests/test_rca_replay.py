@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from benchmark.rca_replay import load_jsonl, main, run_case
+from benchmark.rca_replay import load_jsonl, main, run_case, sha256_file
 from benchmark.rca_schema import RCASchemaError, split_engine_and_labels, validate_case
 from app.rca_engine import RCAEngine
 
@@ -64,6 +64,18 @@ def test_committed_suite_passes(tmp_path):
     assert report["aggregate"]["root_at_1"] == 1.0
     assert report["input_sha256"]
     assert report["git_revision"]
+    assert report["line_endings"] == "LF"
+    assert b"\r\n" not in out.read_bytes()
+    assert out.read_bytes().endswith(b"\n")
+
+
+def test_sha256_file_normalizes_text_line_endings(tmp_path):
+    lf_path = tmp_path / "lf.jsonl"
+    crlf_path = tmp_path / "crlf.jsonl"
+    lf_path.write_bytes(b'{"id":"one"}\n{"id":"two"}\n')
+    crlf_path.write_bytes(b'{"id":"one"}\r\n{"id":"two"}\r\n')
+
+    assert sha256_file(lf_path) == sha256_file(crlf_path)
 
 
 def test_unlabeled_case_does_not_fail(tmp_path):

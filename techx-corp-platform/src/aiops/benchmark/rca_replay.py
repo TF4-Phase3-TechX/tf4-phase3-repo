@@ -82,11 +82,10 @@ def git_revision() -> str:
 
 
 def sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """Hash text artifacts canonically so Git checkout EOL does not change identity."""
+
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -610,6 +609,13 @@ def main(argv: list[str] | None = None) -> int:
         "schema_version": 1,
         "generated_at": utc_now(),
         "git_revision": git_revision(),
+        "git_revision_scope": (
+            "Code and replay-runner commit evaluated by this report; "
+            "the evidence packaging commit may follow."
+        ),
+        "text_encoding": "UTF-8",
+        "line_endings": "LF",
+        "hash_normalization": "CRLF and LF text inputs are canonicalized to LF",
         "model_version": args.model_version,
         "input_path": str(args.scenarios).replace("\\", "/"),
         "input_sha256": sha256_file(args.scenarios),
@@ -641,10 +647,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(
-            json.dumps(report, indent=2, sort_keys=False) + "\n",
-            encoding="utf-8",
-        )
+        with args.output.open("w", encoding="utf-8", newline="\n") as output_file:
+            output_file.write(json.dumps(report, indent=2, sort_keys=False) + "\n")
     except OSError as exc:
         print(f"output error: {exc}", file=sys.stderr)
         return 2

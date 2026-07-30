@@ -1,2 +1,4 @@
 *.png binary
 *.sh text eol=lf
+docs/aio1/mandate-26/*.json text eol=lf
+docs/aio1/mandate-26/*.jsonl text eol=lf
