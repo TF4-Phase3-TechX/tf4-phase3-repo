@@ -207,6 +207,10 @@ resource "kubernetes_manifest" "karpenter_nodepool_arm64_protected" {
   depends_on = [kubernetes_manifest.karpenter_ec2nodeclass_general]
 }
 
+locals {
+  karpenter_arm64_spot_zones = length(var.karpenter_arm64_spot_zones) > 0 ? var.karpenter_arm64_spot_zones : ["${var.aws_region}a", "${var.aws_region}b"]
+}
+
 resource "kubernetes_manifest" "karpenter_nodepool_arm64_spot" {
   manifest = {
     apiVersion = "karpenter.sh/v1"
@@ -233,7 +237,7 @@ resource "kubernetes_manifest" "karpenter_nodepool_arm64_spot" {
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot"] },
             { key = "node.kubernetes.io/instance-type", operator = "In", values = ["c7g.large", "m7g.large", "r7g.large", "c7g.xlarge", "m7g.xlarge"] },
-            { key = "topology.kubernetes.io/zone", operator = "In", values = ["${var.aws_region}a", "${var.aws_region}b"] },
+            { key = "topology.kubernetes.io/zone", operator = "In", values = local.karpenter_arm64_spot_zones },
           ]
           taints = [
             {

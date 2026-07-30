@@ -145,3 +145,17 @@ variable "valkey_transit_encryption_mode" {
     error_message = "valkey_transit_encryption_mode must be preferred or required."
   }
 }
+
+variable "karpenter_arm64_spot_zones" {
+  description = "Allowed AZs for the arm64 Spot NodePool. Keep default empty for normal multi-AZ operation; set temporarily during REL-35 AZ-loss drill to block Spot replacement in the target AZ."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for zone in var.karpenter_arm64_spot_zones :
+      can(regex("^[a-z]{2}-[a-z]+-[0-9][a-z]$", zone))
+    ])
+    error_message = "karpenter_arm64_spot_zones entries must be full AZ names, for example us-east-1a."
+  }
+}
