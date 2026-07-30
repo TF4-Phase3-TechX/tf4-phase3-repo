@@ -39,9 +39,9 @@ Values recorded by the independent verification rerun:
 
 | Item | Value |
 |---|---|
-| Input SHA-256 | `bbdba8b16e51c44fb4eeacfa7697e9790bfcc6fbe34ab3a9a14b9e898babbcb3` |
-| Report SHA-256 | `63cc68a4905ab6eedea319a7c0a4191b568509b5085f8215b0bccb5412eeefd2` |
-| Reviewed code Git revision embedded in report | `27363cdc6306bb6ba9e94ad0d875fbf1b2d15f04` |
+| Input SHA-256 | `3681d62349d6b05870cc71ff075879ab2f8b5ab7281871a6c5722bf5efd11939` |
+| Report SHA-256 | `5d184a7a4ba35330e6c165e7d786e9d91ea7479f80fd3b32b11361d98fa2cb87` |
+| Reviewed code Git revision embedded in report | `1fd7de086984c3822d95631d8e9d45d28b10f411` |
 | Model version | `m26-v1` |
 
 The report embeds `git_revision`, `input_sha256`, and per-case rankings. The
@@ -59,14 +59,14 @@ Windows and Unix checkouts.
 
 From `rca-replay-report-v1.json`:
 
-- cases: 11 labeled, 11 passed, 0 failed
+- cases: 13 labeled, 13 passed, 0 failed
 - Root@1: **1.0**  
 - Root@3: **1.0**  
 - MRR: **1.0**  
 - noise precision / recall / F1: **1.0 / 1.0 / 1.0**
 - false noise-rejection rate: **0.0**
-- processing p50 / p95: **1.496 / 2.5005 ms** (review workstation, pure engine)
-- attribution coverage: 0.818182 (two intentional multi-cluster abstentions)
+- processing p50 / p95: **1.075 / 2.567 ms** (review workstation, pure engine)
+- attribution coverage: 0.846154 (two intentional multi-cluster abstentions)
 
 ### Scenario coverage
 
@@ -83,6 +83,8 @@ From `rca-replay-report-v1.json`:
 | `payment-cascade-with-two-independent-noises` | one cascade + two disconnected high-confidence anomalies | root=`payment`, noise=`rogue-ads,batch-indexer` |
 | `trace-only-root-beats-earlier-high-confidence-noise` | trace root vs earlier stronger local noise | root=`payment`, noise=`rogue-ads` |
 | `two-traced-cascades-must-abstain` | two independently traced cascades | status=`multiple_independent_clusters` |
+| `end-to-end-unseen-latency-cascade` | raw series through production Detector, unseen topology, trace unavailable | root=`vault-core` |
+| `no-trace-dominant-cascade-with-singleton-noise` | dominant topology/temporal cascade + disconnected singleton, trace unavailable | root=`quasar-db`, noise=`unrelated-cron` |
 
 ## Tests
 
@@ -104,7 +106,7 @@ py -3 -m pytest `
 ```
 
 Independent verification additionally ran the committed replay, the full AIOps
-suite (**232 passed, 1 skipped**), focused regressions for incident-scoped
+suite (**233 passed, 1 skipped**), focused regressions for incident-scoped
 attribution, exact noise acceptance, bounded/non-overlapping RCA execution,
 Jaeger timeout evidence, series caps, finite settings, and `git diff --check`.
 The named reviewer must still rerun the command before changing

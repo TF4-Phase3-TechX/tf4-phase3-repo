@@ -1,15 +1,15 @@
 {
   "schema_name": "techx.aiops.rca.report",
   "schema_version": 1,
-  "generated_at": "2026-07-30T04:25:22.147038+00:00",
-  "git_revision": "27363cdc6306bb6ba9e94ad0d875fbf1b2d15f04",
+  "generated_at": "2026-07-30T05:39:47.649143+00:00",
+  "git_revision": "1fd7de086984c3822d95631d8e9d45d28b10f411",
   "git_revision_scope": "Code and replay-runner commit evaluated by this report; the evidence packaging commit may follow.",
   "text_encoding": "UTF-8",
   "line_endings": "LF",
   "hash_normalization": "CRLF and LF text inputs are canonicalized to LF",
   "model_version": "m26-v1",
   "input_path": "docs/aio1/mandate-26/rca-labeled-scenarios-v1.jsonl",
-  "input_sha256": "bbdba8b16e51c44fb4eeacfa7697e9790bfcc6fbe34ab3a9a14b9e898babbcb3",
+  "input_sha256": "3681d62349d6b05870cc71ff075879ab2f8b5ab7281871a6c5722bf5efd11939",
   "config": {
     "trace_weight": 0.35,
     "topology_weight": 0.3,
@@ -23,9 +23,9 @@
     "max_spans": 5000
   },
   "aggregate": {
-    "cases_total": 11,
-    "labeled_total": 11,
-    "labeled_passed": 11,
+    "cases_total": 13,
+    "labeled_total": 13,
+    "labeled_passed": 13,
     "labeled_failed": 0,
     "root_at_1": 1.0,
     "root_at_3": 1.0,
@@ -34,11 +34,11 @@
     "noise_recall": 1.0,
     "noise_f1": 1.0,
     "false_noise_rejection_rate": 0.0,
-    "attribution_coverage": 0.8181818181818182,
-    "abstention_rate": 0.18181818181818182,
-    "processing_ms_p50": 1.496,
-    "processing_ms_p95": 2.5004999999999997,
-    "processing_ms_mean": 1.6345454545454545,
+    "attribution_coverage": 0.8461538461538461,
+    "abstention_rate": 0.15384615384615385,
+    "processing_ms_p50": 1.075,
+    "processing_ms_p95": 2.5669999999999993,
+    "processing_ms_mean": 1.247923076923077,
     "parsing_execution_failures": 0
   },
   "cases": [
@@ -912,7 +912,7 @@
         "trace-client-peer:trace-pay-001",
         "trace-parent:trace-pay-001"
       ],
-      "processing_ms": 2.37,
+      "processing_ms": 2.423,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -1874,7 +1874,7 @@
         "trace-client-peer:t-cat-3",
         "trace-parent:t-cat-3"
       ],
-      "processing_ms": 1.681,
+      "processing_ms": 1.75,
       "trace_count": 3,
       "span_count": 9,
       "evaluation": {
@@ -2741,7 +2741,7 @@
         "trace-client-peer:t-llm-1",
         "trace-parent:t-llm-1"
       ],
-      "processing_ms": 1.496,
+      "processing_ms": 2.783,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3592,7 +3592,7 @@
         "trace-client-peer:trace-only-001",
         "trace-parent:trace-only-001"
       ],
-      "processing_ms": 2.367,
+      "processing_ms": 1.441,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3918,7 +3918,7 @@
         "trace-client-peer:u1",
         "trace-parent:u1"
       ],
-      "processing_ms": 0.842,
+      "processing_ms": 0.608,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -4718,7 +4718,7 @@
       "topology_provenance": [
         "static:techx-verified"
       ],
-      "processing_ms": 2.631,
+      "processing_ms": 1.295,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5012,7 +5012,7 @@
       "topology_provenance": [
         "scenario:replace_static"
       ],
-      "processing_ms": 1.105,
+      "processing_ms": 0.526,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5335,7 +5335,7 @@
         "trace-client-peer:cyc1",
         "trace-parent:cyc1"
       ],
-      "processing_ms": 1.173,
+      "processing_ms": 0.763,
       "trace_count": 1,
       "span_count": 4,
       "evaluation": {
@@ -5905,7 +5905,7 @@
         "trace-client-peer:pay-two-noise",
         "trace-parent:pay-two-noise"
       ],
-      "processing_ms": 2.358,
+      "processing_ms": 1.572,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -6338,7 +6338,7 @@
         "trace-client-peer:trace-root-vs-noise",
         "trace-parent:trace-root-vs-noise"
       ],
-      "processing_ms": 1.095,
+      "processing_ms": 1.075,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -6717,7 +6717,7 @@
         "trace-client-peer:cascade-catalog",
         "trace-parent:cascade-catalog"
       ],
-      "processing_ms": 0.862,
+      "processing_ms": 0.764,
       "trace_count": 2,
       "span_count": 4,
       "evaluation": {
@@ -6739,6 +6739,560 @@
         "passed": true
       },
       "passed": true
+    },
+    {
+      "id": "end-to-end-unseen-latency-cascade",
+      "description": "Raw aligned latency series pass through the production Detector before RCA on an unseen topology",
+      "attribution_status": "attributed",
+      "suspected_root_service": "vault-core",
+      "confidence": 0.940253,
+      "score_margin": 0.3264,
+      "explanation": "Suspected root `vault-core` ranks first with score 0.940 (margin=0.326). Explains affected services ['profile-api', 'vault-core']. Evidence: vault-core can explain affected callers ['profile-api', 'vault-core'] (caller->callee graph); temporal consistency 1/1 within 45.0s; max anomalous confidence=0.741 across 1 signal(s)",
+      "candidates": [
+        {
+          "service": "vault-core",
+          "score": 0.940253,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.3,
+              "weighted_value": 0.3,
+              "reason": "explains 2/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.741098,
+              "weight": 0.15,
+              "weighted_value": 0.111165,
+              "reason": "max anomalous confidence=0.741 across 1 signal(s)"
+            }
+          },
+          "base_score": 0.940253,
+          "penalties": {},
+          "explained_affected_services": [
+            "profile-api",
+            "vault-core"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "vault-core can explain affected callers ['profile-api', 'vault-core'] (caller->callee graph)",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-30T14:02:15Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.741 across 1 signal(s)",
+              "support": 0.7410984960381654,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "profile-api",
+          "score": 0.613853,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 1/2 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "insufficient pairwise onset pairs"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.84156,
+              "weight": 0.15,
+              "weighted_value": 0.126234,
+              "reason": "max anomalous confidence=0.842 across 1 signal(s)"
+            }
+          },
+          "base_score": 0.613853,
+          "penalties": {},
+          "explained_affected_services": [
+            "profile-api"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "profile-api can explain affected callers ['profile-api'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.842 across 1 signal(s)",
+              "support": 0.8415596007402786,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [
+        "trace"
+      ],
+      "topology_provenance": [
+        "scenario:replace_static"
+      ],
+      "processing_ms": 0.479,
+      "trace_count": 0,
+      "span_count": 0,
+      "evaluation": {
+        "expected_root_service": "vault-core",
+        "expected_attribution_status": null,
+        "expected_noise_services": [],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "noise_ok": true,
+        "noise_true_positive": 0,
+        "noise_false_positive": 0,
+        "noise_false_negative": 0,
+        "noise_true_negative": 2,
+        "predicted_noise_services": [],
+        "passed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "no-trace-dominant-cascade-with-singleton-noise",
+      "description": "Topology and temporal evidence identify a clean dominant cascade plus one disconnected anomaly while trace is unavailable",
+      "attribution_status": "attributed",
+      "suspected_root_service": "quasar-db",
+      "confidence": 0.838462,
+      "score_margin": 0.092308,
+      "explanation": "Suspected root `quasar-db` ranks first with score 0.838 (margin=0.092308). Explains affected services ['fulfillment-api', 'quasar-db', 'storefront-edge']. Parallel anomalies not selected as root: unrelated-cron. Evidence: quasar-db can explain affected callers ['fulfillment-api', 'quasar-db', 'storefront-edge'] (caller->callee graph); temporal consistency 2/2 within 45.0s; max anomalous confidence=0.800 across 1 signal(s)",
+      "candidates": [
+        {
+          "service": "quasar-db",
+          "score": 0.838462,
+          "rank": 1,
+          "classification": "suspected_root",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.75,
+              "weight": 0.3,
+              "weighted_value": 0.225,
+              "reason": "explains 3/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 2/2 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.8,
+              "weight": 0.15,
+              "weighted_value": 0.12,
+              "reason": "max anomalous confidence=0.800 across 1 signal(s)"
+            }
+          },
+          "base_score": 0.838462,
+          "penalties": {},
+          "explained_affected_services": [
+            "fulfillment-api",
+            "quasar-db",
+            "storefront-edge"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "quasar-db can explain affected callers ['fulfillment-api', 'quasar-db', 'storefront-edge'] (caller->callee graph)",
+              "support": 0.75,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 2/2 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-30T13:00:00Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.800 across 1 signal(s)",
+              "support": 0.8,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "fulfillment-api",
+          "score": 0.746154,
+          "rank": 2,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.5,
+              "weight": 0.3,
+              "weighted_value": 0.15,
+              "reason": "explains 2/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": true,
+              "raw_value": 1.0,
+              "weight": 0.2,
+              "weighted_value": 0.2,
+              "reason": "temporal consistency 1/1 within 45.0s"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.9,
+              "weight": 0.15,
+              "weighted_value": 0.135,
+              "reason": "max anomalous confidence=0.900 across 1 signal(s)"
+            }
+          },
+          "base_score": 0.746154,
+          "penalties": {},
+          "explained_affected_services": [
+            "fulfillment-api",
+            "storefront-edge"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "fulfillment-api can explain affected callers ['fulfillment-api', 'storefront-edge'] (caller->callee graph)",
+              "support": 0.5,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "temporal",
+              "fact": "temporal consistency 1/1 within 45.0s",
+              "support": 1.0,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": "2026-07-30T13:00:10Z",
+              "provenance": null
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.900 across 1 signal(s)",
+              "support": 0.9,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "unrelated-cron",
+          "score": 0.486667,
+          "rank": 3,
+          "classification": "unexplained_parallel_anomaly",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "insufficient pairwise onset pairs"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.96,
+              "weight": 0.15,
+              "weighted_value": 0.144,
+              "reason": "max anomalous confidence=0.960 across 1 signal(s)"
+            }
+          },
+          "base_score": 0.486667,
+          "penalties": {},
+          "explained_affected_services": [
+            "unrelated-cron"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "unrelated-cron can explain affected callers ['unrelated-cron'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.960 across 1 signal(s)",
+              "support": 0.96,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "storefront-edge",
+          "score": 0.48,
+          "rank": 4,
+          "classification": "explained_downstream_symptom",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "insufficient pairwise onset pairs"
+            },
+            "local_anomaly_support": {
+              "available": true,
+              "raw_value": 0.94,
+              "weight": 0.15,
+              "weighted_value": 0.141,
+              "reason": "max anomalous confidence=0.940 across 1 signal(s)"
+            }
+          },
+          "base_score": 0.48,
+          "penalties": {},
+          "explained_affected_services": [
+            "storefront-edge"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "storefront-edge can explain affected callers ['storefront-edge'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            },
+            {
+              "source": "anomaly",
+              "fact": "max anomalous confidence=0.940 across 1 signal(s)",
+              "support": 0.94,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": null
+            }
+          ]
+        },
+        {
+          "service": "isolated-queue",
+          "score": 0.25,
+          "rank": 5,
+          "classification": "root_candidate",
+          "contributions": {
+            "trace_origin_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.35,
+              "weighted_value": null,
+              "reason": "trace telemetry unavailable"
+            },
+            "causal_coverage": {
+              "available": true,
+              "raw_value": 0.25,
+              "weight": 0.3,
+              "weighted_value": 0.075,
+              "reason": "explains 1/4 affected via call paths"
+            },
+            "temporal_consistency": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.2,
+              "weighted_value": null,
+              "reason": "missing onset timestamp"
+            },
+            "local_anomaly_support": {
+              "available": false,
+              "raw_value": null,
+              "weight": 0.15,
+              "weighted_value": null,
+              "reason": "no local detector observation"
+            }
+          },
+          "base_score": 0.25,
+          "penalties": {},
+          "explained_affected_services": [
+            "unrelated-cron"
+          ],
+          "contradictions": [],
+          "evidence": [
+            {
+              "source": "topology",
+              "fact": "isolated-queue can explain affected callers ['unrelated-cron'] (caller->callee graph)",
+              "support": 0.25,
+              "available": true,
+              "trace_id": null,
+              "span_ids": [],
+              "observed_at": null,
+              "provenance": "static+dynamic"
+            }
+          ]
+        }
+      ],
+      "unavailable_signals": [
+        "trace"
+      ],
+      "topology_provenance": [
+        "scenario:replace_static"
+      ],
+      "processing_ms": 0.744,
+      "trace_count": 0,
+      "span_count": 0,
+      "evaluation": {
+        "expected_root_service": "quasar-db",
+        "expected_attribution_status": null,
+        "expected_noise_services": [
+          "unrelated-cron"
+        ],
+        "root_at_1": true,
+        "root_at_3": true,
+        "reciprocal_rank": 1.0,
+        "noise_precision": 1.0,
+        "noise_recall": 1.0,
+        "noise_f1": 1.0,
+        "noise_ok": true,
+        "noise_true_positive": 1,
+        "noise_false_positive": 0,
+        "noise_false_negative": 0,
+        "noise_true_negative": 3,
+        "predicted_noise_services": [
+          "unrelated-cron"
+        ],
+        "passed": true
+      },
+      "passed": true
     }
   ],
   "errors": [],
@@ -6748,6 +7302,6 @@
     "Absence of a graph edge is not proof of absence of causality.",
     "Episode state is process-local and lost on restart in the runtime worker.",
     "RCA is informational and does not retarget Mandate-22 remediation.",
-    "Labeled sample size for Root@1: 9"
+    "Labeled sample size for Root@1: 11"
   ]
 }
