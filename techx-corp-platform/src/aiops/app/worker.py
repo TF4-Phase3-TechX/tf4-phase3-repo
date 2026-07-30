@@ -722,6 +722,18 @@ class AIOpsWorker:
 
         import time
 
+        started = time.perf_counter()
+        deadline = started + float(self.settings.rca_timeout_seconds)
+        duration_observed = False
+
+        def observe_duration() -> float:
+            nonlocal duration_observed
+            elapsed = time.perf_counter() - started
+            if not duration_observed:
+                rca_duration.observe(elapsed)
+                duration_observed = True
+            return elapsed
+
         shared_evidence: dict[str, list[Evidence]] = {}
         services = sorted(
             {
@@ -749,11 +761,12 @@ class AIOpsWorker:
         try:
             fetch_results = await asyncio.wait_for(
                 asyncio.gather(*(fetch(s) for s in services)),
-                timeout=self.settings.rca_timeout_seconds,
+                timeout=max(0.0, deadline - time.perf_counter()),
             )
         except asyncio.TimeoutError:
             rca_skipped.labels("timeout").inc()
             log.warning(json.dumps({"event": "rca_skipped", "reason": "timeout"}))
+            observe_duration()
             return None, "timeout", shared_evidence
         except Exception as exc:
             rca_skipped.labels("exception").inc()
@@ -766,6 +779,7 @@ class AIOpsWorker:
                     }
                 )
             )
+            observe_duration()
             return None, "exception", shared_evidence
 
         raw_traces: list[dict[str, Any]] = []
@@ -852,6 +866,7 @@ class AIOpsWorker:
             and len(observed_episode_services | failed_trace_services) < 2
         ):
             rca_skipped.labels("single_service").inc()
+            observe_duration()
             return None, "single_service", shared_evidence
         # Overlay episode onsets when present
         for obs in observations:
@@ -862,7 +877,11 @@ class AIOpsWorker:
                 if obs.first_breached_at is None:
                     obs.first_breached_at = onset
 
-        started = time.perf_counter()
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            rca_skipped.labels("timeout").inc()
+            observe_duration()
+            return None, "timeout", shared_evidence
         try:
             result = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -874,10 +893,11 @@ class AIOpsWorker:
                         unavailable_signals=unavailable,
                     ),
                 ),
-                timeout=max(0.05, self.settings.rca_timeout_seconds),
+                timeout=remaining,
             )
         except asyncio.TimeoutError:
             rca_skipped.labels("timeout").inc()
+            observe_duration()
             return None, "timeout", shared_evidence
         except Exception as exc:
             rca_skipped.labels("exception").inc()
@@ -890,10 +910,10 @@ class AIOpsWorker:
                     }
                 )
             )
+            observe_duration()
             return None, "exception", shared_evidence
 
-        elapsed = time.perf_counter() - started
-        rca_duration.observe(elapsed)
+        elapsed = observe_duration()
         rca_candidates_total.inc(len(result.candidates))
         rca_traces_processed.inc(result.trace_count)
         rca_spans_processed.inc(result.span_count)

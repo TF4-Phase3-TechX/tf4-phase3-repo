@@ -130,6 +130,18 @@ class RCAEngine:
             if prov not in provenance:
                 provenance.append(prov)
 
+        trace_available = "trace" not in unavailable and bool(parse.spans)
+        origins = (
+            analyze_trace_origins(
+                parse,
+                clock_skew_tolerance_us=int(
+                    cfg.temporal_tolerance_seconds * 1_000_000
+                ),
+            )
+            if trace_available
+            else {}
+        )
+
         # Candidate universe
         anomalous_services = {o.service for o in observations if o.is_anomalous}
         # Episode observations may represent a service that recovered before its
@@ -155,8 +167,30 @@ class RCAEngine:
         candidate_set |= {s.service for s in parse.spans}
         candidate_set = {s for s in candidate_set if s and s != "unknown"}
         if len(candidate_set) > cfg.max_services:
-            # Prefer anomalous + trace error services
-            priority = sorted(anomalous_services | episode_services | trace_services)
+            # Preserve the strongest trace-derived root boundaries before local
+            # anomalies. Sorting all error services alphabetically can otherwise
+            # discard a trace-only root while retaining its caller-side victims.
+            trace_priority = sorted(
+                trace_services,
+                key=lambda service: (
+                    -(
+                        origins[service].root_like_score
+                        if service in origins
+                        else 0.0
+                    ),
+                    (
+                        origins[service].victim_like_score
+                        if service in origins
+                        else 0.0
+                    ),
+                    service,
+                ),
+            )
+            observed_priority = sorted(
+                (anomalous_services | episode_services | trace_services)
+                - set(trace_priority)
+            )
+            priority = trace_priority + observed_priority
             rest = sorted(candidate_set - set(priority))
             candidate_set = set((priority + rest)[: cfg.max_services])
 
@@ -196,21 +230,6 @@ class RCAEngine:
                 frozenset(anomalous_services)
             ] if anomalous_services else []
             multi_cluster = False
-
-        trace_available = "trace" not in unavailable and bool(parse.spans)
-        origins = (
-            analyze_trace_origins(
-                parse,
-                clock_skew_tolerance_us=int(
-                    cfg.temporal_tolerance_seconds * 1_000_000
-                ),
-            )
-            if parse.spans
-            else {}
-        )
-        if "trace" in unavailable:
-            origins = {}
-            trace_available = False
 
         # Primary affected set for coverage: anomalous services
         affected_list = sorted(anomalous_services) if anomalous_services else sorted(candidate_set)

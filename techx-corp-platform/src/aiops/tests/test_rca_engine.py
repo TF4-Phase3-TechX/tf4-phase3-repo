@@ -143,13 +143,17 @@ def test_trace_only_root_without_local_anomaly():
         _obs("checkout", t0 + timedelta(seconds=5), 0.85),
         _obs("frontend", t0 + timedelta(seconds=10), 0.8),
     ]
-    result = RCAEngine().analyze(
+    result = RCAEngine(RCAEngineConfig(max_services=2)).analyze(
         RCAEngineInput(
             observations=observations,
             traces=parse_normalized_spans(spans),
         )
     )
     assert result.suspected_root_service == "payment"
+    assert {candidate.service for candidate in result.candidates} == {
+        "checkout",
+        "payment",
+    }
     payment = next(c for c in result.candidates if c.service == "payment")
     assert payment.contributions["local_anomaly_support"].available is False
     assert payment.contributions["local_anomaly_support"].raw_value is None

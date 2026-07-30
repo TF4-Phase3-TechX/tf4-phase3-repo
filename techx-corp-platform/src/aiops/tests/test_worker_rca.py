@@ -1,9 +1,11 @@
 import asyncio
+import time
 from dataclasses import replace
 from unittest.mock import AsyncMock
 
 import pytest
 
+import app.worker as worker_module
 from app.config import Settings
 from app.models import Decision, Incident, IncidentStatus
 from app.store import IncidentStore
@@ -261,6 +263,56 @@ async def test_rca_timeout_does_not_block_incident_creation():
     items = await worker.store.list()
     assert items
     assert any("rca_skipped=timeout" in i.suspected_root_cause for i in items)
+
+
+@pytest.mark.asyncio
+async def test_rca_timeout_and_duration_cover_fetch_parse_and_engine(monkeypatch):
+    class SlowTelemetry(EmptyTelemetry):
+        async def find_traces(self, service):
+            await asyncio.sleep(0.04)
+            return []
+
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            rca_enabled=True,
+            rca_timeout_seconds=0.08,
+        ),
+        SlowTelemetry(),
+        DualServiceDetector(),
+        IncidentStore(cooldown_seconds=0),
+        RecordingRemediation(),
+    )
+    original_analyze = worker._rca_engine.analyze
+
+    def slow_analyze(engine_input):
+        time.sleep(0.06)
+        return original_analyze(engine_input)
+
+    durations: list[float] = []
+    monkeypatch.setattr(worker._rca_engine, "analyze", slow_analyze)
+    monkeypatch.setattr(worker_module.rca_duration, "observe", durations.append)
+    decisions = [
+        Decision(
+            anomalous=True,
+            breached=True,
+            incident_type="service_error_rate_spike",
+            service=service,
+            confidence=0.8,
+        )
+        for service in ("checkout", "payment")
+    ]
+
+    wall_started = time.perf_counter()
+    result, reason, _ = await worker._run_cross_service_rca(decisions)
+    wall_elapsed = time.perf_counter() - wall_started
+
+    assert result is None
+    assert reason == "timeout"
+    assert wall_elapsed < 0.12
+    assert len(durations) == 1
+    assert durations[0] >= 0.07
+    assert durations[0] <= wall_elapsed + 0.01
 
 
 @pytest.mark.asyncio
