@@ -3,7 +3,7 @@
 **Ticket:** TF4AIO-80  
 **Prepared:** 2026-07-25  
 **Owner:** Trần Đình Thông  
-**Status:** Implementation, continuous runtime, live incident and healthy-busy negative proven
+**Status:** Implementation, continuous runtime, live anomaly/warning-burn alerts and healthy-busy negative proven
 
 ## Closure checklist
 
@@ -15,6 +15,7 @@
 | Continuous in-cluster workload | [GitOps #118](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/118) and [read-only runtime capture](evidence/continuous-runtime-20260725.md): Deployment `1/1` Ready on exact `c2560b9-aiops` digest, current pod restart `0` | Observed |
 | Real-channel incident summary | Slack FIRING/RESOLVED for `llm/service_availability` | Observed |
 | Busy but healthy does not page | [GitOps #171](https://github.com/TF4-Phase3-TechX/tf4-phase3-gitops-manifests/pull/171) plus machine-readable observations | Observed |
+| Retained live anomaly/burn alerts | [2026-07-30 read-only Prometheus audit](evidence/live-prometheus-audit-20260730.json): latency/error anomalies and checkout `warning_budget_burn` existed in the 7-day window; no `critical_budget_burn` existed in the available 21-day retention | Observed with explicit gap |
 | Locust UI live masking calibration | [2026-07-28 bounded load report](evidence/live-locust-ui-calibration-20260728.md): healthy/noise behavior observed; load-only did not create a subtle checkout incident | Partial; masking gap remains |
 | Masking resistance | External replay case passes; live hidden case remains grading-day evidence | Offline |
 | MTTD before/after | Configuration-derived before and live after are recorded below | Bounded claim |
@@ -82,6 +83,22 @@ Evidence:
 - [Slack FIRING](evidence/live-availability/slack-firing-20260724.png)
 - [Slack RESOLVED](evidence/live-availability/slack-resolved-20260724.png)
 - [Mandate 7b shared runtime chronology](../mandate-07b/MANDATE-07B-EVIDENCE-INDEX.md)
+
+## Retained live anomaly and warning-burn evidence
+
+The read-only production Prometheus audit on 2026-07-30 found retained firing
+alerts for `service_latency_spike` and `service_error_rate_spike`. Checkout's
+maximum retained request-weighted burn rates were `32.465096451196814` over
+5 minutes and `5.64085987263717` over 30 minutes. The detector emitted a
+`warning_budget_burn` checkout alert.
+
+The exact PromQL, sanitized label sets and values are committed in
+[`live-prometheus-audit-20260730.json`](evidence/live-prometheus-audit-20260730.json).
+The complete available 21-day retention query returned no
+`critical_budget_burn` alert. These retained series also cannot establish a
+simultaneous masking case or reconstruct fault-start and delivery chronology.
+They therefore strengthen live anomaly evidence without closing the masking
+or critical high-burn gates.
 
 ## MTTD before / after boundary
 
@@ -183,8 +200,10 @@ evidence.
 ## Claim boundary
 
 The detector is implemented, on trunk, continuously deployed and observed
-creating a real incident summary and on-call notification. The frontend/cart
-healthy-busy negative is observed over two signal-complete observations plus
-one final workload-health snapshot. The current public evidence
-does not yet prove a live masking case, live high-burn escalation, long-run
-production precision/recall or organizer acceptance.
+creating a real incident summary and on-call notification. Retained production
+Prometheus series additionally prove live latency/error anomaly alerts and a
+checkout warning-budget-burn alert. The frontend/cart healthy-busy negative is
+observed over two signal-complete observations plus one final workload-health
+snapshot. The current public evidence does not yet prove a live masking case,
+a critical multi-window high-burn escalation, long-run production
+precision/recall or organizer acceptance.
