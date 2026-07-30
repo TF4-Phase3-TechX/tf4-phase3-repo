@@ -6,3 +6,5 @@ budget_notification_emails = ["ngonguyentruongan2907@gmail.com"]
 karpenter_arm64_spot_zones       = ["us-east-1a"]
 karpenter_arm64_protected_zones  = ["us-east-1a"]
 managed_node_group_arm64_1b_size = 0
+karpenter_general_zones          = ["us-east-1a"]
+karpenter_arm64_canary_zones     = ["us-east-1a"]
