@@ -2,3 +2,4 @@
 *.sh text eol=lf
 docs/aio1/mandate-26/*.json text eol=lf
 docs/aio1/mandate-26/*.jsonl text eol=lf
+docs/aio1/mandate-27/evidence/public-20260730/** text eol=lf

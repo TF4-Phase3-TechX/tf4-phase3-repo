@@ -1,0 +1,57 @@
+{
+  "baseline_sha256": "bcb57b891a331b8be03bf5a8c98ce23e6adbc34c5b3a4b70e2cae61347a9e928",
+  "checksums_sha256": "13083338abb7e812cfc9b244fd21d50d38b1ccd97168c6831b6400eac0e757b1",
+  "claims": {
+    "raw_content_retained": false,
+    "shifted_series_detected": 2,
+    "stable_false_flags": 0
+  },
+  "generated_at_utc": "2026-07-30T13:06:21.719587Z",
+  "git": {
+    "dirty": false,
+    "sha": "de247172c298ce9a2aa94993c1a64adaa71b51d7"
+  },
+  "results": {
+    "seasonal_stable": {
+      "input": "inputs/seasonal-stable.jsonl",
+      "report": "seasonal-stable-report.json",
+      "signals": [],
+      "status": "no_drift"
+    },
+    "shifted_copilot_fallback": {
+      "input": "inputs/shifted-copilot-fallback.jsonl",
+      "report": "shifted-copilot-fallback-report.json",
+      "signals": [
+        {
+          "metric": "fallback_rate",
+          "surface": "copilot"
+        }
+      ],
+      "status": "drift"
+    },
+    "shifted_review_faithfulness": {
+      "input": "inputs/shifted-review-faithfulness.jsonl",
+      "report": "shifted-review-faithfulness-report.json",
+      "signals": [
+        {
+          "metric": "faithfulness",
+          "surface": "review_summary"
+        }
+      ],
+      "status": "drift"
+    },
+    "stable": {
+      "input": "inputs/stable.jsonl",
+      "report": "stable-report.json",
+      "signals": [],
+      "status": "no_drift"
+    },
+    "transient_spike": {
+      "input": "inputs/transient-spike.jsonl",
+      "report": "transient-spike-report.json",
+      "signals": [],
+      "status": "no_drift"
+    }
+  },
+  "schema_version": "mandate27-evidence-v1"
+}

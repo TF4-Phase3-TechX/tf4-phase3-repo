@@ -1,0 +1,75 @@
+groups:
+  - name: ai-model-quality-drift-recording
+    interval: 1m
+    rules:
+      - record: app_ai_quality:requests_30m
+        expr: |
+          sum by (ai_surface, model_id, guardrail_version, scorer_version) (
+            increase(app_ai_quality_events_total{
+              service_name="product-reviews"
+            }[30m])
+          )
+
+      - record: app_ai_quality:fallback_events_30m
+        expr: |
+          (
+            sum by (ai_surface, model_id, guardrail_version, scorer_version) (
+              increase(app_ai_quality_events_total{
+                service_name="product-reviews",
+                quality_outcome="fallback"
+              }[30m])
+            )
+            or on (ai_surface, model_id, guardrail_version, scorer_version)
+            0 * app_ai_quality:requests_30m
+          )
+
+      - record: app_ai_quality:fallback_rate_30m
+        expr: |
+          app_ai_quality:fallback_events_30m
+          /
+          clamp_min(app_ai_quality:requests_30m, 1)
+
+      - record: app_ai_quality:abstention_events_30m
+        expr: |
+          (
+            sum by (ai_surface, model_id, guardrail_version, scorer_version) (
+              increase(app_ai_quality_events_total{
+                service_name="product-reviews",
+                quality_outcome="abstained"
+              }[30m])
+            )
+            or on (ai_surface, model_id, guardrail_version, scorer_version)
+            0 * app_ai_quality:requests_30m
+          )
+
+      - record: app_ai_quality:abstention_rate_30m
+        expr: |
+          app_ai_quality:abstention_events_30m
+          /
+          clamp_min(app_ai_quality:requests_30m, 1)
+
+      - record: app_ai_quality:fallback_rate_baseline_7d
+        expr: |
+          sum_over_time(
+            app_ai_quality:fallback_events_30m[7d:30m] offset 30m
+          )
+          /
+          clamp_min(
+            sum_over_time(
+              app_ai_quality:requests_30m[7d:30m] offset 30m
+            ),
+            1
+          )
+
+      - record: app_ai_quality:abstention_rate_baseline_7d
+        expr: |
+          sum_over_time(
+            app_ai_quality:abstention_events_30m[7d:30m] offset 30m
+          )
+          /
+          clamp_min(
+            sum_over_time(
+              app_ai_quality:requests_30m[7d:30m] offset 30m
+            ),
+            1
+          )
