@@ -1,0 +1,147 @@
+{
+  "compatibility": {
+    "guardrail_version": "3",
+    "model_id": "fixture-model-v1",
+    "scorer_version": "mandate14-v2"
+  },
+  "config": {
+    "confidence_z": 2.576,
+    "metrics": {
+      "abstained": {
+        "direction": "increase",
+        "kind": "binary",
+        "min_delta": 0.15,
+        "signal_name": "abstention_rate"
+      },
+      "faithfulness": {
+        "bin_edges": [
+          0.0,
+          0.2,
+          0.4,
+          0.6,
+          0.8,
+          1.0
+        ],
+        "direction": "decrease",
+        "jsd_threshold": 0.1,
+        "kind": "continuous",
+        "min_delta": 0.1,
+        "signal_name": "faithfulness"
+      },
+      "fallback": {
+        "direction": "increase",
+        "kind": "binary",
+        "min_delta": 0.1,
+        "signal_name": "fallback_rate"
+      }
+    },
+    "min_baseline_samples": 50,
+    "recovery_windows": 3,
+    "required_consecutive": 2,
+    "stride": 10,
+    "window_size": 30
+  },
+  "created_at_utc": "2026-07-30T09:12:25.293278Z",
+  "git": {
+    "dirty": false,
+    "sha": "a935834512b5f4e7ba05e0555a852384ffccfd41"
+  },
+  "input_sha256": "4b7de67f736e1a08e7e12a1d4c37b61ee6ea2a325754d13fb832607a48e3a29f",
+  "schema_version": "mandate27-baseline-v1",
+  "surfaces": {
+    "copilot": {
+      "metrics": {
+        "abstained": {
+          "kind": "binary",
+          "rate": 0.08333333333333333,
+          "ready": true,
+          "sample_count": 120,
+          "unfavorable_count": 10,
+          "wilson_lower": 0.03823766682414083,
+          "wilson_upper": 0.17209607014447065
+        },
+        "faithfulness": {
+          "bin_counts": [
+            0,
+            0,
+            0,
+            0,
+            120
+          ],
+          "bin_edges": [
+            0.0,
+            0.2,
+            0.4,
+            0.6,
+            0.8,
+            1.0
+          ],
+          "kind": "continuous",
+          "maximum": 1.0,
+          "mean": 0.96,
+          "median": 0.96,
+          "minimum": 0.92,
+          "ready": true,
+          "sample_count": 120
+        },
+        "fallback": {
+          "kind": "binary",
+          "rate": 0.025,
+          "ready": true,
+          "sample_count": 120,
+          "unfavorable_count": 3,
+          "wilson_lower": 0.006338130703945115,
+          "wilson_upper": 0.09344232944027198
+        }
+      },
+      "observation_count": 120
+    },
+    "review_summary": {
+      "metrics": {
+        "abstained": {
+          "kind": "binary",
+          "rate": 0.1,
+          "ready": true,
+          "sample_count": 120,
+          "unfavorable_count": 12,
+          "wilson_lower": 0.04915926537743126,
+          "wilson_upper": 0.19276112211243576
+        },
+        "faithfulness": {
+          "bin_counts": [
+            0,
+            0,
+            0,
+            0,
+            120
+          ],
+          "bin_edges": [
+            0.0,
+            0.2,
+            0.4,
+            0.6,
+            0.8,
+            1.0
+          ],
+          "kind": "continuous",
+          "maximum": 1.0,
+          "mean": 0.956,
+          "median": 0.96,
+          "minimum": 0.9,
+          "ready": true,
+          "sample_count": 120
+        },
+        "fallback": {
+          "kind": "binary",
+          "rate": 0.016666666666666666,
+          "ready": true,
+          "sample_count": 120,
+          "unfavorable_count": 2,
+          "wilson_lower": 0.0032606664555345916,
+          "wilson_upper": 0.08072646842805471
+        }
+      },
+      "observation_count": 120
+    }
+  }
+}
