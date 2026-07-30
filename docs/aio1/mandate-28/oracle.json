@@ -1,0 +1,50 @@
+{
+  "evidence_capacity": 64,
+  "expected_concurrent_groups": [
+    "service-a-T130"
+  ],
+  "expected_incidents": [
+    {
+      "continuity": {
+        "from_label": "T0",
+        "hold_alert_state_counts": {
+          "INSUFFICIENT_TRAFFIC": 1,
+          "PRIMARY_TELEMETRY_UNAVAILABLE": 1
+        },
+        "primary_records_per_label": 1,
+        "require_active_lifecycle": true,
+        "require_single_incident_id": true,
+        "require_zero_healthy_streak_on_holds": true,
+        "through_label": "T179"
+      },
+      "expected_incident_count": 1,
+      "final_lifecycle": "ACTIVE_SUSTAINED",
+      "incident_type": "service_latency_spike",
+      "require_evidence_compaction": true,
+      "require_frozen_baseline": true,
+      "require_varying_traffic": true,
+      "service": "service-a"
+    },
+    {
+      "continuity": null,
+      "expected_incident_count": 1,
+      "final_lifecycle": "RESOLVED",
+      "incident_type": "service_error_rate_spike",
+      "require_evidence_compaction": false,
+      "require_frozen_baseline": false,
+      "require_varying_traffic": false,
+      "service": "service-b"
+    }
+  ],
+  "expected_minutes": 210,
+  "expected_services_per_minute": [
+    "service-a",
+    "service-b",
+    "service-c"
+  ],
+  "no_incident_services": [
+    "service-c"
+  ],
+  "restart_at_label": "T90",
+  "schema_version": "mandate28-oracle/v3"
+}
