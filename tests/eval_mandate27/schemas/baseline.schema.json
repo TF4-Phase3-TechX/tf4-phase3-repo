@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techx.example/schemas/mandate27-baseline-v1.json",
+  "title": "Mandate 27 versioned drift baseline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "created_at_utc",
+    "input_sha256",
+    "git",
+    "compatibility",
+    "config",
+    "surfaces"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "mandate27-baseline-v1"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "input_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "dirty"],
+      "properties": {
+        "sha": {"type": "string"},
+        "dirty": {"type": "boolean"}
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "guardrail_version", "scorer_version"],
+      "properties": {
+        "model_id": {"type": ["string", "null"]},
+        "guardrail_version": {"type": ["string", "null"]},
+        "scorer_version": {"type": ["string", "null"]}
+      }
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "window_size",
+        "stride",
+        "required_consecutive",
+        "recovery_windows",
+        "min_baseline_samples",
+        "confidence_z",
+        "metrics"
+      ]
+    },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "review_summary": {"$ref": "#/$defs/surface"},
+        "copilot": {"$ref": "#/$defs/surface"}
+      },
+      "minProperties": 1
+    }
+  },
+  "$defs": {
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_count", "metrics"],
+      "properties": {
+        "observation_count": {"type": "integer", "minimum": 1},
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["kind", "sample_count", "ready"]
+          }
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techx.example/schemas/mandate27-observation-v1.json",
+  "title": "Mandate 27 content-free quality observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "observed_at",
+    "surface",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "mandate27-observation-v1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "surface": {
+      "enum": [
+        "review_summary",
+        "copilot"
+      ]
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "guardrail_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "scorer_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "fallback": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "abstained": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "faithfulness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}
+

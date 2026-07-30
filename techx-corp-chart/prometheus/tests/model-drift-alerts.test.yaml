@@ -1,0 +1,103 @@
+rule_files:
+  - ../model-drift-alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: sustained copilot fallback shift fires after persistence gate
+    interval: 1m
+    input_series:
+      - series: app_ai_quality:requests_30m{ai_surface="copilot"}
+        values: 100x1600
+      - series: app_ai_quality:fallback_rate_30m{ai_surface="copilot"}
+        values: 0.30x1600
+      - series: app_ai_quality:fallback_rate_baseline_7d{ai_surface="copilot"}
+        values: 0.02x1600
+    promql_expr_test:
+      - expr: count_over_time(app_ai_quality:fallback_rate_30m[7d:30m] offset 30m)
+        eval_time: 26h
+        exp_samples:
+          - labels: '{ai_surface="copilot"}'
+            value: 52
+      - expr: |
+          (
+            app_ai_quality:fallback_rate_30m
+            -
+            app_ai_quality:fallback_rate_baseline_7d
+          ) >= 0.10
+          and on (ai_surface)
+          app_ai_quality:requests_30m >= 30
+          and on (ai_surface)
+          count_over_time(
+            app_ai_quality:fallback_rate_30m[7d:30m] offset 30m
+          ) >= 48
+        eval_time: 26h
+        exp_samples:
+          - labels: '{ai_surface="copilot"}'
+            value: 0.27999999999999997
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: AIQualityFallbackDrift
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: aio01
+              component: model-drift
+              metric: fallback_rate
+              ai_surface: copilot
+            exp_annotations:
+              summary: AI fallback-rate drift detected on copilot
+              description: The 30-minute fallback rate remained at least 10 percentage points above its prior seven-day baseline, with sufficient traffic and a 30-minute persistence gate.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md
+
+  - name: stable review-summary quality does not false-fire
+    interval: 1m
+    input_series:
+      - series: app_ai_quality:requests_30m{ai_surface="review_summary"}
+        values: 100x1600
+      - series: app_ai_quality:abstention_rate_30m{ai_surface="review_summary"}
+        values: 0.10x1600
+      - series: app_ai_quality:abstention_rate_baseline_7d{ai_surface="review_summary"}
+        values: 0.10x1600
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: AIQualityAbstentionDrift
+        exp_alerts: []
+
+  - name: low traffic cannot trigger fallback drift
+    interval: 1m
+    input_series:
+      - series: app_ai_quality:requests_30m{ai_surface="copilot"}
+        values: 10x1600
+      - series: app_ai_quality:fallback_rate_30m{ai_surface="copilot"}
+        values: 0.50x1600
+      - series: app_ai_quality:fallback_rate_baseline_7d{ai_surface="copilot"}
+        values: 0.02x1600
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: AIQualityFallbackDrift
+        exp_alerts: []
+
+  - name: sustained review-summary abstention shift names the right metric
+    interval: 1m
+    input_series:
+      - series: app_ai_quality:requests_30m{ai_surface="review_summary"}
+        values: 100x1600
+      - series: app_ai_quality:abstention_rate_30m{ai_surface="review_summary"}
+        values: 0.40x1600
+      - series: app_ai_quality:abstention_rate_baseline_7d{ai_surface="review_summary"}
+        values: 0.10x1600
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: AIQualityAbstentionDrift
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: aio01
+              component: model-drift
+              metric: abstention_rate
+              ai_surface: review_summary
+            exp_annotations:
+              summary: AI abstention-rate drift detected on review_summary
+              description: The 30-minute abstention rate remained at least 15 percentage points above its prior seven-day baseline, with sufficient traffic and a 30-minute persistence gate.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md
