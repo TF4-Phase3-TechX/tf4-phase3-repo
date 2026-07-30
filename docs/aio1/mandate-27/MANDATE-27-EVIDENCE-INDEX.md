@@ -9,6 +9,10 @@ PYTHON_BIN=.eval-venv/bin/python \
 
 ## Required artifacts
 
+The committed hermetic pack is in
+[`evidence/public-20260730/`](./evidence/public-20260730/). Its manifest is
+bound to clean implementation commit `38035087b8b169b42fc6216b09fb5de0323af985`.
+
 - `manifest.json`: Git state, claims and case-to-report map.
 - `baseline.json`: versioned distribution, thresholds and compatibility.
 - `inputs/stable.jsonl`: stable negative control.
@@ -38,4 +42,3 @@ evidence. Runtime completion additionally requires:
 | Seasonal stable | no signal |
 | Copilot fallback shift | `copilot/fallback_rate` after shift |
 | Review faithfulness shift | `review_summary/faithfulness` after shift |
-

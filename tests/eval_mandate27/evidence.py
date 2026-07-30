@@ -85,6 +85,9 @@ def build_evidence(output_dir: Path) -> dict:
     pytest_path = output_dir / "pytest.txt"
     if pytest_path.exists():
         artifact_paths.append(pytest_path)
+    verification_path = output_dir / "VERIFICATION.md"
+    if verification_path.exists():
+        artifact_paths.append(verification_path)
     checksums_path = output_dir / "checksums.sha256"
     checksums_path.write_text(
         "".join(

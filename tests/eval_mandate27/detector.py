@@ -289,7 +289,9 @@ def detect(
                             "absolute_delta": result["absolute_delta"],
                             "threshold": result["threshold"],
                             "consecutive_breaches": consecutive,
-                            "first_affected_event_id": first_breach_row["event_id"],
+                            "first_breach_window_event_id": first_breach_row[
+                                "event_id"
+                            ],
                         }
                     )
                     signal_emitted = True

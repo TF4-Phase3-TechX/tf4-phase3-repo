@@ -65,7 +65,7 @@
           "absolute_delta",
           "threshold",
           "consecutive_breaches",
-          "first_affected_event_id"
+          "first_breach_window_event_id"
         ]
       }
     },
@@ -77,4 +77,3 @@
     }
   }
 }
-
