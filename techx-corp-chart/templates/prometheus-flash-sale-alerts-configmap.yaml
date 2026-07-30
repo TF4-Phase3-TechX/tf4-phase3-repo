@@ -13,4 +13,8 @@ data:
 {{ .Files.Get "prometheus/flash-sale-alerts.yaml" | indent 4 }}
   aiops-alerts.yaml: |-
 {{ .Files.Get "prometheus/aiops-alerts.yaml" | indent 4 }}
+  model-drift-alerts.yaml: |-
+{{ .Files.Get "prometheus/model-drift-alerts.yaml" | indent 4 }}
+  model-drift-recording-rules.yaml: |-
+{{ .Files.Get "prometheus/model-drift-recording-rules.yaml" | indent 4 }}
 {{- end }}
