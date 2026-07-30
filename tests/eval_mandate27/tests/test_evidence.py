@@ -27,3 +27,5 @@ def test_evidence_checksums_cover_verification_record(tmp_path):
             (tmp_path / relative_path).read_bytes()
         ).hexdigest() == expected
     assert verify_evidence(tmp_path) == len(checksum_lines)
+    assert b"\r\n" not in (tmp_path / "commands.txt").read_bytes()
+    assert b"\r\n" not in checksums_path.read_bytes()

@@ -32,6 +32,11 @@ def _checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _write_lf(path: Path, content: str) -> None:
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content)
+
+
 def build_evidence(output_dir: Path) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     fixture_dir = output_dir / "inputs"
@@ -63,7 +68,8 @@ def build_evidence(output_dir: Path) -> dict:
         }
 
     commands_path = output_dir / "commands.txt"
-    commands_path.write_text(
+    _write_lf(
+        commands_path,
         "\n".join(
             [
                 "python -m tests.eval_mandate27.generate_fixtures --output-dir INPUT_DIR",
@@ -73,7 +79,6 @@ def build_evidence(output_dir: Path) -> dict:
             ]
         )
         + "\n",
-        encoding="utf-8",
     )
 
     artifact_paths = [
@@ -89,12 +94,12 @@ def build_evidence(output_dir: Path) -> dict:
     if verification_path.exists():
         artifact_paths.append(verification_path)
     checksums_path = output_dir / "checksums.sha256"
-    checksums_path.write_text(
+    _write_lf(
+        checksums_path,
         "".join(
             f"{_checksum(path)}  {path.relative_to(output_dir)}\n"
             for path in artifact_paths
         ),
-        encoding="utf-8",
     )
     manifest = {
         "schema_version": "mandate27-evidence-v1",
