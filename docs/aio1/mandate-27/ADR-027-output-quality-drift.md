@@ -1,0 +1,65 @@
+# ADR-027: Content-free output-quality drift detection
+
+- Status: Accepted for implementation
+- Date: 2026-07-30
+- Owner: AIO1
+- Scope: Product review summary and Shopping Copilot
+
+## Context
+
+Mandate 27 requires a normal baseline, a signal that names the drifting
+surface/metric/time, an external replay entry, and evidence that ordinary
+variation does not cause false alarms.
+
+The production path already emits bounded model outcome metadata and Mandate 14
+provides a deterministic scorer. Online prompt/response capture is disabled and
+must remain disabled.
+
+## Decision
+
+Use output-quality drift rather than embedding drift:
+
+- online proxies: fallback and abstention rates;
+- controlled evaluation metric: Mandate 14 faithfulness;
+- canonical surfaces: `review_summary` and `copilot`;
+- no raw prompt, response, identity or source content in the drift contract.
+
+Binary rates use a one-sided 99% Wilson interval plus a minimum adverse delta.
+A material faithfulness mean drop is sufficient to breach; fixed-bin
+Jensen-Shannon divergence is retained as a distribution diagnostic and cannot
+veto the declared mean threshold. A signal requires two breached rolling
+windows separated by at least 10 minutes, and every 30-sample window must span
+at least 29 minutes. Missing expected surfaces/metrics, low sample counts and
+version mismatches fail closed rather than claiming no drift.
+
+The external JSONL replay is the reproducible source of truth. Prometheus
+recording/alert rules provide an operational companion using the same bounded
+outcome metric, model/guardrail/scorer identity labels, a 30-request gate, at
+least 336 half-hour observations for the seven-day historical baseline, a
+traffic-weighted event baseline, and 30-minute persistence.
+
+## Consequences
+
+- Detection adds no Bedrock calls and negligible counter overhead.
+- The system can name the exact surface and quality proxy without retaining
+  customer content.
+- Fallback drift may be caused by provider reliability rather than semantic
+  degradation; the signal intentionally names the proxy and the runbook
+  requires correlation before intervention.
+- Faithfulness is available from controlled M14 evaluation, not every live
+  request.
+- A deliberate model, guardrail or scorer change requires a reviewed external
+  baseline refresh; the external detector never silently learns an active drift
+  into normality.
+- The Prometheus companion is a rolling seven-day advisory, not the immutable
+  source of truth. It can absorb a shift that persists beyond that horizon.
+  Incidents therefore preserve the alert-start snapshot and run the external
+  frozen-baseline replay before any quality-closure claim.
+
+## Rejected alternatives
+
+- Online embeddings: additional cost, latency and content-processing risk.
+- LLM-as-judge on every request: non-deterministic, expensive and susceptible
+  to judge drift.
+- A single fixed rate threshold without minimum samples/persistence: too prone
+  to false alarms during low traffic and transient provider failures.

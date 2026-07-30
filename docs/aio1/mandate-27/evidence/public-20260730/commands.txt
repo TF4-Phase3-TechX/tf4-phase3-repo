@@ -1,0 +1,4 @@
+python -m tests.eval_mandate27.generate_fixtures --output-dir INPUT_DIR
+python -m tests.eval_mandate27.baseline INPUT_DIR/baseline.jsonl --output baseline.json
+python -m tests.eval_mandate27.replay SERIES.jsonl --baseline baseline.json --output report.json
+python -m pytest -q tests/eval_mandate27/tests

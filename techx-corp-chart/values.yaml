@@ -1398,6 +1398,8 @@ components:
         value: SET_BY_CDO
       - name: BEDROCK_GUARDRAIL_VERSION
         value: "1"
+      - name: AI_QUALITY_SCORER_VERSION
+        value: mandate27-outcome-v1
       - name: BEDROCK_OUTPUT_MODE
         value: tool
       - name: BEDROCK_DEADLINE_SECONDS

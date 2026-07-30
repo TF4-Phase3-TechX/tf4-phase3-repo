@@ -3,6 +3,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 
 def llm_metric_identity(service_name, operation="ask_product_ai_assistant"):
     """Low-cardinality labels required for per-caller AIOps attribution."""
@@ -11,6 +13,58 @@ def llm_metric_identity(service_name, operation="ask_product_ai_assistant"):
         "service.name": service_name,
         "llm.operation": operation,
     }
+
+
+def canonical_quality_outcome(outcome):
+    """Collapse unbounded route outcomes into a drift-safe label set."""
+
+    normalized = str(outcome or "").strip().lower()
+    if normalized in {
+        "answered",
+        "success",
+        "action_confirmation_required",
+        "applied",
+    }:
+        return "answered"
+    if normalized in {
+        "abstained",
+        "clarification_required",
+        "insufficient",
+        "insufficient_evidence",
+        "no_match",
+    }:
+        return "abstained"
+    if normalized in {
+        "error",
+        "fallback",
+        "provider_unavailable",
+        "transport_error",
+        "unavailable",
+        "degraded",
+    }:
+        return "fallback"
+    if normalized in {"blocked", "guardrail_blocked", "out_of_scope", "refused"}:
+        return "blocked"
+    return "other"
+
+
+def quality_metric_attributes(surface, outcome):
+    """Return bounded, version-bound labels for online quality drift."""
+
+    if surface not in {"review_summary", "copilot"}:
+        raise ValueError(f"unsupported quality surface: {surface}")
+    return {
+        "ai.surface": surface,
+        "quality.outcome": canonical_quality_outcome(outcome),
+        "model.id": os.getenv("BEDROCK_MODEL_ID", "unconfigured"),
+        "guardrail.version": os.getenv(
+            "BEDROCK_GUARDRAIL_VERSION", "unconfigured"
+        ),
+        "scorer.version": os.getenv(
+            "AI_QUALITY_SCORER_VERSION", "mandate27-outcome-v1"
+        ),
+    }
+
 
 def init_metrics(meter):
 
@@ -26,6 +80,11 @@ def init_metrics(meter):
 
     app_ai_fallback_counter = meter.create_counter(
         'app_ai_fallback_counter', unit='fallbacks', description="Counts safe blocked and unavailable responses"
+    )
+    app_ai_quality_event_counter = meter.create_counter(
+        'app_ai_quality_events_total',
+        unit='events',
+        description="Content-free AI request outcomes for model-quality drift detection",
     )
     # Keep the metric contract introduced by PR #131 so existing PromQL and
     # dashboards continue to work after the provider moves to Bedrock.
@@ -88,6 +147,7 @@ def init_metrics(meter):
         "app_product_review_counter": app_product_review_counter,
         "app_ai_assistant_counter": app_ai_assistant_counter,
         "app_ai_fallback_counter": app_ai_fallback_counter,
+        "app_ai_quality_event_counter": app_ai_quality_event_counter,
         "app_llm_prompt_tokens_counter": app_llm_prompt_tokens_counter,
         "app_llm_completion_tokens_counter": app_llm_completion_tokens_counter,
         "app_llm_latency_histogram": app_llm_latency_histogram,

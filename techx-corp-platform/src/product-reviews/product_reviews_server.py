@@ -30,7 +30,7 @@ from bedrock_adapter import ProviderFailure
 from database import fetch_avg_product_review_score_from_db, fetch_product_reviews_from_db
 import demo_pb2
 import demo_pb2_grpc
-from metrics import init_metrics, llm_metric_identity
+from metrics import init_metrics, llm_metric_identity, quality_metric_attributes
 from llm_observability import (
     annotate_request,
     validate_observability_configuration,
@@ -49,6 +49,15 @@ cart_stub = None
 assistant = None
 
 SEARCH_UNAVAILABLE_RESPONSE = "I can only help you search for products in our catalog."
+
+
+def _record_quality_event(surface: str, outcome: str) -> None:
+    """Record one final request outcome without retaining request content."""
+    if not product_review_svc_metrics:
+        return
+    counter = product_review_svc_metrics.get("app_ai_quality_event_counter")
+    if counter:
+        counter.add(1, quality_metric_attributes(surface, outcome))
 
 
 def must_map_env(key: str) -> str:
@@ -180,6 +189,7 @@ def get_ai_assistant_response(request_product_id: str, question: str, session_id
         span.set_attribute("app.ai.outcome", outcome.outcome)
         span.set_attribute("app.ai.guardrail.version", assistant.provider.guardrail_version)
         product_review_svc_metrics["app_ai_assistant_counter"].add(1, attributes)
+        _record_quality_event("review_summary", outcome.outcome)
         if outcome.provider_attempted:
             product_review_svc_metrics["app_llm_call_counter"].add(1, attributes)
             product_review_svc_metrics["app_llm_latency_histogram"].record(outcome.latency_ms / 1_000, attributes)
@@ -334,6 +344,7 @@ def search_products_ai(query: str, session_id: str = "", user_id: str = "guest")
         fetch_reviews=fetch_product_reviews_from_db,
         audit_callback=audit_callback,
     )
+    _record_quality_event("copilot", response.outcome)
     if product_review_svc_metrics:
         cache_attributes = {
             "ai.surface": "copilot_review",
