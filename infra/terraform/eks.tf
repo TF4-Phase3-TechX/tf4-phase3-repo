@@ -108,9 +108,9 @@ module "eks" {
     general_arm64_1b = {
       name         = "techx-general-arm64-1b"
       subnet_ids   = [module.vpc.private_subnets[1]]
-      min_size     = 1
+      min_size     = var.managed_node_group_arm64_1b_size
       max_size     = 2
-      desired_size = 1
+      desired_size = var.managed_node_group_arm64_1b_size
 
       instance_types = ["t4g.large"]
       ami_type       = "AL2023_ARM_64_STANDARD"

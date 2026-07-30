@@ -40,6 +40,10 @@ class IncidentStore:
                 existing.confidence = candidate.confidence
                 existing.suspected_root_cause = candidate.suspected_root_cause
                 existing.rca_candidates = candidate.rca_candidates
+                # RCA is a point-in-time enrichment. Clear stale attribution when
+                # the latest observation abstains or RCA is unavailable.
+                existing.suspected_root_service = candidate.suspected_root_service
+                existing.rca_result = candidate.rca_result
                 current_routing = {
                     "severity": existing.severity,
                     "impact": existing.impact.get("level", "not_assessed"),

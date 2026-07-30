@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .detection import span_matchers
+
 
 def target_error_rate_query(service: str, namespace: str, window: str) -> str:
     """Build the post-action error-rate guard for the mutated service.
@@ -11,10 +13,10 @@ def target_error_rate_query(service: str, namespace: str, window: str) -> str:
     dependency mapping; it must not be silently applied to every remediation.
     """
 
-    matchers = (
-        f'service_name="{service}",'
-        'span_kind="SPAN_KIND_SERVER",'
-        f'k8s_namespace_name="{namespace}"'
+    matchers = span_matchers(
+        service,
+        namespace=namespace,
+        include_operation=True,
     )
     # The span-metrics connector may omit STATUS_CODE_ERROR entirely when the
     # target produced no error spans.  That is a measured zero-error numerator,
@@ -31,10 +33,10 @@ def target_error_rate_query(service: str, namespace: str, window: str) -> str:
 def target_request_count_query(service: str, namespace: str, window: str) -> str:
     """Request volume for the mutated service over the verification window."""
 
-    matchers = (
-        f'service_name="{service}",'
-        'span_kind="SPAN_KIND_SERVER",'
-        f'k8s_namespace_name="{namespace}"'
+    matchers = span_matchers(
+        service,
+        namespace=namespace,
+        include_operation=True,
     )
     return (
         f"sum(increase(traces_span_metrics_calls_total{{{matchers}}}[{window}]))"

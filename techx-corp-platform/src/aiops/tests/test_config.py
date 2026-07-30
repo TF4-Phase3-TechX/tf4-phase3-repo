@@ -76,6 +76,24 @@ def test_generic_signal_services_are_configured_separately(monkeypatch):
     assert "llm" not in settings.generic_signal_services
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("rca_timeout_seconds", float("nan")),
+        ("rca_timeout_seconds", float("inf")),
+        ("rca_analysis_window_seconds", float("nan")),
+        ("rca_analysis_window_seconds", float("inf")),
+        ("rca_temporal_tolerance_seconds", float("nan")),
+        ("rca_temporal_tolerance_seconds", float("inf")),
+    ],
+)
+def test_non_finite_rca_runtime_settings_fail_at_startup(field, value):
+    values = Settings().__dict__ | {field: value}
+
+    with pytest.raises(ValueError, match="must be finite"):
+        Settings(**values)
+
+
 def test_live_autonomous_mode_requires_durable_saga_backend():
     values = Settings().__dict__ | {
         "remediation_mode": "live",

@@ -145,3 +145,70 @@ variable "valkey_transit_encryption_mode" {
     error_message = "valkey_transit_encryption_mode must be preferred or required."
   }
 }
+
+variable "karpenter_arm64_spot_zones" {
+  description = "Allowed AZs for the arm64 Spot NodePool. Keep default empty for normal multi-AZ operation; set temporarily during REL-35 AZ-loss drill to block Spot replacement in the target AZ."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for zone in var.karpenter_arm64_spot_zones :
+      can(regex("^[a-z]{2}-[a-z]+-[0-9][a-z]$", zone))
+    ])
+    error_message = "karpenter_arm64_spot_zones entries must be full AZ names, for example us-east-1a."
+  }
+}
+
+variable "karpenter_arm64_protected_zones" {
+  description = "Allowed AZs for the arm64 protected On-Demand NodePool. Keep default empty for normal protected capacity in us-east-1b; set temporarily during REL-35 AZ-loss drill to block replacement in the target AZ."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for zone in var.karpenter_arm64_protected_zones :
+      can(regex("^[a-z]{2}-[a-z]+-[0-9][a-z]$", zone))
+    ])
+    error_message = "karpenter_arm64_protected_zones entries must be full AZ names, for example us-east-1a."
+  }
+}
+
+variable "managed_node_group_arm64_1b_size" {
+  description = "Desired/min size for the managed arm64 node group in us-east-1b. Set to 0 only during REL-35 AZ-loss drill to prevent managed-node replacement in the target AZ."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = contains([0, 1], var.managed_node_group_arm64_1b_size)
+    error_message = "managed_node_group_arm64_1b_size must be 0 for REL-35 drill isolation or 1 for normal operation."
+  }
+}
+
+variable "karpenter_general_zones" {
+  description = "Allowed AZs for the general amd64 On-Demand NodePool. Keep default empty for normal multi-AZ operation; set temporarily during REL-35 AZ-loss drill to block replacement in the target AZ."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for zone in var.karpenter_general_zones :
+      can(regex("^[a-z]{2}-[a-z]+-[0-9][a-z]$", zone))
+    ])
+    error_message = "karpenter_general_zones entries must be full AZ names, for example us-east-1a."
+  }
+}
+
+variable "karpenter_arm64_canary_zones" {
+  description = "Allowed AZs for the arm64 canary On-Demand NodePool. Keep default empty for normal multi-AZ operation; set temporarily during REL-35 AZ-loss drill to block replacement in the target AZ."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for zone in var.karpenter_arm64_canary_zones :
+      can(regex("^[a-z]{2}-[a-z]+-[0-9][a-z]$", zone))
+    ])
+    error_message = "karpenter_arm64_canary_zones entries must be full AZ names, for example us-east-1a."
+  }
+}
