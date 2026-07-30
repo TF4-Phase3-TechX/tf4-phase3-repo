@@ -39,9 +39,9 @@ Values recorded by the independent verification rerun:
 
 | Item | Value |
 |---|---|
-| Input SHA-256 | `c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667` |
-| Report SHA-256 | `1adec1b95a552612f718b74b9b9c7750d1db06e003f119074c89ed10fbc14ad0` |
-| Reviewed code Git revision embedded in report | `f39697f9e426370f28ac59549c8eeb59211b93d3` |
+| Input SHA-256 | `bbdba8b16e51c44fb4eeacfa7697e9790bfcc6fbe34ab3a9a14b9e898babbcb3` |
+| Report SHA-256 | `63cc68a4905ab6eedea319a7c0a4191b568509b5085f8215b0bccb5412eeefd2` |
+| Reviewed code Git revision embedded in report | `27363cdc6306bb6ba9e94ad0d875fbf1b2d15f04` |
 | Model version | `m26-v1` |
 
 The report embeds `git_revision`, `input_sha256`, and per-case rankings. The
@@ -59,14 +59,14 @@ Windows and Unix checkouts.
 
 From `rca-replay-report-v1.json`:
 
-- cases: 8 labeled, 8 passed, 0 failed  
+- cases: 11 labeled, 11 passed, 0 failed
 - Root@1: **1.0**  
 - Root@3: **1.0**  
 - MRR: **1.0**  
 - noise precision / recall / F1: **1.0 / 1.0 / 1.0**
 - false noise-rejection rate: **0.0**
-- processing p50 / p95: **1.4395 / 3.4886 ms** (review workstation, pure engine)
-- attribution coverage: 0.875 (one intentional multi-cluster abstention)
+- processing p50 / p95: **1.496 / 2.5005 ms** (review workstation, pure engine)
+- attribution coverage: 0.818182 (two intentional multi-cluster abstentions)
 
 ### Scenario coverage
 
@@ -80,6 +80,9 @@ From `rca-replay-report-v1.json`:
 | `missing-trace-topology-temporal-fallback` | Jaeger unavailable | root=`payment`, trace unavailable |
 | `multiple-independent-clusters` | abstention | status=`multiple_independent_clusters` |
 | `cycle-and-retry` | cycles + retries | root=`svc-b` |
+| `payment-cascade-with-two-independent-noises` | one cascade + two disconnected high-confidence anomalies | root=`payment`, noise=`rogue-ads,batch-indexer` |
+| `trace-only-root-beats-earlier-high-confidence-noise` | trace root vs earlier stronger local noise | root=`payment`, noise=`rogue-ads` |
+| `two-traced-cascades-must-abstain` | two independently traced cascades | status=`multiple_independent_clusters` |
 
 ## Tests
 
@@ -101,8 +104,9 @@ py -3 -m pytest `
 ```
 
 Independent verification additionally ran the committed replay, the full AIOps
-suite (**222 passed, 1 skipped**), focused regressions for trace-root candidate
-caps and the end-to-end RCA timeout/latency metric, and `git diff --check`.
+suite (**232 passed, 1 skipped**), focused regressions for incident-scoped
+attribution, exact noise acceptance, bounded/non-overlapping RCA execution,
+Jaeger timeout evidence, series caps, finite settings, and `git diff --check`.
 The named reviewer must still rerun the command before changing
 `REVIEWER-VERDICT.md` from `Pending`.
 
@@ -111,7 +115,9 @@ The named reviewer must still rerun the command before changing
 - **flagd:** not imported or modified by M26 modules.  
 - **Remediation:** `Incident.affected_service` remains the detector service; worker tests assert remediation targets stay on original services.  
 - **Mandate 15 schema:** `benchmark/replay.py` schema v1 unchanged; M26 uses `schema_name=techx.aiops.rca`.  
-- **SLO:** RCA has dedicated timeout/caps; failure skips enrichment only.
+- **SLO:** RCA has a dedicated single-worker executor, rejects overlapping
+  analyses after timeout, and caps services, traces, spans, and replay series;
+  failure skips enrichment only.
 
 ## Known limitations
 
