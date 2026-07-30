@@ -99,3 +99,13 @@ replicas; its two Service endpoints remained the original deployment pods.
 - `runner.log`: immutable stdout from the accepted runner.
 - `prepare-shadow_pods.ps1`, `launch_runner.ps1`,
   `run_matched_overhead.py`: reproducible capture tooling.
+
+Verify the complete pack from any Windows or Linux checkout:
+
+```bash
+python docs/aio1/mandate-24/runtime-20260730-matched/verify_artifacts.py
+```
+
+`artifact-sha256.txt` hashes canonical text bytes with CRLF normalized to LF.
+This removes Git checkout line-ending variance only; BOMs and all other bytes
+remain hash-bound.
