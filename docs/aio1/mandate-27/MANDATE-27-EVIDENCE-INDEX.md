@@ -22,6 +22,14 @@ the exact clean implementation commit.
 - `inputs/shifted-review-faithfulness.jsonl`: review-only quality shift.
 - matching `*-report.json` files.
 - `checksums.sha256` and `commands.txt`.
+- `POK-DEFENSE.md`: ownership, design, trade-offs and counterexample map.
+
+Verify the committed pack on Linux or Windows:
+
+```bash
+python -m tests.eval_mandate27.verify_evidence \
+  docs/aio1/mandate-27/evidence/public-20260730
+```
 
 Synthetic replay proves detector behavior; it is not production-quality
 evidence. Runtime completion additionally requires:

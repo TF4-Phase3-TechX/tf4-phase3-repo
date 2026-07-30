@@ -1,6 +1,7 @@
 import hashlib
 
 from tests.eval_mandate27.evidence import build_evidence
+from tests.eval_mandate27.verify_evidence import verify_evidence
 
 
 def test_evidence_checksums_cover_verification_record(tmp_path):
@@ -25,3 +26,4 @@ def test_evidence_checksums_cover_verification_record(tmp_path):
         assert hashlib.sha256(
             (tmp_path / relative_path).read_bytes()
         ).hexdigest() == expected
+    assert verify_evidence(tmp_path) == len(checksum_lines)

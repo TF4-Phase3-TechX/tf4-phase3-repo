@@ -4,6 +4,7 @@
 
 - `AIQualityFallbackDrift`
 - `AIQualityAbstentionDrift`
+- `AIQualityVersionMetadataMissing`
 - a `mandate27-drift-signal-v1` replay result
 
 The signal is warning-only. Do not automatically retrain, change models,
@@ -12,8 +13,9 @@ disable safety controls or modify flagd.
 ## Triage
 
 1. Record alert start time, `ai_surface`, metric and current/baseline values.
-2. Confirm `app_ai_quality:requests_30m >= 30`; treat missing telemetry as
-   coverage degradation, not healthy quality.
+2. Confirm `app_ai_quality:requests_30m >= 30` and that `model_id`,
+   `guardrail_version`, and `scorer_version` are configured; treat missing
+   telemetry or identity as coverage degradation, not healthy quality.
 3. Check whether model ID, guardrail, prompt/scorer contract or deployment
    revision changed after the baseline.
 4. For fallback drift, correlate provider errors, throttling, circuit state and
@@ -30,6 +32,9 @@ disable safety controls or modify flagd.
 
 7. Escalate only when two independent windows or the deterministic replay
    confirm the same surface/metric.
+8. Preserve the alert-start rates and version labels. The online seven-day
+   companion is rolling and may absorb a shift after seven days; it must not be
+   used alone to close a long-lived incident.
 
 ## Mitigation
 
@@ -51,3 +56,6 @@ timestamp and rerun both stable and shifted controls.
 Rebuild a baseline only after an intentional approved change. Record Git SHA,
 model ID, guardrail version, scorer version, dataset hash, sample count and
 baseline checksum.
+
+If a surface or baseline-bound metric disappears, stop with
+`baseline_insufficient`; never translate absent observations to `no_drift`.

@@ -46,7 +46,16 @@ def test_quality_event_uses_only_canonical_surface_and_outcome(monkeypatch):
 
     assert quality_counter.calls == [
         (
-            (1, {"ai.surface": "copilot", "quality.outcome": "fallback"}),
+            (
+                1,
+                {
+                    "ai.surface": "copilot",
+                    "quality.outcome": "fallback",
+                    "model.id": "unconfigured",
+                    "guardrail.version": "unconfigured",
+                    "scorer.version": "mandate27-outcome-v1",
+                },
+            ),
             {},
         )
     ]

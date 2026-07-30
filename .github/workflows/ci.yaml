@@ -214,6 +214,11 @@ jobs:
           tests/eval_mandate27
           -q
 
+      - name: Verify committed Mandate 27 evidence
+        run: >-
+          python -m tests.eval_mandate27.verify_evidence
+          docs/aio1/mandate-27/evidence/public-20260730
+
   load-generator-test:
     name: Load generator safety suite
     runs-on: ubuntu-latest

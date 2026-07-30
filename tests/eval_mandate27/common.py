@@ -37,18 +37,17 @@ def parse_timestamp(value: str) -> datetime:
 
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
+            + "\n"
+        )
 
 
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        "".join(canonical_json(row) + "\n" for row in rows),
-        encoding="utf-8",
-    )
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write("".join(canonical_json(row) + "\n" for row in rows))
 
 
 def git_metadata(repo: Path | None = None) -> dict[str, Any]:

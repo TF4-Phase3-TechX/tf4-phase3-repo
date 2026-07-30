@@ -44,3 +44,17 @@ tests:
         exp_samples:
           - labels: app_ai_quality:abstention_rate_30m{ai_surface="review_summary"}
             value: 0
+
+  - name: seven day baseline is weighted by request volume
+    interval: 1m
+    input_series:
+      - series: app_ai_quality_events_total{service_name="product-reviews",quality_outcome="answered",ai_surface="copilot",model_id="model-v1",guardrail_version="3",scorer_version="outcome-v1"}
+        values: 0+990x5040 4989610+5x5100
+      - series: app_ai_quality_events_total{service_name="product-reviews",quality_outcome="fallback",ai_surface="copilot",model_id="model-v1",guardrail_version="3",scorer_version="outcome-v1"}
+        values: 0+10x5040 50405+5x5100
+    promql_expr_test:
+      - expr: app_ai_quality:fallback_rate_baseline_7d
+        eval_time: 169h
+        exp_samples:
+          - labels: app_ai_quality:fallback_rate_baseline_7d{ai_surface="copilot",model_id="model-v1",guardrail_version="3",scorer_version="outcome-v1"}
+            value: 0.014909004683146598

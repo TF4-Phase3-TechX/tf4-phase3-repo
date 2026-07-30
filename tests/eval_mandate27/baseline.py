@@ -17,6 +17,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "window_size": 30,
     "stride": 10,
     "required_consecutive": 2,
+    "minimum_window_span_seconds": 1740,
+    "minimum_persistence_seconds": 600,
     "recovery_windows": 3,
     "min_baseline_samples": 50,
     "confidence_z": 2.576,

@@ -50,6 +50,8 @@
         "window_size",
         "stride",
         "required_consecutive",
+        "minimum_window_span_seconds",
+        "minimum_persistence_seconds",
         "recovery_windows",
         "min_baseline_samples",
         "confidence_z",

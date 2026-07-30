@@ -101,3 +101,26 @@ tests:
               summary: AI abstention-rate drift detected on review_summary
               description: The 30-minute abstention rate remained at least 15 percentage points above its prior seven-day baseline, with sufficient traffic and a 30-minute persistence gate.
               runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md
+
+  - name: missing runtime identity fails closed
+    interval: 1m
+    input_series:
+      - series: app_ai_quality:requests_30m{ai_surface="copilot",model_id="unconfigured",guardrail_version="3",scorer_version="outcome-v1"}
+        values: 100x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: AIQualityVersionMetadataMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: aio01
+              component: model-drift
+              metric: telemetry_coverage
+              ai_surface: copilot
+              model_id: unconfigured
+              guardrail_version: "3"
+              scorer_version: outcome-v1
+            exp_annotations:
+              summary: AI quality telemetry is missing version identity on copilot
+              description: Model-quality drift is fail-closed because model, guardrail, or scorer version metadata is unconfigured.
+              runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md

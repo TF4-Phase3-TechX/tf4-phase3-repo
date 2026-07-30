@@ -3,6 +3,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 
 def llm_metric_identity(service_name, operation="ask_product_ai_assistant"):
     """Low-cardinality labels required for per-caller AIOps attribution."""
@@ -38,6 +40,7 @@ def canonical_quality_outcome(outcome):
         "provider_unavailable",
         "transport_error",
         "unavailable",
+        "degraded",
     }:
         return "fallback"
     if normalized in {"blocked", "guardrail_blocked", "out_of_scope", "refused"}:
@@ -46,13 +49,20 @@ def canonical_quality_outcome(outcome):
 
 
 def quality_metric_attributes(surface, outcome):
-    """Return the only labels accepted by the online quality-drift metric."""
+    """Return bounded, version-bound labels for online quality drift."""
 
     if surface not in {"review_summary", "copilot"}:
         raise ValueError(f"unsupported quality surface: {surface}")
     return {
         "ai.surface": surface,
         "quality.outcome": canonical_quality_outcome(outcome),
+        "model.id": os.getenv("BEDROCK_MODEL_ID", "unconfigured"),
+        "guardrail.version": os.getenv(
+            "BEDROCK_GUARDRAIL_VERSION", "unconfigured"
+        ),
+        "scorer.version": os.getenv(
+            "AI_QUALITY_SCORER_VERSION", "mandate27-outcome-v1"
+        ),
     }
 
 

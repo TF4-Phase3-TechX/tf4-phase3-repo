@@ -140,6 +140,94 @@ def test_missing_compatibility_metadata_fails_closed():
     )
 
 
+def test_missing_expected_surface_fails_closed():
+    observations = [
+        row
+        for row in build_series("stable")
+        if row["surface"] == "review_summary"
+    ]
+
+    report = detect(
+        observations,
+        baseline(),
+        generated_at_utc="2026-07-30T03:00:00Z",
+        git={"sha": "candidate", "dirty": False},
+    )
+
+    assert report["status"] == "baseline_insufficient"
+    assert report["signals"] == []
+    assert any(
+        diagnostic["code"] == "current_surface_missing"
+        and diagnostic["surface"] == "copilot"
+        for diagnostic in report["diagnostics"]
+    )
+
+
+def test_missing_expected_metric_fails_closed():
+    observations = build_series("stable")
+    for row in observations:
+        if row["surface"] == "copilot":
+            row["metrics"].pop("fallback", None)
+
+    report = detect(
+        observations,
+        baseline(),
+        generated_at_utc="2026-07-30T03:00:00Z",
+        git={"sha": "candidate", "dirty": False},
+    )
+
+    assert report["status"] == "baseline_insufficient"
+    assert report["signals"] == []
+    assert any(
+        diagnostic["code"] == "current_metric_missing"
+        and diagnostic["surface"] == "copilot"
+        and diagnostic["metric"] == "fallback_rate"
+        for diagnostic in report["diagnostics"]
+    )
+
+
+def test_material_mean_drop_is_not_hidden_by_coarse_histogram_bin():
+    observations = build_series("stable")
+    for row in observations:
+        if row["surface"] == "review_summary":
+            row["metrics"]["faithfulness"] = 0.84
+
+    report = detect(
+        observations,
+        baseline(),
+        generated_at_utc="2026-07-30T03:00:00Z",
+        git={"sha": "candidate", "dirty": False},
+    )
+
+    signal = next(
+        signal
+        for signal in report["signals"]
+        if signal["surface"] == "review_summary"
+        and signal["metric"] == "faithfulness"
+    )
+    assert signal["absolute_delta"] >= 0.10
+
+
+def test_same_timestamp_burst_cannot_satisfy_elapsed_persistence():
+    observations = build_series("shifted_copilot_fallback")
+    for row in observations:
+        row["observed_at"] = "2026-07-30T03:00:00Z"
+
+    report = detect(
+        observations,
+        baseline(),
+        generated_at_utc="2026-07-30T03:00:00Z",
+        git={"sha": "candidate", "dirty": False},
+    )
+
+    assert report["status"] == "warming_up"
+    assert report["signals"] == []
+    assert any(
+        diagnostic["code"] == "current_window_time_span_insufficient"
+        for diagnostic in report["diagnostics"]
+    )
+
+
 def test_second_drift_episode_emits_after_recovery():
     observations = build_series("stable", samples_per_surface=240)
     copilot_rows = [

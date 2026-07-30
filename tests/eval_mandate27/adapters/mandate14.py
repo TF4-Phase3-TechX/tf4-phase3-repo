@@ -18,7 +18,7 @@ def convert_reports(
     *,
     model_id: str,
     guardrail_version: str,
-    scorer_version: str = "mandate14-v2",
+    scorer_version: str = "mandate14-semantic-v3",
     started_at: datetime | None = None,
 ) -> list[dict[str, Any]]:
     current = started_at or datetime.now(timezone.utc)
@@ -31,7 +31,20 @@ def convert_reports(
             metrics: dict[str, Any] = {
                 "abstained": int(bool(result["abstention"]["observed"])),
             }
-            faithfulness = result["grounding"].get("faithfulness")
+            grounding = result["grounding"]
+            if scorer_version == "mandate14-lexical-v2":
+                faithfulness = grounding.get("faithfulness")
+            else:
+                if (
+                    "semantic_faithfulness" not in grounding
+                    and "faithfulness" in grounding
+                ):
+                    raise ValueError(
+                        "semantic scorer requires "
+                        "grounding.semantic_faithfulness; refusing lexical "
+                        "faithfulness substitution"
+                    )
+                faithfulness = grounding.get("semantic_faithfulness")
             if faithfulness is not None:
                 metrics["faithfulness"] = float(faithfulness)
             row = {
@@ -58,7 +71,9 @@ def main() -> None:
     parser.add_argument("reports", nargs="+", type=Path)
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--guardrail-version", required=True)
-    parser.add_argument("--scorer-version", default="mandate14-v2")
+    parser.add_argument(
+        "--scorer-version", default="mandate14-semantic-v3"
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     reports = [

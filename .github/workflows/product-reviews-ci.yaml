@@ -36,3 +36,8 @@ jobs:
           techx-corp-platform/src/product-reviews/tests
           tests/eval_mandate27
           -q
+
+      - name: Verify committed Mandate 27 evidence
+        run: >-
+          python -m tests.eval_mandate27.verify_evidence
+          docs/aio1/mandate-27/evidence/public-20260730

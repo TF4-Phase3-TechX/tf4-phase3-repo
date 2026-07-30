@@ -25,14 +25,18 @@ Use output-quality drift rather than embedding drift:
 - no raw prompt, response, identity or source content in the drift contract.
 
 Binary rates use a one-sided 99% Wilson interval plus a minimum adverse delta.
-Faithfulness uses fixed-bin Jensen-Shannon divergence plus a minimum mean drop.
-A signal requires two consecutive breached rolling windows. Low sample counts
-and version mismatches fail closed rather than claiming no drift.
+A material faithfulness mean drop is sufficient to breach; fixed-bin
+Jensen-Shannon divergence is retained as a distribution diagnostic and cannot
+veto the declared mean threshold. A signal requires two breached rolling
+windows separated by at least 10 minutes, and every 30-sample window must span
+at least 29 minutes. Missing expected surfaces/metrics, low sample counts and
+version mismatches fail closed rather than claiming no drift.
 
 The external JSONL replay is the reproducible source of truth. Prometheus
 recording/alert rules provide an operational companion using the same bounded
-outcome metric, a 30-request gate, at least 336 half-hour observations for the
-seven-day historical baseline, and 30-minute persistence.
+outcome metric, model/guardrail/scorer identity labels, a 30-request gate, at
+least 336 half-hour observations for the seven-day historical baseline, a
+traffic-weighted event baseline, and 30-minute persistence.
 
 ## Consequences
 
@@ -44,8 +48,13 @@ seven-day historical baseline, and 30-minute persistence.
   requires correlation before intervention.
 - Faithfulness is available from controlled M14 evaluation, not every live
   request.
-- A deliberate model, guardrail or scorer change requires a reviewed baseline
-  refresh; the detector never silently learns an active drift into normality.
+- A deliberate model, guardrail or scorer change requires a reviewed external
+  baseline refresh; the external detector never silently learns an active drift
+  into normality.
+- The Prometheus companion is a rolling seven-day advisory, not the immutable
+  source of truth. It can absorb a shift that persists beyond that horizon.
+  Incidents therefore preserve the alert-start snapshot and run the external
+  frozen-baseline replay before any quality-closure claim.
 
 ## Rejected alternatives
 

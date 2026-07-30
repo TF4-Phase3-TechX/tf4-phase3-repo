@@ -8,7 +8,7 @@ from statistics import mean
 from typing import Any
 
 from .baseline import histogram, wilson_interval
-from .common import git_metadata, sha256_value, utc_now
+from .common import git_metadata, parse_timestamp, sha256_value, utc_now
 
 
 def jensen_shannon_divergence(
@@ -122,10 +122,9 @@ def _evaluate_continuous(
         "statistic": "jensen_shannon_divergence",
         "statistic_value": jsd,
         "statistic_threshold": float(metric_config["jsd_threshold"]),
-        "breach": (
-            delta >= float(metric_config["min_delta"])
-            and jsd >= float(metric_config["jsd_threshold"])
-        ),
+        # A material mean regression is sufficient. JSD remains a useful
+        # diagnostic, but coarse bins must never mask a threshold breach.
+        "breach": delta >= float(metric_config["min_delta"]),
     }
 
 
@@ -167,28 +166,50 @@ def detect(
     window_size = int(config["window_size"])
     stride = int(config["stride"])
     required_consecutive = int(config["required_consecutive"])
+    minimum_window_span = int(config["minimum_window_span_seconds"])
+    minimum_persistence = int(config["minimum_persistence_seconds"])
     recovery_windows = int(config["recovery_windows"])
     confidence_z = float(config["confidence_z"])
 
-    for surface in ("review_summary", "copilot"):
+    for surface, baseline_surface in baseline["surfaces"].items():
         surface_rows = by_surface.get(surface, [])
         if not surface_rows:
+            ready_metrics = [
+                (metric_name, config["metrics"][metric_name])
+                for metric_name, value in baseline_surface["metrics"].items()
+                if value.get("ready", False)
+            ]
+            for _, metric_config in ready_metrics:
+                diagnostics.append(
+                    {
+                        "code": "current_surface_missing",
+                        "surface": surface,
+                        "metric": metric_config["signal_name"],
+                        "sample_count": 0,
+                        "required": window_size,
+                    }
+                )
+                insufficient_metrics += 1
             continue
-        baseline_surface = baseline["surfaces"].get(surface)
-        if not baseline_surface:
-            diagnostics.append(
-                {"code": "baseline_surface_missing", "surface": surface}
-            )
-            insufficient_metrics += 1
-            continue
-        for metric_name, metric_config in config["metrics"].items():
+        for metric_name, baseline_metric in baseline_surface["metrics"].items():
+            metric_config = config["metrics"][metric_name]
             metric_rows = [
                 row for row in surface_rows if metric_name in row["metrics"]
             ]
             if not metric_rows:
+                if baseline_metric.get("ready", False):
+                    diagnostics.append(
+                        {
+                            "code": "current_metric_missing",
+                            "surface": surface,
+                            "metric": metric_config["signal_name"],
+                            "sample_count": 0,
+                            "required": window_size,
+                        }
+                    )
+                    insufficient_metrics += 1
                 continue
-            baseline_metric = baseline_surface["metrics"].get(metric_name)
-            if not baseline_metric or not baseline_metric.get("ready", False):
+            if not baseline_metric.get("ready", False):
                 diagnostics.append(
                     {
                         "code": "baseline_metric_insufficient",
@@ -222,8 +243,49 @@ def detect(
             clean_after_drift = 0
             signal_emitted = False
             first_breach_row: dict[str, Any] | None = None
+            first_breach_end = None
+            time_span_diagnostic_emitted = False
             for end in range(window_size, len(metric_rows) + 1, stride):
                 window_rows = metric_rows[end - window_size : end]
+                window_start_time = parse_timestamp(
+                    window_rows[0]["observed_at"]
+                )
+                window_end_time = parse_timestamp(
+                    window_rows[-1]["observed_at"]
+                )
+                window_span_seconds = (
+                    window_end_time - window_start_time
+                ).total_seconds()
+                if window_span_seconds < minimum_window_span:
+                    if not time_span_diagnostic_emitted:
+                        diagnostics.append(
+                            {
+                                "code": "current_window_time_span_insufficient",
+                                "surface": surface,
+                                "metric": metric_config["signal_name"],
+                                "span_seconds": window_span_seconds,
+                                "required": minimum_window_span,
+                            }
+                        )
+                        time_span_diagnostic_emitted = True
+                        warming_metrics += 1
+                    windows.append(
+                        {
+                            "surface": surface,
+                            "metric": metric_config["signal_name"],
+                            "window_start": window_rows[0]["observed_at"],
+                            "window_end": window_rows[-1]["observed_at"],
+                            "sample_count": len(window_rows),
+                            "window_span_seconds": window_span_seconds,
+                            "state": "warming_up",
+                            "consecutive_breaches": 0,
+                            "breach": False,
+                        }
+                    )
+                    consecutive = 0
+                    first_breach_row = None
+                    first_breach_end = None
+                    continue
                 values = [
                     float(row["metrics"][metric_name])
                     for row in window_rows
@@ -246,9 +308,11 @@ def detect(
                     clean_after_drift = 0
                     if first_breach_row is None:
                         first_breach_row = window_rows[0]
+                        first_breach_end = window_end_time
                 else:
                     consecutive = 0
                     first_breach_row = None
+                    first_breach_end = None
                     if signal_emitted:
                         clean_after_drift += 1
 
@@ -256,7 +320,14 @@ def detect(
                 if result["breach"]:
                     state = (
                         "drift"
-                        if consecutive >= required_consecutive
+                        if (
+                            consecutive >= required_consecutive
+                            and first_breach_end is not None
+                            and (
+                                window_end_time - first_breach_end
+                            ).total_seconds()
+                            >= minimum_persistence
+                        )
                         else "suspected"
                     )
                 elif signal_emitted and clean_after_drift < recovery_windows:
@@ -270,6 +341,7 @@ def detect(
                     "window_start": window_rows[0]["observed_at"],
                     "window_end": window_rows[-1]["observed_at"],
                     "sample_count": len(window_rows),
+                    "window_span_seconds": window_span_seconds,
                     "state": state,
                     "consecutive_breaches": consecutive,
                     **result,
@@ -281,7 +353,7 @@ def detect(
                     clean_after_drift = 0
 
                 if (
-                    consecutive >= required_consecutive
+                    state == "drift"
                     and not signal_emitted
                     and first_breach_row is not None
                 ):
