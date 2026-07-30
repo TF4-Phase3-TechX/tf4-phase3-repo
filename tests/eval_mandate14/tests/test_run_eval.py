@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from run_eval import DEFAULT_CASE_SCHEMA, build_report, load_jsonl
+from run_eval import (
+    DEFAULT_CASE_SCHEMA,
+    build_report,
+    load_jsonl,
+    require_no_semantic_truncation,
+)
 
 
 def valid_case(case_id="M14-SCHEMA-001"):
@@ -86,3 +91,15 @@ def test_report_records_dataset_hash_and_hard_bars(tmp_path):
     assert report["schema_version"] == "mandate14-report-v2"
     assert len(report["dataset_sha256"]) == 64
     assert report["aggregate"]["hard_bars"]["pass"]
+
+
+def test_semantic_truncation_fails_closed():
+    report = {
+        "aggregate": {
+            "semantic_faithfulness_judge": {
+                "input_truncated_count": 1,
+            }
+        }
+    }
+    with pytest.raises(ValueError, match="input truncated"):
+        require_no_semantic_truncation(report)

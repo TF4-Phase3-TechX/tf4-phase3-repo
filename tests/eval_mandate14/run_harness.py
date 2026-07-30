@@ -22,7 +22,9 @@ from run_eval import (
     _validator,
     build_report,
     load_jsonl,
+    require_no_semantic_truncation,
 )
+from semantic_faithfulness import HHEMJudge
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CALIBRATION_DATASET = SCRIPT_DIR / "labeled-observations-v2.jsonl"
@@ -104,6 +106,7 @@ def package_run(
     copilot_adapter: Any,
     runtime_env: str,
     command: list[str],
+    semantic_judge: Any | None = None,
 ) -> dict[str, Any]:
     if output_dir.exists() and any(output_dir.iterdir()):
         raise ValueError(f"output directory is not empty: {output_dir}")
@@ -117,13 +120,19 @@ def package_run(
     ).encode("utf-8")
     observation_path.write_bytes(observation_raw)
     validated_observations = load_jsonl(observation_path)
-    report = build_report(validated_observations, observation_raw)
+    report = build_report(
+        validated_observations,
+        observation_raw,
+        semantic_judge=semantic_judge,
+    )
+    require_no_semantic_truncation(report)
     _validator(DEFAULT_RESULT_SCHEMA).validate(report)
 
     calibration_raw = CALIBRATION_DATASET.read_bytes()
     calibration_report = build_report(
         load_jsonl(CALIBRATION_DATASET),
         calibration_raw,
+        semantic_judge=semantic_judge,
     )
     agreement = calibration_report["aggregate"]["scorer_human"]
     if agreement["labeled_cases"] < 10:
@@ -162,6 +171,9 @@ def package_run(
         "dataset_sha256": _sha256_bytes(dataset_raw),
         "observations_sha256": _sha256_bytes(observation_raw),
         "scorer_sha256": _sha256_path(SCRIPT_DIR / "scorer.py"),
+        "semantic_scorer_sha256": _sha256_path(
+            SCRIPT_DIR / "semantic_faithfulness.py"
+        ),
         "runtime_schema_sha256": _sha256_path(
             SCRIPT_DIR / "schemas" / "runtime-case.schema.json"
         ),
@@ -193,6 +205,10 @@ def package_run(
             ),
         },
         "hard_bars": report["aggregate"]["hard_bars"],
+        "semantic_faithfulness": report["aggregate"].get(
+            "semantic_faithfulness_judge",
+            {"enabled": False},
+        ),
         "all_cases_pass": (
             report["aggregate"]["case_pass"]["numerator"]
             == report["aggregate"]["case_pass"]["denominator"]
@@ -256,6 +272,7 @@ def main() -> int:
         ),
         runtime_env=args.runtime_env,
         command=[sys.executable, *sys.argv],
+        semantic_judge=HHEMJudge(),
     )
     manifest = result["manifest"]
     if args.require_clean_git and manifest["git"]["sha"] != initial_git["sha"]:

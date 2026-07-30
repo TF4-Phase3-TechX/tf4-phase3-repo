@@ -78,16 +78,46 @@ def load_jsonl(path: Path, schema_path: Path = DEFAULT_CASE_SCHEMA) -> list[dict
     return cases
 
 
-def build_report(cases: list[dict[str, Any]], raw: bytes) -> dict[str, Any]:
-    results = [score_case(case) for case in cases]
+def build_report(
+    cases: list[dict[str, Any]],
+    raw: bytes,
+    semantic_judge: Any | None = None,
+) -> dict[str, Any]:
+    results = [
+        score_case(
+            case,
+            semantic_faithfulness=semantic_judge is not None,
+        )
+        for case in cases
+    ]
+    semantic = None
+    if semantic_judge is not None:
+        from semantic_faithfulness import apply_semantic_faithfulness
+
+        semantic = apply_semantic_faithfulness(
+            cases,
+            results,
+            semantic_judge,
+        )
+    aggregate_result = aggregate(results)
+    if semantic is not None:
+        aggregate_result["semantic_faithfulness_judge"] = semantic
     return {
         "schema_version": "mandate14-report-v2",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "dataset_sha256": hashlib.sha256(raw).hexdigest(),
         "git": _git_metadata(),
         "per_case": results,
-        "aggregate": aggregate(results),
+        "aggregate": aggregate_result,
     }
+
+
+def require_no_semantic_truncation(report: dict[str, Any]) -> None:
+    semantic = report["aggregate"].get("semantic_faithfulness_judge")
+    if semantic and semantic["input_truncated_count"]:
+        raise ValueError(
+            "semantic faithfulness input truncated; evidence fails closed"
+        )
 
 
 def main() -> int:
@@ -118,11 +148,25 @@ def main() -> int:
         action="store_true",
         help="Fail certification when any supplied public/hidden case fails.",
     )
+    parser.add_argument(
+        "--semantic-faithfulness",
+        action="store_true",
+        help=(
+            "Replace keyword claim support with the pinned calibrated HHEM "
+            "semantic-faithfulness judge."
+        ),
+    )
     args = parser.parse_args()
 
     raw = args.input.read_bytes()
     cases = load_jsonl(args.input, args.case_schema)
-    report = build_report(cases, raw)
+    semantic_judge = None
+    if args.semantic_faithfulness:
+        from semantic_faithfulness import HHEMJudge
+
+        semantic_judge = HHEMJudge()
+    report = build_report(cases, raw, semantic_judge=semantic_judge)
+    require_no_semantic_truncation(report)
     _validator(args.result_schema).validate(report)
 
     labeled_cases = report["aggregate"]["scorer_human"]["labeled_cases"]

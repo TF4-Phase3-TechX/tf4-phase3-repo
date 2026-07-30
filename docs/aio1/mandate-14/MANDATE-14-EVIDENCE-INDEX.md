@@ -6,8 +6,11 @@
 
 **Delivery tickets:** TF4AIO-81 (machine-readable publication), TF4AIO-79 (final index)
 
-**Status:** Technical evidence and named ADR approval ready; PR merge,
-calibration-label provenance confirmation, and organizer hidden cases pending
+**Status:** Original technical evidence merged to `main` in PR #658 as
+`9bf9d9b`; named ADR approval recorded. The 2026-07-30 semantic amendment has a
+reproducible 100-case external SummEval calibration and passes its offline gate;
+its new PR review/merge, TF4-domain labels, and organizer hidden cases remain
+pending.
 
 ## Evidence summary
 
@@ -19,7 +22,8 @@ calibration-label provenance confirmation, and organizer hidden cases pending
 | Review-summary cases inside standard harness | 6/6 | [`candidate/per_case.jsonl`](evidence/public/2026-07-24-e0a90f3-candidate/per_case.jsonl) |
 | Machine-readable aggregate | All hard bars pass | [`candidate/aggregate.json`](evidence/public/2026-07-24-e0a90f3-candidate/aggregate.json) |
 | Run provenance | Clean source SHA `e0a90f3e446cbf605623ad946d53c5b1085c6412` | [`candidate/manifest.json`](evidence/public/2026-07-24-e0a90f3-candidate/manifest.json) |
-| Scorer↔label-fixture calibration | 18/18 agreement; Cohen's κ = 1.0; named label provenance pending | [`judge-human-agreement.json`](evidence/public/2026-07-24-e0a90f3-candidate/judge-human-agreement.json) |
+| Synthetic scorer regression | 18/18 agreement; Cohen's κ = 1.0; not human-reviewed | [`judge-human-agreement.json`](evidence/public/2026-07-24-e0a90f3-candidate/judge-human-agreement.json) |
+| External human calibration | 100 SummEval expert labels; 50 pass/50 fail; failed generic NLI baseline agreement 0.50/κ 0.00 retained; accepted HHEM candidate agreement 0.76/κ 0.52; contradiction controls 3/3; truncation 0 | [`EXTERNAL-HUMAN-LABELS.md`](../../../tests/eval_mandate14/EXTERNAL-HUMAN-LABELS.md), [`external-human-factuality-report-v2.json`](../../../tests/eval_mandate14/external-human-factuality-report-v2.json) |
 | Historical before/after diagnostic | Same dataset and model/guardrail; scoring contract changed | [`before-after.json`](evidence/public/before-after.json) |
 | Preserved failed run | 12/16 before remediation | [`failed/report.md`](evidence/public/2026-07-24-f31a2d6-failed/report.md) |
 | Signed decision | ADR-014 accepted by owner and three independent reviewers | [`ADR-014`](ADR-014-standard-ai-evaluation.md), [PR #658 approvals](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658) |
@@ -117,11 +121,16 @@ hard-bar failures, or any failed supplied case.
 
 ## Limitations and open delivery items
 
-- The deterministic typed-source scorer is intentionally conservative and does
-  not fully prove semantic entailment.
-- The 18-case calibration artifact proves agreement with its checked-in label
-  fixture. It must not be described as human-reviewed until a named reviewer
-  confirms the label provenance.
+- Semantic faithfulness uses pinned HHEM-1.0-Open at threshold 0.5. Citation
+  IDs/types, numbers, quotes, PII, prompt leakage and writes remain
+  deterministic fail-closed checks.
+- The 18-case calibration artifact proves agreement with its synthetic
+  checked-in fixture, not independent human review.
+- The separate 100-case SummEval manifest has published external expert-label
+  provenance and is reproducible by dataset revision and source/summary hashes.
+  The generic NLI candidate achieved κ=0.00 and remains a failed baseline. The
+  HHEM candidate reaches agreement 0.76/κ 0.52 and passes the recorded offline
+  gate. It does not prove TF4-domain or production quality.
 - Regex and synthetic-canary leakage detection are backstops, not a complete
   DLP product.
 - The committed run used the local real-model stack, not staging.
@@ -149,8 +158,10 @@ Copilot task-success evidence: PR #556 @ 0115fb0 (60/60)
 Standard harness: 16/16 overall; Copilot 10/10; review summary 6/6
 Grounding: 14/14; abstention: 2/2; injection: 4/4; false blocks: 0/11
 Hard bars: PII leaks=0; system-prompt leaks=0; unauthorized writes=0
-Calibration fixture: 18 labels, agreement=1.0, Cohen's kappa=1.0;
-named label provenance pending
+Synthetic regression fixture: 18 labels, agreement=1.0, Cohen's kappa=1.0
+External human calibration: 100 SummEval labels; generic NLI baseline
+agreement=0.50/kappa=0.00 rejected; HHEM agreement=0.76/kappa=0.52 accepted
+offline; 3/3 contradictions rejected; 0 inputs truncated
 Dataset SHA-256: 4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894
 ADR-014: Accepted by the decision owner and three independent reviewers in PR #658
 
