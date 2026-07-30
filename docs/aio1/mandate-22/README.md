@@ -2,6 +2,12 @@
 
 Canonical Jira: [TF4AIO-83](https://aio1-xbrain.atlassian.net/browse/TF4AIO-83)
 
+The current production go/no-go contract is
+[PRODUCTION-DRILL-GO-NO-GO.md](PRODUCTION-DRILL-GO-NO-GO.md). It reduces live
+activation to five hard STOP gates and records the exact operation-scoped
+signal, known-good revision pin, mutation lifecycle, traffic and restore
+requirements.
+
 ## Offline external-scenario gate
 
 ```bash
@@ -42,6 +48,30 @@ must sign ADR-022, select the exact target/known-good revision and
 review the drill window before enabling all three gates. Runtime closure then
 requires real detector input, readiness/SLO verification, OpenSearch audit
 records and the successful plus forced-wrong drill evidence on TF4AIO-83.
+
+### Deterministic latency incident
+
+The approved `deployment-latency-rollback` path needs a high-severity
+`service_latency_spike`; resource starvation and broad load are not a reliable
+way to create that signal. Product Reviews therefore supports an
+off-by-default, Deployment-revision-coupled delay on `GetProductReviews`:
+
+- `MANDATE22_REVIEW_DELAY_MS` (hard cap: 3000 ms);
+- `MANDATE22_REVIEW_DELAY_TTL_SECONDS` (hard cap: 900 seconds);
+- `MANDATE22_REVIEW_DELAY_MAX_REQUESTS` (hard cap: 200 requests per pod).
+
+All three values are required to activate the fault. Health runs on the
+separate health server and is never delayed. The TTL and request budget are
+independent deadmen; invalid configuration fails safe to normal service
+behavior. The TTL starts on the first eligible `GetProductReviews` request,
+not pod startup, so an approval or reconciliation delay cannot silently consume
+the drill window; the request budget is enforced from the same first request.
+Because activation changes the Deployment pod template, the prior ReplicaSet
+contains no fault variables and a real template rollback causally removes the
+delay. The drill still requires CDO approval, a pinned retained known-good
+revision, bounded mutation RBAC, real Prometheus detection and post-action
+runtime verification. The mechanism exposes no runtime control API and does
+not call Bedrock or mutate `flagd`. Unit/CI success alone is not a live pass.
 
 The current runtime inventory, activation gates, proposed fault mechanism,
 stop conditions and evidence checklist are recorded in

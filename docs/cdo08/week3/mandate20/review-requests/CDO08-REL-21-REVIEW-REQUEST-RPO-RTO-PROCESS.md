@@ -84,7 +84,7 @@ So sánh số đo thật (bước 3) với target draft (bước 1). Nếu số 
 
 ### Bước 5 - Ký ADR với số đã chứng minh
 
-Chỉ sau khi có bằng chứng đo thật (bước 3-4) mới chuyển [CDO08-REL-21-adr-draft.md](../adr/CDO08-REL-21-adr-draft.md) từ trạng thái DRAFT sang SIGNED, kèm tên người ký + ngày ký.
+Chỉ sau khi có bằng chứng đo thật (bước 3-4) mới chuyển [CDO08-REL-21-adr.md](../adr/CDO08-REL-21-adr.md) từ trạng thái DRAFT sang SIGNED, kèm tên người ký + ngày ký.
 
 **Nguồn:** chính văn bản Mandate 20 (nội bộ)
 Link: [MANDATE-20-dr-backup-restore.md](../../../../../mandates/MANDATE-20-dr-backup-restore.md), yêu cầu #4

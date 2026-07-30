@@ -35,6 +35,7 @@ from llm_observability import (
     annotate_request,
     validate_observability_configuration,
 )
+from revision_latency_fault import RevisionLatencyFault
 from resilience_control import FaultController, ResilienceControlHandler
 from safety import INSUFFICIENT_RESPONSE, UNAVAILABLE_RESPONSE, contains_pii, is_attack, is_action_intent, is_attack_or_action, normalize_text, MAX_QUESTION_CHARS
 from session_store import session_store
@@ -71,8 +72,25 @@ def active_ai_fault(controller: FaultController) -> str:
 
 
 class ProductReviewService(demo_pb2_grpc.ProductReviewServiceServicer):
+    def __init__(
+        self, review_latency_fault: RevisionLatencyFault | None = None
+    ) -> None:
+        self.review_latency_fault = (
+            review_latency_fault or RevisionLatencyFault.disabled()
+        )
+
     def GetProductReviews(self, request, context):
         logger.info("product_reviews_request", extra={"product_id": request.product_id})
+        application = self.review_latency_fault.apply()
+        if application:
+            logger.warning(
+                "mandate22_revision_latency_fault_applied",
+                extra={
+                    "delay_ms": application.delay_ms,
+                    "request_ordinal": application.request_ordinal,
+                    "seconds_remaining": round(application.seconds_remaining, 3),
+                },
+            )
         return get_product_reviews(request.product_id)
 
     def GetAverageProductReviewScore(self, request, context):
@@ -483,6 +501,25 @@ def main() -> None:
     tracer = trace.get_tracer_provider().get_tracer(service_name)
     product_review_svc_metrics = init_metrics(metrics.get_meter_provider().get_meter(service_name))
     configure_logging(service_name)
+    try:
+        review_latency_fault = RevisionLatencyFault.from_env()
+    except ValueError:
+        # A malformed drill configuration must fail safe to normal service
+        # behavior instead of turning a test-control error into an outage.
+        logger.exception(
+            "mandate22_revision_latency_fault_invalid_disabled"
+        )
+        review_latency_fault = RevisionLatencyFault.disabled()
+    if review_latency_fault.enabled:
+        logger.warning(
+            "mandate22_revision_latency_fault_enabled",
+            extra={
+                "delay_ms": review_latency_fault.delay_ms,
+                "ttl_seconds": review_latency_fault.ttl_seconds,
+                "max_requests": review_latency_fault.max_requests,
+                "activation_source": "deployment_template",
+            },
+        )
 
     product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(
         grpc.insecure_channel(must_map_env("PRODUCT_CATALOG_ADDR"))
@@ -527,7 +564,7 @@ def main() -> None:
     health_server.start()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
-    service = ProductReviewService()
+    service = ProductReviewService(review_latency_fault=review_latency_fault)
     demo_pb2_grpc.add_ProductReviewServiceServicer_to_server(service, server)
     server.add_generic_rpc_handlers(
         (

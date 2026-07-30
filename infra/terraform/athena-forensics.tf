@@ -257,11 +257,9 @@ resource "aws_glue_catalog_table" "aws_config_history" {
   parameters = {
     classification              = "json"
     compressionType             = "gzip"
-    "projection.day.digits"     = "2"
     "projection.day.range"      = "1,31"
     "projection.day.type"       = "integer"
     "projection.enabled"        = "true"
-    "projection.month.digits"   = "2"
     "projection.month.range"    = "1,12"
     "projection.month.type"     = "integer"
     "projection.year.range"     = "2026,2030"
@@ -289,55 +287,19 @@ resource "aws_glue_catalog_table" "aws_config_history" {
 
     ser_de_info {
       serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      parameters = {
+        "ignore.malformed.json" = "true"
+        "case.insensitive"      = "true"
+      }
     }
 
     columns {
-      name = "version"
+      name = "fileversion"
       type = "string"
     }
     columns {
-      name = "accountid"
-      type = "string"
-    }
-    columns {
-      name = "configurationitemcapturetime"
-      type = "string"
-    }
-    columns {
-      name = "configurationitemstatus"
-      type = "string"
-    }
-    columns {
-      name = "configurationstateid"
-      type = "string"
-    }
-    columns {
-      name = "resourcecreationtime"
-      type = "string"
-    }
-    columns {
-      name = "resourcetype"
-      type = "string"
-    }
-    columns {
-      name = "resourceid"
-      type = "string"
-    }
-    columns {
-      name = "resourcename"
-      type = "string"
-    }
-    columns {
-      name = "awsregion"
-      type = "string"
-    }
-    columns {
-      name = "supplementaryconfiguration"
-      type = "map<string,string>"
-    }
-    columns {
-      name = "relationships"
-      type = "array<struct<resourcetype:string,resourceid:string,resourcename:string,relationshipname:string>>"
+      name = "configurationitems"
+      type = "array<struct<relatedevents:array<string>,relationships:array<struct<resourceid:string,resourcename:string,resourcetype:string,name:string>>,configuration:string,supplementaryconfiguration:map<string,string>,tags:map<string,string>,configurationitemversion:string,configurationitemcapturetime:string,configurationstateid:string,awsaccountid:string,configurationitemmd5hash:string,arn:string,resourcetype:string,resourceid:string,resourcename:string,awsregion:string,availabilityzone:string,resourcecreationtime:string,configurationitemstatus:string>>"
     }
   }
 }
@@ -534,8 +496,13 @@ resource "aws_glue_catalog_table" "ai_tool_audit_events" {
       }
     }
 
+    # ── Top-level OTLP envelope fields ──
     columns {
-      name = "log_type"
+      name = "body"
+      type = "string"
+    }
+    columns {
+      name = "severity_text"
       type = "string"
     }
     columns {
@@ -543,28 +510,16 @@ resource "aws_glue_catalog_table" "ai_tool_audit_events" {
       type = "string"
     }
     columns {
-      name = "surface"
+      name = "span_id"
       type = "string"
     }
+
+    # ── Audit fields — nested inside OTLP "attributes" object ──
+    # OTel CloudWatch Logs exporter (raw_log: false) wraps log record
+    # attributes under the "attributes" key in the JSON envelope.
     columns {
-      name = "model_id"
-      type = "string"
-    }
-    columns {
-      name = "tool_name"
-      type = "string"
-    }
-    columns {
-      name = "tool_input_redacted"
-      type = "struct<redacted:boolean,content_logged:boolean>"
-    }
-    columns {
-      name = "safety_decision"
-      type = "string"
-    }
-    columns {
-      name = "confirmation_status"
-      type = "string"
+      name = "attributes"
+      type = "struct<log_type:string,trace_id:string,surface:string,model_id:string,tool_name:string,tool_input_redacted:struct<redacted:boolean,content_logged:boolean>,safety_decision:string,confirmation_status:string>"
     }
   }
 }

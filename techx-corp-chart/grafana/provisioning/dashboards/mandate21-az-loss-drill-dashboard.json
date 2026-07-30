@@ -1,0 +1,1067 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": true,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [
+        "techx",
+        "mandate21"
+      ],
+      "targetBlank": false,
+      "title": "Related dashboards",
+      "type": "dashboards"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "Drill Traffic",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Frontend request rate from live server span metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\"}[$__rate_interval]))",
+          "legendFormat": "frontend rps",
+          "refId": "A"
+        }
+      ],
+      "title": "Frontend RPS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Checkout request rate at the frontend boundary.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+      "id": 2,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__rate_interval]))",
+          "legendFormat": "checkout rps",
+          "refId": "A"
+        }
+      ],
+      "title": "Checkout RPS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Live request rate emitted by the load generator. This replaces the old static active-users panel.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"load-generator\", span_kind=\"SPAN_KIND_INTERNAL\"}[$__rate_interval]))",
+          "legendFormat": "load generator rps",
+          "refId": "A"
+        }
+      ],
+      "title": "Load Generator Request Rate",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
+      "id": 101,
+      "panels": [],
+      "title": "Business SLO",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Request-level browse success rate. This is not an order persistence signal.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 99 },
+              { "color": "green", "value": 99.5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 9 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\"}[$__range])) > 0)",
+          "legendFormat": "browse success",
+          "refId": "A"
+        }
+      ],
+      "title": "Browse Success Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Request-level cart success rate.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 99 },
+              { "color": "green", "value": 99.5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 9 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"(GET|POST|DELETE) /api/cart\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"(GET|POST|DELETE) /api/cart\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"(GET|POST|DELETE) /api/cart\"}[$__range])) > 0)",
+          "legendFormat": "cart success",
+          "refId": "A"
+        }
+      ],
+      "title": "Cart Success Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Request-level checkout success rate. This does not prove confirmed or reconciled orders.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 99 },
+              { "color": "green", "value": 99.5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 9 },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(100 * sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\", status_code!=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__rate_interval]))) and (sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__range])) > 0)",
+          "legendFormat": "checkout success",
+          "refId": "A"
+        }
+      ],
+      "title": "Checkout Success Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Error rate for critical services.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 9 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum by (service_name) (rate(traces_span_metrics_calls_total{service_name=~\"${service:regex}\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "legendFormat": "{{service_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Business Flow Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 102,
+      "panels": [],
+      "title": "Latency",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Frontend p95 and p99 latency from span metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 8,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "refId": "B"
+        }
+      ],
+      "title": "Frontend Latency Percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "p95 latency by critical service.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~\"${service:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{service_name}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Service p95 Latency",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "id": 103,
+      "panels": [],
+      "title": "Kubernetes Workload Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Available replicas by deployment from OTel Kubernetes cluster metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
+      "id": 10,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "min"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "k8s_deployment_available{k8s_namespace_name=\"$namespace\", k8s_deployment_name=~\"${service:regex}\"}",
+          "legendFormat": "{{k8s_deployment_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Available Replicas by Deployment",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Pod Running phase is used as a health proxy because kube-state-metrics readiness metrics are not currently available.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
+      "id": 11,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "min"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "k8s_pod_phase{k8s_namespace_name=\"$namespace\", k8s_pod_name=~\"(${service:regex})-.*\"} == bool 2",
+          "legendFormat": "{{k8s_pod_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Running State by Pod",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Container restart delta over the last 10 minutes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "id": 12,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(max_over_time(k8s_container_restarts{k8s_namespace_name=\"$namespace\", k8s_container_name=~\"${service:regex}\"}[10m]) - min_over_time(k8s_container_restarts{k8s_namespace_name=\"$namespace\", k8s_container_name=~\"${service:regex}\"}[10m])) by (k8s_pod_name, k8s_container_name)",
+          "legendFormat": "{{k8s_pod_name}} / {{k8s_container_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container Restarts",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Pod placement by Kubernetes node. This is not AZ evidence until node-to-AZ labels are available.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+      "id": 13,
+      "options": {
+        "displayMode": "gradient",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(k8s_pod_phase{k8s_namespace_name=\"$namespace\"} == 2) by (k8s_node_name)",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Placement by Node",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "id": 104,
+      "panels": [],
+      "title": "Node Resource Pressure",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Node CPU usage from OTel kubelet/node metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "cores"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 42 },
+      "id": 14,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(k8s_node_cpu_usage) by (k8s_node_name)",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Node CPU Usage by Node",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Node memory working set from OTel kubelet/node metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 42 },
+      "id": 15,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(k8s_node_memory_working_set_bytes) by (k8s_node_name)",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Node Memory Working Set",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Available node memory from OTel kubelet/node metrics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 42 },
+      "id": 16,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "min"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(k8s_node_memory_available_bytes) by (k8s_node_name)",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Node Memory Available",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "id": 105,
+      "panels": [],
+      "title": "Drill Review Helpers",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Checkout request volume in the selected time range. This is request-level volume, not confirmed order/RPO evidence.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 51 },
+      "id": 17,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(increase(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\"}[$__range]))",
+          "legendFormat": "checkout requests",
+          "refId": "A"
+        }
+      ],
+      "title": "Request-level Checkout Volume",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Pending/firing Prometheus alerts during the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 51 },
+      "id": 18,
+      "options": {
+        "displayMode": "gradient",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "ALERTS{alertstate=~\"pending|firing\"}",
+          "legendFormat": "{{alertname}} / {{alertstate}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Alerts",
+      "type": "bargauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Node telemetry series count. This proves telemetry presence, not Kubernetes Ready condition.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 51 },
+      "id": 19,
+      "options": {
+        "displayMode": "gradient",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "count(k8s_node_cpu_usage) by (k8s_node_name)",
+          "legendFormat": "{{k8s_node_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Node Telemetry Count",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 57 },
+      "id": 107,
+      "panels": [],
+      "title": "Browse / Cart / Checkout Error Rate",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "description": "Live request-level error rate by customer journey flow.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 58 },
+      "id": 20,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"GET /|GET /product.*|GET /api/products.*|GET /api/data.*\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "legendFormat": "browse errors",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=~\"(GET|POST|DELETE) /api/cart\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "legendFormat": "cart errors",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\", span_name=\"POST /api/checkout\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
+          "legendFormat": "checkout errors",
+          "refId": "C"
+        }
+      ],
+      "title": "Browse / Cart / Checkout Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 },
+      "id": 106,
+      "panels": [],
+      "title": "Pending / External Evidence",
+      "type": "row"
+    },
+    {
+      "description": "External evidence placeholders do not query missing Prometheus metrics.",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 66 },
+      "id": 21,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### Active Users and HPA\n\n**Status:** Pending / External Evidence\n\n- Active users: CDO08 confirmed live user metric is not required.\n- Evidence source: request rate live panel + Locust UI screenshot.\n- HPA: CDO08 will provide `kubectl get hpa -n techx-tf4 -o wide` output while kube-state-metrics is unavailable.\n\nNo static fallback or fake user count is used.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.0.0",
+      "title": "Active Users / HPA Evidence",
+      "type": "text"
+    },
+    {
+      "description": "External evidence placeholders do not query missing Prometheus metrics.",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 66 },
+      "id": 22,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### Node / Pod AZ Placement\n\n**Status:** Pending / External Evidence\n\nCDO08 will provide observer or kubectl snapshots containing:\n\n- node -> AZ mapping\n- pod -> node -> AZ mapping\n\nThe live dashboard only shows pod placement by node until AZ labels are available in Prometheus.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.0.0",
+      "title": "AZ Placement Evidence",
+      "type": "text"
+    },
+    {
+      "description": "External evidence placeholders do not query missing Prometheus metrics.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 72 },
+      "id": 23,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### RDS / Valkey / MSK\n\n**Status:** Pending / External Evidence\n\n- RDS writer/failover: CDO08 will provide AWS CLI or Console evidence.\n- Valkey: CDO08 will provide AWS CLI, CloudWatch, or script evidence.\n- MSK: CDO08 will provide CloudWatch, consumer lag script, or external evidence.\n\nThese panels are intentionally not backed by Prometheus queries until exporters/datasources exist.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.0.0",
+      "title": "Managed Data Evidence",
+      "type": "text"
+    },
+    {
+      "description": "External evidence placeholders do not query missing Prometheus metrics.",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 72 },
+      "id": 24,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### Orders and RTO\n\n**Status:** Pending / External Evidence\n\n- Confirmed / missing / duplicate orders: CDO08 will provide reconciliation script or query to compare confirmed orders, MSK events, and accounting records.\n- RTO marker: CDO08 will provide timestamps from drill runbook or observer log.\n\nCheckout request volume remains request-level evidence only, not RPO proof.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.0.0",
+      "title": "Order Reconciliation / RTO Evidence",
+      "type": "text"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "techx",
+    "mandate21",
+    "metric-ready",
+    "cdo07"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "techx-tf4",
+          "value": "techx-tf4"
+        },
+        "hide": 0,
+        "label": "Namespace",
+        "name": "namespace",
+        "options": [
+          {
+            "selected": true,
+            "text": "techx-tf4",
+            "value": "techx-tf4"
+          }
+        ],
+        "query": "techx-tf4",
+        "type": "custom"
+      },
+      {
+        "allValue": "frontend|cart|checkout|currency|payment|shipping|email|product-catalog|accounting|fraud-detection",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": "frontend,cart,checkout,currency,payment,shipping,email,product-catalog,accounting,fraud-detection",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Mandate 21 AZ Loss Drill Dashboard",
+  "uid": "mandate21-az-loss-drill",
+  "version": 1,
+  "weekStart": ""
+}
