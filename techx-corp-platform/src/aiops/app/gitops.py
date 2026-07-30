@@ -695,15 +695,30 @@ class GitHubGitOpsRemediationAdapter:
         if branch.status_code != 200:
             raise GitOpsError(f"branch rediscovery failed ({branch.status_code})")
         transaction.head_sha = str(branch.json()["object"]["sha"])
-        pulls = self._request(
+        repository_owner = self.repository.partition("/")[0]
+        pulls_payload = self._request(
             "GET",
             f"/repos/{self.repository}/pulls",
             params={
                 "state": "all",
-                "head": transaction.branch,
+                # GitHub requires the owner-qualified ``user:ref-name`` form.
+                # A bare ref is silently ignored and returns unrelated PRs.
+                "head": f"{repository_owner}:{transaction.branch}",
                 "base": self.base_branch,
             },
         ).json()
+        if not isinstance(pulls_payload, list):
+            raise GitOpsError("PR rediscovery returned an invalid payload")
+        pulls = [
+            pr
+            for pr in pulls_payload
+            if str((pr.get("head") or {}).get("ref", "")) == transaction.branch
+            and str((pr.get("base") or {}).get("ref", "")) == self.base_branch
+            and str(
+                ((pr.get("head") or {}).get("repo") or {}).get("full_name", "")
+            ).casefold()
+            == self.repository.casefold()
+        ]
         if len(pulls) > 1:
             raise GitOpsError("more than one PR exists for the idempotent branch")
         if pulls:

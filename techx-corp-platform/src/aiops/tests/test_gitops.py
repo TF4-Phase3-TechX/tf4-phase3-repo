@@ -192,6 +192,71 @@ def test_ambiguous_write_rediscovers_existing_branch_and_pr(monkeypatch):
     assert result.branch == "aiops/remediation/inc-timeout"
 
 
+def test_discovery_qualifies_head_and_ignores_unrelated_prs(monkeypatch):
+    adapter = GitHubGitOpsRemediationAdapter(
+        repository="owner/repository",
+        base_branch="main",
+        policy_path=".aiops/mandate22-policy.yaml",
+        token_provider=Token(),
+    )
+    item = transaction()
+    captured = {}
+
+    class Client:
+        def __init__(self, **_):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def get(self, *_args, **_kwargs):
+            response = Response({"object": {"sha": "1" * 40}})
+            response.status_code = 200
+            return response
+
+    def request(_method, _path, **kwargs):
+        captured.update(kwargs["params"])
+        return Response(
+            [
+                {
+                    "number": 99,
+                    "node_id": "PR_unrelated",
+                    "html_url": "https://github.test/pull/99",
+                    "state": "open",
+                    "head": {
+                        "ref": "unrelated",
+                        "repo": {"full_name": "owner/repository"},
+                    },
+                    "base": {"ref": "main"},
+                },
+                {
+                    "number": 17,
+                    "node_id": "PR_exact",
+                    "html_url": "https://github.test/pull/17",
+                    "state": "open",
+                    "head": {
+                        "ref": item.branch,
+                        "repo": {"full_name": "owner/repository"},
+                    },
+                    "base": {"ref": "main"},
+                },
+            ]
+        )
+
+    monkeypatch.setattr(httpx, "Client", Client)
+    monkeypatch.setattr(adapter, "_request", request)
+
+    discovered = adapter._discover(item)
+
+    assert captured["head"] == f"owner:{item.branch}"
+    assert discovered is not None
+    assert discovered.pr_number == 17
+    assert discovered.pr_node_id == "PR_exact"
+
+
 def test_partial_branch_is_completed_without_a_second_branch_or_pr(monkeypatch):
     adapter = GitHubGitOpsRemediationAdapter(
         repository="owner/repository",
