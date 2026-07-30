@@ -40,8 +40,8 @@ Values recorded by the independent verification rerun:
 | Item | Value |
 |---|---|
 | Input SHA-256 | `c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667` |
-| Report SHA-256 | `5b68122df9daac0ea796b15c89f64f57dc2358f2bca9b8f35b87cba228245c47` |
-| Reviewed code Git revision embedded in report | `68a917c8989a0baf6ea90615da5b198b339f8cc4` |
+| Report SHA-256 | `a326806c9e2530ac05bb7ac4a995af7311c325bb52f07f208e53c383248000f9` |
+| Reviewed code Git revision embedded in report | `2196e96bcabae06a720de7553d669300a31c06c6` |
 | Model version | `m26-v1` |
 
 The report embeds `git_revision`, `input_sha256`, and per-case rankings. The
@@ -65,7 +65,7 @@ From `rca-replay-report-v1.json`:
 - MRR: **1.0**  
 - noise precision / recall / F1: **1.0 / 1.0 / 1.0**
 - false noise-rejection rate: **0.0**
-- processing p50 / p95: **2.924 / 5.71475 ms** (review workstation, pure engine)
+- processing p50 / p95: **1.411 / 4.01555 ms** (review workstation, pure engine)
 - attribution coverage: 0.875 (one intentional multi-cluster abstention)
 
 ### Scenario coverage

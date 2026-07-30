@@ -1,8 +1,8 @@
 {
   "schema_name": "techx.aiops.rca.report",
   "schema_version": 1,
-  "generated_at": "2026-07-30T03:18:10.914304+00:00",
-  "git_revision": "68a917c8989a0baf6ea90615da5b198b339f8cc4",
+  "generated_at": "2026-07-30T03:24:30.563693+00:00",
+  "git_revision": "2196e96bcabae06a720de7553d669300a31c06c6",
   "git_revision_scope": "Code and replay-runner commit evaluated by this report; the evidence packaging commit may follow.",
   "text_encoding": "UTF-8",
   "line_endings": "LF",
@@ -36,9 +36,9 @@
     "false_noise_rejection_rate": 0.0,
     "attribution_coverage": 0.875,
     "abstention_rate": 0.125,
-    "processing_ms_p50": 2.9240000000000004,
-    "processing_ms_p95": 5.7147499999999996,
-    "processing_ms_mean": 3.3621250000000003,
+    "processing_ms_p50": 1.411,
+    "processing_ms_p95": 4.015549999999999,
+    "processing_ms_mean": 1.78125,
     "parsing_execution_failures": 0
   },
   "cases": [
@@ -912,7 +912,7 @@
         "trace-client-peer:trace-pay-001",
         "trace-parent:trace-pay-001"
       ],
-      "processing_ms": 3.754,
+      "processing_ms": 2.235,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -1873,7 +1873,7 @@
         "trace-client-peer:t-cat-3",
         "trace-parent:t-cat-3"
       ],
-      "processing_ms": 2.513,
+      "processing_ms": 4.725,
       "trace_count": 3,
       "span_count": 9,
       "evaluation": {
@@ -2739,7 +2739,7 @@
         "trace-client-peer:t-llm-1",
         "trace-parent:t-llm-1"
       ],
-      "processing_ms": 2.93,
+      "processing_ms": 1.525,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3589,7 +3589,7 @@
         "trace-client-peer:trace-only-001",
         "trace-parent:trace-only-001"
       ],
-      "processing_ms": 6.056,
+      "processing_ms": 2.698,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3914,7 +3914,7 @@
         "trace-client-peer:u1",
         "trace-parent:u1"
       ],
-      "processing_ms": 2.918,
+      "processing_ms": 0.63,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -4713,7 +4713,7 @@
       "topology_provenance": [
         "static:techx-verified"
       ],
-      "processing_ms": 5.081,
+      "processing_ms": 1.297,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5006,7 +5006,7 @@
       "topology_provenance": [
         "scenario:replace_static"
       ],
-      "processing_ms": 1.865,
+      "processing_ms": 0.528,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5328,7 +5328,7 @@
         "trace-client-peer:cyc1",
         "trace-parent:cyc1"
       ],
-      "processing_ms": 1.78,
+      "processing_ms": 0.612,
       "trace_count": 1,
       "span_count": 4,
       "evaluation": {
