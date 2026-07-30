@@ -248,7 +248,16 @@ jobs:
       - name: Run product-reviews suite
         env:
           DB_CONNECTION_STRING: postgresql://unused:unused@127.0.0.1:1/unused
-        run: python -m pytest techx-corp-platform/src/product-reviews/tests -q
+        run: >-
+          python -m pytest
+          techx-corp-platform/src/product-reviews/tests
+          tests/eval_mandate27
+          -q
+
+      - name: Verify committed Mandate 27 evidence
+        run: >-
+          python -m tests.eval_mandate27.verify_evidence
+          docs/aio1/mandate-27/evidence/public-20260730
 
   aiops-test:
     name: AIOps full Python suite
@@ -446,6 +455,23 @@ jobs:
 
       - name: Helm lint baseline chart
         run: helm lint ./techx-corp-chart
+
+      - name: Validate Mandate 27 Prometheus rules
+        run: |
+          docker run --rm --entrypoint /bin/promtool \
+            -v "$PWD:/work:ro" \
+            -w /work \
+            prom/prometheus:v3.11.3@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3 \
+            check rules \
+            techx-corp-chart/prometheus/model-drift-recording-rules.yaml \
+            techx-corp-chart/prometheus/model-drift-alerts.yaml
+          docker run --rm --entrypoint /bin/promtool \
+            -v "$PWD:/work:ro" \
+            -w /work \
+            prom/prometheus:v3.11.3@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3 \
+            test rules \
+            techx-corp-chart/prometheus/tests/model-drift-recording-rules.test.yaml \
+            techx-corp-chart/prometheus/tests/model-drift-alerts.test.yaml
 
       - name: Render observability release
         run: |
