@@ -21,8 +21,18 @@ REL33_KUBE_CONTEXT ?= arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-clust
 REL33_INTERVAL ?= 30
 REL33_DURATION ?= 0
 REL33_OUTPUT ?= artifacts/rel33/observer-$(shell date -u +"%Y%m%dT%H%M%SZ").log
+REL35_SCRIPT := docs/cdo08/week3/mandate21/scripts/rel35-one-az-loss-drill.sh
+REL35_AWS_PROFILE ?= default
+REL35_AWS_ACCOUNT_ID ?= 511825856493
+REL35_KUBE_CONTEXT ?= arn:aws:eks:us-east-1:511825856493:cluster/techx-tf4-cluster
+REL35_DRILL_ID ?= rel35-$(shell date -u +"%Y%m%dT%H%M%SZ")
+REL35_TARGET_AZ ?=
+REL35_FAULT_MODE ?= mentor
+REL35_INTERVAL ?= 10
+REL35_OBSERVE_DURATION ?= 900
+REL35_OUTPUT ?= artifacts/rel35/$(REL35_DRILL_ID)-az-loss-drill.log
 
-.PHONY: rel25-msk-replay-demo rel26-preflight rel26-drill rel33-preflight rel33-observe
+.PHONY: rel25-msk-replay-demo rel26-preflight rel26-drill rel33-preflight rel33-observe rel35-preflight rel35-drill rel35-drill-ec2
 
 rel25-msk-replay-demo:
 	AWS_PROFILE="$(REL25_MSK_AWS_PROFILE)" \
@@ -65,3 +75,38 @@ rel33-observe:
 	  --interval "$(REL33_INTERVAL)" \
 	  --duration "$(REL33_DURATION)" \
 	  --output "$(REL33_OUTPUT)"
+
+rel35-preflight:
+	AWS_PROFILE="$(REL35_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL35_AWS_ACCOUNT_ID)" \
+	EXPECTED_KUBE_CONTEXT="$(REL35_KUBE_CONTEXT)" \
+	REL35_DRILL_ID="$(REL35_DRILL_ID)" \
+	REL35_TARGET_AZ="$(REL35_TARGET_AZ)" \
+	REL35_OUTPUT="$(REL35_OUTPUT)" \
+	bash "$(REL35_SCRIPT)" preflight
+
+rel35-drill:
+	AWS_PROFILE="$(REL35_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL35_AWS_ACCOUNT_ID)" \
+	EXPECTED_KUBE_CONTEXT="$(REL35_KUBE_CONTEXT)" \
+	REL35_DRILL_ID="$(REL35_DRILL_ID)" \
+	REL35_TARGET_AZ="$(REL35_TARGET_AZ)" \
+	REL35_FAULT_MODE="$(REL35_FAULT_MODE)" \
+	CONFIRM_REL35_AZ_LOSS="$(CONFIRM_REL35_AZ_LOSS)" \
+	REL35_INTERVAL="$(REL35_INTERVAL)" \
+	REL35_OBSERVE_DURATION="$(REL35_OBSERVE_DURATION)" \
+	REL35_OUTPUT="$(REL35_OUTPUT)" \
+	bash "$(REL35_SCRIPT)" drill
+
+rel35-drill-ec2:
+	AWS_PROFILE="$(REL35_AWS_PROFILE)" \
+	EXPECTED_AWS_ACCOUNT_ID="$(REL35_AWS_ACCOUNT_ID)" \
+	EXPECTED_KUBE_CONTEXT="$(REL35_KUBE_CONTEXT)" \
+	REL35_DRILL_ID="$(REL35_DRILL_ID)" \
+	REL35_TARGET_AZ="$(REL35_TARGET_AZ)" \
+	REL35_FAULT_MODE="ec2-az-loss" \
+	CONFIRM_REL35_AZ_LOSS="YES" \
+	REL35_INTERVAL="$(REL35_INTERVAL)" \
+	REL35_OBSERVE_DURATION="$(REL35_OBSERVE_DURATION)" \
+	REL35_OUTPUT="$(REL35_OUTPUT)" \
+	bash "$(REL35_SCRIPT)" drill

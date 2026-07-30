@@ -52,6 +52,16 @@ Giám sát **tần suất** thay vì chỉ giám sát **identity**. ESO hợp l�
 
 ![H2 Anomaly Detection Pipeline](./images/h2-anomaly-detection-final.png)
 
+Diagram trên mô tả đúng luồng H2 đang được khai báo trong resource graph:
+`CloudTrail → EventBridge → SNS events → Security Lambda → CloudWatch Logs → metric filters → CloudWatch metrics → 3 alarms → SNS anomaly alerts`.
+
+Từ SNS anomaly alerts, thông báo được fan-out theo hai nhánh độc lập:
+
+- SNS → email subscription: gửi trực tiếp payload CloudWatch Alarm nguyên bản.
+- SNS → Lambda formatter → Slack: Lambda định dạng nội dung trước khi gửi webhook.
+
+[Mở file Draw.io](./h2-anomaly-detection-architecture.drawio)
+
 ### Lý do thiết kế
 
 **Tại sao dùng Lambda log (`MANDATE11_TTD`) làm source, không phải CloudTrail trực tiếp?**

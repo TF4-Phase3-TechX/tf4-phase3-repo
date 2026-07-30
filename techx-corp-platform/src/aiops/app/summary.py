@@ -65,12 +65,14 @@ class IncidentSummaryGenerator:
 - **Status:** `{incident.status.value}`
 - **Detected:** `{incident.detected_at.isoformat()}`
 - **Confidence:** `{incident.confidence:.2f}`
+- **Cross-service suspected root (informational):** `{incident.suspected_root_service or "not_attributed"}`
 
 ## Suspected cause
 
 {incident.suspected_root_cause}
 
 Correlation is not proof of causality. Confirm the evidence before approving an action.
+Cross-service RCA does not retarget remediation; the action target remains `{incident.affected_service}`.
 
 ## Customer/SLO impact
 
