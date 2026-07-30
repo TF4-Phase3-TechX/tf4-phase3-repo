@@ -312,6 +312,39 @@ def test_missing_trace_does_not_overclaim_disconnected_anomaly_as_noise():
     assert "parallel_anomaly" not in parallel.penalties
 
 
+def test_missing_trace_attributes_dominant_cascade_with_singleton_noise():
+    t0 = datetime(2026, 7, 20, tzinfo=timezone.utc)
+    graph = DependencyGraph.from_edges(
+        [
+            ("storefront-edge", "fulfillment-api"),
+            ("fulfillment-api", "quasar-db"),
+            ("unrelated-cron", "isolated-queue"),
+        ],
+        base=None,
+    )
+    result = RCAEngine().analyze(
+        RCAEngineInput(
+            observations=[
+                _obs("quasar-db", t0, 0.8),
+                _obs("fulfillment-api", t0 + timedelta(seconds=10), 0.9),
+                _obs("storefront-edge", t0 + timedelta(seconds=20), 0.94),
+                _obs("unrelated-cron", t0 - timedelta(seconds=10), 0.96),
+            ],
+            graph=graph,
+            unavailable_signals=["trace"],
+        )
+    )
+
+    assert result.attribution_status == "attributed"
+    assert result.suspected_root_service == "quasar-db"
+    noise = next(
+        candidate
+        for candidate in result.candidates
+        if candidate.service == "unrelated-cron"
+    )
+    assert noise.classification == "unexplained_parallel_anomaly"
+
+
 def test_candidate_cap_retains_anomalous_priority_services():
     t0 = datetime(2026, 7, 20, tzinfo=timezone.utc)
     graph = DependencyGraph.from_edges(

@@ -84,8 +84,13 @@ Independent multi-cluster faults without trace-supported single-cascade evidence
 abstain rather than invent a global root.
 
 An independent-cluster abstention does not relabel one cluster as correlated
-noise. A disconnected anomaly is classified as noise only when relevant trace
-coverage is present; missing trace evidence leaves it unresolved.
+noise. Relevant trace coverage normally gates that classification. When traces
+are unavailable, the engine has one conservative exception: exactly one
+topology component of at least three affected services must form a complete,
+temporally consistent cascade explained by the top candidate, and exactly one
+affected singleton may remain outside it. That singleton is reported as an
+`unexplained_parallel_anomaly`. Smaller cascades, incomplete evidence, or two
+multi-service components still abstain.
 
 ### External input and trace hardening
 

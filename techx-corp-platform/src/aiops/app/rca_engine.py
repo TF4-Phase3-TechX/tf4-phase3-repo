@@ -354,7 +354,7 @@ class RCAEngine:
                 )
                 >= 2
             )
-            can_attribute_cascade = (
+            trace_supported_cascade = (
                 trace_available
                 and len(multi_service_components) <= 1
                 and candidates
@@ -364,11 +364,59 @@ class RCAEngine:
                 and top_trace.raw_value is not None
                 and top_trace.raw_value > 0
             )
+            top = candidates[0] if candidates else None
+            dominant_component = (
+                set(multi_service_components[0])
+                if len(multi_service_components) == 1
+                else set()
+            )
+            top_topology = (
+                top.contributions.get("causal_coverage")
+                if top is not None
+                else None
+            )
+            top_temporal = (
+                top.contributions.get("temporal_consistency")
+                if top is not None
+                else None
+            )
+            # Without traces, attribute only a clearly dominant topology cascade:
+            # one 3+ service component, one disconnected singleton, complete
+            # coverage of the dominant component, and strong temporal ordering.
+            # Smaller/equal independent clusters continue to abstain.
+            topology_supported_dominant_cascade = bool(
+                not trace_available
+                and top is not None
+                and len(multi_service_components) == 1
+                and len(single_components) == 1
+                and len(dominant_component) >= 3
+                and top.service in dominant_component
+                and dominant_component
+                <= (set(top.explained_affected_services) | {top.service})
+                and top_topology is not None
+                and top_topology.available
+                and top_topology.raw_value is not None
+                and top_topology.raw_value >= 0.75
+                and top_temporal is not None
+                and top_temporal.available
+                and top_temporal.raw_value is not None
+                and top_temporal.raw_value >= 0.75
+            )
+            can_attribute_cascade = (
+                trace_supported_cascade or topology_supported_dominant_cascade
+            )
             if can_attribute_cascade and (
                 score_margin is None
                 or score_margin >= cfg.min_score_margin_for_attribution
             ):
                 top = candidates[0]
+                if topology_supported_dominant_cascade:
+                    singleton_services = set(single_components[0])
+                    for candidate in candidates:
+                        if candidate.service in singleton_services:
+                            candidate.classification = (
+                                "unexplained_parallel_anomaly"
+                            )
                 noise = [
                     c
                     for c in candidates
