@@ -1,8 +1,8 @@
 {
   "schema_name": "techx.aiops.rca.report",
   "schema_version": 1,
-  "generated_at": "2026-07-30T03:24:30.563693+00:00",
-  "git_revision": "2196e96bcabae06a720de7553d669300a31c06c6",
+  "generated_at": "2026-07-30T03:28:48.104244+00:00",
+  "git_revision": "f39697f9e426370f28ac59549c8eeb59211b93d3",
   "git_revision_scope": "Code and replay-runner commit evaluated by this report; the evidence packaging commit may follow.",
   "text_encoding": "UTF-8",
   "line_endings": "LF",
@@ -36,9 +36,9 @@
     "false_noise_rejection_rate": 0.0,
     "attribution_coverage": 0.875,
     "abstention_rate": 0.125,
-    "processing_ms_p50": 1.411,
-    "processing_ms_p95": 4.015549999999999,
-    "processing_ms_mean": 1.78125,
+    "processing_ms_p50": 1.4395,
+    "processing_ms_p95": 3.488599999999999,
+    "processing_ms_mean": 1.801875,
     "parsing_execution_failures": 0
   },
   "cases": [
@@ -912,7 +912,7 @@
         "trace-client-peer:trace-pay-001",
         "trace-parent:trace-pay-001"
       ],
-      "processing_ms": 2.235,
+      "processing_ms": 2.695,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -1873,7 +1873,7 @@
         "trace-client-peer:t-cat-3",
         "trace-parent:t-cat-3"
       ],
-      "processing_ms": 4.725,
+      "processing_ms": 3.91,
       "trace_count": 3,
       "span_count": 9,
       "evaluation": {
@@ -2739,7 +2739,7 @@
         "trace-client-peer:t-llm-1",
         "trace-parent:t-llm-1"
       ],
-      "processing_ms": 1.525,
+      "processing_ms": 1.53,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3589,7 +3589,7 @@
         "trace-client-peer:trace-only-001",
         "trace-parent:trace-only-001"
       ],
-      "processing_ms": 2.698,
+      "processing_ms": 2.706,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3914,7 +3914,7 @@
         "trace-client-peer:u1",
         "trace-parent:u1"
       ],
-      "processing_ms": 0.63,
+      "processing_ms": 0.64,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -4713,7 +4713,7 @@
       "topology_provenance": [
         "static:techx-verified"
       ],
-      "processing_ms": 1.297,
+      "processing_ms": 1.349,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5328,7 +5328,7 @@
         "trace-client-peer:cyc1",
         "trace-parent:cyc1"
       ],
-      "processing_ms": 0.612,
+      "processing_ms": 1.057,
       "trace_count": 1,
       "span_count": 4,
       "evaluation": {
