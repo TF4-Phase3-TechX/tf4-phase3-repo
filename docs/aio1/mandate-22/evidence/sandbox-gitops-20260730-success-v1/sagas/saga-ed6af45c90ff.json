@@ -1,0 +1,264 @@
+{
+  "audit": [
+    {
+      "at": "2026-07-30T05:59:59.931542+00:00",
+      "detail": {
+        "mode": "gitops/live"
+      },
+      "event": "gitops_preflight_started"
+    },
+    {
+      "at": "2026-07-30T06:00:00.023826+00:00",
+      "detail": {},
+      "event": "target_lease_acquired"
+    },
+    {
+      "at": "2026-07-30T06:00:00.610507+00:00",
+      "detail": {
+        "phase": "PR_OPEN"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:00:01.230557+00:00",
+      "detail": {
+        "phase": "CHECKS_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:00:02.257964+00:00",
+      "detail": {
+        "phase": "MERGE_QUEUED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:00:03.274913+00:00",
+      "detail": {
+        "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77",
+        "phase": "MERGED"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:00:03.275913+00:00",
+      "detail": {
+        "phase": "RUNTIME_PENDING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:00:11.503116+00:00",
+      "detail": {
+        "phase": "VERIFYING"
+      },
+      "event": "phase_advanced"
+    },
+    {
+      "at": "2026-07-30T06:00:15.209366+00:00",
+      "detail": {
+        "outcome": "resolved",
+        "reason": "three-poll verification healthy"
+      },
+      "event": "saga_terminal"
+    },
+    {
+      "at": "2026-07-30T06:00:15.528166+00:00",
+      "detail": {},
+      "event": "target_lease_released"
+    }
+  ],
+  "base_sha": "045e477442d8c661e8e5f232e5c9320069c8cf9c",
+  "compensation": null,
+  "compensation_verification_samples": [],
+  "created_at": "2026-07-30T05:59:59.931542+00:00",
+  "escalation_reason": null,
+  "expected_runtime_identity": {
+    "managed_env_present": [],
+    "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77",
+    "remediation_id": "inc-fcab9517876b",
+    "target_hash": "d6f90314e20b3c29597346dbf0d78649a434bd34b465a3bd0dfa93450d036b27"
+  },
+  "generation": 7,
+  "incident_id": "inc-fcab9517876b",
+  "incident_type": "service_latency_spike",
+  "known_good_sha": "8730ad1b2941b9b085c8f9fd34dfbd479602efe8",
+  "legacy_phase": null,
+  "lock_held": false,
+  "mutation_blocked": false,
+  "outcome": "resolved",
+  "phase": "TERMINAL",
+  "policy_sha": "cd2f4d1e2909f09726ba104ff9e402d6925d5490",
+  "policy_version": "m22-gitops-v1",
+  "remediation": {
+    "after_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {
+            "aiops.techx.io/remediation-id": "inc-fcab9517876b"
+          },
+          "replicas": 1
+        }
+      }
+    },
+    "after_file_sha": "48ccb2342986236256ded4b9bf5cfcdb12cfae9e",
+    "after_hash": "d6f90314e20b3c29597346dbf0d78649a434bd34b465a3bd0dfa93450d036b27",
+    "base_sha": "045e477442d8c661e8e5f232e5c9320069c8cf9c",
+    "before_document": {
+      "components": {
+        "product-reviews": {
+          "envOverrides": [
+            {
+              "name": "SANDBOX_LABEL",
+              "value": "preserved-unmanaged-value"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MS",
+              "value": "800"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_TTL_SECONDS",
+              "value": "300"
+            },
+            {
+              "name": "MANDATE22_REVIEW_DELAY_MAX_REQUESTS",
+              "value": "100"
+            }
+          ],
+          "image": "docker.io/library/python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+          "podAnnotations": {},
+          "replicas": 1
+        }
+      }
+    },
+    "before_file_sha": "0152e2fe1f01847b3de81b3d2fee2b1d93be3fb3",
+    "before_hash": "993d673dd27c56bf843b7f22815e1e289593c056bdabd17c4b5db49a70bbd0c2",
+    "branch": "aiops/remediation/inc-fcab9517876b",
+    "checks": {
+      "aiops-remediation-policy": "success",
+      "check-pinned-dependencies": "success",
+      "validate": "success"
+    },
+    "head_sha": "0d605370f039265fe16fcb8d44535e9971a18f43",
+    "kind": "remediation",
+    "known_good_sha": "8730ad1b2941b9b085c8f9fd34dfbd479602efe8",
+    "merge_queued": true,
+    "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77",
+    "policy_sha": "cd2f4d1e2909f09726ba104ff9e402d6925d5490",
+    "pr_node_id": "sandbox-pr-1-0d605370f039",
+    "pr_number": 1,
+    "pr_url": "sandbox://pull/1/aiops/remediation/inc-fcab9517876b",
+    "state": "merged",
+    "target_file": "environments/production/app-values.yaml"
+  },
+  "runtime_observation": {
+    "container_found": true,
+    "deployment": "product-reviews",
+    "generation": 14,
+    "managed_env_present": [],
+    "observed_at": "2026-07-30T06:00:11.501445+00:00",
+    "observed_generation": 14,
+    "ready": true,
+    "remediation_id": "inc-fcab9517876b",
+    "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+  },
+  "saga_id": "saga-ed6af45c90ff",
+  "schema_version": 2,
+  "target": "product-reviews",
+  "terminal_reason": "three-poll verification healthy",
+  "updated_at": "2026-07-30T06:00:15.528166+00:00",
+  "verification_samples": [
+    {
+      "poll": 1,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 14,
+        "managed_env_present": [],
+        "observed_at": "2026-07-30T06:00:11.510624+00:00",
+        "observed_generation": 14,
+        "ready": true,
+        "remediation_id": "inc-fcab9517876b",
+        "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+      },
+      "sampled_at": "2026-07-30T06:00:12.068087+00:00",
+      "slo": {
+        "healthy": true,
+        "p95_latency_ms": 7.074,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          7.074,
+          4.999,
+          4.458,
+          5.785,
+          4.562
+        ]
+      }
+    },
+    {
+      "poll": 2,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 14,
+        "managed_env_present": [],
+        "observed_at": "2026-07-30T06:00:13.087074+00:00",
+        "observed_generation": 14,
+        "ready": true,
+        "remediation_id": "inc-fcab9517876b",
+        "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+      },
+      "sampled_at": "2026-07-30T06:00:13.632177+00:00",
+      "slo": {
+        "healthy": true,
+        "p95_latency_ms": 5.808,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          3.851,
+          3.965,
+          5.066,
+          5.808,
+          4.68
+        ]
+      }
+    },
+    {
+      "poll": 3,
+      "runtime": {
+        "container_found": true,
+        "deployment": "product-reviews",
+        "generation": 14,
+        "managed_env_present": [],
+        "observed_at": "2026-07-30T06:00:14.650220+00:00",
+        "observed_generation": 14,
+        "ready": true,
+        "remediation_id": "inc-fcab9517876b",
+        "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+      },
+      "sampled_at": "2026-07-30T06:00:15.205754+00:00",
+      "slo": {
+        "healthy": true,
+        "p95_latency_ms": 5.702,
+        "request_count": 5,
+        "rpc": "/api/product-reviews/<id>",
+        "samples_ms": [
+          4.724,
+          4.822,
+          5.476,
+          5.354,
+          5.702
+        ]
+      }
+    }
+  ]
+}

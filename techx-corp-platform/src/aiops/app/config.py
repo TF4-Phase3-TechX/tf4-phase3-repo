@@ -104,9 +104,7 @@ class Settings:
     acute_confirmation_window: int = int(
         os.getenv("AIOPS_ACUTE_CONFIRMATION_WINDOW", "3")
     )
-    acute_min_breach_points: int = int(
-        os.getenv("AIOPS_ACUTE_MIN_BREACH_POINTS", "2")
-    )
+    acute_min_breach_points: int = int(os.getenv("AIOPS_ACUTE_MIN_BREACH_POINTS", "2"))
     recovery_polls: int = int(os.getenv("AIOPS_RECOVERY_POLLS", "2"))
     availability_sustained_polls: int = int(
         os.getenv("AIOPS_AVAILABILITY_SUSTAINED_POLLS", "2")
@@ -241,23 +239,70 @@ class Settings:
     verification_minimum_request_count: int = int(
         os.getenv("AIOPS_VERIFICATION_MINIMUM_REQUEST_COUNT", "5")
     )
-    # CDO-pinned known-good Deployment revision numbers
-    # (deployment.kubernetes.io/revision). Required for every live mutation
-    # target; dry-run may still inspect owned[1] without treating it as proven.
-    known_good_revisions: dict[str, str] = field(
-        default_factory=lambda: _string_map("AIOPS_KNOWN_GOOD_REVISIONS", "")
-    )
-    remediation_mode: str = os.getenv("REMEDIATION_MODE", "dry-run")
-    autonomous_remediation_enabled: bool = _bool(
-        "AIOPS_AUTONOMOUS_REMEDIATION_ENABLED"
-    )
+    # Mandate 22 never mutates a Deployment. The GitOps policy on the protected
+    # base branch pins the known-good Git SHA and the exact managed YAML fields.
+    remediation_mode: str = os.getenv("REMEDIATION_MODE", "gitops/dry-run")
+    autonomous_remediation_enabled: bool = _bool("AIOPS_AUTONOMOUS_REMEDIATION_ENABLED")
     remediation_policy_version: str = os.getenv(
-        "AIOPS_REMEDIATION_POLICY_VERSION", "m22-v1"
+        "AIOPS_REMEDIATION_POLICY_VERSION", "m22-gitops-v1"
     )
     autonomous_runbooks: tuple[str, ...] = field(
         default_factory=lambda: _csv(
-            "AIOPS_AUTONOMOUS_RUNBOOKS", "deployment-latency-rollback"
+            "AIOPS_AUTONOMOUS_RUNBOOKS", "product-reviews-config-rollback"
         )
+    )
+    gitops_repository: str = os.getenv(
+        "AIOPS_GITOPS_REPOSITORY",
+        "TF4-Phase3-TechX/tf4-phase3-gitops-manifests",
+    )
+    gitops_base_branch: str = os.getenv("AIOPS_GITOPS_BASE_BRANCH", "main")
+    gitops_policy_path: str = os.getenv(
+        "AIOPS_GITOPS_POLICY_PATH", ".aiops/mandate22-policy.yaml"
+    )
+    gitops_required_checks: tuple[str, ...] = field(
+        default_factory=lambda: _csv(
+            "AIOPS_GITOPS_REQUIRED_CHECKS",
+            "validate,check-pinned-dependencies,aiops-remediation-policy",
+        )
+    )
+    # Production uses the CDO-owned GitHub App and GitHub-native auto-merge.
+    # The token-files/dual-token combination is an explicitly time-boxed demo
+    # fallback when the team cannot change the organization-owned App in time.
+    github_auth_mode: str = os.getenv("AIOPS_GITHUB_AUTH_MODE", "app")
+    gitops_merge_strategy: str = os.getenv(
+        "AIOPS_GITOPS_MERGE_STRATEGY", "auto"
+    )
+    github_app_id: str = os.getenv("AIOPS_GITHUB_APP_ID", "")
+    github_app_installation_id: str = os.getenv("AIOPS_GITHUB_APP_INSTALLATION_ID", "")
+    github_app_private_key_path: str = os.getenv(
+        "AIOPS_GITHUB_APP_PRIVATE_KEY_PATH",
+        "/var/run/secrets/github-app/private-key.pem",
+    )
+    github_creator_token_path: str = os.getenv(
+        "AIOPS_GITHUB_CREATOR_TOKEN_PATH",
+        "/var/run/secrets/github-demo/creator-token",
+    )
+    github_reviewer_token_path: str = os.getenv(
+        "AIOPS_GITHUB_REVIEWER_TOKEN_PATH",
+        "/var/run/secrets/github-demo/reviewer-token",
+    )
+    github_creator_login: str = os.getenv("AIOPS_GITHUB_CREATOR_LOGIN", "")
+    github_reviewer_login: str = os.getenv("AIOPS_GITHUB_REVIEWER_LOGIN", "")
+    timeboxed_demo_acknowledged: bool = _bool(
+        "AIOPS_TIMEBOXED_DEMO_ACKNOWLEDGED"
+    )
+    github_api_url: str = os.getenv("AIOPS_GITHUB_API_URL", "https://api.github.com")
+    github_proxy_url: str = os.getenv(
+        "AIOPS_GITHUB_PROXY_URL", "http://aiops-github-proxy:3128"
+    )
+    gitops_observe_interval_seconds: float = float(
+        os.getenv("AIOPS_GITOPS_OBSERVE_INTERVAL_SECONDS", "15")
+    )
+    gitops_merge_timeout_seconds: float = float(
+        os.getenv("AIOPS_GITOPS_MERGE_TIMEOUT_SECONDS", "900")
+    )
+    gitops_runtime_timeout_seconds: float = float(
+        os.getenv("AIOPS_GITOPS_RUNTIME_TIMEOUT_SECONDS", "900")
     )
     verification_polls: int = int(os.getenv("AIOPS_VERIFICATION_POLLS", "3"))
     rollback_verification_polls: int = int(
@@ -296,15 +341,11 @@ class Settings:
     startup_reconcile_retry_seconds: float = float(
         os.getenv("AIOPS_STARTUP_RECONCILE_RETRY_SECONDS", "15")
     )
-    argo_window_enabled: bool = _bool("AIOPS_ARGO_WINDOW_ENABLED", "true")
     approval_token: str = os.getenv("AIOPS_APPROVAL_TOKEN", "")
     approval_ttl_seconds: int = int(os.getenv("AIOPS_APPROVAL_TTL_SECONDS", "900"))
-    deployment_recency_hours: int = int(
-        os.getenv("AIOPS_DEPLOYMENT_RECENCY_HOURS", "24")
-    )
     namespace: str = os.getenv("AIOPS_TARGET_NAMESPACE", "techx-corp")
     allowed_deployments: tuple[str, ...] = field(
-        default_factory=lambda: _csv("AIOPS_ALLOWED_DEPLOYMENTS", "llm,product-reviews")
+        default_factory=lambda: _csv("AIOPS_ALLOWED_DEPLOYMENTS", "product-reviews")
     )
     services: tuple[str, ...] = field(
         default_factory=lambda: _csv(
@@ -383,9 +424,7 @@ class Settings:
                 "verification consecutive healthy polls must be at least 1"
             )
         if self.verification_minimum_request_count < 0:
-            raise ValueError(
-                "verification minimum request count cannot be negative"
-            )
+            raise ValueError("verification minimum request count cannot be negative")
         if self.saga_retention_hours <= 0:
             raise ValueError("saga retention hours must be positive")
         if self.startup_reconcile_retry_seconds <= 0:
@@ -398,7 +437,7 @@ class Settings:
         if self.saga_backend.strip().lower() == "configmap":
             raise ValueError("configmap saga backend is not implemented")
         if (
-            self.remediation_mode == "live"
+            self.remediation_mode == "gitops/live"
             and self.autonomous_remediation_enabled
             and self.saga_backend.strip().lower()
             in {"", "memory", "mem", "none", "off"}
@@ -406,19 +445,53 @@ class Settings:
             raise ValueError(
                 "live autonomous remediation requires a durable saga backend"
             )
+        if self.remediation_mode not in {"gitops/dry-run", "gitops/live"}:
+            raise ValueError("REMEDIATION_MODE must be gitops/dry-run or gitops/live")
+        if self.github_auth_mode not in {"app", "token-files"}:
+            raise ValueError(
+                "AIOPS_GITHUB_AUTH_MODE must be app or token-files"
+            )
+        if self.gitops_merge_strategy not in {"auto", "human", "dual-token"}:
+            raise ValueError(
+                "AIOPS_GITOPS_MERGE_STRATEGY must be auto, human or dual-token"
+            )
+        if self.gitops_merge_strategy == "dual-token":
+            if self.github_auth_mode != "token-files":
+                raise ValueError(
+                    "dual-token merge strategy requires token-files auth"
+                )
+            if not self.timeboxed_demo_acknowledged:
+                raise ValueError(
+                    "dual-token merge strategy requires the explicit time-boxed "
+                    "demo acknowledgement"
+                )
+            if not self.github_creator_login or not self.github_reviewer_login:
+                raise ValueError(
+                    "dual-token demo requires explicit creator and reviewer logins"
+                )
+            if self.github_creator_login == self.github_reviewer_login:
+                raise ValueError(
+                    "dual-token demo creator and reviewer must be different accounts"
+                )
+        if self.gitops_observe_interval_seconds < 0:
+            raise ValueError("GitOps observe interval cannot be negative")
+        if self.gitops_merge_timeout_seconds <= 0:
+            raise ValueError("GitOps merge timeout must be positive")
+        if self.gitops_runtime_timeout_seconds <= 0:
+            raise ValueError("GitOps runtime timeout must be positive")
+        if not self.gitops_required_checks:
+            raise ValueError("at least one required GitOps check is required")
+        if tuple(self.allowed_deployments) != ("product-reviews",):
+            raise ValueError(
+                "Mandate 22 V1 allowlist must contain only product-reviews"
+            )
         if self.burn_rate_short_window_minutes <= 0:
             raise ValueError("burn-rate short window must be positive")
-        if (
-            self.burn_rate_long_window_minutes
-            <= self.burn_rate_short_window_minutes
-        ):
+        if self.burn_rate_long_window_minutes <= self.burn_rate_short_window_minutes:
             raise ValueError("burn-rate long window must be greater than short window")
         if self.burn_rate_warning_threshold <= 0:
             raise ValueError("burn-rate warning threshold must be positive")
-        if (
-            self.burn_rate_critical_threshold
-            < self.burn_rate_warning_threshold
-        ):
+        if self.burn_rate_critical_threshold < self.burn_rate_warning_threshold:
             raise ValueError(
                 "burn-rate critical threshold must be >= warning threshold"
             )

@@ -8,15 +8,30 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 import uvicorn
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Response,
+    status,
+)
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .availability import KubernetesAvailabilityClient
 from .config import Settings
 from .detection import Detector, latency_query, values
-from .models import utcnow
-from .remediation import KubernetesRollbackAdapter, PolicyDenied, RemediationController
+from .gitops import (
+    FileTokenProvider,
+    GitHubAppTokenProvider,
+    GitHubGitOpsRemediationAdapter,
+    KubernetesLeaseTargetLock,
+    KubernetesRuntimeObserver,
+)
+from .models import IncidentStatus, utcnow
+from .remediation import PolicyDenied, RemediationController
 from .saga import build_saga_store
 from .store import IncidentStore
 from .summary import IncidentSummaryGenerator
@@ -33,9 +48,11 @@ settings = Settings()
 store = IncidentStore(settings.cooldown_seconds)
 telemetry = TelemetryClient(settings)
 saga_store = build_saga_store(settings.saga_backend, settings.saga_path or None)
-# Constructed in lifespan (not import-time) so unit tests can import main without
-# a kubeconfig, while production startup always has an adapter for saga resume.
-_remediation_adapter: KubernetesRollbackAdapter | None = None
+# Constructed in lifespan so imports never require a kubeconfig or mounted
+# GitHub App private key. Production wiring has no Deployment mutation client.
+_remediation_adapter: GitHubGitOpsRemediationAdapter | None = None
+_runtime_observer: KubernetesRuntimeObserver | None = None
+_target_lock: KubernetesLeaseTargetLock | None = None
 
 
 async def verify_service_slo(service: str) -> dict[str, object]:
@@ -86,26 +103,70 @@ summary_generator = IncidentSummaryGenerator(
 async def _reconcile_startup_state() -> None:
     """Reconcile durable ownership before the polling worker can start."""
 
-    global _remediation_adapter
+    global _remediation_adapter, _runtime_observer, _target_lock
     saga_log = logging.getLogger("aiops.saga")
-    if remediation.adapter is None:
+    open_sagas = await saga_store.list_open()
+    needs_live_adapters = settings.remediation_mode == "gitops/live" or any(
+        item.schema_version == 2 for item in open_sagas
+    )
+    if needs_live_adapters and remediation.adapter is None:
         try:
-            _remediation_adapter = KubernetesRollbackAdapter(
-                settings.namespace,
-                settings.deployment_recency_hours,
-                known_good_revisions=settings.known_good_revisions,
+            reviewer_token_provider = None
+            if settings.github_auth_mode == "token-files":
+                token_provider = FileTokenProvider(
+                    token_path=settings.github_creator_token_path,
+                    expected_login=settings.github_creator_login,
+                    api_url=settings.github_api_url,
+                    proxy_url=settings.github_proxy_url or None,
+                )
+                if settings.gitops_merge_strategy == "dual-token":
+                    reviewer_token_provider = FileTokenProvider(
+                        token_path=settings.github_reviewer_token_path,
+                        expected_login=settings.github_reviewer_login,
+                        api_url=settings.github_api_url,
+                        proxy_url=settings.github_proxy_url or None,
+                    )
+                    creator_login = await asyncio.to_thread(token_provider.login)
+                    reviewer_login = await asyncio.to_thread(
+                        reviewer_token_provider.login
+                    )
+                    if creator_login == reviewer_login:
+                        raise RuntimeError(
+                            "dual-token demo identities must be different"
+                        )
+            else:
+                token_provider = GitHubAppTokenProvider(
+                    app_id=settings.github_app_id,
+                    installation_id=settings.github_app_installation_id,
+                    private_key_path=settings.github_app_private_key_path,
+                    api_url=settings.github_api_url,
+                    proxy_url=settings.github_proxy_url or None,
+                )
+            if settings.remediation_mode == "gitops/live":
+                # Fail readiness before detector polling when the mounted App
+                # identity cannot obtain its repository-scoped token.
+                await asyncio.to_thread(token_provider.token)
+            _remediation_adapter = GitHubGitOpsRemediationAdapter(
+                repository=settings.gitops_repository,
+                base_branch=settings.gitops_base_branch,
+                policy_path=settings.gitops_policy_path,
+                token_provider=token_provider,
+                reviewer_token_provider=reviewer_token_provider,
+                merge_strategy=settings.gitops_merge_strategy,
+                api_url=settings.github_api_url,
+                proxy_url=settings.github_proxy_url or None,
             )
+            _runtime_observer = KubernetesRuntimeObserver(settings.namespace)
+            _target_lock = KubernetesLeaseTargetLock(settings.namespace)
             remediation.adapter = _remediation_adapter
+            remediation.runtime_observer = _runtime_observer
+            remediation.target_lock = _target_lock
         except Exception as exc:
-            open_sagas = await saga_store.list_open()
-            if open_sagas:
+            if open_sagas or settings.remediation_mode == "gitops/live":
                 raise RuntimeError(
-                    "open durable sagas require a Kubernetes adapter"
+                    "GitOps live/open saga requires GitHub, runtime and Lease adapters"
                 ) from exc
-            saga_log.exception(
-                "Kubernetes adapter unavailable; continuing without live "
-                "remediation adapter"
-            )
+            saga_log.exception("GitOps adapters unavailable; dry-run remains read-only")
 
     reconcile_results = await remediation.reconcile_open_sagas()
     if reconcile_results:
@@ -149,9 +210,7 @@ async def _recover_then_run_worker(stop_event: asyncio.Event) -> None:
                     {
                         "event": "startup_saga_reconcile_retry",
                         "attempt": attempt,
-                        "retry_seconds": (
-                            settings.startup_reconcile_retry_seconds
-                        ),
+                        "retry_seconds": (settings.startup_reconcile_retry_seconds),
                         "error": str(exc),
                     }
                 )
@@ -245,8 +304,33 @@ async def get_incident_summary(incident_id: str):
     )
 
 
-@app.post("/v1/incidents/{incident_id}/approve", dependencies=[Depends(require_token)])
-async def approve(incident_id: str):
+@app.get("/v1/incidents/{incident_id}/remediation")
+async def get_remediation(incident_id: str):
+    incident = await store.get(incident_id)
+    if not incident:
+        raise HTTPException(404, "Incident not found")
+    saga = await saga_store.get_by_incident(incident_id)
+    if not saga:
+        raise HTTPException(404, "Remediation transaction not found")
+    return saga.public_evidence()
+
+
+async def _execute_approved_incident(incident) -> None:
+    try:
+        await remediation.execute(incident)
+    except PolicyDenied as exc:
+        incident.status = IncidentStatus.ESCALATED
+        incident.escalation_reason = str(exc)
+    finally:
+        await _reconcile_manual_quarantine(incident)
+
+
+@app.post(
+    "/v1/incidents/{incident_id}/approve",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_token)],
+)
+async def approve(incident_id: str, background_tasks: BackgroundTasks):
     incident = await store.get(incident_id)
     if not incident:
         raise HTTPException(404, "Incident not found")
@@ -262,14 +346,14 @@ async def approve(incident_id: str):
         )
     try:
         remediation.approve(incident)
-        await remediation.execute(incident)
     except PolicyDenied as exc:
-        # Reconcile even on policy denial: execute may have already mutated and
-        # marked mutation_blocked before raising (or left an ambiguous outcome).
-        await _reconcile_manual_quarantine(incident)
         raise HTTPException(409, str(exc)) from exc
-    await _reconcile_manual_quarantine(incident)
-    return incident
+    background_tasks.add_task(_execute_approved_incident, incident)
+    return {
+        "incident_id": incident.incident_id,
+        "status": "enqueued",
+        "remediation_url": f"/v1/incidents/{incident.incident_id}/remediation",
+    }
 
 
 async def _reconcile_manual_quarantine(incident) -> None:

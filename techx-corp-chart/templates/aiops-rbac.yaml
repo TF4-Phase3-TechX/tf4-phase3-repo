@@ -7,16 +7,14 @@ metadata:
   labels:
     {{- include "techx-corp.labels" . | nindent 4 }}
 rules:
+  # Mandate 22 observes runtime state only. Deployment mutation and Argo
+  # Application mutation are intentionally absent in every values mode.
   - apiGroups: ["apps"]
     resources: ["deployments"]
-    verbs: ["get", "list", "watch"{{- if .Values.aiopsRemediation.liveEnabled }}, "patch"{{- end }}]
-{{- if .Values.aiopsRemediation.liveEnabled }}
-  # AppsV1Api.read_namespaced_deployment_status targets this subresource.
-  # Keep it read-only and present only during the signed live-drill window.
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments/status"]
     verbs: ["get"]
-{{- end }}
   - apiGroups: ["apps"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
