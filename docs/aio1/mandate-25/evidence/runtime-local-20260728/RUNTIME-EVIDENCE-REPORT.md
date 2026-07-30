@@ -1,5 +1,12 @@
 # Mandate 25 Local Runtime Evidence Report
 
+> **Historical local packet — not the closure verdict.** This packet's
+> post-cooldown provider call timed out. The later bounded production drill
+> proved successful real-provider recovery and is the canonical runtime
+> result. Start at
+> [`../../FINAL-EVIDENCE-INDEX.md`](../../FINAL-EVIDENCE-INDEX.md); do not mix
+> this local `PARTIAL` verdict with the production verdict.
+
 ## Evidence identity
 
 - Mandate: AI MANDATE #25 — AI resilience and safe fallback

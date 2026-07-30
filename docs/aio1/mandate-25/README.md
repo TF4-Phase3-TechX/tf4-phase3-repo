@@ -8,8 +8,9 @@
 production failure/recovery drill are complete. Named ADR acceptance remains
 pending.
 
-Canonical production evidence:
-[`evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md`](evidence/runtime-production-20260729/RUNTIME-EVIDENCE-REPORT.md).
+Canonical evidence entry point:
+[`FINAL-EVIDENCE-INDEX.md`](FINAL-EVIDENCE-INDEX.md). It explicitly separates
+the historical local PARTIAL packet from the later production recovery pass.
 
 ## What is implemented
 
