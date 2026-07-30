@@ -69,6 +69,24 @@ async def test_approve_enqueues_and_remediation_api_is_sanitized(api):
 
 
 @pytest.mark.asyncio
+async def test_remediation_api_reads_durable_saga_after_incident_store_restart(api):
+    client, store, sagas, _ = api
+    saga = RemediationSaga(
+        incident_id="inc-terminal-after-restart",
+        target="product-reviews",
+    )
+    saga.terminate(SagaOutcome.RESOLVED, "three-poll verification healthy")
+    await sagas.save(saga)
+
+    assert await store.get(saga.incident_id) is None
+    evidence = client.get(f"/v1/incidents/{saga.incident_id}/remediation")
+
+    assert evidence.status_code == 200
+    assert evidence.json()["phase"] == "TERMINAL"
+    assert evidence.json()["outcome"] == "resolved"
+
+
+@pytest.mark.asyncio
 async def test_approve_rejects_active_target_quarantine(api):
     client, store, _, controller = api
     item = incident()
