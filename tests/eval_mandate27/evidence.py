@@ -58,8 +58,8 @@ def build_evidence(output_dir: Path) -> dict:
                 f"{name}: expected {expected}, got {(report['status'], signals)}"
             )
         results[name] = {
-            "input": str(paths[name].relative_to(output_dir)),
-            "report": str(report_path.relative_to(output_dir)),
+            "input": paths[name].relative_to(output_dir).as_posix(),
+            "report": report_path.relative_to(output_dir).as_posix(),
             "status": report["status"],
             "signals": [
                 {"surface": surface, "metric": metric}
@@ -97,7 +97,8 @@ def build_evidence(output_dir: Path) -> dict:
     _write_lf(
         checksums_path,
         "".join(
-            f"{_checksum(path)}  {path.relative_to(output_dir)}\n"
+            f"{_checksum(path)}  "
+            f"{path.relative_to(output_dir).as_posix()}\n"
             for path in artifact_paths
         ),
     )

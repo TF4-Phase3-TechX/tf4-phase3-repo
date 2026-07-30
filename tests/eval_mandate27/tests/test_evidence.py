@@ -14,6 +14,11 @@ def test_evidence_checksums_cover_verification_record(tmp_path):
     manifest = build_evidence(tmp_path)
     checksums_path = tmp_path / "checksums.sha256"
     checksum_lines = checksums_path.read_text(encoding="utf-8").splitlines()
+    assert all("\\" not in line for line in checksum_lines)
+    assert all(
+        "\\" not in result["input"] and "\\" not in result["report"]
+        for result in manifest["results"].values()
+    )
 
     assert any(
         line.endswith("  VERIFICATION.md") for line in checksum_lines

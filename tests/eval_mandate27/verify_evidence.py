@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from pathlib import PurePosixPath
 
 
 def sha256(path: Path) -> str:
@@ -23,7 +24,11 @@ def verify_evidence(root: Path) -> int:
         expected, separator, relative = line.partition("  ")
         if not separator or not relative:
             raise ValueError(f"invalid checksum record: {line!r}")
-        candidate = (root / relative).resolve()
+        if "\\" in relative:
+            raise ValueError(
+                f"checksum path must use portable '/' separators: {relative}"
+            )
+        candidate = (root / PurePosixPath(relative)).resolve()
         if root.resolve() not in candidate.parents:
             raise ValueError(f"checksum path escapes evidence root: {relative}")
         if not candidate.is_file():
