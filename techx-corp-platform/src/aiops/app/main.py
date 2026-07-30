@@ -306,13 +306,12 @@ async def get_incident_summary(incident_id: str):
 
 @app.get("/v1/incidents/{incident_id}/remediation")
 async def get_remediation(incident_id: str):
-    incident = await store.get(incident_id)
-    if not incident:
-        raise HTTPException(404, "Incident not found")
     saga = await saga_store.get_by_incident(incident_id)
-    if not saga:
-        raise HTTPException(404, "Remediation transaction not found")
-    return saga.public_evidence()
+    if saga:
+        return saga.public_evidence()
+    if not await store.get(incident_id):
+        raise HTTPException(404, "Incident not found")
+    raise HTTPException(404, "Remediation transaction not found")
 
 
 async def _execute_approved_incident(incident) -> None:
