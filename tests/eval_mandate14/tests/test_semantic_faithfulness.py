@@ -3,6 +3,10 @@ from __future__ import annotations
 from copy import deepcopy
 
 from run_eval import build_report
+from semantic_faithfulness import (
+    _copilot_catalog_projection,
+    build_semantic_pair,
+)
 
 
 class FakeJudge:
@@ -116,3 +120,64 @@ def test_copilot_catalog_projection_is_not_semantic_faithfulness_credit():
         ]
         == 1
     )
+
+
+def test_catalog_projection_requires_exact_order_type_and_identity():
+    claim = {
+        "claim_type": "fact",
+        "text": "Dog bites man.",
+    }
+    catalog = [{
+        "source_id": "catalog:dog",
+        "source_type": "catalog",
+        "text": "Dog bites man.",
+    }]
+
+    assert _copilot_catalog_projection("copilot", claim, catalog)
+    assert not _copilot_catalog_projection(
+        "copilot",
+        {**claim, "text": "Man bites dog."},
+        catalog,
+    )
+    assert not _copilot_catalog_projection(
+        "copilot",
+        {**claim, "text": "Dog bites man man."},
+        catalog,
+    )
+    assert not _copilot_catalog_projection(
+        "copilot",
+        claim,
+        [{**catalog[0], "source_type": "product_description"}],
+    )
+    assert not _copilot_catalog_projection(
+        "copilot",
+        claim,
+        [{**catalog[0], "source_id": "product:dog"}],
+    )
+
+
+def test_shared_pair_builder_is_deterministic_and_source_ordered():
+    premise = "Alpha is red. Beta is blue. Gamma is green."
+    evidence, hypothesis = build_semantic_pair(
+        premise,
+        "Gamma is green.",
+    )
+
+    assert evidence == "Alpha is red. Gamma is green."
+    assert hypothesis == "Gamma is green."
+
+
+def test_empty_response_fragment_is_not_sent_to_semantic_judge():
+    value = review_case()
+    value["observed"]["response_text"] = (
+        "Buyers considered the design easy to carry. ."
+    )
+    report = build_report(
+        [value],
+        b"fixture",
+        semantic_judge=FakeJudge([0.91]),
+    )
+
+    semantic = report["aggregate"]["semantic_faithfulness_judge"]
+    assert semantic["scored_response_assertions"] == 1
+    assert semantic["input_truncated_count"] == 0

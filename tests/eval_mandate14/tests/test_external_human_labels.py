@@ -4,6 +4,9 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
+from external_quality_gate import verify_external_quality_gate
 
 ROOT = Path(__file__).resolve().parents[1]
 LABELS = ROOT / "external-human-labels-summeval-v1.jsonl"
@@ -31,6 +34,14 @@ def test_external_human_labels_are_balanced_pinned_and_text_free():
     assert all(len(row["source_sha256"]) == 64 for row in labels)
     assert all(len(row["summary_sha256"]) == 64 for row in labels)
     assert all("source" not in row and "summary" not in row for row in labels)
+    assert len({row["document_id"] for row in labels}) == 65
+    positive = {
+        row["document_id"] for row in labels if row["human_pass"]
+    }
+    negative = {
+        row["document_id"] for row in labels if not row["human_pass"]
+    }
+    assert len(positive & negative) == 35
 
 
 def test_external_nli_report_is_bound_to_labels_and_keeps_failed_agreement():
@@ -63,16 +74,32 @@ def test_external_factuality_report_passes_recorded_quality_gate():
         "58383384656cbaec2949a75a41f20e891e90a73b"
     )
     assert report["model"]["threshold"] == 0.5
-    assert report["aggregate"]["agreement"] == 0.76
-    assert report["aggregate"]["cohen_kappa"] == 0.52
-    assert report["aggregate"]["confusion_matrix"] == {
-        "true_positive": 36,
-        "true_negative": 40,
-        "false_positive": 10,
-        "false_negative": 14,
-    }
+    assert report["schema_version"] == (
+        "m14-external-human-factuality-report-v3"
+    )
+    assert report["dataset"]["labeled_summary_rows"] == 100
+    assert report["dataset"]["unique_documents"] == 65
+    assert report["dataset"]["documents_in_both_classes"] == 35
+    for path_name in (
+        "structured_claim_path",
+        "response_assertion_path",
+    ):
+        metrics = report["aggregate"][path_name]
+        assert metrics["agreement"] >= 0.70
+        assert metrics["cohen_kappa"] >= 0.40
     assert report["aggregate"]["input_truncated_count"] == 0
     assert report["aggregate"][
         "contradiction_negative_controls_passed"
     ] == 3
     assert report["acceptance_gate"]["pass"] is True
+    assert verify_external_quality_gate()["pass"] is True
+
+
+def test_external_gate_rejects_stale_semantic_scorer_hash(tmp_path):
+    report = json.loads(FACTUALITY_REPORT.read_text(encoding="utf-8"))
+    report["code_binding"]["semantic_scorer_sha256"] = "0" * 64
+    tampered = tmp_path / "tampered-report.json"
+    tampered.write_text(json.dumps(report), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="semantic scorer"):
+        verify_external_quality_gate(tampered)

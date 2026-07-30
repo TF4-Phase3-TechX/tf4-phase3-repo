@@ -23,7 +23,7 @@ pending.
 | Machine-readable aggregate | All hard bars pass | [`candidate/aggregate.json`](evidence/public/2026-07-24-e0a90f3-candidate/aggregate.json) |
 | Run provenance | Clean source SHA `e0a90f3e446cbf605623ad946d53c5b1085c6412` | [`candidate/manifest.json`](evidence/public/2026-07-24-e0a90f3-candidate/manifest.json) |
 | Synthetic scorer regression | 18/18 agreement; Cohen's κ = 1.0; not human-reviewed | [`judge-human-agreement.json`](evidence/public/2026-07-24-e0a90f3-candidate/judge-human-agreement.json) |
-| External human calibration | 100 SummEval expert labels; 50 pass/50 fail; failed generic NLI baseline agreement 0.50/κ 0.00 retained; accepted HHEM candidate agreement 0.76/κ 0.52; contradiction controls 3/3; truncation 0 | [`EXTERNAL-HUMAN-LABELS.md`](../../../tests/eval_mandate14/EXTERNAL-HUMAN-LABELS.md), [`external-human-factuality-report-v2.json`](../../../tests/eval_mandate14/external-human-factuality-report-v2.json) |
+| External human calibration | 100 SummEval expert-labeled summary rows clustered in 65 documents; 50 pass/50 fail; failed generic NLI baseline agreement 0.50/κ 0.00 retained; exact HHEM runtime paths: structured claims 0.74/κ 0.48 and response assertions 0.71/κ 0.42; contradiction controls 3/3; truncation 0 | [`EXTERNAL-HUMAN-LABELS.md`](../../../tests/eval_mandate14/EXTERNAL-HUMAN-LABELS.md), [`external-human-factuality-report-v2.json`](../../../tests/eval_mandate14/external-human-factuality-report-v2.json) |
 | Historical before/after diagnostic | Same dataset and model/guardrail; scoring contract changed | [`before-after.json`](evidence/public/before-after.json) |
 | Preserved failed run | 12/16 before remediation | [`failed/report.md`](evidence/public/2026-07-24-f31a2d6-failed/report.md) |
 | Signed decision | ADR-014 accepted by owner and three independent reviewers | [`ADR-014`](ADR-014-standard-ai-evaluation.md), [PR #658 approvals](https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/pull/658) |
@@ -129,7 +129,8 @@ hard-bar failures, or any failed supplied case.
 - The separate 100-case SummEval manifest has published external expert-label
   provenance and is reproducible by dataset revision and source/summary hashes.
   The generic NLI candidate achieved κ=0.00 and remains a failed baseline. The
-  HHEM candidate reaches agreement 0.76/κ 0.52 and passes the recorded offline
+  exact HHEM structured-claim path reaches agreement 0.74/κ 0.48 and the
+  response-assertion path reaches 0.71/κ 0.42; both pass the recorded offline
   gate. It does not prove TF4-domain or production quality.
 - Regex and synthetic-canary leakage detection are backstops, not a complete
   DLP product.
@@ -159,8 +160,9 @@ Standard harness: 16/16 overall; Copilot 10/10; review summary 6/6
 Grounding: 14/14; abstention: 2/2; injection: 4/4; false blocks: 0/11
 Hard bars: PII leaks=0; system-prompt leaks=0; unauthorized writes=0
 Synthetic regression fixture: 18 labels, agreement=1.0, Cohen's kappa=1.0
-External human calibration: 100 SummEval labels; generic NLI baseline
-agreement=0.50/kappa=0.00 rejected; HHEM agreement=0.76/kappa=0.52 accepted
+External human calibration: 100 SummEval summary rows/65 documents; generic NLI
+baseline agreement=0.50/kappa=0.00 rejected; exact HHEM structured-claim path
+agreement=0.74/kappa=0.48 and response-assertion path=0.71/kappa=0.42 accepted
 offline; 3/3 contradictions rejected; 0 inputs truncated
 Dataset SHA-256: 4c9c4b4c258cb7d1116c4b0e893112affbc0d1a7e848063c790cf1a0d64fd894
 ADR-014: Accepted by the decision owner and three independent reviewers in PR #658

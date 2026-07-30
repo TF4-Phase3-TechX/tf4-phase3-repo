@@ -7,20 +7,16 @@ import argparse
 import hashlib
 import json
 import re
-import urllib.parse
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 from fetch_summeval_human_labels import (
-    DATASET_CONFIG,
     DATASET_ID,
     DATASET_REVISION,
     DATASET_SPLIT,
     DEFAULT_OUTPUT as DEFAULT_LABELS,
-    METADATA_URL,
-    ROWS_URL,
-    _fetch_json,
+    load_pinned_rows,
 )
 
 
@@ -68,21 +64,7 @@ def _load_labels(path: Path) -> list[dict[str, Any]]:
 
 
 def _fetch_pairs(labels: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    metadata = _fetch_json(METADATA_URL)
-    if metadata.get("sha") != DATASET_REVISION:
-        raise RuntimeError(
-            f"dataset revision changed: expected {DATASET_REVISION}, got {metadata.get('sha')}"
-        )
-    query = urllib.parse.urlencode(
-        {
-            "dataset": DATASET_ID,
-            "config": DATASET_CONFIG,
-            "split": DATASET_SPLIT,
-            "offset": 0,
-            "length": 100,
-        }
-    )
-    rows = _fetch_json(f"{ROWS_URL}?{query}")["rows"]
+    rows = load_pinned_rows()
     indexed = {int(item["row_idx"]): item["row"] for item in rows}
     pairs: list[dict[str, Any]] = []
     for label in labels:

@@ -6,8 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import urllib.parse
-import urllib.request
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable
@@ -17,19 +15,32 @@ DATASET_ID = "mteb/summeval"
 DATASET_REVISION = "bfc121155064afa2d81b5505682ffc0d96f4334c"
 DATASET_CONFIG = "default"
 DATASET_SPLIT = "test"
-ROWS_URL = "https://datasets-server.huggingface.co/rows"
-METADATA_URL = f"https://huggingface.co/api/datasets/{DATASET_ID}"
 DEFAULT_OUTPUT = Path(__file__).with_name("external-human-labels-summeval-v1.jsonl")
-
-
-def _fetch_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers={"User-Agent": "tf4-aio1-m14-calibration/1.0"})
-    with urllib.request.urlopen(request, timeout=120) as response:
-        return json.load(response)
 
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def load_pinned_rows() -> list[dict[str, Any]]:
+    """Load the declared immutable dataset revision, never upstream main."""
+    from datasets import load_dataset
+
+    dataset = load_dataset(
+        DATASET_ID,
+        DATASET_CONFIG,
+        split=DATASET_SPLIT,
+        revision=DATASET_REVISION,
+    )
+    rows = [
+        {"row_idx": index, "row": dict(row)}
+        for index, row in enumerate(dataset)
+    ]
+    if len(rows) != 100:
+        raise RuntimeError(
+            "expected the pinned SummEval test split to contain 100 rows"
+        )
+    return rows
 
 
 def _select_one_per_document(
@@ -69,25 +80,7 @@ def _select_one_per_document(
 
 
 def build_manifest() -> list[dict[str, Any]]:
-    metadata = _fetch_json(METADATA_URL)
-    if metadata.get("sha") != DATASET_REVISION:
-        raise RuntimeError(
-            f"dataset revision changed: expected {DATASET_REVISION}, got {metadata.get('sha')}"
-        )
-
-    query = urllib.parse.urlencode(
-        {
-            "dataset": DATASET_ID,
-            "config": DATASET_CONFIG,
-            "split": DATASET_SPLIT,
-            "offset": 0,
-            "length": 100,
-        }
-    )
-    response = _fetch_json(f"{ROWS_URL}?{query}")
-    rows = response.get("rows", [])
-    if len(rows) != 100 or response.get("num_rows_total") != 100:
-        raise RuntimeError("expected the pinned SummEval test split to contain 100 rows")
+    rows = load_pinned_rows()
 
     negative = _select_one_per_document(rows, lambda score: score <= 2.0, 50)
     positive = _select_one_per_document(rows, lambda score: score >= 4.0, 50)

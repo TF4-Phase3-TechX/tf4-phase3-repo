@@ -189,7 +189,16 @@ def test_evidence_package_contains_reproducibility_and_calibration(tmp_path, mon
     assert packaged["manifest"]["surfaces"] == ["copilot", "review_summary"]
     assert len(packaged["manifest"]["dataset_sha256"]) == 64
     assert (output_dir / "per_case.jsonl").exists()
-    agreement = json.loads(
+    calibration_gate = json.loads(
         (output_dir / "judge-human-agreement.json").read_text()
     )
-    assert agreement["labeled_cases"] >= 10
+    assert calibration_gate["pass"] is True
+    assert calibration_gate["structured_claim_path"][
+        "labeled_cases"
+    ] == 100
+    assert calibration_gate["response_assertion_path"][
+        "labeled_cases"
+    ] == 100
+    assert packaged["manifest"]["external_calibration"][
+        "report_sha256"
+    ] == calibration_gate["report_sha256"]

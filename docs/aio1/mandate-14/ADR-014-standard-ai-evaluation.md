@@ -95,7 +95,8 @@ across both surfaces, including known failures. It tests the scorer, not
 production quality, and its κ=1.0 is not human agreement.
 
 A separate external calibration uses 100 published SummEval expert-consistency
-labels. The pinned generic NLI candidate achieved agreement 0.50 and κ=0.00
+summary rows clustered within 65 source documents; 35 documents contribute to
+both classes. The pinned generic NLI candidate achieved agreement 0.50 and κ=0.00
 while rejecting 3/3 explicit contradiction controls. That candidate is
 therefore rejected as the standard scorer: a working NLI implementation and
 negative controls are necessary but not sufficient without human-label
@@ -103,13 +104,25 @@ agreement.
 
 The semantic amendment instead uses HHEM-1.0-Open at revision
 `58383384656cbaec2949a75a41f20e891e90a73b` and the model card's published
-threshold `0.5`. On the same frozen 100 labels it achieves agreement `0.76`,
-Cohen's κ `0.52`, TP/TN/FP/FN `36/40/10/14`, rejects 3/3 contradiction
-controls, and truncates 0 inputs. Its acceptance gate was recorded as agreement
-`>=0.70`, κ `>=0.40`, all contradiction controls, and zero truncation.
+threshold `0.5`. On the same frozen 100 summary rows, the exact deployed
+structured-claim path achieves agreement `0.74`, Cohen's κ `0.48`, and
+TP/TN/FP/FN `29/45/5/21`; the exact response-assertion path achieves agreement
+`0.71`, κ `0.42`, and `27/44/6/23`. It rejects 3/3 contradiction controls and
+truncates 0 inputs. The gate requires each path's agreement `>=0.70` and κ
+`>=0.40`, all contradiction controls, and zero truncation.
 
-Exact Copilot catalog projections remain citation-checked but do not contribute
-to the semantic-faithfulness numerator or denominator. This removes a
+The calibration adapter invokes the exact deployed `build_report()` and
+`apply_semantic_faithfulness()` path and measures structured claims and
+user-visible response assertions separately. A shared deterministic pair
+builder bounds context for both calibration and runtime. Certification verifies
+the committed report against the current label, scorer/preprocessor,
+calibration-runner and model hashes and fails on either path's thresholds,
+contradiction controls, or any truncation.
+
+Exact Copilot catalog projections from a single `catalog:<identity>` source
+remain citation-checked but do not contribute to the semantic-faithfulness
+numerator or denominator. Exclusion requires normalized exact text, not
+bag-of-words equivalence. This removes a
 tautological perfect score from claims copied directly out of the same catalog
 record. User-visible assertions are still semantically audited against supplied
 sources.

@@ -136,7 +136,7 @@ def main() -> int:
     parser.add_argument(
         "--require-calibration",
         action="store_true",
-        help="Require at least ten human-labeled cases.",
+        help="Require the hash-bound external-human semantic quality gate.",
     )
     parser.add_argument(
         "--allow-hard-bar-failures",
@@ -169,10 +169,11 @@ def main() -> int:
     require_no_semantic_truncation(report)
     _validator(args.result_schema).validate(report)
 
-    labeled_cases = report["aggregate"]["scorer_human"]["labeled_cases"]
-    if args.require_calibration and labeled_cases < 10:
-        raise ValueError(
-            f"calibration requires at least 10 human labels, found {labeled_cases}"
+    if args.require_calibration:
+        from external_quality_gate import verify_external_quality_gate
+
+        report["external_calibration_gate"] = (
+            verify_external_quality_gate()
         )
     if args.require_clean_git and report["git"]["dirty"]:
         raise ValueError("certification evidence requires a clean tracked worktree")

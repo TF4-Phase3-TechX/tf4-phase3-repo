@@ -15,6 +15,10 @@ the three expert consistency scores. It is an external English news
 faithfulness calibration set, not AIO1 team labeling and not TF4 production
 evidence.
 
+The 100 labeled units are summary rows clustered within 65 source documents;
+35 documents contribute one row to each class. Metrics therefore describe 100
+summary-level decisions, not 100 statistically independent documents.
+
 To avoid duplicating copyrighted news articles or generated summaries, the
 committed file retains dataset/document IDs, the expert score, binary rule and
 SHA-256 of each source/summary. The reproduction script downloads the pinned
@@ -40,7 +44,10 @@ not by itself prove scorer agreement.
 
 ## Candidate comparison
 
-Run the pinned `cross-encoder/nli-deberta-v3-small` calibration with:
+Rows are loaded with `datasets.load_dataset(..., revision=<commit SHA>)`; the
+revision is used for the actual fetch, then the existing source and summary
+content hashes are checked. Run the pinned
+`cross-encoder/nli-deberta-v3-small` calibration with:
 
 ```powershell
 python tests\eval_mandate14\run_external_human_nli.py --batch-size 16
@@ -71,14 +78,26 @@ python tests\eval_mandate14\run_external_human_factuality.py --batch-size 16
 [`external-human-factuality-report-v2.json`](external-human-factuality-report-v2.json)
 records:
 
-- agreement `0.76` and Cohen's κ `0.52`;
-- confusion matrix TP=`36`, TN=`40`, FP=`10`, FN=`14`;
+- structured-claim agreement `0.74`, Cohen's κ `0.48`, and confusion matrix
+  TP=`29`, TN=`45`, FP=`5`, FN=`21`;
+- response-assertion agreement `0.71`, Cohen's κ `0.42`, and confusion matrix
+  TP=`27`, TN=`44`, FP=`6`, FN=`23`;
 - 3/3 explicit contradiction controls rejected;
 - zero model inputs truncated;
 - the recorded gate passed: agreement `>=0.70`, κ `>=0.40`, all
   contradiction controls, and zero truncation.
 
-Lexical overlap selects a bounded, source-ordered evidence window only. It does
-not decide support. HHEM makes the semantic support decision. This remains an
-English news-domain offline calibration; it is not TF4-domain, production, or
-hidden-set acceptance evidence.
+The accepted report adapts every external row to the runtime observation
+contract and calls the same `run_eval.build_report()` and
+`apply_semantic_faithfulness()` path used by certification. It reports
+structured-claim and user-visible response-assertion agreement separately.
+The shared pair builder uses lexical overlap only to select a bounded,
+source-ordered evidence window; it does not decide support.
+
+`run_eval.py --require-calibration` and `run_harness.py` both verify the
+committed report's label, scorer/preprocessor, calibration-runner, model
+revision, threshold, metrics, contradiction controls, and zero-truncation
+condition. The certification manifest binds that report hash to the evaluated
+Git SHA. This remains English news-domain offline calibration; it is not
+TF4-domain, production, document-independent, or hidden-set acceptance
+evidence.

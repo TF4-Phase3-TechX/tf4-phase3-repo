@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Any
 
 from scorer import (
     SENTENCE_RE,
     SOURCE_TYPES_BY_CLAIM,
-    _coverage,
     _response_claim_core,
+    _tokens,
 )
 
 
@@ -17,6 +19,52 @@ MODEL_REVISION = "58383384656cbaec2949a75a41f20e891e90a73b"
 MODEL_BRANCH = "hhem-1.0-open"
 MODEL_MAX_LENGTH = 512
 MODEL_THRESHOLD = 0.5
+SEMANTIC_RETRIEVAL_TOP_K = 2
+
+
+def _normalized_exact_text(value: Any) -> str:
+    return " ".join(
+        unicodedata.normalize("NFKC", str(value or ""))
+        .casefold()
+        .split()
+    )
+
+
+def build_semantic_pair(premise: str, hypothesis: str) -> tuple[str, str]:
+    """Build the shared runtime/calibration HHEM input pair.
+
+    Retrieval only bounds context; it never decides support.
+    """
+    source_sentences = [
+        sentence.strip()
+        for sentence in SENTENCE_RE.split(premise)
+        if sentence.strip()
+    ]
+    claims = [
+        sentence.strip()
+        for sentence in SENTENCE_RE.split(hypothesis)
+        if sentence.strip()
+    ]
+    if not source_sentences or not claims:
+        return premise.strip(), hypothesis.strip()
+
+    selected_indexes: set[int] = set()
+    for claim in claims:
+        claim_tokens = set(_tokens(claim))
+        ranked: list[tuple[float, int, int, int]] = []
+        for index, sentence in enumerate(source_sentences):
+            sentence_tokens = set(_tokens(sentence))
+            overlap = len(claim_tokens & sentence_tokens)
+            coverage = overlap / max(len(claim_tokens), 1)
+            ranked.append((coverage, overlap, -index, index))
+        ranked.sort(reverse=True)
+        selected_indexes.update(
+            item[3] for item in ranked[:SEMANTIC_RETRIEVAL_TOP_K]
+        )
+    evidence = " ".join(
+        source_sentences[index] for index in sorted(selected_indexes)
+    )
+    return evidence, hypothesis.strip()
 
 
 class HHEMJudge:
@@ -36,6 +84,7 @@ class HHEMJudge:
             use_safetensors=False,
         )
         self.model.eval()
+        self._score_cache: dict[tuple[str, str], tuple[float, bool]] = {}
 
     def score_pairs(
         self,
@@ -45,10 +94,11 @@ class HHEMJudge:
     ) -> tuple[list[float], int]:
         import torch
 
-        scores: list[float] = []
-        truncation_count = 0
-        for start in range(0, len(pairs), batch_size):
-            batch = pairs[start : start + batch_size]
+        uncached = list(dict.fromkeys(
+            pair for pair in pairs if pair not in self._score_cache
+        ))
+        for start in range(0, len(uncached), batch_size):
+            batch = uncached[start : start + batch_size]
             premises = [item[0] for item in batch]
             hypotheses = [item[1] for item in batch]
             full_lengths = self.tokenizer(
@@ -58,9 +108,6 @@ class HHEMJudge:
                 truncation=False,
                 return_length=True,
             )["length"]
-            truncation_count += sum(
-                length > MODEL_MAX_LENGTH for length in full_lengths
-            )
             encoded = self.tokenizer(
                 premises,
                 hypotheses,
@@ -73,25 +120,42 @@ class HHEMJudge:
                 batch_scores = torch.sigmoid(
                     self.model(**encoded).logits.reshape(-1)
                 ).cpu()
-            scores.extend(float(score) for score in batch_scores)
+            for pair, score, length in zip(
+                batch,
+                batch_scores,
+                full_lengths,
+                strict=True,
+            ):
+                self._score_cache[pair] = (
+                    float(score),
+                    length > MODEL_MAX_LENGTH,
+                )
+        scores = [self._score_cache[pair][0] for pair in pairs]
+        truncation_count = sum(
+            self._score_cache[pair][1] for pair in pairs
+        )
         return scores, truncation_count
 
 
 def _copilot_catalog_projection(
     surface: str,
     claim: dict[str, Any],
-    source_blob: str,
+    cited_sources: list[dict[str, Any]],
 ) -> bool:
     """Exclude copied catalog projections from semantic-rate denominators."""
     if surface != "copilot" or claim.get("claim_type") != "fact":
         return False
-    text = str(claim.get("text", ""))
-    if not text.strip() or not source_blob.strip():
+    if len(cited_sources) != 1:
         return False
-    return (
-        _coverage(text, source_blob) == 1.0
-        and _coverage(source_blob, text) >= 0.95
-    )
+    source = cited_sources[0]
+    if (
+        source.get("source_type") != "catalog"
+        or not re.fullmatch(r"catalog:[^\s]+", str(source.get("source_id", "")))
+    ):
+        return False
+    text = _normalized_exact_text(claim.get("text", ""))
+    source_text = _normalized_exact_text(source.get("text", ""))
+    return bool(text) and text == source_text
 
 
 def apply_semantic_faithfulness(
@@ -143,7 +207,7 @@ def apply_semantic_faithfulness(
             excluded = _copilot_catalog_projection(
                 result["surface"],
                 claim,
-                source_blob,
+                cited_sources,
             )
             claim["citation_contract_ok"] = citation_contract_ok
             claim["semantic_applicable"] = not excluded
@@ -155,9 +219,10 @@ def apply_semantic_faithfulness(
                 claim["semantic_threshold"] = MODEL_THRESHOLD
                 claim["supported"] = citation_contract_ok
                 continue
-            pending_pairs.append(
-                (source_blob, str(claim.get("text", "")))
-            )
+            pending_pairs.append(build_semantic_pair(
+                source_blob,
+                str(claim.get("text", "")),
+            ))
             pending_claims.append(claim)
 
     scores, truncation_count = judge.score_pairs(
@@ -191,7 +256,7 @@ def apply_semantic_faithfulness(
                 sentence,
                 len(case.get("sources", [])),
             )
-            if core is None:
+            if core is None or not _tokens(core):
                 continue
             record = {
                 "text": sentence,
@@ -201,7 +266,7 @@ def apply_semantic_faithfulness(
             }
             grounding["response_assertions"].append(record)
             assertion_records.append(record)
-            assertion_pairs.append((source_blob, core))
+            assertion_pairs.append(build_semantic_pair(source_blob, core))
 
     assertion_scores, assertion_truncations = judge.score_pairs(
         assertion_pairs,

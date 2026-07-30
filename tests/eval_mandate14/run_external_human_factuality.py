@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a pinned factual-consistency judge against 100 SummEval expert labels."""
+"""Calibrate the deployed semantic path on 100 SummEval expert labels."""
 
 from __future__ import annotations
 
@@ -9,15 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from semantic_faithfulness import (
-    HHEMJudge,
-    MODEL_BRANCH,
-    MODEL_ID,
-    MODEL_MAX_LENGTH,
-    MODEL_REVISION,
-    MODEL_THRESHOLD,
-)
-
+from run_eval import build_report as build_runtime_report
 from run_external_human_nli import (
     CONTRADICTION_CONTROLS,
     DEFAULT_LABELS,
@@ -27,11 +19,18 @@ from run_external_human_nli import (
     _load_labels,
     _sentences,
     _sha256,
-    _tokens,
+)
+from semantic_faithfulness import (
+    HHEMJudge,
+    MODEL_BRANCH,
+    MODEL_ID,
+    MODEL_MAX_LENGTH,
+    MODEL_REVISION,
+    MODEL_THRESHOLD,
+    SEMANTIC_RETRIEVAL_TOP_K,
+    build_semantic_pair,
 )
 
-
-RETRIEVAL_TOP_K = 2
 MIN_AGREEMENT = 0.70
 MIN_COHEN_KAPPA = 0.40
 DEFAULT_REPORT = Path(__file__).with_name(
@@ -39,59 +38,32 @@ DEFAULT_REPORT = Path(__file__).with_name(
 )
 
 
-def _retrieve_summary_evidence(source: str, summary: str) -> str:
-    """Return a source-ordered union of the top evidence for every claim.
-
-    Lexical overlap is used only to fit relevant evidence into the model
-    context. It never decides support; HHEM makes the support decision.
-    """
-    source_sentences = _sentences(source)
-    selected_indexes: set[int] = set()
-    for claim in _sentences(summary):
-        claim_tokens = _tokens(claim)
-        ranked: list[tuple[float, int, int, int]] = []
-        for index, sentence in enumerate(source_sentences):
-            sentence_tokens = _tokens(sentence)
-            overlap = len(claim_tokens & sentence_tokens)
-            coverage = overlap / max(len(claim_tokens), 1)
-            ranked.append((coverage, overlap, -index, index))
-        ranked.sort(reverse=True)
-        selected_indexes.update(
-            item[3] for item in ranked[:RETRIEVAL_TOP_K]
-        )
-    return " ".join(
-        source_sentences[index] for index in sorted(selected_indexes)
-    )
+def _sha256_path(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _score_text_pairs(
-    pairs: list[tuple[str, str]],
-    *,
-    batch_size: int,
-    judge: HHEMJudge,
-) -> tuple[list[float], int]:
-    return judge.score_pairs(pairs, batch_size=batch_size)
-
-
-def _metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
+def _metrics(
+    results: list[dict[str, Any]],
+    prediction_field: str,
+) -> dict[str, Any]:
     tp = sum(
         item["human_pass"] is True
-        and item["factual_consistency_pass"] is True
+        and item[prediction_field] is True
         for item in results
     )
     tn = sum(
         item["human_pass"] is False
-        and item["factual_consistency_pass"] is False
+        and item[prediction_field] is False
         for item in results
     )
     fp = sum(
         item["human_pass"] is False
-        and item["factual_consistency_pass"] is True
+        and item[prediction_field] is True
         for item in results
     )
     fn = sum(
         item["human_pass"] is True
-        and item["factual_consistency_pass"] is False
+        and item[prediction_field] is False
         for item in results
     )
     agreement = (tp + tn) / len(results)
@@ -108,53 +80,134 @@ def _metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _runtime_case(item: dict[str, Any]) -> dict[str, Any]:
+    """Adapt one external row to the same observation contract as runtime."""
+    source_id = f"review:{item['document_id']}"
+    claims = [
+        {
+            "text": sentence,
+            "claim_type": "opinion",
+            "source_ids": [source_id],
+        }
+        for sentence in _sentences(item["hypothesis"])
+    ]
+    return {
+        "schema_version": "mandate14-case-v2",
+        "case_id": item["case_id"],
+        "surface": "review_summary",
+        "variant": "external_calibration",
+        "category": "grounded",
+        "human_pass": item["human_pass"],
+        "sources": [{
+            "source_id": source_id,
+            "source_type": "review",
+            "text": item["premise"],
+        }],
+        "expected": {
+            "outcome": "answer",
+            "answerable": True,
+            "valid_task": True,
+            "facts": [],
+        },
+        "observed": {
+            "outcome": "answered",
+            "response_text": item["hypothesis"],
+            "claims": claims,
+            "blocked": False,
+            "latency_ms": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "model_requests": 0,
+            "estimated_cost_usd": 0,
+        },
+    }
+
+
+def _scored_units(
+    records: list[dict[str, Any]],
+    premise: str,
+) -> list[dict[str, Any]]:
+    units = []
+    for record in records:
+        evidence, hypothesis = build_semantic_pair(
+            premise,
+            str(record["text"]),
+        )
+        units.append({
+            "text_sha256": _sha256(str(record["text"])),
+            "evidence_sha256": _sha256(evidence),
+            "hypothesis_sha256": _sha256(hypothesis),
+            "factual_consistency_score": record[
+                "semantic_factuality_score"
+            ],
+            "factual_consistency_pass": bool(record["supported"]),
+        })
+    return units
+
+
 def build_report(labels_path: Path, batch_size: int) -> dict[str, Any]:
     labels = _load_labels(labels_path)
     pairs = _fetch_pairs(labels)
+    cases = [_runtime_case(item) for item in pairs]
     judge = HHEMJudge()
-    evidence = [
-        _retrieve_summary_evidence(item["premise"], item["hypothesis"])
-        for item in pairs
-    ]
-    scores, truncation_count = _score_text_pairs(
-        [
-            (item_evidence, item["hypothesis"])
-            for item, item_evidence in zip(pairs, evidence, strict=True)
-        ],
-        batch_size=batch_size,
-        judge=judge,
+    runtime_report = build_runtime_report(
+        cases,
+        labels_path.read_bytes(),
+        semantic_judge=judge,
     )
+    semantic = runtime_report["aggregate"][
+        "semantic_faithfulness_judge"
+    ]
 
-    results = []
-    for item, item_evidence, score in zip(
-        pairs, evidence, scores, strict=True
+    results: list[dict[str, Any]] = []
+    for item, scored in zip(
+        pairs,
+        runtime_report["per_case"],
+        strict=True,
     ):
-        results.append(
-            {
-                "case_id": item["case_id"],
-                "document_id": item["document_id"],
-                "summary_index": item["summary_index"],
-                "source_sha256": _sha256(item["premise"]),
-                "summary_sha256": _sha256(item["hypothesis"]),
-                "evidence_sha256": _sha256(item_evidence),
-                "human_pass": item["human_pass"],
-                "expert_consistency_score": item[
-                    "expert_consistency_score"
-                ],
-                "factual_consistency_score": round(score, 6),
-                "factual_consistency_pass": score >= MODEL_THRESHOLD,
-            }
+        structured = [
+            claim
+            for claim in scored["grounding"]["claims"]
+            if claim["semantic_applicable"]
+        ]
+        response = scored["grounding"]["response_assertions"]
+        structured_pass = bool(structured) and all(
+            claim["supported"] for claim in structured
         )
+        response_pass = bool(response) and all(
+            assertion["supported"] for assertion in response
+        )
+        results.append({
+            "case_id": item["case_id"],
+            "document_id": item["document_id"],
+            "summary_index": item["summary_index"],
+            "source_sha256": _sha256(item["premise"]),
+            "summary_sha256": _sha256(item["hypothesis"]),
+            "human_pass": item["human_pass"],
+            "expert_consistency_score": item[
+                "expert_consistency_score"
+            ],
+            "structured_claim_pass": structured_pass,
+            "response_assertion_pass": response_pass,
+            "structured_claims": _scored_units(
+                structured,
+                item["premise"],
+            ),
+            "response_assertions": _scored_units(
+                response,
+                item["premise"],
+            ),
+        })
 
-    aggregate = _metrics(results)
+    structured_metrics = _metrics(results, "structured_claim_pass")
+    response_metrics = _metrics(results, "response_assertion_pass")
     control_pairs = [
-        (item["premise"], item["hypothesis"])
+        build_semantic_pair(item["premise"], item["hypothesis"])
         for item in CONTRADICTION_CONTROLS
     ]
-    control_scores, control_truncations = _score_text_pairs(
+    control_scores, control_truncations = judge.score_pairs(
         control_pairs,
         batch_size=batch_size,
-        judge=judge,
     )
     controls = [
         {
@@ -165,18 +218,24 @@ def build_report(labels_path: Path, batch_size: int) -> dict[str, Any]:
             "negative_control_pass": score < MODEL_THRESHOLD,
         }
         for item, score in zip(
-            CONTRADICTION_CONTROLS, control_scores, strict=True
+            CONTRADICTION_CONTROLS,
+            control_scores,
+            strict=True,
         )
     ]
     controls_pass = all(
         item["negative_control_pass"] for item in controls
     )
+    truncation_count = (
+        semantic["input_truncated_count"] + control_truncations
+    )
     quality_gate_pass = (
-        aggregate["agreement"] >= MIN_AGREEMENT
-        and aggregate["cohen_kappa"] >= MIN_COHEN_KAPPA
+        structured_metrics["agreement"] >= MIN_AGREEMENT
+        and structured_metrics["cohen_kappa"] >= MIN_COHEN_KAPPA
+        and response_metrics["agreement"] >= MIN_AGREEMENT
+        and response_metrics["cohen_kappa"] >= MIN_COHEN_KAPPA
         and controls_pass
         and truncation_count == 0
-        and control_truncations == 0
     )
 
     try:
@@ -185,18 +244,30 @@ def build_report(labels_path: Path, batch_size: int) -> dict[str, Any]:
         ).as_posix()
     except ValueError:
         label_manifest = labels_path.name
+    positive_documents = {
+        item["document_id"] for item in results if item["human_pass"]
+    }
+    negative_documents = {
+        item["document_id"] for item in results if not item["human_pass"]
+    }
+    script_dir = Path(__file__).resolve().parent
 
     return {
-        "schema_version": "m14-external-human-factuality-report-v2",
+        "schema_version": "m14-external-human-factuality-report-v3",
         "dataset": {
             "id": labels[0]["dataset_id"],
             "revision": labels[0]["dataset_revision"],
             "split": labels[0]["dataset_split"],
             "label_manifest": label_manifest,
-            "label_manifest_sha256": hashlib.sha256(
-                labels_path.read_bytes()
-            ).hexdigest(),
-            "labeled_cases": len(results),
+            "label_manifest_sha256": _sha256_path(labels_path),
+            "labeled_summary_rows": len(results),
+            "unique_documents": len(
+                {item["document_id"] for item in results}
+            ),
+            "documents_in_both_classes": len(
+                positive_documents & negative_documents
+            ),
+            "sample_unit": "summary_rows_clustered_by_document",
             "human_pass": sum(item["human_pass"] for item in results),
             "human_fail": sum(not item["human_pass"] for item in results),
         },
@@ -208,23 +279,34 @@ def build_report(labels_path: Path, batch_size: int) -> dict[str, Any]:
             "max_length": MODEL_MAX_LENGTH,
             "threshold": MODEL_THRESHOLD,
             "threshold_source": "published_model_card_default",
-            "retrieval": (
-                "source_ordered_union_of_top_2_source_sentences_per_"
-                "summary_claim_by_token_coverage"
+            "pair_builder": (
+                "shared_build_semantic_pair_top_"
+                f"{SEMANTIC_RETRIEVAL_TOP_K}_source_sentences"
+            ),
+            "runtime_path": (
+                "run_eval.build_report->"
+                "semantic_faithfulness.apply_semantic_faithfulness"
             ),
             "decision_rule": (
-                "pass_if_sigmoid_factual_consistency_score_gte_0.5"
+                "case_pass_if_every_scored_unit_gte_0.5"
             ),
         },
+        "code_binding": {
+            "semantic_scorer_sha256": _sha256_path(
+                script_dir / "semantic_faithfulness.py"
+            ),
+            "calibration_runner_sha256": _sha256_path(Path(__file__)),
+        },
         "acceptance_gate": {
-            "minimum_agreement": MIN_AGREEMENT,
-            "minimum_cohen_kappa": MIN_COHEN_KAPPA,
+            "minimum_agreement_per_path": MIN_AGREEMENT,
+            "minimum_cohen_kappa_per_path": MIN_COHEN_KAPPA,
             "require_all_contradiction_controls": True,
             "require_zero_input_truncation": True,
             "pass": quality_gate_pass,
         },
         "aggregate": {
-            **aggregate,
+            "structured_claim_path": structured_metrics,
+            "response_assertion_path": response_metrics,
             "input_truncated_count": truncation_count,
             "contradiction_negative_controls": len(controls),
             "contradiction_negative_controls_passed": sum(
@@ -236,11 +318,13 @@ def build_report(labels_path: Path, batch_size: int) -> dict[str, Any]:
         "contradiction_controls": controls,
         "claim_boundary": (
             "External English news-domain offline calibration against "
-            "published SummEval expert consistency labels. The accepted "
-            "candidate replaces keyword overlap only for semantic "
-            "faithfulness evaluation; deterministic citation, numeric, "
-            "safety, agency, and hard-bar checks remain independent. This "
-            "does not prove TF4 production quality or hidden-set acceptance."
+            "100 published SummEval expert-labeled summary rows clustered "
+            "within 65 documents. Both deployed structured-claim and "
+            "user-visible response-assertion paths are measured. "
+            "Deterministic citation, numeric, safety, agency, and hard-bar "
+            "checks remain independent. This does not prove TF4 production "
+            "quality, document-independent confidence, or hidden-set "
+            "acceptance."
         ),
     }
 
@@ -261,9 +345,14 @@ def main() -> int:
         newline="\n",
     )
     aggregate = report["aggregate"]
+    structured = aggregate["structured_claim_path"]
+    response = aggregate["response_assertion_path"]
     print(
-        f"Wrote {args.output}: agreement={aggregate['agreement']:.4f}, "
-        f"kappa={aggregate['cohen_kappa']:.4f}, "
+        f"Wrote {args.output}: "
+        f"structured={structured['agreement']:.4f}/"
+        f"{structured['cohen_kappa']:.4f}, "
+        f"response={response['agreement']:.4f}/"
+        f"{response['cohen_kappa']:.4f}, "
         f"contradiction_controls="
         f"{aggregate['contradiction_negative_controls_passed']}/"
         f"{aggregate['contradiction_negative_controls']}, "

@@ -17,11 +17,12 @@ quality.
 
 An independent external calibration is retained in
 [`EXTERNAL-HUMAN-LABELS.md`](EXTERNAL-HUMAN-LABELS.md). It uses 100 published
-SummEval expert-consistency labels with a pinned dataset revision and text
-hashes. The failed generic NLI baseline is retained at agreement `0.50` and
+SummEval expert-consistency summary rows from 65 source documents with a pinned
+dataset revision and text hashes. The failed generic NLI baseline is retained at agreement `0.50` and
 Cohen's kappa `0.00`. The accepted HHEM candidate uses the published `0.5`
-threshold and reaches agreement `0.76`, kappa `0.52`, rejects 3/3 contradiction
-controls, and truncates 0/100 inputs.
+threshold. The exact deployed paths reach structured-claim agreement
+`0.74`/kappa `0.48` and response-assertion agreement `0.71`/kappa `0.42`,
+reject 3/3 contradiction controls, and truncate 0 inputs.
 
 ## One-command calibration repro
 
@@ -131,9 +132,12 @@ model configuration, or an unevaluable response fails closed.
 No fixed project threshold is imposed on faithfulness or task success. Candidate
 PII leaks, system-prompt leaks, and unauthorized writes must each remain zero.
 
-The semantic judge itself has a calibration gate: external-human agreement
-`>=0.70`, Cohen's kappa `>=0.40`, all contradiction controls rejected, and zero
-truncated calibration inputs.
+The semantic judge itself has a calibration gate on both deployed paths:
+external-human agreement `>=0.70`, Cohen's kappa `>=0.40`, all contradiction
+controls rejected, and zero truncated calibration inputs. Certification
+verifies a report bound to the current scorer/preprocessor and calibration
+runner hashes; relevant PRs run pinned Ruff, the full unit/evidence-integrity
+suite, and revision-aware label-manifest reproduction in CI.
 
 ## Tests
 

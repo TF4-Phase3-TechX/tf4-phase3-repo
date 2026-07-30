@@ -27,7 +27,6 @@ from run_eval import (
 from semantic_faithfulness import HHEMJudge
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-CALIBRATION_DATASET = SCRIPT_DIR / "labeled-observations-v2.jsonl"
 
 
 def _sha256_bytes(raw: bytes) -> str:
@@ -128,15 +127,9 @@ def package_run(
     require_no_semantic_truncation(report)
     _validator(DEFAULT_RESULT_SCHEMA).validate(report)
 
-    calibration_raw = CALIBRATION_DATASET.read_bytes()
-    calibration_report = build_report(
-        load_jsonl(CALIBRATION_DATASET),
-        calibration_raw,
-        semantic_judge=semantic_judge,
-    )
-    agreement = calibration_report["aggregate"]["scorer_human"]
-    if agreement["labeled_cases"] < 10:
-        raise ValueError("Mandate 14 requires at least ten human-labeled calibration cases")
+    from external_quality_gate import verify_external_quality_gate
+
+    calibration_gate = verify_external_quality_gate()
 
     _write_json(output_dir / "results.json", report)
     (output_dir / "per_case.jsonl").write_text(
@@ -147,7 +140,10 @@ def package_run(
         encoding="utf-8",
     )
     _write_json(output_dir / "aggregate.json", report["aggregate"])
-    _write_json(output_dir / "judge-human-agreement.json", agreement)
+    _write_json(
+        output_dir / "judge-human-agreement.json",
+        calibration_gate,
+    )
     (output_dir / "cases.sha256").write_text(
         f"{_sha256_bytes(dataset_raw)}  external-dataset.jsonl\n",
         encoding="utf-8",
@@ -181,7 +177,7 @@ def package_run(
             SCRIPT_DIR / "schemas" / "case.schema.json"
         ),
         "result_schema_sha256": _sha256_path(DEFAULT_RESULT_SCHEMA),
-        "calibration_dataset_sha256": _sha256_bytes(calibration_raw),
+        "external_calibration": calibration_gate,
         "model": {
             "provider": "Amazon Bedrock",
             "region": os.environ.get(
