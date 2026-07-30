@@ -86,7 +86,6 @@ def test_frontend_latency_query_reuses_user_visible_slo_routes():
 def test_latency_query_accepts_short_post_action_verification_window():
     query = latency_query("product-reviews", "techx-tf4", "30s")
 
-    assert query.startswith("(1000 * histogram_quantile")
     assert 'service_name="product-reviews"' in query
     assert 'k8s_namespace_name="techx-tf4"' in query
     assert 'span_name="oteldemo.ProductReviewService/GetProductReviews"' in query

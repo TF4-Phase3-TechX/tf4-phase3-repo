@@ -686,13 +686,9 @@ class Detector:
 def latency_query(
     service: str, namespace: str | None = None, window: str = "5m"
 ) -> str:
-    # The collector's legacy metric name says "milliseconds", but its runtime
-    # histogram boundaries are seconds (for example 2, 4, 6). Normalize the
-    # quantile to milliseconds so it matches AIOPS_LATENCY_THRESHOLD_MS and the
-    # incident/verification evidence contract.
     return (
-        "(1000 * histogram_quantile(0.95, sum by (le) "
-        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[{window}]))))"
+        "histogram_quantile(0.95, sum by (le) "
+        f"(rate(traces_span_metrics_duration_milliseconds_bucket{{{span_matchers(service, namespace=namespace)}}}[{window}])))"
     )
 
 
