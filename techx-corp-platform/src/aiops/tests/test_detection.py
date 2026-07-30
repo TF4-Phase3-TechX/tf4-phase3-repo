@@ -88,6 +88,8 @@ def test_latency_query_accepts_short_post_action_verification_window():
 
     assert 'service_name="product-reviews"' in query
     assert 'k8s_namespace_name="techx-tf4"' in query
+    assert 'span_name="oteldemo.ProductReviewService/GetProductReviews"' in query
+    assert "grpc.health.v1.Health/Check" not in query
     assert "[30s]" in query
     assert "[5m]" not in query
 
@@ -438,3 +440,4 @@ def test_request_rate_query_is_service_and_namespace_scoped():
     assert 'service_name="checkout"' in query
     assert 'k8s_namespace_name="techx-tf4"' in query
     assert 'span_kind="SPAN_KIND_SERVER"' in query
+    assert 'span_name="oteldemo.CheckoutService/PlaceOrder"' in query

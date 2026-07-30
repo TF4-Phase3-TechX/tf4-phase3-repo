@@ -399,20 +399,17 @@ check_managed_stores() {
 }
 
 pod_placement_by_az() {
-  local node zone name phase ready pod_node restarts pod_zone
-  declare -A node_zones=()
-  while IFS='|' read -r node zone; do
-    [[ -n "$node" ]] && node_zones["$node"]="${zone:-<none>}"
-  done < <(kubectl get nodes \
+  local name phase ready pod_node restarts pod_zone node_zone_map
+  node_zone_map="$(kubectl get nodes \
     -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.metadata.labels.topology\.kubernetes\.io/zone}{"\n"}{end}' \
-    2>/dev/null)
+    2>/dev/null || true)"
 
   printf '%-48s %-10s %-12s %-36s %-14s %s\n' \
     NAME PHASE READY NODE AZ RESTARTS
   while IFS='|' read -r name phase ready pod_node restarts; do
     [[ -z "$name" ]] && continue
     if [[ -n "$pod_node" ]]; then
-      pod_zone="${node_zones[$pod_node]:-<unknown>}"
+      pod_zone="$(printf '%s\n' "$node_zone_map" | awk -F'|' -v node="$pod_node" '$1 == node { print $2; found=1; exit } END { if (!found) print "<unknown>" }')"
     else
       pod_zone="<unscheduled>"
       pod_node="<none>"

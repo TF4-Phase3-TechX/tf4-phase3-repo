@@ -4,12 +4,15 @@ import asyncio
 import json
 import logging
 from collections import Counter as ValueCounter
+from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Any
 
-from prometheus_client import Counter, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 from .availability import KubernetesAvailabilityClient
 from .config import Settings
+from .dependency_graph import DependencyGraph
 from .detection import (
     Detector,
     classify_service_state,
@@ -22,9 +25,19 @@ from .detection import (
     values,
 )
 from .models import AuditEvent, Evidence, Incident, IncidentStatus
+from .rca_engine import (
+    RCAEngine,
+    RCAEngineConfig,
+    RCAEngineInput,
+    observations_from_decisions,
+)
+from .rca_episode import RCAEpisodeTracker
+from .rca_models import RCAObservation, SignalObservation
 from .remediation import RemediationController
+from .service_identity import normalize_service_name
 from .store import IncidentStore
 from .telemetry import TelemetryClient, TelemetryError
+from .trace_graph import parse_jaeger_traces
 
 log = logging.getLogger("aiops.worker")
 poll_failures = Counter("aiops_telemetry_poll_failures_total", "Telemetry poll failures", ["source"])
@@ -59,6 +72,33 @@ service_state = Gauge(
     "Current combined workload, traffic and SLO state",
     ["service", "state"],
 )
+rca_duration = Histogram(
+    "aiops_rca_duration_seconds",
+    "Cross-service RCA analysis duration",
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
+)
+rca_candidates_total = Counter(
+    "aiops_rca_candidates_total",
+    "RCA candidates produced",
+)
+rca_traces_processed = Counter(
+    "aiops_rca_traces_processed_total",
+    "Traces processed by RCA",
+)
+rca_spans_processed = Counter(
+    "aiops_rca_spans_processed_total",
+    "Spans processed by RCA",
+)
+rca_skipped = Counter(
+    "aiops_rca_skipped_total",
+    "RCA skipped or failed",
+    ["reason"],
+)
+rca_attribution = Counter(
+    "aiops_rca_attribution_total",
+    "RCA attribution outcomes",
+    ["status"],
+)
 SERVICE_STATES = ("healthy", "busy", "idle", "degraded", "down", "unknown")
 
 
@@ -88,6 +128,24 @@ def _log_service(hit: dict[str, Any]) -> str | None:
     return None
 
 
+def _rca_applies_to_service(result: Any, service: str) -> bool:
+    """Return whether the attributed root actually explains this incident."""
+
+    root = result.suspected_root_service
+    if root is None:
+        return True
+    if service == root:
+        return True
+    root_candidate = next(
+        (candidate for candidate in result.candidates if candidate.service == root),
+        None,
+    )
+    return bool(
+        root_candidate
+        and service in set(root_candidate.explained_affected_services)
+    )
+
+
 class AIOpsWorker:
     def __init__(
         self,
@@ -106,6 +164,26 @@ class AIOpsWorker:
         self.availability = availability
         self.running = False
         self._remediation_tasks: set[asyncio.Task[Any]] = set()
+        self._rca_executor: ThreadPoolExecutor | None = None
+        self._rca_analysis_future: Future[Any] | None = None
+        self._episode = RCAEpisodeTracker(
+            analysis_window_seconds=float(settings.rca_analysis_window_seconds)
+        )
+        self._rca_engine = RCAEngine(
+            RCAEngineConfig(
+                model_version=settings.rca_model_version,
+                trace_weight=settings.rca_trace_weight,
+                topology_weight=settings.rca_topology_weight,
+                temporal_weight=settings.rca_temporal_weight,
+                anomaly_weight=settings.rca_anomaly_weight,
+                contradiction_penalty=settings.rca_contradiction_penalty,
+                parallel_anomaly_penalty=settings.rca_parallel_anomaly_penalty,
+                temporal_tolerance_seconds=settings.rca_temporal_tolerance_seconds,
+                max_services=settings.rca_max_services,
+                max_traces=settings.rca_max_traces,
+                max_spans=settings.rca_max_spans,
+            )
+        )
 
     def _schedule_remediation(
         self,
@@ -397,8 +475,89 @@ class AIOpsWorker:
             else:
                 await self.store.reset_recovery(decision.incident_type, decision.service)
 
-            if not decision.anomalous:
-                continue
+        # Aggregate every signal for a service before updating episode state.
+        # Sequential per-decision updates allow a later healthy signal to erase
+        # an anomalous signal from the same poll.
+        episode_poll_at = datetime.now(timezone.utc)
+        episode_status: dict[str, dict[str, bool]] = {}
+        for decision in decisions:
+            canonical = normalize_service_name(decision.service).canonical_service
+            status = episode_status.setdefault(
+                canonical, {"anomalous": False, "breached": False}
+            )
+            status["anomalous"] = status["anomalous"] or bool(decision.anomalous)
+            status["breached"] = status["breached"] or bool(decision.breached)
+        for canonical, status in episode_status.items():
+            self._episode.observe(
+                canonical,
+                anomalous=status["anomalous"],
+                breached=status["breached"],
+                at=episode_poll_at,
+            )
+
+        anomalous_decisions = [d for d in decisions if d.anomalous]
+        rca_result = None
+        rca_skipped_reason: str | None = None
+        shared_trace_evidence: dict[str, list[Evidence]] = {}
+
+        if anomalous_decisions:
+            if not self.settings.rca_enabled:
+                rca_skipped_reason = "disabled"
+                rca_skipped.labels("disabled").inc()
+            else:
+                try:
+                    rca_result, rca_skipped_reason, shared_trace_evidence = (
+                        await self._run_cross_service_rca(anomalous_decisions)
+                    )
+                except Exception as exc:
+                    # Defense in depth: RCA must never break incident creation.
+                    rca_skipped.labels("exception").inc()
+                    rca_skipped_reason = "exception"
+                    shared_trace_evidence = {
+                        normalize_service_name(d.service).canonical_service: []
+                        for d in anomalous_decisions
+                    }
+                    log.warning(
+                        json.dumps(
+                            {
+                                "event": "rca_skipped",
+                                "reason": "exception",
+                                "error": f"{type(exc).__name__}: {exc}",
+                            }
+                        )
+                    )
+
+        for decision in anomalous_decisions:
+            service_key = normalize_service_name(decision.service).canonical_service
+            evidence = list(decision.evidence)
+            for item in shared_trace_evidence.get(service_key, []):
+                evidence.append(item)
+
+            rca_candidates = list(decision.candidates)
+            suspected_root_service = None
+            rca_result_payload = None
+            if (
+                rca_result is not None
+                and _rca_applies_to_service(rca_result, service_key)
+            ):
+                rca_candidates = rca_result.legacy_candidates() or rca_candidates
+                suspected_root_service = rca_result.suspected_root_service
+                rca_result_payload = rca_result
+                # Keep original local root-cause text; append informational note.
+                root_note = (
+                    f"{decision.root_cause} | cross-service RCA: "
+                    f"{rca_result.attribution_status}"
+                    + (
+                        f" suspected_root={rca_result.suspected_root_service}"
+                        if rca_result.suspected_root_service
+                        else ""
+                    )
+                )
+            elif rca_skipped_reason:
+                root_note = f"{decision.root_cause} | rca_skipped={rca_skipped_reason}"
+            else:
+                root_note = decision.root_cause
+
             incident = Incident(
                 incident_type=decision.incident_type,
                 severity=decision.severity,
@@ -406,31 +565,48 @@ class AIOpsWorker:
                 environment=self.settings.environment,
                 tenant_id=self.settings.tenant_id,
                 confidence=decision.confidence,
-                suspected_root_cause=decision.root_cause,
+                suspected_root_cause=root_note,
                 impact=decision.impact,
-                evidence=decision.evidence,
-                rca_candidates=decision.candidates,
+                evidence=evidence,
+                rca_candidates=rca_candidates,
+                suspected_root_service=suspected_root_service,
+                rca_result=rca_result_payload,
                 runbook_id=decision.runbook_id,
                 recommended_action=decision.recommended_action,
             )
-            traces = await self.telemetry.find_traces(decision.service)
-            if traces is None:
-                poll_failures.labels("jaeger").inc()
-                log.warning(json.dumps({"event": "telemetry_degraded", "source": "jaeger", "service": decision.service}))
-                incident.evidence.append(
-                    Evidence(
-                        source="jaeger",
-                        query=f"service={decision.service}",
-                        window=f"{self.settings.lookback_minutes}m",
-                        value="unavailable",
+            # Per-decision trace enrichment when RCA did not already fetch.
+            if service_key not in shared_trace_evidence:
+                traces = await self.telemetry.find_traces(decision.service)
+                if traces is None:
+                    poll_failures.labels("jaeger").inc()
+                    log.warning(
+                        json.dumps(
+                            {
+                                "event": "telemetry_degraded",
+                                "source": "jaeger",
+                                "service": decision.service,
+                            }
+                        )
                     )
-                )
-            elif traces:
-                trace_id = traces[0].get("traceID") or traces[0].get("traceId")
-                incident.evidence.append(Evidence(
-                    source="jaeger", query=f"service={decision.service}", window=f"{self.settings.lookback_minutes}m",
-                    value=len(traces), reference=str(trace_id) if trace_id else None,
-                ))
+                    incident.evidence.append(
+                        Evidence(
+                            source="jaeger",
+                            query=f"service={decision.service}",
+                            window=f"{self.settings.lookback_minutes}m",
+                            value="unavailable",
+                        )
+                    )
+                elif traces:
+                    trace_id = traces[0].get("traceID") or traces[0].get("traceId")
+                    incident.evidence.append(
+                        Evidence(
+                            source="jaeger",
+                            query=f"service={decision.service}",
+                            window=f"{self.settings.lookback_minutes}m",
+                            value=len(traces),
+                            reference=str(trace_id) if trace_id else None,
+                        )
+                    )
             active_before = next(
                 (
                     existing
@@ -490,7 +666,15 @@ class AIOpsWorker:
                     )
                 else:
                     self._schedule_remediation(stored)
-                log.info(json.dumps({"event": "incident_created", "incident": stored.model_dump(mode="json")}, separators=(",", ":")))
+                log.info(
+                    json.dumps(
+                        {
+                            "event": "incident_created",
+                            "incident": stored.model_dump(mode="json"),
+                        },
+                        separators=(",", ":"),
+                    )
+                )
             elif active_before and stored.incident_id == active_before.incident_id:
                 current_routing = (
                     _notification_severity(stored.severity),
@@ -555,6 +739,253 @@ class AIOpsWorker:
         if prometheus_ok:
             last_poll_success.set(time.time())
 
+    async def _run_cross_service_rca(
+        self, anomalous_decisions: list[Any]
+    ) -> tuple[Any, str | None, dict[str, list[Evidence]]]:
+        """Bounded concurrent trace fetch + RCA. Never raises into the poll loop."""
+
+        import time
+
+        started = time.perf_counter()
+        deadline = started + float(self.settings.rca_timeout_seconds)
+        duration_observed = False
+
+        def observe_duration() -> float:
+            nonlocal duration_observed
+            elapsed = time.perf_counter() - started
+            if not duration_observed:
+                rca_duration.observe(elapsed)
+                duration_observed = True
+            return elapsed
+
+        def mark_jaeger_unavailable(targets: list[str]) -> None:
+            for service in targets:
+                poll_failures.labels("jaeger").inc()
+                shared_evidence.setdefault(service, []).append(
+                    Evidence(
+                        source="jaeger",
+                        query=f"service={service}",
+                        window=self.settings.jaeger_trace_lookback,
+                        value="unavailable",
+                    )
+                )
+
+        shared_evidence: dict[str, list[Evidence]] = {}
+        services = sorted(
+            {
+                normalize_service_name(d.service).canonical_service
+                for d in anomalous_decisions
+            }
+        )
+        # Also include recent episode members that may have recovered.
+        for name in self._episode.recent_affected():
+            if name not in services:
+                services.append(name)
+        services = services[: self.settings.rca_max_services]
+
+        async def fetch(service: str) -> tuple[str, list[dict[str, Any]] | None]:
+            try:
+                return service, await self.telemetry.find_traces(service)
+            except Exception:
+                return service, None
+
+        # Mark services as already considered for traces so incident creation
+        # does not re-issue Jaeger queries after a timeout/exception.
+        for service in services:
+            shared_evidence.setdefault(service, [])
+
+        try:
+            fetch_results = await asyncio.wait_for(
+                asyncio.gather(*(fetch(s) for s in services)),
+                timeout=max(0.0, deadline - time.perf_counter()),
+            )
+        except asyncio.TimeoutError:
+            mark_jaeger_unavailable(services)
+            rca_skipped.labels("timeout").inc()
+            log.warning(json.dumps({"event": "rca_skipped", "reason": "timeout"}))
+            observe_duration()
+            return None, "timeout", shared_evidence
+        except Exception as exc:
+            mark_jaeger_unavailable(services)
+            rca_skipped.labels("exception").inc()
+            log.warning(
+                json.dumps(
+                    {
+                        "event": "rca_skipped",
+                        "reason": "exception",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+            )
+            observe_duration()
+            return None, "exception", shared_evidence
+
+        raw_traces: list[dict[str, Any]] = []
+        unavailable = []
+        jaeger_failed = False
+        for service, traces in fetch_results:
+            if traces is None:
+                jaeger_failed = True
+                poll_failures.labels("jaeger").inc()
+                shared_evidence.setdefault(service, []).append(
+                    Evidence(
+                        source="jaeger",
+                        query=f"service={service}",
+                        window=self.settings.jaeger_trace_lookback,
+                        value="unavailable",
+                    )
+                )
+                continue
+            if traces:
+                raw_traces.extend(traces)
+                trace_id = traces[0].get("traceID") or traces[0].get("traceId")
+                shared_evidence.setdefault(service, []).append(
+                    Evidence(
+                        source="jaeger",
+                        query=f"service={service}",
+                        window=self.settings.jaeger_trace_lookback,
+                        value=len(traces),
+                        reference=str(trace_id) if trace_id else None,
+                    )
+                )
+        if jaeger_failed and not raw_traces:
+            unavailable.append("trace")
+
+        parse = parse_jaeger_traces(
+            raw_traces,
+            max_traces=self.settings.rca_max_traces,
+            max_spans=self.settings.rca_max_spans,
+        )
+        observations = observations_from_decisions(anomalous_decisions)
+        observed_services = {obs.service for obs in observations}
+        # Preserve a recently recovered root as an explicit episode observation.
+        # This matters for an unseen service that is neither in static topology nor
+        # present in the sampled traces of the downstream-only poll.
+        for service in self._episode.recent_affected():
+            if service in observed_services:
+                continue
+            state = self._episode.state(service)
+            if state is None or state.first_anomalous_at is None:
+                continue
+            observed_at = state.last_seen_at or datetime.now(timezone.utc)
+            observations.append(
+                RCAObservation(
+                    service=service,
+                    original_service_names=[service],
+                    signals=[
+                        SignalObservation(
+                            signal="episode_recovery",
+                            anomalous=False,
+                            breached=False,
+                            coverage_status="available",
+                            confidence=0.0,
+                            severity="medium",
+                            observed_at=observed_at,
+                            first_breached_at=state.first_breached_at,
+                            first_anomalous_at=state.first_anomalous_at,
+                        )
+                    ],
+                    first_breached_at=state.first_breached_at,
+                    first_anomalous_at=state.first_anomalous_at,
+                )
+            )
+        observations.sort(key=lambda obs: obs.service)
+        observed_episode_services = {
+            obs.service
+            for obs in observations
+            if obs.is_anomalous or obs.first_anomalous_at is not None
+        }
+        failed_trace_services = {span.service for span in parse.spans if span.error}
+        for span in parse.spans:
+            if span.error and span.peer_service:
+                failed_trace_services.add(span.peer_service)
+        if (
+            len(observed_episode_services) < 2
+            and len(observed_episode_services | failed_trace_services) < 2
+        ):
+            rca_skipped.labels("single_service").inc()
+            observe_duration()
+            return None, "single_service", shared_evidence
+        # Overlay episode onsets when present
+        for obs in observations:
+            onset = self._episode.first_onset(obs.service)
+            if onset is not None:
+                if obs.first_anomalous_at is None or onset < obs.first_anomalous_at:
+                    obs.first_anomalous_at = onset
+                if obs.first_breached_at is None:
+                    obs.first_breached_at = onset
+
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            rca_skipped.labels("timeout").inc()
+            observe_duration()
+            return None, "timeout", shared_evidence
+        if (
+            self._rca_analysis_future is not None
+            and not self._rca_analysis_future.done()
+        ):
+            rca_skipped.labels("busy").inc()
+            observe_duration()
+            return None, "busy", shared_evidence
+        if self._rca_executor is None:
+            self._rca_executor = ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix="aiops-rca",
+            )
+        engine_input = RCAEngineInput(
+            observations=observations,
+            traces=parse,
+            graph=DependencyGraph.from_static(),
+            unavailable_signals=unavailable,
+        )
+        analysis_future = self._rca_executor.submit(
+            self._rca_engine.analyze,
+            engine_input,
+        )
+        self._rca_analysis_future = analysis_future
+        try:
+            result = await asyncio.wait_for(
+                asyncio.wrap_future(analysis_future),
+                timeout=remaining,
+            )
+        except asyncio.TimeoutError:
+            rca_skipped.labels("timeout").inc()
+            observe_duration()
+            return None, "timeout", shared_evidence
+        except Exception as exc:
+            rca_skipped.labels("exception").inc()
+            log.warning(
+                json.dumps(
+                    {
+                        "event": "rca_skipped",
+                        "reason": "exception",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+            )
+            observe_duration()
+            return None, "exception", shared_evidence
+
+        elapsed = observe_duration()
+        rca_candidates_total.inc(len(result.candidates))
+        rca_traces_processed.inc(result.trace_count)
+        rca_spans_processed.inc(result.span_count)
+        rca_attribution.labels(result.attribution_status).inc()
+        log.info(
+            json.dumps(
+                {
+                    "event": "rca_completed",
+                    "status": result.attribution_status,
+                    "suspected_root": result.suspected_root_service,
+                    "candidates": len(result.candidates),
+                    "duration_seconds": round(elapsed, 4),
+                    "traces": result.trace_count,
+                    "spans": result.span_count,
+                }
+            )
+        )
+        return result, None, shared_evidence
+
     async def run(self) -> None:
         self.running = True
         try:
@@ -578,3 +1009,6 @@ class AIOpsWorker:
 
     def stop(self) -> None:
         self.running = False
+        if self._rca_executor is not None:
+            self._rca_executor.shutdown(wait=False, cancel_futures=True)
+            self._rca_executor = None

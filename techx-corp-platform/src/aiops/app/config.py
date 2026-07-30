@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import re
 from dataclasses import dataclass, field
@@ -328,6 +329,31 @@ class Settings:
     llm_log_services: tuple[str, ...] = field(
         default_factory=lambda: _csv("AIOPS_LLM_LOG_SERVICES", "llm,product-reviews")
     )
+    # Mandate-26 cross-service RCA (informational; never retargets remediation).
+    rca_enabled: bool = field(
+        default_factory=lambda: _bool("AIOPS_RCA_ENABLED", "true")
+    )
+    rca_model_version: str = os.getenv("AIOPS_RCA_MODEL_VERSION", "m26-v1")
+    rca_analysis_window_seconds: float = float(
+        os.getenv("AIOPS_RCA_ANALYSIS_WINDOW_SECONDS", "180")
+    )
+    rca_temporal_tolerance_seconds: float = float(
+        os.getenv("AIOPS_RCA_TEMPORAL_TOLERANCE_SECONDS", "45")
+    )
+    rca_timeout_seconds: float = float(os.getenv("AIOPS_RCA_TIMEOUT_SECONDS", "2"))
+    rca_max_services: int = int(os.getenv("AIOPS_RCA_MAX_SERVICES", "32"))
+    rca_max_traces: int = int(os.getenv("AIOPS_RCA_MAX_TRACES", "50"))
+    rca_max_spans: int = int(os.getenv("AIOPS_RCA_MAX_SPANS", "5000"))
+    rca_trace_weight: float = float(os.getenv("AIOPS_RCA_TRACE_WEIGHT", "0.35"))
+    rca_topology_weight: float = float(os.getenv("AIOPS_RCA_TOPOLOGY_WEIGHT", "0.30"))
+    rca_temporal_weight: float = float(os.getenv("AIOPS_RCA_TEMPORAL_WEIGHT", "0.20"))
+    rca_anomaly_weight: float = float(os.getenv("AIOPS_RCA_ANOMALY_WEIGHT", "0.15"))
+    rca_contradiction_penalty: float = float(
+        os.getenv("AIOPS_RCA_CONTRADICTION_PENALTY", "0.20")
+    )
+    rca_parallel_anomaly_penalty: float = float(
+        os.getenv("AIOPS_RCA_PARALLEL_ANOMALY_PENALTY", "0.25")
+    )
 
     def __post_init__(self) -> None:
         if self.jaeger_trace_limit <= 0:
@@ -396,3 +422,43 @@ class Settings:
             raise ValueError(
                 "burn-rate critical threshold must be >= warning threshold"
             )
+        # Mandate-26 RCA config validation (fail closed at startup).
+        rca_weights = (
+            self.rca_trace_weight,
+            self.rca_topology_weight,
+            self.rca_temporal_weight,
+            self.rca_anomaly_weight,
+        )
+        if any(w < 0 or w != w or w == float("inf") for w in rca_weights):
+            raise ValueError("RCA feature weights must be finite and nonnegative")
+        if sum(rca_weights) <= 0:
+            raise ValueError("RCA total feature weight must be positive")
+        for name, value in (
+            ("AIOPS_RCA_CONTRADICTION_PENALTY", self.rca_contradiction_penalty),
+            ("AIOPS_RCA_PARALLEL_ANOMALY_PENALTY", self.rca_parallel_anomaly_penalty),
+        ):
+            if value < 0 or value > 1 or value != value:
+                raise ValueError(f"{name} must be in [0, 1]")
+        for name, value, allow_zero in (
+            ("AIOPS_RCA_TIMEOUT_SECONDS", self.rca_timeout_seconds, False),
+            (
+                "AIOPS_RCA_ANALYSIS_WINDOW_SECONDS",
+                self.rca_analysis_window_seconds,
+                False,
+            ),
+            (
+                "AIOPS_RCA_TEMPORAL_TOLERANCE_SECONDS",
+                self.rca_temporal_tolerance_seconds,
+                True,
+            ),
+        ):
+            if not math.isfinite(value) or value < 0 or (not allow_zero and value == 0):
+                qualifier = "nonnegative" if allow_zero else "positive"
+                raise ValueError(f"{name} must be finite and {qualifier}")
+        if self.rca_analysis_window_seconds < self.rca_temporal_tolerance_seconds:
+            raise ValueError(
+                "AIOPS_RCA_ANALYSIS_WINDOW_SECONDS must be >= "
+                "AIOPS_RCA_TEMPORAL_TOLERANCE_SECONDS"
+            )
+        if self.rca_max_services <= 0 or self.rca_max_traces <= 0 or self.rca_max_spans <= 0:
+            raise ValueError("RCA resource limits must be positive")
