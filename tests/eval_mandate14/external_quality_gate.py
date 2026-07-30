@@ -12,6 +12,7 @@ from run_external_human_factuality import (
     DEFAULT_REPORT,
     MIN_AGREEMENT,
     MIN_COHEN_KAPPA,
+    sha256_source,
 )
 from run_external_human_nli import DEFAULT_LABELS
 from semantic_faithfulness import (
@@ -67,13 +68,19 @@ def verify_external_quality_gate(
         "model artifact or decision threshold changed",
     )
     _require(
+        binding["hash_encoding"] == "utf8_lf_canonical_v1",
+        "unexpected source hash encoding",
+    )
+    _require(
         binding["semantic_scorer_sha256"]
-        == _sha256_path(SCRIPT_DIR / "semantic_faithfulness.py"),
+        == sha256_source(SCRIPT_DIR / "semantic_faithfulness.py"),
         "semantic scorer/preprocessor hash is stale",
     )
     _require(
         binding["calibration_runner_sha256"]
-        == _sha256_path(SCRIPT_DIR / "run_external_human_factuality.py"),
+        == sha256_source(
+            SCRIPT_DIR / "run_external_human_factuality.py"
+        ),
         "calibration runtime adapter hash is stale",
     )
 

@@ -26,8 +26,9 @@
     "decision_rule": "case_pass_if_every_scored_unit_gte_0.5"
   },
   "code_binding": {
-    "semantic_scorer_sha256": "931eb9f18ef85c17daeabb094017791a2e3d4068899acd1628c55ac513df6995",
-    "calibration_runner_sha256": "ff6ac2ddff73099a182c47821c8eda356b8f658f7a483ce6372affb2dd06c2a8"
+    "hash_encoding": "utf8_lf_canonical_v1",
+    "semantic_scorer_sha256": "c4607e1b2e459ff39b47e2c51d4907b293dc3c4afb7d4503c82bb5cea90a8b5f",
+    "calibration_runner_sha256": "b3a652ff80df11ed6858ad499944367acacc33fb056c65dcf6e15086f2bfaacc"
   },
   "acceptance_gate": {
     "minimum_agreement_per_path": 0.7,

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from external_quality_gate import verify_external_quality_gate
+from run_external_human_factuality import sha256_source
 
 ROOT = Path(__file__).resolve().parents[1]
 LABELS = ROOT / "external-human-labels-summeval-v1.jsonl"
@@ -93,6 +94,15 @@ def test_external_factuality_report_passes_recorded_quality_gate():
     ] == 3
     assert report["acceptance_gate"]["pass"] is True
     assert verify_external_quality_gate()["pass"] is True
+
+
+def test_source_hash_is_line_ending_independent(tmp_path):
+    lf = tmp_path / "lf.py"
+    crlf = tmp_path / "crlf.py"
+    lf.write_bytes(b"first = 1\nsecond = 2\n")
+    crlf.write_bytes(b"first = 1\r\nsecond = 2\r\n")
+
+    assert sha256_source(lf) == sha256_source(crlf)
 
 
 def test_external_gate_rejects_stale_semantic_scorer_hash(tmp_path):

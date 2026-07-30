@@ -42,6 +42,13 @@ def _sha256_path(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sha256_source(path: Path) -> str:
+    """Hash UTF-8 source with canonical LF line endings."""
+    source = path.read_text(encoding="utf-8")
+    canonical = source.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _metrics(
     results: list[dict[str, Any]],
     prediction_field: str,
@@ -292,10 +299,11 @@ def build_report(labels_path: Path, batch_size: int) -> dict[str, Any]:
             ),
         },
         "code_binding": {
-            "semantic_scorer_sha256": _sha256_path(
+            "hash_encoding": "utf8_lf_canonical_v1",
+            "semantic_scorer_sha256": sha256_source(
                 script_dir / "semantic_faithfulness.py"
             ),
-            "calibration_runner_sha256": _sha256_path(Path(__file__)),
+            "calibration_runner_sha256": sha256_source(Path(__file__)),
         },
         "acceptance_gate": {
             "minimum_agreement_per_path": MIN_AGREEMENT,
