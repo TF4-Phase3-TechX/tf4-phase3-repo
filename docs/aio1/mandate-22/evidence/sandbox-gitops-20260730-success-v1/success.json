@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "scenario": "success",
+  "captured_at": "2026-07-30T06:00:15.848169+00:00",
+  "kind_context": "kind-m22-gitops-sandbox",
+  "argo_version": "v3.4.2",
+  "repository": "disposable-local-git",
+  "known_good_sha": "8730ad1b2941b9b085c8f9fd34dfbd479602efe8",
+  "fault_sha": "045e477442d8c661e8e5f232e5c9320069c8cf9c",
+  "healthy_baseline_ms": [
+    5.404,
+    5.906,
+    16.188,
+    6.373,
+    6.745,
+    6.882
+  ],
+  "fault_samples_ms": [
+    805.857,
+    805.827,
+    804.958
+  ],
+  "detector_incident": {
+    "incident_id": "inc-fcab9517876b",
+    "incident_type": "service_latency_spike",
+    "status": "resolved",
+    "severity": "high",
+    "affected_service": "product-reviews",
+    "environment": "production",
+    "tenant_id": "default",
+    "detected_at": "2026-07-30T05:59:59.930537Z",
+    "last_observed_at": "2026-07-30T05:59:59.930537Z",
+    "confidence": 0.7000000000000001,
+    "suspected_root_cause": "Sustained p95 latency degradation on product-reviews; dependency or recent deployment correlation requires confirmation.",
+    "impact": {},
+    "evidence": [
+      {
+        "source": "prometheus",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"product-reviews\",span_kind=\"SPAN_KIND_SERVER\",k8s_namespace_name=\"m22\",span_name=\"oteldemo.ProductReviewService/GetProductReviews\"}[5m])))",
+        "window": "30m",
+        "value": 804.96,
+        "reference": null
+      },
+      {
+        "source": "detector",
+        "query": "baseline_coverage",
+        "window": "30m",
+        "value": "available",
+        "reference": null
+      },
+      {
+        "source": "jaeger",
+        "query": "service=product-reviews",
+        "window": "30m",
+        "value": 1.0,
+        "reference": "sandbox-real-traffic"
+      }
+    ],
+    "rca_candidates": [
+      {
+        "service": "product-reviews",
+        "score": 0.7,
+        "signals": {
+          "ratio": 128.5456017226171,
+          "zscore": 1461.8727386946114,
+          "ewma": 497.68905723318886,
+          "isolation": 0.0,
+          "trend": 164.00740923087878,
+          "trend_consistency": 0.6,
+          "slow_drift": 0.0
+        }
+      }
+    ],
+    "runbook_id": "product-reviews-config-rollback",
+    "recommended_action": "Restore the three policy-managed review-delay values through a checked GitOps pull request.",
+    "approval_status": "preauthorized_policy",
+    "approval_expires_at": null,
+    "policy_version": "m22-gitops-v1",
+    "execution_attempts": 1,
+    "mutation_blocked": false,
+    "before_snapshot": null,
+    "verification_result": {
+      "healthy": true,
+      "observed_entire_window": true,
+      "consecutive_required": 3,
+      "poll_healthy": [
+        true,
+        true,
+        true
+      ],
+      "samples": [
+        {
+          "poll": 1,
+          "sampled_at": "2026-07-30T06:00:12.068087+00:00",
+          "runtime": {
+            "observed_at": "2026-07-30T06:00:11.510624+00:00",
+            "deployment": "product-reviews",
+            "generation": 14,
+            "observed_generation": 14,
+            "ready": true,
+            "container_found": true,
+            "remediation_id": "inc-fcab9517876b",
+            "managed_env_present": [],
+            "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+          },
+          "slo": {
+            "healthy": true,
+            "request_count": 5,
+            "p95_latency_ms": 7.074,
+            "rpc": "/api/product-reviews/<id>",
+            "samples_ms": [
+              7.074,
+              4.999,
+              4.458,
+              5.785,
+              4.562
+            ]
+          }
+        },
+        {
+          "poll": 2,
+          "sampled_at": "2026-07-30T06:00:13.632177+00:00",
+          "runtime": {
+            "observed_at": "2026-07-30T06:00:13.087074+00:00",
+            "deployment": "product-reviews",
+            "generation": 14,
+            "observed_generation": 14,
+            "ready": true,
+            "container_found": true,
+            "remediation_id": "inc-fcab9517876b",
+            "managed_env_present": [],
+            "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+          },
+          "slo": {
+            "healthy": true,
+            "request_count": 5,
+            "p95_latency_ms": 5.808,
+            "rpc": "/api/product-reviews/<id>",
+            "samples_ms": [
+              3.851,
+              3.965,
+              5.066,
+              5.808,
+              4.68
+            ]
+          }
+        },
+        {
+          "poll": 3,
+          "sampled_at": "2026-07-30T06:00:15.205754+00:00",
+          "runtime": {
+            "observed_at": "2026-07-30T06:00:14.650220+00:00",
+            "deployment": "product-reviews",
+            "generation": 14,
+            "observed_generation": 14,
+            "ready": true,
+            "container_found": true,
+            "remediation_id": "inc-fcab9517876b",
+            "managed_env_present": [],
+            "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+          },
+          "slo": {
+            "healthy": true,
+            "request_count": 5,
+            "p95_latency_ms": 5.702,
+            "rpc": "/api/product-reviews/<id>",
+            "samples_ms": [
+              4.724,
+              4.822,
+              5.476,
+              5.354,
+              5.702
+            ]
+          }
+        }
+      ],
+      "target": "product-reviews"
+    },
+    "rollback_result": null,
+    "rollback_verification_result": null,
+    "escalation_reason": null,
+    "audit_events": [
+      {
+        "at": "2026-07-30T05:59:59.930537Z",
+        "event": "incident_created",
+        "detail": {}
+      },
+      {
+        "at": "2026-07-30T05:59:59.931542Z",
+        "event": "autonomous_gitops_policy_evaluated",
+        "detail": {
+          "policy_version": "m22-gitops-v1",
+          "checks": {
+            "autonomous_enabled": true,
+            "exact_incident_type": true,
+            "exact_target": true,
+            "exact_runbook": true,
+            "runbook_authorized": true,
+            "target_allowlisted": true,
+            "severity_high": true,
+            "confidence_sufficient": true,
+            "evidence_present": true,
+            "mutation_not_blocked": true
+          }
+        }
+      },
+      {
+        "at": "2026-07-30T05:59:59.931542Z",
+        "event": "gitops_action_preauthorized",
+        "detail": {
+          "policy_version": "m22-gitops-v1",
+          "action": "gitops_restore_managed_env"
+        }
+      },
+      {
+        "at": "2026-07-30T06:00:03.275913Z",
+        "event": "gitops_remediation_merged",
+        "detail": {
+          "pr_url": "sandbox://pull/1/aiops/remediation/inc-fcab9517876b",
+          "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77"
+        }
+      },
+      {
+        "at": "2026-07-30T06:00:15.208802Z",
+        "event": "gitops_remediation_verified",
+        "detail": {
+          "pr_url": "sandbox://pull/1/aiops/remediation/inc-fcab9517876b",
+          "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77"
+        }
+      }
+    ]
+  },
+  "verification_runs": [
+    {
+      "healthy": true,
+      "request_count": 5,
+      "p95_latency_ms": 7.074,
+      "rpc": "/api/product-reviews/<id>",
+      "samples_ms": [
+        7.074,
+        4.999,
+        4.458,
+        5.785,
+        4.562
+      ]
+    },
+    {
+      "healthy": true,
+      "request_count": 5,
+      "p95_latency_ms": 5.808,
+      "rpc": "/api/product-reviews/<id>",
+      "samples_ms": [
+        3.851,
+        3.965,
+        5.066,
+        5.808,
+        4.68
+      ]
+    },
+    {
+      "healthy": true,
+      "request_count": 5,
+      "p95_latency_ms": 5.702,
+      "rpc": "/api/product-reviews/<id>",
+      "samples_ms": [
+        4.724,
+        4.822,
+        5.476,
+        5.354,
+        5.702
+      ]
+    }
+  ],
+  "runtime_observation": {
+    "observed_at": "2026-07-30T06:00:15.724818+00:00",
+    "deployment": "product-reviews",
+    "generation": 14,
+    "observed_generation": 14,
+    "ready": true,
+    "container_found": true,
+    "remediation_id": "inc-fcab9517876b",
+    "managed_env_present": [],
+    "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+  },
+  "argo": {
+    "sync": {
+      "comparedTo": {
+        "destination": {
+          "namespace": "m22",
+          "server": "https://kubernetes.default.svc"
+        },
+        "source": {
+          "repoURL": ""
+        },
+        "sources": [
+          {
+            "helm": {
+              "releaseName": "product-reviews",
+              "valueFiles": [
+                "$values/environments/production/app-values.yaml"
+              ]
+            },
+            "path": "chart",
+            "repoURL": "git://172.24.0.3:9418/repo.git",
+            "targetRevision": "main"
+          },
+          {
+            "ref": "values",
+            "repoURL": "git://172.24.0.3:9418/repo.git",
+            "targetRevision": "main"
+          }
+        ]
+      },
+      "revisions": [
+        "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77",
+        "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77"
+      ],
+      "status": "Synced"
+    },
+    "health": {
+      "lastTransitionTime": "2026-07-30T06:00:11Z",
+      "status": "Healthy"
+    },
+    "self_heal": true
+  },
+  "saga": {
+    "schema_version": 2,
+    "incident_id": "inc-fcab9517876b",
+    "incident_type": "service_latency_spike",
+    "target": "product-reviews",
+    "phase": "TERMINAL",
+    "outcome": "resolved",
+    "policy_version": "m22-gitops-v1",
+    "policy_sha": "cd2f4d1e2909f09726ba104ff9e402d6925d5490",
+    "base_sha": "045e477442d8c661e8e5f232e5c9320069c8cf9c",
+    "known_good_sha": "8730ad1b2941b9b085c8f9fd34dfbd479602efe8",
+    "remediation": {
+      "kind": "remediation",
+      "branch": "aiops/remediation/inc-fcab9517876b",
+      "base_sha": "045e477442d8c661e8e5f232e5c9320069c8cf9c",
+      "policy_sha": "cd2f4d1e2909f09726ba104ff9e402d6925d5490",
+      "known_good_sha": "8730ad1b2941b9b085c8f9fd34dfbd479602efe8",
+      "target_file": "environments/production/app-values.yaml",
+      "before_hash": "993d673dd27c56bf843b7f22815e1e289593c056bdabd17c4b5db49a70bbd0c2",
+      "after_hash": "d6f90314e20b3c29597346dbf0d78649a434bd34b465a3bd0dfa93450d036b27",
+      "before_file_sha": "0152e2fe1f01847b3de81b3d2fee2b1d93be3fb3",
+      "after_file_sha": "48ccb2342986236256ded4b9bf5cfcdb12cfae9e",
+      "head_sha": "0d605370f039265fe16fcb8d44535e9971a18f43",
+      "pr_number": 1,
+      "pr_node_id": "sandbox-pr-1-0d605370f039",
+      "pr_url": "sandbox://pull/1/aiops/remediation/inc-fcab9517876b",
+      "checks": {
+        "aiops-remediation-policy": "success",
+        "check-pinned-dependencies": "success",
+        "validate": "success"
+      },
+      "merge_queued": true,
+      "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77",
+      "state": "merged"
+    },
+    "compensation": null,
+    "expected_runtime_identity": {
+      "managed_env_present": [],
+      "merge_sha": "3a151df1a595da14d93fb8ff4d54bd0d2a6b0c77",
+      "remediation_id": "inc-fcab9517876b",
+      "target_hash": "d6f90314e20b3c29597346dbf0d78649a434bd34b465a3bd0dfa93450d036b27"
+    },
+    "runtime_observation": {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 14,
+      "managed_env_present": [],
+      "observed_at": "2026-07-30T06:00:11.501445+00:00",
+      "observed_generation": 14,
+      "ready": true,
+      "remediation_id": "inc-fcab9517876b",
+      "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+    },
+    "verification_samples": [
+      {
+        "poll": 1,
+        "runtime": {
+          "container_found": true,
+          "deployment": "product-reviews",
+          "generation": 14,
+          "managed_env_present": [],
+          "observed_at": "2026-07-30T06:00:11.510624+00:00",
+          "observed_generation": 14,
+          "ready": true,
+          "remediation_id": "inc-fcab9517876b",
+          "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+        },
+        "sampled_at": "2026-07-30T06:00:12.068087+00:00",
+        "slo": {
+          "healthy": true,
+          "p95_latency_ms": 7.074,
+          "request_count": 5,
+          "rpc": "/api/product-reviews/<id>",
+          "samples_ms": [
+            7.074,
+            4.999,
+            4.458,
+            5.785,
+            4.562
+          ]
+        }
+      },
+      {
+        "poll": 2,
+        "runtime": {
+          "container_found": true,
+          "deployment": "product-reviews",
+          "generation": 14,
+          "managed_env_present": [],
+          "observed_at": "2026-07-30T06:00:13.087074+00:00",
+          "observed_generation": 14,
+          "ready": true,
+          "remediation_id": "inc-fcab9517876b",
+          "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+        },
+        "sampled_at": "2026-07-30T06:00:13.632177+00:00",
+        "slo": {
+          "healthy": true,
+          "p95_latency_ms": 5.808,
+          "request_count": 5,
+          "rpc": "/api/product-reviews/<id>",
+          "samples_ms": [
+            3.851,
+            3.965,
+            5.066,
+            5.808,
+            4.68
+          ]
+        }
+      },
+      {
+        "poll": 3,
+        "runtime": {
+          "container_found": true,
+          "deployment": "product-reviews",
+          "generation": 14,
+          "managed_env_present": [],
+          "observed_at": "2026-07-30T06:00:14.650220+00:00",
+          "observed_generation": 14,
+          "ready": true,
+          "remediation_id": "inc-fcab9517876b",
+          "template_hash": "087fabeea91a08f55687759056dc94ecefd02e57d703782b54bcc1256b904a09"
+        },
+        "sampled_at": "2026-07-30T06:00:15.205754+00:00",
+        "slo": {
+          "healthy": true,
+          "p95_latency_ms": 5.702,
+          "request_count": 5,
+          "rpc": "/api/product-reviews/<id>",
+          "samples_ms": [
+            4.724,
+            4.822,
+            5.476,
+            5.354,
+            5.702
+          ]
+        }
+      }
+    ],
+    "compensation_verification_samples": [],
+    "mutation_blocked": false,
+    "escalation_reason": null,
+    "updated_at": "2026-07-30T06:00:15.528166+00:00"
+  },
+  "outcome": {
+    "incident_status": "resolved",
+    "saga_phase": "TERMINAL",
+    "saga_outcome": "resolved",
+    "managed_env_removed": true,
+    "correlation_matches": true
+  },
+  "claim_boundary": "Kind/Argo runtime evidence level 5 in a disposable sandbox. The local adapter writes real Git branches/commits and enforces the three checks, but it does not prove GitHub App/rulesets or production behavior.",
+  "passed": true,
+  "workspace": "disposable-temp-workspace"
+}

@@ -1,0 +1,3 @@
+{"id":"success","expected_outcome":"resolved","action_health":[true,true,true]}
+{"id":"forced-wrong","expected_outcome":"compensated_escalated","action_health":[false,false,false]}
+{"id":"compensation-failure","expected_outcome":"compensation_failed","action_health":[false],"compensation_runtime_healthy":false,"runtime_timeout_seconds":0.001}

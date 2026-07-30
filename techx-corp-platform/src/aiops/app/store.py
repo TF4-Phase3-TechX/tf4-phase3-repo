@@ -65,7 +65,10 @@ class IncidentStore:
             recent = [
                 i for i in self._items.values() if i.dedup_key == candidate.dedup_key
             ]
-            if recent and utcnow() - max(i.last_observed_at for i in recent) < self.cooldown:
+            if (
+                recent
+                and utcnow() - max(i.last_observed_at for i in recent) < self.cooldown
+            ):
                 suppressed = max(recent, key=lambda i: i.last_observed_at)
                 suppressed.audit_events.append(
                     AuditEvent(event="incident_suppressed_cooldown")
@@ -190,7 +193,12 @@ class IncidentStore:
         if not incident.mutation_blocked:
             return False
         mutation_risk = any(
-            event.event in {"action_executed", "action_outcome_unknown"}
+            event.event
+            in {
+                "action_executed",
+                "action_outcome_unknown",
+                "gitops_remediation_merged",
+            }
             for event in incident.audit_events
         )
         return mutation_risk or incident.rollback_result is not None

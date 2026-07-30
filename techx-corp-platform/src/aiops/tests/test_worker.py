@@ -35,15 +35,21 @@ class RecordingDetector:
 
     def latency(self, service, series, query):
         self.latency_services.append(service)
-        return Decision(anomalous=False, incident_type="service_latency_spike", service=service)
+        return Decision(
+            anomalous=False, incident_type="service_latency_spike", service=service
+        )
 
     def error_rate(self, service, series, query, **kwargs):
         self.error_rate_services.append(service)
-        return Decision(anomalous=False, incident_type="service_error_rate_spike", service=service)
+        return Decision(
+            anomalous=False, incident_type="service_error_rate_spike", service=service
+        )
 
     def llm_error(self, service, series, query, log_count):
         self.llm_services.append(service)
-        return Decision(anomalous=False, incident_type="llm_timeout_error", service=service)
+        return Decision(
+            anomalous=False, incident_type="llm_timeout_error", service=service
+        )
 
 
 class BlockingDetector(RecordingDetector):
@@ -128,7 +134,9 @@ class MultiCallerTelemetry(EmptyTelemetry):
     async def query_range(self, query):
         if "app_llm_errors_total" not in query:
             return []
-        values = [[index, str(value)] for index, value in enumerate([0.01] * 8 + [0.08])]
+        values = [
+            [index, str(value)] for index, value in enumerate([0.01] * 8 + [0.08])
+        ]
         return [
             {"metric": {"service_name": "product-reviews"}, "values": values},
             {"metric": {"service_name": "shopping-copilot"}, "values": values},
@@ -160,10 +168,30 @@ async def test_llm_incident_owner_is_discovered_per_metric_series():
 class LifecycleDetector:
     def __init__(self):
         self.decisions = [
-            Decision(anomalous=True, breached=True, incident_type="llm_timeout_error", service="product-reviews"),
-            Decision(anomalous=False, breached=False, incident_type="llm_timeout_error", service="product-reviews"),
-            Decision(anomalous=False, breached=False, incident_type="llm_timeout_error", service="product-reviews"),
-            Decision(anomalous=True, breached=True, incident_type="llm_timeout_error", service="product-reviews"),
+            Decision(
+                anomalous=True,
+                breached=True,
+                incident_type="llm_timeout_error",
+                service="product-reviews",
+            ),
+            Decision(
+                anomalous=False,
+                breached=False,
+                incident_type="llm_timeout_error",
+                service="product-reviews",
+            ),
+            Decision(
+                anomalous=False,
+                breached=False,
+                incident_type="llm_timeout_error",
+                service="product-reviews",
+            ),
+            Decision(
+                anomalous=True,
+                breached=True,
+                incident_type="llm_timeout_error",
+                service="product-reviews",
+            ),
         ]
 
     def llm_error(self, service, series, query, log_count):
@@ -202,7 +230,7 @@ class SeverityPromotionDetector(RecordingDetector):
             severity=self.severities.pop(0),
             confidence=0.9,
             root_cause="test latency promotion",
-            runbook_id="deployment-latency-rollback",
+            runbook_id="product-reviews-config-rollback",
             recommended_action="rollback",
         )
 
@@ -255,10 +283,13 @@ async def test_worker_re_evaluates_severity_only_denial_once_on_high_promotion()
     assert remediation.severities == ["medium", "high"]
     incident = (await store.list())[0]
     assert incident.status == IncidentStatus.APPROVED
-    assert sum(
-        event.event == "autonomous_policy_re_evaluation_scheduled"
-        for event in incident.audit_events
-    ) == 1
+    assert (
+        sum(
+            event.event == "autonomous_policy_re_evaluation_scheduled"
+            for event in incident.audit_events
+        )
+        == 1
+    )
 
 
 @pytest.mark.asyncio
@@ -330,12 +361,18 @@ async def test_worker_counts_opensearch_and_jaeger_poll_failures():
     def labels(source):
         return {"source": source}
 
-    opensearch_before = REGISTRY.get_sample_value(
-        "aiops_telemetry_poll_failures_total", labels("opensearch")
-    ) or 0
-    jaeger_before = REGISTRY.get_sample_value(
-        "aiops_telemetry_poll_failures_total", labels("jaeger")
-    ) or 0
+    opensearch_before = (
+        REGISTRY.get_sample_value(
+            "aiops_telemetry_poll_failures_total", labels("opensearch")
+        )
+        or 0
+    )
+    jaeger_before = (
+        REGISTRY.get_sample_value(
+            "aiops_telemetry_poll_failures_total", labels("jaeger")
+        )
+        or 0
+    )
     worker = AIOpsWorker(
         replace(Settings(), services=()),
         DegradedEnrichmentTelemetry(),
@@ -346,12 +383,18 @@ async def test_worker_counts_opensearch_and_jaeger_poll_failures():
 
     await worker.poll_once()
 
-    assert REGISTRY.get_sample_value(
-        "aiops_telemetry_poll_failures_total", labels("opensearch")
-    ) == opensearch_before + 1
-    assert REGISTRY.get_sample_value(
-        "aiops_telemetry_poll_failures_total", labels("jaeger")
-    ) == jaeger_before + 1
+    assert (
+        REGISTRY.get_sample_value(
+            "aiops_telemetry_poll_failures_total", labels("opensearch")
+        )
+        == opensearch_before + 1
+    )
+    assert (
+        REGISTRY.get_sample_value(
+            "aiops_telemetry_poll_failures_total", labels("jaeger")
+        )
+        == jaeger_before + 1
+    )
 
 
 class DownAvailability:
@@ -400,9 +443,9 @@ async def test_confirmed_service_down_creates_pageable_incident():
         "severity": "critical",
         "impact": "not_assessed",
     }
-    created_before = REGISTRY.get_sample_value(
-        "aiops_incidents_created_total", counter_labels
-    ) or 0
+    created_before = (
+        REGISTRY.get_sample_value("aiops_incidents_created_total", counter_labels) or 0
+    )
     worker = AIOpsWorker(
         settings,
         EmptyTelemetry(),
@@ -426,21 +469,18 @@ async def test_confirmed_service_down_creates_pageable_incident():
     assert incidents[0].severity == "high"
     assert incidents[0].execution_attempts == 0
     assert recorder.incident_ids == [incidents[0].incident_id]
-    assert REGISTRY.get_sample_value(
-        "aiops_incidents_created_total", counter_labels
-    ) == created_before + 1
-    assert REGISTRY.get_sample_value(
-        "aiops_incident_active", counter_labels
-    ) == 1
+    assert (
+        REGISTRY.get_sample_value("aiops_incidents_created_total", counter_labels)
+        == created_before + 1
+    )
+    assert REGISTRY.get_sample_value("aiops_incident_active", counter_labels) == 1
 
     worker.availability = HealthyAvailability()
     await worker.poll_once()
     await worker.poll_once()
 
     assert (await store.list())[0].status.value == "resolved"
-    assert REGISTRY.get_sample_value(
-        "aiops_incident_active", counter_labels
-    ) == 0
+    assert REGISTRY.get_sample_value("aiops_incident_active", counter_labels) == 0
 
 
 @pytest.mark.asyncio
@@ -503,9 +543,9 @@ async def test_worker_quarantines_ambiguous_live_action_outcome():
         incident_type="service_latency_spike",
         severity="high",
         affected_service="product-reviews",
-        confidence=.9,
+        confidence=0.9,
         suspected_root_cause="test",
-        runbook_id="deployment-latency-rollback",
+        runbook_id="product-reviews-config-rollback",
         recommended_action="rollback",
     )
 

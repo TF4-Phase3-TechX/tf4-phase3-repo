@@ -1,100 +1,115 @@
-# Mandate 22 implementation and repro
+# Mandate 22 GitOps-native implementation and repro
 
 Canonical Jira: [TF4AIO-83](https://aio1-xbrain.atlassian.net/browse/TF4AIO-83)
 
-The current production go/no-go contract is
-[PRODUCTION-DRILL-GO-NO-GO.md](PRODUCTION-DRILL-GO-NO-GO.md). It reduces live
-activation to five hard STOP gates and records the exact operation-scoped
-signal, known-good revision pin, mutation lifecycle, traffic and restore
-requirements.
+Current contracts:
 
-## Offline external-scenario gate
+- [ADR-022](ADR-022-safe-closed-loop-mitigation.md)
+- [production drill gate](PRODUCTION-DRILL-GO-NO-GO.md)
+
+Documents and evidence dated before 2026-07-30 describe the superseded direct
+Deployment/ReplicaSet design. They remain historical evidence only and are not
+activation instructions.
+
+## Offline scenario gate
 
 ```bash
 cd techx-corp-platform/src/aiops
+python -m pytest tests -q
 python -m benchmark.mitigation_replay \
-  ../../../docs/aio1/mandate-22/scenarios-v1.jsonl \
-  --output /tmp/m22-replay.json
+  ../../../docs/aio1/mandate-22/scenarios-v2.jsonl \
+  --output /tmp/m22-gitops-replay.json
 ```
 
-The committed cases cover successful mitigation, a forced-wrong action with
-verified rollback, and unhealthy rollback with mutation block plus escalation.
-The harness imports the production `RemediationController`; only Kubernetes and
-telemetry are bounded adapters. This does not claim a live pass.
+The production controller runs against bounded GitHub, Argo/runtime, telemetry
+and Lease adapters. Cases cover success, forced-wrong compensation and
+compensation failure/quarantine.
 
-## Durable saga restart gate (TF4AIO-89)
+## Restart decision gate
 
 ```bash
-cd techx-corp-platform/src/aiops
-python -m pytest tests/test_saga.py -q
 python -m benchmark.saga_restart_replay \
-  ../../../docs/aio1/mandate-22/saga-restart-cases-v1.jsonl \
-  --output ../../../docs/aio1/mandate-22/saga-restart-report.json
+  ../../../docs/aio1/mandate-22/saga-restart-cases-v2.jsonl \
+  --output /tmp/m22-saga-restart-v2.json
 ```
 
-Proves offline restart after preflight, action ack, verification and rollback,
-plus lost Lease, conflicting desired state and incomplete records. Reviewer
-verdict is machine-readable in the report JSON. Does not enable live autonomy.
-The file backend must be mounted on persistent storage for cross-pod recovery;
-`emptyDir` and the process-local `memory` backend do not satisfy live autonomy.
-Live autonomous startup fails closed when configured with `memory`.
+The cases cover pre-PR abandonment, ambiguous PR write rediscovery, pending
+checks, merge race, runtime convergence, compensation and an open schema V1
+activation block.
 
-## Live activation
+## Exact V1 scope
 
-Default chart values remain `dry-run`, autonomous mode false and patch RBAC
-disabled. A Kubernetes Lease provides a cross-replica target lock; the live
-Role grants Deployment patch only when the separate Helm gate is enabled. CDO
-must sign ADR-022, select the exact target/known-good revision and
-review the drill window before enabling all three gates. Runtime closure then
-requires real detector input, readiness/SLO verification, OpenSearch audit
-records and the successful plus forced-wrong drill evidence on TF4AIO-83.
+The only autonomous envelope is:
 
-### Deterministic latency incident
+- incident `service_latency_spike`;
+- component `product-reviews`;
+- runbook `product-reviews-config-rollback`;
+- three `MANDATE22_REVIEW_DELAY_*` entries;
+- correlation annotation `aiops.techx.io/remediation-id`.
 
-The approved `deployment-latency-rollback` path needs a high-severity
-`service_latency_spike`; resource starvation and broad load are not a reliable
-way to create that signal. Product Reviews therefore supports an
-off-by-default, Deployment-revision-coupled delay on `GetProductReviews`:
+The bounded fault remains TTL/request-capped and does not call Bedrock or
+modify flagd. Remediation is a protected PR, required checks, merge and Argo
+rollout. Kubernetes access is read-only except for the coordination Lease.
 
-- `MANDATE22_REVIEW_DELAY_MS` (hard cap: 3000 ms);
-- `MANDATE22_REVIEW_DELAY_TTL_SECONDS` (hard cap: 900 seconds);
-- `MANDATE22_REVIEW_DELAY_MAX_REQUESTS` (hard cap: 200 requests per pod).
+Offline success is evidence level 3 only. It neither activates production nor
+supplies CDO/on-call signatures.
 
-All three values are required to activate the fault. Health runs on the
-separate health server and is never delayed. The TTL and request budget are
-independent deadmen; invalid configuration fails safe to normal service
-behavior. The TTL starts on the first eligible `GetProductReviews` request,
-not pod startup, so an approval or reconciliation delay cannot silently consume
-the drill window; the request budget is enforced from the same first request.
-Because activation changes the Deployment pod template, the prior ReplicaSet
-contains no fault variables and a real template rollback causally removes the
-delay. The drill still requires CDO approval, a pinned retained known-good
-revision, bounded mutation RBAC, real Prometheus detection and post-action
-runtime verification. The mechanism exposes no runtime control API and does
-not call Bedrock or mutate `flagd`. Unit/CI success alone is not a live pass.
+The time-boxed 2026-07-31 demo exception uses separate creator and reviewer
+fine-grained tokens. It demonstrates the GitOps PR/check/merge/Argo/runtime
+chain, but remains assisted two-account automation and does not prove the
+CDO-owned GitHub App production path.
 
-The current runtime inventory, activation gates, proposed fault mechanism,
-stop conditions and evidence checklist are recorded in
-[`LIVE-DRILL-READINESS-2026-07-24.md`](LIVE-DRILL-READINESS-2026-07-24.md).
+## Kind/Argo three-round gate
 
-## Post-V7 local recovery gate
+The disposable runtime harness is:
 
-The V7 drill exposed a startup/liveness loop while a restarted process awaited
-long saga verification, followed by cleanup failure when Deployment patch RBAC
-was restored too early. The implementation, disposable-Kubernetes test matrix,
-three consecutive local cycles and strict non-live claim are recorded in
-[`LOCAL-RECOVERY-GATE-2026-07-29.md`](LOCAL-RECOVERY-GATE-2026-07-29.md).
+```powershell
+cd techx-corp-platform/src/aiops
+python tests/kind/m22_gitops_sandbox.py `
+  --scenario success `
+  --context kind-m22-gitops-sandbox `
+  --evidence-dir ../../../docs/aio1/mandate-22/evidence/sandbox-gitops-20260730-success-v1
 
-This gate must pass before another production drill. It does not replace the
-remaining live success-path evidence.
+python tests/kind/m22_gitops_sandbox.py `
+  --scenario forced-wrong `
+  --context kind-m22-gitops-sandbox `
+  --evidence-dir ../../../docs/aio1/mandate-22/evidence/sandbox-gitops-20260730-forced-wrong-v2
 
-## Final evidence packet
+python tests/kind/m22_gitops_sandbox.py `
+  --scenario restart-recovery `
+  --context kind-m22-gitops-sandbox `
+  --evidence-dir ../../../docs/aio1/mandate-22/evidence/sandbox-gitops-20260730-restart-recovery-v1
+```
 
-The controlled 2026-07-25 drill, machine-readable audit summary, timing,
-blockers and strict claim boundary are indexed in
-[`FINAL-EVIDENCE-2026-07-25.md`](FINAL-EVIDENCE-2026-07-25.md).
+The 2026-07-30 runs used a real Kind Deployment, Kubernetes Lease, local Git
+branches/commits, Argo CD `v3.4.2` with `selfHeal=true`, the production detector,
+worker, controller and exact `/api/product-reviews/<id>` traffic. The bounded
+fault measured about 805 ms; all three post-remediation p95 samples were below
+8 ms. The managed fault env disappeared, the rollout correlation matched and
+the durable saga terminated `resolved`.
 
-The drill proves the live safety/failure path. It does not prove a successful
-closed-loop pass because the deployed cross-service verifier rejected the
-otherwise recovered target. No further EKS/load drill is authorized during the
-CDO-04 freeze window.
+The forced-wrong profile retained the fault through the candidate rollout.
+All three verification samples stayed above 807 ms, triggering one compensation
+PR. Git/runtime returned to the exact pre-action structured hash, the original
+fault remained visible, and the saga terminated `compensated_escalated` with
+further mutation blocked.
+
+The restart round discarded responses after the real branch/PR write and after
+the real merge write, then recreated the controller twice. Recovery rediscovered
+exactly one remediation branch and one synthetic PR, matched the merge SHA to
+`origin/main`, rolled out through Argo, and terminated `resolved` without a
+compensation PR.
+
+Evidence:
+
+- [success.json](evidence/sandbox-gitops-20260730-success-v1/success.json)
+- [forced-wrong.json](evidence/sandbox-gitops-20260730-forced-wrong-v2/forced-wrong.json)
+- [restart-recovery.json](evidence/sandbox-gitops-20260730-restart-recovery-v1/restart-recovery.json)
+
+The drill found and fixed a rollout race: runtime convergence now waits until
+total, ready, updated and available replicas all equal desired, preventing a
+terminating fault pod from contaminating verification.
+
+This is sandbox runtime evidence. The local adapter writes real Git commits and
+enforces the three required checks, but it simulates the Git-provider PR/webhook
+boundary. GitHub App/rulesets and production behavior remain unproven.

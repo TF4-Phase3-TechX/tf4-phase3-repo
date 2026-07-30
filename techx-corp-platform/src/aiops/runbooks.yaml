@@ -7,24 +7,21 @@ runbooks:
       - Correlate timeout/rate-limit logs and failed traces.
       - Verify provider configuration and application fallback behavior.
       - Escalate to the product-reviews and LLM owners.
-  - id: deployment-latency-rollback
+  - id: product-reviews-config-rollback
     incident_type: service_latency_spike
-    automatic_action: rollback_previous_replicaset
+    automatic_action: gitops_restore_managed_env
     preconditions:
-      - A signed policy version pre-authorizes this exact incident/action/target envelope, or a per-incident approval is valid in manual mode.
-      - Deployment is allowlisted and retains a previous ReplicaSet.
-      - Latency degradation is sustained and user-facing.
-      - Dry-run/preflight resolves both the current and previous templates before mutation.
-      - No non-terminal durable remediation saga exists for the target (TF4AIO-89).
-      - Live autonomous mode uses a file saga backend on an operator-provided persistent volume; the memory backend is rejected.
-      - Argo mutation window annotations can be applied; CDO Application ignoreDifferences covers /spec/template for the window.
+      - The base-branch CDO policy authorizes only product-reviews/service_latency_spike and the three MANDATE22_REVIEW_DELAY_* entries.
+      - The known-good Git SHA is a full ancestor of the current main branch.
+      - No non-terminal durable saga or target Lease exists for product-reviews.
+      - The CDO-owned GitOps App can open an idempotent incident branch and PR but cannot push main or bypass required checks.
+      - Live autonomous mode uses a durable file saga backend; non-terminal saga V1 records block activation.
     verification:
-      - Deployment rollout becomes ready.
-      - Target p95 latency and target error rate recover for the mutated service.
-      - Request volume meets the verification floor (missing/low traffic fails closed).
-      - Cross-service dependency guards are optional policy mappings, not silent defaults.
-      - Live template still matches the saga expected template (no silent Argo overwrite).
-      - After pod restart, open sagas resume verify/restore without a second mutation.
+      - Required checks validate the exact semantic YAML and rendered pod-template delta.
+      - Argo CD self-heal rolls the merged Git identity to product-reviews.
+      - The remediation annotation, managed env state, readiness and exact review-RPC telemetry match the saga expectation.
+      - Three polls are healthy with sufficient request volume.
+      - Failed verification opens at most one compensation PR and durably quarantines the still-active incident.
   - id: service-error-rate-escalation
     incident_type: service_error_rate_spike
     automatic_action: null
