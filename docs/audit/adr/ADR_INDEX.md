@@ -29,6 +29,8 @@ Sổ ghi nhận các quyết định liên quan đến kiến trúc, bảo mật
 | ADR-017 | 2026-07-15 | Hệ thống Log kiểm toán bất biến (Tamper-Evident) | S3 Object Lock Compliance Mode 90 ngày, KDF EKS stream, SSO | Accepted | CDO-07 | [ADR-017](./adr/017-eks-cloudtrail-tamper-evident-logging.md) |
 | ADR-018 | 2026-07-19 | Kiến trúc cảnh báo bảo mật thời gian thực (Mandate-11) | EventBridge + Lambda + Slack — TTD p95 = 5.23s vs target 60s; chi phí ~$0/tháng | Accepted | CDO-07 | [ADR-018](./adr/018-realtime-security-alerting-eventbridge-lambda.md) |
 | ADR-020 | 2026-07-28 | Auditability cho AI và Tool Call | Canonical metadata, OTel, CloudWatch, S3 WORM và Athena | Proposed | Bá Huân - CDO07 / AIE pending | [ADR-020](./020-ai-tool-call-auditability.md) |
+| ADR-021 | 2026-07-30 | Mandate 21 metric-ready drill dashboard | Tách live metrics và Pending / External Evidence, không dùng static vector/fallback 0 cho missing metric | Accepted | CDO-07 | [ADR-021](./021-mandate21-metric-ready-drill-dashboard-evidence-boundary.md) |
+| ADR-022 | 2026-07-30 | Chuẩn hóa 3 OBS-01 Grafana dashboards | Tách request-level SLI, span-level debug, filter và evidence semantics cho 3 dashboard business flow | Accepted | CDO-07 | [ADR-022](./022-obs01-business-flow-dashboard-sli-and-filter-governance.md) |
 
 
 ---
