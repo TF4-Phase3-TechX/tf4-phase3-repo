@@ -5,6 +5,7 @@ on:
     branches: [main, master]
     paths:
       - "techx-corp-platform/src/product-reviews/**"
+      - "tests/eval_mandate27/**"
       - ".github/workflows/product-reviews-ci.yaml"
 
 permissions:
@@ -30,4 +31,8 @@ jobs:
       - name: Run product-reviews suite
         env:
           DB_CONNECTION_STRING: postgresql://unused:unused@127.0.0.1:1/unused
-        run: python -m pytest techx-corp-platform/src/product-reviews/tests -q
+        run: >-
+          python -m pytest
+          techx-corp-platform/src/product-reviews/tests
+          tests/eval_mandate27
+          -q
