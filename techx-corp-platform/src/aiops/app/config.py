@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import re
 from dataclasses import dataclass, field
@@ -438,12 +439,22 @@ class Settings:
         ):
             if value < 0 or value > 1 or value != value:
                 raise ValueError(f"{name} must be in [0, 1]")
-        if self.rca_timeout_seconds <= 0:
-            raise ValueError("AIOPS_RCA_TIMEOUT_SECONDS must be positive")
-        if self.rca_analysis_window_seconds <= 0:
-            raise ValueError("AIOPS_RCA_ANALYSIS_WINDOW_SECONDS must be positive")
-        if self.rca_temporal_tolerance_seconds < 0:
-            raise ValueError("AIOPS_RCA_TEMPORAL_TOLERANCE_SECONDS cannot be negative")
+        for name, value, allow_zero in (
+            ("AIOPS_RCA_TIMEOUT_SECONDS", self.rca_timeout_seconds, False),
+            (
+                "AIOPS_RCA_ANALYSIS_WINDOW_SECONDS",
+                self.rca_analysis_window_seconds,
+                False,
+            ),
+            (
+                "AIOPS_RCA_TEMPORAL_TOLERANCE_SECONDS",
+                self.rca_temporal_tolerance_seconds,
+                True,
+            ),
+        ):
+            if not math.isfinite(value) or value < 0 or (not allow_zero and value == 0):
+                qualifier = "nonnegative" if allow_zero else "positive"
+                raise ValueError(f"{name} must be finite and {qualifier}")
         if self.rca_analysis_window_seconds < self.rca_temporal_tolerance_seconds:
             raise ValueError(
                 "AIOPS_RCA_ANALYSIS_WINDOW_SECONDS must be >= "

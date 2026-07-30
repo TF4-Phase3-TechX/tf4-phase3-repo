@@ -209,22 +209,22 @@ def _build_end_to_end_observations(
             first_breached: datetime | None = None
             first_anomalous: datetime | None = None
             last_decision = None
+            parsed_values = [
+                [
+                    _parse_ts(
+                        point["timestamp"],
+                        field="timestamp",
+                        case_id=str(engine_input.get("id")),
+                    ).timestamp(),
+                    str(float(point["value"])),
+                ]
+                for point in points
+            ]
             for point_index in range(incident_start, len(points)):
-                current = points[: point_index + 1]
                 fake_series = [
                     {
                         "metric": {},
-                        "values": [
-                            [
-                                _parse_ts(
-                                    point["timestamp"],
-                                    field="timestamp",
-                                    case_id=str(engine_input.get("id")),
-                                ).timestamp(),
-                                str(float(point["value"])),
-                            ]
-                            for point in current
-                        ],
+                        "values": parsed_values[: point_index + 1],
                     }
                 ]
                 query = (
@@ -430,12 +430,13 @@ def run_case(
         root_ok = True
         if expected_root:
             root_ok = root_at_1
+        noise_ok = predicted_noise == expected_noise
         # Status-only cases (no expected root)
         if expected_status and not expected_root:
             root_ok = True
-            passed = status_ok
+            passed = bool(status_ok and noise_ok)
         else:
-            passed = bool(root_ok and status_ok)
+            passed = bool(root_ok and status_ok and noise_ok)
 
         evaluation = {
             "expected_root_service": expected_root,
@@ -447,6 +448,7 @@ def run_case(
             "noise_precision": round(precision, 6),
             "noise_recall": round(recall, 6),
             "noise_f1": round(f1, 6),
+            "noise_ok": noise_ok,
             "noise_true_positive": tp,
             "noise_false_positive": fp,
             "noise_false_negative": fn,

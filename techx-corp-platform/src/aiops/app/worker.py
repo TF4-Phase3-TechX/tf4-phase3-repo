@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from collections import Counter as ValueCounter
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
@@ -127,6 +128,24 @@ def _log_service(hit: dict[str, Any]) -> str | None:
     return None
 
 
+def _rca_applies_to_service(result: Any, service: str) -> bool:
+    """Return whether the attributed root actually explains this incident."""
+
+    root = result.suspected_root_service
+    if root is None:
+        return True
+    if service == root:
+        return True
+    root_candidate = next(
+        (candidate for candidate in result.candidates if candidate.service == root),
+        None,
+    )
+    return bool(
+        root_candidate
+        and service in set(root_candidate.explained_affected_services)
+    )
+
+
 class AIOpsWorker:
     def __init__(
         self,
@@ -145,6 +164,8 @@ class AIOpsWorker:
         self.availability = availability
         self.running = False
         self._remediation_tasks: set[asyncio.Task[Any]] = set()
+        self._rca_executor: ThreadPoolExecutor | None = None
+        self._rca_analysis_future: Future[Any] | None = None
         self._episode = RCAEpisodeTracker(
             analysis_window_seconds=float(settings.rca_analysis_window_seconds)
         )
@@ -515,7 +536,10 @@ class AIOpsWorker:
             rca_candidates = list(decision.candidates)
             suspected_root_service = None
             rca_result_payload = None
-            if rca_result is not None:
+            if (
+                rca_result is not None
+                and _rca_applies_to_service(rca_result, service_key)
+            ):
                 rca_candidates = rca_result.legacy_candidates() or rca_candidates
                 suspected_root_service = rca_result.suspected_root_service
                 rca_result_payload = rca_result
@@ -734,6 +758,18 @@ class AIOpsWorker:
                 duration_observed = True
             return elapsed
 
+        def mark_jaeger_unavailable(targets: list[str]) -> None:
+            for service in targets:
+                poll_failures.labels("jaeger").inc()
+                shared_evidence.setdefault(service, []).append(
+                    Evidence(
+                        source="jaeger",
+                        query=f"service={service}",
+                        window=self.settings.jaeger_trace_lookback,
+                        value="unavailable",
+                    )
+                )
+
         shared_evidence: dict[str, list[Evidence]] = {}
         services = sorted(
             {
@@ -764,11 +800,13 @@ class AIOpsWorker:
                 timeout=max(0.0, deadline - time.perf_counter()),
             )
         except asyncio.TimeoutError:
+            mark_jaeger_unavailable(services)
             rca_skipped.labels("timeout").inc()
             log.warning(json.dumps({"event": "rca_skipped", "reason": "timeout"}))
             observe_duration()
             return None, "timeout", shared_evidence
         except Exception as exc:
+            mark_jaeger_unavailable(services)
             rca_skipped.labels("exception").inc()
             log.warning(
                 json.dumps(
@@ -882,17 +920,32 @@ class AIOpsWorker:
             rca_skipped.labels("timeout").inc()
             observe_duration()
             return None, "timeout", shared_evidence
+        if (
+            self._rca_analysis_future is not None
+            and not self._rca_analysis_future.done()
+        ):
+            rca_skipped.labels("busy").inc()
+            observe_duration()
+            return None, "busy", shared_evidence
+        if self._rca_executor is None:
+            self._rca_executor = ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix="aiops-rca",
+            )
+        engine_input = RCAEngineInput(
+            observations=observations,
+            traces=parse,
+            graph=DependencyGraph.from_static(),
+            unavailable_signals=unavailable,
+        )
+        analysis_future = self._rca_executor.submit(
+            self._rca_engine.analyze,
+            engine_input,
+        )
+        self._rca_analysis_future = analysis_future
         try:
             result = await asyncio.wait_for(
-                asyncio.to_thread(
-                    self._rca_engine.analyze,
-                    RCAEngineInput(
-                        observations=observations,
-                        traces=parse,
-                        graph=DependencyGraph.from_static(),
-                        unavailable_signals=unavailable,
-                    ),
-                ),
+                asyncio.wrap_future(analysis_future),
                 timeout=remaining,
             )
         except asyncio.TimeoutError:
@@ -956,3 +1009,6 @@ class AIOpsWorker:
 
     def stop(self) -> None:
         self.running = False
+        if self._rca_executor is not None:
+            self._rca_executor.shutdown(wait=False, cancel_futures=True)
+            self._rca_executor = None

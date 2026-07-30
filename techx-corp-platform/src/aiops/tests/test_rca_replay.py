@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 
 from benchmark.rca_replay import load_jsonl, main, run_case, sha256_file
-from benchmark.rca_schema import RCASchemaError, split_engine_and_labels, validate_case
+from benchmark.rca_schema import (
+    MAX_POINTS_PER_SERIES,
+    RCASchemaError,
+    split_engine_and_labels,
+    validate_case,
+)
 from app.rca_engine import RCAEngine
 
 
@@ -76,6 +81,17 @@ def test_sha256_file_normalizes_text_line_endings(tmp_path):
     crlf_path.write_bytes(b'{"id":"one"}\r\n{"id":"two"}\r\n')
 
     assert sha256_file(lf_path) == sha256_file(crlf_path)
+
+
+def test_wrong_noise_label_fails_case_acceptance():
+    case = json.loads(json.dumps(load_jsonl(SCENARIOS)[0]))
+    case["labels"]["correlated_noise_services"] = ["currency"]
+
+    result = run_case(validate_case(case, index=1), RCAEngine())
+
+    assert result["passed"] is False
+    assert result["evaluation"]["noise_ok"] is False
+    assert result["evaluation"]["noise_recall"] == 0.0
 
 
 def test_unlabeled_case_does_not_fail(tmp_path):
@@ -211,6 +227,33 @@ def test_end_to_end_series_schema_requires_aligned_timestamped_points():
         ],
     }
     with pytest.raises(RCASchemaError, match="timestamp-aligned"):
+        validate_case(case, index=1)
+
+
+def test_end_to_end_series_schema_caps_points_per_signal():
+    case = {
+        "schema_name": "techx.aiops.rca",
+        "schema_version": 1,
+        "id": "oversized-series",
+        "mode": "end_to_end_series",
+        "observations": [
+            {
+                "service": "checkout",
+                "signals": [
+                    {
+                        "signal": "latency",
+                        "incident_start_index": 1,
+                        "series": [
+                            {"timestamp": 1_700_000_000 + index, "value": 10}
+                            for index in range(MAX_POINTS_PER_SERIES + 1)
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+    with pytest.raises(RCASchemaError, match="exceeds"):
         validate_case(case, index=1)
 
 

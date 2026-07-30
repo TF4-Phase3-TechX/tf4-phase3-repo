@@ -1,6 +1,8 @@
 import asyncio
+import threading
 import time
 from dataclasses import replace
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -9,7 +11,7 @@ import app.worker as worker_module
 from app.config import Settings
 from app.models import Decision, Incident, IncidentStatus
 from app.store import IncidentStore
-from app.worker import AIOpsWorker
+from app.worker import AIOpsWorker, _rca_applies_to_service
 
 
 class EmptyTelemetry:
@@ -34,6 +36,26 @@ class RecordingRemediation:
         self.targets.append(incident.affected_service)
         incident.status = IncidentStatus.AWAITING_APPROVAL
         incident.approval_status = "pending"
+
+
+def test_rca_root_only_applies_to_its_explained_cascade():
+    result = SimpleNamespace(
+        suspected_root_service="payment",
+        candidates=[
+            SimpleNamespace(
+                service="payment",
+                explained_affected_services=["checkout", "frontend"],
+            ),
+            SimpleNamespace(
+                service="ad",
+                explained_affected_services=[],
+            ),
+        ],
+    )
+
+    assert _rca_applies_to_service(result, "payment")
+    assert _rca_applies_to_service(result, "checkout")
+    assert not _rca_applies_to_service(result, "ad")
 
 
 class DualServiceDetector:
@@ -263,6 +285,10 @@ async def test_rca_timeout_does_not_block_incident_creation():
     items = await worker.store.list()
     assert items
     assert any("rca_skipped=timeout" in i.suspected_root_cause for i in items)
+    assert all(
+        any(e.source == "jaeger" and e.value == "unavailable" for e in item.evidence)
+        for item in items
+    )
 
 
 @pytest.mark.asyncio
@@ -313,6 +339,60 @@ async def test_rca_timeout_and_duration_cover_fetch_parse_and_engine(monkeypatch
     assert len(durations) == 1
     assert durations[0] >= 0.07
     assert durations[0] <= wall_elapsed + 0.01
+
+
+@pytest.mark.asyncio
+async def test_timed_out_rca_uses_bounded_executor_and_rejects_overlap(monkeypatch):
+    worker = AIOpsWorker(
+        replace(
+            Settings(),
+            rca_enabled=True,
+            rca_timeout_seconds=0.03,
+        ),
+        EmptyTelemetry(),
+        DualServiceDetector(),
+        IncidentStore(cooldown_seconds=0),
+        RecordingRemediation(),
+    )
+    analysis_started = threading.Event()
+    release_analysis = threading.Event()
+    calls = 0
+
+    def blocking_analyze(engine_input):
+        nonlocal calls
+        calls += 1
+        analysis_started.set()
+        release_analysis.wait(timeout=1.0)
+        return None
+
+    monkeypatch.setattr(worker._rca_engine, "analyze", blocking_analyze)
+    decisions = [
+        Decision(
+            anomalous=True,
+            breached=True,
+            incident_type="service_error_rate_spike",
+            service=service,
+            confidence=0.8,
+        )
+        for service in ("checkout", "payment")
+    ]
+
+    try:
+        first_result, first_reason, _ = await worker._run_cross_service_rca(decisions)
+        assert analysis_started.is_set()
+        assert first_result is None
+        assert first_reason == "timeout"
+
+        second_result, second_reason, _ = await worker._run_cross_service_rca(decisions)
+        assert second_result is None
+        assert second_reason == "busy"
+        assert calls == 1
+        assert await asyncio.to_thread(lambda: "default-executor-free") == (
+            "default-executor-free"
+        )
+    finally:
+        release_analysis.set()
+        worker.stop()
 
 
 @pytest.mark.asyncio

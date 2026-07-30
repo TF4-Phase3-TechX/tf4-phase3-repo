@@ -24,6 +24,7 @@ MAX_SERVICES_PER_CASE = 32
 MAX_TRACES_PER_CASE = 50
 MAX_SPANS_PER_CASE = 5000
 MAX_SIGNALS_PER_SERVICE = 32
+MAX_POINTS_PER_SERIES = 512
 ALLOWED_SERIES_SIGNALS = {"latency", "error_rate", "llm_error"}
 
 
@@ -184,6 +185,11 @@ def validate_case(raw: dict[str, Any], *, index: int) -> dict[str, Any]:
                     raise RCASchemaError(
                         f"case {case_id!r}: {service}/{name}.series must contain "
                         "at least two timestamped points"
+                    )
+                if len(series) > MAX_POINTS_PER_SERIES:
+                    raise RCASchemaError(
+                        f"case {case_id!r}: {service}/{name}.series exceeds "
+                        f"{MAX_POINTS_PER_SERIES} points"
                     )
                 incident_start = sig.get("incident_start_index")
                 if (
