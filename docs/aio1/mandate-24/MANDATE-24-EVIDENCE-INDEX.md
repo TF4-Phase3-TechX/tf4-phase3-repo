@@ -2,11 +2,12 @@
 
 **Prepared:** 2026-07-27
 
-**Runtime reconciled:** 2026-07-29 (Asia/Ho_Chi_Minh)
+**Runtime reconciled:** 2026-07-30 (Asia/Ho_Chi_Minh)
 
 **Reviewed source:** merged PR #707 plus production image `405fd07-product-reviews`
 
-**Claim boundary:** runtime evidence complete; named ADR acceptance and Jira attachment pending
+**Claim boundary:** runtime and matched overhead evidence complete; remaining
+named ADR signatures are not inferred from Jira status
 
 | Requirement | Current evidence | Status |
 |---|---|---|
@@ -18,7 +19,7 @@
 | Aggregate cost/latency by model/surface/window | `runtime-20260729/aggregate-1h.json` | Production observed |
 | Provider error/fallback trace | Shared Mandate 25 throttling trace `79c796323a46dc4cacc3eb34c918b30f` | Production observed |
 | PII/secret raw marker absent | `runtime-20260729/pii-marker-absence.json` | Production observed; Jaeger 0, OpenSearch 0 |
-| Main-path latency overhead | `runtime-20260729/overhead.json` | Pass; `-3.05%` p95 vs `+5%` gate |
+| Main-path latency overhead | `runtime-20260730-matched/` | Pass; 20 paired cold cases/arm in one window, `-19.049%` p95 vs `+5%` gate, 0 invalid rows |
 | Pre-deployment live baseline | `PREDEPLOYMENT-LIVE-READOUT-20260727.md` plus matched replay baseline | Observed |
 | Deployed image/Argo revision | Runtime trace tags + GitOps desired digest in `runtime-20260729/manifest.json` | Runtime tag observed; live Argo sync revision not queried |
 | Signed ADR | Task-owner acceptance recorded in PR #745; AIE/AIOps/Audit decisions remain pending | Partially signed |
@@ -32,6 +33,10 @@
 - `runtime-20260729/aggregate-1h.json`.
 - `runtime-20260729/pii-marker-absence.json`.
 - `runtime-20260729/overhead.json` with bounded matched inputs.
+- `runtime-20260730-matched/README.md` plus raw rows, fail-closed summary,
+  runtime identity, trace-mode proof and reproducible shadow-run tooling. This
+  is the canonical same-window overhead evidence; the earlier three-pair,
+  cross-session comparison is retained as historical evidence only.
 - Named approval links for ADR-024.
 
 The originally supplied trace `4c0b33900665391ee04ce35d305ef0ab`

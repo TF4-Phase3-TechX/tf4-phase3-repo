@@ -1,0 +1,49 @@
+﻿{
+    "schema_version":  "mandate24-matched-runtime-v1",
+    "captured_at_utc":  "2026-07-30T08:11:37.0829530Z",
+    "context":  "techx-tf4-prod",
+    "namespace":  "techx-tf4",
+    "production_deployment":  {
+                                  "name":  "product-reviews",
+                                  "generation":  104,
+                                  "observed_generation":  104,
+                                  "ready_replicas":  2,
+                                  "replicas":  2,
+                                  "image":  "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:686786b-product-reviews@sha256:7454e332e5bd2067a19d9f8ed3a30f44b8dbb4eee1aceedba023eb8a78a91cb4"
+                              },
+    "off":  {
+                "pod":  "m24-overhead-off-20260730-1605",
+                "uid":  "32452978-5a36-4b43-83bf-ceaf557a31f1",
+                "node":  "ip-10-0-10-192.ec2.internal",
+                "ip":  "10.0.10.100",
+                "image":  "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:686786b-product-reviews@sha256:7454e332e5bd2067a19d9f8ed3a30f44b8dbb4eee1aceedba023eb8a78a91cb4",
+                "llm_observability_enabled":  "false",
+                "otel_sdk_disabled":  "true"
+            },
+    "on":  {
+               "pod":  "m24-overhead-on-20260730-1605",
+               "uid":  "962095da-e21e-49c2-976e-af795ef7c7f3",
+               "node":  "ip-10-0-10-192.ec2.internal",
+               "ip":  "10.0.10.97",
+               "image":  "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:686786b-product-reviews@sha256:7454e332e5bd2067a19d9f8ed3a30f44b8dbb4eee1aceedba023eb8a78a91cb4",
+               "llm_observability_enabled":  "true",
+               "otel_sdk_disabled":  "false"
+           },
+    "runner":  {
+                   "pod":  "m24-overhead-runner-20260730-1605",
+                   "uid":  "9482f13f-c0dc-47f7-a116-6ccdbb8c6282",
+                   "node":  "ip-10-0-10-192.ec2.internal",
+                   "ip":  "10.0.10.177",
+                   "phase":  "Succeeded",
+                   "started_at":  "2026-07-30T08:07:45Z",
+                   "finished_at":  "2026-07-30T08:10:20Z",
+                   "exit_code":  0
+               },
+    "production_service_endpoint_pods":  [
+                                             "product-reviews-754694ccf7-jfx59",
+                                             "product-reviews-754694ccf7-7qflp"
+                                         ],
+    "shadow_pods_in_production_service":  [
+
+                                          ]
+}

@@ -1,0 +1,114 @@
+﻿{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1803.403, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 1, "phase": "warmup", "response_nonempty": true, "server_model_latency_ms": 1800.384, "started_wall_ns": 1785398320512279559}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1091.294, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 1, "phase": "warmup", "response_nonempty": true, "server_model_latency_ms": 1087.654, "started_wall_ns": 1785398322815928674}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1059.708, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 2, "phase": "warmup", "response_nonempty": true, "server_model_latency_ms": 1056.481, "started_wall_ns": 1785398324407471681}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1247.804, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 2, "phase": "warmup", "response_nonempty": true, "server_model_latency_ms": 1245.251, "started_wall_ns": 1785398325967450285}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1010.596, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 3, "phase": "warmup", "response_nonempty": true, "server_model_latency_ms": 1007.949, "started_wall_ns": 1785398327715479952}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1008.061, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 3, "phase": "warmup", "response_nonempty": true, "server_model_latency_ms": 1005.071, "started_wall_ns": 1785398329226311193}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1008.2, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 1, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1004.961, "started_wall_ns": 1785398330734595073}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1231.046, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 1, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1227.849, "started_wall_ns": 1785398332243092670}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1143.946, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 133, "pair": 2, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1140.957, "started_wall_ns": 1785398333974415503}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1116.037, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 2, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1113.283, "started_wall_ns": 1785398335618603999}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1172.077, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 3, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1169.466, "started_wall_ns": 1785398337234945999}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1052.6, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 3, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1049.753, "started_wall_ns": 1785398338907253246}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1018.103, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 4, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1014.617, "started_wall_ns": 1785398340460078698}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1246.868, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 4, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1244.229, "started_wall_ns": 1785398341978404258}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1010.159, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 5, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1007.653, "started_wall_ns": 1785398343725488997}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1099.237, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 5, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1095.355, "started_wall_ns": 1785398345235882543}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1025.324, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 6, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1022.135, "started_wall_ns": 1785398346835317589}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1000.254, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 6, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 997.079, "started_wall_ns": 1785398348360865827}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1114.01, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 7, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1111.385, "started_wall_ns": 1785398349861387419}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1018.034, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 7, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1015.052, "started_wall_ns": 1785398351475615075}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1103.269, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 8, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1100.269, "started_wall_ns": 1785398352993874273}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 994.915, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 8, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 991.804, "started_wall_ns": 1785398354597372960}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1152.105, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 130, "pair": 9, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1149.447, "started_wall_ns": 1785398356092531288}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1009.137, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 9, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1006.155, "started_wall_ns": 1785398357744865734}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 997.435, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 10, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 994.488, "started_wall_ns": 1785398359254224631}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1014.268, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 10, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1011.235, "started_wall_ns": 1785398360751877186}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1218.834, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 127, "pair": 11, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1216.311, "started_wall_ns": 1785398362266447144}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1127.955, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 11, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1117.494, "started_wall_ns": 1785398363985503661}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1012.526, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 12, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1009.638, "started_wall_ns": 1785398365613690769}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1168.437, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 12, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1165.745, "started_wall_ns": 1785398367126444346}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 988.639, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 13, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 986.09, "started_wall_ns": 1785398368795099134}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1063.275, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 13, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1060.329, "started_wall_ns": 1785398370283954707}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1036.308, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 14, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1031.934, "started_wall_ns": 1785398371847451295}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1026.152, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 99, "pair": 14, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1022.39, "started_wall_ns": 1785398373383976876}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1126.32, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 126, "pair": 15, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1123.78, "started_wall_ns": 1785398374910350184}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1136.656, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 126, "pair": 15, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1133.68, "started_wall_ns": 1785398376536887882}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1612.633, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 16, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1609.522, "started_wall_ns": 1785398378173994938}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 985.696, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 16, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 983.155, "started_wall_ns": 1785398380286842741}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1031.748, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 17, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1028.968, "started_wall_ns": 1785398381772769639}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1030.244, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 110, "pair": 17, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1026.552, "started_wall_ns": 1785398383304740908}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 1099.247, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 18, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1096.462, "started_wall_ns": 1785398384835215530}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 826.252, "input_tokens": 0, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "zero_token_fallback", "output_tokens": 0, "pair": 18, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 823.768, "started_wall_ns": 1785398386434691371}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1204.137, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 19, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1201.614, "started_wall_ns": 1785398387761161315}
+{"cache_eligible": true, "cache_reason": "expired", "cache_status": "miss", "elapsed_ms": 897.924, "input_tokens": 0, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "zero_token_fallback", "output_tokens": 0, "pair": 19, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 894.508, "started_wall_ns": 1785398389465505817}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 1045.07, "input_tokens": 1486, "memory_status": "not_applicable", "mode": "on", "model_calls": 1, "outcome": "answered", "output_tokens": 116, "pair": 20, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 1042.169, "started_wall_ns": 1785398390863645659}
+{"cache_eligible": true, "cache_reason": "cold", "cache_status": "miss", "elapsed_ms": 822.008, "input_tokens": 0, "memory_status": "not_applicable", "mode": "off", "model_calls": 1, "outcome": "zero_token_fallback", "output_tokens": 0, "pair": 20, "phase": "measure", "response_nonempty": true, "server_model_latency_ms": 818.962, "started_wall_ns": 1785398392408934893}
+{
+  "design": "paired alternating order; same image/node/window; cold arm-specific principals",
+  "gate_percent": 5.0,
+  "invalid_row_count": 3,
+  "invalid_rows": [
+    {
+      "cache_status": "miss",
+      "input_tokens": 0,
+      "mode": "off",
+      "model_calls": 1,
+      "outcome": "zero_token_fallback",
+      "output_tokens": 0,
+      "pair": 18
+    },
+    {
+      "cache_status": "miss",
+      "input_tokens": 0,
+      "mode": "on",
+      "model_calls": 1,
+      "outcome": "zero_token_fallback",
+      "output_tokens": 0,
+      "pair": 19
+    },
+    {
+      "cache_status": "miss",
+      "input_tokens": 0,
+      "mode": "off",
+      "model_calls": 1,
+      "outcome": "zero_token_fallback",
+      "output_tokens": 0,
+      "pair": 20
+    }
+  ],
+  "measurement": "client wall-clock gRPC latency",
+  "off_contract": {
+    "LLM_OBSERVABILITY_ENABLED": "false",
+    "OTEL_SDK_DISABLED": "true",
+    "interpretation": "conservative all-OpenTelemetry-off upper-bound baseline"
+  },
+  "on_contract": {
+    "LLM_OBSERVABILITY_ENABLED": "true",
+    "OTEL_SDK_DISABLED": "false"
+  },
+  "p95_increase_percent": 2.449,
+  "paired_delta_mean_ms": 26.643,
+  "paired_delta_median_ms": 10.246,
+  "pass": false,
+  "schema_version": "mandate24-matched-overhead-v2",
+  "stats": {
+    "off": {
+      "count": 20,
+      "max_ms": 1246.868,
+      "mean_ms": 1061.356,
+      "median_ms": 1028.95,
+      "min_ms": 822.008,
+      "p95_ms": 1220.236
+    },
+    "on": {
+      "count": 20,
+      "max_ms": 1612.633,
+      "mean_ms": 1087.998,
+      "median_ms": 1048.835,
+      "min_ms": 897.924,
+      "p95_ms": 1250.125
+    }
+  },
+  "valid_rows": false
+}

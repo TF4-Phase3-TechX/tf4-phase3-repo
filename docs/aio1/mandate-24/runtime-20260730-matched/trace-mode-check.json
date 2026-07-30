@@ -1,0 +1,12 @@
+﻿{
+    "off_nonzero_trace_count":  0,
+    "on_nonzero_trace_count":  67,
+    "on_sample_trace_ids":  [
+                                "37ed39a963cd7b0df435c3e17a0e746a",
+                                "f52fea8d1b3402f6e23aeab33fca3d0a",
+                                "c321ffa451ba551d3e309d9fc46398ca",
+                                "71588bccb7befadbbd97b0ca22d32093",
+                                "ab0d3d8cbcae92f87f94867bdaf03c9d"
+                            ],
+    "interpretation":  "OFF emitted no non-zero application trace IDs; ON emitted sampled application trace IDs."
+}

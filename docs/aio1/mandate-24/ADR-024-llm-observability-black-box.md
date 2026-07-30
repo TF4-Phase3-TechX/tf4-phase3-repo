@@ -66,6 +66,9 @@ observability without retaining prompt or response content.
 
 Production evidence is captured under `runtime-20260729/`, including a complete
 model/tool trace, aggregate view, PII-marker negative proof, provider-fallback
-trace and passing overhead comparison. The task owner has signed this decision.
-TF4AIO-85 must not be marked Done until the remaining named decisions and
-evidence pack are attached.
+trace and initial overhead comparison. The same-window replacement overhead
+evidence is under `runtime-20260730-matched/`: 20 cold paired cases per arm,
+zero invalid rows and a passing `-19.049%` p95 change against the `+5%` gate.
+The task owner has signed this decision. TF4AIO-85 is currently Done, but that
+workflow status must not be represented as the three remaining named ADR
+signatures.
