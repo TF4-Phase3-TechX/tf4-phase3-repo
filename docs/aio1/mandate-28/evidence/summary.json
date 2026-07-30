@@ -1,0 +1,30 @@
+{
+  "alert_record_count": 630,
+  "all_passed": true,
+  "claim_boundary": "Deterministic evidence level 3 only. Dedicated production Valkey, runtime wiring and production observation remain deployment gates.",
+  "concurrency_conflicts_lost": 0,
+  "concurrency_conflicts_observed": 1,
+  "conditions": {
+    "baseline_a_frozen": true,
+    "concurrency_transition_not_lost": true,
+    "enrichment_loss_does_not_stop_detection": true,
+    "every_replay_step_has_one_record_per_service": true,
+    "flagd_unchanged": true,
+    "incident_a_active_t0_t179": true,
+    "incident_b_independent": true,
+    "insufficient_traffic_holds_lifecycle": true,
+    "missing_telemetry_holds_lifecycle": true,
+    "recovery_flapping_resets_then_resolves": true,
+    "restart_recovers_incident_a": true,
+    "service_c_load_shift_recorded": true,
+    "service_c_no_incident": true,
+    "slo_budget_unchanged": true
+  },
+  "duplicate_incident_count": 0,
+  "false_incident_count": 0,
+  "schema_version": "mandate28-summary/v1",
+  "silent_gap_count": 0,
+  "simulated_minutes": 210,
+  "stacked_incident_count": 2,
+  "state_recovery_failures": 0
+}
