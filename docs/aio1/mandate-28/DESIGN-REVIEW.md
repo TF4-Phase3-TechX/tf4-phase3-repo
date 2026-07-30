@@ -2,63 +2,42 @@
 
 - Reviewed: 2026-07-30
 - Input: `C:\Users\LENOVO\Downloads\mandate28.md`
-- Decision: **APPROVED WITH CORRECTIONS**
+- Decision: **APPROVED WITH CORRECTIONS IMPLEMENTED**
 - Implementation branch: `feat/mandate28-frozen-baseline`
 
-## Findings resolved before implementation
+## Corrected architecture
 
-### 1. Alert-state vocabulary was incomplete
+The state key is exactly
+`environment::namespace::service::incident_type`. Frozen state retains every
+candidate raw point and a true Median/MAD-filtered clean view. Active incident
+points never enter that baseline. Slow drift uses a fitted least-squares slope
+consistent with the runtime detector. Missing SLO burn telemetry cannot hide an
+independently observed error storm.
 
-The design requires an alert-state record for every replay step, including
-healthy normal traffic and legitimate load shifts, but the proposed list did
-not include states for either case. The implementation adds `NORMAL` and
-`INFO_LOAD_SHIFT`. Without these states the alert stream would have deliberate
-gaps or would mislabel healthy traffic as suppressed incidents.
+State writes compare `state_version`; Valkey uses one Lua CAS operation and a
+bounded retry. Event IDs provide idempotence, while a durable timestamp
+high-water mark rejects late data without treating a producer sequence reset as
+stale. UUIDv5 incident IDs include the composite key, timestamp and event ID.
+Resolved incident metadata is retained when the same key later opens a new
+incident.
 
-### 2. Replay persistence is not production persistence
+Evidence is a bounded 64-sample tail with a rolling SHA-256 digest and total
+count. Restart replay serializes and reloads state instead of reusing the same
+Python object. Primary telemetry loss and insufficient traffic hold lifecycle;
+missing enrichment never stops primary detection.
 
-The design correctly rejects reuse of `valkey-cart`. The implementation
-provides a state-version CAS Valkey adapter and pins the already-used repository
-Redis client version, but the replay uses a deterministic in-memory CAS store.
-A dedicated `noeviction` AIOps Valkey with AOF/RDB is therefore a deployment
-gate, not a result claimed by this change.
+The scenario generator, detector and oracle are separate. Strict input models
+forbid detector labels in raw scenario rows. The same service experiences
+varying traffic during Incident A. Two distinct observations race the same
+state version, and both event IDs survive the CAS retry path.
 
-### 3. Recovery contract is isolated from the current IncidentStore
-
-Mandate 28 deliberately requires two `RECOVERING` observations and resolves on
-the third healthy poll. The current runtime IncidentStore default uses two
-polls. This implementation keeps the new three-poll rule inside the Mandate 28
-lifecycle engine and does not silently change existing Mandate 22 remediation
-semantics before runtime integration is approved.
-
-## Accepted architecture
-
-The key is exactly
-`environment::namespace::service::incident_type`. The stored frozen baseline
-contains every clean raw point plus median and MAD. Active observations never
-enter that baseline. State writes compare `state_version`; Valkey uses one Lua
-CAS operation and a bounded engine retry. A stale/equal observation sequence is
-idempotently suppressed instead of creating a second incident.
-
-Primary telemetry loss and insufficient traffic update data quality but cannot
-advance recovery. Missing logs/traces set `enrichment_degraded` without stopping
-primary detection. Recovery flapping returns to `ACTIVE_SUSTAINED`, resets the
-healthy streak and retains the incident ID/baseline.
-
-## Trade-offs
-
-- The raw frozen window costs more state than storing aggregates, but it is
-  necessary to reproduce Median/MAD, ratio, z-score, EWMA and trend decisions.
-- Three healthy observations delay resolution but make the flapping rule
-  deterministic and reviewable.
-- Lua CAS is atomic and compact, but production correctness still depends on a
-  dedicated durable Valkey failure boundary.
-- Runtime integration is intentionally separate from replay evidence so a
-  passing simulator cannot alter existing detector/remediation behavior.
+Protected `flagd` and SLO inputs are verified before and after replay using a
+committed SHA-256 manifest. The generated verdict is explicitly a candidate;
+the independent reviewer name, reviewed commit SHA and conclusion remain empty
+until a reviewer supplies them.
 
 ## Claim boundary
 
-This change proves the deterministic lifecycle and replay contract at evidence
+This change proves deterministic lifecycle and replay behavior at evidence
 level 3. It does not prove production Valkey durability, live Prometheus
 coverage, production restart recovery, alert delivery or deployment acceptance.
-It does not change SLO/error budgets or any `flagd` file.

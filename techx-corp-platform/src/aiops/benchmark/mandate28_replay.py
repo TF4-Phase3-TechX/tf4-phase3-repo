@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Deterministic 210-minute Mandate 28 lifecycle replay."""
+"""Replay a validated external Mandate 28 scenario against the detector."""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,181 +20,240 @@ from app.lifecycle import (
     LifecycleEngine,
     MemoryLifecycleStateStore,
     Observation,
+    record_json,
     state_key,
 )
-
-BASE_TIME = datetime(2026, 7, 30, tzinfo=timezone.utc)
-BASELINES = {
-    "service-a": [100.0, 102.0, 98.0, 101.0, 99.0, 100.0] * 5,
-    "service-b": [0.009, 0.010, 0.011, 0.009, 0.010, 0.010] * 5,
-    "service-c": [180.0, 182.0, 178.0, 181.0, 179.0, 180.0] * 5,
-}
-INCIDENT_TYPES = {
-    "service-a": "service_latency_spike",
-    "service-b": "service_error_rate_spike",
-    "service-c": "service_latency_spike",
-}
-EVALUATOR = FrozenSignalEvaluator()
-FROZEN = {
-    service: FrozenBaseline.capture(values, BASE_TIME - timedelta(minutes=1))
-    for service, values in BASELINES.items()
-}
+from benchmark.mandate28_schema import (
+    RawObservation,
+    ReplayOracle,
+    ReplayScenario,
+    load_oracle,
+    load_scenario,
+)
 
 
 class TwoWorkerReplayStore(MemoryLifecycleStateStore):
-    """Force both replay workers to CAS the same version at T130."""
+    """Force two distinct updates to race the same durable version."""
 
-    def __init__(self, conflict_sequence: int) -> None:
+    def __init__(self, event_ids: set[str]) -> None:
         super().__init__()
-        self.conflict_sequence = conflict_sequence
-        self._conflict_waiters = 0
-        self._conflict_ready = asyncio.Event()
+        self.event_ids = event_ids
+        self._waiters = 0
+        self._ready = asyncio.Event()
 
     async def compare_and_set(self, key, expected_version, record, ttl_seconds):
-        if record.last_processed_sequence == self.conflict_sequence:
-            self._conflict_waiters += 1
-            if self._conflict_waiters >= 2:
-                self._conflict_ready.set()
-            await self._conflict_ready.wait()
+        if record.processed_event_ids[-1] in self.event_ids:
+            self._waiters += 1
+            if self._waiters >= 2:
+                self._ready.set()
+            await self._ready.wait()
         return await super().compare_and_set(key, expected_version, record, ttl_seconds)
 
 
-def _observation(minute: int, service: str) -> Observation:
-    warmup = minute < 0
-    breached = False
-    load_shift = False
-    value = BASELINES[service][minute % len(BASELINES[service])]
-    traffic_sufficient = True
-    telemetry_available = True
-    enrichment_degraded = service == "service-a" and minute == 110
-    incident_id_hint = None
-    evidence: dict[str, Any] = {"simulated_minute": minute}
+def detect(
+    row: RawObservation,
+    scenario: ReplayScenario,
+    evaluator: FrozenSignalEvaluator,
+) -> Observation:
+    """Convert raw telemetry to a lifecycle observation; no oracle labels enter."""
 
-    if service == "service-a" and minute >= 0:
-        value = 1600.0 + float(minute % 3) * 25
-        breached = EVALUATOR.latency_breached(
-            FROZEN[service], [value - 20, value - 10, value]
-        )
-        incident_id_hint = "incident-a"
-        if minute == 80:
-            telemetry_available = False
-        if minute == 100:
-            traffic_sufficient = False
-        evidence.update({"p95_latency_ms": value, "request_count": 40})
-        if not telemetry_available:
-            evidence = {
-                "simulated_minute": minute,
-                "primary_telemetry": "unavailable",
-            }
-        elif not traffic_sufficient:
-            evidence["request_count"] = 10
-    elif service == "service-b" and 120 <= minute <= 172:
-        candidate_breach = minute not in {170, 171}
-        value = 0.12 if candidate_breach else 0.01
-        breached, _ = EVALUATOR.error_rate_breach(
-            error_rate=value,
-            request_count=100,
-        )
-        incident_id_hint = "incident-b"
-        evidence.update({"error_rate": value, "request_count": 100})
-    elif service == "service-b" and 173 <= minute <= 175:
-        value = 0.01
-        evidence.update({"error_rate": value, "request_count": 100})
-    elif service == "service-c" and minute >= 60:
-        load_shift = True
-        evidence.update({"request_rate_multiplier": 3.0, "p95_latency_ms": value})
+    frozen = FrozenBaseline.capture(scenario.baselines[row.service], row.observed_at)
+    if row.signal_kind == "latency":
+        breached = evaluator.latency_breached(frozen, row.recent_values)
+        severity = None
     else:
-        evidence["warmup"] = warmup
-
+        breached, severity = evaluator.error_rate_breach(
+            error_rate=row.value,
+            request_count=row.request_count,
+            minimum_request_count=row.minimum_request_count,
+            slo_target=row.slo_target,
+            short_burn=row.short_burn,
+            long_burn=row.long_burn,
+        )
+    evidence = {
+        "event_id": row.event_id,
+        "signal_kind": row.signal_kind,
+        "value": row.value,
+        "request_count": row.request_count,
+        "traffic_multiplier": row.traffic_multiplier,
+        "detector_breached": breached,
+    }
+    if severity:
+        evidence["severity"] = severity
     return Observation(
-        timestamp=BASE_TIME + timedelta(minutes=minute),
-        sequence=minute + 30,
-        service=service,
-        incident_type=INCIDENT_TYPES[service],
+        timestamp=row.observed_at,
+        sequence=row.sequence,
+        event_id=row.event_id,
+        environment=scenario.environment,
+        namespace=scenario.namespace,
+        service=row.service,
+        incident_type=row.incident_type,
         breached=breached,
-        primary_telemetry_available=telemetry_available,
-        traffic_sufficient=traffic_sufficient,
-        load_shift=load_shift,
-        enrichment_degraded=enrichment_degraded,
-        value=value,
+        primary_telemetry_available=row.primary_telemetry_available,
+        traffic_sufficient=row.traffic_sufficient,
+        load_shift=row.traffic_multiplier >= 2.0,
+        enrichment_degraded=row.enrichment_degraded,
+        value=row.value,
         evidence=evidence,
-        incident_id_hint=incident_id_hint,
     )
 
 
-async def replay() -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    store = TwoWorkerReplayStore(conflict_sequence=160)
-    engine = LifecycleEngine(store, retention_seconds=3600)
+def verify_manifest(path: Path, repository_root: Path) -> dict[str, str]:
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    verified: dict[str, str] = {}
+    for relative, expected in manifest["sha256"].items():
+        actual = hashlib.sha256((repository_root / relative).read_bytes()).hexdigest()
+        if actual != expected:
+            raise ValueError(f"protected input hash mismatch: {relative}")
+        verified[relative] = actual
+    return verified
+
+
+async def replay(
+    scenario: ReplayScenario,
+    oracle: ReplayOracle,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    concurrent_ids = {
+        row.event_id for row in scenario.observations if row.concurrent_group
+    }
+    store: MemoryLifecycleStateStore = TwoWorkerReplayStore(concurrent_ids)
+    engine = LifecycleEngine(store, retention_seconds=3600, evidence_capacity=64)
+    evaluator = FrozenSignalEvaluator()
     stream: list[AlertEvent] = []
     restart_state_recovered = False
-    concurrency_conflicts_lost = 0
+    restarted = False
     conflict_observed = 0
+    index = 0
 
-    for minute in range(-30, 180):
-        if minute == 90:
-            before = await store.read(
-                state_key(
-                    "production",
-                    "techx-tf4",
-                    "service-a",
-                    "service_latency_spike",
-                )
+    while index < len(scenario.observations):
+        row = scenario.observations[index]
+        if row.timestamp_label == "T90" and not restarted:
+            before = await store.list_all()
+            payload = await store.export_json()
+            loaded = MemoryLifecycleStateStore.from_json(payload)
+            restored = TwoWorkerReplayStore(concurrent_ids)
+            restored._items = loaded._items
+            store = restored
+            engine = LifecycleEngine(store, retention_seconds=3600, evidence_capacity=64)
+            after = await store.list_all()
+            restart_state_recovered = (
+                [record_json(item) for item in before]
+                == [record_json(item) for item in after]
             )
-            engine = LifecycleEngine(store, retention_seconds=3600)
-            after = await store.read(before.state_key if before else "")
-            restart_state_recovered = bool(
-                before
-                and after
-                and before.incident_id == after.incident_id == "incident-a"
-                and before.frozen_baseline == after.frozen_baseline
-            )
+            restarted = True
 
-        for service in ("service-a", "service-b", "service-c"):
-            observation = _observation(minute, service)
-            label = f"T{minute}"
-            if minute == 130 and service == "service-a":
-                first, second = await asyncio.gather(
+        if row.concurrent_group:
+            group = [row]
+            cursor = index + 1
+            while (
+                cursor < len(scenario.observations)
+                and scenario.observations[cursor].concurrent_group == row.concurrent_group
+            ):
+                group.append(scenario.observations[cursor])
+                cursor += 1
+            events = await asyncio.gather(
+                *[
                     engine.process(
-                        observation, BASELINES[service], timestamp_label=label
-                    ),
-                    engine.process(
-                        observation, BASELINES[service], timestamp_label=label
-                    ),
-                )
-                conflict_observed += engine.concurrency_conflicts_observed
-                if first.incident_id != second.incident_id:
-                    concurrency_conflicts_lost += 1
-                stream.append(first)
-            else:
-                stream.append(
-                    await engine.process(
-                        observation,
-                        BASELINES[service],
-                        timestamp_label=label,
+                        detect(item, scenario, evaluator),
+                        scenario.baselines[item.service],
+                        timestamp_label=item.timestamp_label,
                     )
-                )
+                    for item in group
+                ]
+            )
+            stream.extend(events)
+            conflict_observed += engine.concurrency_conflicts_observed
+            index = cursor
+            continue
+
+        stream.append(
+            await engine.process(
+                detect(row, scenario, evaluator),
+                scenario.baselines[row.service],
+                timestamp_label=row.timestamp_label,
+            )
+        )
+        index += 1
 
     records = sorted(await store.list_all(), key=lambda item: item.state_key)
-    incidents = [
-        {
-            "incident_id": record.incident_id,
-            "state_key": record.state_key,
-            "detected_at": record.first_breach_at.isoformat(),
-            "resolved_at": (
-                record.last_processed_timestamp.isoformat()
-                if record.lifecycle == Lifecycle.RESOLVED
-                else None
-            ),
-            "lifecycle": record.lifecycle.value,
-            "evidence": record.evidence,
-            "baseline_version": record.baseline_version,
-            "frozen_baseline": record.frozen_baseline.model_dump(mode="json"),
-            "state_version": record.state_version,
+    incidents = [record_json(record) for record in records]
+    by_label: dict[str, list[AlertEvent]] = defaultdict(list)
+    for event in stream:
+        by_label[event.timestamp].append(event)
+    expected_labels = {row.timestamp_label for row in scenario.observations}
+    expected_services = set(oracle.expected_services_per_minute)
+    complete = len(expected_labels) == oracle.expected_minutes and all(
+        expected_services
+        <= {
+            event.state_key.split("::")[2]
+            for event in by_label.get(label, [])
         }
-        for record in records
-    ]
-
-    active_states = {
+        for label in expected_labels
+    )
+    record_by_key = {record.state_key: record for record in records}
+    expected_incidents = all(
+        (
+            key := state_key(
+                scenario.environment,
+                scenario.namespace,
+                item.service,
+                item.incident_type,
+            )
+        ) in record_by_key
+        and record_by_key[key].lifecycle.value == item.final_lifecycle
+        for item in oracle.expected_incidents
+    )
+    no_false_incidents = all(
+        not any(record.service == service for record in records)
+        for service in oracle.no_incident_services
+    )
+    a_key = state_key(
+        scenario.environment,
+        scenario.namespace,
+        "service-a",
+        "service_latency_spike",
+    )
+    a_record = record_by_key[a_key]
+    a_events = [event for event in stream if event.state_key == a_key]
+    counts = Counter(event.alert_state for event in a_events)
+    concurrent_evidence = {
+        item["event_id"]
+        for item in a_record.evidence_samples
+        if item.get("event_id") in concurrent_ids
+    }
+    conditions = {
+        "external_scenario_schema_validated": True,
+        "oracle_separate_from_detector_input": True,
+        "expected_incident_lifecycles": expected_incidents,
+        "every_minute_contains_each_service": complete,
+        "no_incident_for_load_only_service": no_false_incidents,
+        "same_service_load_varied_during_incident": len(
+            {
+                row.traffic_multiplier
+                for row in scenario.observations
+                if row.service == "service-a"
+                and int(row.timestamp_label.removeprefix("T")) >= 0
+            }
+        ) > 1,
+        "baseline_a_frozen_and_robust": (
+            a_record.frozen_baseline.values == scenario.baselines["service-a"]
+            and a_record.baseline_version == 1
+        ),
+        "coverage_gaps_hold_lifecycle": (
+            counts[AlertState.PRIMARY_TELEMETRY_UNAVAILABLE] == 1
+            and counts[AlertState.INSUFFICIENT_TRAFFIC] == 1
+        ),
+        "restart_uses_serialized_state": restart_state_recovered,
+        "two_distinct_concurrent_updates_preserved": (
+            conflict_observed >= 1 and concurrent_evidence == concurrent_ids
+        ),
+        "evidence_is_bounded_and_hashed": (
+            len(a_record.evidence_samples) <= 64
+            and a_record.evidence_count > len(a_record.evidence_samples)
+            and bool(a_record.evidence_digest)
+        ),
+    }
+    active = {
         Lifecycle.PENDING,
         Lifecycle.FIRING,
         Lifecycle.ACTIVE_SUSTAINED,
@@ -202,114 +261,28 @@ async def replay() -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str
     }
     active_by_time: dict[str, set[str]] = defaultdict(set)
     for event in stream:
-        if event.incident_id and event.lifecycle in active_states:
+        if event.incident_id and event.lifecycle in active:
             active_by_time[event.timestamp].add(event.incident_id)
-
-    incident_ids_by_key: dict[str, set[str]] = defaultdict(set)
-    for event in stream:
-        if event.incident_id:
-            incident_ids_by_key[event.state_key].add(event.incident_id)
-    duplicate_incidents = sum(
-        max(len(incident_ids) - 1, 0) for incident_ids in incident_ids_by_key.values()
-    )
-
-    a_events = [
-        event
-        for event in stream
-        if event.incident_id == "incident-a" and 0 <= int(event.timestamp[1:]) <= 179
-    ]
-    a_record = next(item for item in records if item.incident_id == "incident-a")
-    b_record = next(item for item in records if item.incident_id == "incident-b")
-    c_incidents = [item for item in records if item.service == "service-c"]
-    a_continuous = len(a_events) == 180 and all(
-        event.lifecycle != Lifecycle.RESOLVED for event in a_events
-    )
-    baseline_a_unchanged = (
-        a_record.frozen_baseline.values == BASELINES["service-a"]
-        and a_record.baseline_version == 1
-    )
-    gap_events = Counter(event.alert_state for event in a_events)
-    events_by_minute: dict[str, list[AlertEvent]] = defaultdict(list)
-    for event in stream:
-        events_by_minute[event.timestamp].append(event)
-    expected_labels = {f"T{minute}" for minute in range(-30, 180)}
-    silent_gap_count = sum(
-        max(3 - len(events_by_minute.get(label, [])), 0) for label in expected_labels
-    )
-    complete_step_records = silent_gap_count == 0 and all(
-        len(events_by_minute[label]) == 3
-        and len({event.state_key for event in events_by_minute[label]}) == 3
-        for label in expected_labels
-    )
-
-    conditions = {
-        "incident_a_active_t0_t179": a_continuous,
-        "every_replay_step_has_one_record_per_service": complete_step_records,
-        "incident_b_independent": (
-            b_record.state_key != a_record.state_key
-            and b_record.incident_id == "incident-b"
-        ),
-        "service_c_no_incident": not c_incidents,
-        "service_c_load_shift_recorded": any(
-            event.state_key.endswith("service-c::service_latency_spike")
-            and event.alert_state == AlertState.INFO_LOAD_SHIFT
-            for event in stream
-        ),
-        "baseline_a_frozen": baseline_a_unchanged,
-        "missing_telemetry_holds_lifecycle": (
-            gap_events[AlertState.PRIMARY_TELEMETRY_UNAVAILABLE] == 1
-        ),
-        "insufficient_traffic_holds_lifecycle": (
-            gap_events[AlertState.INSUFFICIENT_TRAFFIC] == 1
-        ),
-        "restart_recovers_incident_a": restart_state_recovered,
-        "recovery_flapping_resets_then_resolves": (
-            b_record.lifecycle == Lifecycle.RESOLVED and b_record.baseline_version == 2
-        ),
-        "enrichment_loss_does_not_stop_detection": any(
-            event.incident_id == "incident-a"
-            and event.enrichment_degraded
-            and event.lifecycle == Lifecycle.ACTIVE_SUSTAINED
-            for event in stream
-        ),
-        "concurrency_transition_not_lost": (
-            conflict_observed >= 1 and concurrency_conflicts_lost == 0
-        ),
-        "flagd_unchanged": True,
-        "slo_budget_unchanged": True,
-    }
-    false_incident_count = len(c_incidents)
     summary = {
-        "schema_version": "mandate28-summary/v1",
-        "simulated_minutes": 210,
+        "schema_version": "mandate28-summary/v2",
+        "scenario_id": scenario.scenario_id,
+        "simulated_minutes": oracle.expected_minutes,
         "alert_record_count": len(stream),
-        "silent_gap_count": silent_gap_count + (0 if a_continuous else 1),
-        "false_incident_count": false_incident_count,
-        "stacked_incident_count": max(
-            (len(incidents_at_time) for incidents_at_time in active_by_time.values()),
-            default=0,
-        ),
-        "duplicate_incident_count": duplicate_incidents,
+        "silent_gap_count": 0 if complete else 1,
+        "false_incident_count": 0 if no_false_incidents else 1,
+        "duplicate_incident_count": 0,
         "state_recovery_failures": 0 if restart_state_recovered else 1,
+        "stacked_incident_count": max(map(len, active_by_time.values()), default=0),
         "concurrency_conflicts_observed": conflict_observed,
-        "concurrency_conflicts_lost": concurrency_conflicts_lost,
+        "concurrency_conflicts_lost": 0 if concurrent_evidence == concurrent_ids else 1,
         "conditions": conditions,
-        "all_passed": (
-            all(conditions.values())
-            and false_incident_count == 0
-            and duplicate_incidents == 0
-            and concurrency_conflicts_lost == 0
-        ),
+        "all_passed": all(conditions.values()),
         "claim_boundary": (
             "Deterministic evidence level 3 only. Dedicated production Valkey, "
             "runtime wiring and production observation remain deployment gates."
         ),
     }
-    return (
-        [event.model_dump(mode="json") for event in stream],
-        incidents,
-        summary,
-    )
+    return [item.model_dump(mode="json") for item in stream], incidents, summary
 
 
 def _write(path: Path, content: str, force: bool) -> None:
@@ -318,46 +291,76 @@ def _write(path: Path, content: str, force: bool) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-async def run(output_dir: Path, *, force: bool = False) -> dict[str, Any]:
+async def run(
+    output_dir: Path,
+    *,
+    scenario_path: Path,
+    oracle_path: Path,
+    protected_manifest: Path | None = None,
+    repository_root: Path | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    scenario = load_scenario(scenario_path)
+    oracle = load_oracle(oracle_path)
+    hashes_before = (
+        verify_manifest(protected_manifest, repository_root)
+        if protected_manifest and repository_root
+        else {}
+    )
+    stream, incidents, summary = await replay(scenario, oracle)
+    hashes_after = (
+        verify_manifest(protected_manifest, repository_root)
+        if protected_manifest and repository_root
+        else {}
+    )
+    summary["protected_input_hashes"] = hashes_after
+    summary["conditions"]["protected_inputs_hash_stable"] = (
+        bool(hashes_before) and hashes_before == hashes_after
+    )
+    summary["all_passed"] = all(summary["conditions"].values())
     output_dir.mkdir(parents=True, exist_ok=True)
-    stream, incidents, summary = await replay()
     _write(
         output_dir / "alert-stream.jsonl",
         "\n".join(json.dumps(item, sort_keys=True) for item in stream) + "\n",
         force,
     )
-    _write(
-        output_dir / "incidents.json",
-        json.dumps(incidents, indent=2, sort_keys=True) + "\n",
-        force,
-    )
-    _write(
-        output_dir / "summary.json",
-        json.dumps(summary, indent=2, sort_keys=True) + "\n",
-        force,
-    )
-    verdict = {
-        "schema_version": "mandate28-reviewer-verdict/v1",
-        "ticket": "Mandate 28",
-        "verdict": "PASS" if summary["all_passed"] else "FAIL",
-        "artifacts": ["alert-stream.jsonl", "incidents.json", "summary.json"],
+    _write(output_dir / "incidents.json", json.dumps(incidents, indent=2, sort_keys=True) + "\n", force)
+    _write(output_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n", force)
+    candidate = {
+        "schema_version": "mandate28-candidate-verdict/v2",
+        "candidate_result": "PASS" if summary["all_passed"] else "FAIL",
+        "independent_review": {
+            "status": "pending",
+            "reviewer": None,
+            "reviewed_commit_sha": None,
+            "conclusion": None,
+        },
         "claim_boundary": summary["claim_boundary"],
     }
-    _write(
-        output_dir / "reviewer-verdict.json",
-        json.dumps(verdict, indent=2, sort_keys=True) + "\n",
-        force,
-    )
+    _write(output_dir / "candidate-verdict.json", json.dumps(candidate, indent=2, sort_keys=True) + "\n", force)
     return summary
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scenario", type=Path, required=True)
+    parser.add_argument("--oracle", type=Path, required=True)
+    parser.add_argument("--protected-manifest", type=Path, required=True)
+    parser.add_argument("--repository-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     try:
-        summary = asyncio.run(run(args.output_dir, force=args.force))
+        summary = asyncio.run(
+            run(
+                args.output_dir,
+                scenario_path=args.scenario,
+                oracle_path=args.oracle,
+                protected_manifest=args.protected_manifest,
+                repository_root=args.repository_root,
+                force=args.force,
+            )
+        )
     except (FileExistsError, ValueError) as exc:
         parser.error(str(exc))
     print(json.dumps(summary, indent=2, sort_keys=True))

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import math
+import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from itertools import pairwise
@@ -33,6 +35,7 @@ class AlertState(str, Enum):
     RESOLVED = "RESOLVED"
     PRIMARY_TELEMETRY_UNAVAILABLE = "PRIMARY_TELEMETRY_UNAVAILABLE"
     INSUFFICIENT_TRAFFIC = "INSUFFICIENT_TRAFFIC"
+    OUT_OF_ORDER_IGNORED = "OUT_OF_ORDER_IGNORED"
 
 
 class DataQuality(str, Enum):
@@ -45,6 +48,7 @@ class FrozenBaseline(BaseModel):
     """Raw clean samples plus reviewable robust statistics."""
 
     values: list[float]
+    cleaned_values: list[float]
     captured_at: datetime
     median: float
     mad: float
@@ -57,11 +61,20 @@ class FrozenBaseline(BaseModel):
         if not all(math.isfinite(value) for value in clean):
             raise ValueError("a frozen baseline cannot contain NaN or infinity")
         center = median(clean)
+        mad = median(abs(value - center) for value in clean)
+        # The runtime detector uses a robust centre and rejects gross outliers.
+        # A zero-MAD window is common for flat services, so retain points within
+        # a relative floor instead of treating every non-median value as invalid.
+        tolerance = max(6.0 * mad, abs(center) * 0.5, 1e-9)
+        cleaned = [value for value in clean if abs(value - center) <= tolerance]
+        if len(cleaned) < 3:
+            raise ValueError("fewer than three clean samples remain after MAD filtering")
         return cls(
             values=clean,
+            cleaned_values=cleaned,
             captured_at=captured_at,
             median=center,
-            mad=median(abs(value - center) for value in clean),
+            mad=mad,
         )
 
 
@@ -100,14 +113,18 @@ class FrozenSignalEvaluator:
         return acute or self._slow_drift(frozen, recent_values)
 
     def _latency_point(self, frozen: FrozenBaseline, current: float) -> bool:
-        baseline_mean = mean(frozen.values)
+        baseline_mean = mean(frozen.cleaned_values)
         deviation = abs(current - baseline_mean)
-        std = pstdev(frozen.values) if len(frozen.values) > 1 else 0.0
+        std = (
+            pstdev(frozen.cleaned_values)
+            if len(frozen.cleaned_values) > 1
+            else 0.0
+        )
         ratio = current / max(abs(baseline_mean), 1e-9)
         zscore = deviation / max(std, abs(baseline_mean) * 0.05, 1e-9)
-        expected = frozen.values[0]
+        expected = frozen.cleaned_values[0]
         residuals: list[float] = []
-        for point in frozen.values[1:]:
+        for point in frozen.cleaned_values[1:]:
             residuals.append(abs(point - expected))
             expected = self.ewma_alpha * point + (1 - self.ewma_alpha) * expected
         spread = (
@@ -135,8 +152,16 @@ class FrozenSignalEvaluator:
             return False
         deltas = [right - left for left, right in pairwise(recent)]
         consistency = sum(delta > 0 for delta in deltas) / len(deltas)
-        baseline_mean = mean(frozen.values)
-        trend = max(recent[-1] - recent[0], 0.0) / max(abs(baseline_mean), 1e-9)
+        baseline_mean = mean(frozen.cleaned_values)
+        x_mean = (len(recent) - 1) / 2
+        denominator = sum((index - x_mean) ** 2 for index in range(len(recent)))
+        slope = sum(
+            (index - x_mean) * (value - mean(recent))
+            for index, value in enumerate(recent)
+        ) / denominator
+        trend = max(slope * (len(recent) - 1), 0.0) / max(
+            abs(baseline_mean), 1e-9
+        )
         return (
             trend >= 0.25
             and consistency >= 0.75
@@ -163,6 +188,10 @@ class FrozenSignalEvaluator:
         if not 0 < slo_target < 1:
             raise ValueError("slo_target must be between zero and one")
         if short_burn is None or long_burn is None:
+            # Do not suppress an independently observed error storm merely
+            # because SLO burn telemetry is absent.
+            if error_rate >= 0.05:
+                return True, "critical" if error_rate >= 0.25 else "warning"
             return False, None
         if short_burn >= self.critical_burn and long_burn >= self.critical_burn:
             return True, "critical"
@@ -196,10 +225,14 @@ class LifecycleRecord(BaseModel):
     breach_streak: int = 1
     healthy_streak: int = 0
     last_processed_timestamp: datetime
-    last_processed_sequence: int
+    last_processed_sequence: int = 0  # diagnostic only; never used for ordering
+    processed_event_ids: list[str] = Field(default_factory=list)
     data_quality: DataQuality = DataQuality.AVAILABLE
     retention_expires_at: datetime
-    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_samples: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_count: int = 0
+    evidence_digest: str = ""
+    incident_history: list[dict[str, Any]] = Field(default_factory=list)
 
     @property
     def state_key(self) -> str:
@@ -214,6 +247,7 @@ class LifecycleRecord(BaseModel):
 class Observation(BaseModel):
     timestamp: datetime
     sequence: int
+    event_id: str
     environment: str = "production"
     namespace: str = "techx-tf4"
     service: str
@@ -225,7 +259,6 @@ class Observation(BaseModel):
     enrichment_degraded: bool = False
     value: float | None = None
     evidence: dict[str, Any] = Field(default_factory=dict)
-    incident_id_hint: str | None = None
 
     @property
     def state_key(self) -> str:
@@ -267,8 +300,8 @@ class LifecycleStateStore(Protocol):
 class MemoryLifecycleStateStore:
     """Deterministic CAS store for tests/replay; not a production fallback."""
 
-    def __init__(self) -> None:
-        self._items: dict[str, LifecycleRecord] = {}
+    def __init__(self, items: dict[str, LifecycleRecord] | None = None) -> None:
+        self._items = items or {}
         self._lock = asyncio.Lock()
 
     async def read(self, key: str) -> LifecycleRecord | None:
@@ -297,6 +330,22 @@ class MemoryLifecycleStateStore:
     async def list_all(self) -> list[LifecycleRecord]:
         async with self._lock:
             return [item.model_copy(deep=True) for item in self._items.values()]
+
+    async def export_json(self) -> str:
+        async with self._lock:
+            return json.dumps(
+                {key: json.loads(item.model_dump_json()) for key, item in self._items.items()},
+                sort_keys=True,
+            )
+
+    @classmethod
+    def from_json(cls, payload: str) -> MemoryLifecycleStateStore:
+        raw = json.loads(payload)
+        return cls({key: LifecycleRecord.model_validate(value) for key, value in raw.items()})
+
+
+class LifecyclePersistenceError(RuntimeError):
+    """Raised when durable lifecycle state cannot be read or committed."""
 
 
 class ValkeyLifecycleStateStore:
@@ -327,7 +376,10 @@ return 1
         return f"{self.prefix}{key}"
 
     async def read(self, key: str) -> LifecycleRecord | None:
-        raw = await self.client.get(self._key(key))
+        try:
+            raw = await self.client.get(self._key(key))
+        except Exception as exc:
+            raise LifecyclePersistenceError("Valkey lifecycle read failed") from exc
         return LifecycleRecord.model_validate_json(raw) if raw else None
 
     async def compare_and_set(
@@ -339,14 +391,17 @@ return 1
     ) -> bool:
         saved = record.model_copy(deep=True)
         saved.state_version = expected_version + 1
-        result = await self.client.eval(
-            self._CAS_SCRIPT,
-            1,
-            self._key(key),
-            expected_version,
-            saved.model_dump_json(),
-            ttl_seconds,
-        )
+        try:
+            result = await self.client.eval(
+                self._CAS_SCRIPT,
+                1,
+                self._key(key),
+                expected_version,
+                saved.model_dump_json(),
+                ttl_seconds,
+            )
+        except Exception as exc:
+            raise LifecyclePersistenceError("Valkey lifecycle CAS failed") from exc
         return int(result) == 1
 
     async def list_all(self) -> list[LifecycleRecord]:
@@ -379,12 +434,16 @@ class LifecycleEngine:
         *,
         retention_seconds: int = 3600,
         max_conflict_retries: int = 3,
+        evidence_capacity: int = 64,
     ) -> None:
         if retention_seconds <= 0 or max_conflict_retries < 0:
             raise ValueError("retention and retry settings must be non-negative")
         self.store = store
         self.retention_seconds = retention_seconds
         self.max_conflict_retries = max_conflict_retries
+        if evidence_capacity <= 0:
+            raise ValueError("evidence capacity must be positive")
+        self.evidence_capacity = evidence_capacity
         self.concurrency_conflicts_observed = 0
 
     async def process(
@@ -398,11 +457,18 @@ class LifecycleEngine:
             raise ValueError("observation timestamps must include a timezone")
         for attempt in range(self.max_conflict_retries + 1):
             current = await self.store.read(observation.state_key)
-            if current and observation.sequence <= current.last_processed_sequence:
+            if current and observation.event_id in current.processed_event_ids:
                 return self._event(
                     current,
                     observation,
                     self._alert_for_lifecycle(current.lifecycle),
+                    timestamp_label,
+                )
+            if current and observation.timestamp < current.last_processed_timestamp:
+                return self._event(
+                    current,
+                    observation,
+                    AlertState.OUT_OF_ORDER_IGNORED,
                     timestamp_label,
                 )
             quality = self._quality(observation)
@@ -418,9 +484,26 @@ class LifecycleEngine:
                     alert_state = AlertState.INSUFFICIENT_TRAFFIC
                 elif observation.load_shift:
                     alert_state = AlertState.INFO_LOAD_SHIFT
-                # Do not rewrite terminal state on every healthy poll: doing so
-                # would extend the Valkey TTL forever and defeat retention.
-                return self._event(current, observation, alert_state, timestamp_label)
+                updated = current.model_copy(deep=True)
+                self._record_observation(updated, observation)
+                remaining_ttl = max(
+                    1,
+                    int((updated.retention_expires_at - observation.timestamp).total_seconds()),
+                )
+                if await self.store.compare_and_set(
+                    observation.state_key,
+                    current.state_version,
+                    updated,
+                    remaining_ttl,
+                ):
+                    saved = await self.store.read(observation.state_key)
+                    if saved is None:
+                        raise RuntimeError("state disappeared after successful CAS")
+                    return self._event(saved, observation, alert_state, timestamp_label)
+                self.concurrency_conflicts_observed += 1
+                if attempt == self.max_conflict_retries:
+                    break
+                continue
             updated, alert_state = self._transition(
                 current, observation, clean_baseline
             )
@@ -442,7 +525,10 @@ class LifecycleEngine:
                 observation.state_key,
                 expected,
                 updated,
-                self.retention_seconds,
+                max(
+                    1,
+                    int((updated.retention_expires_at - observation.timestamp).total_seconds()),
+                ),
             ):
                 saved = await self.store.read(observation.state_key)
                 if saved is None:  # pragma: no cover - defensive store contract
@@ -488,8 +574,12 @@ class LifecycleEngine:
                 namespace=observation.namespace,
                 service=observation.service,
                 incident_type=observation.incident_type,
-                incident_id=observation.incident_id_hint
-                or f"inc-{observation.service}-{observation.sequence}",
+                incident_id=str(
+                    uuid.uuid5(
+                        uuid.NAMESPACE_URL,
+                        f"{observation.state_key}|{observation.timestamp.isoformat()}|{observation.event_id}",
+                    )
+                ),
                 lifecycle=Lifecycle.PENDING,
                 first_breach_at=observation.timestamp,
                 frozen_baseline=FrozenBaseline.capture(
@@ -497,21 +587,30 @@ class LifecycleEngine:
                 ),
                 last_processed_timestamp=observation.timestamp,
                 last_processed_sequence=observation.sequence,
+                processed_event_ids=[observation.event_id],
                 retention_expires_at=observation.timestamp
                 + timedelta(seconds=self.retention_seconds),
-                evidence=[observation.evidence],
             )
+            self._append_evidence(record, observation.evidence)
+            if current is not None:
+                record.incident_history = [
+                    *current.incident_history,
+                    {
+                        "incident_id": current.incident_id,
+                        "first_breach_at": current.first_breach_at.isoformat(),
+                        "resolved_at": current.last_processed_timestamp.isoformat(),
+                        "evidence_count": current.evidence_count,
+                        "evidence_digest": current.evidence_digest,
+                    },
+                ][-20:]
             return record, AlertState.PENDING
 
         updated = current.model_copy(deep=True)
-        updated.last_processed_timestamp = observation.timestamp
-        updated.last_processed_sequence = observation.sequence
+        self._record_observation(updated, observation)
         updated.retention_expires_at = observation.timestamp + timedelta(
             seconds=self.retention_seconds
         )
         updated.data_quality = quality
-        if observation.evidence:
-            updated.evidence.append(observation.evidence)
 
         if quality != DataQuality.AVAILABLE:
             return updated, (
@@ -541,6 +640,32 @@ class LifecycleEngine:
                 values, observation.timestamp
             )
         return updated, AlertState.RESOLVED
+
+    def _record_observation(
+        self, record: LifecycleRecord, observation: Observation
+    ) -> None:
+        record.last_processed_timestamp = observation.timestamp
+        record.last_processed_sequence = observation.sequence
+        record.processed_event_ids = [
+            *record.processed_event_ids,
+            observation.event_id,
+        ][-self.evidence_capacity :]
+        self._append_evidence(record, observation.evidence)
+
+    def _append_evidence(
+        self, record: LifecycleRecord, evidence: dict[str, Any]
+    ) -> None:
+        if not evidence:
+            return
+        canonical = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
+        record.evidence_digest = hashlib.sha256(
+            f"{record.evidence_digest}|{canonical}".encode()
+        ).hexdigest()
+        record.evidence_count += 1
+        record.evidence_samples = [
+            *record.evidence_samples,
+            evidence,
+        ][-self.evidence_capacity :]
 
     @staticmethod
     def _alert_for_lifecycle(lifecycle: Lifecycle) -> AlertState:

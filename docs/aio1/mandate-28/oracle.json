@@ -1,0 +1,24 @@
+{
+  "expected_incidents": [
+    {
+      "final_lifecycle": "ACTIVE_SUSTAINED",
+      "incident_type": "service_latency_spike",
+      "service": "service-a"
+    },
+    {
+      "final_lifecycle": "RESOLVED",
+      "incident_type": "service_error_rate_spike",
+      "service": "service-b"
+    }
+  ],
+  "expected_minutes": 210,
+  "expected_services_per_minute": [
+    "service-a",
+    "service-b",
+    "service-c"
+  ],
+  "no_incident_services": [
+    "service-c"
+  ],
+  "schema_version": "mandate28-oracle/v2"
+}
