@@ -47,3 +47,6 @@ not a production fallback.
 7. A named independent reviewer verdict tied to the reviewed commit SHA.
 
 Passing this replay is not production durability or live no-silent-gap proof.
+Event-ID idempotence is bounded to the retained evidence/deduplication window;
+the timestamp high-water mark rejects older observations. Exact same-timestamp
+replays after that bounded window are outside this replay's claim boundary.

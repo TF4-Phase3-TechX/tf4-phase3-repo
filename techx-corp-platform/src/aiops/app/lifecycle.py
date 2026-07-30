@@ -273,6 +273,7 @@ class Observation(BaseModel):
 class AlertEvent(BaseModel):
     timestamp: str
     observed_at: datetime
+    event_id: str
     state_key: str
     incident_id: str | None
     lifecycle: Lifecycle
@@ -281,6 +282,8 @@ class AlertEvent(BaseModel):
     state_version: int | None
     data_quality: DataQuality
     enrichment_degraded: bool = False
+    breach_streak: int | None = None
+    healthy_streak: int | None = None
 
 
 class LifecycleStateStore(Protocol):
@@ -511,6 +514,7 @@ class LifecycleEngine:
                 return AlertEvent(
                     timestamp=timestamp_label or observation.timestamp.isoformat(),
                     observed_at=observation.timestamp,
+                    event_id=observation.event_id,
                     state_key=observation.state_key,
                     incident_id=None,
                     lifecycle=Lifecycle.NORMAL,
@@ -519,6 +523,8 @@ class LifecycleEngine:
                     state_version=None,
                     data_quality=self._quality(observation),
                     enrichment_degraded=observation.enrichment_degraded,
+                    breach_streak=None,
+                    healthy_streak=None,
                 )
             expected = current.state_version if current else 0
             if await self.store.compare_and_set(
@@ -696,6 +702,7 @@ class LifecycleEngine:
         return AlertEvent(
             timestamp=timestamp_label or observation.timestamp.isoformat(),
             observed_at=observation.timestamp,
+            event_id=observation.event_id,
             state_key=record.state_key,
             incident_id=record.incident_id,
             lifecycle=record.lifecycle,
@@ -704,6 +711,8 @@ class LifecycleEngine:
             state_version=record.state_version,
             data_quality=record.data_quality,
             enrichment_degraded=observation.enrichment_degraded,
+            breach_streak=record.breach_streak,
+            healthy_streak=record.healthy_streak,
         )
 
 

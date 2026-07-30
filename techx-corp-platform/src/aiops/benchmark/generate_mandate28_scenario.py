@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from benchmark.mandate28_schema import (
+    ContinuityExpectation,
     IncidentExpectation,
     RawObservation,
     ReplayOracle,
@@ -105,6 +106,7 @@ def build() -> tuple[ReplayScenario, ReplayOracle]:
                         request_count=85,
                         traffic_multiplier=2.75,
                         concurrent_group="service-a-T130",
+                        supplemental=True,
                     )
                 )
                 sequence += 1
@@ -116,7 +118,7 @@ def build() -> tuple[ReplayScenario, ReplayOracle]:
         observations=rows,
     )
     oracle = ReplayOracle(
-        schema_version="mandate28-oracle/v2",
+        schema_version="mandate28-oracle/v3",
         expected_minutes=210,
         expected_services_per_minute=["service-a", "service-b", "service-c"],
         expected_incidents=[
@@ -124,6 +126,17 @@ def build() -> tuple[ReplayScenario, ReplayOracle]:
                 service="service-a",
                 incident_type=INCIDENT_TYPES["service-a"],
                 final_lifecycle="ACTIVE_SUSTAINED",
+                continuity=ContinuityExpectation(
+                    from_label="T0",
+                    through_label="T179",
+                    hold_alert_state_counts={
+                        "PRIMARY_TELEMETRY_UNAVAILABLE": 1,
+                        "INSUFFICIENT_TRAFFIC": 1,
+                    },
+                ),
+                require_frozen_baseline=True,
+                require_varying_traffic=True,
+                require_evidence_compaction=True,
             ),
             IncidentExpectation(
                 service="service-b",
@@ -132,6 +145,9 @@ def build() -> tuple[ReplayScenario, ReplayOracle]:
             ),
         ],
         no_incident_services=["service-c"],
+        restart_at_label="T90",
+        expected_concurrent_groups=["service-a-T130"],
+        evidence_capacity=64,
     )
     return scenario, oracle
 

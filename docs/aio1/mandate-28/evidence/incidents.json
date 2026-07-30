@@ -5,7 +5,7 @@
     "data_quality": "available",
     "environment": "production",
     "evidence_count": 181,
-    "evidence_digest": "78ca527015a647226f505081c0a37630f82851593947d005b42362c03b2754cc",
+    "evidence_digest": "c6fcbc4c72ab98760f097affcdbfc766b6f249fc022e07ef723fbfc71bf629f0",
     "evidence_samples": [
       {
         "detector_breached": true,
@@ -113,19 +113,19 @@
       },
       {
         "detector_breached": true,
-        "event_id": "service-a-T130-concurrent",
-        "request_count": 85.0,
-        "signal_kind": "latency",
-        "traffic_multiplier": 2.75,
-        "value": 1660.0
-      },
-      {
-        "detector_breached": true,
         "event_id": "service-a-T130-primary",
         "request_count": 70.0,
         "signal_kind": "latency",
         "traffic_multiplier": 1.0,
         "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T130-concurrent",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.75,
+        "value": 1660.0
       },
       {
         "detector_breached": true,
@@ -612,8 +612,8 @@
       "service-a-T127-primary",
       "service-a-T128-primary",
       "service-a-T129-primary",
-      "service-a-T130-concurrent",
       "service-a-T130-primary",
+      "service-a-T130-concurrent",
       "service-a-T131-primary",
       "service-a-T132-primary",
       "service-a-T133-primary",

@@ -13,7 +13,6 @@ from typing import Any
 
 from app.lifecycle import (
     AlertEvent,
-    AlertState,
     FrozenBaseline,
     FrozenSignalEvaluator,
     Lifecycle,
@@ -32,22 +31,92 @@ from benchmark.mandate28_schema import (
 )
 
 
-class TwoWorkerReplayStore(MemoryLifecycleStateStore):
-    """Force two distinct updates to race the same durable version."""
+class ConcurrentReplayStore(MemoryLifecycleStateStore):
+    """Force validated groups to race, with isolated bounded barriers."""
 
-    def __init__(self, event_ids: set[str]) -> None:
+    def __init__(
+        self,
+        groups: dict[str, set[str]],
+        *,
+        barrier_timeout_seconds: float = 2.0,
+    ) -> None:
         super().__init__()
-        self.event_ids = event_ids
-        self._waiters = 0
-        self._ready = asyncio.Event()
+        self.groups = groups
+        self.event_to_group = {
+            event_id: name for name, event_ids in groups.items() for event_id in event_ids
+        }
+        self.arrived = {name: set() for name in groups}
+        self.ready = {name: asyncio.Event() for name in groups}
+        self.barrier_timeout_seconds = barrier_timeout_seconds
 
     async def compare_and_set(self, key, expected_version, record, ttl_seconds):
-        if record.processed_event_ids[-1] in self.event_ids:
-            self._waiters += 1
-            if self._waiters >= 2:
-                self._ready.set()
-            await self._ready.wait()
+        event_id = record.processed_event_ids[-1]
+        group_name = self.event_to_group.get(event_id)
+        if group_name and event_id not in self.arrived[group_name]:
+            self.arrived[group_name].add(event_id)
+            if self.arrived[group_name] == self.groups[group_name]:
+                self.ready[group_name].set()
+            try:
+                await asyncio.wait_for(
+                    self.ready[group_name].wait(),
+                    timeout=self.barrier_timeout_seconds,
+                )
+            except TimeoutError as exc:
+                raise ValueError(
+                    f"concurrent_group {group_name!r} did not reach its bounded barrier"
+                ) from exc
         return await super().compare_and_set(key, expected_version, record, ttl_seconds)
+
+
+def _concurrent_groups(scenario: ReplayScenario) -> dict[str, set[str]]:
+    groups: dict[str, set[str]] = defaultdict(set)
+    for row in scenario.observations:
+        if row.concurrent_group:
+            groups[row.concurrent_group].add(row.event_id)
+    return dict(groups)
+
+
+def _validate_replay_contract(
+    scenario: ReplayScenario,
+    oracle: ReplayOracle,
+) -> list[str]:
+    labels = list(dict.fromkeys(row.timestamp_label for row in scenario.observations))
+    if len(labels) != oracle.expected_minutes:
+        raise ValueError(
+            "oracle expected_minutes does not match distinct scenario labels"
+        )
+    primary_counts: Counter[tuple[str, str]] = Counter(
+        (row.timestamp_label, row.service)
+        for row in scenario.observations
+        if not row.supplemental
+    )
+    for label in labels:
+        for service in oracle.expected_services_per_minute:
+            if primary_counts[(label, service)] != 1:
+                raise ValueError(
+                    f"expected exactly one primary observation for {service} at {label}"
+                )
+    if oracle.restart_at_label and oracle.restart_at_label not in labels:
+        raise ValueError("oracle restart_at_label is absent from scenario")
+    actual_groups = set(_concurrent_groups(scenario))
+    if actual_groups != set(oracle.expected_concurrent_groups):
+        raise ValueError(
+            "oracle expected_concurrent_groups does not match scenario groups"
+        )
+    label_indexes = {label: index for index, label in enumerate(labels)}
+    for expectation in oracle.expected_incidents:
+        if expectation.service not in scenario.baselines:
+            raise ValueError(
+                f"oracle incident service lacks baseline: {expectation.service}"
+            )
+        if expectation.continuity:
+            start = expectation.continuity.from_label
+            end = expectation.continuity.through_label
+            if start not in label_indexes or end not in label_indexes:
+                raise ValueError("oracle continuity labels are absent from scenario")
+            if label_indexes[start] > label_indexes[end]:
+                raise ValueError("oracle continuity window is reversed")
+    return labels
 
 
 def detect(
@@ -113,11 +182,14 @@ async def replay(
     scenario: ReplayScenario,
     oracle: ReplayOracle,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    concurrent_ids = {
-        row.event_id for row in scenario.observations if row.concurrent_group
-    }
-    store: MemoryLifecycleStateStore = TwoWorkerReplayStore(concurrent_ids)
-    engine = LifecycleEngine(store, retention_seconds=3600, evidence_capacity=64)
+    labels = _validate_replay_contract(scenario, oracle)
+    concurrent_groups = _concurrent_groups(scenario)
+    store: MemoryLifecycleStateStore = ConcurrentReplayStore(concurrent_groups)
+    engine = LifecycleEngine(
+        store,
+        retention_seconds=3600,
+        evidence_capacity=oracle.evidence_capacity,
+    )
     evaluator = FrozenSignalEvaluator()
     stream: list[AlertEvent] = []
     restart_state_recovered = False
@@ -127,14 +199,18 @@ async def replay(
 
     while index < len(scenario.observations):
         row = scenario.observations[index]
-        if row.timestamp_label == "T90" and not restarted:
+        if row.timestamp_label == oracle.restart_at_label and not restarted:
             before = await store.list_all()
             payload = await store.export_json()
             loaded = MemoryLifecycleStateStore.from_json(payload)
-            restored = TwoWorkerReplayStore(concurrent_ids)
+            restored = ConcurrentReplayStore(concurrent_groups)
             restored._items = loaded._items
             store = restored
-            engine = LifecycleEngine(store, retention_seconds=3600, evidence_capacity=64)
+            engine = LifecycleEngine(
+                store,
+                retention_seconds=3600,
+                evidence_capacity=oracle.evidence_capacity,
+            )
             after = await store.list_all()
             restart_state_recovered = (
                 [record_json(item) for item in before]
@@ -151,6 +227,7 @@ async def replay(
             ):
                 group.append(scenario.observations[cursor])
                 cursor += 1
+            conflicts_before = engine.concurrency_conflicts_observed
             events = await asyncio.gather(
                 *[
                     engine.process(
@@ -162,7 +239,9 @@ async def replay(
                 ]
             )
             stream.extend(events)
-            conflict_observed += engine.concurrency_conflicts_observed
+            conflict_observed += (
+                engine.concurrency_conflicts_observed - conflicts_before
+            )
             index = cursor
             continue
 
@@ -177,88 +256,206 @@ async def replay(
 
     records = sorted(await store.list_all(), key=lambda item: item.state_key)
     incidents = [record_json(record) for record in records]
-    by_label: dict[str, list[AlertEvent]] = defaultdict(list)
-    for event in stream:
-        by_label[event.timestamp].append(event)
-    expected_labels = {row.timestamp_label for row in scenario.observations}
-    expected_services = set(oracle.expected_services_per_minute)
-    complete = len(expected_labels) == oracle.expected_minutes and all(
-        expected_services
-        <= {
-            event.state_key.split("::")[2]
-            for event in by_label.get(label, [])
-        }
-        for label in expected_labels
-    )
     record_by_key = {record.state_key: record for record in records}
-    expected_incidents = all(
-        (
-            key := state_key(
-                scenario.environment,
-                scenario.namespace,
-                item.service,
-                item.incident_type,
-            )
-        ) in record_by_key
-        and record_by_key[key].lifecycle.value == item.final_lifecycle
+    row_by_event = {row.event_id: row for row in scenario.observations}
+    primary_by_label: dict[str, list[AlertEvent]] = defaultdict(list)
+    for event in stream:
+        if not row_by_event[event.event_id].supplemental:
+            primary_by_label[event.timestamp].append(event)
+
+    expected_services = set(oracle.expected_services_per_minute)
+    silent_gap_count = sum(
+        max(
+            len(expected_services)
+            - len(
+                {
+                    event.state_key.split("::")[2]
+                    for event in primary_by_label.get(label, [])
+                    if event.state_key.split("::")[2] in expected_services
+                }
+            ),
+            0,
+        )
+        for label in labels
+    )
+    complete = silent_gap_count == 0 and all(
+        Counter(
+            event.state_key.split("::")[2]
+            for event in primary_by_label[label]
+            if event.state_key.split("::")[2] in expected_services
+        )
+        == Counter({service: 1 for service in expected_services})
+        for label in labels
+    )
+
+    incident_ids_by_key: dict[str, set[str]] = defaultdict(set)
+    incident_keys_by_id: dict[str, set[str]] = defaultdict(set)
+    for event in stream:
+        if event.incident_id:
+            incident_ids_by_key[event.state_key].add(event.incident_id)
+            incident_keys_by_id[event.incident_id].add(event.state_key)
+    for record in records:
+        incident_ids_by_key[record.state_key].add(record.incident_id)
+        incident_keys_by_id[record.incident_id].add(record.state_key)
+        for history in record.incident_history:
+            incident_id = str(history["incident_id"])
+            incident_ids_by_key[record.state_key].add(incident_id)
+            incident_keys_by_id[incident_id].add(record.state_key)
+
+    expected_count_by_key = {
+        state_key(
+            scenario.environment,
+            scenario.namespace,
+            item.service,
+            item.incident_type,
+        ): item.expected_incident_count
         for item in oracle.expected_incidents
-    )
-    no_false_incidents = all(
-        not any(record.service == service for record in records)
-        for service in oracle.no_incident_services
-    )
-    a_key = state_key(
-        scenario.environment,
-        scenario.namespace,
-        "service-a",
-        "service_latency_spike",
-    )
-    a_record = record_by_key[a_key]
-    a_events = [event for event in stream if event.state_key == a_key]
-    counts = Counter(event.alert_state for event in a_events)
-    concurrent_evidence = {
-        item["event_id"]
-        for item in a_record.evidence_samples
-        if item.get("event_id") in concurrent_ids
     }
+    duplicate_incident_count = sum(
+        max(len(incident_ids_by_key.get(key, set())) - expected_count, 0)
+        for key, expected_count in expected_count_by_key.items()
+    ) + sum(max(len(keys) - 1, 0) for keys in incident_keys_by_id.values())
+    false_incident_count = sum(
+        len(incident_ids)
+        for key, incident_ids in incident_ids_by_key.items()
+        if key.split("::")[2] in set(oracle.no_incident_services)
+    )
+
+    expected_incidents = True
+    continuity_results: dict[str, dict[str, bool]] = {}
+    label_indexes = {label: index for index, label in enumerate(labels)}
+    active_lifecycles = {
+        Lifecycle.PENDING,
+        Lifecycle.FIRING,
+        Lifecycle.ACTIVE_SUSTAINED,
+    }
+    for expectation in oracle.expected_incidents:
+        key = state_key(
+            scenario.environment,
+            scenario.namespace,
+            expectation.service,
+            expectation.incident_type,
+        )
+        record = record_by_key.get(key)
+        lifecycle_ok = bool(
+            record and record.lifecycle.value == expectation.final_lifecycle
+        )
+        expected_incidents = expected_incidents and lifecycle_ok
+        checks: dict[str, bool] = {"final_lifecycle": lifecycle_ok}
+        window_labels = labels
+        if expectation.continuity:
+            start = label_indexes[expectation.continuity.from_label]
+            end = label_indexes[expectation.continuity.through_label]
+            window_labels = labels[start : end + 1]
+            window_events = [
+                event
+                for label in window_labels
+                for event in primary_by_label[label]
+                if event.state_key == key
+            ]
+            events_by_label = Counter(event.timestamp for event in window_events)
+            checks["one_primary_record_per_label"] = all(
+                events_by_label[label]
+                == expectation.continuity.primary_records_per_label
+                for label in window_labels
+            )
+            if expectation.continuity.require_active_lifecycle:
+                checks["active_at_every_label"] = all(
+                    event.lifecycle in active_lifecycles for event in window_events
+                ) and len(window_events) == len(window_labels)
+            if expectation.continuity.require_single_incident_id:
+                checks["single_incident_id"] = (
+                    len({event.incident_id for event in window_events}) == 1
+                    and all(event.incident_id for event in window_events)
+                )
+            alert_counts = Counter(event.alert_state.value for event in window_events)
+            checks["expected_hold_counts"] = all(
+                alert_counts[state] == count
+                for state, count in expectation.continuity.hold_alert_state_counts.items()
+            )
+            if expectation.continuity.require_zero_healthy_streak_on_holds:
+                hold_states = set(expectation.continuity.hold_alert_state_counts)
+                checks["holds_do_not_advance_recovery"] = all(
+                    event.healthy_streak == 0
+                    for event in window_events
+                    if event.alert_state.value in hold_states
+                )
+        primary_rows = [
+            row
+            for row in scenario.observations
+            if not row.supplemental
+            and row.service == expectation.service
+            and row.incident_type == expectation.incident_type
+            and row.timestamp_label in set(window_labels)
+        ]
+        if expectation.require_varying_traffic:
+            checks["varying_same_service_traffic"] = (
+                len({row.traffic_multiplier for row in primary_rows}) > 1
+            )
+        if expectation.require_frozen_baseline:
+            checks["baseline_frozen"] = bool(
+                record
+                and record.frozen_baseline.values
+                == scenario.baselines[expectation.service]
+                and record.baseline_version == 1
+            )
+        if expectation.require_evidence_compaction:
+            checks["evidence_compacted_and_hashed"] = bool(
+                record
+                and len(record.evidence_samples) <= oracle.evidence_capacity
+                and record.evidence_count > len(record.evidence_samples)
+                and record.evidence_digest
+            )
+        continuity_results[key] = checks
+
+    concurrency_results: dict[str, bool] = {}
+    for group_name, event_ids in concurrent_groups.items():
+        first_row = next(
+            row for row in scenario.observations if row.event_id in event_ids
+        )
+        key = state_key(
+            scenario.environment,
+            scenario.namespace,
+            first_row.service,
+            first_row.incident_type,
+        )
+        record = record_by_key.get(key)
+        retained_ids = {
+            str(item.get("event_id"))
+            for item in (record.evidence_samples if record else [])
+        }
+        concurrency_results[group_name] = event_ids <= retained_ids
+    lost_concurrency_groups = sum(not value for value in concurrency_results.values())
+
     conditions = {
         "external_scenario_schema_validated": True,
         "oracle_separate_from_detector_input": True,
         "expected_incident_lifecycles": expected_incidents,
-        "every_minute_contains_each_service": complete,
-        "no_incident_for_load_only_service": no_false_incidents,
-        "same_service_load_varied_during_incident": len(
-            {
-                row.traffic_multiplier
-                for row in scenario.observations
-                if row.service == "service-a"
-                and int(row.timestamp_label.removeprefix("T")) >= 0
-            }
-        ) > 1,
-        "baseline_a_frozen_and_robust": (
-            a_record.frozen_baseline.values == scenario.baselines["service-a"]
-            and a_record.baseline_version == 1
+        "every_minute_contains_each_primary_service": complete,
+        "incident_continuity_expectations": all(
+            all(checks.values()) for checks in continuity_results.values()
         ),
-        "coverage_gaps_hold_lifecycle": (
-            counts[AlertState.PRIMARY_TELEMETRY_UNAVAILABLE] == 1
-            and counts[AlertState.INSUFFICIENT_TRAFFIC] == 1
+        "no_unexpected_incidents": false_incident_count == 0,
+        "no_duplicate_incident_generations_or_id_collisions": (
+            duplicate_incident_count == 0
         ),
-        "restart_uses_serialized_state": restart_state_recovered,
-        "two_distinct_concurrent_updates_preserved": (
-            conflict_observed >= 1 and concurrent_evidence == concurrent_ids
+        "restart_uses_serialized_state": (
+            oracle.restart_at_label is None or restart_state_recovered
         ),
-        "evidence_is_bounded_and_hashed": (
-            len(a_record.evidence_samples) <= 64
-            and a_record.evidence_count > len(a_record.evidence_samples)
-            and bool(a_record.evidence_digest)
+        "concurrent_updates_preserved": (
+            not concurrent_groups
+            or (
+                conflict_observed >= len(concurrent_groups)
+                and lost_concurrency_groups == 0
+            )
+        ),
+        "all_evidence_records_are_bounded_and_hashed": all(
+            len(record.evidence_samples) <= oracle.evidence_capacity
+            and (record.evidence_count == 0 or bool(record.evidence_digest))
+            for record in records
         ),
     }
-    active = {
-        Lifecycle.PENDING,
-        Lifecycle.FIRING,
-        Lifecycle.ACTIVE_SUSTAINED,
-        Lifecycle.RECOVERING,
-    }
+    active = active_lifecycles | {Lifecycle.RECOVERING}
     active_by_time: dict[str, set[str]] = defaultdict(set)
     for event in stream:
         if event.incident_id and event.lifecycle in active:
@@ -268,13 +465,17 @@ async def replay(
         "scenario_id": scenario.scenario_id,
         "simulated_minutes": oracle.expected_minutes,
         "alert_record_count": len(stream),
-        "silent_gap_count": 0 if complete else 1,
-        "false_incident_count": 0 if no_false_incidents else 1,
-        "duplicate_incident_count": 0,
-        "state_recovery_failures": 0 if restart_state_recovered else 1,
+        "silent_gap_count": silent_gap_count,
+        "false_incident_count": false_incident_count,
+        "duplicate_incident_count": duplicate_incident_count,
+        "state_recovery_failures": (
+            0 if oracle.restart_at_label is None or restart_state_recovered else 1
+        ),
         "stacked_incident_count": max(map(len, active_by_time.values()), default=0),
         "concurrency_conflicts_observed": conflict_observed,
-        "concurrency_conflicts_lost": 0 if concurrent_evidence == concurrent_ids else 1,
+        "concurrency_conflicts_lost": lost_concurrency_groups,
+        "continuity_checks": continuity_results,
+        "concurrency_checks": concurrency_results,
         "conditions": conditions,
         "all_passed": all(conditions.values()),
         "claim_boundary": (

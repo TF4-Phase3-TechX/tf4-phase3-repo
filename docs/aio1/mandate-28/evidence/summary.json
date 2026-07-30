@@ -2,21 +2,39 @@
   "alert_record_count": 631,
   "all_passed": true,
   "claim_boundary": "Deterministic evidence level 3 only. Dedicated production Valkey, runtime wiring and production observation remain deployment gates.",
+  "concurrency_checks": {
+    "service-a-T130": true
+  },
   "concurrency_conflicts_lost": 0,
   "concurrency_conflicts_observed": 1,
   "conditions": {
-    "baseline_a_frozen_and_robust": true,
-    "coverage_gaps_hold_lifecycle": true,
-    "every_minute_contains_each_service": true,
-    "evidence_is_bounded_and_hashed": true,
+    "all_evidence_records_are_bounded_and_hashed": true,
+    "concurrent_updates_preserved": true,
+    "every_minute_contains_each_primary_service": true,
     "expected_incident_lifecycles": true,
     "external_scenario_schema_validated": true,
-    "no_incident_for_load_only_service": true,
+    "incident_continuity_expectations": true,
+    "no_duplicate_incident_generations_or_id_collisions": true,
+    "no_unexpected_incidents": true,
     "oracle_separate_from_detector_input": true,
     "protected_inputs_hash_stable": true,
-    "restart_uses_serialized_state": true,
-    "same_service_load_varied_during_incident": true,
-    "two_distinct_concurrent_updates_preserved": true
+    "restart_uses_serialized_state": true
+  },
+  "continuity_checks": {
+    "production::techx-tf4::service-a::service_latency_spike": {
+      "active_at_every_label": true,
+      "baseline_frozen": true,
+      "evidence_compacted_and_hashed": true,
+      "expected_hold_counts": true,
+      "final_lifecycle": true,
+      "holds_do_not_advance_recovery": true,
+      "one_primary_record_per_label": true,
+      "single_incident_id": true,
+      "varying_same_service_traffic": true
+    },
+    "production::techx-tf4::service-b::service_error_rate_spike": {
+      "final_lifecycle": true
+    }
   },
   "duplicate_incident_count": 0,
   "false_incident_count": 0,

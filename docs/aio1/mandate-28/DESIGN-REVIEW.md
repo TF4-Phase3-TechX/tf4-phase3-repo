@@ -26,6 +26,11 @@ count. Restart replay serializes and reloads state instead of reusing the same
 Python object. Primary telemetry loss and insufficient traffic hold lifecycle;
 missing enrichment never stops primary detection.
 
+The event-ID idempotence guarantee is explicitly bounded by the configured
+evidence/deduplication capacity. A durable timestamp high-water mark rejects
+older observations; same-timestamp replays after ID eviction are outside the
+deterministic replay claim and require a production durable deduplication store.
+
 The scenario generator, detector and oracle are separate. Strict input models
 forbid detector labels in raw scenario rows. The same service experiences
 varying traffic during Incident A. Two distinct observations race the same

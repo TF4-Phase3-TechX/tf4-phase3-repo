@@ -6,7 +6,13 @@ from pydantic import ValidationError
 
 from benchmark.generate_mandate28_scenario import build
 from benchmark.mandate28_replay import replay, run
-from benchmark.mandate28_schema import dump_model, load_scenario
+from benchmark.mandate28_schema import (
+    RawObservation,
+    ReplayOracle,
+    ReplayScenario,
+    dump_model,
+    load_scenario,
+)
 
 
 @pytest.mark.asyncio
@@ -21,7 +27,7 @@ async def test_external_210_minute_replay_passes_acceptance_conditions():
     assert summary["state_recovery_failures"] == 0
     assert summary["concurrency_conflicts_lost"] == 0
     assert summary["stacked_incident_count"] == 2
-    assert summary["conditions"]["two_distinct_concurrent_updates_preserved"]
+    assert summary["conditions"]["concurrent_updates_preserved"]
     assert {item["service"] for item in incidents} == {"service-a", "service-b"}
 
 
@@ -87,3 +93,60 @@ def test_scenario_schema_rejects_detector_labels(tmp_path):
 
     with pytest.raises(ValidationError, match="breached"):
         load_scenario(path)
+
+
+@pytest.mark.asyncio
+async def test_replay_accepts_dynamic_single_service_oracle():
+    scenario = ReplayScenario(
+        schema_version="mandate28-scenario/v2",
+        scenario_id="dynamic-checkout-only",
+        baselines={"checkout": [100.0] * 6},
+        observations=[
+            RawObservation(
+                timestamp_label="T0",
+                observed_at="2026-07-30T00:00:00Z",
+                event_id="checkout-t0",
+                sequence=0,
+                service="checkout",
+                incident_type="service_latency_spike",
+                signal_kind="latency",
+                value=100.0,
+                recent_values=[100.0, 100.0, 100.0],
+            )
+        ],
+    )
+    oracle = ReplayOracle(
+        schema_version="mandate28-oracle/v3",
+        expected_minutes=1,
+        expected_services_per_minute=["checkout"],
+        expected_incidents=[],
+        no_incident_services=["checkout"],
+    )
+
+    _, incidents, summary = await replay(scenario, oracle)
+
+    assert incidents == []
+    assert summary["all_passed"] is True
+
+
+def test_schema_rejects_singleton_concurrent_group():
+    with pytest.raises(ValidationError, match="at least two observations"):
+        ReplayScenario(
+            schema_version="mandate28-scenario/v2",
+            scenario_id="invalid-concurrency",
+            baselines={"checkout": [100.0] * 6},
+            observations=[
+                RawObservation(
+                    timestamp_label="T0",
+                    observed_at="2026-07-30T00:00:00Z",
+                    event_id="checkout-t0",
+                    sequence=0,
+                    service="checkout",
+                    incident_type="service_latency_spike",
+                    signal_kind="latency",
+                    value=100.0,
+                    recent_values=[100.0, 100.0, 100.0],
+                    concurrent_group="g1",
+                )
+            ],
+        )
