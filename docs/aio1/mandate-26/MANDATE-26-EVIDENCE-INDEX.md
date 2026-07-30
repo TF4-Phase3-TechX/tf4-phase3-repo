@@ -40,11 +40,20 @@ Values recorded by the independent verification rerun:
 | Item | Value |
 |---|---|
 | Input SHA-256 | `c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667` |
-| Report SHA-256 | `74e4c95aa5df6c80e7f9698c430e5cbe9ebf5fac5aed3dd2097ac52a53835e44` |
-| Reviewed code Git revision embedded in report | `102f136dd4014d301ca958ac4065a3cd7b6f384c` |
+| Report SHA-256 | `5b68122df9daac0ea796b15c89f64f57dc2358f2bca9b8f35b87cba228245c47` |
+| Reviewed code Git revision embedded in report | `68a917c8989a0baf6ea90615da5b198b339f8cc4` |
 | Model version | `m26-v1` |
 
-The report embeds `git_revision`, `input_sha256`, and per-case rankings.
+The report embeds `git_revision`, `input_sha256`, and per-case rankings. The
+embedded revision identifies the code and replay runner that produced the
+results; the evidence-only packaging commit necessarily follows it. Between
+that revision and the packaging commit, only this index and the generated
+report change.
+
+The report hash covers the exact committed UTF-8/LF bytes. Replay input hashes
+canonicalize CRLF and LF text to LF, and `.gitattributes` enforces LF for the
+Mandate 26 JSON/JSONL evidence so the recorded hashes are portable across
+Windows and Unix checkouts.
 
 ## Aggregate results (committed suite)
 
@@ -56,7 +65,7 @@ From `rca-replay-report-v1.json`:
 - MRR: **1.0**  
 - noise precision / recall / F1: **1.0 / 1.0 / 1.0**
 - false noise-rejection rate: **0.0**
-- processing p50 / p95: **1.563 / 2.5253 ms** (review workstation, pure engine)
+- processing p50 / p95: **2.924 / 5.71475 ms** (review workstation, pure engine)
 - attribution coverage: 0.875 (one intentional multi-cluster abstention)
 
 ### Scenario coverage
@@ -92,7 +101,7 @@ py -3 -m pytest `
 ```
 
 Independent verification additionally ran the committed replay, the full AIOps
-suite (**221 passed, 1 skipped**), focused regressions for trace-root candidate
+suite (**222 passed, 1 skipped**), focused regressions for trace-root candidate
 caps and the end-to-end RCA timeout/latency metric, and `git diff --check`.
 The named reviewer must still rerun the command before changing
 `REVIEWER-VERDICT.md` from `Pending`.

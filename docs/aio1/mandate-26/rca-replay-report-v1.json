@@ -1,8 +1,12 @@
 {
   "schema_name": "techx.aiops.rca.report",
   "schema_version": 1,
-  "generated_at": "2026-07-30T02:33:12.479402+00:00",
-  "git_revision": "102f136dd4014d301ca958ac4065a3cd7b6f384c",
+  "generated_at": "2026-07-30T03:18:10.914304+00:00",
+  "git_revision": "68a917c8989a0baf6ea90615da5b198b339f8cc4",
+  "git_revision_scope": "Code and replay-runner commit evaluated by this report; the evidence packaging commit may follow.",
+  "text_encoding": "UTF-8",
+  "line_endings": "LF",
+  "hash_normalization": "CRLF and LF text inputs are canonicalized to LF",
   "model_version": "m26-v1",
   "input_path": "docs/aio1/mandate-26/rca-labeled-scenarios-v1.jsonl",
   "input_sha256": "c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667",
@@ -32,9 +36,9 @@
     "false_noise_rejection_rate": 0.0,
     "attribution_coverage": 0.875,
     "abstention_rate": 0.125,
-    "processing_ms_p50": 1.563,
-    "processing_ms_p95": 2.5252999999999997,
-    "processing_ms_mean": 1.472625,
+    "processing_ms_p50": 2.9240000000000004,
+    "processing_ms_p95": 5.7147499999999996,
+    "processing_ms_mean": 3.3621250000000003,
     "parsing_execution_failures": 0
   },
   "cases": [
@@ -908,7 +912,7 @@
         "trace-client-peer:trace-pay-001",
         "trace-parent:trace-pay-001"
       ],
-      "processing_ms": 2.29,
+      "processing_ms": 3.754,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -1869,7 +1873,7 @@
         "trace-client-peer:t-cat-3",
         "trace-parent:t-cat-3"
       ],
-      "processing_ms": 1.693,
+      "processing_ms": 2.513,
       "trace_count": 3,
       "span_count": 9,
       "evaluation": {
@@ -2735,7 +2739,7 @@
         "trace-client-peer:t-llm-1",
         "trace-parent:t-llm-1"
       ],
-      "processing_ms": 1.466,
+      "processing_ms": 2.93,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3585,7 +3589,7 @@
         "trace-client-peer:trace-only-001",
         "trace-parent:trace-only-001"
       ],
-      "processing_ms": 2.652,
+      "processing_ms": 6.056,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -3910,7 +3914,7 @@
         "trace-client-peer:u1",
         "trace-parent:u1"
       ],
-      "processing_ms": 0.837,
+      "processing_ms": 2.918,
       "trace_count": 1,
       "span_count": 5,
       "evaluation": {
@@ -4709,7 +4713,7 @@
       "topology_provenance": [
         "static:techx-verified"
       ],
-      "processing_ms": 1.66,
+      "processing_ms": 5.081,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5002,7 +5006,7 @@
       "topology_provenance": [
         "scenario:replace_static"
       ],
-      "processing_ms": 0.541,
+      "processing_ms": 1.865,
       "trace_count": 0,
       "span_count": 0,
       "evaluation": {
@@ -5324,7 +5328,7 @@
         "trace-client-peer:cyc1",
         "trace-parent:cyc1"
       ],
-      "processing_ms": 0.642,
+      "processing_ms": 1.78,
       "trace_count": 1,
       "span_count": 4,
       "evaluation": {
