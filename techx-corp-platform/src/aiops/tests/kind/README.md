@@ -1,66 +1,40 @@
-# Mandate 22 disposable Kind gate
+# Mandate 22 Git/Argo sandbox
 
-These tests exercise the production `KubernetesRollbackAdapter` against an
-isolated cluster. They are skipped by normal pytest runs. Never point either
-kubeconfig variable at EKS or another shared cluster.
+`m22_gitops_sandbox.py` runs all three Mandate 22 rounds against a disposable
+local Git repository, Kind cluster and real Argo CD Application. It exercises the
+production detector, worker, controller, runtime observer and Lease lock. The
+local adapter writes real branches and commits and enforces the three checks,
+while explicitly simulating the Git-provider PR/webhook boundary.
 
-## PowerShell setup
-
-Install Kind from its official release, then run from
-`techx-corp-platform/src/aiops`:
-
-```powershell
-$kind = (Get-Command kind).Source
-$taskRoot = Join-Path ([IO.Path]::GetTempPath()) 'xbrain-m22-kind'
-$admin = Join-Path $taskRoot 'kubeconfig'
-$limited = Join-Path $taskRoot 'kubeconfig-aiops'
-$deps = Join-Path $taskRoot 'pydeps'
-$manifests = Join-Path $PWD 'tests/kind'
-
-New-Item -ItemType Directory -Path $taskRoot -Force | Out-Null
-& $kind create cluster `
-  --name m22-local `
-  --image 'kindest/node:v1.34.3@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48' `
-  --kubeconfig $admin `
-  --wait 120s
-
-kubectl --kubeconfig $admin apply -f (Join-Path $manifests 'm22-rbac.yaml')
-kubectl --kubeconfig $admin apply -f (Join-Path $manifests 'm22-target.yaml')
-kubectl --kubeconfig $admin -n m22-local rollout status `
-  deployment/product-reviews --timeout=60s
-kubectl --kubeconfig $admin apply -f (Join-Path $manifests 'm22-target-v2.yaml')
-kubectl --kubeconfig $admin -n m22-local rollout status `
-  deployment/product-reviews --timeout=60s
-
-Copy-Item -LiteralPath $admin -Destination $limited -Force
-$token = kubectl --kubeconfig $admin -n m22-local create token aiops --duration=1h
-kubectl --kubeconfig $limited config set-credentials m22-aiops --token=$token
-kubectl --kubeconfig $limited config set-context kind-m22-local `
-  --user=m22-aiops --namespace=m22-local
-kubectl --kubeconfig $limited config use-context kind-m22-local
-
-python -m pip install --target $deps 'kubernetes==32.0.1'
-$env:PYTHONPATH = $deps
-$env:KUBECONFIG = $limited
-$env:M22_KIND_ADMIN_KUBECONFIG = $admin
-python -m pytest tests/kind/test_m22_kind.py -q
-```
-
-For a consecutive clean-reset gate, delete only the disposable
-`product-reviews` Deployment and remediation Lease with the admin kubeconfig,
-then reapply `m22-target.yaml` followed by `m22-target-v2.yaml` before each run.
-
-## Cleanup
+Install the pinned AIOps requirements, create the cluster and Argo CD, then run:
 
 ```powershell
-& $kind delete cluster --name m22-local
-$resolved = [IO.Path]::GetFullPath($taskRoot)
-$tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-if (-not $resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
-  throw 'Refusing to clean a path outside the system temp directory'
-}
-Remove-Item -LiteralPath $resolved -Recurse -Force
+python tests/kind/m22_gitops_sandbox.py `
+  --scenario <success|forced-wrong|restart-recovery> `
+  --context kind-m22-gitops-sandbox `
+  --evidence-dir <artifact-directory>
 ```
 
-The gate proves controller/Kubernetes lifecycle behavior with a deterministic
-verifier. It does not provide production telemetry or a Mandate 22 live pass.
+The lightweight pytest contract can additionally be enabled with:
+
+```text
+RUN_M22_KIND=1
+M22_GITOPS_SANDBOX_REPOSITORY=<owner/repository>
+M22_ARGO_APPLICATION=techx-corp
+M22_TARGET=product-reviews
+```
+
+The complete pre-production sandbox gate has three rounds:
+
+1. successful managed-env remediation;
+2. signed forced-wrong candidate followed by compensation;
+3. controller restart plus ambiguous branch/PR/merge responses.
+
+Each round captures incident, policy SHA, PR/check identities, merge SHA, Argo
+observation, exact review-RPC traffic and terminal saga as JSON. All three were
+observed on Kind/Argo on 2026-07-30. Production still requires the dedicated
+GitHub App, rulesets, secret/egress bootstrap, activation PR and CDO/on-call
+sign-off.
+
+The old `m22-rbac*.yaml` direct-patch fixtures are obsolete and must not be
+applied.

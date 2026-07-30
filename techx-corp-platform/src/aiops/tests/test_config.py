@@ -53,9 +53,7 @@ def test_settle_shorter_than_metric_window_fails_closed():
 
 
 def test_zero_settle_allowed_for_offline_replay():
-    settings = Settings(
-        **(Settings().__dict__ | {"verification_settle_seconds": 0})
-    )
+    settings = Settings(**(Settings().__dict__ | {"verification_settle_seconds": 0}))
     assert settings.verification_settle_seconds == 0
 
 
@@ -76,12 +74,57 @@ def test_generic_signal_services_are_configured_separately(monkeypatch):
     assert "llm" not in settings.generic_signal_services
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("rca_timeout_seconds", float("nan")),
+        ("rca_timeout_seconds", float("inf")),
+        ("rca_analysis_window_seconds", float("nan")),
+        ("rca_analysis_window_seconds", float("inf")),
+        ("rca_temporal_tolerance_seconds", float("nan")),
+        ("rca_temporal_tolerance_seconds", float("inf")),
+    ],
+)
+def test_non_finite_rca_runtime_settings_fail_at_startup(field, value):
+    values = Settings().__dict__ | {field: value}
+
+    with pytest.raises(ValueError, match="must be finite"):
+        Settings(**values)
+
+
 def test_live_autonomous_mode_requires_durable_saga_backend():
     values = Settings().__dict__ | {
-        "remediation_mode": "live",
+        "remediation_mode": "gitops/live",
         "autonomous_remediation_enabled": True,
         "saga_backend": "memory",
     }
 
     with pytest.raises(ValueError, match="requires a durable saga backend"):
+        Settings(**values)
+
+
+def test_dual_token_demo_requires_explicit_distinct_identities():
+    values = Settings().__dict__ | {
+        "github_auth_mode": "token-files",
+        "gitops_merge_strategy": "dual-token",
+        "timeboxed_demo_acknowledged": True,
+        "github_creator_login": "creator",
+        "github_reviewer_login": "reviewer",
+    }
+    configured = Settings(**values)
+    assert configured.gitops_merge_strategy == "dual-token"
+
+    with pytest.raises(ValueError, match="must be different"):
+        Settings(**(values | {"github_reviewer_login": "creator"}))
+
+
+def test_dual_token_demo_fails_closed_without_acknowledgement():
+    values = Settings().__dict__ | {
+        "github_auth_mode": "token-files",
+        "gitops_merge_strategy": "dual-token",
+        "timeboxed_demo_acknowledged": False,
+        "github_creator_login": "creator",
+        "github_reviewer_login": "reviewer",
+    }
+    with pytest.raises(ValueError, match="time-boxed demo acknowledgement"):
         Settings(**values)

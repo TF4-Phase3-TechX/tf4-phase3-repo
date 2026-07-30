@@ -148,7 +148,11 @@ def anomaly_scores(
     )
     isolation = 0.0
     isolation_points = [*baseline, current]
-    if include_isolation and len(isolation_points) >= 8 and len(set(isolation_points)) >= 3:
+    if (
+        include_isolation
+        and len(isolation_points) >= 8
+        and len(set(isolation_points)) >= 3
+    ):
         data = np.array(isolation_points).reshape(-1, 1)
         model = IsolationForest(
             contamination=settings.isolation_contamination, random_state=7
@@ -209,9 +213,7 @@ def acute_window_breach(
         candidate_scores = anomaly_scores(
             [*reference, candidate], settings, include_isolation=False
         )
-        breaches.append(
-            candidate >= floor and acute_breach(candidate_scores, settings)
-        )
+        breaches.append(candidate >= floor and acute_breach(candidate_scores, settings))
     return breaches[-1] and sum(breaches) >= required
 
 
@@ -322,15 +324,12 @@ class Detector:
     def availability(self, snapshot: AvailabilitySnapshot) -> Decision:
         """Classify workload availability without treating missing data as down."""
 
-        coverage_status = (
-            "unavailable" if snapshot.state == "unknown" else "available"
-        )
+        coverage_status = "unavailable" if snapshot.state == "unknown" else "available"
         breached = snapshot.state in {"degraded", "down"}
         key = f"service_availability:{snapshot.service}"
         self._streaks[key] = self._streaks[key] + 1 if breached else 0
-        anomalous = (
-            self._streaks[key]
-            >= max(self.settings.availability_sustained_polls, 1)
+        anomalous = self._streaks[key] >= max(
+            self.settings.availability_sustained_polls, 1
         )
         confidence = (
             self.settings.availability_down_confidence
@@ -440,8 +439,11 @@ class Detector:
             candidates=[
                 {"service": service, "score": round(confidence, 3), "signals": scores}
             ],
-            runbook_id="deployment-latency-rollback",
-            recommended_action="Review recent deployment and, after approval, roll back to the previous known-good ReplicaSet.",
+            runbook_id="product-reviews-config-rollback",
+            recommended_action=(
+                "Restore the three policy-managed review-delay values through "
+                "a checked GitOps pull request."
+            ),
         )
 
     def error_rate(
@@ -752,9 +754,7 @@ def error_budget_burn_rate_query(
         raise ValueError("slo_target must be between 0 and 1")
     if window_minutes <= 0:
         raise ValueError("window_minutes must be positive")
-    all_spans = span_matchers(
-        service, namespace=namespace, include_operation=True
-    )
+    all_spans = span_matchers(service, namespace=namespace, include_operation=True)
     error_spans = span_matchers(
         service,
         namespace=namespace,
@@ -781,10 +781,7 @@ def request_rate_query(service: str, namespace: str | None = None) -> str:
         namespace=namespace,
         include_operation=True,
     )
-    return (
-        "sum(rate(traces_span_metrics_calls_total{"
-        f"{matchers}}}[5m]))"
-    )
+    return f"sum(rate(traces_span_metrics_calls_total{{{matchers}}}[5m]))"
 
 
 def classify_service_state(
@@ -801,9 +798,8 @@ def classify_service_state(
         return availability.state
     if availability.state == "degraded" or latency_breached or error_rate_breached:
         return "degraded"
-    if (
-        request_rate is not None
-        and request_rate >= max(busy_request_rate_threshold, 0.0)
+    if request_rate is not None and request_rate >= max(
+        busy_request_rate_threshold, 0.0
     ):
         return "busy"
     return "healthy"
