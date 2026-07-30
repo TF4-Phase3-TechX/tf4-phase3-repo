@@ -1,0 +1,67 @@
+{
+  "schema_version": "aio1-live-prometheus-audit/v1",
+  "captured_at_utc": "2026-07-30T13:54:54.0176014Z",
+  "source": {
+    "cluster": "techx-tf4-cluster",
+    "namespace": "techx-observability",
+    "service": "prometheus",
+    "prometheus_version": "3.11.3",
+    "window": "7d"
+  },
+  "queries": {
+    "burn_max": "max by (service, window) (max_over_time(aiops_error_budget_burn_rate[7d]))",
+    "burn_alerts": "max_over_time(ALERTS{alertname=\"AIOpsIncidentDetected\",alertstate=\"firing\",impact=~\"warning_budget_burn|critical_budget_burn\"}[7d])",
+    "anomaly_alerts": "max_over_time(ALERTS{alertname=\"AIOpsIncidentDetected\",alertstate=\"firing\",incident_type=~\"service_latency_spike|service_error_rate_spike\"}[7d])"
+  },
+  "results": {
+    "burn_max": [
+      {"metric": {"service": "cart", "window": "30m"}, "value": 0},
+      {"metric": {"service": "cart", "window": "5m"}, "value": 0},
+      {"metric": {"service": "checkout", "window": "30m"}, "value": 5.64085987263717},
+      {"metric": {"service": "checkout", "window": "5m"}, "value": 32.465096451196814},
+      {"metric": {"service": "frontend", "window": "30m"}, "value": 0},
+      {"metric": {"service": "frontend", "window": "5m"}, "value": 0}
+    ],
+    "burn_alerts": [
+      {
+        "metric": {
+          "alertname": "AIOpsIncidentDetected",
+          "alertstate": "firing",
+          "component": "aiops-detector",
+          "impact": "warning_budget_burn",
+          "incident_type": "service_error_rate_spike",
+          "owner": "aio01",
+          "service": "checkout",
+          "severity": "warning"
+        },
+        "value": 1
+      }
+    ],
+    "anomaly_alerts": [
+      {"metric": {"impact": "budget_burn_below_warning", "incident_type": "service_error_rate_spike", "service": "checkout", "severity": "warning"}, "value": 1},
+      {"metric": {"impact": "budget_burn_below_warning", "incident_type": "service_error_rate_spike", "service": "frontend", "severity": "warning"}, "value": 1},
+      {"metric": {"impact": "burn_rate_unavailable", "incident_type": "service_error_rate_spike", "service": "checkout", "severity": "warning"}, "value": 1},
+      {"metric": {"impact": "burn_rate_unavailable", "incident_type": "service_error_rate_spike", "service": "frontend", "severity": "warning"}, "value": 1},
+      {"metric": {"impact": "not_assessed", "incident_type": "service_latency_spike", "service": "cart", "severity": "critical"}, "value": 1},
+      {"metric": {"impact": "not_assessed", "incident_type": "service_latency_spike", "service": "checkout", "severity": "critical"}, "value": 1},
+      {"metric": {"impact": "not_assessed", "incident_type": "service_latency_spike", "service": "checkout", "severity": "warning"}, "value": 1},
+      {"metric": {"impact": "not_assessed", "incident_type": "service_latency_spike", "service": "frontend", "severity": "critical"}, "value": 1},
+      {"metric": {"impact": "not_assessed", "incident_type": "service_latency_spike", "service": "product-reviews", "severity": "critical"}, "value": 1},
+      {"metric": {"impact": "not_assessed", "incident_type": "service_latency_spike", "service": "product-reviews", "severity": "warning"}, "value": 1},
+      {"metric": {"impact": "warning_budget_burn", "incident_type": "service_error_rate_spike", "service": "checkout", "severity": "warning"}, "value": 1}
+    ]
+  },
+  "interpretation": {
+    "observed": [
+      "Production Prometheus retained firing latency and error-rate incident alerts.",
+      "Checkout reached a 5-minute burn rate of 32.465096451196814 and a 30-minute burn rate of 5.64085987263717.",
+      "The detector emitted a warning_budget_burn checkout alert."
+    ],
+    "not_proven": [
+      "No critical_budget_burn alert existed in the full available 21-day retention query.",
+      "The retained series do not establish a simultaneous live masking case.",
+      "This retention audit does not reconstruct exact fault start, workload, or alert delivery chronology."
+    ],
+    "evidence_level": 5
+  }
+}
