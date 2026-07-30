@@ -1,0 +1,42 @@
+﻿{
+    "design":  "paired alternating order; same image/node/window; cold arm-specific principals",
+    "gate_percent":  5.0,
+    "invalid_row_count":  0,
+    "invalid_rows":  [
+
+                     ],
+    "measurement":  "client wall-clock gRPC latency",
+    "off_contract":  {
+                         "LLM_OBSERVABILITY_ENABLED":  "false",
+                         "OTEL_SDK_DISABLED":  "true",
+                         "interpretation":  "conservative all-OpenTelemetry-off upper-bound baseline"
+                     },
+    "on_contract":  {
+                        "LLM_OBSERVABILITY_ENABLED":  "true",
+                        "OTEL_SDK_DISABLED":  "false"
+                    },
+    "p95_increase_percent":  -19.049,
+    "paired_delta_mean_ms":  -58.584,
+    "paired_delta_median_ms":  24.934,
+    "pass":  true,
+    "schema_version":  "mandate24-matched-overhead-v2",
+    "stats":  {
+                  "off":  {
+                              "count":  20,
+                              "max_ms":  1491.904,
+                              "mean_ms":  1123.256,
+                              "median_ms":  1068.207,
+                              "min_ms":  990.126,
+                              "p95_ms":  1403.304
+                          },
+                  "on":  {
+                             "count":  20,
+                             "max_ms":  1189.742,
+                             "mean_ms":  1064.672,
+                             "median_ms":  1054.414,
+                             "min_ms":  1000.66,
+                             "p95_ms":  1135.99
+                         }
+              },
+    "valid_rows":  true
+}
