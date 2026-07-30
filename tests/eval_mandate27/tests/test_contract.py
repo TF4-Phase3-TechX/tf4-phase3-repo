@@ -32,6 +32,20 @@ def test_external_contract_rejects_unknown_content_field(tmp_path):
         load_observations(path)
 
 
+@pytest.mark.parametrize(
+    "field",
+    ["model_id", "guardrail_version", "scorer_version"],
+)
+def test_external_contract_requires_compatibility_metadata(tmp_path, field):
+    path = tmp_path / "series.jsonl"
+    rows = build_series("stable", samples_per_surface=1)
+    rows[0].pop(field)
+    write_rows(path, rows)
+
+    with pytest.raises(ValueError, match="required property"):
+        load_observations(path)
+
+
 def test_external_contract_rejects_duplicate_identity(tmp_path):
     path = tmp_path / "series.jsonl"
     rows = build_series("stable", samples_per_surface=2)
@@ -50,4 +64,3 @@ def test_external_contract_rejects_out_of_order_timestamp(tmp_path):
 
     with pytest.raises(ValueError, match="non-decreasing"):
         load_observations(path)
-

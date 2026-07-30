@@ -8,17 +8,17 @@ tests:
     interval: 1m
     input_series:
       - series: app_ai_quality:requests_30m{ai_surface="copilot"}
-        values: 100x1600
+        values: 100x10200
       - series: app_ai_quality:fallback_rate_30m{ai_surface="copilot"}
-        values: 0.30x1600
+        values: 0.30x10200
       - series: app_ai_quality:fallback_rate_baseline_7d{ai_surface="copilot"}
-        values: 0.02x1600
+        values: 0.02x10200
     promql_expr_test:
       - expr: count_over_time(app_ai_quality:fallback_rate_30m[7d:30m] offset 30m)
-        eval_time: 26h
+        eval_time: 169h
         exp_samples:
           - labels: '{ai_surface="copilot"}'
-            value: 52
+            value: 336
       - expr: |
           (
             app_ai_quality:fallback_rate_30m
@@ -31,12 +31,12 @@ tests:
           count_over_time(
             app_ai_quality:fallback_rate_30m[7d:30m] offset 30m
           ) >= 48
-        eval_time: 26h
+        eval_time: 169h
         exp_samples:
           - labels: '{ai_surface="copilot"}'
             value: 0.27999999999999997
     alert_rule_test:
-      - eval_time: 26h
+      - eval_time: 169h
         alertname: AIQualityFallbackDrift
         exp_alerts:
           - exp_labels:
@@ -54,13 +54,13 @@ tests:
     interval: 1m
     input_series:
       - series: app_ai_quality:requests_30m{ai_surface="review_summary"}
-        values: 100x1600
+        values: 100x10200
       - series: app_ai_quality:abstention_rate_30m{ai_surface="review_summary"}
-        values: 0.10x1600
+        values: 0.10x10200
       - series: app_ai_quality:abstention_rate_baseline_7d{ai_surface="review_summary"}
-        values: 0.10x1600
+        values: 0.10x10200
     alert_rule_test:
-      - eval_time: 26h
+      - eval_time: 169h
         alertname: AIQualityAbstentionDrift
         exp_alerts: []
 
@@ -68,13 +68,13 @@ tests:
     interval: 1m
     input_series:
       - series: app_ai_quality:requests_30m{ai_surface="copilot"}
-        values: 10x1600
+        values: 10x10200
       - series: app_ai_quality:fallback_rate_30m{ai_surface="copilot"}
-        values: 0.50x1600
+        values: 0.50x10200
       - series: app_ai_quality:fallback_rate_baseline_7d{ai_surface="copilot"}
-        values: 0.02x1600
+        values: 0.02x10200
     alert_rule_test:
-      - eval_time: 26h
+      - eval_time: 169h
         alertname: AIQualityFallbackDrift
         exp_alerts: []
 
@@ -82,13 +82,13 @@ tests:
     interval: 1m
     input_series:
       - series: app_ai_quality:requests_30m{ai_surface="review_summary"}
-        values: 100x1600
+        values: 100x10200
       - series: app_ai_quality:abstention_rate_30m{ai_surface="review_summary"}
-        values: 0.40x1600
+        values: 0.40x10200
       - series: app_ai_quality:abstention_rate_baseline_7d{ai_surface="review_summary"}
-        values: 0.10x1600
+        values: 0.10x10200
     alert_rule_test:
-      - eval_time: 26h
+      - eval_time: 169h
         alertname: AIQualityAbstentionDrift
         exp_alerts:
           - exp_labels:

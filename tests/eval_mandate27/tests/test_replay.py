@@ -23,4 +23,3 @@ def test_replay_accepts_external_jsonl_and_writes_signal(tmp_path):
     assert output_path.exists()
     assert report["status"] == "drift"
     assert report["signals"][0]["metric"] == "fallback_rate"
-

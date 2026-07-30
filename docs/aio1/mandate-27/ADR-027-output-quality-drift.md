@@ -31,8 +31,8 @@ and version mismatches fail closed rather than claiming no drift.
 
 The external JSONL replay is the reproducible source of truth. Prometheus
 recording/alert rules provide an operational companion using the same bounded
-outcome metric, a 30-request gate, seven-day historical baseline and 30-minute
-persistence.
+outcome metric, a 30-request gate, at least 336 half-hour observations for the
+seven-day historical baseline, and 30-minute persistence.
 
 ## Consequences
 
@@ -54,4 +54,3 @@ persistence.
   to judge drift.
 - A single fixed rate threshold without minimum samples/persistence: too prone
   to false alarms during low traffic and transient provider failures.
-

@@ -73,4 +73,3 @@ def git_metadata(repo: Path | None = None) -> dict[str, Any]:
     except (OSError, subprocess.CalledProcessError):
         return {"sha": "unknown", "dirty": True}
     return {"sha": sha, "dirty": dirty}
-

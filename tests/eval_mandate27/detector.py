@@ -46,18 +46,24 @@ def _compatibility_mismatches(
     compatibility = baseline["compatibility"]
     for field in ("model_id", "guardrail_version", "scorer_version"):
         expected = compatibility.get(field)
+        missing_observations = sum(
+            not str(row.get(field, "")).strip() for row in observations
+        )
         observed = {
             str(row[field])
             for row in observations
             if str(row.get(field, "")).strip()
         }
-        if expected and observed and observed != {expected}:
+        if expected and (
+            missing_observations > 0 or observed != {expected}
+        ):
             diagnostics.append(
                 {
                     "code": "baseline_incompatible",
                     "field": field,
                     "expected": expected,
                     "observed": sorted(observed),
+                    "missing_observations": missing_observations,
                 }
             )
     return diagnostics
@@ -269,6 +275,10 @@ def detect(
                     **result,
                 }
                 windows.append(window_result)
+
+                if state == "recovered":
+                    signal_emitted = False
+                    clean_after_drift = 0
 
                 if (
                     consecutive >= required_consecutive

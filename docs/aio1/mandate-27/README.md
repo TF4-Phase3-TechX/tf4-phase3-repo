@@ -19,4 +19,3 @@ in [the evidence index](./MANDATE-27-EVIDENCE-INDEX.md).
 
 The committed code does not disable or modify flagd, add model calls, retain
 request/response content or automatically take remediation action.
-

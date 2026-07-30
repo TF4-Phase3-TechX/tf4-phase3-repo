@@ -12,22 +12,30 @@ groups:
 
       - record: app_ai_quality:fallback_rate_30m
         expr: |
-          sum by (ai_surface) (
-            increase(app_ai_quality_events_total{
-              service_name="product-reviews",
-              quality_outcome="fallback"
-            }[30m])
+          (
+            sum by (ai_surface) (
+              increase(app_ai_quality_events_total{
+                service_name="product-reviews",
+                quality_outcome="fallback"
+              }[30m])
+            )
+            or on (ai_surface)
+            0 * app_ai_quality:requests_30m
           )
           /
           clamp_min(app_ai_quality:requests_30m, 1)
 
       - record: app_ai_quality:abstention_rate_30m
         expr: |
-          sum by (ai_surface) (
-            increase(app_ai_quality_events_total{
-              service_name="product-reviews",
-              quality_outcome="abstained"
-            }[30m])
+          (
+            sum by (ai_surface) (
+              increase(app_ai_quality_events_total{
+                service_name="product-reviews",
+                quality_outcome="abstained"
+              }[30m])
+            )
+            or on (ai_surface)
+            0 * app_ai_quality:requests_30m
           )
           /
           clamp_min(app_ai_quality:requests_30m, 1)
@@ -43,4 +51,3 @@ groups:
           avg_over_time(
             app_ai_quality:abstention_rate_30m[7d:30m] offset 30m
           )
-

@@ -20,4 +20,3 @@ def canonical_surface(value: str) -> str:
         return SURFACE_ALIASES[normalized]
     except KeyError as exc:
         raise ValueError(f"unsupported AI surface: {value!r}") from exc
-

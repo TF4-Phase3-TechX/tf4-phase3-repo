@@ -9,6 +9,9 @@
     "event_id",
     "observed_at",
     "surface",
+    "model_id",
+    "guardrail_version",
+    "scorer_version",
     "metrics"
   ],
   "properties": {
@@ -68,4 +71,3 @@
     }
   }
 }
-

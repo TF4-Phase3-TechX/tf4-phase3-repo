@@ -43,11 +43,11 @@ disable safety controls or modify flagd.
 
 ## Recovery
 
-The offline detector records recovery after three clean windows. The online
-alert resolves only after the Prometheus expression clears. Capture the
-resolved timestamp and rerun both stable and shifted controls.
+The offline detector records recovery after three clean windows and resets the
+episode state so a later independent drift emits a new signal. The online alert
+resolves only after the Prometheus expression clears. Capture the resolved
+timestamp and rerun both stable and shifted controls.
 
 Rebuild a baseline only after an intentional approved change. Record Git SHA,
 model ID, guardrail version, scorer version, dataset hash, sample count and
 baseline checksum.
-

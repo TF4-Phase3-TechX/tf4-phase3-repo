@@ -29,8 +29,8 @@ Expected claims:
 ## Replay a mentor-supplied series
 
 Each JSONL row must satisfy `schemas/observation.schema.json`. It contains only
-an event ID, timestamp, canonical surface, compatibility metadata and bounded
-quality values.
+an event ID, timestamp, canonical surface, required model/guardrail/scorer
+compatibility metadata and bounded quality values.
 
 ```bash
 python -m tests.eval_mandate27.replay mentor-series.jsonl \
@@ -75,8 +75,8 @@ not copy response, source or caller content into the drift contract.
 - adverse effect-size gate plus Wilson interval/Jensen-Shannon gate;
 - two consecutive breached windows before a signal;
 - model/guardrail/scorer compatibility gate;
+- recovery resets the state so a later independent drift emits a new signal;
 - low traffic reports `warming_up`, never `no_drift`.
 
 Thresholds and bin edges live inside the versioned baseline. Changing them
 requires rebuilding and reviewing a new baseline.
-

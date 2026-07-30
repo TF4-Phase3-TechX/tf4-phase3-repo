@@ -115,6 +115,64 @@ def test_model_change_requires_new_baseline():
     assert report["diagnostics"][0]["field"] == "model_id"
 
 
+def test_missing_compatibility_metadata_fails_closed():
+    observations = build_series("stable")
+    for row in observations:
+        row.pop("model_id")
+        row.pop("guardrail_version")
+        row.pop("scorer_version")
+
+    report = detect(
+        observations,
+        baseline(),
+        generated_at_utc="2026-07-30T03:00:00Z",
+        git={"sha": "candidate", "dirty": False},
+    )
+
+    assert report["status"] == "baseline_incompatible"
+    assert report["signals"] == []
+    assert {
+        diagnostic["field"] for diagnostic in report["diagnostics"]
+    } == {"model_id", "guardrail_version", "scorer_version"}
+    assert all(
+        diagnostic["missing_observations"] == len(observations)
+        for diagnostic in report["diagnostics"]
+    )
+
+
+def test_second_drift_episode_emits_after_recovery():
+    observations = build_series("stable", samples_per_surface=240)
+    copilot_rows = [
+        row for row in observations if row["surface"] == "copilot"
+    ]
+    for index, row in enumerate(copilot_rows):
+        if 60 <= index < 120 or index >= 180:
+            row["metrics"]["fallback"] = 1
+
+    report = detect(
+        observations,
+        baseline(),
+        generated_at_utc="2026-07-30T05:00:00Z",
+        git={"sha": "candidate", "dirty": False},
+    )
+
+    fallback_signals = [
+        signal
+        for signal in report["signals"]
+        if signal["surface"] == "copilot"
+        and signal["metric"] == "fallback_rate"
+    ]
+    fallback_states = [
+        window["state"]
+        for window in report["windows"]
+        if window["surface"] == "copilot"
+        and window["metric"] == "fallback_rate"
+    ]
+    assert len(fallback_signals) == 2
+    assert "recovered" in fallback_states
+    assert fallback_signals[1]["detected_at"] > fallback_signals[0]["detected_at"]
+
+
 def test_jsd_is_symmetric_and_bounded():
     forward = jensen_shannon_divergence([10, 0], [0, 10])
     reverse = jensen_shannon_divergence([0, 10], [10, 0])
@@ -140,4 +198,3 @@ def test_report_is_reproducible_for_fixed_metadata():
     )
 
     assert first == second
-

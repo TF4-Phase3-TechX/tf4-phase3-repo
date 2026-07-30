@@ -60,4 +60,3 @@ def test_wilson_interval_and_histogram_boundaries():
         0,
         2,
     ]
-

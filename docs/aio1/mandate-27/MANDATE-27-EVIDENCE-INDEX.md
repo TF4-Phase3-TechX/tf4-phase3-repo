@@ -10,8 +10,8 @@ PYTHON_BIN=.eval-venv/bin/python \
 ## Required artifacts
 
 The committed hermetic pack is in
-[`evidence/public-20260730/`](./evidence/public-20260730/). Its manifest is
-bound to clean implementation commit `38035087b8b169b42fc6216b09fb5de0323af985`.
+[`evidence/public-20260730/`](./evidence/public-20260730/). Its manifest records
+the exact clean implementation commit.
 
 - `manifest.json`: Git state, claims and case-to-report map.
 - `baseline.json`: versioned distribution, thresholds and compatibility.

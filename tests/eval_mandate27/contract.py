@@ -73,4 +73,3 @@ def load_observations(path: Path) -> list[dict[str, Any]]:
     if not rows:
         raise ValueError(f"{path}: at least one observation is required")
     return rows
-

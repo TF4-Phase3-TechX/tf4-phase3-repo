@@ -31,4 +31,3 @@ def test_mandate14_result_converts_without_raw_content():
     assert rows[0]["metrics"] == {"abstained": 0, "faithfulness": 0.75}
     assert rows[1]["metrics"] == {"abstained": 1}
     assert "response" not in str(rows)
-

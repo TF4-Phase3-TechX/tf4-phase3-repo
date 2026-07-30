@@ -1,8 +1,8 @@
 # [DIRECTIVE #27] Bắt khi chất lượng AI trôi - phát hiện data/model drift
 
-**Từ:** Ban Kỹ thuật AI & Nền tảng - TechX Corp  
-**Hiệu lực:** ngay khi nhận · **không yêu cầu deadline nộp** — mentor kiểm tra vào **cuối chương trình**  
-**Áp dụng:** nhóm AIO của mọi Task Force (bề mặt AIE: copilot + tóm tắt review)  
+**Từ:** Ban Kỹ thuật AI & Nền tảng - TechX Corp
+**Hiệu lực:** ngay khi nhận · **không yêu cầu deadline nộp** — mentor kiểm tra vào **cuối chương trình**
+**Áp dụng:** nhóm AIO của mọi Task Force (bề mặt AIE: copilot + tóm tắt review)
 **Mức độ:** ⭐ *nice-to-have / bonus* — **không bắt buộc**; làm được là điểm cộng, không làm không bị trừ như mandate lõi.
 
 ---
@@ -55,9 +55,9 @@ Trụ **AI** (AIE / MLOps giám sát chất lượng model). Chạm **Reliabilit
 
 # [DIRECTIVE #27] Catch it when AI quality drifts - detect data/model drift
 
-**From:** AI Engineering & Platform Board - TechX Corp  
-**Effective:** immediately on receipt · **no submission deadline** — the mentor reviews it at the **end of the program**  
-**Applies to:** the AIO team of every Task Force (AIE surfaces: copilot + review summary)  
+**From:** AI Engineering & Platform Board - TechX Corp
+**Effective:** immediately on receipt · **no submission deadline** — the mentor reviews it at the **end of the program**
+**Applies to:** the AIO team of every Task Force (AIE surfaces: copilot + review summary)
 **Level:** ⭐ *nice-to-have / bonus* — **not required**; doing it earns credit, skipping it is not penalized like a core mandate.
 
 ## Context
@@ -101,4 +101,3 @@ Nothing to submit. The system must be ready for the mentor to feed a test series
 The **AI** pillar (AIE / MLOps model-quality monitoring). Touches **Reliability** (AI quality doesn't silently rot).
 
 > The point is catching the moment the model **starts to drift** - before the customer notices.
-
