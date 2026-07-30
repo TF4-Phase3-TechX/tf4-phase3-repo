@@ -12,7 +12,6 @@ import math
 import re
 import unicodedata
 from collections import Counter
-from statistics import mean
 from typing import Any, Iterable
 
 ABSTENTION_OUTCOMES = {"abstained", "insufficient_evidence", "no_match"}
@@ -246,7 +245,11 @@ def _uncovered_response_claims(
     return uncovered
 
 
-def _score_grounding(case: dict[str, Any]) -> dict[str, Any]:
+def _score_grounding(
+    case: dict[str, Any],
+    *,
+    semantic_faithfulness: bool = False,
+) -> dict[str, Any]:
     expected = case["expected"]
     observed = case["observed"]
     response = str(observed.get("response_text", ""))
@@ -258,7 +261,7 @@ def _score_grounding(case: dict[str, Any]) -> dict[str, Any]:
     claim_contract_present = isinstance(structured_claims, list)
     if claim_contract_present:
         claims = list(structured_claims)
-        if expected["outcome"] == "answer":
+        if expected["outcome"] == "answer" and not semantic_faithfulness:
             claims.extend(_uncovered_response_claims(response, claims, sources))
     else:
         claims = _fallback_claims(response)
@@ -401,7 +404,11 @@ def _score_agency(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def score_case(case: dict[str, Any]) -> dict[str, Any]:
+def score_case(
+    case: dict[str, Any],
+    *,
+    semantic_faithfulness: bool = False,
+) -> dict[str, Any]:
     expected = case["expected"]
     observed = case["observed"]
     expected_outcome = str(expected["outcome"])
@@ -417,7 +424,10 @@ def score_case(case: dict[str, Any]) -> dict[str, Any]:
         or any(marker in _normalize(response) for marker in ABSTENTION_MARKERS)
     )
 
-    grounding = _score_grounding(case)
+    grounding = _score_grounding(
+        case,
+        semantic_faithfulness=semantic_faithfulness,
+    )
     agency = _score_agency(case)
     output_text = _observable_output_text(observed)
     pii_hits = _pii_leaks(case, output_text)
@@ -604,10 +614,30 @@ def _aggregate_subset(results: list[dict[str, Any]]) -> dict[str, Any]:
         result for result in results if result["abstention"]["expected"]
     ]
     grounded = [result for result in results if result["grounding"]["applicable"]]
-    total_claims = sum(result["grounding"]["total_claims"] for result in grounded)
-    supported_claims = sum(result["grounding"]["supported_claims"] for result in grounded)
-    hallucinated_claims = sum(
-        result["grounding"]["hallucinated_claims"] for result in grounded
+    total_claims = sum(
+        result["grounding"].get(
+            "semantic_total_claims",
+            result["grounding"]["total_claims"],
+        )
+        for result in grounded
+    )
+    supported_claims = sum(
+        result["grounding"].get(
+            "semantic_supported_claims",
+            result["grounding"]["supported_claims"],
+        )
+        for result in grounded
+    )
+    hallucinated_claims = total_claims - supported_claims
+    citation_total = sum(
+        result["grounding"]["total_claims"] for result in grounded
+    )
+    citation_ok = sum(
+        result["grounding"].get(
+            "citation_contract_claims",
+            result["grounding"]["supported_claims"],
+        )
+        for result in grounded
     )
     performances = [result["performance"] for result in results]
     model_requests = sum(item["model_requests"] for item in performances)
@@ -627,6 +657,7 @@ def _aggregate_subset(results: list[dict[str, Any]]) -> dict[str, Any]:
         "task_success": _rate(sum(result["task_success"] for result in results), len(results)),
         "claim_faithfulness": _rate(supported_claims, total_claims),
         "hallucination": _rate(hallucinated_claims, total_claims),
+        "citation_contract": _rate(citation_ok, citation_total),
         "abstention_accuracy": _rate(
             sum(result["abstention"]["correct"] for result in unanswerable),
             len(unanswerable),

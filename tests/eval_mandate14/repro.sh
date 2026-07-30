@@ -11,6 +11,7 @@ args=(
   --input "${input_path}"
   --output "${output_path}"
   --require-calibration
+  --semantic-faithfulness
 )
 if [[ "${MANDATE14_CERTIFY:-0}" == "1" ]]; then
   args+=(--require-clean-git --require-all-pass)

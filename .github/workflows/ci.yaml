@@ -33,6 +33,7 @@ jobs:
       terraform: ${{ steps.filter.outputs.terraform }}
       workflows: ${{ steps.filter.outputs.workflows }}
       docs: ${{ steps.filter.outputs.docs }}
+      mandate14: ${{ steps.filter.outputs.mandate14 }}
     steps:
       - name: Checkout source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -66,6 +67,41 @@ jobs:
             docs:
               - 'docs/**'
               - 'README.md'
+            mandate14:
+              - 'tests/eval_mandate14/**'
+              - 'docs/aio1/mandate-14/**'
+              - '.github/workflows/ci.yaml'
+
+  mandate14-evaluation-test:
+    name: Mandate 14 evaluation integrity
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.mandate14 == 'true'
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/eval_mandate14/requirements-ci.txt
+
+      - name: Install pinned evaluation dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            -r tests/eval_mandate14/requirements-ci.txt
+
+      - name: Lint Mandate 14 Python
+        run: python -m ruff check tests/eval_mandate14
+
+      - name: Run Mandate 14 unit and evidence-integrity tests
+        run: python -m pytest tests/eval_mandate14/tests -q
+
+      - name: Verify pinned external label manifest
+        run: |
+          python tests/eval_mandate14/fetch_summeval_human_labels.py --check
 
   secret-scan:
     name: Secret scan (Gitleaks)
