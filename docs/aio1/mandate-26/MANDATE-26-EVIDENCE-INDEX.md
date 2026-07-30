@@ -40,8 +40,8 @@ Values recorded by the independent verification rerun:
 | Item | Value |
 |---|---|
 | Input SHA-256 | `c229b3c7343420fc2c4cf203dfaaef39891b3fef078ed09f32f26c3170fa9667` |
-| Report SHA-256 | `5dd388b88365595e1a56140ea755a19b714e481488a9e51fd5c60b0bad1d93c6` |
-| Reviewed code Git revision embedded in report | `ecc599131ac953fea853311b1e87ffbe0df7fa10` |
+| Report SHA-256 | `74e4c95aa5df6c80e7f9698c430e5cbe9ebf5fac5aed3dd2097ac52a53835e44` |
+| Reviewed code Git revision embedded in report | `102f136dd4014d301ca958ac4065a3cd7b6f384c` |
 | Model version | `m26-v1` |
 
 The report embeds `git_revision`, `input_sha256`, and per-case rankings.
@@ -56,7 +56,7 @@ From `rca-replay-report-v1.json`:
 - MRR: **1.0**  
 - noise precision / recall / F1: **1.0 / 1.0 / 1.0**
 - false noise-rejection rate: **0.0**
-- processing p50 / p95: **1.0875 / 2.3475 ms** (review sandbox, pure engine)
+- processing p50 / p95: **1.563 / 2.5253 ms** (review workstation, pure engine)
 - attribution coverage: 0.875 (one intentional multi-cluster abstention)
 
 ### Scenario coverage
@@ -91,12 +91,10 @@ py -3 -m pytest `
   -v
 ```
 
-Independent verification in the review sandbox additionally ran the committed
-replay, Python compilation for `app`, `benchmark`, and `tests`, direct executable
-regression assertions for the corrected paths, and `git diff --check`. The
-sandbox did not expose the project's pytest/numpy/sklearn/prometheus-client
-environment and blocked package download, so the named reviewer must still run
-the full command above in CI or the project virtual environment before changing
+Independent verification additionally ran the committed replay, the full AIOps
+suite (**221 passed, 1 skipped**), focused regressions for trace-root candidate
+caps and the end-to-end RCA timeout/latency metric, and `git diff --check`.
+The named reviewer must still rerun the command before changing
 `REVIEWER-VERDICT.md` from `Pending`.
 
 ## Safety / non-interference
