@@ -24,7 +24,7 @@ spec:
         name: techx-general
       expireAfter: 720h
   limits:
-    cpu: "4"
+    cpu: "16"
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 5m

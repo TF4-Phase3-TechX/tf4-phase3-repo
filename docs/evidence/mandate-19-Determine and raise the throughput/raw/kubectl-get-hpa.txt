@@ -1,0 +1,4 @@
+REFERENCE                                    TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/checkout   70%/70%         2         3         2          14d
+horizontalpodautoscaler.autoscaling/currency   25%/70%         2         3         2          14d
+horizontalpodautoscaler.autoscaling/frontend   45%/70%         2         3         2          14d

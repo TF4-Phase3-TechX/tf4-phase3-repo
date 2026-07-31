@@ -1,0 +1,143 @@
+Name:               ip-10-0-10-231.ec2.internal
+Roles:              <none>
+Labels:             beta.kubernetes.io/arch=amd64
+                    beta.kubernetes.io/instance-type=t3.large
+                    beta.kubernetes.io/os=linux
+                    eks.amazonaws.com/capacityType=ON_DEMAND
+                    eks.amazonaws.com/nodegroup=techx-general-ng-20260707091432750200000017
+                    eks.amazonaws.com/nodegroup-image=ami-0cd4f51323a764d21
+                    eks.amazonaws.com/sourceLaunchTemplateId=lt-05e3a0ff616d44b30
+                    eks.amazonaws.com/sourceLaunchTemplateVersion=2
+                    failure-domain.beta.kubernetes.io/region=us-east-1
+                    failure-domain.beta.kubernetes.io/zone=us-east-1a
+                    k8s.io/cloud-provider-aws=dbfbf66b3070c50226f070a19bccb812
+                    kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=ip-10-0-10-231.ec2.internal
+                    kubernetes.io/os=linux
+                    node.kubernetes.io/instance-type=t3.large
+                    role=worker
+                    topology.ebs.csi.aws.com/zone=us-east-1a
+                    topology.k8s.aws/zone-id=use1-az1
+                    topology.kubernetes.io/region=us-east-1
+                    topology.kubernetes.io/zone=us-east-1a
+Annotations:        alpha.kubernetes.io/provided-node-ip: 10.0.10.231
+                    csi.volume.kubernetes.io/nodeid: {"ebs.csi.aws.com":"i-01b00d955a0af0fac"}
+                    node.alpha.kubernetes.io/ttl: 0
+                    volumes.kubernetes.io/controller-managed-attach-detach: true
+CreationTimestamp:  Thu, 09 Jul 2026 08:54:48 +0700
+Taints:             <none>
+Unschedulable:      false
+Lease:
+  HolderIdentity:  ip-10-0-10-231.ec2.internal
+  AcquireTime:     <unset>
+  RenewTime:       Thu, 16 Jul 2026 10:34:12 +0700
+Conditions:
+  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----             ------  -----------------                 ------------------                ------                       -------
+  MemoryPressure   False   Thu, 16 Jul 2026 10:29:41 +0700   Thu, 09 Jul 2026 08:54:45 +0700   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure     False   Thu, 16 Jul 2026 10:29:41 +0700   Thu, 09 Jul 2026 08:54:45 +0700   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure      False   Thu, 16 Jul 2026 10:29:41 +0700   Thu, 09 Jul 2026 08:54:45 +0700   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready            True    Thu, 16 Jul 2026 10:29:41 +0700   Thu, 09 Jul 2026 08:55:00 +0700   KubeletReady                 kubelet is posting ready status
+Addresses:
+  InternalIP:   10.0.10.231
+  InternalDNS:  ip-10-0-10-231.ec2.internal
+  Hostname:     ip-10-0-10-231.ec2.internal
+Capacity:
+  cpu:                2
+  ephemeral-storage:  20893676Ki
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             8006060Ki
+  pods:               35
+Allocatable:
+  cpu:                1930m
+  ephemeral-storage:  18181869946
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             7248300Ki
+  pods:               35
+System Info:
+  Machine ID:                 ec2674aba87047fbca868c1e109face4
+  System UUID:                ec2674ab-a870-47fb-ca86-8c1e109face4
+  Boot ID:                    280af3e9-8e1f-482e-81ac-b3fd9f918a6c
+  Kernel Version:             6.12.92-122.166.amzn2023.x86_64
+  OS Image:                   Amazon Linux 2023.12.20260622
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime Version:  containerd://2.2.4+unknown
+  Kubelet Version:            v1.34.9-eks-7d6f6ec
+  Kube-Proxy Version:         
+ProviderID:                   aws:///us-east-1a/i-01b00d955a0af0fac
+
+=============================================================================
+
+Name:               ip-10-0-11-40.ec2.internal
+Roles:              <none>
+Labels:             beta.kubernetes.io/arch=amd64
+                    beta.kubernetes.io/instance-type=t3.large
+                    beta.kubernetes.io/os=linux
+                    eks.amazonaws.com/capacityType=ON_DEMAND
+                    eks.amazonaws.com/nodegroup=techx-general-ng-20260707091432750200000017
+                    eks.amazonaws.com/nodegroup-image=ami-0cd4f51323a764d21
+                    eks.amazonaws.com/sourceLaunchTemplateId=lt-05e3a0ff616d44b30
+                    eks.amazonaws.com/sourceLaunchTemplateVersion=2
+                    failure-domain.beta.kubernetes.io/region=us-east-1
+                    failure-domain.beta.kubernetes.io/zone=us-east-1b
+                    k8s.io/cloud-provider-aws=dbfbf66b3070c50226f070a19bccb812
+                    kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=ip-10-0-11-40.ec2.internal
+                    kubernetes.io/os=linux
+                    node.kubernetes.io/instance-type=t3.large
+                    role=worker
+                    topology.ebs.csi.aws.com/zone=us-east-1b
+                    topology.k8s.aws/zone-id=use1-az2
+                    topology.kubernetes.io/region=us-east-1
+                    topology.kubernetes.io/zone=us-east-1b
+Annotations:        alpha.kubernetes.io/provided-node-ip: 10.0.11.40
+                    csi.volume.kubernetes.io/nodeid: {"ebs.csi.aws.com":"i-0825abf366929a005"}
+                    node.alpha.kubernetes.io/ttl: 0
+                    volumes.kubernetes.io/controller-managed-attach-detach: true
+CreationTimestamp:  Thu, 09 Jul 2026 08:54:56 +0700
+Taints:             <none>
+Unschedulable:      false
+Lease:
+  HolderIdentity:  ip-10-0-11-40.ec2.internal
+  AcquireTime:     <unset>
+  RenewTime:       Thu, 16 Jul 2026 10:34:12 +0700
+Conditions:
+  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----             ------  -----------------                 ------------------                ------                       -------
+  MemoryPressure   False   Thu, 16 Jul 2026 10:29:59 +0700   Thu, 09 Jul 2026 08:54:53 +0700   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure     False   Thu, 16 Jul 2026 10:29:59 +0700   Thu, 09 Jul 2026 08:54:53 +0700   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure      False   Thu, 16 Jul 2026 10:29:59 +0700   Thu, 09 Jul 2026 08:54:53 +0700   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready            True    Thu, 16 Jul 2026 10:29:59 +0700   Thu, 09 Jul 2026 08:55:10 +0700   KubeletReady                 kubelet is posting ready status
+Addresses:
+  InternalIP:   10.0.11.40
+  InternalDNS:  ip-10-0-11-40.ec2.internal
+  Hostname:     ip-10-0-11-40.ec2.internal
+Capacity:
+  cpu:                2
+  ephemeral-storage:  20893676Ki
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             8006064Ki
+  pods:               35
+Allocatable:
+  cpu:                1930m
+  ephemeral-storage:  18181869946
+  hugepages-1Gi:      0
+  hugepages-2Mi:      0
+  memory:             7248304Ki
+  pods:               35
+System Info:
+  Machine ID:                 ec2bdf155b97808e7e136186e42c0b0c
+  System UUID:                ec2bdf15-5b97-808e-7e13-6186e42c0b0c
+  Boot ID:                    8fadd017-9944-490c-ba84-51f03ab9c7f2
+  Kernel Version:             6.12.92-122.166.amzn2023.x86_64
+  OS Image:                   Amazon Linux 2023.12.20260622
+  Operating System:           linux
+  Architecture:               amd64
+  Container Runtime Version:  containerd://2.2.4+unknown
+  Kubelet Version:            v1.34.9-eks-7d6f6ec
+  Kube-Proxy Version:         
+ProviderID:                   aws:///us-east-1b/i-0825abf366929a005
