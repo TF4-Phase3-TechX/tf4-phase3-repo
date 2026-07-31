@@ -108,3 +108,8 @@ docs/aio01/w2_tasks_summary.md
 
 # ── Generated Manifests ──
 techx-corp-app.yaml
+
+# Ignore large media files
+*.mp4
+*.mkv
+*.avi
