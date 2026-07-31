@@ -1,0 +1,10 @@
+components:
+  flagd:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { cpu: 100m, memory: 96Mi }
+  load-generator:
+    replicas: 0
+    resources:
+      requests: { cpu: 500m, memory: 768Mi }
+      limits: { cpu: "1", memory: 1536Mi }
