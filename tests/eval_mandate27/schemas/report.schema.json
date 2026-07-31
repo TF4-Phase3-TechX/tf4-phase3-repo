@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techx.example/schemas/mandate27-report-v1.json",
+  "title": "Mandate 27 drift replay report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "status",
+    "baseline_sha256",
+    "input_sha256",
+    "git",
+    "config",
+    "signals",
+    "windows",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "mandate27-report-v1"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "no_drift",
+        "drift",
+        "warming_up",
+        "baseline_insufficient",
+        "baseline_incompatible"
+      ]
+    },
+    "baseline_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "input_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "git": {
+      "type": "object",
+      "required": ["sha", "dirty"]
+    },
+    "config": {
+      "type": "object"
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "status",
+          "surface",
+          "metric",
+          "detected_at",
+          "window_start",
+          "sample_count",
+          "baseline_value",
+          "current_value",
+          "absolute_delta",
+          "threshold",
+          "consecutive_breaches",
+          "first_breach_window_event_id"
+        ]
+      }
+    },
+    "windows": {
+      "type": "array"
+    },
+    "diagnostics": {
+      "type": "array"
+    }
+  }
+}

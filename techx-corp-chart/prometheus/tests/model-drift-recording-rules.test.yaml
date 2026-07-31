@@ -1,0 +1,60 @@
+rule_files:
+  - ../model-drift-recording-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: outcome counters produce bounded per-surface quality rates
+    interval: 1m
+    input_series:
+      - series: app_ai_quality_events_total{service_name="product-reviews",ai_surface="copilot",quality_outcome="answered"}
+        values: 0+70x61
+      - series: app_ai_quality_events_total{service_name="product-reviews",ai_surface="copilot",quality_outcome="fallback"}
+        values: 0+30x61
+    promql_expr_test:
+      - expr: app_ai_quality:requests_30m
+        eval_time: 60m
+        exp_samples:
+          - labels: app_ai_quality:requests_30m{ai_surface="copilot"}
+            value: 3000
+      - expr: app_ai_quality:fallback_rate_30m
+        eval_time: 60m
+        exp_samples:
+          - labels: app_ai_quality:fallback_rate_30m{ai_surface="copilot"}
+            value: 0.30000000000000004
+
+  - name: absent unfavorable outcomes are recorded as zero rates
+    interval: 1m
+    input_series:
+      - series: app_ai_quality_events_total{service_name="product-reviews",ai_surface="review_summary",quality_outcome="answered"}
+        values: 0+100x61
+    promql_expr_test:
+      - expr: app_ai_quality:requests_30m
+        eval_time: 60m
+        exp_samples:
+          - labels: app_ai_quality:requests_30m{ai_surface="review_summary"}
+            value: 3000
+      - expr: app_ai_quality:fallback_rate_30m
+        eval_time: 60m
+        exp_samples:
+          - labels: app_ai_quality:fallback_rate_30m{ai_surface="review_summary"}
+            value: 0
+      - expr: app_ai_quality:abstention_rate_30m
+        eval_time: 60m
+        exp_samples:
+          - labels: app_ai_quality:abstention_rate_30m{ai_surface="review_summary"}
+            value: 0
+
+  - name: seven day baseline is weighted by request volume
+    interval: 1m
+    input_series:
+      - series: app_ai_quality_events_total{service_name="product-reviews",quality_outcome="answered",ai_surface="copilot",model_id="model-v1",guardrail_version="3",scorer_version="outcome-v1"}
+        values: 0+990x5040 4989610+5x5100
+      - series: app_ai_quality_events_total{service_name="product-reviews",quality_outcome="fallback",ai_surface="copilot",model_id="model-v1",guardrail_version="3",scorer_version="outcome-v1"}
+        values: 0+10x5040 50405+5x5100
+    promql_expr_test:
+      - expr: app_ai_quality:fallback_rate_baseline_7d
+        eval_time: 169h
+        exp_samples:
+          - labels: app_ai_quality:fallback_rate_baseline_7d{ai_surface="copilot",model_id="model-v1",guardrail_version="3",scorer_version="outcome-v1"}
+            value: 0.014909004683146598

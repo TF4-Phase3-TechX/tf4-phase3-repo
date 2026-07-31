@@ -57,6 +57,7 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+.venv-*/
 /.eval-venv/
 venv/
 *.egg-info/

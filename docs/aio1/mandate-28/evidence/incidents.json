@@ -1,0 +1,1355 @@
+[
+  {
+    "baseline_version": 1,
+    "breach_streak": 179,
+    "data_quality": "available",
+    "environment": "production",
+    "evidence_count": 181,
+    "evidence_digest": "c6fcbc4c72ab98760f097affcdbfc766b6f249fc022e07ef723fbfc71bf629f0",
+    "evidence_samples": [
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T117-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T118-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T119-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T120-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T121-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T122-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T123-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T124-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T125-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T126-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T127-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T128-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T129-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T130-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T130-concurrent",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.75,
+        "value": 1660.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T131-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T132-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T133-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T134-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T135-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T136-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T137-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T138-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T139-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T140-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T141-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T142-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T143-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T144-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T145-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T146-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T147-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T148-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T149-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T150-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T151-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T152-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T153-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T154-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T155-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T156-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T157-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T158-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T159-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T160-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T161-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T162-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T163-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T164-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T165-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T166-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T167-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T168-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T169-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T170-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T171-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T172-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T173-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T174-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T175-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.0,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T176-primary",
+        "request_count": 40.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 1.55,
+        "value": 1650.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T177-primary",
+        "request_count": 55.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.1,
+        "value": 1600.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T178-primary",
+        "request_count": 70.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 2.6500000000000004,
+        "value": 1625.0
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-a-T179-primary",
+        "request_count": 85.0,
+        "signal_kind": "latency",
+        "traffic_multiplier": 3.2,
+        "value": 1650.0
+      }
+    ],
+    "first_breach_at": "2026-07-30T00:00:00Z",
+    "frozen_baseline": {
+      "captured_at": "2026-07-30T00:00:00Z",
+      "cleaned_values": [
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0
+      ],
+      "mad": 1.0,
+      "median": 100.0,
+      "values": [
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0,
+        100.0,
+        102.0,
+        98.0,
+        101.0,
+        99.0,
+        100.0
+      ]
+    },
+    "healthy_streak": 0,
+    "incident_history": [],
+    "incident_id": "cd03586a-8ff1-538d-95c6-1ca592e44309",
+    "incident_type": "service_latency_spike",
+    "last_processed_sequence": 628,
+    "last_processed_timestamp": "2026-07-30T02:59:00Z",
+    "lifecycle": "ACTIVE_SUSTAINED",
+    "namespace": "techx-tf4",
+    "processed_event_ids": [
+      "service-a-T117-primary",
+      "service-a-T118-primary",
+      "service-a-T119-primary",
+      "service-a-T120-primary",
+      "service-a-T121-primary",
+      "service-a-T122-primary",
+      "service-a-T123-primary",
+      "service-a-T124-primary",
+      "service-a-T125-primary",
+      "service-a-T126-primary",
+      "service-a-T127-primary",
+      "service-a-T128-primary",
+      "service-a-T129-primary",
+      "service-a-T130-primary",
+      "service-a-T130-concurrent",
+      "service-a-T131-primary",
+      "service-a-T132-primary",
+      "service-a-T133-primary",
+      "service-a-T134-primary",
+      "service-a-T135-primary",
+      "service-a-T136-primary",
+      "service-a-T137-primary",
+      "service-a-T138-primary",
+      "service-a-T139-primary",
+      "service-a-T140-primary",
+      "service-a-T141-primary",
+      "service-a-T142-primary",
+      "service-a-T143-primary",
+      "service-a-T144-primary",
+      "service-a-T145-primary",
+      "service-a-T146-primary",
+      "service-a-T147-primary",
+      "service-a-T148-primary",
+      "service-a-T149-primary",
+      "service-a-T150-primary",
+      "service-a-T151-primary",
+      "service-a-T152-primary",
+      "service-a-T153-primary",
+      "service-a-T154-primary",
+      "service-a-T155-primary",
+      "service-a-T156-primary",
+      "service-a-T157-primary",
+      "service-a-T158-primary",
+      "service-a-T159-primary",
+      "service-a-T160-primary",
+      "service-a-T161-primary",
+      "service-a-T162-primary",
+      "service-a-T163-primary",
+      "service-a-T164-primary",
+      "service-a-T165-primary",
+      "service-a-T166-primary",
+      "service-a-T167-primary",
+      "service-a-T168-primary",
+      "service-a-T169-primary",
+      "service-a-T170-primary",
+      "service-a-T171-primary",
+      "service-a-T172-primary",
+      "service-a-T173-primary",
+      "service-a-T174-primary",
+      "service-a-T175-primary",
+      "service-a-T176-primary",
+      "service-a-T177-primary",
+      "service-a-T178-primary",
+      "service-a-T179-primary"
+    ],
+    "retention_expires_at": "2026-07-30T03:59:00Z",
+    "service": "service-a",
+    "state_version": 181
+  },
+  {
+    "baseline_version": 2,
+    "breach_streak": 51,
+    "data_quality": "available",
+    "environment": "production",
+    "evidence_count": 60,
+    "evidence_digest": "0240815e7e0d3ff4b22d7f4e5591be952bf9644c33b4042915ce9df5733d35e2",
+    "evidence_samples": [
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T120-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T121-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T122-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T123-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T124-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T125-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T126-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T127-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T128-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T129-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T130-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T131-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T132-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T133-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T134-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T135-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T136-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T137-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T138-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T139-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T140-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T141-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T142-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T143-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T144-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T145-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T146-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T147-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T148-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T149-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T150-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T151-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T152-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T153-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T154-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T155-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T156-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T157-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T158-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T159-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T160-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T161-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T162-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T163-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T164-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T165-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T166-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T167-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T168-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T169-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T170-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T171-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      },
+      {
+        "detector_breached": true,
+        "event_id": "service-b-T172-primary",
+        "request_count": 100.0,
+        "severity": "critical",
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.12
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T173-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T174-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T175-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T176-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.011
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T177-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.009
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T178-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      },
+      {
+        "detector_breached": false,
+        "event_id": "service-b-T179-primary",
+        "request_count": 100.0,
+        "signal_kind": "error_rate",
+        "traffic_multiplier": 1.0,
+        "value": 0.01
+      }
+    ],
+    "first_breach_at": "2026-07-30T02:00:00Z",
+    "frozen_baseline": {
+      "captured_at": "2026-07-30T02:55:00Z",
+      "cleaned_values": [
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.01
+      ],
+      "mad": 0.0,
+      "median": 0.01,
+      "values": [
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.009,
+        0.01,
+        0.011,
+        0.009,
+        0.01,
+        0.01,
+        0.01
+      ]
+    },
+    "healthy_streak": 3,
+    "incident_history": [],
+    "incident_id": "0e80d46a-232a-5384-980a-fd3012d1fd84",
+    "incident_type": "service_error_rate_spike",
+    "last_processed_sequence": 629,
+    "last_processed_timestamp": "2026-07-30T02:59:00Z",
+    "lifecycle": "RESOLVED",
+    "namespace": "techx-tf4",
+    "processed_event_ids": [
+      "service-b-T120-primary",
+      "service-b-T121-primary",
+      "service-b-T122-primary",
+      "service-b-T123-primary",
+      "service-b-T124-primary",
+      "service-b-T125-primary",
+      "service-b-T126-primary",
+      "service-b-T127-primary",
+      "service-b-T128-primary",
+      "service-b-T129-primary",
+      "service-b-T130-primary",
+      "service-b-T131-primary",
+      "service-b-T132-primary",
+      "service-b-T133-primary",
+      "service-b-T134-primary",
+      "service-b-T135-primary",
+      "service-b-T136-primary",
+      "service-b-T137-primary",
+      "service-b-T138-primary",
+      "service-b-T139-primary",
+      "service-b-T140-primary",
+      "service-b-T141-primary",
+      "service-b-T142-primary",
+      "service-b-T143-primary",
+      "service-b-T144-primary",
+      "service-b-T145-primary",
+      "service-b-T146-primary",
+      "service-b-T147-primary",
+      "service-b-T148-primary",
+      "service-b-T149-primary",
+      "service-b-T150-primary",
+      "service-b-T151-primary",
+      "service-b-T152-primary",
+      "service-b-T153-primary",
+      "service-b-T154-primary",
+      "service-b-T155-primary",
+      "service-b-T156-primary",
+      "service-b-T157-primary",
+      "service-b-T158-primary",
+      "service-b-T159-primary",
+      "service-b-T160-primary",
+      "service-b-T161-primary",
+      "service-b-T162-primary",
+      "service-b-T163-primary",
+      "service-b-T164-primary",
+      "service-b-T165-primary",
+      "service-b-T166-primary",
+      "service-b-T167-primary",
+      "service-b-T168-primary",
+      "service-b-T169-primary",
+      "service-b-T170-primary",
+      "service-b-T171-primary",
+      "service-b-T172-primary",
+      "service-b-T173-primary",
+      "service-b-T174-primary",
+      "service-b-T175-primary",
+      "service-b-T176-primary",
+      "service-b-T177-primary",
+      "service-b-T178-primary",
+      "service-b-T179-primary"
+    ],
+    "retention_expires_at": "2026-07-30T03:55:00Z",
+    "service": "service-b",
+    "state_version": 60
+  }
+]

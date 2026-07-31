@@ -248,7 +248,7 @@ Exit code: `0`.
 ## 9. Tệp trong evidence pack
 
 ```text
-docs/evidence/mandate-12-anti-defeat/
+docs/evidence/mandate-12-audit-anti-defeat/
 ├── MANDATE-12-HACKER-ACCEPTANCE-REPORT.md
 └── images/
     ├── attack-2-getobject-evidence.svg

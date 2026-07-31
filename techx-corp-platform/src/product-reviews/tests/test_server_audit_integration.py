@@ -9,8 +9,11 @@ with patch("psycopg2.pool.ThreadedConnectionPool"):
 
 
 class Counter:
+    def __init__(self):
+        self.calls = []
+
     def add(self, *_args, **_kwargs):
-        pass
+        self.calls.append((_args, _kwargs))
 
 
 class Histogram:
@@ -29,6 +32,33 @@ def metrics():
         "app_ai_fallback_counter": Counter(),
         "app_llm_error_counter": Counter(),
     }
+
+
+def test_quality_event_uses_only_canonical_surface_and_outcome(monkeypatch):
+    quality_counter = Counter()
+    monkeypatch.setattr(
+        server,
+        "product_review_svc_metrics",
+        {"app_ai_quality_event_counter": quality_counter},
+    )
+
+    server._record_quality_event("copilot", "provider_unavailable")
+
+    assert quality_counter.calls == [
+        (
+            (
+                1,
+                {
+                    "ai.surface": "copilot",
+                    "quality.outcome": "fallback",
+                    "model.id": "unconfigured",
+                    "guardrail.version": "unconfigured",
+                    "scorer.version": "mandate27-outcome-v1",
+                },
+            ),
+            {},
+        )
+    ]
 
 
 def test_q_and_a_emits_canonical_event_only_after_provider_attempt(monkeypatch):

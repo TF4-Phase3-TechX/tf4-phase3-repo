@@ -998,6 +998,192 @@
     },
     {
       "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Mandate 27 output-quality proxy. Current 30-minute fallback rate is compared with the prior seven-day baseline per canonical AI surface.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 37
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "app_ai_quality:fallback_rate_30m",
+          "legendFormat": "{{ai_surface}} current",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "app_ai_quality:fallback_rate_baseline_7d",
+          "legendFormat": "{{ai_surface}} baseline",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "AI Fallback Drift — Current vs Baseline",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Mandate 27 output-quality proxy. The alert requires a 15 percentage-point adverse delta, at least 30 requests and 30 minutes of persistence.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.15
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 37
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "app_ai_quality:abstention_rate_30m",
+          "legendFormat": "{{ai_surface}} current",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "app_ai_quality:abstention_rate_baseline_7d",
+          "legendFormat": "{{ai_surface}} baseline",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "AI Abstention Drift — Current vs Baseline",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
         "type": "__expr__",
         "uid": "__expr__"
       },
@@ -1005,7 +1191,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 45
       },
       "id": 12,
       "options": {
@@ -1014,7 +1200,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "Audit note\\n- AI production path hien tai la product-reviews -> Bedrock.\\n- API Success/Request/Latency panels la request-level SLI, chi tinh ProductReviewService request spans.\\n- Span Breakdown la debug view va co the gom child spans nhu Bedrock/tool/DB, khong dung lam SLI chinh.\\n- Product Reviews / Bedrock panels do span metrics bedrock.converse phat ra tu product-reviews de khop nguon data dang co tren dashboard.\\n- app_llm_* metrics van la metric contract trong source code, nhung can verify ingest/label rieng neu dung lam SLI chinh.\\n- Service llm co the ton tai trong cluster nhung khong nam tren primary AI production path, nen request/latency/error panels co the No data khi filter llm.\\n- Shopping Copilot review summary dung deterministic summarize_copilot_reviews va khong goi model-backed Product Detail AI.\\n- Error panel hien 0 req/s khi co traffic nhung khong co error series; No data con lai thuong nghia la chua co traffic/metric trong time range.",
+        "content": "Audit note\\n- AI production path hien tai la product-reviews -> Bedrock.\\n- API Success/Request/Latency panels la request-level SLI, chi tinh ProductReviewService request spans.\\n- Span Breakdown la debug view va co the gom child spans nhu Bedrock/tool/DB, khong dung lam SLI chinh.\\n- Product Reviews / Bedrock panels do span metrics bedrock.converse phat ra tu product-reviews de khop nguon data dang co tren dashboard.\\n- Mandate 27 drift panels use content-free final request outcomes; they never retain prompt, response, user or session content.\\n- Drift alerts require sufficient traffic, an adverse baseline delta and a 30-minute persistence gate.\\n- app_llm_* metrics van la metric contract trong source code, nhung can verify ingest/label rieng neu dung lam SLI chinh.\\n- Service llm co the ton tai trong cluster nhung khong nam tren primary AI production path, nen request/latency/error panels co the No data khi filter llm.\\n- Shopping Copilot review summary dung deterministic summarize_copilot_reviews va khong goi model-backed Product Detail AI.\\n- Error panel hien 0 req/s khi co traffic nhung khong co error series; No data con lai thuong nghia la chua co traffic/metric trong time range.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3",
@@ -1028,6 +1214,7 @@
     "techx",
     "product-reviews",
     "ai",
+    "mandate-27",
     "cdo07",
     "audit"
   ],

@@ -1,0 +1,75 @@
+groups:
+  - name: ai-model-quality-drift-alerts
+    interval: 1m
+    rules:
+      - alert: AIQualityFallbackDrift
+        expr: |
+          (
+            app_ai_quality:fallback_rate_30m
+            -
+            app_ai_quality:fallback_rate_baseline_7d
+          ) >= 0.10
+          and on (ai_surface, model_id, guardrail_version, scorer_version)
+          app_ai_quality:requests_30m >= 30
+          and on (ai_surface, model_id, guardrail_version, scorer_version)
+          count_over_time(
+            app_ai_quality:fallback_rate_30m[7d:30m] offset 30m
+          ) >= 336
+        for: 30m
+        labels:
+          severity: warning
+          owner: aio01
+          component: model-drift
+          metric: fallback_rate
+        annotations:
+          summary: "AI fallback-rate drift detected on {{ $labels.ai_surface }}"
+          description: "The 30-minute fallback rate remained at least 10 percentage points above its prior seven-day baseline, with sufficient traffic and a 30-minute persistence gate."
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md
+
+      - alert: AIQualityAbstentionDrift
+        expr: |
+          (
+            app_ai_quality:abstention_rate_30m
+            -
+            app_ai_quality:abstention_rate_baseline_7d
+          ) >= 0.15
+          and on (ai_surface, model_id, guardrail_version, scorer_version)
+          app_ai_quality:requests_30m >= 30
+          and on (ai_surface, model_id, guardrail_version, scorer_version)
+          count_over_time(
+            app_ai_quality:abstention_rate_30m[7d:30m] offset 30m
+          ) >= 336
+        for: 30m
+        labels:
+          severity: warning
+          owner: aio01
+          component: model-drift
+          metric: abstention_rate
+        annotations:
+          summary: "AI abstention-rate drift detected on {{ $labels.ai_surface }}"
+          description: "The 30-minute abstention rate remained at least 15 percentage points above its prior seven-day baseline, with sufficient traffic and a 30-minute persistence gate."
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md
+
+      - alert: AIQualityVersionMetadataMissing
+        expr: |
+          app_ai_quality:requests_30m{
+            model_id="unconfigured"
+          } > 0
+          or
+          app_ai_quality:requests_30m{
+            guardrail_version="unconfigured"
+          } > 0
+          or
+          app_ai_quality:requests_30m{
+            scorer_version="unconfigured"
+          } > 0
+        for: 5m
+        labels:
+          severity: warning
+          owner: aio01
+          component: model-drift
+          metric: telemetry_coverage
+        annotations:
+          summary: "AI quality telemetry is missing version identity on {{ $labels.ai_surface }}"
+          description: "Model-quality drift is fail-closed because model, guardrail, or scorer version metadata is unconfigured."
+          runbook_url: https://github.com/TF4-Phase3-TechX/tf4-phase3-repo/blob/main/docs/aio1/mandate-27/RUNBOOK-model-quality-drift.md
