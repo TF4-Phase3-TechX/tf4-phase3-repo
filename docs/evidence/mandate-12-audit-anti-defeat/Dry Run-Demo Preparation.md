@@ -197,7 +197,7 @@ fields @timestamp, eventTime, eventName, eventSource, eventCategory, readOnly,
 }
 ```
 
-![Đòn 2 — GetObject được CloudWatch ghi nhận](../mandate-12-anti-defeat/images/attack-2-getobject-evidence.png)
+![Đòn 2 — GetObject được CloudWatch ghi nhận](images/attack-2-getobject-evidence.png)
 
 **Kết luận Đòn 2:** **PASS**. Hành động đọc object nhạy cảm để lại đủ actor, API, resource, timestamp và event ID.
 
@@ -254,7 +254,7 @@ Results found for 2026-07-21T08:00:00Z to 2026-07-21T09:00:00Z:
 102/102 log files valid
 ```
 
-![Đòn 3 — Digest và log files hợp lệ](../mandate-12-anti-defeat/images/attack-3-integrity-evidence.png)
+![Đòn 3 — Digest và log files hợp lệ](images/attack-3-integrity-evidence.png)
 
 **Kết luận Đòn 3:** **PASS**. Không phát hiện digest hoặc log file bị thêm, xóa hay sửa trong cửa sổ kiểm tra.
 
@@ -306,8 +306,8 @@ Results found for 2026-07-21T08:00:00Z to 2026-07-21T09:00:00Z:
 |----------|-----------|
 | Terraform CloudTrail | `infra/terraform/cloudtrail.tf` |
 | Terraform Self-Healing | `infra/terraform/cloudtrail-auto-remediation.tf` |
-| Báo cáo runtime đầy đủ Đòn 2 + Đòn 3 | `docs/evidence/mandate-12-anti-defeat/MANDATE-12-HACKER-ACCEPTANCE-REPORT.md` |
-| Evidence images | `docs/evidence/mandate-12-anti-defeat/images/` |
+| Báo cáo runtime đầy đủ Đòn 2 + Đòn 3 | `docs/evidence/mandate-12-audit-anti-defeat/MANDATE-12-HACKER-ACCEPTANCE-REPORT.md` |
+| Evidence images | `docs/evidence/mandate-12-audit-anti-defeat/images/` |
 
 ---
 
