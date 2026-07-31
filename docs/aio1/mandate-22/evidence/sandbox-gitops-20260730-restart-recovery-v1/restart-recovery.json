@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "scenario": "restart-api-timeout-merge-race",
+  "captured_at": "2026-07-30T06:24:28.737732+00:00",
+  "kind_context": "kind-m22-gitops-sandbox",
+  "argo_version": "v3.4.2",
+  "repository": "disposable-local-git",
+  "known_good_sha": "f1b3371a8f29738a5d51db89bfa589e25011416d",
+  "fault_sha": "8c439bce7971366f467b936762990391e96c51bb",
+  "healthy_baseline_ms": [
+    4.576,
+    4.642,
+    6.295,
+    5.067,
+    6.139,
+    5.514
+  ],
+  "fault_samples_ms": [
+    805.783,
+    808.696,
+    820.883
+  ],
+  "incident": {
+    "incident_id": "inc-restartrace",
+    "incident_type": "service_latency_spike",
+    "status": "approved",
+    "severity": "high",
+    "affected_service": "product-reviews",
+    "environment": "production",
+    "tenant_id": "default",
+    "detected_at": "2026-07-30T06:24:11.962055Z",
+    "last_observed_at": "2026-07-30T06:24:11.962055Z",
+    "confidence": 0.8,
+    "suspected_root_cause": "Sustained p95 latency degradation on product-reviews; dependency or recent deployment correlation requires confirmation.",
+    "impact": {},
+    "evidence": [
+      {
+        "source": "prometheus",
+        "query": "sandbox exact product-reviews review RPC p95",
+        "window": "30m",
+        "value": 820.88,
+        "reference": null
+      },
+      {
+        "source": "detector",
+        "query": "baseline_coverage",
+        "window": "30m",
+        "value": "available",
+        "reference": null
+      }
+    ],
+    "rca_candidates": [
+      {
+        "service": "product-reviews",
+        "score": 0.8,
+        "signals": {
+          "ratio": 152.8028728419668,
+          "zscore": 1211.0127128710744,
+          "ewma": 409.8319366321128,
+          "isolation": 0.0,
+          "trend": 193.77699785438745,
+          "trend_consistency": 0.8,
+          "slow_drift": 1.0
+        }
+      }
+    ],
+    "runbook_id": "product-reviews-config-rollback",
+    "recommended_action": "Restore the three policy-managed review-delay values through a checked GitOps pull request.",
+    "approval_status": "preauthorized_policy",
+    "approval_expires_at": null,
+    "policy_version": "m22-gitops-v1",
+    "execution_attempts": 0,
+    "mutation_blocked": false,
+    "before_snapshot": null,
+    "verification_result": null,
+    "rollback_result": null,
+    "rollback_verification_result": null,
+    "escalation_reason": null,
+    "audit_events": [
+      {
+        "at": "2026-07-30T06:24:12.536153Z",
+        "event": "autonomous_gitops_policy_evaluated",
+        "detail": {
+          "policy_version": "m22-gitops-v1",
+          "checks": {
+            "autonomous_enabled": true,
+            "exact_incident_type": true,
+            "exact_target": true,
+            "exact_runbook": true,
+            "runbook_authorized": true,
+            "target_allowlisted": true,
+            "severity_high": true,
+            "confidence_sufficient": true,
+            "evidence_present": true,
+            "mutation_not_blocked": true
+          }
+        }
+      },
+      {
+        "at": "2026-07-30T06:24:12.536153Z",
+        "event": "gitops_action_preauthorized",
+        "detail": {
+          "policy_version": "m22-gitops-v1",
+          "action": "gitops_restore_managed_env"
+        }
+      }
+    ]
+  },
+  "recovery_events": [
+    {
+      "fault": "api_timeout_after_branch_and_pr_write",
+      "remote_head_sha": "8286392ab3721d559807792a94bbf126d4b4b7c3",
+      "persisted_phase": "PR_OPEN",
+      "persisted_pr_number": null
+    },
+    {
+      "recovery": "branch_and_pr_rediscovered",
+      "head_sha": "8286392ab3721d559807792a94bbf126d4b4b7c3",
+      "pr_number": 1,
+      "checks": {
+        "validate": "success",
+        "check-pinned-dependencies": "success",
+        "aiops-remediation-policy": "success"
+      }
+    },
+    {
+      "fault": "api_timeout_after_merge_write",
+      "actual_merge_sha": "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1",
+      "persisted_phase": "CHECKS_PENDING",
+      "persisted_merge_sha": null
+    },
+    {
+      "recovery": "merge_rediscovered_then_runtime_verified",
+      "resume_result": {
+        "saga_id": "saga-12da505ed9da",
+        "incident_id": "inc-restartrace",
+        "phase": "CHECKS_PENDING",
+        "action": "rediscover_and_continue",
+        "outcome": "resolved"
+      },
+      "observed_main_sha": "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1"
+    }
+  ],
+  "controller_restarts": 2,
+  "verification_runs": [
+    {
+      "healthy": true,
+      "request_count": 5,
+      "p95_latency_ms": 28.084,
+      "rpc": "/api/product-reviews/<id>",
+      "samples_ms": [
+        28.084,
+        4.981,
+        4.418,
+        4.59,
+        19.027
+      ]
+    },
+    {
+      "healthy": true,
+      "request_count": 5,
+      "p95_latency_ms": 5.189,
+      "rpc": "/api/product-reviews/<id>",
+      "samples_ms": [
+        5.189,
+        4.893,
+        4.074,
+        3.941,
+        4.348
+      ]
+    },
+    {
+      "healthy": true,
+      "request_count": 5,
+      "p95_latency_ms": 7.664,
+      "rpc": "/api/product-reviews/<id>",
+      "samples_ms": [
+        5.979,
+        6.092,
+        6.304,
+        7.519,
+        7.664
+      ]
+    }
+  ],
+  "runtime_observation": {
+    "observed_at": "2026-07-30T06:24:28.491222+00:00",
+    "deployment": "product-reviews",
+    "generation": 23,
+    "observed_generation": 23,
+    "ready": true,
+    "container_found": true,
+    "remediation_id": "inc-restartrace",
+    "managed_env_present": [],
+    "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+  },
+  "argo": {
+    "sync": {
+      "comparedTo": {
+        "destination": {
+          "namespace": "m22",
+          "server": "https://kubernetes.default.svc"
+        },
+        "source": {
+          "repoURL": ""
+        },
+        "sources": [
+          {
+            "helm": {
+              "releaseName": "product-reviews",
+              "valueFiles": [
+                "$values/environments/production/app-values.yaml"
+              ]
+            },
+            "path": "chart",
+            "repoURL": "git://172.24.0.3:9418/repo-10612.git",
+            "targetRevision": "main"
+          },
+          {
+            "ref": "values",
+            "repoURL": "git://172.24.0.3:9418/repo-10612.git",
+            "targetRevision": "main"
+          }
+        ]
+      },
+      "revisions": [
+        "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1",
+        "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1"
+      ],
+      "status": "Synced"
+    },
+    "health": {
+      "lastTransitionTime": "2026-07-30T06:24:23Z",
+      "status": "Healthy"
+    },
+    "self_heal": true
+  },
+  "saga": {
+    "schema_version": 2,
+    "incident_id": "inc-restartrace",
+    "incident_type": "service_latency_spike",
+    "target": "product-reviews",
+    "phase": "TERMINAL",
+    "outcome": "resolved",
+    "policy_version": "m22-gitops-v1",
+    "policy_sha": "bc6479d41b99092973d9c01fabb530bf5f8e5a93",
+    "base_sha": "8c439bce7971366f467b936762990391e96c51bb",
+    "known_good_sha": "f1b3371a8f29738a5d51db89bfa589e25011416d",
+    "remediation": {
+      "kind": "remediation",
+      "branch": "aiops/remediation/inc-restartrace",
+      "base_sha": "8c439bce7971366f467b936762990391e96c51bb",
+      "policy_sha": "bc6479d41b99092973d9c01fabb530bf5f8e5a93",
+      "known_good_sha": "f1b3371a8f29738a5d51db89bfa589e25011416d",
+      "target_file": "environments/production/app-values.yaml",
+      "before_hash": "993d673dd27c56bf843b7f22815e1e289593c056bdabd17c4b5db49a70bbd0c2",
+      "after_hash": "81048cec59aa471e8058b0ccd670e2043facd38e882970acca813f9358196a5d",
+      "before_file_sha": "0152e2fe1f01847b3de81b3d2fee2b1d93be3fb3",
+      "after_file_sha": "a77ea67477a58bc11ffe6134d4348dcb6a7c6980",
+      "head_sha": "8286392ab3721d559807792a94bbf126d4b4b7c3",
+      "pr_number": 1,
+      "pr_node_id": "sandbox-pr-1-8286392ab372",
+      "pr_url": "sandbox://pull/1/aiops/remediation/inc-restartrace",
+      "checks": {
+        "aiops-remediation-policy": "success",
+        "check-pinned-dependencies": "success",
+        "validate": "success"
+      },
+      "merge_queued": false,
+      "merge_sha": "67866f66c1ed339162d75a2bd1ac0304e0a2fbb1",
+      "state": "merged"
+    },
+    "compensation": null,
+    "expected_runtime_identity": {
+      "managed_env_present": [],
+      "remediation_id": "inc-restartrace",
+      "target_hash": "81048cec59aa471e8058b0ccd670e2043facd38e882970acca813f9358196a5d"
+    },
+    "runtime_observation": {
+      "container_found": true,
+      "deployment": "product-reviews",
+      "generation": 23,
+      "managed_env_present": [],
+      "observed_at": "2026-07-30T06:24:23.995813+00:00",
+      "observed_generation": 23,
+      "ready": true,
+      "remediation_id": "inc-restartrace",
+      "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+    },
+    "verification_samples": [
+      {
+        "poll": 1,
+        "runtime": {
+          "container_found": true,
+          "deployment": "product-reviews",
+          "generation": 23,
+          "managed_env_present": [],
+          "observed_at": "2026-07-30T06:24:24.003247+00:00",
+          "observed_generation": 23,
+          "ready": true,
+          "remediation_id": "inc-restartrace",
+          "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+        },
+        "sampled_at": "2026-07-30T06:24:24.586309+00:00",
+        "slo": {
+          "healthy": true,
+          "p95_latency_ms": 28.084,
+          "request_count": 5,
+          "rpc": "/api/product-reviews/<id>",
+          "samples_ms": [
+            28.084,
+            4.981,
+            4.418,
+            4.59,
+            19.027
+          ]
+        }
+      },
+      {
+        "poll": 2,
+        "runtime": {
+          "container_found": true,
+          "deployment": "product-reviews",
+          "generation": 23,
+          "managed_env_present": [],
+          "observed_at": "2026-07-30T06:24:25.599190+00:00",
+          "observed_generation": 23,
+          "ready": true,
+          "remediation_id": "inc-restartrace",
+          "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+        },
+        "sampled_at": "2026-07-30T06:24:26.151886+00:00",
+        "slo": {
+          "healthy": true,
+          "p95_latency_ms": 5.189,
+          "request_count": 5,
+          "rpc": "/api/product-reviews/<id>",
+          "samples_ms": [
+            5.189,
+            4.893,
+            4.074,
+            3.941,
+            4.348
+          ]
+        }
+      },
+      {
+        "poll": 3,
+        "runtime": {
+          "container_found": true,
+          "deployment": "product-reviews",
+          "generation": 23,
+          "managed_env_present": [],
+          "observed_at": "2026-07-30T06:24:27.193472+00:00",
+          "observed_generation": 23,
+          "ready": true,
+          "remediation_id": "inc-restartrace",
+          "template_hash": "5dce58f8ea1c1d9bb111a37a981d188bd6fbc7b171c82a9449fbfaef84e09dff"
+        },
+        "sampled_at": "2026-07-30T06:24:27.753143+00:00",
+        "slo": {
+          "healthy": true,
+          "p95_latency_ms": 7.664,
+          "request_count": 5,
+          "rpc": "/api/product-reviews/<id>",
+          "samples_ms": [
+            5.979,
+            6.092,
+            6.304,
+            7.519,
+            7.664
+          ]
+        }
+      }
+    ],
+    "compensation_verification_samples": [],
+    "mutation_blocked": false,
+    "escalation_reason": null,
+    "updated_at": "2026-07-30T06:24:28.295470+00:00"
+  },
+  "idempotency": {
+    "remediation_branches": [
+      "origin/aiops/remediation/inc-restartrace"
+    ],
+    "remediation_branch_count": 1,
+    "synthetic_pr_numbers": [
+      1
+    ],
+    "pr_count": 1,
+    "compensation_pr_count": 0,
+    "merge_sha_matches_main": true
+  },
+  "claim_boundary": "Kind/Argo runtime evidence level 5 in a disposable sandbox. Lost API responses are injected after real branch and merge writes; the local PR identity models, but does not prove, GitHub App/ruleset behavior.",
+  "passed": true,
+  "workspace": "disposable-temp-workspace"
+}

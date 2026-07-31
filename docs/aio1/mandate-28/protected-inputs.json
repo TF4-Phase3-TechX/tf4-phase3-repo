@@ -1,0 +1,7 @@
+{
+  "schema_version": "mandate28-protected-inputs/v1",
+  "sha256": {
+    "docs/requirements/onboarding/SLO.md": "f4a7232bcf3e6306c47bcfbacafccfcd64102b12641cf9babdcf1d10def0dbe0",
+    "techx-corp-chart/flagd/demo.flagd.json": "7c3e999b15e425741dfff32976bfab49319af0788b176879f844e648dbb98eba"
+  }
+}

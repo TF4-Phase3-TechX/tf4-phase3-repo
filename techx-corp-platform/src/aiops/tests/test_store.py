@@ -6,8 +6,12 @@ from app.store import IncidentStore
 
 def incident(service: str = "checkout"):
     return Incident(
-        incident_type="service_latency_spike", severity="high", affected_service=service,
-        confidence=.9, suspected_root_cause="latency", runbook_id="deployment-latency-rollback",
+        incident_type="service_latency_spike",
+        severity="high",
+        affected_service=service,
+        confidence=0.9,
+        suspected_root_cause="latency",
+        runbook_id="product-reviews-config-rollback",
         recommended_action="rollback",
     )
 
@@ -47,8 +51,13 @@ async def test_breach_recover_breach_creates_a_new_incident_after_cooldown():
     first.status = IncidentStatus.AWAITING_APPROVAL
     first.approval_status = "pending"
 
-    assert await store.observe_recovery(first.incident_type, first.affected_service, 2) is None
-    resolved = await store.observe_recovery(first.incident_type, first.affected_service, 2)
+    assert (
+        await store.observe_recovery(first.incident_type, first.affected_service, 2)
+        is None
+    )
+    resolved = await store.observe_recovery(
+        first.incident_type, first.affected_service, 2
+    )
     assert resolved is first
     assert resolved.status == IncidentStatus.RESOLVED
     assert resolved.approval_status == "cancelled_recovered"
@@ -63,9 +72,15 @@ async def test_breach_recover_breach_creates_a_new_incident_after_cooldown():
 async def test_unknown_coverage_resets_consecutive_recovery_streak():
     store = IncidentStore(cooldown_seconds=0)
     active, _ = await store.upsert(incident())
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 2) is None
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 2)
+        is None
+    )
     await store.reset_recovery(active.incident_type, active.affected_service)
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 2) is None
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 2)
+        is None
+    )
     assert active.status == IncidentStatus.OPEN
 
 
@@ -77,8 +92,14 @@ async def test_mutation_blocked_incident_never_auto_resolves():
     active.mutation_blocked = True
     active.escalation_reason = "rollback unverified"
 
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 1)
+        is None
+    )
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 1)
+        is None
+    )
     assert active.status == IncidentStatus.ESCALATED
     suppress_events = [
         event
@@ -99,7 +120,10 @@ async def test_pre_mutation_escalation_without_block_can_auto_resolve():
     active.mutation_blocked = False
     active.escalation_reason = "Autonomous policy denied: evidence_present"
 
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 2) is None
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 2)
+        is None
+    )
     resolved = await store.observe_recovery(
         active.incident_type, active.affected_service, 2
     )
@@ -121,7 +145,10 @@ async def test_target_quarantine_blocks_auto_resolve_and_survives_clear_cycle():
     )
 
     assert await store.is_target_blocked(active.affected_service) is True
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is None
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 1)
+        is None
+    )
     assert active.status == IncidentStatus.ESCALATED
     assert active.mutation_blocked is True
 
@@ -133,7 +160,10 @@ async def test_target_quarantine_blocks_auto_resolve_and_survives_clear_cycle():
         event.event == "mutation_block_cleared_by_operator"
         for event in active.audit_events
     )
-    assert await store.observe_recovery(active.incident_type, active.affected_service, 1) is active
+    assert (
+        await store.observe_recovery(active.incident_type, active.affected_service, 1)
+        is active
+    )
     assert active.status == IncidentStatus.RESOLVED
 
 

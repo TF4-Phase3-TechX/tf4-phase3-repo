@@ -1,190 +1,133 @@
-"""API-path coverage for manual approval quarantine and operator clear.
-
-These tests exercise the same module-level store/remediation wiring used by
-``POST /v1/incidents/{id}/approve`` and ``DELETE /v1/targets/{service}/mutation-block``
-without starting the long-running poll worker.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
 
 import pytest
+from fastapi.testclient import TestClient
 
-import app.main as main_mod
+import app.main as main
 from app.config import Settings
-from app.models import AuditEvent, Incident, IncidentStatus
-from app.remediation import PolicyDenied, RemediationController
-from app.saga import MemorySagaStore
+from app.models import AuditEvent, Evidence, Incident, IncidentStatus
+from app.remediation import RemediationController
+from app.saga import MemorySagaStore, RemediationSaga, SagaOutcome
 from app.store import IncidentStore
 
 
-class AmbiguousTimeoutAdapter:
-    def __init__(self):
-        self.patch_attempts = 0
-
-    def acquire_lock(self, deployment, incident_id, ttl):
-        return True
-
-    def release_lock(self, deployment, incident_id):
-        return None
-
-    def previous_template(self, deployment):
-        return (
-            {"metadata": {"labels": {"version": "current"}}},
-            {"metadata": {"labels": {"version": "previous"}}},
-        )
-
-    def patch_template(self, deployment, template):
-        self.patch_attempts += 1
-        raise TimeoutError("response lost after possible server commit")
-
-    def rollout_ready(self, deployment):
-        return True
-
-
-def _pending_incident(service: str = "product-reviews", incident_type: str = "service_latency_spike"):
-    item = Incident(
-        incident_type=incident_type,
+def incident():
+    return Incident(
+        incident_id="inc-api-m22",
+        incident_type="service_latency_spike",
         severity="high",
-        affected_service=service,
-        confidence=0.9,
-        suspected_root_cause="recent deploy",
-        runbook_id="deployment-latency-rollback",
-        recommended_action="rollback",
+        affected_service="product-reviews",
+        confidence=0.95,
+        suspected_root_cause="bounded fault",
+        evidence=[
+            Evidence(source="prometheus", query="review rpc", window="5m", value=5000)
+        ],
+        runbook_id="product-reviews-config-rollback",
+        recommended_action="gitops_restore_managed_env",
     )
-    item.status = IncidentStatus.AWAITING_APPROVAL
-    item.approval_status = "pending"
-    return item
 
 
 @pytest.fixture
-def api_path(monkeypatch):
+def api(monkeypatch):
+    settings = replace(
+        Settings(),
+        remediation_mode="gitops/dry-run",
+        autonomous_remediation_enabled=False,
+        approval_token="test-token",
+        verification_settle_seconds=0,
+    )
     store = IncidentStore(cooldown_seconds=0)
-    saga_store = MemorySagaStore()
-    controller = RemediationController(
-        replace(
-            Settings(),
-            remediation_mode="live",
-            known_good_revisions={"product-reviews": "1"},
-            verification_settle_seconds=0,
-            verification_interval_seconds=0,
-            approval_token="test-token",
-        ),
-        adapter=AmbiguousTimeoutAdapter(),
-        saga_store=saga_store,
-    )
-    monkeypatch.setattr(main_mod, "store", store)
-    monkeypatch.setattr(main_mod, "saga_store", saga_store)
-    monkeypatch.setattr(main_mod, "remediation", controller)
-    monkeypatch.setattr(
-        main_mod,
-        "settings",
-        replace(main_mod.settings, approval_token="test-token"),
-    )
-    return store, controller
+    sagas = MemorySagaStore()
+    controller = RemediationController(settings, saga_store=sagas)
+    monkeypatch.setattr(main, "settings", settings)
+    monkeypatch.setattr(main, "store", store)
+    monkeypatch.setattr(main, "saga_store", sagas)
+    monkeypatch.setattr(main, "remediation", controller)
+    return TestClient(main.app), store, sagas, controller
 
 
 @pytest.mark.asyncio
-async def test_manual_approve_ambiguous_mutation_quarantines_target(api_path):
-    store, controller = api_path
-    first, _ = await store.upsert(_pending_incident())
-    controller.request_approval(first)
+async def test_approve_enqueues_and_remediation_api_is_sanitized(api):
+    client, store, _, controller = api
+    item = incident()
+    await store.upsert(item)
+    controller.request_approval(item)
 
-    result = await main_mod.approve(first.incident_id)
+    response = client.post(
+        f"/v1/incidents/{item.incident_id}/approve",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 202
+    assert response.json()["status"] == "enqueued"
 
-    assert result.incident_id == first.incident_id
-    assert first.mutation_blocked is True
-    assert any(event.event == "action_outcome_unknown" for event in first.audit_events)
-    assert await store.is_target_blocked("product-reviews") is True
-    detail = await store.target_block("product-reviews")
-    assert detail is not None
-    assert detail["incident_id"] == first.incident_id
+    evidence = client.get(f"/v1/incidents/{item.incident_id}/remediation")
+    assert evidence.status_code == 200
+    assert evidence.json()["phase"] == "TERMINAL"
+    assert evidence.json()["outcome"] == "abandoned_pre_merge"
 
 
 @pytest.mark.asyncio
-async def test_manual_approve_blocked_when_target_already_quarantined(api_path):
-    store, controller = api_path
-    first, _ = await store.upsert(_pending_incident())
-    controller.request_approval(first)
-    await main_mod.approve(first.incident_id)
-    assert await store.is_target_blocked("product-reviews") is True
-
-    # Different incident type on the same service must not be able to mutate.
-    second, _ = await store.upsert(
-        _pending_incident(incident_type="service_error_rate_spike")
+async def test_remediation_api_reads_durable_saga_after_incident_store_restart(api):
+    client, store, sagas, _ = api
+    saga = RemediationSaga(
+        incident_id="inc-terminal-after-restart",
+        target="product-reviews",
     )
-    controller.request_approval(second)
+    saga.terminate(SagaOutcome.RESOLVED, "three-poll verification healthy")
+    await sagas.save(saga)
 
-    with pytest.raises(main_mod.HTTPException) as exc_info:
-        await main_mod.approve(second.incident_id)
-    assert exc_info.value.status_code == 409
-    assert exc_info.value.detail["error"] == "target_mutation_quarantine_active"
-    assert second.execution_attempts == 0
-    assert second.mutation_blocked is False
+    assert await store.get(saga.incident_id) is None
+    evidence = client.get(f"/v1/incidents/{saga.incident_id}/remediation")
+
+    assert evidence.status_code == 200
+    assert evidence.json()["phase"] == "TERMINAL"
+    assert evidence.json()["outcome"] == "resolved"
 
 
 @pytest.mark.asyncio
-async def test_clear_quarantine_unlocks_incident_for_recovery(api_path):
-    store, controller = api_path
-    active, _ = await store.upsert(_pending_incident())
-    controller.request_approval(active)
-    await main_mod.approve(active.incident_id)
-    assert active.mutation_blocked is True
-    assert await store.is_target_blocked("product-reviews") is True
+async def test_approve_rejects_active_target_quarantine(api):
+    client, store, _, controller = api
+    item = incident()
+    await store.upsert(item)
+    controller.request_approval(item)
+    item.mutation_blocked = True
+    item.escalation_reason = "compensation unverified"
+    item.audit_events.append(AuditEvent(event="gitops_remediation_merged"))
+    item.status = IncidentStatus.ESCALATED
+    await store.reconcile_post_execution_quarantine(item)
+    item.status = IncidentStatus.AWAITING_APPROVAL
 
-    # Before clear: recovery must stay suppressed.
-    assert (
-        await store.observe_recovery(active.incident_type, active.affected_service, 1)
-        is None
+    response = client.post(
+        f"/v1/incidents/{item.incident_id}/approve",
+        headers={"Authorization": "Bearer test-token"},
     )
-    assert active.status == IncidentStatus.ESCALATED
-
-    cleared = await main_mod.clear_mutation_block("product-reviews")
-    assert cleared["cleared"] is True
-    assert len(cleared["cleared_saga_ids"]) == 1
-    assert await controller.saga_store.list_open_for_target("product-reviews") == []
-    assert await store.is_target_blocked("product-reviews") is False
-    assert active.mutation_blocked is False
-    assert any(
-        event.event == "mutation_block_cleared_by_operator"
-        for event in active.audit_events
-    )
-
-    resolved = await store.observe_recovery(
-        active.incident_type, active.affected_service, 1
-    )
-    assert resolved is active
-    assert active.status == IncidentStatus.RESOLVED
-
-    # New remediation cycle can start after operator unlock + resolve.
-    fresh, created = await store.upsert(
-        _pending_incident(incident_type="service_error_rate_spike")
-    )
-    assert created is True
-    assert await store.is_target_blocked(fresh.affected_service) is False
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "target_mutation_quarantine_active"
 
 
 @pytest.mark.asyncio
-async def test_manual_approve_reconciles_when_execute_raises_after_ambiguous_mutation(
-    api_path, monkeypatch
-):
-    """If execute records an ambiguous mutation then raises, still quarantine."""
+async def test_authenticated_operator_clear_removes_durable_quarantine(api):
+    client, store, sagas, _ = api
+    item = incident()
+    item.status = IncidentStatus.ESCALATED
+    item.mutation_blocked = True
+    item.escalation_reason = "forced-wrong compensation restored"
+    await store.upsert(item)
+    await store.reconcile_post_execution_quarantine(item)
+    saga = RemediationSaga(
+        incident_id=item.incident_id,
+        target=item.affected_service,
+        mutation_blocked=True,
+    )
+    saga.terminate(SagaOutcome.COMPENSATED_ESCALATED, item.escalation_reason)
+    await sagas.save(saga)
 
-    store, controller = api_path
-    active, _ = await store.upsert(_pending_incident())
-    controller.request_approval(active)
-
-    async def execute_then_raise(incident: Incident) -> None:
-        incident.status = IncidentStatus.ESCALATED
-        incident.mutation_blocked = True
-        incident.escalation_reason = "Live mutation outcome is unknown"
-        incident.audit_events.append(AuditEvent(event="action_outcome_unknown"))
-        raise PolicyDenied("simulated post-mutation policy surface")
-
-    monkeypatch.setattr(controller, "execute", execute_then_raise)
-
-    with pytest.raises(main_mod.HTTPException) as exc_info:
-        await main_mod.approve(active.incident_id)
-    assert exc_info.value.status_code == 409
-    assert await store.is_target_blocked("product-reviews") is True
+    response = client.delete(
+        "/v1/targets/product-reviews/mutation-block",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    assert response.json()["cleared"] is True
+    assert await sagas.list_open_for_target("product-reviews") == []
