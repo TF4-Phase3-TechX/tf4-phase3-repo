@@ -1,0 +1,89 @@
+=== sustained-mid 2026-07-24T04:34:59Z ===
+NAME                          STATUS   ROLES    AGE   VERSION
+ip-10-0-10-231.ec2.internal   Ready    <none>   15d   v1.34.9-eks-7d6f6ec
+ip-10-0-10-8.ec2.internal     Ready    <none>   41h   v1.34.9-eks-8f14419
+ip-10-0-11-37.ec2.internal    Ready    <none>   41h   v1.34.9-eks-8f14419
+ip-10-0-11-40.ec2.internal    Ready    <none>   15d   v1.34.9-eks-7d6f6ec
+--- pods ---
+NAME                               READY   STATUS    RESTARTS   AGE   IP            NODE                          NOMINATED NODE   READINESS GATES
+accounting-559467457c-k5r72        1/1     Running   0          12h   10.0.10.134   ip-10-0-10-8.ec2.internal     <none>           <none>
+ad-7975d8865d-95fr2                1/1     Running   0          18h   10.0.10.232   ip-10-0-10-8.ec2.internal     <none>           <none>
+aiops-69d67b7cc7-t64ws             1/1     Running   0          79m   10.0.10.239   ip-10-0-10-8.ec2.internal     <none>           <none>
+cart-78fcc85857-ctm9b              1/1     Running   0          18h   10.0.10.75    ip-10-0-10-231.ec2.internal   <none>           <none>
+cart-78fcc85857-kzdpq              1/1     Running   0          18h   10.0.11.29    ip-10-0-11-37.ec2.internal    <none>           <none>
+checkout-7cbd5c5c4d-snls6          1/1     Running   0          18h   10.0.10.188   ip-10-0-10-8.ec2.internal     <none>           <none>
+checkout-7cbd5c5c4d-v4bvj          1/1     Running   0          18h   10.0.10.117   ip-10-0-10-8.ec2.internal     <none>           <none>
+currency-7d4b565c78-6546x          1/1     Running   0          21h   10.0.10.85    ip-10-0-10-8.ec2.internal     <none>           <none>
+currency-7d4b565c78-6tf2j          1/1     Running   0          21h   10.0.10.183   ip-10-0-10-231.ec2.internal   <none>           <none>
+email-66f44ddfc7-sg5cs             1/1     Running   0          21h   10.0.10.198   ip-10-0-10-8.ec2.internal     <none>           <none>
+flagd-785f874544-lbrld             1/1     Running   0          15h   10.0.11.238   ip-10-0-11-40.ec2.internal    <none>           <none>
+fraud-detection-69559788b9-k6j88   1/1     Running   0          18h   10.0.10.205   ip-10-0-10-8.ec2.internal     <none>           <none>
+frontend-68c48cc694-gngvd          1/1     Running   0          85m   10.0.11.19    ip-10-0-11-40.ec2.internal    <none>           <none>
+frontend-68c48cc694-lsxnp          1/1     Running   0          23m   10.0.11.229   ip-10-0-11-37.ec2.internal    <none>           <none>
+frontend-68c48cc694-prldb          1/1     Running   0          84m   10.0.10.14    ip-10-0-10-8.ec2.internal     <none>           <none>
+frontend-proxy-6f5697c865-5wt2m    1/1     Running   0          75m   10.0.10.185   ip-10-0-10-231.ec2.internal   <none>           <none>
+frontend-proxy-6f5697c865-vlppb    1/1     Running   0          75m   10.0.11.230   ip-10-0-11-37.ec2.internal    <none>           <none>
+image-provider-9cf4d7c8f-cvdqx     1/1     Running   0          21h   10.0.10.13    ip-10-0-10-231.ec2.internal   <none>           <none>
+llm-55b6465fd-5mzkp                1/1     Running   0          21h   10.0.10.76    ip-10-0-10-8.ec2.internal     <none>           <none>
+load-generator-78db94759-bljpq     1/1     Running   0          12h   10.0.11.23    ip-10-0-11-40.ec2.internal    <none>           <none>
+payment-7595d8789-jtfxt            1/1     Running   0          20h   10.0.11.55    ip-10-0-11-37.ec2.internal    <none>           <none>
+payment-7595d8789-mhlwq            1/1     Running   0          21h   10.0.10.71    ip-10-0-10-8.ec2.internal     <none>           <none>
+product-catalog-668f4548d8-c2dnw   1/1     Running   0          12h   10.0.11.9     ip-10-0-11-37.ec2.internal    <none>           <none>
+product-catalog-668f4548d8-x4h9r   1/1     Running   0          12h   10.0.10.27    ip-10-0-10-231.ec2.internal   <none>           <none>
+product-reviews-856c9d7bd9-fpkcc   1/1     Running   0          12h   10.0.10.128   ip-10-0-10-231.ec2.internal   <none>           <none>
+quote-77f8b9f4f-5hwxl              1/1     Running   0          21h   10.0.10.11    ip-10-0-10-8.ec2.internal     <none>           <none>
+quote-77f8b9f4f-pb4kl              1/1     Running   0          20h   10.0.11.249   ip-10-0-11-40.ec2.internal    <none>           <none>
+recommendation-767bc958-d6jcv      1/1     Running   0          21h   10.0.10.149   ip-10-0-10-8.ec2.internal     <none>           <none>
+shipping-6f4ddf857b-btmz6          1/1     Running   0          20h   10.0.11.54    ip-10-0-11-40.ec2.internal    <none>           <none>
+shipping-6f4ddf857b-nmx86          1/1     Running   0          21h   10.0.10.10    ip-10-0-10-8.ec2.internal     <none>           <none>
+--- hpa ---
+NAME       REFERENCE             TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+checkout   Deployment/checkout   cpu: 34%/70%    2         3         2          10d
+currency   Deployment/currency   cpu: 6%/70%     2         3         2          8d
+frontend   Deployment/frontend   cpu: 227%/70%   2         3         3          10d
+--- top pods ---
+NAME                               CPU(cores)   MEMORY(bytes)   
+accounting-559467457c-k5r72        4m           86Mi            
+ad-7975d8865d-95fr2                3m           231Mi           
+aiops-69d67b7cc7-t64ws             64m          177Mi           
+cart-78fcc85857-ctm9b              20m          70Mi            
+cart-78fcc85857-kzdpq              50m          57Mi            
+checkout-7cbd5c5c4d-snls6          14m          24Mi            
+checkout-7cbd5c5c4d-v4bvj          37m          23Mi            
+currency-7d4b565c78-6546x          8m           17Mi            
+currency-7d4b565c78-6tf2j          2m           18Mi            
+email-66f44ddfc7-sg5cs             43m          55Mi            
+flagd-785f874544-lbrld             18m          39Mi            
+fraud-detection-69559788b9-k6j88   5m           244Mi           
+frontend-68c48cc694-gngvd          181m         132Mi           
+frontend-68c48cc694-lsxnp          256m         124Mi           
+frontend-68c48cc694-prldb          245m         128Mi           
+frontend-proxy-6f5697c865-5wt2m    32m          23Mi            
+frontend-proxy-6f5697c865-vlppb    42m          22Mi            
+image-provider-9cf4d7c8f-cvdqx     1m           9Mi             
+llm-55b6465fd-5mzkp                19m          72Mi            
+load-generator-78db94759-bljpq     360m         111Mi           
+payment-7595d8789-jtfxt            20m          161Mi           
+payment-7595d8789-mhlwq            33m          173Mi           
+product-catalog-668f4548d8-c2dnw   76m          12Mi            
+product-catalog-668f4548d8-x4h9r   20m          12Mi            
+product-reviews-856c9d7bd9-fpkcc   105m         94Mi            
+quote-77f8b9f4f-5hwxl              8m           25Mi            
+quote-77f8b9f4f-pb4kl              6m           24Mi            
+recommendation-767bc958-d6jcv      87m          47Mi            
+shipping-6f4ddf857b-btmz6          4m           4Mi             
+shipping-6f4ddf857b-nmx86          7m           5Mi             
+--- recent events ---
+LAST SEEN   TYPE     REASON                   OBJECT                                                MESSAGE
+49m         Normal   Killing                  pod/frontend-68c48cc694-tb7ct                         Stopping container frontend
+49m         Normal   SuccessfulDelete         replicaset/frontend-68c48cc694                        Deleted pod: frontend-68c48cc694-tb7ct
+49m         Normal   SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 2; reason: All metrics below target
+49m         Normal   ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-68c48cc694 from 3 to 2
+34m         Normal   SuccessfullyReconciled   targetgroupbinding/k8s-techxtf4-frontend-2e9cfe94ea   Successfully reconciled
+23m         Normal   SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 3; reason: cpu resource utilization (percentage of request) above target
+23m         Normal   ScalingReplicaSet        deployment/frontend                                   Scaled up replica set frontend-68c48cc694 from 2 to 3
+23m         Normal   Scheduled                pod/frontend-68c48cc694-lsxnp                         Successfully assigned techx-tf4/frontend-68c48cc694-lsxnp to ip-10-0-11-37.ec2.internal
+23m         Normal   SuccessfulCreate         replicaset/frontend-68c48cc694                        Created pod: frontend-68c48cc694-lsxnp
+23m         Normal   Pulled                   pod/frontend-68c48cc694-lsxnp                         Container image "511825856493.dkr.ecr.us-east-1.amazonaws.com/techx-corp:b536a75-frontend@sha256:d4e50f027b9ad0fe369034aa543a8ab5442ddbdadde0fda77642df2bcfa1fd2e" already present on machine
+23m         Normal   Created                  pod/frontend-68c48cc694-lsxnp                         Created container: frontend
+23m         Normal   Started                  pod/frontend-68c48cc694-lsxnp                         Started container frontend

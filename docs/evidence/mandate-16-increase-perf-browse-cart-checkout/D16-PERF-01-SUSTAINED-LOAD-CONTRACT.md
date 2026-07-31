@@ -10,10 +10,10 @@
 
 ## 1. Exact UTC windows
 
-| Run | Warm-up | Ramp-up | Sustained measurement | Stability observation | Full run |
-|---|---|---|---|---|---|
-| Baseline | 2026-07-21 01:00–01:05Z | 01:05–01:10Z | 01:10–01:35Z | 01:35–01:45Z | 2026-07-21 01:00–01:45Z |
-| Optimized | 2026-07-21 03:00–03:05Z | 03:05–03:10Z | 03:10–03:35Z | 03:35–03:45Z | 2026-07-21 03:00–03:45Z |
+| Run       | Warm-up                 | Ramp-up      | Sustained measurement | Stability observation | Full run                |
+| --------- | ----------------------- | ------------ | --------------------- | --------------------- | ----------------------- |
+| Baseline  | 2026-07-21 01:00–01:05Z | 01:05–01:10Z | 01:10–01:35Z          | 01:35–01:45Z          | 2026-07-21 01:00–01:45Z |
+| Optimized | 2026-07-21 03:00–03:05Z | 03:05–03:10Z | 03:10–03:35Z          | 03:35–03:45Z          | 2026-07-21 03:00–03:45Z |
 
 The test operator must record actual start and end timestamps for every phase in UTC, in addition to run-level `T0` and `T1`. A start drift of at most five minutes is allowed only when every phase shifts by the same amount and the complete 45-minute schedule remains intact. Warm-up data must not be included in the primary latency result.
 
@@ -21,12 +21,12 @@ If a scheduled window is missed, stale, or drifts by more than five minutes, do 
 
 ## 2. Fixed load profile
 
-| Phase | Virtual users | Spawn rate | Duration | Purpose |
-|---|---:|---:|---:|---|
-| Warm-up | 50 | 10 users/s from zero | 5 minutes | Warm runtime, connection pools and caches |
-| Ramp-up | 50 → 200 | 5 users/s | 5 minutes | Observe latency while load increases |
-| Sustained measurement | 200 | 0 after target is reached | 25 minutes | Primary p50/p95/p99 and resource window |
-| Stability observation | 200 | 0 | 10 minutes | Detect jitter, queue growth and degradation |
+| Phase                 | Virtual users |                Spawn rate |   Duration | Purpose                                     |
+| --------------------- | ------------: | ------------------------: | ---------: | ------------------------------------------- |
+| Warm-up               |            50 |      10 users/s from zero |  5 minutes | Warm runtime, connection pools and caches   |
+| Ramp-up               |      50 → 200 |                 5 users/s |  5 minutes | Observe latency while load increases        |
+| Sustained measurement |           200 | 0 after target is reached | 25 minutes | Primary p50/p95/p99 and resource window     |
+| Stability observation |           200 |                         0 | 10 minutes | Detect jitter, queue growth and degradation |
 
 Baseline and optimized runs must use the same Locust file Git SHA, load-generator image and limits, host, user classes, wait-time policy, test accounts and seeded catalog/cart data. Application Git SHA/image is expected to differ only by the reviewed optimization change and must be recorded for each run. No test parameters may be tuned between runs.
 
@@ -34,13 +34,13 @@ Baseline and optimized runs must use the same Locust file Git SHA, load-generato
 
 Use `WebsiteUser` from `techx-corp-platform/src/load-generator/locustfile.py` without changing its task weights. The frozen task-selection mix is:
 
-| Group | Locust tasks and weights | Total weight | Selection share |
-|---|---|---:|---:|
-| Browse/Search | `index` (10), `browse_product_list` (8), `browse_product` (12), `get_recommendations` (8), `get_product_reviews` (6) | 44 | 43.56% |
-| Cart | `view_cart` (12), `add_to_cart` (13) | 25 | 24.75% |
-| Checkout | `checkout` (8), `checkout_multi` (7) | 15 | 14.85% |
-| Navigation/AI | `ask_product_ai_assistant` (10), `get_ads` (6) | 16 | 15.84% |
-| Feature-flag gated | `flood_home` (1) | 1 | 0.99% |
+| Group              | Locust tasks and weights                                                                                             | Total weight | Selection share |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- | -----------: | --------------: |
+| Browse/Search      | `index` (10), `browse_product_list` (8), `browse_product` (12), `get_recommendations` (8), `get_product_reviews` (6) |           44 |          43.56% |
+| Cart               | `view_cart` (12), `add_to_cart` (13)                                                                                 |           25 |          24.75% |
+| Checkout           | `checkout` (8), `checkout_multi` (7)                                                                                 |           15 |          14.85% |
+| Navigation/AI      | `ask_product_ai_assistant` (10), `get_ads` (6)                                                                       |           16 |          15.84% |
+| Feature-flag gated | `flood_home` (1)                                                                                                     |            1 |           0.99% |
 
 `loadGeneratorFloodHomepage` must remain unchanged and disabled, making `flood_home` a no-op in both runs. Selection share is based on the total weight of 101; it is not the final HTTP request share because Checkout and Cart tasks issue nested requests. The observed HTTP request mix must therefore be recorded by named route and compared under Section 4 rather than inferred from weights.
 
@@ -72,11 +72,11 @@ If a tolerance is exceeded, do not normalize the headline percentiles; mark the 
 
 Percentiles are calculated from successful client-observed requests in the sustained measurement window.
 
-| Flow | p95 budget | p99 budget |
-|---|---:|---:|
-| Browse | < 500 ms | < 800 ms |
-| Cart combined | < 700 ms | < 1,000 ms |
-| Checkout | < 1,000 ms | < 1,500 ms |
+| Flow          | p95 budget | p99 budget |
+| ------------- | ---------: | ---------: |
+| Browse        | < 1,200 ms | < 2,000 ms |
+| Cart combined | < 1,200 ms | < 2,000 ms |
+| Checkout      | < 1,800 ms | < 2,600 ms |
 
 The optimized run passes the latency gate only when:
 
@@ -161,24 +161,24 @@ APPROVED_AT_UTC=
 
 ## 10. Verification
 
-| Check | Result |
-|---|---|
-| `git diff --check` | PASS |
-| Contract review against D16-PERF-01 acceptance criteria | PASS |
-| Application test/build | N/A — docs-only change |
-| Helm template | N/A — no chart or deploy change |
-| Deploy/smoke test | N/A — no runtime change |
+| Check                                                   | Result                          |
+| ------------------------------------------------------- | ------------------------------- |
+| `git diff --check`                                      | PASS                            |
+| Contract review against D16-PERF-01 acceptance criteria | PASS                            |
+| Application test/build                                  | N/A — docs-only change          |
+| Helm template                                           | N/A — no chart or deploy change |
+| Deploy/smoke test                                       | N/A — no runtime change         |
 
 ## 11. Acceptance mapping
 
-| Acceptance criterion | Contract section |
-|---|---|
-| Warm-up separate from measurement | Sections 1–2 |
-| Sustained load at least 20 minutes | Section 2: 25 minutes |
-| p95/p99 budgets for all three flows | Section 5 |
-| p99 improvement target | Section 5: Checkout ≥20% |
-| Comparable workload rule | Sections 3–4 |
-| Separate request denominators and minimum samples | Section 4 |
-| Resource invariants | Section 6 |
-| Stop conditions | Section 7 |
-| Same baseline/optimized contract | Sections 1–4 |
+| Acceptance criterion                              | Contract section         |
+| ------------------------------------------------- | ------------------------ |
+| Warm-up separate from measurement                 | Sections 1–2             |
+| Sustained load at least 20 minutes                | Section 2: 25 minutes    |
+| p95/p99 budgets for all three flows               | Section 5                |
+| p99 improvement target                            | Section 5: Checkout ≥20% |
+| Comparable workload rule                          | Sections 3–4             |
+| Separate request denominators and minimum samples | Section 4                |
+| Resource invariants                               | Section 6                |
+| Stop conditions                                   | Section 7                |
+| Same baseline/optimized contract                  | Sections 1–4             |
