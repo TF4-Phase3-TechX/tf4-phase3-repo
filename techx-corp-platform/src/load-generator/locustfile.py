@@ -9,9 +9,12 @@ import random
 import uuid
 import logging
 
+import gevent
 from locust import HttpUser, task, between, constant, LoadTestShape
+from locust import events
 from locust.exception import StopUser
 
+from locust_idle_guard import reap_orphaned_users
 from paid_ai_control import PaidAIConfig, PaidAIRequestBudget
 
 from opentelemetry import context, baggage, trace
@@ -73,6 +76,28 @@ SystemMetricsInstrumentor().instrument()
 URLLib3Instrumentor().instrument()
 
 logging.info("Instrumentation complete - logs will now include trace context")
+
+
+@events.init.add_listener
+def start_idle_user_guard(environment, **_kwargs):
+    """Keep a stopped Web UI from leaking a synthetic user indefinitely."""
+
+    def guard_idle_state():
+        while True:
+            try:
+                reaped = reap_orphaned_users(environment.runner)
+                if reaped:
+                    logging.error(
+                        "Reaped %s orphaned Locust user(s) from idle runner state",
+                        reaped,
+                    )
+            except Exception:
+                # The guard must never take down the shared load-generator UI.
+                logging.exception("Locust idle-user guard failed")
+            gevent.sleep(1)
+
+    environment.tf4_idle_user_guard = gevent.spawn(guard_idle_state)
+
 
 # Initialize Flagd provider
 base_url = f"http://{os.environ.get('FLAGD_HOST', 'localhost')}:{os.environ.get('FLAGD_OFREP_PORT', 8016)}"
